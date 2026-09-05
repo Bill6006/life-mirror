@@ -59,7 +59,7 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   // The card: the reading out of 100 with its recipe, and the change since last time.
   const card = page.getByTestId('give-back')
   await expect(card.getByTestId('reading-100')).toContainText('50')
-  await expect(card.getByTestId('reading-100')).toContainText('Stabilize')
+  await expect(card.getByTestId('stance')).toHaveText('Stabilize')
   await expect(card.getByTestId('reading-100')).toContainText(/of 6 ingredients · equal weights/)
   await expect(card.getByText(/first reading/)).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()

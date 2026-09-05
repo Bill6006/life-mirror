@@ -10,7 +10,7 @@ import { NowScreen } from './now'
 import { PrivateScreen } from './private'
 import type { ReadingId } from './readings'
 import { useReminders } from './reminders'
-import { Placeholder } from './screens'
+import { ComingPanel } from './screens'
 import { extrasEnabled } from './settings'
 import { SettingsScreen } from './settingsScreen'
 import { WordingScreen } from './wording'
@@ -119,11 +119,9 @@ export function App() {
           />
         )
       case 'mirror':
-        return <Placeholder title={copy.tabs.mirror} note={copy.mirror.note} />
       case 'moves':
-        return <Placeholder title={copy.tabs.moves} note={copy.moves.note} />
       case 'aims':
-        return <Placeholder title={copy.tabs.aims} note={copy.aims.note} />
+        return <ComingPanel tab={t} />
       case 'settings':
         return <SettingsScreen onWording={() => open({ kind: 'wording' })} onLegend={() => open({ kind: 'legend' })} onPrivate={() => open({ kind: 'private' })} />
     }

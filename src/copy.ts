@@ -26,9 +26,15 @@ export const copy = {
     checkIn: 'Check in',
     continue: 'Continue',
     logged: 'Logged {time}',
-    incomplete: 'Incomplete · {n} of {total}',
+    incomplete: '{n} of {total} answered',
     from: 'From {time}',
     earlier: 'Earlier',
+  },
+  today: {
+    now: 'Open now',
+    logged: 'Logged',
+    checkIn: 'Check in · {block}',
+    continue: 'Continue · {block}',
   },
   reading: {
     recipe: '{used} of {total} ingredients · equal weights',
@@ -38,6 +44,7 @@ export const copy = {
     lastFull: 'Last full reading {value} · {stance} · {when}',
     none: 'Not logged yet',
     noneNote: 'The reading out of 100 appears after a completed check-in.',
+    scaleEmpty: 'The scale from 0 to 100, no reading yet',
     context: 'Context',
     today: 'Today so far',
   },
@@ -96,14 +103,23 @@ export const copy = {
     logged: 'Logged',
     done: 'Done',
   },
-  mirror: {
-    note: 'Your own record, drawn. Arrives with Phase 4.',
-  },
-  moves: {
-    note: 'One small move, with the reason for it. Arrives with Phase 6.',
-  },
-  aims: {
-    note: 'Your protected next step. Arrives with Phase 7.',
+  panels: {
+    mirror: {
+      title: 'Your record, drawn',
+      body: "Today's trace with moves marked, the week, a heatmap of days by blocks, and which readings move together, labelled. Hairlines and one accent, drawn by hand from your own data.",
+      when: 'Arrives with Phase 4, the next phase.',
+    },
+    moves: {
+      title: 'One small move',
+      body: 'From a catalogue you read and veto first: one move for the situation you are in, with why this, what it should shift and over what window, and what it is testing. Offered is recorded apart from happened.',
+      when: 'Arrives with Phase 6, after the catalogue you veto in Phase 5.',
+    },
+    aims: {
+      title: 'Your protected next step',
+      body: "Commitments you choose, each with a next step sized to one sitting, held above the move so tonight's reading cannot push it aside. Follow-through as counts, and one line of yours about who you are becoming.",
+      when: 'Arrives with Phase 7.',
+    },
+    strip: 'Phases 0 to {shipped} of {last} shipped · this one arrives with Phase {phase}',
   },
   settings: {
     checkins: 'Check-ins',
@@ -147,6 +163,7 @@ export const copy = {
     extraPrivate: 'Private log',
     extraFaith: 'Felt close to God today?',
     faithNote: 'Off stays off until you turn it on here. Never counted, never a streak.',
+    more: 'More',
     private: 'Private',
     privateNote: 'Items you name, measured, shown nowhere else unless you choose.',
     wording: 'Wording',

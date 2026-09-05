@@ -1,6 +1,9 @@
 /* Rule 15 of the plan: charcoal-navy ground, one-pixel hairlines, one warm accent for the
    single most important thing on a screen, system type, 48px targets, one scroll per screen.
-   Rule 1: facts sit in the plain register; calculations sit in .calc. */
+   Rule 1: facts sit in the plain register; calculations carry the thin rule on the left.
+
+   One rhythm everywhere: a screen head (eyebrow, optional date), then blocks separated by
+   24px, sections introduced by an eyebrow, content held in hairline cards. */
 :root {
   color-scheme: dark;
   --ground: #14171f;
@@ -8,7 +11,11 @@
   --muted: #9aa0ad;
   --faint: #6b7180;
   --hair: rgba(255, 255, 255, 0.09);
+  --hair-2: rgba(255, 255, 255, 0.16);
+  --surface: rgba(255, 255, 255, 0.025);
+  --surface-2: rgba(255, 255, 255, 0.05);
   --accent: #ff7d4d;
+  --radius: 16px;
   --tab-h: 56px;
 }
 
@@ -38,7 +45,7 @@ body {
 }
 
 main {
-  padding: max(28px, env(safe-area-inset-top)) 20px 28px;
+  padding: max(24px, env(safe-area-inset-top)) 20px 40px;
   overflow-x: hidden;
 }
 
@@ -47,10 +54,31 @@ main {
   margin: 0 auto;
 }
 
+/* Screen head */
+.screen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  margin: 0 0 24px;
+}
+
+.screen-head .eyebrow {
+  margin: 0;
+}
+
+.date {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+  text-align: right;
+}
+
 /* Type */
 .eyebrow,
 .section {
-  margin: 0 0 24px;
+  margin: 0 0 12px;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -59,18 +87,16 @@ main {
 }
 
 .eyebrow.small {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .section {
-  margin: 32px 0 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--hair);
+  margin: 28px 0 10px;
 }
 
 .title {
-  margin: 0 0 20px;
-  font-size: 26px;
+  margin: 0 0 6px;
+  font-size: 28px;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
@@ -84,6 +110,15 @@ main {
 .note {
   margin: 0 0 12px;
   color: var(--muted);
+}
+
+.note.in-card {
+  padding: 12px 0;
+}
+
+.note.no-gap,
+.calc-line.no-gap {
+  margin-bottom: 0;
 }
 
 .muted {
@@ -110,21 +145,38 @@ main {
   color: var(--muted);
 }
 
-/* Rows: the one list shape used everywhere */
+/* Cards: the one container shape */
+.card {
+  margin: 0 0 16px;
+  padding: 0 16px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.card.pad {
+  padding: 16px;
+}
+
+.card > .rows,
+.card > .facts {
+  margin: 0;
+  border-top: 0;
+}
+
+.card > .rows > li:last-child,
+.card > .facts > div:last-child,
+.card > .setting:last-child,
+.card > .switch-row:last-child,
+.card > .time-row:last-child {
+  border-bottom: 0;
+}
+
+/* Rows: the one list shape used inside cards */
 .rows {
   list-style: none;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   padding: 0;
-  border-top: 1px solid var(--hair);
-}
-
-.rows.top-gap {
-  margin-top: 32px;
-}
-
-.rows.indent {
-  margin-left: 22px;
-  border-top: 0;
 }
 
 .rows > li {
@@ -176,27 +228,31 @@ main {
   line-height: 1;
 }
 
-/* The one accent per screen */
+/* Buttons. Primary actions are ink; the warm accent is kept for the one most important mark. */
+.pill-ink {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  margin: 0 0 24px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--ground);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .pill {
   flex: none;
   padding: 10px 16px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--ink);
   color: var(--ground);
   font-size: 14px;
   font-weight: 600;
-}
-
-.pill-btn {
-  min-height: 48px;
-  padding: 0 22px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--ground);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .pill-quiet {
@@ -241,17 +297,337 @@ main {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 20px;
-  margin: 8px 0 12px;
+  margin: 4px 0 12px;
+}
+
+/* The hero: the reading out of 100 on its scale, in the calculation register */
+.hero {
+  margin: 0 0 24px;
+  padding: 4px 0 4px 16px;
+  border-left: 1px solid var(--hair-2);
+}
+
+.hero.compact {
+  margin-bottom: 16px;
+}
+
+.hero-value {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0;
+}
+
+.hero-value.is-dim {
+  opacity: 0.6;
+}
+
+.hero-num {
+  font-size: 68px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.compact .hero-num {
+  font-size: 44px;
+}
+
+.hero-stance {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.compact .hero-stance {
+  font-size: 18px;
+}
+
+.hero-word {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.compact .hero-word {
+  font-size: 26px;
+}
+
+.hero-recipe {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.scale {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 10px 0 8px;
+  overflow: visible;
+}
+
+.compact .scale {
+  margin: 8px 0 6px;
+}
+
+.scale-track {
+  stroke: var(--hair-2);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.scale-tick {
+  stroke: var(--faint);
+  stroke-width: 1;
+}
+
+.scale-num {
+  font-size: 9.5px;
+  fill: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.scale-band {
+  font-size: 9.5px;
+  fill: var(--faint);
+  letter-spacing: 0.1em;
+}
+
+.scale-band.is-active {
+  fill: var(--ink);
+}
+
+.scale-mark {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.scale-mark.is-hollow {
+  fill: var(--ground);
+}
+
+/* Context chips: facts */
+.context {
+  margin: 0 0 24px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.chip-name {
+  color: var(--muted);
+}
+
+.chip-value {
+  color: var(--ink);
+}
+
+.chip-when {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* Today: the three windows as one card */
+.today {
+  padding: 0;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.windows {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 112px;
+  padding: 16px 14px;
+  border: 0;
+  border-left: 1px solid var(--hair);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.window:first-child {
+  border-left: 0;
+}
+
+.window.is-later,
+.window.is-missed {
+  cursor: default;
+}
+
+.window.is-now {
+  background: var(--surface-2);
+}
+
+.w-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.window.is-later .w-name,
+.window.is-missed .w-name {
+  color: var(--muted);
+}
+
+.w-state {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.window.is-later .w-state,
+.window.is-missed .w-state {
+  color: var(--faint);
+}
+
+.w-time {
+  display: block;
+  color: var(--ink);
+}
+
+.glyph {
+  width: 16px;
+  height: 16px;
+}
+
+.glyph-ring {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.glyph.is-later .glyph-ring,
+.glyph.is-missed .glyph-ring {
+  stroke: var(--faint);
+}
+
+.glyph.is-missed .glyph-ring {
+  stroke-dasharray: 2 3;
+}
+
+.glyph-dot {
+  fill: var(--ink);
+}
+
+.win-card .win-text {
+  margin: 0;
+}
+
+/* Coming panels for tabs not built yet */
+.panel {
+  padding: 20px;
+}
+
+.sketch {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 20px;
+}
+
+.sk-line {
+  fill: none;
+  stroke: var(--hair-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sk-dot {
+  fill: var(--faint);
+}
+
+.sk-cell {
+  fill: var(--muted);
+}
+
+.sk-accent {
+  fill: var(--accent);
+}
+
+.panel-title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.panel-body {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.panel-when {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.phases {
+  display: flex;
+  gap: 4px;
+  margin: 22px 0 8px;
+}
+
+.phase {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hair);
+}
+
+.phase.is-done {
+  background: var(--muted);
+}
+
+.phase.is-this {
+  background: var(--accent);
+}
+
+.phases-label {
+  margin: 0;
+  font-size: 12px;
+  color: var(--faint);
 }
 
 /* Check-in */
-.checkin .eyebrow {
+.checkin .screen-head {
   margin-bottom: 12px;
 }
 
 .progress {
   height: 1px;
-  margin: 0 0 28px;
+  margin: 0 0 24px;
   background: var(--hair);
 }
 
@@ -262,8 +638,16 @@ main {
   transition: width 120ms ease-out;
 }
 
+.checkin .note {
+  margin-bottom: 20px;
+}
+
 .anchor {
   min-height: 60px;
+}
+
+.anchor.is-indent {
+  padding-left: 22px;
 }
 
 .anchor-mark {
@@ -280,9 +664,9 @@ main {
 
 /* Calculation register */
 .calc {
-  margin: 0 0 8px;
-  padding: 4px 0 4px 14px;
-  border-left: 1px solid var(--hair);
+  margin: 0 0 20px;
+  padding: 4px 0 4px 16px;
+  border-left: 1px solid var(--hair-2);
 }
 
 .calc-line {
@@ -290,66 +674,16 @@ main {
   color: var(--muted);
 }
 
-/* The reading out of 100 */
-.reading {
+.legend-item {
   margin: 0 0 20px;
 }
 
-.reading-big {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin: 0 0 6px;
-  font-size: 40px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: var(--ink);
+.legend-item.calc {
+  margin-bottom: 20px;
 }
 
-.reading-big .stance {
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.context {
-  margin: 0 0 24px;
-}
-
-.context-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.context-list li {
-  display: flex;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--hair);
-  font-size: 15px;
-}
-
-.ctx-name {
-  flex: 1;
-  color: var(--muted);
-}
-
-.ctx-value {
-  color: var(--ink);
-}
-
-.ctx-when {
-  color: var(--faint);
-  white-space: nowrap;
-}
-
-.win-line {
-  margin: 0 0 20px;
-  padding: 12px 0;
-  border-top: 1px solid var(--hair);
-  border-bottom: 1px solid var(--hair);
+.legend-item.last {
+  margin-bottom: 0;
 }
 
 .win-text {
@@ -358,7 +692,7 @@ main {
 
 /* Settings controls */
 .setting {
-  padding: 12px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--hair);
 }
 
@@ -366,11 +700,15 @@ main {
   margin: 0 0 10px;
 }
 
+.setting .note {
+  margin: 8px 0 0;
+}
+
 .seg {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 8px;
+  margin: 0;
 }
 
 .seg-opt {
@@ -450,7 +788,7 @@ main {
 input[type="time"] {
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--hair-2);
   border-radius: 10px;
   background: transparent;
   color: var(--ink);
@@ -473,9 +811,7 @@ input[type="time"] {
 }
 
 .ping {
-  margin: 20px 0 0;
-  padding: 16px 0 0;
-  border-top: 1px solid var(--hair);
+  margin-top: 16px;
 }
 
 .address {
@@ -484,12 +820,8 @@ input[type="time"] {
   overflow-wrap: anywhere;
 }
 
-.legend-item {
-  margin: 0 0 20px;
-}
-
 .wording-reading {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 /* About */

@@ -15,8 +15,8 @@ import {
   saveAnswer,
   winFor,
 } from './db'
-import { useLive } from './live'
 import { fill, formatTime } from './format'
+import { useLive } from './live'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
 import { activeBlocks, askedReadings, type Depth } from './settings'
@@ -103,7 +103,9 @@ export function CheckInScreen({
 
   return (
     <section class="screen checkin" aria-labelledby="ci-title">
-      <p class="eyebrow">{fill(copy.checkin.progress, { block: copy.blocks[block], n: String(safeIndex + 1), total: String(total) })}</p>
+      <header class="screen-head">
+        <p class="eyebrow">{fill(copy.checkin.progress, { block: copy.blocks[block], n: String(safeIndex + 1), total: String(total) })}</p>
+      </header>
       <div class="progress" aria-hidden="true">
         <span style={{ width: `${(answered / total) * 100}%` }} />
       </div>
@@ -112,20 +114,22 @@ export function CheckInScreen({
       </h1>
       <p class="note">{reading.prompt}</p>
 
-      <ul class="rows anchors">
-        {POSITIONS.map((p) => {
-          const anchor = anchorFor(id, p)
-          const picked = answers[id] === p
-          return (
-            <li key={p}>
-              <button type="button" class={picked ? 'row anchor is-picked' : 'row anchor'} data-testid="anchor" aria-pressed={picked} onClick={() => pick(p)}>
-                <span class="anchor-mark" aria-hidden="true" />
-                <AnchorText anchor={anchor} />
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+      <div class="card">
+        <ul class="rows anchors">
+          {POSITIONS.map((p) => {
+            const anchor = anchorFor(id, p)
+            const picked = answers[id] === p
+            return (
+              <li key={p}>
+                <button type="button" class={picked ? 'row anchor is-picked' : 'row anchor'} data-testid="anchor" aria-pressed={picked} onClick={() => pick(p)}>
+                  <span class="anchor-mark" aria-hidden="true" />
+                  <AnchorText anchor={anchor} />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
 
       <div class="actions">
         {!only && safeIndex > 0 && (
@@ -182,7 +186,9 @@ export function SummaryScreen({
   if (record === null) {
     return (
       <section class="screen">
-        <p class="eyebrow">{copy.blocks[block]}</p>
+        <header class="screen-head">
+          <p class="eyebrow">{copy.blocks[block]}</p>
+        </header>
         <p class="note">{copy.summary.notLogged}</p>
         <div class="actions">
           <button type="button" class="textbtn" onClick={onDone}>
@@ -206,11 +212,13 @@ export function SummaryScreen({
 
   return (
     <section class="screen" data-testid={fresh ? 'give-back' : 'summary'}>
-      <p class="eyebrow">
-        {complete
-          ? fill(copy.summary.logged, { block: copy.blocks[block], time: formatTime(record.completedAt ?? record.updatedAt) })
-          : fill(copy.summary.incomplete, { block: copy.blocks[block] })}
-      </p>
+      <header class="screen-head">
+        <p class="eyebrow">
+          {complete
+            ? fill(copy.summary.logged, { block: copy.blocks[block], time: formatTime(record.completedAt ?? record.updatedAt) })
+            : fill(copy.summary.incomplete, { block: copy.blocks[block] })}
+        </p>
+      </header>
 
       <ReadingOfCheckIn checkin={record} />
 
@@ -231,56 +239,58 @@ export function SummaryScreen({
       </div>
 
       <h2 class="section">{copy.summary.readings}</h2>
-      <ul class="rows">
-        {askedOf(record).map((id) => {
-          const p = record.answers[id]
-          return (
-            <li key={id}>
-              <button type="button" class="row" onClick={() => onChange(id)}>
-                <span class="row-main">{readingById(id).name}</span>
-                <span class={p ? 'row-side ink' : 'row-side'}>{p ? headword(anchorFor(id, p)) : copy.summary.notLogged}</span>
-                <span class="chev" aria-hidden="true">›</span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+      <div class="card">
+        <ul class="rows">
+          {askedOf(record).map((id) => {
+            const p = record.answers[id]
+            return (
+              <li key={id}>
+                <button type="button" class="row" onClick={() => onChange(id)}>
+                  <span class="row-main">{readingById(id).name}</span>
+                  <span class={p ? 'row-side ink' : 'row-side'}>{p ? headword(anchorFor(id, p)) : copy.summary.notLogged}</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
 
       {block === 'evening' && (
         <>
           <h2 class="section">{copy.summary.extras}</h2>
-          <ul class="rows">
-            {settings.extras.caffeine && <Fact label={copy.extras.caffeine} value={ex.caffeine ? copy.extras.yes : null} />}
-            {settings.extras.dinner && <Fact label={copy.extras.dinner} value={ex.dinner ? copy.extras.yes : null} />}
-            {(settings.extras.faith || ex.closeToGod) && <Fact label={copy.extras.faith} value={ex.closeToGod ? copy.extras.yes : null} />}
-            {(settings.extras.privateLog || privateLogged.length > 0) && items.length > 0 && (
-              <Fact
-                label={copy.extras.private}
-                value={
-                  privateLogged.length === 0
-                    ? null
-                    : settings.showPrivate
-                      ? privateLogged.map((it) => it.name).join(', ')
-                      : fill(copy.extras.privateLogged, { n: String(privateLogged.length) })
-                }
-              />
-            )}
-            {(settings.extras.minimumWin || tomorrowWin) && <Fact label={copy.extras.tomorrowWin} value={tomorrowWin?.text ?? null} />}
-            <li>
-              <button type="button" class="row" onClick={onExtras}>
-                <span class="row-main">{copy.summary.changeExtras}</span>
-                <span class="chev" aria-hidden="true">›</span>
-              </button>
-            </li>
-          </ul>
+          <div class="card">
+            <ul class="rows">
+              {settings.extras.caffeine && <Fact label={copy.extras.caffeine} value={ex.caffeine ? copy.extras.yes : null} />}
+              {settings.extras.dinner && <Fact label={copy.extras.dinner} value={ex.dinner ? copy.extras.yes : null} />}
+              {(settings.extras.faith || ex.closeToGod) && <Fact label={copy.extras.faith} value={ex.closeToGod ? copy.extras.yes : null} />}
+              {(settings.extras.privateLog || privateLogged.length > 0) && items.length > 0 && (
+                <Fact
+                  label={copy.extras.private}
+                  value={
+                    privateLogged.length === 0
+                      ? null
+                      : settings.showPrivate
+                        ? privateLogged.map((it) => it.name).join(', ')
+                        : fill(copy.extras.privateLogged, { n: String(privateLogged.length) })
+                  }
+                />
+              )}
+              {(settings.extras.minimumWin || tomorrowWin) && <Fact label={copy.extras.tomorrowWin} value={tomorrowWin?.text ?? null} />}
+              <li>
+                <button type="button" class="row" onClick={onExtras}>
+                  <span class="row-main">{copy.summary.changeExtras}</span>
+                  <span class="chev" aria-hidden="true">›</span>
+                </button>
+              </li>
+            </ul>
+          </div>
         </>
       )}
 
-      <div class="actions">
-        <button type="button" class="pill-btn" onClick={onDone}>
-          {copy.summary.done}
-        </button>
-      </div>
+      <button type="button" class="pill-ink" onClick={onDone}>
+        {copy.summary.done}
+      </button>
       <div class="actions">
         <button type="button" class="textbtn faint" onClick={remove}>
           {confirm ? copy.summary.deleteConfirm : copy.summary.delete}

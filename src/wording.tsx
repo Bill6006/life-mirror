@@ -5,7 +5,9 @@ import { description, headword, readings } from './readings'
 export function WordingScreen({ onClose }: { onClose: () => void }) {
   return (
     <section class="screen">
-      <p class="eyebrow">{copy.settings.wording}</p>
+      <header class="screen-head">
+        <p class="eyebrow">{copy.settings.wording}</p>
+      </header>
       <p class="note">{copy.wording.intro}</p>
       <p class="note">{copy.wording.sets}</p>
 
@@ -13,19 +15,21 @@ export function WordingScreen({ onClose }: { onClose: () => void }) {
         <div key={r.id} class="wording-reading">
           <h2 class="title-sm">{r.name}</h2>
           <p class="note faint">{r.prompt}</p>
-          <ul class="rows">
-            {r.anchors.map((a) => {
-              const desc = description(a)
-              return (
-                <li key={a} class="row is-static">
-                  <span class="row-main">
-                    <span class="head">{headword(a)}</span>
-                    {desc && <span class="desc"> — {desc}</span>}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
+          <div class="card">
+            <ul class="rows">
+              {r.anchors.map((a) => {
+                const desc = description(a)
+                return (
+                  <li key={a} class="row is-static">
+                    <span class="row-main">
+                      <span class="head">{headword(a)}</span>
+                      {desc && <span class="desc"> — {desc}</span>}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         </div>
       ))}
 
