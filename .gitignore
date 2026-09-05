@@ -1,0 +1,12 @@
+# The plan describes its owner and the log tracks it; neither is ever committed.
+PLAN.md
+PROGRESS.md
+
+# Build and tooling
+node_modules/
+dist/
+dev-dist/
+unit-results.json
+test-results/
+playwright-report/
+.vite/
