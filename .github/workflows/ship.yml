@@ -46,6 +46,9 @@ jobs:
           npx vitest run --reporter=default --reporter=json --outputFile=unit-results.json
           echo "UNIT_TESTS=$(node scripts/unit-count.mjs unit-results.json)" >> "$GITHUB_ENV"
 
+      - name: Wording document in sync with the app
+        run: node scripts/anchors-md.mjs --check
+
       - name: Build, stamped with this commit and this run
         env:
           BUILD_COMMIT: ${{ github.sha }}

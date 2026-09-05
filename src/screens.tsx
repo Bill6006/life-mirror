@@ -1,27 +1,6 @@
-import { copy } from './copy'
 import { build } from './build'
-
-function fill(template: string, n: number): string {
-  return template.replace('{n}', String(n))
-}
-
-function formatWhen(iso: string): string {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-export function NowScreen() {
-  return (
-    <section class="screen" aria-labelledby="now-title">
-      <h1 id="now-title" class="eyebrow">{copy.tabs.now}</h1>
-      <p class="status">
-        <span class="dot" aria-hidden="true" />
-        {copy.now.status}
-      </p>
-      <p class="note">{copy.now.note}</p>
-    </section>
-  )
-}
+import { copy } from './copy'
+import { fill, formatWhen } from './format'
 
 export function Placeholder({ title, note }: { title: string; note: string }) {
   return (
@@ -32,15 +11,27 @@ export function Placeholder({ title, note }: { title: string; note: string }) {
   )
 }
 
-export function SettingsScreen() {
+export function SettingsScreen({ onWording }: { onWording: () => void }) {
   const tests =
     build.unitTests === null
       ? copy.settings.testsUnknown
-      : fill(build.unitTests === 1 ? copy.settings.testsOne : copy.settings.testsMany, build.unitTests)
+      : fill(build.unitTests === 1 ? copy.settings.testsOne : copy.settings.testsMany, { n: String(build.unitTests) })
 
   return (
     <section class="screen">
       <h1 class="eyebrow">{copy.tabs.settings}</h1>
+
+      <ul class="rows">
+        <li>
+          <button type="button" class="row" onClick={onWording}>
+            <span class="row-main">
+              {copy.settings.wording}
+              <span class="sub">{copy.settings.wordingNote}</span>
+            </span>
+            <span class="chev" aria-hidden="true">›</span>
+          </button>
+        </li>
+      </ul>
 
       <h2 class="section">{copy.settings.about}</h2>
       <dl class="facts">
