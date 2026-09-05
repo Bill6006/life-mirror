@@ -30,6 +30,14 @@ export default defineConfig(({ mode }) => ({
     preact(),
     VitePWA({
       disable: mode === 'test',
+      // The worker is source (src/sw.ts) so it can act on a tapped reminder and, later, a push.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        rollupFormat: 'iife',
+      },
       registerType: 'autoUpdate',
       injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/*.png'],
@@ -49,13 +57,6 @@ export default defineConfig(({ mode }) => ({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        cleanupOutdatedCaches: true,
-        // A new build takes over open pages at once, so the app never shows a stale phase.
-        clientsClaim: true,
-        skipWaiting: true,
       },
     }),
   ],

@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'preact/hooks'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, answeredCount, isComplete, useLive, type CheckIn } from './db'
+import { allCheckIns, answeredCount, getSettings, isComplete, useLive, winFor, type CheckIn } from './db'
 import { fill, formatDayLong, formatDayShort, formatTime } from './format'
-import { blockReadings } from './readings'
+import { ContextStrip, ReadingNow } from './reading'
+import { askedOf } from './db'
+import { activeBlocks } from './settings'
 
 function statusOf(c: CheckIn): string {
   return isComplete(c)
     ? fill(copy.now.logged, { time: formatTime(c.completedAt ?? c.updatedAt) })
-    : fill(copy.now.incomplete, { n: String(answeredCount(c)), total: String(blockReadings(c.block).length) })
+    : fill(copy.now.incomplete, { n: String(answeredCount(c)), total: String(askedOf(c).length) })
 }
 
 export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void }) {
@@ -21,9 +23,14 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
 
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
+  const settings = useLive(getSettings, [])
+  const win = useLive(() => winFor(today.day), [today.day])
+  if (!all || !settings || win === undefined) return <section class="screen" />
+
+  const active = activeBlocks(settings.frequency)
   const todays = new Map<Block, CheckIn>()
   const earlier: CheckIn[] = []
-  for (const c of all ?? []) {
+  for (const c of all) {
     if (c.day === today.day) todays.set(c.block, c)
     else earlier.push(c)
   }
@@ -34,6 +41,17 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
       <h1 class="eyebrow">{copy.tabs.now}</h1>
       <h2 class="title">{formatDayLong(today.day)}</h2>
 
+      <ReadingNow all={all} today={today} />
+      <ContextStrip all={all} today={today.day} />
+
+      {win && (
+        <p class="win-line">
+          <span class="muted">{copy.win.today} — </span>
+          {win.text}
+          {win.outcome && <span class="muted"> · {copy.extras.winOutcome[win.outcome]}</span>}
+        </p>
+      )}
+
       <ul class="rows">
         {BLOCKS.map((b, i) => {
           const c = todays.get(b)
@@ -41,7 +59,7 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
           if (c) {
             const resume = !isComplete(c) && i === current
             return (
-              <li key={b}>
+              <li key={b} data-testid="block-row">
                 <button type="button" class="row" onClick={() => (resume ? onCheckIn(today.day, b) : onOpen(today.day, b))}>
                   <span class="row-main">{label}</span>
                   <span class="row-side">{statusOf(c)}</span>
@@ -50,9 +68,10 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
               </li>
             )
           }
+          if (!active.includes(b)) return null
           if (i === current) {
             return (
-              <li key={b}>
+              <li key={b} data-testid="block-row">
                 <button type="button" class="row" onClick={() => onCheckIn(today.day, b)}>
                   <span class="row-main">{label}</span>
                   <span class="row-side">{copy.now.notLogged}</span>
@@ -62,7 +81,7 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
             )
           }
           return (
-            <li key={b} class="row is-static">
+            <li key={b} class="row is-static" data-testid="block-row">
               <span class="row-main">{label}</span>
               <span class="row-side">{i < current ? copy.now.notLogged : fill(copy.now.from, { time: blockStart[b] })}</span>
             </li>

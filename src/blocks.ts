@@ -25,6 +25,12 @@ export function parseDay(day: string): Date {
   return new Date(y, m - 1, d, 12)
 }
 
+export function addDays(day: string, n: number): string {
+  const d = parseDay(day)
+  d.setDate(d.getDate() + n)
+  return dayKey(d)
+}
+
 export function daysBetween(from: string, to: string): number {
   return Math.round((parseDay(to).getTime() - parseDay(from).getTime()) / 86_400_000)
 }

@@ -1,10 +1,25 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import type { Block } from './blocks'
+import { addDays, BLOCKS, type Block } from './blocks'
 import { changesInWords } from './change'
 import { copy } from './copy'
-import { clearAnswer, deleteCheckIn, getCheckIn, isComplete, previousCompleted, saveAnswer, useLive } from './db'
+import {
+  allCheckIns,
+  askedOf,
+  clearAnswer,
+  deleteCheckIn,
+  getCheckIn,
+  getSettings,
+  isComplete,
+  previousCompleted,
+  privateItems,
+  saveAnswer,
+  useLive,
+  winFor,
+} from './db'
 import { fill, formatTime } from './format'
-import { anchorFor, blockReadings, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
+import { Glance, ReadingOfCheckIn } from './reading'
+import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
+import { activeBlocks, askedReadings, type Depth } from './settings'
 
 /** Pauses longer than this are not counted as answering time. */
 const ACTIVE_GAP_MS = 60_000
@@ -22,26 +37,28 @@ function AnchorText({ anchor }: { anchor: string }) {
 /**
  * One reading at a time, five phrases, one tap each. Every tap is written to the phone at
  * once and the next reading appears. With `only`, a single reading is changed and control
- * returns to the summary.
+ * returns to the summary. The set of readings is fixed when the check-in begins.
  */
 export function CheckInScreen({
   day,
   block,
+  depth,
   only,
   onDone,
   onClose,
 }: {
   day: string
   block: Block
+  depth: Depth
   only?: ReadingId
   onDone: () => void
   onClose: () => void
 }) {
-  const ids = blockReadings(block)
-  const total = ids.length
   const record = useLive(() => getCheckIn(day, block), [day, block])
+  const ids = record ? askedOf(record) : askedReadings(block, depth)
+  const total = ids.length
   const [local, setLocal] = useState<Answers>({})
-  const [index, setIndex] = useState(only ? ids.indexOf(only) : 0)
+  const [index, setIndex] = useState(only ? Math.max(0, ids.indexOf(only)) : 0)
   const resumed = useRef(Boolean(only))
   const lastTap = useRef(performance.now())
 
@@ -55,7 +72,8 @@ export function CheckInScreen({
     if (first > 0) setIndex(first)
   }, [record])
 
-  const id = ids[index]
+  const safeIndex = Math.min(index, total - 1)
+  const id = ids[safeIndex]
   const reading = readingById(id)
   const answered = ids.filter((r) => answers[r] !== undefined).length
 
@@ -65,12 +83,12 @@ export function CheckInScreen({
     lastTap.current = now
     const next: Answers = { ...answers, [id]: position }
     setLocal((l) => ({ ...l, [id]: position }))
-    void saveAnswer(day, block, id, position, gap < ACTIVE_GAP_MS ? gap : 0)
+    void saveAnswer({ day, block }, ids, id, position, gap < ACTIVE_GAP_MS ? gap : 0)
     if (only) {
       onDone()
       return
     }
-    const ahead = ids.findIndex((r, i) => i > index && next[r] === undefined)
+    const ahead = ids.findIndex((r, i) => i > safeIndex && next[r] === undefined)
     if (ahead !== -1) return setIndex(ahead)
     const anywhere = ids.findIndex((r) => next[r] === undefined)
     if (anywhere !== -1) return setIndex(anywhere)
@@ -79,13 +97,13 @@ export function CheckInScreen({
 
   function clear() {
     setLocal((l) => ({ ...l, [id]: undefined }))
-    void clearAnswer(day, block, id)
+    void clearAnswer({ day, block }, id)
     if (only) onDone()
   }
 
   return (
     <section class="screen checkin" aria-labelledby="ci-title">
-      <p class="eyebrow">{fill(copy.checkin.progress, { block: copy.blocks[block], n: String(index + 1), total: String(total) })}</p>
+      <p class="eyebrow">{fill(copy.checkin.progress, { block: copy.blocks[block], n: String(safeIndex + 1), total: String(total) })}</p>
       <div class="progress" aria-hidden="true">
         <span style={{ width: `${(answered / total) * 100}%` }} />
       </div>
@@ -110,8 +128,8 @@ export function CheckInScreen({
       </ul>
 
       <div class="actions">
-        {!only && index > 0 && (
-          <button type="button" class="textbtn" onClick={() => setIndex(index - 1)}>
+        {!only && safeIndex > 0 && (
+          <button type="button" class="textbtn" onClick={() => setIndex(safeIndex - 1)}>
             {copy.checkin.back}
           </button>
         )}
@@ -130,14 +148,16 @@ export function CheckInScreen({
 
 /**
  * The give-back card after a check-in (fresh) and the review of any past one. Facts (what
- * was tapped) sit in the plain register; the change since last time sits in the calculation
- * register. Any reading can be changed; the whole check-in can be deleted in two taps.
+ * was tapped) sit in the plain register; the reading, today's glance and the change since
+ * last time sit in the calculation register. Any reading can be changed; the whole check-in
+ * can be deleted in two taps.
  */
 export function SummaryScreen({
   day,
   block,
   fresh,
   onChange,
+  onExtras,
   onDone,
   onDeleted,
 }: {
@@ -145,14 +165,19 @@ export function SummaryScreen({
   block: Block
   fresh: boolean
   onChange: (id: ReadingId) => void
+  onExtras: () => void
   onDone: () => void
   onDeleted: () => void
 }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
   const previous = useLive(() => previousCompleted(day, block), [day, block])
+  const all = useLive(allCheckIns, [])
+  const settings = useLive(getSettings, [])
+  const items = useLive(privateItems, [])
+  const tomorrowWin = useLive(() => winFor(addDays(day, 1)), [day])
   const [confirm, setConfirm] = useState(false)
 
-  if (record === undefined || previous === undefined) return <section class="screen" />
+  if (record === undefined || previous === undefined || !all || !settings || !items || tomorrowWin === undefined) return <section class="screen" />
 
   if (record === null) {
     return (
@@ -170,6 +195,9 @@ export function SummaryScreen({
 
   const complete = isComplete(record)
   const change = complete ? changesInWords(record.answers, block, previous, { day, block }) : null
+  const glanceBlocks = BLOCKS.filter((b) => activeBlocks(settings.frequency).includes(b) || all.some((c) => c.day === day && c.block === b))
+  const ex = record.extras ?? {}
+  const privateLogged = items.filter((it) => ex.private?.[String(it.id)])
 
   function remove() {
     if (!confirm) return setConfirm(true)
@@ -184,7 +212,10 @@ export function SummaryScreen({
           : fill(copy.summary.incomplete, { block: copy.blocks[block] })}
       </p>
 
+      <ReadingOfCheckIn checkin={record} />
+
       <div class="calc">
+        <Glance all={all} day={day} blocks={glanceBlocks} />
         {change ? (
           <>
             {change.since && <h2 class="title-sm">{fill(copy.since.heading, { when: change.since })}</h2>}
@@ -201,7 +232,7 @@ export function SummaryScreen({
 
       <h2 class="section">{copy.summary.readings}</h2>
       <ul class="rows">
-        {blockReadings(block).map((id) => {
+        {askedOf(record).map((id) => {
           const p = record.answers[id]
           return (
             <li key={id}>
@@ -215,6 +246,36 @@ export function SummaryScreen({
         })}
       </ul>
 
+      {block === 'evening' && (
+        <>
+          <h2 class="section">{copy.summary.extras}</h2>
+          <ul class="rows">
+            {settings.extras.caffeine && <Fact label={copy.extras.caffeine} value={ex.caffeine ? copy.extras.yes : null} />}
+            {settings.extras.dinner && <Fact label={copy.extras.dinner} value={ex.dinner ? copy.extras.yes : null} />}
+            {(settings.extras.faith || ex.closeToGod) && <Fact label={copy.extras.faith} value={ex.closeToGod ? copy.extras.yes : null} />}
+            {(settings.extras.privateLog || privateLogged.length > 0) && items.length > 0 && (
+              <Fact
+                label={copy.extras.private}
+                value={
+                  privateLogged.length === 0
+                    ? null
+                    : settings.showPrivate
+                      ? privateLogged.map((it) => it.name).join(', ')
+                      : fill(copy.extras.privateLogged, { n: String(privateLogged.length) })
+                }
+              />
+            )}
+            {(settings.extras.minimumWin || tomorrowWin) && <Fact label={copy.extras.tomorrowWin} value={tomorrowWin?.text ?? null} />}
+            <li>
+              <button type="button" class="row" onClick={onExtras}>
+                <span class="row-main">{copy.summary.changeExtras}</span>
+                <span class="chev" aria-hidden="true">›</span>
+              </button>
+            </li>
+          </ul>
+        </>
+      )}
+
       <div class="actions">
         <button type="button" class="pill-btn" onClick={onDone}>
           {copy.summary.done}
@@ -226,5 +287,14 @@ export function SummaryScreen({
         </button>
       </div>
     </section>
+  )
+}
+
+function Fact({ label, value }: { label: string; value: string | null }) {
+  return (
+    <li class="row is-static">
+      <span class="row-main">{label}</span>
+      <span class={value ? 'row-side ink wrap' : 'row-side'}>{value ?? copy.summary.notLogged}</span>
+    </li>
   )
 }
