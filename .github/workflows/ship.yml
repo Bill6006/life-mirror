@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths-ignore:
       - '.github/keepalive'
+      - '.github/workflows/ping.yml'
+      - '.github/workflows/keepalive.yml'
   workflow_dispatch:
 
 permissions:

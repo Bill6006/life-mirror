@@ -55,9 +55,14 @@ jobs:
           echo "::add-mask::$endpoint"
           echo "::add-mask::$p256dh"
           echo "::add-mask::$auth"
-          npx --yes web-push@3.6.7 send-notification \
+          out=$(npx --yes web-push@3.6.7 send-notification \
             --endpoint="$endpoint" --key="$p256dh" --auth="$auth" \
             --payload='{"kind":"ping"}' --ttl=1500 \
             --vapid-subject="https://github.com/Bill6006/life-mirror" \
-            --vapid-pubkey="$VAPID_PUBLIC_KEY" --vapid-pvtkey="$VAPID_PRIVATE_KEY"
-          echo "Ping sent."
+            --vapid-pubkey="$VAPID_PUBLIC_KEY" --vapid-pvtkey="$VAPID_PRIVATE_KEY" 2>&1) || true
+          code=$(echo "$out" | grep -oE 'statusCode: [0-9]+' | head -1 | grep -oE '[0-9]+')
+          if echo "$out" | grep -qi 'error'; then
+            echo "The push service refused the ping (status ${code:-unknown}). 410 means the stored address is dead: copy it again from Settings and paste it to the builder."
+            exit 1
+          fi
+          echo "Ping sent (status ${code:-accepted})."
