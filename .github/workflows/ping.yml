@@ -1,0 +1,63 @@
+name: ping
+
+# The content-free reminder ping. Runs at both the summer and winter UTC equivalents of
+# 07:30, 13:00 and 19:30 America/New_York and sends only when the local clock agrees, so
+# daylight saving needs no edits. Minutes are offset from the hour to dodge congestion.
+on:
+  schedule:
+    - cron: '33 11 * * *'
+    - cron: '33 12 * * *'
+    - cron: '3 17 * * *'
+    - cron: '3 18 * * *'
+    - cron: '33 23 * * *'
+    - cron: '33 0 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Send now, whatever the clock says
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Is it one of the three local times?
+        id: when
+        env:
+          TZ: America/New_York
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          now=$(date +%H%M)
+          minutes=$((10#${now:0:2} * 60 + 10#${now:2:2}))
+          due=""
+          for t in 0730 1300 1930; do
+            target=$((10#${t:0:2} * 60 + 10#${t:2:2}))
+            if [ "$minutes" -ge "$target" ] && [ "$minutes" -lt $((target + 25)) ]; then due="$t"; fi
+          done
+          if [ "$FORCE" = "true" ]; then due="forced"; fi
+          echo "local time $now, due: ${due:-no}"
+          echo "due=$due" >> "$GITHUB_OUTPUT"
+
+      - name: Send the content-free ping
+        if: steps.when.outputs.due != ''
+        env:
+          SUB: ${{ secrets.PUSH_SUBSCRIPTION }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+        run: |
+          if [ -z "$SUB" ]; then echo "No push address stored yet; nothing sent."; exit 0; fi
+          endpoint=$(echo "$SUB" | jq -r .endpoint)
+          p256dh=$(echo "$SUB" | jq -r .keys.p256dh)
+          auth=$(echo "$SUB" | jq -r .keys.auth)
+          echo "::add-mask::$endpoint"
+          echo "::add-mask::$p256dh"
+          echo "::add-mask::$auth"
+          npx --yes web-push@3.6.7 send-notification \
+            --endpoint="$endpoint" --key="$p256dh" --auth="$auth" \
+            --payload='{"kind":"ping"}' --ttl=1500 \
+            --vapid-subject="https://github.com/Bill6006/life-mirror" \
+            --vapid-pubkey="$VAPID_PUBLIC_KEY" --vapid-pvtkey="$VAPID_PRIVATE_KEY"
+          echo "Ping sent."

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import type { Block } from './blocks'
+import { blockAt, type Block } from './blocks'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { copy } from './copy'
-import { allCheckIns, getSettings, useLive } from './db'
+import { allCheckIns, getSettings } from './db'
 import { ExtrasScreen } from './extras'
 import { LegendScreen } from './legend'
+import { useLive } from './live'
 import { NowScreen } from './now'
 import { PrivateScreen } from './private'
 import type { ReadingId } from './readings'
@@ -42,6 +43,13 @@ export function App() {
     }
     window.addEventListener('popstate', onPop)
     navigator.storage?.persist?.().catch(() => undefined)
+
+    // A tapped reminder arrives with ?checkin=1: open the current block straight away.
+    if (new URLSearchParams(location.search).has('checkin')) {
+      history.replaceState(null, '', import.meta.env.BASE_URL)
+      const { day, block } = blockAt(new Date())
+      open({ kind: 'checkin', day, block })
+    }
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 

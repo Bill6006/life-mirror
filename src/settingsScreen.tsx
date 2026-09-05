@@ -2,8 +2,10 @@ import { useState } from 'preact/hooks'
 import { build } from './build'
 import { NavRow, Seg, SwitchRow, TimeRow } from './controls'
 import { copy } from './copy'
-import { getSettings, updateSettings, useLive } from './db'
+import { getSettings, updateSettings } from './db'
 import { fill, formatWhen } from './format'
+import { useLive } from './live'
+import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
 import { activeBlocks, applyLowDemand, type Settings } from './settings'
 
 type Permission = NotificationPermission | 'unsupported'
@@ -15,6 +17,8 @@ function currentPermission(): Permission {
 export function SettingsScreen({ onWording, onLegend, onPrivate }: { onWording: () => void; onLegend: () => void; onPrivate: () => void }) {
   const settings = useLive(getSettings, [])
   const [perm, setPerm] = useState<Permission>(currentPermission)
+  const [copied, setCopied] = useState(false)
+  const [showAddress, setShowAddress] = useState(false)
   if (!settings) return <section class="screen" />
 
   const set = (change: (s: Settings) => Settings) => void updateSettings(change)
@@ -29,10 +33,38 @@ export function SettingsScreen({ onWording, onLegend, onPrivate }: { onWording: 
     if (p === 'granted') set((s) => ({ ...s, reminders: { ...s.reminders, enabled: true } }))
   }
 
+  async function setUpPush() {
+    try {
+      const subscription = await subscribePush()
+      set((s) => ({ ...s, push: { subscription, subscribedAt: new Date().toISOString(), changed: false } }))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function copyAddress() {
+    const sub = settings?.push.subscription
+    if (!sub) return
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(sub))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setShowAddress(true)
+    }
+  }
+
+  async function dropPush() {
+    await unsubscribePush()
+    set((s) => ({ ...s, push: { subscription: null, subscribedAt: null, changed: false } }))
+  }
+
   const tests =
     build.unitTests === null
       ? copy.settings.testsUnknown
       : fill(build.unitTests === 1 ? copy.settings.testsOne : copy.settings.testsMany, { n: String(build.unitTests) })
+
+  const sub = settings.push.subscription
 
   return (
     <section class="screen">
@@ -85,6 +117,43 @@ export function SettingsScreen({ onWording, onLegend, onPrivate }: { onWording: 
         </>
       )}
       <p class="note faint">{copy.settings.remindersNote}</p>
+      {settings.reminders.enabled && <p class="note faint">{copy.settings.inAppNote}</p>}
+
+      {settings.reminders.enabled && perm === 'granted' && (
+        <div class="ping" data-testid="ping">
+          <h3 class="title-sm">{copy.settings.pushTitle}</h3>
+          {!pushSupported() ? (
+            <p class="note">{copy.settings.pushUnsupported}</p>
+          ) : !sub ? (
+            <div class="actions">
+              <button type="button" class="pill-quiet" onClick={() => void setUpPush()}>
+                {copy.settings.pushSetup}
+              </button>
+            </div>
+          ) : (
+            <>
+              <p class="note">
+                <code>{shortAddress(sub.endpoint ?? '')}</code>
+              </p>
+              {settings.push.changed && <p class="note">{copy.settings.pushChanged}</p>}
+              {settings.push.subscribedAt && <p class="note faint">{fill(copy.settings.pushSubscribedAt, { when: formatWhen(settings.push.subscribedAt) })}</p>}
+              <div class="actions">
+                <button type="button" class="pill-quiet" onClick={() => void copyAddress()}>
+                  {copied ? copy.settings.pushCopied : copy.settings.pushCopy}
+                </button>
+                <button type="button" class="textbtn" onClick={() => setShowAddress((v) => !v)}>
+                  {showAddress ? copy.settings.pushHide : copy.settings.pushShow}
+                </button>
+                <button type="button" class="textbtn" onClick={() => void dropPush()}>
+                  {copy.settings.pushUnsubscribe}
+                </button>
+              </div>
+              {showAddress && <textarea class="input address" readOnly rows={6} value={JSON.stringify(sub)} />}
+            </>
+          )}
+          <p class="note faint">{copy.settings.pushNote}</p>
+        </div>
+      )}
 
       <h2 class="section">{copy.settings.extras}</h2>
       <SwitchRow label={copy.settings.extraWin} on={settings.extras.minimumWin} onChange={(on) => setExtra('minimumWin', on)} />

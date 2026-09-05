@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import { copy } from './copy'
-import { addPrivateItem, archivePrivateItem, getSettings, privateItems, updateSettings, useLive } from './db'
+import { addPrivateItem, archivePrivateItem, getSettings, privateItems, updateSettings } from './db'
+import { useLive } from './live'
 import { SwitchRow } from './controls'
 
 /** Rule 11 of the plan: private things are named here, measured, and shown nowhere else unless chosen. */

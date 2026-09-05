@@ -8,6 +8,14 @@ import { blockReadings, type ReadingId } from './readings'
 export type Depth = 'full' | 'short'
 export type Frequency = 'three' | 'two' | 'one'
 
+export interface PushState {
+  /** The browser's push address, the one thing that ever leaves the phone. */
+  subscription: PushSubscriptionJSON | null
+  subscribedAt: string | null
+  /** The browser rotated the address; it must be copied and pasted again. */
+  changed: boolean
+}
+
 export interface Settings {
   id: 1
   depth: Depth
@@ -25,6 +33,7 @@ export interface Settings {
   showPrivate: boolean
   /** Reminders already shown, keyed day:block, so each block gets at most one. */
   reminded: Record<string, true>
+  push: PushState
   updatedAt: string
 }
 
@@ -41,7 +50,21 @@ export const DEFAULT_SETTINGS: Settings = {
   extras: { minimumWin: true, caffeine: true, dinner: true, privateLog: true, faith: true },
   showPrivate: false,
   reminded: {},
+  push: { subscription: null, subscribedAt: null, changed: false },
   updatedAt: '',
+}
+
+/** A stored record from an earlier phase may lack newer fields; fill them from the defaults. */
+export function withDefaults(stored: Partial<Settings> | undefined): Settings {
+  if (!stored) return DEFAULT_SETTINGS
+  return {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    reminders: { ...DEFAULT_SETTINGS.reminders, ...(stored.reminders ?? {}), times: { ...DEFAULT_SETTINGS.reminders.times, ...(stored.reminders?.times ?? {}) } },
+    extras: { ...DEFAULT_SETTINGS.extras, ...(stored.extras ?? {}) },
+    push: { ...DEFAULT_SETTINGS.push, ...(stored.push ?? {}) },
+    reminded: stored.reminded ?? {},
+  }
 }
 
 export const SHORT_READINGS: readonly ReadingId[] = ['mood', 'energy', 'stress']
@@ -102,8 +125,9 @@ export function remindedKey(day: string, block: Block): string {
 /**
  * The block due a reminder right now, or null. At most one per block, never in quiet hours,
  * never for a block that has already begun, never for a block the frequency does not ask.
+ * With `anyTime` the clock check is skipped: the ping's arrival is the time.
  */
-export function reminderDue(now: Date, s: Settings, todays: ReadonlyMap<Block, CheckIn>): Block | null {
+export function reminderDue(now: Date, s: Settings, todays: ReadonlyMap<Block, CheckIn>, opts: { anyTime?: boolean } = {}): Block | null {
   if (!s.reminders.enabled) return null
   const { day, block } = blockAt(now)
   if (!activeBlocks(s.frequency).includes(block)) return null
@@ -111,6 +135,19 @@ export function reminderDue(now: Date, s: Settings, todays: ReadonlyMap<Block, C
   if (s.reminded[remindedKey(day, block)]) return null
   const hhmm = hhmmOf(now)
   if (inQuietHours(hhmm, s)) return null
-  if (minutesOf(hhmm) < minutesOf(s.reminders.times[block])) return null
+  if (!opts.anyTime && minutesOf(hhmm) < minutesOf(s.reminders.times[block])) return null
   return block
+}
+
+export type PushDecision = { kind: 'remind'; day: string; block: Block } | { kind: 'nothing' } | { kind: 'quiet' }
+
+/**
+ * What the worker does with a content-free ping. Remind when a block is due; do nothing when
+ * the app is in front (its screen is the prompt); otherwise a silent notice that is taken
+ * down at once, because the browser insists every push shows something.
+ */
+export function pushDecision(now: Date, s: Settings, todays: ReadonlyMap<Block, CheckIn>, appVisible: boolean): PushDecision {
+  const block = reminderDue(now, s, todays, { anyTime: true })
+  if (block) return { kind: 'remind', day: blockAt(now).day, block }
+  return appVisible ? { kind: 'nothing' } : { kind: 'quiet' }
 }

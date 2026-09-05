@@ -1,0 +1,26 @@
+name: keepalive
+
+# GitHub switches scheduled workflows off after sixty days without a commit. One tiny commit
+# a month keeps the reminder ping alive. It touches nothing the app is built from, and the
+# ship workflow ignores it, so nothing is redeployed.
+on:
+  schedule:
+    - cron: '17 9 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit the date
+        run: |
+          date -u +%Y-%m-%d > .github/keepalive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive
+          git commit -m "Keep the reminder schedule alive" || echo "Nothing to commit."
+          git push

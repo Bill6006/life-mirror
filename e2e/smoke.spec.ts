@@ -86,6 +86,12 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
 })
 
+test('a tapped reminder opens the current block straight away', async ({ page }) => {
+  await page.goto('./?checkin=1')
+  await expect(page.getByTestId('anchor').first()).toBeVisible()
+  await expect(page).toHaveURL(/\/life-mirror\/$/)
+})
+
 test('Low-demand mode and depth change the check-in at once and persist', async ({ page }) => {
   await page.goto('./')
   await expect(page.getByTestId('block-row')).toHaveCount(3)

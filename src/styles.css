@@ -472,6 +472,18 @@ input[type="time"] {
   margin: 0 0 16px;
 }
 
+.ping {
+  margin: 20px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--hair);
+}
+
+.address {
+  margin: 0 0 12px;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
 .legend-item {
   margin: 0 0 20px;
 }

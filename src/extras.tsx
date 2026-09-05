@@ -11,12 +11,12 @@ import {
   setPrivateLogged,
   setWin,
   updateSettings,
-  useLive,
   winFor,
   type ExtraKey,
   type WinOutcome,
 } from './db'
 import { fill } from './format'
+import { useLive } from './live'
 import { askedReadings } from './settings'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']

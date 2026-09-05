@@ -3,6 +3,8 @@ name: ship
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.github/keepalive'
   workflow_dispatch:
 
 permissions:

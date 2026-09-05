@@ -1,8 +1,7 @@
-import Dexie, { liveQuery, type Table } from 'dexie'
-import { useEffect, useState } from 'preact/hooks'
+import Dexie, { type Table } from 'dexie'
 import { compareSlots, type Block, type Slot } from './blocks'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { DEFAULT_SETTINGS, remindedKey, type Settings } from './settings'
+import { remindedKey, withDefaults, type Settings } from './settings'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
@@ -164,7 +163,7 @@ export function setPrivateLogged(slot: Slot, asked: readonly ReadingId[], itemId
 // Settings
 
 export async function getSettings(): Promise<Settings> {
-  return (await db.settings.get(1)) ?? DEFAULT_SETTINGS
+  return withDefaults(await db.settings.get(1))
 }
 
 export function updateSettings(change: (s: Settings) => Settings): Promise<Settings> {
@@ -226,17 +225,4 @@ export async function addPrivateItem(name: string): Promise<void> {
 
 export async function archivePrivateItem(id: number): Promise<void> {
   await db.privateItems.update(id, { archived: 1 })
-}
-
-/** Re-runs a Dexie query whenever the tables it touched change. Undefined while loading. */
-export function useLive<T>(querier: () => Promise<T>, deps: readonly unknown[]): T | undefined {
-  const [value, setValue] = useState<T | undefined>(undefined)
-  useEffect(() => {
-    const sub = liveQuery(querier).subscribe({
-      next: (v) => setValue(v as T),
-      error: (e) => console.error(e),
-    })
-    return () => sub.unsubscribe()
-  }, deps)
-  return value
 }
