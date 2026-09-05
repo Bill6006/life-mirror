@@ -53,6 +53,9 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         cleanupOutdatedCaches: true,
+        // A new build takes over open pages at once, so the app never shows a stale phase.
+        clientsClaim: true,
+        skipWaiting: true,
       },
     }),
   ],
