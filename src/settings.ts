@@ -34,6 +34,7 @@ export interface Settings {
   /** Reminders already shown, keyed day:block, so each block gets at most one. */
   reminded: Record<string, true>
   push: PushState
+  lastExportAt: string | null
   updatedAt: string
 }
 
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showPrivate: false,
   reminded: {},
   push: { subscription: null, subscribedAt: null, changed: false },
+  lastExportAt: null,
   updatedAt: '',
 }
 

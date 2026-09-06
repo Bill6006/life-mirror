@@ -14,7 +14,7 @@ function currentPermission(): Permission {
   return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
 }
 
-export function SettingsScreen({ onWording, onLegend, onPrivate }: { onWording: () => void; onLegend: () => void; onPrivate: () => void }) {
+export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onWording: () => void; onLegend: () => void; onPrivate: () => void; onData: () => void }) {
   const settings = useLive(getSettings, [])
   const [perm, setPerm] = useState<Permission>(currentPermission)
   const [copied, setCopied] = useState(false)
@@ -175,6 +175,7 @@ export function SettingsScreen({ onWording, onLegend, onPrivate }: { onWording: 
       <h2 class="section">{copy.settings.more}</h2>
       <div class="card">
         <ul class="rows">
+          <NavRow label={copy.settings.dataRow} note={copy.settings.dataRowNote} onClick={onData} />
           <NavRow label={copy.settings.private} note={copy.settings.privateNote} onClick={onPrivate} />
           <NavRow label={copy.settings.wording} note={copy.settings.wordingNote} onClick={onWording} />
           <NavRow label={copy.settings.legend} note={copy.settings.legendNote} onClick={onLegend} />

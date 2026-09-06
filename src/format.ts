@@ -21,3 +21,13 @@ export function formatDayLong(day: string): string {
 export function formatDayShort(day: string): string {
   return parseDay(day).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 }
+
+/** "Sat 5": for tight chart labels. */
+export function formatDayTiny(day: string): string {
+  const d = parseDay(day)
+  return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.getDate()}`
+}
+
+export function weekdayInitial(day: string): string {
+  return parseDay(day).toLocaleDateString(undefined, { weekday: 'narrow' })
+}

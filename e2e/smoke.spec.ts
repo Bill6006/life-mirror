@@ -92,6 +92,34 @@ test('a tapped reminder opens the current block straight away', async ({ page })
   await expect(page).toHaveURL(/\/life-mirror\/$/)
 })
 
+test('the mirror draws from the record, and delete everything empties it', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await expect(page.getByTestId('trace')).toBeVisible()
+  await expect(page.getByTestId('trace').locator('circle.ch-dot')).toHaveCount(1)
+  await expect(page.getByTestId('mini')).toHaveCount(7)
+  await expect(page.getByTestId('heatmap')).toBeVisible()
+  await expect(page.getByText('Moving together is not causing.')).toBeVisible()
+  await page.getByRole('button', { name: 'Hunger', exact: true }).click()
+  await expect(page.getByTestId('trace').locator('circle.ch-dot-ov')).toHaveCount(1)
+
+  // Data: private items stay out of an export unless ticked; delete everything takes two taps and a word.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Data Export everything/ }).click()
+  await expect(page.getByTestId('include-private')).not.toBeChecked()
+  await page.getByTestId('delete-start').click()
+  await expect(page.getByTestId('delete-confirm')).toBeDisabled()
+  await page.getByTestId('delete-word').fill('delete')
+  await page.getByTestId('delete-confirm').click()
+  await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await expect(page.getByTestId('trace').locator('circle.ch-dot')).toHaveCount(0)
+})
+
 test('Low-demand mode and depth change the check-in at once and persist', async ({ page }) => {
   await page.goto('./')
   await expect(page.getByTestId('block-row')).toHaveCount(3)

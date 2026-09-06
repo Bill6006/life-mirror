@@ -202,6 +202,10 @@ export function setWin(forDay: string, setOn: string, text: string): Promise<voi
   })
 }
 
+export function allWins(): Promise<Win[]> {
+  return db.wins.toArray()
+}
+
 export function answerWin(forDay: string, outcome: WinOutcome | null): Promise<void> {
   return db.transaction('rw', db.wins, async () => {
     const existing = await winFor(forDay)
@@ -225,4 +229,11 @@ export async function addPrivateItem(name: string): Promise<void> {
 
 export async function archivePrivateItem(id: number): Promise<void> {
   await db.privateItems.update(id, { archived: 1 })
+}
+
+/** Everything on this phone, gone. Nothing is kept anywhere else, so nothing comes back. */
+export function wipeEverything(): Promise<void> {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings], async () => {
+    await Promise.all([db.checkins.clear(), db.wins.clear(), db.privateItems.clear(), db.settings.clear()])
+  })
 }

@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { blockAt, type Block } from './blocks'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { copy } from './copy'
+import { DataScreen } from './dataScreen'
 import { allCheckIns, getSettings } from './db'
 import { ExtrasScreen } from './extras'
 import { LegendScreen } from './legend'
 import { useLive } from './live'
+import { MirrorScreen } from './mirror'
 import { NowScreen } from './now'
 import { PrivateScreen } from './private'
 import type { ReadingId } from './readings'
@@ -26,6 +28,7 @@ type View =
   | { kind: 'wording' }
   | { kind: 'legend' }
   | { kind: 'private' }
+  | { kind: 'data' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -104,6 +107,8 @@ export function App() {
         return <LegendScreen onClose={closeAll} />
       case 'private':
         return <PrivateScreen onClose={closeAll} />
+      case 'data':
+        return <DataScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -119,11 +124,19 @@ export function App() {
           />
         )
       case 'mirror':
+        return <MirrorScreen />
       case 'moves':
       case 'aims':
         return <ComingPanel tab={t} />
       case 'settings':
-        return <SettingsScreen onWording={() => open({ kind: 'wording' })} onLegend={() => open({ kind: 'legend' })} onPrivate={() => open({ kind: 'private' })} />
+        return (
+          <SettingsScreen
+            onWording={() => open({ kind: 'wording' })}
+            onLegend={() => open({ kind: 'legend' })}
+            onPrivate={() => open({ kind: 'private' })}
+            onData={() => open({ kind: 'data' })}
+          />
+        )
     }
   }
 

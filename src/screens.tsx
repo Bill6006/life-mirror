@@ -6,22 +6,6 @@ type Coming = keyof typeof PHASE_OF
 
 /** Small hairline sketches of what each tab will hold. */
 function Sketch({ kind }: { kind: Coming }) {
-  if (kind === 'mirror') {
-    return (
-      <svg class="sketch" viewBox="0 0 320 96" aria-hidden="true">
-        <polyline class="sk-line" points="12,64 60,52 108,58 156,34 204,42 252,26 300,30" />
-        {[12, 60, 108, 156, 204, 252].map((x, i) => (
-          <circle key={x} class="sk-dot" cx={x} cy={[64, 52, 58, 34, 42, 26][i]} r="2.5" />
-        ))}
-        <circle class="sk-accent" cx="300" cy="30" r="4" />
-        {[0, 1, 2].map((r) =>
-          [0, 1, 2, 3, 4, 5, 6].map((c) => (
-            <rect key={`${r}-${c}`} class="sk-cell" x={12 + c * 14} y={76 + r * 6} width="11" height="4" rx="1" style={{ opacity: 0.25 + ((r * 7 + c) % 5) * 0.15 }} />
-          )),
-        )}
-      </svg>
-    )
-  }
   if (kind === 'moves') {
     return (
       <svg class="sketch" viewBox="0 0 320 96" aria-hidden="true">

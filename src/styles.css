@@ -543,6 +543,192 @@ main {
   margin: 0;
 }
 
+/* Charts: hand-drawn SVG, hairlines, the accent for now */
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-card {
+  padding: 16px 12px 14px;
+}
+
+.ch-band {
+  stroke: var(--hair);
+  stroke-width: 1;
+}
+
+.ch-axis {
+  stroke: var(--hair-2);
+  stroke-width: 1;
+}
+
+.ch-num,
+.ch-xs,
+.ch-y {
+  font-size: 10px;
+  fill: var(--faint);
+}
+
+.ch-x {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.ch-y.is-today {
+  fill: var(--ink);
+}
+
+.ch-label {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.ch-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.ch-line.thin {
+  stroke-width: 1;
+}
+
+.ch-dot {
+  fill: var(--ink);
+}
+
+.ch-dot.is-now {
+  fill: var(--accent);
+}
+
+.ch-line-ov {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.ch-dot-ov {
+  fill: var(--ground);
+  stroke: var(--muted);
+  stroke-width: 1.2;
+}
+
+.ch-empty {
+  stroke: var(--hair-2);
+  stroke-width: 1;
+}
+
+.ch-cell {
+  fill: var(--ink);
+}
+
+.ch-cell-empty {
+  fill: none;
+  stroke: var(--hair);
+}
+
+.ch-cell.is-now,
+.ch-cell-empty.is-now {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.caption {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.caption.in-card {
+  padding-bottom: 14px;
+}
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.week-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.week-label.is-today {
+  color: var(--ink);
+}
+
+.overlay-chips {
+  margin: 12px 0 0;
+}
+
+button.chip {
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button.chip.is-on {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.together-note {
+  color: var(--ink);
+}
+
+.pair-bar {
+  flex: none;
+  width: 64px;
+  height: 8px;
+}
+
+.pb-axis {
+  stroke: var(--hair-2);
+  stroke-width: 1;
+}
+
+.pb-bar {
+  fill: var(--ink);
+}
+
+.pb-bar.is-neg {
+  fill: var(--muted);
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin: 0 0 4px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
 /* Coming panels for tabs not built yet */
 .panel {
   padding: 20px;
