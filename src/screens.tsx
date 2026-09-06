@@ -1,3 +1,4 @@
+import { NavRow } from './controls'
 import { copy } from './copy'
 import { fill } from './format'
 import { LAST_PHASE, PHASE_OF, SHIPPED_THROUGH } from './phases'
@@ -30,7 +31,7 @@ function Sketch({ kind }: { kind: Coming }) {
 }
 
 /** A quiet panel for a tab that is not built yet: what it will hold, and which phase brings it. */
-export function ComingPanel({ tab }: { tab: Coming }) {
+export function ComingPanel({ tab, onCatalogue }: { tab: Coming; onCatalogue?: () => void }) {
   const c = copy.panels[tab]
   const phase = PHASE_OF[tab]
   return (
@@ -38,6 +39,13 @@ export function ComingPanel({ tab }: { tab: Coming }) {
       <header class="screen-head">
         <h1 class="eyebrow">{copy.tabs[tab]}</h1>
       </header>
+      {onCatalogue && (
+        <div class="card">
+          <ul class="rows">
+            <NavRow label={copy.catalogue.read} note={copy.catalogue.readNote} onClick={onCatalogue} />
+          </ul>
+        </div>
+      )}
       <div class="card panel">
         <Sketch kind={tab} />
         <h2 class="panel-title">{c.title}</h2>

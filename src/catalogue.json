@@ -1,0 +1,1294 @@
+{
+  "families": [
+    { "id": "ending", "name": "Ending the day well" },
+    { "id": "movement", "name": "Movement" },
+    { "id": "steadying", "name": "Steadying" },
+    { "id": "food", "name": "Food and drink" },
+    { "id": "study", "name": "Study" },
+    { "id": "house", "name": "The house" },
+    { "id": "people", "name": "People" },
+    { "id": "rest", "name": "Rest" },
+    { "id": "money", "name": "Money" },
+    { "id": "charisma", "name": "Charisma and presence" },
+    { "id": "faith", "name": "Faith" },
+    { "id": "finishing", "name": "Finishing" }
+  ],
+  "moves": [
+    {
+      "id": "todo-list-before-bed",
+      "name": "Write tomorrow's list before bed",
+      "family": "ending",
+      "what": "Five minutes: everything you need to do tomorrow, on paper, then close the notebook.",
+      "source": { "who": "Scullin, Krueger, Ballard, Pruett and Bliwise", "what": "Bedtime writing of to-do lists shortened time to fall asleep by about nine minutes in a sleep-lab study of 57 adults", "year": 2018, "strength": "moderate" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": ["quiet"],
+      "targets": [
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextMorning" }
+      ],
+      "conflicts": ["brain-dump"],
+      "replaces": ["journal before bed", "plan tomorrow"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "caffeine-cutoff",
+      "name": "No caffeine after midday",
+      "family": "ending",
+      "what": "Decide it at breakfast: the last coffee, tea or cola before noon today.",
+      "source": { "who": "Drake, Roehrs, Shambroom and Roth", "what": "Caffeine taken even six hours before bed cut measured sleep by about an hour, in a crossover study of 12 adults; the basis of the six-hour sleep-hygiene rule", "year": 2013, "strength": "moderate" },
+      "minutes": 0,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" },
+        { "reading": "sleepHours", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": [],
+      "replaces": ["switch to decaf", "no coffee after lunch"],
+      "countsToward": [],
+      "when": ["morning"]
+    },
+    {
+      "id": "phone-out-of-bedroom",
+      "name": "Phone out of the bedroom",
+      "family": "ending",
+      "what": "Charge it in another room tonight; if you read in bed, read paper.",
+      "source": { "who": "Chang, Aeschbach, Duffy and Czeisler", "what": "Reading on a light-emitting screen before bed delayed melatonin and sleep and dulled next-morning alertness, in a 12-person crossover study", "year": 2015, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" },
+        { "reading": "sleepHours", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": [],
+      "replaces": ["no scrolling in bed", "screens off at night"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "dim-lights-hour",
+      "name": "Dim the lights an hour before bed",
+      "family": "ending",
+      "what": "Lamps instead of ceiling lights for the last hour, screens turned down.",
+      "source": { "who": "Blume, Garbazza and Spitschan", "what": "Review of how evening light shifts the body clock and suppresses melatonin, and how dim evenings help", "year": 2019, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [],
+      "targets": [{ "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }],
+      "conflicts": [],
+      "replaces": ["blue-light glasses", "night mode"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "fixed-lights-out",
+      "name": "Same lights-out time tonight",
+      "family": "ending",
+      "what": "Name the time now and keep it, whatever the evening does.",
+      "source": { "who": "Irish, Kline, Gunn, Buysse and Hall", "what": "Review of sleep-hygiene evidence: a regular schedule is among the better-supported habits", "year": 2015, "strength": "moderate" },
+      "minutes": 0,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" },
+        { "reading": "energy", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": ["early-night"],
+      "replaces": ["a bedtime routine", "consistent sleep schedule"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "dinner-early-light",
+      "name": "Dinner earlier and lighter",
+      "family": "ending",
+      "what": "Finish eating three hours before lights-out, and keep it to one plate.",
+      "source": { "who": "Crispim, Zimberg, dos Reis, Diniz, Tufik and de Mello", "what": "Eating late and heavily near bedtime went with worse sleep quality in 52 healthy adults, measured overnight", "year": 2011, "strength": "weak" },
+      "minutes": 0,
+      "effort": "low",
+      "needs": [],
+      "targets": [{ "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }],
+      "conflicts": [],
+      "replaces": ["no late-night snacks"],
+      "countsToward": [],
+      "when": ["afternoon", "evening"]
+    },
+
+    {
+      "id": "walk-ten",
+      "name": "A ten-minute walk, now",
+      "family": "movement",
+      "what": "Out the door with no destination, back in ten minutes.",
+      "source": { "who": "Pearce, Garcia, Abbas and colleagues", "what": "Meta-analysis of 15 cohorts, 191,130 people: even half the recommended weekly activity went with 18 percent lower depression risk, with the biggest gains at the lowest volumes", "year": 2022, "strength": "strong" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": ["outdoors"],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["green-walk", "after-dinner-walk"],
+      "replaces": ["get some steps in", "a walk round the block"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "green-walk",
+      "name": "Walk somewhere green",
+      "family": "movement",
+      "what": "A park, a river path or trees, for thirty minutes if you have it.",
+      "source": { "who": "Bratman, Hamilton, Hahn, Daily and Gross", "what": "A 90-minute walk in nature lowered rumination and activity in the brain region tied to it, unlike the same walk in traffic, in 38 adults", "year": 2015, "strength": "moderate" },
+      "minutes": 30,
+      "effort": "medium",
+      "needs": ["outdoors", "daylight"],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["walk-ten", "after-dinner-walk", "sit-outside-five"],
+      "replaces": ["a hike", "a long walk", "forest bathing"],
+      "countsToward": [],
+      "when": ["morning", "afternoon"]
+    },
+    {
+      "id": "after-dinner-walk",
+      "name": "Walk after dinner",
+      "family": "movement",
+      "what": "Ten minutes on your feet straight after the evening meal.",
+      "source": { "who": "Reynolds, Mann, Williams and Venn", "what": "Ten minutes of walking after each meal lowered post-meal blood sugar 12 percent more than the same walking at other times, in 41 adults with type 2 diabetes", "year": 2016, "strength": "moderate" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": ["outdoors"],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": ["walk-ten", "green-walk"],
+      "replaces": ["an evening stroll"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "strength-set",
+      "name": "One set of something hard",
+      "family": "movement",
+      "what": "Push-ups, squats or a plank, to the edge, one set, then stop.",
+      "source": { "who": "Schuch, Vancampfort, Firth and colleagues", "what": "Meta-analysis of 49 prospective studies: physical activity protects against later depression across ages and regions; a single set is the smallest dose of that", "year": 2018, "strength": "weak" },
+      "minutes": 3,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["two-minutes-hard"],
+      "replaces": ["do some press-ups", "a quick workout"],
+      "countsToward": [],
+      "when": ["morning", "afternoon"]
+    },
+    {
+      "id": "morning-daylight",
+      "name": "Ten minutes of daylight before ten",
+      "family": "movement",
+      "what": "Outside, no sunglasses, coffee optional, within an hour or two of waking.",
+      "source": { "who": "Wright, McHill, Birks, Griffin, Rusterholz and Chinoy", "what": "A week of natural light and no electric light pulled the body clock two hours earlier in 8 adults; morning light is the anchor", "year": 2013, "strength": "moderate" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": ["outdoors", "daylight"],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": [],
+      "replaces": ["a light box", "open the curtains"],
+      "countsToward": [],
+      "when": ["morning"]
+    },
+    {
+      "id": "two-minutes-hard",
+      "name": "Two minutes hard",
+      "family": "movement",
+      "what": "Stairs, a sprint or fast jumping jacks for two minutes, then done.",
+      "source": { "who": "Basso and Suzuki", "what": "Review: a single bout of exercise lifts mood and sharpens attention for up to about two hours afterwards", "year": 2017, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "focus", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["strength-set"],
+      "replaces": ["a burst of cardio", "run up the stairs"],
+      "countsToward": [],
+      "when": ["morning", "afternoon"]
+    },
+    {
+      "id": "stretch-five",
+      "name": "Five minutes of stretching",
+      "family": "movement",
+      "what": "Neck, hips and hamstrings, slowly, breathing out into each one.",
+      "source": { "who": "Common practice", "what": "Widely recommended for stiffness and calm; direct evidence on mood is thin", "year": 2026, "strength": "practice" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "energy", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["yoga", "mobility work"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "cold-finish-shower",
+      "name": "Finish the shower cold",
+      "family": "movement",
+      "what": "The last thirty seconds of the morning shower cold, and out.",
+      "source": { "who": "Buijze, Sierevelt, van der Heijden, Dijkgraaf and Frings-Dresen", "what": "Trial of 3,018 adults: a hot-to-cold shower cut sickness absence by 29 percent; it did not change illness days, and mood was not the outcome", "year": 2016, "strength": "weak" },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [],
+      "targets": [{ "reading": "energy", "direction": "up", "window": "nextBlock" }],
+      "conflicts": ["warm-shower-bath"],
+      "replaces": ["cold plunge", "ice bath"],
+      "countsToward": [],
+      "when": ["morning"]
+    },
+
+    {
+      "id": "cyclic-sigh",
+      "name": "Five minutes of cyclic sighing",
+      "family": "steadying",
+      "what": "Two breaths in through the nose, one long slow breath out through the mouth, for five minutes.",
+      "source": { "who": "Balban, Neri, Kogon and colleagues", "what": "Trial of 108 adults: five minutes a day of cyclic sighing improved mood and lowered breathing rate more than mindfulness or two other breathing patterns over a month", "year": 2023, "strength": "moderate" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": ["quiet"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "irritation", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["body-scan"],
+      "replaces": ["box breathing", "slow breathing at six a minute", "the physiological sigh"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "cold-water-face",
+      "name": "Cold water on the face",
+      "family": "steadying",
+      "what": "Thirty seconds of cold water on the face, or a cold cloth held to the side of the neck.",
+      "source": { "who": "Jungmann, Vencatachellum, Van Ryckeghem and Vögele", "what": "Cold on the side of the neck raised heart-rate variability and lowered heart rate, a calming shift, in a trial of 61 adults; mood itself was not measured", "year": 2018, "strength": "weak" },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "irritation", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["splash your face", "the dive reflex"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "name-it",
+      "name": "Say what you feel in one sentence",
+      "family": "steadying",
+      "what": "Out loud or on paper, the feeling and its cause, plainly, once.",
+      "source": { "who": "Lieberman, Eisenberger, Crockett, Tom, Pfeifer and Way", "what": "Putting a feeling into words dampened the brain's alarm response in a scanner study of 30 adults", "year": 2007, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "irritation", "direction": "down", "window": "nextBlock" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["talk-to-yourself-by-name"],
+      "replaces": ["name it to tame it"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "brain-dump",
+      "name": "Empty your head onto a page",
+      "family": "steadying",
+      "what": "Three minutes, everything on your mind, in no order, then put it down.",
+      "source": { "who": "Frattaroli", "what": "Meta-analysis of 146 expressive-writing studies: small but real benefits for wellbeing and distress", "year": 2006, "strength": "moderate" },
+      "minutes": 3,
+      "effort": "low",
+      "needs": ["quiet"],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["todo-list-before-bed"],
+      "replaces": ["freewriting", "morning pages"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "body-scan",
+      "name": "Eleven minutes lying still with a guided body scan",
+      "family": "steadying",
+      "what": "Lie down, eyes closed, a recorded yoga-nidra or body-scan guide, eleven minutes.",
+      "source": { "who": "Moszeik, von Oertzen and Renner", "what": "An 11-minute yoga nidra recording used for 30 days lowered stress and improved sleep and wellbeing a little, against a waiting list, in 771 people", "year": 2022, "strength": "weak" },
+      "minutes": 11,
+      "effort": "low",
+      "needs": ["quiet", "kit"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "energy", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["cyclic-sigh", "nap-ten"],
+      "replaces": ["NSDR", "yoga nidra", "a guided meditation"],
+      "countsToward": [],
+      "when": ["afternoon", "evening"]
+    },
+    {
+      "id": "talk-to-yourself-by-name",
+      "name": "Talk to yourself by name",
+      "family": "steadying",
+      "what": "For a minute, describe the situation as you would to a friend, using your own name instead of I.",
+      "source": { "who": "Kross, Bruehlman-Senecal, Park and colleagues", "what": "Seven studies: using your own name in self-talk regulated emotion under stress and made thoughts less rumination-like", "year": 2014, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["name-it"],
+      "replaces": ["self-distancing", "the friend test"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+
+    {
+      "id": "glass-of-water",
+      "name": "A full glass of water",
+      "family": "food",
+      "what": "A full glass now, before anything else.",
+      "source": { "who": "Armstrong, Ganio, Casa and colleagues", "what": "Mild dehydration of about 1 percent worsened mood, concentration and headache in 25 women; a matching study found the same in men", "year": 2012, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "focus", "direction": "up", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["drink more water", "hydrate"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "protein-breakfast",
+      "name": "Protein at breakfast",
+      "family": "food",
+      "what": "Eggs, yoghurt or beans on the plate, not toast alone.",
+      "source": { "who": "Leidy, Ortinau, Douglas and Hoertel", "what": "A protein-rich breakfast reduced cravings and evening snacking over a week in 20 young women who usually skipped breakfast", "year": 2013, "strength": "weak" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "hunger", "direction": "down", "window": "nextBlock" },
+        { "reading": "energy", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["eat breakfast", "skip the cereal"],
+      "countsToward": [],
+      "when": ["morning"]
+    },
+    {
+      "id": "real-lunch",
+      "name": "Sit down for a real lunch",
+      "family": "food",
+      "what": "Twenty minutes, at a table, away from the screen, a plate not a packet.",
+      "source": { "who": "Sonnentag and Fritz", "what": "Switching off from work during breaks predicts recovery and lower fatigue, in a scale study of 930 workers", "year": 2007, "strength": "weak" },
+      "minutes": 20,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "irritation", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["snack-before-four"],
+      "replaces": ["a lunch break", "step away from the desk"],
+      "countsToward": [],
+      "when": ["morning", "afternoon"]
+    },
+    {
+      "id": "no-alcohol-tonight",
+      "name": "No alcohol tonight",
+      "family": "food",
+      "what": "Water or tea in the evening instead, decided before dinner.",
+      "source": { "who": "Ebrahim, Shapiro, Williams and Fenwick", "what": "Review of 27 studies: alcohol helps you fall asleep but breaks up the second half of the night", "year": 2013, "strength": "strong" },
+      "minutes": 0,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" },
+        { "reading": "energy", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": [],
+      "replaces": ["a dry evening", "cut back on drinking"],
+      "countsToward": [],
+      "when": ["afternoon", "evening"]
+    },
+    {
+      "id": "snack-before-four",
+      "name": "Eat something real before four",
+      "family": "food",
+      "what": "Fruit and nuts, or a yoghurt, before the afternoon dip arrives.",
+      "source": { "who": "Common practice", "what": "Widely advised for the mid-afternoon slump; direct evidence on mood is thin", "year": 2026, "strength": "practice" },
+      "minutes": 3,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "irritation", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["real-lunch"],
+      "replaces": ["a healthy snack"],
+      "countsToward": [],
+      "when": ["afternoon"]
+    },
+    {
+      "id": "cook-tonight",
+      "name": "Cook one simple meal from scratch",
+      "family": "food",
+      "what": "Twenty-five minutes, something you already know how to make, for both of you.",
+      "source": { "who": "Farmer, Touchton-Leonard and Ross", "what": "Review of 11 studies: cooking programmes went with better mood and confidence, in mostly small and uncontrolled designs", "year": 2018, "strength": "weak" },
+      "minutes": 25,
+      "effort": "medium",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "evening" },
+        { "reading": "confidence", "direction": "up", "window": "evening" }
+      ],
+      "conflicts": [],
+      "replaces": ["home cooking", "no takeaway tonight"],
+      "countsToward": ["finishing"],
+      "when": ["afternoon", "evening"]
+    },
+
+    {
+      "id": "two-minute-start",
+      "name": "Open the book for two minutes",
+      "family": "study",
+      "what": "Open it, read one paragraph, and you are allowed to stop.",
+      "source": { "who": "Gollwitzer and Sheeran", "what": "Meta-analysis of 94 studies: deciding exactly when and where to act roughly doubles follow-through on intentions", "year": 2006, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [{ "reading": "motivation", "direction": "up", "window": "nextBlock" }],
+      "conflicts": ["focused-block"],
+      "replaces": ["just start", "the five-minute rule"],
+      "countsToward": ["study"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "retrieval-ten",
+      "name": "Ten minutes of recall, book closed",
+      "family": "study",
+      "what": "Write what you remember from the last session, then open the book and check.",
+      "source": { "who": "Dunlosky, Rawson, Marsh, Nathan and Willingham", "what": "Review of ten learning techniques for the Association for Psychological Science: practice testing rated high utility, rereading and highlighting low", "year": 2013, "strength": "strong" },
+      "minutes": 10,
+      "effort": "medium",
+      "needs": ["quiet", "kit"],
+      "targets": [{ "reading": "confidence", "direction": "up", "window": "nextBlock" }],
+      "conflicts": ["practice-questions"],
+      "replaces": ["reread the chapter", "highlight the notes", "active recall"],
+      "countsToward": ["study"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "focused-block",
+      "name": "One 25-minute block, phone in another room",
+      "family": "study",
+      "what": "One topic, a timer, no other tabs, the phone out of sight and out of the room.",
+      "source": { "who": "Ward, Duke, Gneezy and Bos", "what": "Two experiments with about 800 people: a phone merely present on the desk lowered working memory and attention, even face down and silent", "year": 2017, "strength": "moderate" },
+      "minutes": 25,
+      "effort": "medium",
+      "needs": ["quiet", "kit"],
+      "targets": [
+        { "reading": "focus", "direction": "up", "window": "nextBlock" },
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["two-minute-start"],
+      "replaces": ["a pomodoro", "deep work session"],
+      "countsToward": ["study"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "spaced-review",
+      "name": "Review last week's topic for ten minutes",
+      "family": "study",
+      "what": "Not today's topic, an older one, for ten minutes from memory and notes.",
+      "source": { "who": "Cepeda, Pashler, Vul, Wixted and Rohrer", "what": "Meta-analysis of 254 studies: study spread over time is remembered far better than the same study massed together", "year": 2006, "strength": "strong" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [{ "reading": "confidence", "direction": "up", "window": "sevenDays" }],
+      "conflicts": [],
+      "replaces": ["spaced repetition", "revision"],
+      "countsToward": ["study"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "explain-aloud",
+      "name": "Explain one concept aloud as if teaching",
+      "family": "study",
+      "what": "To the wall, to the mirror or to her, in your own words, until it is clear.",
+      "source": { "who": "Bisra, Liu, Nesbit, Salimi and Winne", "what": "Meta-analysis of 64 studies: prompting learners to explain material to themselves improved learning by a medium effect", "year": 2018, "strength": "strong" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [],
+      "targets": [{ "reading": "confidence", "direction": "up", "window": "nextBlock" }],
+      "conflicts": [],
+      "replaces": ["the Feynman technique", "teach it back"],
+      "countsToward": ["study"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "study-plan-next",
+      "name": "Write the exact next study step",
+      "family": "study",
+      "what": "Which chapter, which page, at what time tomorrow, on one line.",
+      "source": { "who": "Gollwitzer and Sheeran", "what": "Meta-analysis of 94 studies: a concrete when-and-where plan is the strongest simple predictor of doing the thing", "year": 2006, "strength": "strong" },
+      "minutes": 3,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "motivation", "direction": "up", "window": "nextMorning" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["make a study timetable", "set a study goal"],
+      "countsToward": ["study"],
+      "when": ["afternoon", "evening"]
+    },
+    {
+      "id": "practice-questions",
+      "name": "Ten practice questions, timed",
+      "family": "study",
+      "what": "From the exam bank, against the clock, then mark them honestly.",
+      "source": { "who": "Roediger and Karpicke", "what": "Two experiments: testing yourself beat repeated study for remembering a week later, even though it felt worse at the time", "year": 2006, "strength": "strong" },
+      "minutes": 20,
+      "effort": "medium",
+      "needs": ["quiet", "kit"],
+      "targets": [{ "reading": "confidence", "direction": "up", "window": "nextBlock" }],
+      "conflicts": ["retrieval-ten"],
+      "replaces": ["a mock exam", "flashcards"],
+      "countsToward": ["study"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+
+    {
+      "id": "one-surface",
+      "name": "Clear one surface completely",
+      "family": "house",
+      "what": "The table or the kitchen counter, to bare, and nothing else.",
+      "source": { "who": "Vohs, Redden and Rahinel", "what": "Three experiments: an orderly room nudged people toward healthier and more conventional choices; disorder nudged toward novelty", "year": 2013, "strength": "weak" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["a ten-minute tidy", "declutter"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "tomorrow-laid-out",
+      "name": "Lay out tomorrow's clothes and bags",
+      "family": "house",
+      "what": "Hers and yours, by the door, before bed.",
+      "source": { "who": "Common practice", "what": "Standard advice for smoother mornings with a small child; no direct trial", "year": 2026, "strength": "practice" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextMorning" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextMorning" }
+      ],
+      "conflicts": [],
+      "replaces": ["prep the morning"],
+      "countsToward": ["finishing"],
+      "when": ["evening"]
+    },
+    {
+      "id": "one-load-done",
+      "name": "One load of washing, start to finish",
+      "family": "house",
+      "what": "Washed, dried and put away today, the whole loop closed.",
+      "source": { "who": "Amabile and Kramer", "what": "Diary study of 12,000 workday entries: visible progress, even small, was the strongest lift to the inner working day", "year": 2011, "strength": "weak" },
+      "minutes": 15,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "evening" },
+        { "reading": "mood", "direction": "up", "window": "evening" }
+      ],
+      "conflicts": [],
+      "replaces": ["do the laundry"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon"]
+    },
+    {
+      "id": "open-windows",
+      "name": "Open the windows for ten minutes",
+      "family": "house",
+      "what": "Every window, ten minutes, fresh air through the place.",
+      "source": { "who": "Allen, MacNaughton, Satish, Santanam, Vallarino and Spengler", "what": "Cognitive scores fell as indoor carbon dioxide rose in a controlled office study of 24 people; fresh air reversed it", "year": 2016, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "focus", "direction": "up", "window": "nextBlock" },
+        { "reading": "energy", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["air the room"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+
+    {
+      "id": "message-a-friend",
+      "name": "Message one friend now",
+      "family": "people",
+      "what": "One real line to one person, not a forward, not a meme.",
+      "source": { "who": "Sandstrom and Dunn", "what": "Two studies: days with more small interactions, even with acquaintances, were days with more belonging and happiness", "year": 2014, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["call-not-text"],
+      "replaces": ["text someone", "check in on a friend"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "call-not-text",
+      "name": "Call someone for ten minutes",
+      "family": "people",
+      "what": "Voice, not text, with someone you have not spoken to in a while.",
+      "source": { "who": "Kumar and Epley", "what": "Four experiments: people expected a call to be awkward, but voice built more connection than text with no extra awkwardness", "year": 2021, "strength": "moderate" },
+      "minutes": 10,
+      "effort": "medium",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["message-a-friend"],
+      "replaces": ["phone a friend", "a catch-up call"],
+      "countsToward": ["conversations"],
+      "when": ["afternoon", "evening"]
+    },
+    {
+      "id": "thank-you-note",
+      "name": "Send a thank-you to someone who helped",
+      "family": "people",
+      "what": "Three specific sentences to one person, sent today.",
+      "source": { "who": "Kumar and Epley", "what": "Three experiments: writers of gratitude letters underestimated how surprised and pleased recipients felt, and overestimated the awkwardness", "year": 2018, "strength": "moderate" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["gratitude-three"],
+      "replaces": ["a gratitude letter", "say thanks"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "time-with-her",
+      "name": "Time with her, no agenda",
+      "family": "people",
+      "what": "Fifteen minutes where she leads and you follow, phone in another room. Not teaching: practising a skill with her is a different move.",
+      "source": { "who": "Thomas and Zimmer-Gembeck", "what": "Meta-analysis of parent-child interaction therapy, whose core is daily child-led play: fewer behaviour problems and less parent stress across 24 studies", "year": 2007, "strength": "moderate" },
+      "minutes": 15,
+      "effort": "low",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "evening" },
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["special time", "floor time", "play with her"],
+      "countsToward": ["timeWithHer"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "one-sentence-past-hello",
+      "name": "One sentence past hello",
+      "family": "people",
+      "what": "With the cashier, a neighbour or a parent at pick-up: hello, then one more sentence.",
+      "source": { "who": "Epley and Schroeder", "what": "Nine experiments, train and bus commuters: people expected talking to a stranger to be unpleasant and found it the opposite", "year": 2014, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "socialEnergy", "direction": "up", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["low-pressure-conversation", "ask-follow-up"],
+      "replaces": ["small talk", "chat to a stranger"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "invite-someone",
+      "name": "Invite someone to something this week",
+      "family": "people",
+      "what": "Coffee after church, a walk, a game night: one invitation, sent today.",
+      "source": { "who": "Sandstrom and Boothby", "what": "Meta-analysis of seven studies, 2,304 people: fears about talking to others ran far ahead of how the conversations actually went", "year": 2021, "strength": "moderate" },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "loneliness", "direction": "down", "window": "sevenDays" },
+        { "reading": "socialEnergy", "direction": "up", "window": "sevenDays" }
+      ],
+      "conflicts": [],
+      "replaces": ["make plans", "reach out"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "church-early",
+      "name": "Arrive ten minutes early on Saturday and talk to one person",
+      "family": "people",
+      "what": "Before the service, one conversation with someone you do not usually talk to.",
+      "source": { "who": "VanderWeele", "what": "Review of cohort evidence: regular attendance at services goes with lower depression and higher purpose, partly through the community", "year": 2017, "strength": "moderate" },
+      "minutes": 10,
+      "effort": "medium",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "loneliness", "direction": "down", "window": "sevenDays" },
+        { "reading": "mood", "direction": "up", "window": "evening" }
+      ],
+      "conflicts": [],
+      "replaces": ["stay for coffee after church"],
+      "countsToward": ["conversations", "faith"],
+      "when": ["morning"]
+    },
+
+    {
+      "id": "nap-ten",
+      "name": "A ten-minute nap, alarm set",
+      "family": "rest",
+      "what": "Lie down, eyes closed, alarm at ten minutes, then up.",
+      "source": { "who": "Brooks and Lack", "what": "Lab study of 24 adults after a short night: a 10-minute nap gave the most alertness for the least grogginess, better than 20 or 30", "year": 2006, "strength": "strong" },
+      "minutes": 12,
+      "effort": "low",
+      "needs": ["quiet"],
+      "targets": [
+        { "reading": "energy", "direction": "up", "window": "nextBlock" },
+        { "reading": "focus", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["body-scan"],
+      "replaces": ["a power nap", "a lie down"],
+      "countsToward": [],
+      "when": ["afternoon"]
+    },
+    {
+      "id": "screen-free-half-hour",
+      "name": "Half an hour with no screens",
+      "family": "rest",
+      "what": "Paper, a bath, a walk, the kitchen: anything but glass, for thirty minutes.",
+      "source": { "who": "Sonnentag and Fritz", "what": "Psychological detachment, really switching off, is the recovery experience most tied to lower exhaustion in a scale study of 930 workers", "year": 2007, "strength": "moderate" },
+      "minutes": 30,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": ["sabbath-hour"],
+      "replaces": ["a digital detox", "put the phone away"],
+      "countsToward": [],
+      "when": ["afternoon", "evening"]
+    },
+    {
+      "id": "warm-shower-bath",
+      "name": "A warm shower or bath an hour before bed",
+      "family": "rest",
+      "what": "Ten minutes of warm water, one to two hours before lights-out.",
+      "source": { "who": "Haghayegh, Khoshnevis, Smolensky, Diller and Castriotta", "what": "Meta-analysis of 17 studies: a warm bath or shower one to two hours before bed shortened the time to fall asleep and improved sleep quality", "year": 2019, "strength": "strong" },
+      "minutes": 15,
+      "effort": "low",
+      "needs": [],
+      "targets": [{ "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }],
+      "conflicts": ["cold-finish-shower"],
+      "replaces": ["a hot bath", "wind-down shower"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "sit-outside-five",
+      "name": "Five minutes sitting outside doing nothing",
+      "family": "rest",
+      "what": "A step, a bench or the grass, no phone, five minutes of air.",
+      "source": { "who": "Barton and Pretty", "what": "Analysis of ten UK studies, 1,252 people: even five minutes of activity in green space lifted mood and self-esteem, with the first minutes counting most", "year": 2010, "strength": "weak" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": ["outdoors"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["green-walk"],
+      "replaces": ["get some fresh air"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "music-on-purpose",
+      "name": "One album side on purpose",
+      "family": "rest",
+      "what": "Twenty minutes of music you chose, doing nothing else at the same time.",
+      "source": { "who": "Chanda and Levitin", "what": "Review of the neurochemistry of music: listening engages reward and lowers stress hormones across many studies", "year": 2013, "strength": "moderate" },
+      "minutes": 20,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["put some music on"],
+      "countsToward": [],
+      "when": ["afternoon", "evening"]
+    },
+    {
+      "id": "early-night",
+      "name": "Lights out thirty minutes earlier tonight",
+      "family": "rest",
+      "what": "Decide it now, keep the usual alarm, and go up half an hour sooner.",
+      "source": { "who": "Irish, Kline, Gunn, Buysse and Hall", "what": "Review of sleep-hygiene evidence: more time in bed on short nights is the plain lever, and regularity keeps it", "year": 2015, "strength": "moderate" },
+      "minutes": 0,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "sleepHours", "direction": "up", "window": "nextMorning" },
+        { "reading": "energy", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": ["fixed-lights-out"],
+      "replaces": ["go to bed early", "catch up on sleep"],
+      "countsToward": [],
+      "when": ["evening"]
+    },
+    {
+      "id": "one-new-thing",
+      "name": "Do one small new thing today",
+      "family": "rest",
+      "what": "A new route, a new shop, a new recipe, a new bench: one, today.",
+      "source": { "who": "Heller, Shi, Ezie and colleagues", "what": "Phone-tracked study of 122 people over months: days spent in more varied places were happier days, and the link ran both ways", "year": 2020, "strength": "moderate" },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "evening" },
+        { "reading": "motivation", "direction": "up", "window": "evening" }
+      ],
+      "conflicts": [],
+      "replaces": ["try something new", "break the routine"],
+      "countsToward": [],
+      "when": ["morning", "afternoon"]
+    },
+
+    {
+      "id": "balance-check",
+      "name": "Look at every balance, once",
+      "family": "money",
+      "what": "Bank, card and cash, one look each, the total written on one line.",
+      "source": { "who": "Netemeyer, Warmath, Fernandes and Lynch", "what": "Survey work with thousands of adults: stress about managing money today is a large, separate part of overall wellbeing", "year": 2018, "strength": "moderate" },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["next-week-costs"],
+      "replaces": ["check the bank", "face the numbers"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "one-bill-one-sitting",
+      "name": "Pay or sort one bill, start to finish",
+      "family": "money",
+      "what": "The one you have been avoiding, done in one sitting today.",
+      "source": { "who": "Amabile and Kramer", "what": "Diary study of 12,000 workday entries: small, visible progress on a real task was the strongest lift to the day", "year": 2011, "strength": "weak" },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "evening" }
+      ],
+      "conflicts": ["cancel-one-thing"],
+      "replaces": ["deal with the post", "admin hour"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "no-spend-day",
+      "name": "Spend nothing today",
+      "family": "money",
+      "what": "Decided at breakfast: no purchases at all until tomorrow.",
+      "source": { "who": "Common practice", "what": "A widely used budgeting habit; no direct trial on mood", "year": 2026, "strength": "practice" },
+      "minutes": 0,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "evening" },
+        { "reading": "confidence", "direction": "up", "window": "evening" }
+      ],
+      "conflicts": [],
+      "replaces": ["a no-spend challenge"],
+      "countsToward": [],
+      "when": ["morning"]
+    },
+    {
+      "id": "next-week-costs",
+      "name": "List next week's costs on one line each",
+      "family": "money",
+      "what": "Rent, food, fuel, her things, anything due: one line each, one total.",
+      "source": { "who": "Consumer Financial Protection Bureau", "what": "National survey of 6,394 adults: people who plan ahead and feel in control of day-to-day money report higher financial wellbeing", "year": 2017, "strength": "weak" },
+      "minutes": 10,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "sevenDays" },
+        { "reading": "stress", "direction": "down", "window": "sevenDays" }
+      ],
+      "conflicts": ["balance-check"],
+      "replaces": ["make a budget", "plan the week's money"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "cancel-one-thing",
+      "name": "Cancel one subscription you do not use",
+      "family": "money",
+      "what": "Find it, cancel it, screenshot the confirmation, done in one sitting.",
+      "source": { "who": "Common practice", "what": "Standard money advice; the relief is plausible and untested", "year": 2026, "strength": "practice" },
+      "minutes": 10,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [{ "reading": "stress", "direction": "down", "window": "sevenDays" }],
+      "conflicts": ["one-bill-one-sitting"],
+      "replaces": ["audit subscriptions"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+
+    {
+      "id": "eye-contact-stranger",
+      "name": "Eye contact with a stranger",
+      "family": "charisma",
+      "what": "Rung one: hold a stranger's eyes for a beat, a nod, and move on. A rep, not a result.",
+      "source": { "who": "Mayo-Wilson, Dias, Mavranezouli and colleagues", "what": "Network meta-analysis of 101 trials: exposure-based cognitive therapy, facing feared social situations in small graded steps, is the best-supported route out of social anxiety", "year": 2014, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" },
+        { "reading": "socialEnergy", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["ten-seconds-past"],
+      "replaces": ["work on eye contact"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "ten-seconds-past",
+      "name": "Ten seconds past comfortable",
+      "family": "charisma",
+      "what": "Rung two: in a queue or a conversation, stay ten seconds longer than the urge to leave.",
+      "source": { "who": "Abramowitz, Deacon and Whiteside", "what": "Clinical text on exposure: staying in a feared situation past the urge to escape is what teaches the nervous system it is safe", "year": 2019, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": ["anotherPerson"],
+      "targets": [{ "reading": "confidence", "direction": "up", "window": "nextBlock" }],
+      "conflicts": ["eye-contact-stranger"],
+      "replaces": ["push through the awkwardness"],
+      "countsToward": [],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "say-the-thing",
+      "name": "Say the thing",
+      "family": "charisma",
+      "what": "Rung three: the opinion, the compliment or the ask you were about to swallow, said once today.",
+      "source": { "who": "Speed, Goldstein and Goldfried", "what": "Review of decades of trials: assertiveness training, practising saying what you mean, is an evidence-based treatment that helps across many problems", "year": 2018, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "high",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" },
+        { "reading": "irritation", "direction": "down", "window": "evening" }
+      ],
+      "conflicts": [],
+      "replaces": ["speak up", "be assertive"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "low-pressure-conversation",
+      "name": "One low-pressure conversation with a woman",
+      "family": "charisma",
+      "what": "Rung four: somewhere ordinary, a question and a follow-up, with no aim beyond the conversation itself.",
+      "source": { "who": "Sandstrom and Boothby", "what": "Meta-analysis of seven studies, 2,304 people: the fears people have before talking to someone new run well ahead of how the talks actually go", "year": 2021, "strength": "moderate" },
+      "minutes": 3,
+      "effort": "high",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" },
+        { "reading": "socialEnergy", "direction": "up", "window": "nextBlock" },
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["one-sentence-past-hello", "ask-follow-up"],
+      "replaces": ["approach someone", "practise flirting"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "ask-follow-up",
+      "name": "Ask one follow-up question",
+      "family": "charisma",
+      "what": "In any conversation today, ask about the thing the other person just said.",
+      "source": { "who": "Huang, Yeomans, Brooks, Minson and Gino", "what": "Speed-dating and lab data: people who asked more follow-up questions were liked more, and rarely knew it", "year": 2017, "strength": "moderate" },
+      "minutes": 1,
+      "effort": "low",
+      "needs": ["anotherPerson"],
+      "targets": [
+        { "reading": "socialEnergy", "direction": "up", "window": "nextBlock" },
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["one-sentence-past-hello", "low-pressure-conversation"],
+      "replaces": ["be a better listener", "show interest"],
+      "countsToward": ["conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "liking-gap-note",
+      "name": "Write one line on how the last conversation went, then the liking gap",
+      "family": "charisma",
+      "what": "One honest line about how it went, then this beneath it: they probably liked you more than you think.",
+      "source": { "who": "Boothby, Cooney, Sandstrom and Clark", "what": "Five studies: after talking, people consistently underestimated how much the other person liked them and enjoyed it, the liking gap", "year": 2018, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "confidence", "direction": "up", "window": "nextBlock" },
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["stop replaying the conversation"],
+      "countsToward": [],
+      "when": ["afternoon", "evening"]
+    },
+
+    {
+      "id": "one-verse",
+      "name": "Read one verse and sit with it",
+      "family": "faith",
+      "what": "One verse, not a chapter, and a quiet minute after it.",
+      "source": { "who": "Koenig", "what": "Review of thousands of studies: religious involvement goes with better mental health in most of them; the evidence for any single act is thin", "year": 2012, "strength": "weak" },
+      "minutes": 3,
+      "effort": "low",
+      "needs": ["quiet"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "mood", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["five-minutes-prayer", "one-honest-sentence", "gratitude-three"],
+      "replaces": ["Bible reading", "a devotional"],
+      "countsToward": ["faith"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "five-minutes-prayer",
+      "name": "Five minutes of prayer",
+      "family": "faith",
+      "what": "Your own words, or none at all, for five minutes.",
+      "source": { "who": "Anderson and Nunnelley", "what": "Review of 41 observational studies: regular private prayer went with less depression and anxiety and more optimism; none of them could show cause", "year": 2016, "strength": "weak" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": ["quiet"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "loneliness", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["one-verse", "one-honest-sentence", "gratitude-three"],
+      "replaces": ["quiet time", "pray"],
+      "countsToward": ["faith"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "one-honest-sentence",
+      "name": "Write one honest sentence to God",
+      "family": "faith",
+      "what": "The truest thing about today, in one unpolished sentence, on paper.",
+      "source": { "who": "Frattaroli", "what": "Meta-analysis of 146 expressive-writing studies: writing what is true about a hard thing gives small but real benefits", "year": 2006, "strength": "moderate" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "nextBlock" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["one-verse", "five-minutes-prayer", "gratitude-three"],
+      "replaces": ["a prayer journal"],
+      "countsToward": ["faith"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "gratitude-three",
+      "name": "Name three things you are grateful for tonight",
+      "family": "faith",
+      "what": "Three specific things from today, said to God or written down.",
+      "source": { "who": "Seligman, Steen, Park and Peterson", "what": "Online trial of 411 people: writing three good things nightly lifted happiness for months; later meta-analysis finds the effects modest", "year": 2005, "strength": "moderate" },
+      "minutes": 3,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "nextMorning" },
+        { "reading": "sleepQuality", "direction": "up", "window": "nextMorning" }
+      ],
+      "conflicts": ["one-verse", "five-minutes-prayer", "one-honest-sentence", "thank-you-note"],
+      "replaces": ["count your blessings", "three good things"],
+      "countsToward": ["faith"],
+      "when": ["evening"]
+    },
+    {
+      "id": "sabbath-hour",
+      "name": "One screen-free hour on Saturday as rest",
+      "family": "faith",
+      "what": "No work, no study, no scrolling, for one hour, on purpose.",
+      "source": { "who": "Sonnentag and Fritz", "what": "Really switching off predicts recovery in a scale study of 930 workers; the Sabbath is the oldest version of it", "year": 2007, "strength": "weak" },
+      "minutes": 60,
+      "effort": "medium",
+      "needs": ["freeHour"],
+      "targets": [
+        { "reading": "stress", "direction": "down", "window": "evening" },
+        { "reading": "mood", "direction": "up", "window": "evening" }
+      ],
+      "conflicts": ["screen-free-half-hour"],
+      "replaces": ["keep the Sabbath", "a day of rest"],
+      "countsToward": ["faith"],
+      "when": ["morning", "afternoon"]
+    },
+
+    {
+      "id": "finish-one-thing",
+      "name": "Finish one thing that is nearly done",
+      "family": "finishing",
+      "what": "Pick the task closest to finished and close it, in twenty minutes or less.",
+      "source": { "who": "Amabile and Kramer", "what": "Diary study of 12,000 workday entries: making progress on meaningful work, even small, was the strongest lift to motivation and mood", "year": 2011, "strength": "moderate" },
+      "minutes": 20,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        { "reading": "mood", "direction": "up", "window": "nextBlock" },
+        { "reading": "motivation", "direction": "up", "window": "nextBlock" }
+      ],
+      "conflicts": ["smallest-next-step"],
+      "replaces": ["clear the backlog", "get it over the line"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "two-minute-rule",
+      "name": "Three two-minute things, now",
+      "family": "finishing",
+      "what": "Three tasks that each take under two minutes, done back to back.",
+      "source": { "who": "Allen", "what": "Getting Things Done: anything under two minutes is done at once rather than tracked; widely used, not trialled", "year": 2001, "strength": "practice" },
+      "minutes": 6,
+      "effort": "low",
+      "needs": [],
+      "targets": [{ "reading": "overwhelm", "direction": "down", "window": "nextBlock" }],
+      "conflicts": [],
+      "replaces": ["knock out the small stuff"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "close-tabs",
+      "name": "Close every tab and app but one",
+      "family": "finishing",
+      "what": "Close them all, keep the one you are working in, and do that one.",
+      "source": { "who": "Ward, Duke, Gneezy and Bos", "what": "Two experiments, about 800 people: what is merely within reach pulls attention even when unused", "year": 2017, "strength": "weak" },
+      "minutes": 2,
+      "effort": "low",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "focus", "direction": "up", "window": "nextBlock" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["single-tasking", "clear the desktop"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "smallest-next-step",
+      "name": "Write the smallest next step of the thing you keep avoiding",
+      "family": "finishing",
+      "what": "One line, small enough to do in five minutes, then do only that.",
+      "source": { "who": "Gollwitzer and Sheeran", "what": "Meta-analysis of 94 studies: a concrete plan for the next action is the strongest simple predictor of taking it", "year": 2006, "strength": "strong" },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        { "reading": "motivation", "direction": "up", "window": "nextBlock" },
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": ["finish-one-thing"],
+      "replaces": ["break it down", "eat the frog"],
+      "countsToward": ["finishing"],
+      "when": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "reply-to-one",
+      "name": "Reply to the one message you have been avoiding",
+      "family": "finishing",
+      "what": "Two lines, sent, in the next three minutes.",
+      "source": { "who": "Amabile and Kramer", "what": "Diary study of 12,000 workday entries: closing a small open loop counts as progress, and progress lifts the day", "year": 2011, "strength": "weak" },
+      "minutes": 3,
+      "effort": "medium",
+      "needs": ["kit"],
+      "targets": [
+        { "reading": "overwhelm", "direction": "down", "window": "nextBlock" },
+        { "reading": "stress", "direction": "down", "window": "nextBlock" }
+      ],
+      "conflicts": [],
+      "replaces": ["clear the inbox"],
+      "countsToward": ["finishing", "conversations"],
+      "when": ["morning", "afternoon", "evening"]
+    }
+  ]
+}

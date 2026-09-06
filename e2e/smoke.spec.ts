@@ -120,6 +120,19 @@ test('the mirror draws from the record, and delete everything empties it', async
   await expect(page.getByTestId('trace').locator('circle.ch-dot')).toHaveCount(0)
 })
 
+test('the catalogue is readable in full from the Moves tab', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Read the catalogue/ }).click()
+  await expect(page.getByText('The catalogue', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('family-moves')).toHaveCount(12)
+  const count = await page.locator('.move').count()
+  expect(count).toBeGreaterThanOrEqual(60)
+  expect(count).toBeLessThanOrEqual(90)
+  await expect(page.getByRole('heading', { name: 'Time with her, no agenda' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'One low-pressure conversation with a woman' })).toBeVisible()
+})
+
 test('Low-demand mode and depth change the check-in at once and persist', async ({ page }) => {
   await page.goto('./')
   await expect(page.getByTestId('block-row')).toHaveCount(3)

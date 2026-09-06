@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { blockAt, type Block } from './blocks'
+import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
@@ -29,6 +30,7 @@ type View =
   | { kind: 'legend' }
   | { kind: 'private' }
   | { kind: 'data' }
+  | { kind: 'catalogue' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -109,6 +111,8 @@ export function App() {
         return <PrivateScreen onClose={closeAll} />
       case 'data':
         return <DataScreen onClose={closeAll} />
+      case 'catalogue':
+        return <CatalogueScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -126,8 +130,9 @@ export function App() {
       case 'mirror':
         return <MirrorScreen />
       case 'moves':
+        return <ComingPanel tab="moves" onCatalogue={() => open({ kind: 'catalogue' })} />
       case 'aims':
-        return <ComingPanel tab={t} />
+        return <ComingPanel tab="aims" />
       case 'settings':
         return (
           <SettingsScreen

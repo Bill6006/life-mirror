@@ -14,7 +14,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "icons": "node scripts/make-icons.mjs",
-    "anchors": "node scripts/anchors-md.mjs"
+    "anchors": "node scripts/anchors-md.mjs",
+    "catalogue": "node scripts/catalogue-md.mjs"
   },
   "dependencies": {
     "dexie": "^4.4.5",
