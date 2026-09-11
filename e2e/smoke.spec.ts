@@ -150,13 +150,11 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
   await page.getByRole('button', { name: /^Skip/ }).click()
   await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText(first)
 
-  // Today's context lives under Settings → The week, and one tap changes today alone.
+  // The constant lives in Settings; nothing about her appears on Now.
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await expect(page.getByTestId('today-line')).toBeVisible()
-  await expect(page.getByTestId('today-with-her')).toHaveAttribute('aria-pressed', 'true')
-  await page.getByTestId('today-study').click()
-  await expect(page.getByTestId('today-study')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('lives-with-me')).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.getByText(/she is with you|She's away/)).toHaveCount(0)
 
   // The evening check-in opens with the question, one tap, then the readings.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
@@ -193,6 +191,12 @@ test('the evening chips answer from the record and the text line is kept', async
   await expect(extras).toBeVisible()
   await page.getByTestId('chip-nothingLanded').click()
   await expect(page.getByTestId('chip-answer')).toContainText('First time recorded')
+
+  // The exceptions to the week are statements inside the check-in, and change today alone.
+  await expect(page.getByTestId('chip-away')).toHaveAttribute('aria-pressed', 'false')
+  await page.getByTestId('chip-study').click()
+  await expect(page.getByTestId('chip-study')).toHaveAttribute('aria-pressed', 'true')
+
   await page.getByTestId('note-input').fill('A line the app had no question for')
   await page.getByTestId('note-input').blur()
   await page.getByRole('button', { name: 'Done', exact: true }).click()

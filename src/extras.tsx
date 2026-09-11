@@ -6,9 +6,12 @@ import {
   allCheckIns,
   answerWin,
   askedOf,
+  ensureDayContext,
   getCheckIn,
+  getDayContext,
   getSettings,
   privateItems,
+  setDayContext,
   setExtra,
   setNote,
   setPrivateLogged,
@@ -37,6 +40,10 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
   const all = useLive(allCheckIns, [])
   const todayWin = useLive(() => winFor(day), [day])
   const tomorrowWin = useLive(() => winFor(addDays(day, 1)), [day])
+  useEffect(() => {
+    if (settings) void ensureDayContext(day, settings)
+  }, [settings?.updatedAt, day])
+  const ctx = useLive(() => getDayContext(day), [day])
   const [showPrivate, setShowPrivate] = useState(false)
 
   if (record === undefined || !settings || !items || !all || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
@@ -141,6 +148,19 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         </ul>
       </div>
 
+      {ctx && (
+        <>
+          <h2 class="section">{copy.today.context}</h2>
+          <div class="card">
+            <ul class="rows">
+              <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />
+              <ExtraRow label={copy.today.studyNight} on={ctx.studyNight} onLabel={copy.extras.yes} testid="chip-study" onClick={() => void setDayContext(day, { studyNight: !ctx.studyNight })} />
+            </ul>
+          </div>
+          <p class="note faint">{copy.today.note}</p>
+        </>
+      )}
+
       <h2 class="section">{copy.extras.noteLabel}</h2>
       <div class="card pad">
         <LineInput initial={ex.note ?? ''} placeholder={copy.extras.notePlaceholder} testid="note-input" onSave={(text) => void setNote(slot, asked, text)} />
@@ -163,10 +183,10 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
   )
 }
 
-function ExtraRow({ label, on, onLabel, indent = false, onClick }: { label: string; on: boolean; onLabel: string; indent?: boolean; onClick: () => void }) {
+function ExtraRow({ label, on, onLabel, indent = false, testid, onClick }: { label: string; on: boolean; onLabel: string; indent?: boolean; testid?: string; onClick: () => void }) {
   return (
     <li>
-      <button type="button" class={`row anchor${on ? ' is-picked' : ''}${indent ? ' is-indent' : ''}`} aria-pressed={on} onClick={onClick}>
+      <button type="button" class={`row anchor${on ? ' is-picked' : ''}${indent ? ' is-indent' : ''}`} aria-pressed={on} data-testid={testid} onClick={onClick}>
         <span class="anchor-mark" aria-hidden="true" />
         <span class="row-main">{label}</span>
         <span class="row-side ink">{on ? onLabel : ''}</span>

@@ -304,7 +304,7 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
     const ctx: DayContext = {
       day,
       weekday,
-      withHer: w.withHer[weekday],
+      withHer: w.livesWithMe,
       studyNight: w.studyNights[weekday],
       churchDay: w.churchDay === weekday,
       pickupTime: w.pickupTime,

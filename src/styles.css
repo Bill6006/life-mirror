@@ -815,19 +815,6 @@ a.chip {
   margin: -8px 0 24px;
 }
 
-.today-line {
-  margin: 0 0 16px;
-}
-
-.small-chips {
-  margin: 4px 0 12px;
-}
-
-.small-chips .chip {
-  font-size: 13px;
-  padding: 6px 10px;
-}
-
 .chip-answer {
   margin: 0 0 12px;
 }

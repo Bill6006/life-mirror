@@ -22,8 +22,8 @@ export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
 /** The shape of the week, set once and known from day one, no learning needed. Nothing here leaves the phone. */
 export interface WeekShape {
   churchDay: Weekday | null
-  /** Days she is with you. */
-  withHer: Record<Weekday, boolean>
+  /** The constant: she lives with you. The exception is one chip inside the check-in. */
+  livesWithMe: boolean
   studyNights: Record<Weekday, boolean>
   /** Daycare pickup, HH:MM, or null when there is none. */
   pickupTime: string | null
@@ -60,10 +60,9 @@ export interface Settings {
   updatedAt: string
 }
 
-const EVERY_DAY: Record<Weekday, boolean> = { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }
 const NO_DAY: Record<Weekday, boolean> = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }
 
-export const DEFAULT_WEEK: WeekShape = { churchDay: 6, withHer: EVERY_DAY, studyNights: NO_DAY, pickupTime: null, soloUntil: '20:00' }
+export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyNights: NO_DAY, pickupTime: null, soloUntil: '20:00' }
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 1,
@@ -99,16 +98,11 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     week: {
       ...DEFAULT_WEEK,
       ...(stored.week ?? {}),
-      withHer: { ...DEFAULT_WEEK.withHer, ...(stored.week?.withHer ?? {}) },
+      livesWithMe: stored.week?.livesWithMe ?? DEFAULT_WEEK.livesWithMe,
       studyNights: { ...DEFAULT_WEEK.studyNights, ...(stored.week?.studyNights ?? {}) },
     },
     reminded: stored.reminded ?? {},
   }
-}
-
-/** True on a day she is with you and a pickup time is set. */
-export function pickupOn(week: WeekShape, d: Date): boolean {
-  return week.pickupTime !== null && week.withHer[d.getDay() as Weekday]
 }
 
 export const SHORT_READINGS: readonly ReadingId[] = ['mood', 'energy', 'stress']
