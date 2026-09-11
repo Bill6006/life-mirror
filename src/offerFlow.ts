@@ -1,9 +1,24 @@
-import { addDays, blockAt, dayKey, type Block } from './blocks'
-import { beliefFor, type Rng } from './bandit'
-import { LADDERS, moveById } from './catalogue'
-import { db, ensureDayContext, getCheckIn, getSettings, isComplete, type Card, type Offer, type Outcome, type OutcomeWhy, type WinOutcome } from './db'
+import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
+import { beliefFor, choose, type Rng } from './bandit'
+import { LADDERS, moveById, type Move } from './catalogue'
+import {
+  db,
+  ensureDayContext,
+  getCheckIn,
+  getSettings,
+  isComplete,
+  type Card,
+  type Offer,
+  type Outcome,
+  type OutcomeWhy,
+  type StudyDecision,
+  type StudyNight,
+  type StudyReason,
+  type WinOutcome,
+} from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, whyNotThat, windowFor, type TodayState } from './offers'
-import { minutesOf, type Settings } from './settings'
+import { minutesOf, type Settings, type Weekday } from './settings'
+import { studyVersions, type ReasonCheck } from './studyNight'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
 // card (what is being tested, written first), and the outcome (what happened).
@@ -209,6 +224,73 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     offer.id = await db.offers.add(offer)
     return offer
   })
+}
+
+/** The study version to offer tonight: one of the study moves not offered today, drawn by the same bandit. */
+export async function studyOfferMove(day: string, rng?: Rng): Promise<Move | null> {
+  const today = await db.offers.where('day').equals(day).toArray()
+  const versions = studyVersions(today.map((o) => o.moveId))
+  const choice = choose(
+    versions.map((m) => ({ id: m.id, effort: m.effort })),
+    (id) => beliefFor(id, 'study:evening'),
+    rng,
+  )
+  return choice ? moveById(choice.id) : null
+}
+
+/**
+ * Records a study night's decision: the offer (what was offered, skipped when Not now), and
+ * the decision with its reason and how it read against tonight's readings.
+ */
+export function recordStudyNight(
+  day: string,
+  offered: Move,
+  decision: StudyDecision,
+  reason: StudyReason | null,
+  check: ReasonCheck,
+  smaller: Move | null,
+): Promise<void> {
+  return db.transaction('rw', [db.offers, db.studyNights], async () => {
+    const now = new Date().toISOString()
+    const started = decision === 'started' ? offered : decision === 'smaller' ? smaller : null
+    const offer: Offer = {
+      kind: 'study',
+      day,
+      block: 'evening',
+      at: now,
+      situationKey: 'study:evening',
+      target: 'focus',
+      stance: '',
+      band: '',
+      reading: 0,
+      moveId: started?.id ?? offered.id,
+      cardId: null,
+      candidates: [offered.id],
+      coinFlip: false,
+      passiveId: null,
+      whyNot: null,
+      skippedAt: started ? null : now,
+      closedAt: null,
+    }
+    const offerId = await db.offers.add(offer)
+    const record: StudyNight = {
+      day,
+      weekday: parseDay(day).getDay() as Weekday,
+      offerId,
+      offeredMoveId: offered.id,
+      decision,
+      reason,
+      supported: check.supported,
+      evidence: check.evidence,
+      smallerMoveId: smaller?.id ?? null,
+      at: now,
+    }
+    await db.studyNights.add(record)
+  })
+}
+
+export function studyNightsAll(): Promise<StudyNight[]> {
+  return db.studyNights.toArray()
 }
 
 /** Records the skip and, for a block offer, offers the next candidate for the same slot if any is left. */

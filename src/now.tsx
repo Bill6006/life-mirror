@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, answeredCount, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
+import { allCheckIns, answeredCount, askedOf, ensureDayContext, getDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
 import { fill, formatDayLong, formatDayShort, formatTime } from './format'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
-import { ensurePickupOffer, offerForSlot, pendingOffers, skipOffer, weeksOfRecord } from './offerFlow'
+import { ensurePickupOffer, offerForSlot, pendingOffers, skipOffer, studyNightsAll, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
 import { activeBlocks } from './settings'
+import { keptCount } from './studyNight'
 
 type WindowState = 'logged' | 'partial' | 'now' | 'missed' | 'later'
 
@@ -76,6 +77,8 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
   useEffect(() => {
     if (settings) void ensureDayContext(today.day, settings)
   }, [settings?.updatedAt, today.day])
+  const ctx = useLive(() => getDayContext(today.day), [today.day])
+  const studyNights = useLive(studyNightsAll, [])
   const win = useLive(() => winFor(today.day), [today.day])
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
   const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block, tick])
@@ -154,6 +157,12 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
         <button type="button" class="pill-ink" onClick={() => onCheckIn(today.day, today.block)}>
           {action}
         </button>
+      )}
+      {ctx?.studyNight && (
+        <p class="note faint study-fact" data-testid="study-fact">
+          {copy.study.fact}
+          {studyNights && studyNights.length > 0 && ` · ${fill(copy.study.kept, { kept: String(keptCount(studyNights).kept), total: String(keptCount(studyNights).total) })}`}
+        </p>
       )}
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}

@@ -1,11 +1,19 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /** Taps the middle phrase of the reading on screen, then waits for the screen to move on: the next reading, the extras, or the card. */
-async function tapAnchor(page: Page): Promise<void> {
-  const title = (await page.locator('#ci-title').textContent()) ?? ''
-  await page.getByTestId('anchor').nth(2).click()
+async function tapAnchor(page: Page): Promise<boolean> {
+  // The screen can move on by itself after the last tap (the save is async), so a reading that
+  // is gone by the time we look is not an error: report no tap and let the caller look again.
+  const title = await page.locator('#ci-title').textContent({ timeout: 1500 }).catch(() => null)
+  if (title === null) return false
+  try {
+    await page.getByTestId('anchor').nth(2).click({ timeout: 3000 })
+  } catch {
+    return false
+  }
   const moved = page.locator('#ci-title', { hasNotText: title }).or(page.getByTestId('give-back')).or(page.getByTestId('extras')).or(page.getByTestId('outcome-ask'))
   await expect(moved.first()).toBeVisible()
+  return true
 }
 
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
@@ -20,14 +28,15 @@ async function tapThrough(page: Page): Promise<number> {
     if (await card.isVisible()) break
     if (await ask.isVisible()) {
       await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      await expect(ask).toBeHidden()
       continue
     }
     if (await extras.isVisible()) {
       await page.getByRole('button', { name: 'Done', exact: true }).click()
+      await expect(extras).toBeHidden()
       continue
     }
-    await tapAnchor(page)
-    taps++
+    if (await tapAnchor(page)) taps++
   }
   await expect(card).toBeVisible()
   return taps
@@ -200,7 +209,21 @@ test('the evening chips answer from the record and the text line is kept', async
   await page.getByTestId('note-input').fill('A line the app had no question for')
   await page.getByTestId('note-input').blur()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // A study night: the step offers a version sized to one sitting, and Not now is never silent.
+  // Energy was the middle phrase tonight, so "tired" is contradicted, said plainly, and the smaller version offered.
+  await expect(page.getByTestId('study-step')).toBeVisible()
+  await page.getByTestId('study-not-now').click()
+  await page.getByTestId('study-reason-tired').click()
+  await expect(page.getByTestId('study-check')).toContainText('You said tired. Tonight Energy reads Even.')
+  await expect(page.getByText(/instead\?$/)).toBeVisible()
+  await page.getByTestId('study-not-now-final').click()
   await expect(page.getByTestId('give-back')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Now states the fact, with the plain count, and no toggle.
+  await expect(page.getByTestId('study-fact')).toContainText('Study night · 0 kept of 1')
+  await expect(page.getByTestId('study-fact').getByRole('button')).toHaveCount(0)
 
   // The line survives a relaunch, on the check-in it belongs to.
   await page.reload()

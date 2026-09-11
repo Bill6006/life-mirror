@@ -4,7 +4,7 @@ import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
-import { allCheckIns, getSettings } from './db'
+import { allCheckIns, getDayContext, getSettings } from './db'
 import { ExtrasScreen } from './extras'
 import { LegendScreen } from './legend'
 import { useLive } from './live'
@@ -18,6 +18,7 @@ import { useReminders } from './reminders'
 import { ComingPanel } from './screens'
 import { extrasEnabled } from './settings'
 import { SettingsScreen } from './settingsScreen'
+import { StudyNightStep } from './studyStep'
 import { WordingScreen } from './wording'
 
 type Tab = keyof typeof copy.tabs
@@ -27,6 +28,7 @@ type View =
   | { kind: 'tabs' }
   | { kind: 'checkin'; day: string; block: Block; only?: ReadingId }
   | { kind: 'extras'; day: string; block: Block; fresh: boolean }
+  | { kind: 'study'; day: string; block: Block; fresh: boolean }
   | { kind: 'summary'; day: string; block: Block; fresh: boolean }
   | { kind: 'wording' }
   | { kind: 'legend' }
@@ -75,6 +77,11 @@ export function App() {
     else setView({ kind: 'tabs' })
   }
 
+  /** After the evening's extras (or straight after the readings when they are off): the study step on a study night, else the card. */
+  function afterEvening(day: string, block: Block, fresh: boolean) {
+    void getDayContext(day).then((ctx) => setView(ctx?.studyNight ? { kind: 'study', day, block, fresh } : { kind: 'summary', day, block, fresh }))
+  }
+
   function content() {
     switch (view.kind) {
       case 'checkin':
@@ -91,13 +98,16 @@ export function App() {
               // The check-in is complete: write the card and the offer, then show the card.
               void ensureOffer(view.day, view.block)
               if (view.block === 'evening' && settings && extrasEnabled(settings)) return setView({ kind: 'extras', day: view.day, block: view.block, fresh: true })
+              if (view.block === 'evening') return afterEvening(view.day, view.block, true)
               setView({ kind: 'summary', day: view.day, block: view.block, fresh: true })
             }}
             onClose={() => (view.only ? setView({ kind: 'summary', day: view.day, block: view.block, fresh: false }) : closeAll())}
           />
         )
       case 'extras':
-        return <ExtrasScreen day={view.day} block={view.block} onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })} />
+        return <ExtrasScreen day={view.day} block={view.block} onDone={() => (view.fresh ? afterEvening(view.day, view.block, true) : setView({ kind: 'summary', day: view.day, block: view.block, fresh: false }))} />
+      case 'study':
+        return <StudyNightStep key={view.day} day={view.day} block={view.block} onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })} />
       case 'summary':
         return (
           <SummaryScreen

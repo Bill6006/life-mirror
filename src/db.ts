@@ -71,8 +71,26 @@ export interface PrivateItem {
   archived: 0 | 1
 }
 
-export type OfferKind = 'block' | 'pickup'
+export type OfferKind = 'block' | 'pickup' | 'study'
 export type OutcomeWhy = 'noTime' | 'didntWant'
+export type StudyReason = 'tired' | 'tooMuch' | 'noTime' | 'didntWant'
+export type StudyDecision = 'started' | 'smaller' | 'notNow'
+
+/** A study night's decision: what was offered, what you chose, the reason if any, and how it read against tonight's readings. */
+export interface StudyNight {
+  id?: number
+  day: string
+  weekday: Weekday
+  offerId: number | null
+  offeredMoveId: string
+  decision: StudyDecision
+  reason: StudyReason | null
+  /** Null when the reason has no reading to check against. */
+  supported: boolean | null
+  evidence: string | null
+  smallerMoveId: string | null
+  at: string
+}
 
 /** What was OFFERED: one move for one situation, at one moment. Never the same record as what happened. */
 export interface Offer {
@@ -139,6 +157,7 @@ class LifeMirrorDB extends Dexie {
   cards!: Table<Card, number>
   outcomes!: Table<Outcome, number>
   days!: Table<DayContext, string>
+  studyNights!: Table<StudyNight, number>
   constructor() {
     super('life-mirror')
     this.version(1).stores({ checkins: '++id, &[day+block], day, completedAt' })
@@ -157,6 +176,7 @@ class LifeMirrorDB extends Dexie {
       cards: '++id, situationKey, moveId',
       outcomes: '++id, offerId, day, moveId',
       days: 'day',
+      studyNights: '++id, day',
     })
   }
 }
@@ -378,7 +398,17 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone. Nothing is kept anywhere else, so nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days], async () => {
-    await Promise.all([db.checkins.clear(), db.wins.clear(), db.privateItems.clear(), db.settings.clear(), db.offers.clear(), db.cards.clear(), db.outcomes.clear(), db.days.clear()])
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights], async () => {
+    await Promise.all([
+      db.checkins.clear(),
+      db.wins.clear(),
+      db.privateItems.clear(),
+      db.settings.clear(),
+      db.offers.clear(),
+      db.cards.clear(),
+      db.outcomes.clear(),
+      db.days.clear(),
+      db.studyNights.clear(),
+    ])
   })
 }

@@ -59,12 +59,12 @@ describe('the candidate set', () => {
     }
   })
 
-  it("lets the week decide whether study, time with her and church happen; the draw only picks the version", () => {
+  it("leaves study to its own evening step, and lets the week decide time with her and church; the draw only picks the version", () => {
     const study = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), focus: 1 }))!
     const retrieval = moveById('retrieval-ten')
     const confidenceTarget = { ...study, target: retrieval.targets[0].reading }
-    expect(screen(retrieval, confidenceTarget, quiet)).toBe('schedule')
-    expect(screen(retrieval, confidenceTarget, { ...quiet, studyNight: true })).not.toBe('schedule')
+    expect(screen(retrieval, confidenceTarget, quiet)).toBe('study')
+    expect(screen(retrieval, confidenceTarget, { ...quiet, studyNight: true })).toBe('study')
     const her = moveById('time-with-her')
     const moodTarget = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), mood: 1 }))!
     expect(screen(her, moodTarget, { ...quiet, withHer: false })).toBe('schedule')

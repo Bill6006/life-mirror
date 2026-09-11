@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { addDays, type Block } from './blocks'
+import { addDays, parseDay, type Block } from './blocks'
 import { chipAnswer, type ChipKey } from './chips'
 import { copy } from './copy'
 import {
@@ -23,7 +23,7 @@ import {
 } from './db'
 import { fill } from './format'
 import { useLive } from './live'
-import { askedReadings } from './settings'
+import { askedReadings, type Weekday } from './settings'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
 const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint']
@@ -154,7 +154,13 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
           <div class="card">
             <ul class="rows">
               <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />
-              <ExtraRow label={copy.today.studyNight} on={ctx.studyNight} onLabel={copy.extras.yes} testid="chip-study" onClick={() => void setDayContext(day, { studyNight: !ctx.studyNight })} />
+              <ExtraRow
+                label={settings.week.studyNights[parseDay(day).getDay() as Weekday] ? copy.today.notStudyNight : copy.today.studyNight}
+                on={ctx.studyNight !== settings.week.studyNights[parseDay(day).getDay() as Weekday]}
+                onLabel={copy.extras.yes}
+                testid="chip-study"
+                onClick={() => void setDayContext(day, { studyNight: !ctx.studyNight })}
+              />
             </ul>
           </div>
           <p class="note faint">{copy.today.note}</p>

@@ -69,7 +69,7 @@ export interface TodayState {
   churchDay: boolean
 }
 
-export type Exclusion = 'observed' | 'passive' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
+export type Exclusion = 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -89,7 +89,8 @@ function harderRungAllowed(band: Band): boolean {
 export function screen(move: Move, s: Situation, t: TodayState): Exclusion | null {
   if (OBSERVED_ONLY.has(move.id)) return 'observed'
   if (PASSIVE.has(move.id)) return 'passive'
-  if (move.family === 'study' && !t.studyNight) return 'schedule'
+  // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
+  if (move.family === 'study') return 'study'
   if (move.id === 'time-with-her' && !t.withHer) return 'schedule'
   if (move.id === 'church-early' && !t.churchDay) return 'schedule'
   if (!move.when.includes(s.block)) return 'block'
