@@ -816,11 +816,11 @@ a.chip {
 }
 
 .today-line {
-  margin: -12px 0 20px;
+  margin: 0 0 16px;
 }
 
 .small-chips {
-  margin-top: 8px;
+  margin: 4px 0 12px;
 }
 
 .small-chips .chip {

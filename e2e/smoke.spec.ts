@@ -144,12 +144,19 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
   await expect(card.getByText('Little evidence')).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
-  // Now shows it, the today line, the honest line, and Skip records and shows the next candidate.
+  // Now shows it and the honest line; Skip records and shows the next candidate.
   const first = await page.getByTestId('move-card').getByTestId('move-name').innerText()
-  await expect(page.getByTestId('today-line')).toBeVisible()
   await expect(page.getByTestId('knows')).toContainText('weeks of record')
   await page.getByRole('button', { name: /^Skip/ }).click()
   await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText(first)
+
+  // Today's context lives under Settings → The week, and one tap changes today alone.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.getByTestId('today-line')).toBeVisible()
+  await expect(page.getByTestId('today-with-her')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByTestId('today-study').click()
+  await expect(page.getByTestId('today-study')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
 
   // The evening check-in opens with the question, one tap, then the readings.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))

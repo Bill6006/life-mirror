@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, answeredCount, askedOf, ensureDayContext, getDayContext, getSettings, isComplete, setDayContext, updateSettings, winFor, type CheckIn, type DayContext } from './db'
+import { allCheckIns, answeredCount, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
 import { fill, formatDayLong, formatDayShort, formatTime } from './format'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
@@ -57,33 +57,6 @@ function DirectionAsk() {
   )
 }
 
-/** Today's context from the week's shape, as its own record, with one tap to change today alone. */
-function TodayLine({ ctx }: { ctx: DayContext }) {
-  const c = copy.today
-  const parts = [
-    ctx.withHer ? c.withHer : c.notWithHer,
-    ...(ctx.studyNight ? [c.studyNight] : []),
-    ...(ctx.churchDay ? [c.church] : []),
-    ...(ctx.withHer && ctx.pickupTime ? [fill(c.pickup, { time: ctx.pickupTime }), fill(c.solo, { time: ctx.soloUntil })] : []),
-  ]
-  return (
-    <div class="today-line" data-testid="today-line">
-      <p class="note faint no-gap">
-        {c.context}: {parts.join(' · ')}
-        {ctx.changed ? ` · ${c.changed}` : ''}
-      </p>
-      <div class="chips small-chips">
-        <button type="button" class={ctx.withHer ? 'chip is-on' : 'chip'} aria-pressed={ctx.withHer} data-testid="today-with-her" onClick={() => void setDayContext(ctx.day, { withHer: !ctx.withHer })}>
-          {c.changeWithHer}
-        </button>
-        <button type="button" class={ctx.studyNight ? 'chip is-on' : 'chip'} aria-pressed={ctx.studyNight} data-testid="today-study" onClick={() => void setDayContext(ctx.day, { studyNight: !ctx.studyNight })}>
-          {c.changeStudy}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
@@ -99,10 +72,10 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
   const settings = useLive(getSettings, [])
+  // Today's context record is written from the week's shape the first time the day is seen; Settings can change today alone.
   useEffect(() => {
     if (settings) void ensureDayContext(today.day, settings)
   }, [settings?.updatedAt, today.day])
-  const ctx = useLive(() => getDayContext(today.day), [today.day])
   const win = useLive(() => winFor(today.day), [today.day])
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
   const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block, tick])
@@ -182,7 +155,6 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
           {action}
         </button>
       )}
-      {ctx && <TodayLine ctx={ctx} />}
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />}

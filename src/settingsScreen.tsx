@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'preact/hooks'
+import { blockAt } from './blocks'
 import { build } from './build'
 import { NavRow, Seg, SwitchRow, TimeRow } from './controls'
 import { copy } from './copy'
-import { getSettings, updateSettings } from './db'
+import { ensureDayContext, getDayContext, getSettings, setDayContext, updateSettings, type DayContext } from './db'
 import { fill, formatWhen } from './format'
 import { useLive } from './live'
 import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
@@ -32,6 +33,35 @@ function DayChips({ label, value, onChange, testid }: { label: string; value: Re
   )
 }
 
+/** Today's context, from the week's shape, as its own record: one tap changes today alone, and the week stays as it was. */
+function TodayLine({ ctx }: { ctx: DayContext }) {
+  const c = copy.today
+  const parts = [
+    ctx.withHer ? c.withHer : c.notWithHer,
+    ...(ctx.studyNight ? [c.studyNight] : []),
+    ...(ctx.churchDay ? [c.church] : []),
+    ...(ctx.withHer && ctx.pickupTime ? [fill(c.pickup, { time: ctx.pickupTime }), fill(c.solo, { time: ctx.soloUntil })] : []),
+  ]
+  return (
+    <div class="card pad today-line" data-testid="today-line">
+      <p class="eyebrow small">{c.context}</p>
+      <p class="note">
+        {parts.join(' · ')}
+        {ctx.changed ? ` · ${c.changed}` : ''}
+      </p>
+      <div class="chips small-chips">
+        <button type="button" class={ctx.withHer ? 'chip is-on' : 'chip'} aria-pressed={ctx.withHer} data-testid="today-with-her" onClick={() => void setDayContext(ctx.day, { withHer: !ctx.withHer })}>
+          {c.changeWithHer}
+        </button>
+        <button type="button" class={ctx.studyNight ? 'chip is-on' : 'chip'} aria-pressed={ctx.studyNight} data-testid="today-study" onClick={() => void setDayContext(ctx.day, { studyNight: !ctx.studyNight })}>
+          {c.changeStudy}
+        </button>
+      </div>
+      <p class="note faint no-gap">{c.note}</p>
+    </div>
+  )
+}
+
 /** Your direction, one line, kept on this phone; saved when you leave the field. */
 function DirectionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [text, setText] = useState(value)
@@ -55,6 +85,11 @@ function DirectionField({ value, onSave }: { value: string; onSave: (v: string) 
 
 export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onWording: () => void; onLegend: () => void; onPrivate: () => void; onData: () => void }) {
   const settings = useLive(getSettings, [])
+  const today = blockAt(new Date()).day
+  useEffect(() => {
+    if (settings) void ensureDayContext(today, settings)
+  }, [settings?.updatedAt, today])
+  const ctx = useLive(() => getDayContext(today), [today])
   const [perm, setPerm] = useState<Permission>(currentPermission)
   const [copied, setCopied] = useState(false)
   const [showAddress, setShowAddress] = useState(false)
@@ -159,6 +194,7 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onW
         {w.pickupTime !== null && <TimeRow label={copy.week.soloUntil} value={w.soloUntil} onChange={(soloUntil) => setWeek((week) => ({ ...week, soloUntil }))} />}
       </div>
       <p class="note faint">{copy.week.note}</p>
+      {ctx && <TodayLine ctx={ctx} />}
 
       <h2 class="section">{copy.settings.quiet}</h2>
       <div class="card">
