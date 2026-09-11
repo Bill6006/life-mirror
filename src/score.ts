@@ -31,6 +31,17 @@ export function stanceOf(value: number): Stance {
   return 'Build'
 }
 
+/** The five bands of the plan, boundaries at 20, 40, 60, 80. Selection uses them now; the screens adopt them in the design pass. */
+export type Band = 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'
+
+export function bandOf(value: number): Band {
+  if (value < 20) return 'empty'
+  if (value < 40) return 'wornDown'
+  if (value < 60) return 'gettingBy'
+  if (value < 80) return 'solid'
+  return 'firing'
+}
+
 export function pointsFor(id: ReadingId, position: Position): number {
   const p = (position - 1) * 25
   return INGREDIENTS[id] === 'down' ? 100 - p : p

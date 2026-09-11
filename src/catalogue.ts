@@ -68,3 +68,24 @@ export const COUNTERS: readonly Counter[] = ['study', 'conversations', 'timeWith
 
 /** The charisma ladder, in order. */
 export const CHARISMA_LADDER: readonly string[] = ['eye-contact-stranger', 'ten-seconds-past', 'say-the-thing', 'low-pressure-conversation']
+
+/** Ladders: rungs in order. The harder rung is offered when the readings say you can take it. */
+export const LADDERS: readonly (readonly string[])[] = [CHARISMA_LADDER]
+
+export function rungOf(id: string): { ladder: readonly string[]; index: number } | null {
+  for (const ladder of LADDERS) {
+    const index = ladder.indexOf(id)
+    if (index !== -1) return { ladder, index }
+  }
+  return null
+}
+
+/**
+ * Rule 16: randomise the version, never whether. Only sleep is not a move: bedtime itself is
+ * observed, never offered. Study, faith, church and time with her remain offerable; the week's
+ * shape decides whether they happen and the draw decides only the version.
+ */
+export const OBSERVED_ONLY: ReadonlySet<string> = new Set(['early-night', 'fixed-lights-out'])
+
+/** Passive items: decisions that ride alongside the active move in the same block. */
+export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day'])

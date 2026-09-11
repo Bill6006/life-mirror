@@ -15,8 +15,8 @@
       "sleepHours",
       "sleepQuality"
     ],
-    "afternoon": ["mood", "irritation", "energy", "hunger", "stress"],
-    "evening": ["mood", "irritation", "energy", "hunger", "stress"]
+    "afternoon": ["mood", "irritation", "energy", "hunger", "stress", "focus", "overwhelm"],
+    "evening": ["mood", "irritation", "energy", "hunger", "stress", "focus", "overwhelm", "loneliness"]
   },
   "readings": [
     {

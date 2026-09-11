@@ -9,7 +9,9 @@ let md = '# Life Mirror — wording\n\n'
 md += 'The readings and their phrases, least to most, exactly as the app shows them. '
 md += 'Generated from `src/readings.json` by `scripts/anchors-md.mjs`; edit the JSON, not this file.\n\n'
 md += `Morning asks all ${data.blocks.morning.length}: ${data.blocks.morning.map(name).join(', ')}.\n\n`
-md += `Afternoon and evening ask ${data.blocks.afternoon.length}: ${data.blocks.afternoon.map(name).join(', ')}.\n\n`
+md += `Afternoon asks ${data.blocks.afternoon.length}: ${data.blocks.afternoon.map(name).join(', ')}.\n\n`
+md += `Evening asks ${data.blocks.evening.length}: ${data.blocks.evening.map(name).join(', ')}.\n\n`
+md += 'Every block asks all six ingredients of the reading out of 100 (mood, energy, focus, stress, overwhelm, irritation), so the three daily numbers compare.\n\n'
 for (const r of data.readings) {
   md += `## ${r.name}\n\n_${r.prompt}_\n\n`
   for (const a of r.anchors) md += `- ${a}\n`

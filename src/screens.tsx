@@ -1,25 +1,11 @@
-import { NavRow } from './controls'
 import { copy } from './copy'
 import { fill } from './format'
 import { LAST_PHASE, PHASE_OF, SHIPPED_THROUGH } from './phases'
 
 type Coming = keyof typeof PHASE_OF
 
-/** Small hairline sketches of what each tab will hold. */
-function Sketch({ kind }: { kind: Coming }) {
-  if (kind === 'moves') {
-    return (
-      <svg class="sketch" viewBox="0 0 320 96" aria-hidden="true">
-        <circle class="sk-line" cx="48" cy="48" r="22" />
-        <circle class="sk-accent" cx="48" cy="48" r="4" />
-        <line class="sk-line" x1="80" y1="48" x2="150" y2="48" />
-        <polyline class="sk-line" points="142,40 150,48 142,56" />
-        <rect class="sk-line" x="164" y="30" width="144" height="36" rx="18" />
-        <line class="sk-line" x1="184" y1="44" x2="270" y2="44" />
-        <line class="sk-line" x1="184" y1="54" x2="240" y2="54" />
-      </svg>
-    )
-  }
+/** A small hairline sketch of what the tab will hold: a protected step, climbing. */
+function Sketch() {
   return (
     <svg class="sketch" viewBox="0 0 320 96" aria-hidden="true">
       <polyline class="sk-line" points="12,84 84,84 84,62 156,62 156,40 228,40 228,18 308,18" />
@@ -31,7 +17,7 @@ function Sketch({ kind }: { kind: Coming }) {
 }
 
 /** A quiet panel for a tab that is not built yet: what it will hold, and which phase brings it. */
-export function ComingPanel({ tab, onCatalogue }: { tab: Coming; onCatalogue?: () => void }) {
+export function ComingPanel({ tab }: { tab: Coming }) {
   const c = copy.panels[tab]
   const phase = PHASE_OF[tab]
   return (
@@ -39,15 +25,8 @@ export function ComingPanel({ tab, onCatalogue }: { tab: Coming; onCatalogue?: (
       <header class="screen-head">
         <h1 class="eyebrow">{copy.tabs[tab]}</h1>
       </header>
-      {onCatalogue && (
-        <div class="card">
-          <ul class="rows">
-            <NavRow label={copy.catalogue.read} note={copy.catalogue.readNote} onClick={onCatalogue} />
-          </ul>
-        </div>
-      )}
       <div class="card panel">
-        <Sketch kind={tab} />
+        <Sketch />
         <h2 class="panel-title">{c.title}</h2>
         <p class="panel-body">{c.body}</p>
         <p class="panel-when">{c.when}</p>

@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { build } from './build'
 import { NavRow, Seg, SwitchRow, TimeRow } from './controls'
 import { copy } from './copy'
@@ -6,7 +6,7 @@ import { getSettings, updateSettings } from './db'
 import { fill, formatWhen } from './format'
 import { useLive } from './live'
 import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
-import { activeBlocks, applyLowDemand, type Settings } from './settings'
+import { activeBlocks, applyLowDemand, type Settings, type Weekday } from './settings'
 
 type Permission = NotificationPermission | 'unsupported'
 
@@ -14,7 +14,58 @@ function currentPermission(): Permission {
   return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
 }
 
-export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onWording: () => void; onLegend: () => void; onPrivate: () => void; onData: () => void }) {
+const WEEKDAYS: readonly Weekday[] = [0, 1, 2, 3, 4, 5, 6]
+
+/** Seven small toggles, Sunday first as the phone counts them. */
+function DayChips({ label, value, onChange, testid }: { label: string; value: Record<Weekday, boolean>; onChange: (v: Record<Weekday, boolean>) => void; testid?: string }) {
+  return (
+    <div class="setting" data-testid={testid}>
+      <p class="setting-label">{label}</p>
+      <div class="days" role="group" aria-label={label}>
+        {WEEKDAYS.map((d) => (
+          <button key={d} type="button" class={value[d] ? 'day is-on' : 'day'} aria-pressed={value[d]} onClick={() => onChange({ ...value, [d]: !value[d] })}>
+            {copy.week.days[d]}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Your direction, one line, kept on this phone; saved when you leave the field. */
+function DirectionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  return (
+    <input
+      class="input"
+      type="text"
+      maxLength={200}
+      placeholder={copy.direction.placeholder}
+      value={text}
+      data-testid="direction-field"
+      onInput={(e) => setText((e.currentTarget as HTMLInputElement).value)}
+      onBlur={() => onSave(text)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+      }}
+    />
+  )
+}
+
+export function SettingsScreen({
+  onWording,
+  onLegend,
+  onPrivate,
+  onData,
+  onCrisis,
+}: {
+  onWording: () => void
+  onLegend: () => void
+  onPrivate: () => void
+  onData: () => void
+  onCrisis: () => void
+}) {
   const settings = useLive(getSettings, [])
   const [perm, setPerm] = useState<Permission>(currentPermission)
   const [copied, setCopied] = useState(false)
@@ -23,6 +74,7 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onW
 
   const set = (change: (s: Settings) => Settings) => void updateSettings(change)
   const setExtra = (key: keyof Settings['extras'], on: boolean) => set((s) => ({ ...s, extras: { ...s.extras, [key]: on } }))
+  const setWeek = (change: (w: Settings['week']) => Settings['week']) => set((s) => ({ ...s, week: change(s.week) }))
 
   async function toggleReminders(on: boolean) {
     if (!on) return set((s) => ({ ...s, reminders: { ...s.reminders, enabled: false } }))
@@ -65,12 +117,19 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onW
       : fill(build.unitTests === 1 ? copy.settings.testsOne : copy.settings.testsMany, { n: String(build.unitTests) })
 
   const sub = settings.push.subscription
+  const w = settings.week
 
   return (
     <section class="screen">
       <header class="screen-head">
         <h1 class="eyebrow">{copy.tabs.settings}</h1>
       </header>
+
+      <div class="card">
+        <ul class="rows">
+          <NavRow label={copy.crisis.title} note={copy.crisis.intro} onClick={onCrisis} />
+        </ul>
+      </div>
 
       <h2 class="section">{copy.settings.checkins}</h2>
       <div class="card">
@@ -96,6 +155,28 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onW
         />
         <SwitchRow label={copy.settings.lowDemand} note={copy.settings.lowDemandNote} on={settings.lowDemand} onChange={(on) => set((s) => applyLowDemand(s, on))} testid="low-demand" />
       </div>
+
+      <h2 class="section">{copy.direction.edit}</h2>
+      <div class="card pad">
+        <DirectionField value={settings.direction ?? ''} onSave={(v) => set((s) => ({ ...s, direction: v.trim() || null, directionAskedAt: s.directionAskedAt ?? new Date().toISOString() }))} />
+        <p class="note faint no-gap">{copy.direction.settingsNote}</p>
+      </div>
+
+      <h2 class="section">{copy.week.title}</h2>
+      <div class="card">
+        <Seg
+          label={copy.week.churchDay}
+          value={w.churchDay === null ? 'none' : String(w.churchDay)}
+          options={[...WEEKDAYS.map((d) => ({ v: String(d), l: copy.week.days[d] })), { v: 'none', l: copy.week.none }]}
+          onChange={(v) => setWeek((week) => ({ ...week, churchDay: v === 'none' ? null : (Number(v) as Weekday) }))}
+        />
+        <DayChips label={copy.week.withHer} value={w.withHer} onChange={(withHer) => setWeek((week) => ({ ...week, withHer }))} testid="with-her" />
+        <DayChips label={copy.week.studyNights} value={w.studyNights} onChange={(studyNights) => setWeek((week) => ({ ...week, studyNights }))} />
+        <SwitchRow label={copy.week.pickupOn} on={w.pickupTime !== null} onChange={(on) => setWeek((week) => ({ ...week, pickupTime: on ? '17:00' : null }))} testid="pickup-on" />
+        {w.pickupTime !== null && <TimeRow label={copy.week.pickupTime} value={w.pickupTime} onChange={(pickupTime) => setWeek((week) => ({ ...week, pickupTime }))} />}
+        {w.pickupTime !== null && <TimeRow label={copy.week.soloUntil} value={w.soloUntil} onChange={(soloUntil) => setWeek((week) => ({ ...week, soloUntil }))} />}
+      </div>
+      <p class="note faint">{copy.week.note}</p>
 
       <h2 class="section">{copy.settings.quiet}</h2>
       <div class="card">
@@ -162,6 +243,11 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onW
           <p class="note faint no-gap">{copy.settings.pushNote}</p>
         </div>
       )}
+
+      <h2 class="section">{copy.settings.movesSection}</h2>
+      <div class="card">
+        <SwitchRow label={copy.settings.offerFaith} note={copy.settings.offerFaithNote} on={!settings.hideFaith} onChange={(on) => set((s) => ({ ...s, hideFaith: !on }))} />
+      </div>
 
       <h2 class="section">{copy.settings.extras}</h2>
       <div class="card">

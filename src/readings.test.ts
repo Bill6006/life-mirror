@@ -29,8 +29,11 @@ describe('readings and anchors', () => {
       'sleepHours',
       'sleepQuality',
     ])
-    expect(blockReadings('afternoon')).toEqual(['mood', 'irritation', 'energy', 'hunger', 'stress'])
-    expect(blockReadings('evening')).toEqual(blockReadings('afternoon'))
+    expect(blockReadings('afternoon')).toEqual(['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'])
+    expect(blockReadings('evening')).toEqual(['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'])
+    for (const block of ['morning', 'afternoon', 'evening'] as const) {
+      for (const ingredient of ['mood', 'energy', 'focus', 'stress', 'overwhelm', 'irritation']) expect(blockReadings(block), `${block} feeds ${ingredient}`).toContain(ingredient)
+    }
     const ids = new Set(readings.map((r) => r.id))
     for (const block of ['morning', 'afternoon', 'evening'] as const) {
       for (const id of blockReadings(block)) expect(ids.has(id), id).toBe(true)

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'preact/hooks'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, answeredCount, askedOf, getSettings, isComplete, winFor, type CheckIn } from './db'
+import { allCheckIns, answeredCount, askedOf, ensureDayContext, getDayContext, getSettings, isComplete, setDayContext, updateSettings, winFor, type CheckIn, type DayContext } from './db'
 import { fill, formatDayLong, formatDayShort, formatTime } from './format'
 import { useLive } from './live'
+import { MoveCard } from './moveCard'
+import { ensurePickupOffer, offerForSlot, pendingOffers, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
 import { activeBlocks } from './settings'
 
@@ -32,19 +34,81 @@ function Glyph({ state }: { state: WindowState }) {
   )
 }
 
-export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void }) {
-  // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly.
-  const [, setTick] = useState(0)
+/** Asked once, at first open after this build: one line, yours, kept on this phone. Never asked again. */
+function DirectionAsk() {
+  const [text, setText] = useState('')
+  const c = copy.direction
+  const answer = (line: string) => void updateSettings((s) => ({ ...s, direction: line.trim() || null, directionAskedAt: new Date().toISOString() }))
+  return (
+    <div class="card pad direction-ask" data-testid="direction-ask">
+      <p class="eyebrow small">{c.title}</p>
+      <p class="note">{c.ask}</p>
+      <input class="input" type="text" maxLength={200} placeholder={c.placeholder} value={text} onInput={(e) => setText((e.currentTarget as HTMLInputElement).value)} data-testid="direction-input" />
+      <div class="actions">
+        <button type="button" class="pill-quiet" disabled={!text.trim()} onClick={() => answer(text)}>
+          {c.save}
+        </button>
+        <button type="button" class="textbtn" onClick={() => answer('')}>
+          {c.notNow}
+        </button>
+      </div>
+      <p class="note faint no-gap">{c.note}</p>
+    </div>
+  )
+}
+
+/** Today's context from the week's shape, as its own record, with one tap to change today alone. */
+function TodayLine({ ctx }: { ctx: DayContext }) {
+  const c = copy.today
+  const parts = [
+    ctx.withHer ? c.withHer : c.notWithHer,
+    ...(ctx.studyNight ? [c.studyNight] : []),
+    ...(ctx.churchDay ? [c.church] : []),
+    ...(ctx.withHer && ctx.pickupTime ? [fill(c.pickup, { time: ctx.pickupTime }), fill(c.solo, { time: ctx.soloUntil })] : []),
+  ]
+  return (
+    <div class="today-line" data-testid="today-line">
+      <p class="note faint no-gap">
+        {c.context}: {parts.join(' · ')}
+        {ctx.changed ? ` · ${c.changed}` : ''}
+      </p>
+      <div class="chips small-chips">
+        <button type="button" class={ctx.withHer ? 'chip is-on' : 'chip'} aria-pressed={ctx.withHer} data-testid="today-with-her" onClick={() => void setDayContext(ctx.day, { withHer: !ctx.withHer })}>
+          {c.changeWithHer}
+        </button>
+        <button type="button" class={ctx.studyNight ? 'chip is-on' : 'chip'} aria-pressed={ctx.studyNight} data-testid="today-study" onClick={() => void setDayContext(ctx.day, { studyNight: !ctx.studyNight })}>
+          {c.changeStudy}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function NowScreen({ onCheckIn, onOpen, onCrisis }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onCrisis: () => void }) {
+  // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
+  // and open the slot before pickup when its window arrives.
+  const [tick, setTick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 60_000)
     return () => clearInterval(t)
   }, [])
+  useEffect(() => {
+    void ensurePickupOffer(new Date())
+  }, [tick])
 
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
   const settings = useLive(getSettings, [])
+  useEffect(() => {
+    if (settings) void ensureDayContext(today.day, settings)
+  }, [settings?.updatedAt, today.day])
+  const ctx = useLive(() => getDayContext(today.day), [today.day])
   const win = useLive(() => winFor(today.day), [today.day])
-  if (!all || !settings || win === undefined) return <section class="screen" />
+  const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
+  const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block, tick])
+  const pending = useLive(pendingOffers, [])
+  const weeks = useLive(() => weeksOfRecord(today.day), [today.day])
+  if (!all || !settings || win === undefined || here === undefined || pickup === undefined || pending === undefined) return <section class="screen" />
 
   const active = activeBlocks(settings.frequency)
   const todays = new Map<Block, CheckIn>()
@@ -73,12 +137,16 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
         ? fill(copy.today.continue, { block: copy.blocks[today.block] })
         : null
 
+  const offer = here ?? pending.find((o) => o.kind === 'block') ?? null
+
   return (
     <section class="screen">
       <header class="screen-head">
         <h1 class="eyebrow">{copy.tabs.now}</h1>
         <p class="date">{formatDayLong(today.day)}</p>
       </header>
+
+      {settings.directionAskedAt === null && <DirectionAsk />}
 
       <ReadingHero all={all} today={today} />
 
@@ -114,6 +182,15 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
           {action}
         </button>
       )}
+      {ctx && <TodayLine ctx={ctx} />}
+
+      {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
+      {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />}
+      {!settings.hideMoves && (
+        <p class="note faint knows" data-testid="knows">
+          {fill(copy.move.knows, { weeks: String(weeks ?? 0) })}
+        </p>
+      )}
 
       <ContextChips all={all} today={today.day} />
 
@@ -147,6 +224,12 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
           </div>
         </>
       )}
+
+      <div class="actions foot">
+        <button type="button" class="textbtn faint" data-testid="crisis-link" onClick={onCrisis}>
+          {copy.crisis.link}
+        </button>
+      </div>
     </section>
   )
 }

@@ -4,7 +4,11 @@ The readings and their phrases, least to most, exactly as the app shows them. Ge
 
 Morning asks all 13: Mood, Irritation, Stress, Overwhelm, Motivation, Confidence, Focus, Loneliness, Social energy, Energy, Hunger, Sleep hours, Sleep quality.
 
-Afternoon and evening ask 5: Mood, Irritation, Energy, Hunger, Stress.
+Afternoon asks 7: Mood, Irritation, Energy, Hunger, Stress, Focus, Overwhelm.
+
+Evening asks 8: Mood, Irritation, Energy, Hunger, Stress, Focus, Overwhelm, Loneliness.
+
+Every block asks all six ingredients of the reading out of 100 (mood, energy, focus, stress, overwhelm, irritation), so the three daily numbers compare.
 
 ## Mood
 

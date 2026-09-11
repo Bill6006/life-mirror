@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'preact/hooks'
 import { addDays, type Block } from './blocks'
+import { chipAnswer, type ChipKey } from './chips'
 import { copy } from './copy'
 import {
+  allCheckIns,
   answerWin,
   askedOf,
   getCheckIn,
   getSettings,
   privateItems,
   setExtra,
+  setNote,
   setPrivateLogged,
   setWin,
   updateSettings,
@@ -20,20 +23,23 @@ import { useLive } from './live'
 import { askedReadings } from './settings'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
+const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint']
 
 /**
  * The evening's optional extras, one tap each, every tap saved at once. Skipping costs one
- * tap on Done. "Felt close to God today?" carries its own permanent off switch.
+ * tap on Done. "Felt close to God today?" carries its own permanent off switch. The two chips
+ * about how today landed are answered at once from your own record.
  */
-export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block; onDone: () => void }) {
+export function ExtrasScreen({ day, block, onDone, onCrisis }: { day: string; block: Block; onDone: () => void; onCrisis: () => void }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
   const settings = useLive(getSettings, [])
   const items = useLive(privateItems, [])
+  const all = useLive(allCheckIns, [])
   const todayWin = useLive(() => winFor(day), [day])
   const tomorrowWin = useLive(() => winFor(addDays(day, 1)), [day])
   const [showPrivate, setShowPrivate] = useState(false)
 
-  if (record === undefined || !settings || !items || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
+  if (record === undefined || !settings || !items || !all || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
 
   const slot = { day, block }
   const asked = record ? askedOf(record) : askedReadings(block, settings.depth)
@@ -105,11 +111,46 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         </button>
       )}
 
+      <h2 class="section">{copy.extras.chips}</h2>
+      <div class="card">
+        <ul class="rows">
+          {CHIPS.map((key) => {
+            const on = Boolean(ex[key])
+            const a = chipAnswer(all, key, day)
+            const answer =
+              a.times === 0
+                ? copy.extras.chipFirst
+                : a.nextDayMean === null
+                  ? fill(copy.extras.chipTimesNoNext, { n: String(a.times) })
+                  : fill(copy.extras.chipTimes, { n: String(a.times), mean: String(a.nextDayMean), k: String(a.nextDays) })
+            return (
+              <li key={key}>
+                <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`chip-${key}`} onClick={() => toggle(key)}>
+                  <span class="anchor-mark" aria-hidden="true" />
+                  <span class="row-main">{copy.extras[key]}</span>
+                </button>
+                {on && (
+                  <div class="calc chip-answer" data-testid="chip-answer">
+                    <p class="calc-line">{answer}</p>
+                    {settings.direction && <p class="calc-line ink">{fill(copy.extras.chipDirection, { line: settings.direction })}</p>}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      <h2 class="section">{copy.extras.noteLabel}</h2>
+      <div class="card pad">
+        <LineInput initial={ex.note ?? ''} placeholder={copy.extras.notePlaceholder} testid="note-input" onSave={(text) => void setNote(slot, asked, text)} />
+      </div>
+
       {settings.extras.minimumWin && (
         <>
           <h2 class="section">{copy.extras.tomorrowWin}</h2>
           <div class="card pad">
-            <WinInput initial={tomorrowWin?.text ?? ''} onSave={(text) => void setWin(addDays(day, 1), day, text)} />
+            <LineInput initial={tomorrowWin?.text ?? ''} placeholder={copy.extras.winPlaceholder} onSave={(text) => void setWin(addDays(day, 1), day, text)} />
             {tomorrowWin && <p class="note faint no-gap">{copy.extras.winSet}</p>}
           </div>
         </>
@@ -118,6 +159,11 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
       <button type="button" class="pill-ink" onClick={onDone}>
         {copy.extras.done}
       </button>
+      <div class="actions">
+        <button type="button" class="textbtn faint" data-testid="crisis-link" onClick={onCrisis}>
+          {copy.crisis.link}
+        </button>
+      </div>
     </section>
   )
 }
@@ -134,16 +180,17 @@ function ExtraRow({ label, on, onLabel, indent = false, onClick }: { label: stri
   )
 }
 
-function WinInput({ initial, onSave }: { initial: string; onSave: (text: string) => void }) {
+function LineInput({ initial, placeholder, testid, onSave }: { initial: string; placeholder: string; testid?: string; onSave: (text: string) => void }) {
   const [text, setText] = useState(initial)
   useEffect(() => setText(initial), [initial])
   return (
     <input
       class="input"
       type="text"
-      maxLength={140}
-      placeholder={copy.extras.winPlaceholder}
+      maxLength={200}
+      placeholder={placeholder}
       value={text}
+      data-testid={testid}
       onInput={(e) => setText((e.currentTarget as HTMLInputElement).value)}
       onBlur={() => onSave(text)}
       onKeyDown={(e) => {

@@ -1,19 +1,38 @@
 import Dexie, { type Table } from 'dexie'
-import { compareSlots, type Block, type Slot } from './blocks'
+import { compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { remindedKey, withDefaults, type Settings } from './settings'
+import { remindedKey, withDefaults, type Settings, type Weekday } from './settings'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
 export type WinOutcome = 'done' | 'partly' | 'no'
-export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod'
+export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint'
 
 export interface Extras {
   caffeine?: true
   dinner?: true
   closeToGod?: true
+  /** The two evening chips, answered at once from the record. */
+  nothingLanded?: true
+  hardToSeePoint?: true
+  /** One optional line for anything the app has no question for. Kept for the export. */
+  note?: string
   /** Private items logged, keyed by item id. Names live only in privateItems. */
   private?: Record<string, true>
+}
+
+/** Each day's context, written from the week's shape when the day begins; changing today never rewrites the past. */
+export interface DayContext {
+  day: string
+  weekday: Weekday
+  withHer: boolean
+  studyNight: boolean
+  churchDay: boolean
+  pickupTime: string | null
+  soloUntil: string
+  /** Set when you changed today by hand. */
+  changed: boolean
+  createdAt: string
 }
 
 export interface CheckIn {
@@ -52,11 +71,74 @@ export interface PrivateItem {
   archived: 0 | 1
 }
 
+export type OfferKind = 'block' | 'pickup'
+export type OutcomeWhy = 'noTime' | 'didntWant'
+
+/** What was OFFERED: one move for one situation, at one moment. Never the same record as what happened. */
+export interface Offer {
+  id?: number
+  kind: OfferKind
+  day: string
+  block: Block
+  at: string
+  situationKey: string
+  target: ReadingId
+  stance: string
+  band: string
+  reading: number
+  /** A catalogue id, or "nothing" for the null offer. */
+  moveId: string
+  cardId: number | null
+  /** The candidate set the draw was made from. */
+  candidates: string[]
+  /** One offer in five is a pure coin flip across the candidates, and says so. */
+  coinFlip: boolean
+  /** A passive item riding alongside, or null. */
+  passiveId: string | null
+  whyNot: { moveId: string; reason: string } | null
+  skippedAt: string | null
+  /** Set once the outcome has been asked, answered or not. */
+  closedAt: string | null
+}
+
+/** A test card, written before any comparison and never edited. A change is a new card. */
+export interface Card {
+  id?: number
+  createdAt: string
+  situationKey: string
+  block: Block
+  target: ReadingId
+  moveId: string
+  alternativeId: string
+  window: string
+  /** Worthwhile change, in anchor steps on the target reading. */
+  worthwhile: number
+}
+
+/** What HAPPENED: the one-tap answer at the next check-in. Null means the question was passed over. */
+export interface Outcome {
+  id?: number
+  offerId: number
+  moveId: string
+  day: string
+  block: Block
+  at: string
+  outcome: WinOutcome | null
+  /** The optional second tap after a No, never required, never asked twice. */
+  why: OutcomeWhy | null
+  /** Whether the passive item riding alongside happened, when there was one. */
+  passiveOutcome: 'done' | 'no' | null
+}
+
 class LifeMirrorDB extends Dexie {
   checkins!: Table<CheckIn, number>
   settings!: Table<Settings, number>
   wins!: Table<Win, number>
   privateItems!: Table<PrivateItem, number>
+  offers!: Table<Offer, number>
+  cards!: Table<Card, number>
+  outcomes!: Table<Outcome, number>
+  days!: Table<DayContext, string>
   constructor() {
     super('life-mirror')
     this.version(1).stores({ checkins: '++id, &[day+block], day, completedAt' })
@@ -65,6 +147,16 @@ class LifeMirrorDB extends Dexie {
       settings: 'id',
       wins: '++id, &forDay',
       privateItems: '++id, archived',
+    })
+    this.version(3).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
     })
   }
 }
@@ -147,6 +239,21 @@ export function setExtra(slot: Slot, asked: readonly ReadingId[], key: ExtraKey,
   })
 }
 
+/** The one optional line at the end of the evening; an empty line removes it. */
+export function setNote(slot: Slot, asked: readonly ReadingId[], text: string): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const now = new Date().toISOString()
+    const rec = (await getCheckIn(slot.day, slot.block)) ?? newCheckIn(slot, asked, now)
+    const extras: Extras = { ...(rec.extras ?? {}) }
+    const trimmed = text.trim()
+    if (trimmed) extras.note = trimmed
+    else delete extras.note
+    rec.extras = extras
+    rec.updatedAt = now
+    rec.id = await db.checkins.put(rec)
+  })
+}
+
 export function setPrivateLogged(slot: Slot, asked: readonly ReadingId[], itemId: number, on: boolean): Promise<void> {
   return db.transaction('rw', db.checkins, async () => {
     const now = new Date().toISOString()
@@ -178,6 +285,44 @@ export function markReminded(day: string, block: Block): Promise<Settings> {
   return updateSettings((s) => {
     const kept = Object.fromEntries(Object.entries(s.reminded).filter(([k]) => k.startsWith(day)))
     return { ...s, reminded: { ...kept, [remindedKey(day, block)]: true as const } }
+  })
+}
+
+// Each day's context, from the week's shape
+
+export async function getDayContext(day: string): Promise<DayContext | null> {
+  return (await db.days.get(day)) ?? null
+}
+
+/** Writes today's context from the week's shape the first time the day is seen; later shape edits never touch it. */
+export function ensureDayContext(day: string, settings: Settings): Promise<DayContext> {
+  return db.transaction('rw', db.days, async () => {
+    const existing = await db.days.get(day)
+    if (existing) return existing
+    const weekday = parseDay(day).getDay() as Weekday
+    const w = settings.week
+    const ctx: DayContext = {
+      day,
+      weekday,
+      withHer: w.withHer[weekday],
+      studyNight: w.studyNights[weekday],
+      churchDay: w.churchDay === weekday,
+      pickupTime: w.pickupTime,
+      soloUntil: w.soloUntil,
+      changed: false,
+      createdAt: new Date().toISOString(),
+    }
+    await db.days.put(ctx)
+    return ctx
+  })
+}
+
+/** Changes today alone. */
+export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay'>>): Promise<void> {
+  return db.transaction('rw', db.days, async () => {
+    const existing = await db.days.get(day)
+    if (!existing) return
+    await db.days.put({ ...existing, ...patch, changed: true })
   })
 }
 
@@ -233,7 +378,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone. Nothing is kept anywhere else, so nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings], async () => {
-    await Promise.all([db.checkins.clear(), db.wins.clear(), db.privateItems.clear(), db.settings.clear()])
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days], async () => {
+    await Promise.all([db.checkins.clear(), db.wins.clear(), db.privateItems.clear(), db.settings.clear(), db.offers.clear(), db.cards.clear(), db.outcomes.clear(), db.days.clear()])
   })
 }

@@ -3,13 +3,16 @@ import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { copy } from './copy'
+import { CrisisScreen } from './crisis'
 import { DataScreen } from './dataScreen'
 import { allCheckIns, getSettings } from './db'
 import { ExtrasScreen } from './extras'
 import { LegendScreen } from './legend'
 import { useLive } from './live'
 import { MirrorScreen } from './mirror'
+import { HistoryScreen, MovesScreen } from './movesScreen'
 import { NowScreen } from './now'
+import { ensureOffer, pendingOffers } from './offerFlow'
 import { PrivateScreen } from './private'
 import type { ReadingId } from './readings'
 import { useReminders } from './reminders'
@@ -31,6 +34,8 @@ type View =
   | { kind: 'private' }
   | { kind: 'data' }
   | { kind: 'catalogue' }
+  | { kind: 'history' }
+  | { kind: 'crisis' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -38,6 +43,7 @@ export function App() {
   const pushed = useRef(0)
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
+  const pending = useLive(pendingOffers, [])
   useReminders(settings, all)
 
   useEffect(() => {
@@ -81,8 +87,11 @@ export function App() {
             block={view.block}
             depth={settings?.depth ?? 'full'}
             only={view.only}
+            pending={pending ?? []}
             onDone={() => {
               if (view.only) return setView({ kind: 'summary', day: view.day, block: view.block, fresh: false })
+              // The check-in is complete: write the card and the offer, then show the card.
+              void ensureOffer(view.day, view.block)
               if (view.block === 'evening' && settings && extrasEnabled(settings)) return setView({ kind: 'extras', day: view.day, block: view.block, fresh: true })
               setView({ kind: 'summary', day: view.day, block: view.block, fresh: true })
             }}
@@ -90,7 +99,14 @@ export function App() {
           />
         )
       case 'extras':
-        return <ExtrasScreen day={view.day} block={view.block} onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })} />
+        return (
+          <ExtrasScreen
+            day={view.day}
+            block={view.block}
+            onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })}
+            onCrisis={() => setView({ kind: 'crisis' })}
+          />
+        )
       case 'summary':
         return (
           <SummaryScreen
@@ -113,6 +129,10 @@ export function App() {
         return <DataScreen onClose={closeAll} />
       case 'catalogue':
         return <CatalogueScreen onClose={closeAll} />
+      case 'history':
+        return <HistoryScreen onClose={closeAll} />
+      case 'crisis':
+        return <CrisisScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -125,12 +145,13 @@ export function App() {
           <NowScreen
             onCheckIn={(day, block) => open({ kind: 'checkin', day, block })}
             onOpen={(day, block) => open({ kind: 'summary', day, block, fresh: false })}
+            onCrisis={() => open({ kind: 'crisis' })}
           />
         )
       case 'mirror':
         return <MirrorScreen />
       case 'moves':
-        return <ComingPanel tab="moves" onCatalogue={() => open({ kind: 'catalogue' })} />
+        return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} />
       case 'aims':
         return <ComingPanel tab="aims" />
       case 'settings':
@@ -140,6 +161,7 @@ export function App() {
             onLegend={() => open({ kind: 'legend' })}
             onPrivate={() => open({ kind: 'private' })}
             onData={() => open({ kind: 'data' })}
+            onCrisis={() => open({ kind: 'crisis' })}
           />
         )
     }

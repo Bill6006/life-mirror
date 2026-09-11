@@ -787,6 +787,119 @@ a.chip {
   color: var(--ink);
 }
 
+/* One small move */
+.move-card .calc {
+  margin: 14px 0 4px;
+}
+
+.move-passive {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.calc-line.testing {
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.calc-line.testing .calc-key {
+  color: var(--muted);
+}
+
+.knows {
+  margin: -8px 0 24px;
+}
+
+.today-line {
+  margin: -12px 0 20px;
+}
+
+.small-chips {
+  margin-top: 8px;
+}
+
+.small-chips .chip {
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+.chip-answer {
+  margin: 0 0 12px;
+}
+
+.calc-line.ink {
+  color: var(--ink);
+}
+
+.actions.foot {
+  margin-top: 16px;
+}
+
+a.row {
+  text-decoration: none;
+}
+
+.direction-ask .input {
+  margin: 4px 0 8px;
+}
+
+.days {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.day {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.day.is-on {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.move-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.compact .move-title {
+  font-size: 20px;
+}
+
+.calc-key {
+  color: var(--ink);
+}
+
+.move-state {
+  margin: 10px 0 0;
+  color: var(--ink);
+}
+
+.move-state.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.history-row .sub {
+  overflow-wrap: anywhere;
+}
+
 /* Coming panels for tabs not built yet */
 .panel {
   padding: 20px;

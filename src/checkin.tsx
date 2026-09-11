@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { OutcomeAsk, type Answer } from './ask'
 import { addDays, BLOCKS, type Block } from './blocks'
 import { changesInWords } from './change'
 import { copy } from './copy'
@@ -14,9 +15,12 @@ import {
   privateItems,
   saveAnswer,
   winFor,
+  type Offer,
 } from './db'
 import { fill, formatTime } from './format'
 import { useLive } from './live'
+import { MoveCard } from './moveCard'
+import { offerForSlot, recordOutcome } from './offerFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
 import { activeBlocks, askedReadings, type Depth } from './settings'
@@ -37,13 +41,15 @@ function AnchorText({ anchor }: { anchor: string }) {
 /**
  * One reading at a time, five phrases, one tap each. Every tap is written to the phone at
  * once and the next reading appears. With `only`, a single reading is changed and control
- * returns to the summary. The set of readings is fixed when the check-in begins.
+ * returns to the summary. The set of readings is fixed when the check-in begins. A fresh
+ * check-in first asks, in one tap each, what happened to any move still open.
  */
 export function CheckInScreen({
   day,
   block,
   depth,
   only,
+  pending,
   onDone,
   onClose,
 }: {
@@ -51,6 +57,7 @@ export function CheckInScreen({
   block: Block
   depth: Depth
   only?: ReadingId
+  pending: readonly Offer[]
   onDone: () => void
   onClose: () => void
 }) {
@@ -59,6 +66,7 @@ export function CheckInScreen({
   const total = ids.length
   const [local, setLocal] = useState<Answers>({})
   const [index, setIndex] = useState(only ? Math.max(0, ids.indexOf(only)) : 0)
+  const [asked, setAsked] = useState<Set<number>>(new Set())
   const resumed = useRef(Boolean(only))
   const lastTap = useRef(performance.now())
 
@@ -72,6 +80,16 @@ export function CheckInScreen({
     if (first > 0) setIndex(first)
   }, [record])
 
+  // What happened to the open moves, one tap each, before the readings. Never for a single-reading change.
+  const toAsk = only ? null : (pending.find((o) => !asked.has(o.id as number)) ?? null)
+  if (toAsk) {
+    const answer = (a: Answer) => {
+      setAsked((s) => new Set(s).add(toAsk.id as number))
+      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block })
+    }
+    return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} />
+  }
+
   const safeIndex = Math.min(index, total - 1)
   const id = ids[safeIndex]
   const reading = readingById(id)
@@ -83,16 +101,16 @@ export function CheckInScreen({
     lastTap.current = now
     const next: Answers = { ...answers, [id]: position }
     setLocal((l) => ({ ...l, [id]: position }))
-    void saveAnswer({ day, block }, ids, id, position, gap < ACTIVE_GAP_MS ? gap : 0)
+    const saved = saveAnswer({ day, block }, ids, id, position, gap < ACTIVE_GAP_MS ? gap : 0)
     if (only) {
-      onDone()
+      void saved.then(onDone)
       return
     }
     const ahead = ids.findIndex((r, i) => i > safeIndex && next[r] === undefined)
     if (ahead !== -1) return setIndex(ahead)
     const anywhere = ids.findIndex((r) => next[r] === undefined)
     if (anywhere !== -1) return setIndex(anywhere)
-    onDone()
+    void saved.then(onDone)
   }
 
   function clear() {
@@ -152,9 +170,9 @@ export function CheckInScreen({
 
 /**
  * The give-back card after a check-in (fresh) and the review of any past one. Facts (what
- * was tapped) sit in the plain register; the reading, today's glance and the change since
- * last time sit in the calculation register. Any reading can be changed; the whole check-in
- * can be deleted in two taps.
+ * was tapped) sit in the plain register; the reading, today's glance, the change since last
+ * time and the move sit in the calculation register. Any reading can be changed; the whole
+ * check-in can be deleted in two taps.
  */
 export function SummaryScreen({
   day,
@@ -179,9 +197,10 @@ export function SummaryScreen({
   const settings = useLive(getSettings, [])
   const items = useLive(privateItems, [])
   const tomorrowWin = useLive(() => winFor(addDays(day, 1)), [day])
+  const offer = useLive(() => offerForSlot(day, block), [day, block])
   const [confirm, setConfirm] = useState(false)
 
-  if (record === undefined || previous === undefined || !all || !settings || !items || tomorrowWin === undefined) return <section class="screen" />
+  if (record === undefined || previous === undefined || !all || !settings || !items || tomorrowWin === undefined || offer === undefined) return <section class="screen" />
 
   if (record === null) {
     return (
@@ -237,6 +256,8 @@ export function SummaryScreen({
           <p class="calc-line">{copy.summary.finishFirst}</p>
         )}
       </div>
+
+      {complete && offer && !settings.hideMoves && <MoveCard offer={offer} compact />}
 
       <h2 class="section">{copy.summary.readings}</h2>
       <div class="card">

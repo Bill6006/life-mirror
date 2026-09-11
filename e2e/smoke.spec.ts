@@ -1,19 +1,32 @@
 import { expect, test, type Page } from '@playwright/test'
 
-/** Taps the middle phrase for each reading until the give-back card appears; skips the evening extras. */
+/** Taps the middle phrase of the reading on screen, then waits for the screen to move on: the next reading, the extras, or the card. */
+async function tapAnchor(page: Page): Promise<void> {
+  const title = (await page.locator('#ci-title').textContent()) ?? ''
+  await page.getByTestId('anchor').nth(2).click()
+  const moved = page.locator('#ci-title', { hasNotText: title }).or(page.getByTestId('give-back')).or(page.getByTestId('extras')).or(page.getByTestId('outcome-ask'))
+  await expect(moved.first()).toBeVisible()
+}
+
+/** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
 async function tapThrough(page: Page): Promise<number> {
   const card = page.getByTestId('give-back')
   const extras = page.getByTestId('extras')
+  const ask = page.getByTestId('outcome-ask')
   const anchor = page.getByTestId('anchor').nth(2)
   let taps = 0
-  for (let i = 0; i < 20; i++) {
-    await expect(card.or(extras).or(anchor).first()).toBeVisible()
+  for (let i = 0; i < 24; i++) {
+    await expect(card.or(extras).or(ask).or(anchor).first()).toBeVisible()
     if (await card.isVisible()) break
+    if (await ask.isVisible()) {
+      await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      continue
+    }
     if (await extras.isVisible()) {
       await page.getByRole('button', { name: 'Done', exact: true }).click()
       continue
     }
-    await anchor.click()
+    await tapAnchor(page)
     taps++
   }
   await expect(card).toBeVisible()
@@ -53,14 +66,15 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
 
+  // Morning asks 13, afternoon 7, evening 8: every block feeds all six ingredients.
   const taps = await tapThrough(page)
-  expect([5, 13]).toContain(taps)
+  expect([7, 8, 13]).toContain(taps)
 
   // The card: the reading out of 100 with its recipe, and the change since last time.
   const card = page.getByTestId('give-back')
   await expect(card.getByTestId('reading-100')).toContainText('50')
   await expect(card.getByTestId('stance')).toHaveText('Stabilize')
-  await expect(card.getByTestId('reading-100')).toContainText(/of 6 ingredients · equal weights/)
+  await expect(card.getByTestId('reading-100')).toContainText(/6 of 6 ingredients · equal weights/)
   await expect(card.getByText(/first reading/)).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
@@ -86,10 +100,103 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
 })
 
+test('an incomplete block reads Incomplete and no number', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await page.getByTestId('anchor').nth(2).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  const hero = page.getByTestId('reading-incomplete')
+  await expect(hero).toBeVisible()
+  await expect(hero.locator('.hero-word')).toHaveText('Incomplete')
+  await expect(hero.locator('.hero-num')).toHaveCount(0)
+})
+
 test('a tapped reminder opens the current block straight away', async ({ page }) => {
   await page.goto('./?checkin=1')
   await expect(page.getByTestId('anchor').first()).toBeVisible()
   await expect(page).toHaveURL(/\/life-mirror\/$/)
+})
+
+test('the direction sentence is asked once, kept on the phone, and never asked again', async ({ page }) => {
+  await page.goto('./')
+  const ask = page.getByTestId('direction-ask')
+  await expect(ask).toBeVisible()
+  await page.getByTestId('direction-input').fill('One line of my own.')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await expect(ask).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByTestId('direction-ask')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.getByTestId('direction-field')).toHaveValue('One line of my own.')
+})
+
+test('one move follows a check-in, can be skipped, is asked about next time, and History keeps three records', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+
+  // The card carries the move, its why, its testing line and the honest evidence line.
+  const card = page.getByTestId('give-back')
+  await expect(card.getByTestId('move-card')).toBeVisible()
+  await expect(card.getByText('Why this')).toBeVisible()
+  await expect(card.getByText('Testing')).toBeVisible()
+  await expect(card.getByText('Little evidence')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Now shows it, the today line, the honest line, and Skip records and shows the next candidate.
+  const first = await page.getByTestId('move-card').getByTestId('move-name').innerText()
+  await expect(page.getByTestId('today-line')).toBeVisible()
+  await expect(page.getByTestId('knows')).toContainText('weeks of record')
+  await page.getByRole('button', { name: /^Skip/ }).click()
+  await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText(first)
+
+  // The evening check-in opens with the question, one tap, then the readings.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await expect(page.getByTestId('outcome-ask')).toBeVisible()
+  await page.getByTestId('outcome').first().click()
+  const passive = page.getByTestId('passive-done')
+  if (await passive.isVisible()) await passive.click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // History: offer, card and outcome as separate records.
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^History/ }).click()
+  const rows = page.getByTestId('history-row')
+  await expect.poll(() => rows.count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(3)
+  await expect(rows.filter({ hasText: 'Outcome' }).first()).toBeVisible()
+  await expect(rows.filter({ hasText: 'Offer' }).first()).toBeVisible()
+  await expect(rows.filter({ hasText: 'Skipped' }).first()).toBeVisible()
+})
+
+test('the evening chips answer from the record, the text line is kept, and the crisis screen is always reachable', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  for (let i = 0; i < 10; i++) {
+    await expect(extras.or(anchor).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    await tapAnchor(page)
+  }
+  await expect(extras).toBeVisible()
+  await page.getByTestId('chip-nothingLanded').click()
+  await expect(page.getByTestId('chip-answer')).toContainText('First time recorded')
+  await page.getByTestId('note-input').fill('A line the app had no question for')
+  await page.getByTestId('note-input').blur()
+  await page.getByTestId('crisis-link').click()
+  await expect(page.getByTestId('crisis')).toBeVisible()
+  await expect(page.getByText('988', { exact: false }).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^If it is urgent/ }).click()
+  await expect(page.getByTestId('crisis')).toBeVisible()
 })
 
 test('the mirror draws from the record, and delete everything empties it', async ({ page }) => {

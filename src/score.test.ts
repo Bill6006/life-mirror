@@ -17,7 +17,8 @@ describe('the reading out of 100', () => {
   })
 
   it('uses only the ingredients a block asks, and says how many', () => {
-    expect(readingOutOf100(allAt(blockReadings('evening'), 3), blockReadings('evening'))).toEqual({ value: 50, stance: 'Stabilize', used: 4, total: 6 })
+    expect(readingOutOf100(allAt(blockReadings('evening'), 3), blockReadings('evening'))).toEqual({ value: 50, stance: 'Stabilize', used: 6, total: 6 })
+    expect(readingOutOf100(allAt(blockReadings('afternoon'), 3), blockReadings('afternoon'))?.used).toBe(6)
     expect(readingOutOf100({ mood: 3, energy: 3, stress: 3 }, ['mood', 'energy', 'stress'])?.used).toBe(3)
   })
 

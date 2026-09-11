@@ -1,0 +1,121 @@
+import { moveById } from './catalogue'
+import { copy } from './copy'
+import { updateSettings, type Offer, type Outcome } from './db'
+import { fill, formatWhen } from './format'
+import { useLive } from './live'
+import { cardById, nameOf, offerCounts } from './offerFlow'
+import { NOTHING } from './offers'
+import { anchorFor, headword, readingById } from './readings'
+import { INGREDIENTS } from './score'
+
+function times(n: number): string {
+  return n === 1 ? copy.move.once : n === 2 ? copy.move.twice : fill(copy.move.nTimes, { n: String(n) })
+}
+
+function windowOf(w: string): string {
+  return copy.catalogue.windows[w as keyof typeof copy.catalogue.windows] ?? w
+}
+
+function reasonText(offer: Offer): string | null {
+  if (!offer.whyNot) return null
+  const r = copy.move.whyNotReasons[offer.whyNot.reason as keyof typeof copy.move.whyNotReasons] ?? offer.whyNot.reason
+  return fill(copy.move.whyNotLine, { move: nameOf(offer.whyNot.moveId, copy.move.nothing), reason: r })
+}
+
+/**
+ * One small move: what to do, why this (a calculation from your record, with its counts),
+ * why not the move you might have expected, and what it is testing: the card, written first,
+ * visible and never loud.
+ */
+export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: Offer; outcome?: Outcome | null; onSkip?: () => void; compact?: boolean }) {
+  const c = copy.move
+  const nothing = offer.moveId === NOTHING
+  const move = nothing ? null : moveById(offer.moveId)
+  const card = useLive(() => cardById(offer.cardId), [offer.cardId])
+  const counts = useLive(() => offerCounts(offer.situationKey, offer.moveId), [offer.situationKey, offer.moveId, outcome?.id])
+  const target = readingById(offer.target)
+  const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
+  const whyNot = reasonText(offer)
+  const passive = offer.passiveId ? moveById(offer.passiveId) : null
+
+  return (
+    <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind}>
+      <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
+      <h2 class="move-title" data-testid="move-name">
+        {nothing ? c.nothing : move?.name}
+      </h2>
+      <p class="move-what">{nothing ? c.nothingWhat : move?.what}</p>
+      {move && (
+        <p class="move-meta">
+          {move.minutes === 0 ? copy.catalogue.noTime : fill(copy.catalogue.minutes, { n: String(move.minutes) })} · {fill(copy.catalogue.effort, { level: copy.catalogue.efforts[move.effort] })} ·{' '}
+          {fill(copy.catalogue.needsLabel, { needs: move.needs.length ? move.needs.map((n) => copy.catalogue.needs[n]).join(', ') : copy.catalogue.needsNothing })}
+        </p>
+      )}
+      {passive && (
+        <p class="move-passive">
+          {c.alongside}: <span class="ink">{passive.name}</span>
+        </p>
+      )}
+
+      <div class="calc">
+        <p class="calc-line">
+          <span class="calc-key">{c.why}</span> ·{' '}
+          {offer.kind === 'pickup'
+            ? c.whyPickup
+            : nothing
+              ? fill(c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
+              : fill(c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })}
+        </p>
+        <p class="calc-line">
+          <span class="calc-key">{c.evidence}</span> · {c.tierLittle} ·{' '}
+          {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
+        </p>
+        {whyNot && (
+          <p class="calc-line">
+            <span class="calc-key">{c.whyNot}</span> · {whyNot}
+          </p>
+        )}
+        <p class="calc-line testing">
+          <span class="calc-key">{c.testing}</span> ·{' '}
+          {card === undefined
+            ? '…'
+            : card === null
+              ? c.testingNone
+              : fill(c.testingLine, {
+                  move: move?.name ?? c.nothing,
+                  alternative: moveById(card.alternativeId).name,
+                  target: target.name.toLowerCase(),
+                  window: windowOf(card.window),
+                  id: String(card.id),
+                  date: formatWhen(card.createdAt),
+                })}
+          {offer.coinFlip && ` ${c.coinFlip}`}
+        </p>
+      </div>
+
+      {outcome && outcome.outcome && (
+        <p class="move-state">
+          {c.happened}: {copy.extras.winOutcome[outcome.outcome]}
+          {outcome.why && ` · ${copy.ask.why[outcome.why]}`}
+        </p>
+      )}
+      {outcome && !outcome.outcome && <p class="move-state muted">{c.passedOver}</p>}
+      {!outcome && offer.closedAt === null && !compact && <p class="move-state muted">{c.pending}</p>}
+
+      {(onSkip || move?.family === 'faith') && offer.closedAt === null && (
+        <div class="actions">
+          {onSkip && (
+            <button type="button" class="textbtn" onClick={onSkip}>
+              {c.skip}
+            </button>
+          )}
+          {move?.family === 'faith' && (
+            <button type="button" class="textbtn faint" onClick={() => void updateSettings((s) => ({ ...s, hideFaith: true }))}>
+              {c.hideFaith}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

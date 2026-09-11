@@ -41,6 +41,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       caffeineAfterMidday: Boolean(c.extras?.caffeine),
       lateOrHeavyDinner: Boolean(c.extras?.dinner),
       feltCloseToGod: Boolean(c.extras?.closeToGod),
+      nothingLandedToday: Boolean(c.extras?.nothingLanded),
+      hardToSeeThePointToday: Boolean(c.extras?.hardToSeePoint),
+      note: c.extras?.note ?? null,
       ...(opts.includePrivate ? { private: Object.keys(c.extras?.private ?? {}).map((id) => names.get(id) ?? `item ${id}`) } : {}),
     },
   }))
@@ -78,6 +81,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     'caffeine_after_midday',
     'late_or_heavy_dinner',
     'felt_close_to_god',
+    'nothing_landed_today',
+    'hard_to_see_the_point_today',
+    'note',
     ...privateItems.map((it) => `private: ${it.name}`),
   ]
   const rows = sorted.map((c) => [
@@ -89,6 +95,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     yesNo(Boolean(c.extras?.caffeine)),
     yesNo(Boolean(c.extras?.dinner)),
     yesNo(Boolean(c.extras?.closeToGod)),
+    yesNo(Boolean(c.extras?.nothingLanded)),
+    yesNo(Boolean(c.extras?.hardToSeePoint)),
+    c.extras?.note ?? '',
     ...privateItems.map((it) => yesNo(Boolean(c.extras?.private?.[String(it.id)]))),
   ])
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
