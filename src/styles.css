@@ -1269,3 +1269,7 @@ code {
   font-size: 20px;
   color: var(--ink);
 }
+
+.add .pill-quiet {
+  white-space: nowrap;
+}

@@ -1,0 +1,291 @@
+import { useEffect, useState } from 'preact/hooks'
+import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
+import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
+import { db, getSettings, updateSettings } from './db'
+import { useLive } from './live'
+import { withDefaults, type Settings } from './settings'
+
+// The sync worker. Pull first (rows newer than the watermark, applied only where the remote is
+// newer, silently, never re-queued), then push (the outbox, latest change per row, in batches).
+// It never blocks the screen, retries with backoff, waits quietly offline, and does nothing at
+// all without a token.
+
+export const PAGE = 500
+export const BATCH = 100
+const PULL_EVERY_MS = 15 * 60_000
+const PUSH_DEBOUNCE_MS = 2_000
+const BACKOFF_BASE_MS = 5_000
+const BACKOFF_MAX_MS = 15 * 60_000
+const DEVICE_LABEL = 'phone'
+
+export type SyncState = 'off' | 'idle' | 'syncing' | 'offline' | 'error'
+export type SyncOutcome = 'noToken' | 'offline' | 'done' | 'failed'
+
+export interface SyncStatus {
+  state: SyncState
+  hasToken: boolean
+  lastSyncAt: string | null
+  lastError: string | null
+  pending: number
+}
+
+let factory: StoreFactory = libsqlStore
+let isOnline: () => boolean = () => (typeof navigator === 'undefined' ? true : navigator.onLine !== false)
+let running: Promise<SyncOutcome> | null = null
+let again = false
+let attempts = 0
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let pushTimer: ReturnType<typeof setTimeout> | null = null
+let live: SyncState = 'idle'
+const watchers = new Set<() => void>()
+
+/** The tests hand in a fake store; the app uses the libsql client. */
+export function setStoreFactory(f: StoreFactory | null): void {
+  factory = f ?? libsqlStore
+}
+
+export function setOnlineCheck(fn: (() => boolean) | null): void {
+  isOnline = fn ?? (() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false))
+}
+
+export function resetCloudForTests(): void {
+  running = null
+  again = false
+  attempts = 0
+  if (retryTimer) clearTimeout(retryTimer)
+  if (pushTimer) clearTimeout(pushTimer)
+  retryTimer = null
+  pushTimer = null
+  live = 'idle'
+}
+
+function setLive(s: SyncState): void {
+  live = s
+  for (const w of watchers) w()
+}
+
+const DEFAULT_META: CloudMeta = { key: 'state', watermark: '', lastSyncAt: null, lastError: null }
+
+export async function getMeta(): Promise<CloudMeta> {
+  return (await db.cloudMeta.get('state')) ?? DEFAULT_META
+}
+
+async function patchMeta(patch: Partial<CloudMeta>): Promise<void> {
+  const current = await getMeta()
+  await db.cloudMeta.put({ ...current, ...patch, key: 'state' })
+}
+
+/** This phone's id: generated once, kept in settings, registered in `devices`. */
+export async function ensureDeviceId(): Promise<string> {
+  const s = await getSettings()
+  if (s.cloud.deviceId) return s.cloud.deviceId
+  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  await updateSettings((cur) => ({ ...cur, cloud: { ...cur.cloud, deviceId: id } }))
+  return id
+}
+
+function keyFor(store: string, id: string): string | number {
+  return store === 'days' ? id : Number(id)
+}
+
+/** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. */
+async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): Promise<void> {
+  if (!SYNCED_STORES.includes(row.store)) return
+  const table = db.table(row.store)
+  const key = keyFor(row.store, row.id)
+  const known = await tx.cloudRows.get([row.store, row.id])
+  const local = (await table.get(key)) as Record<string, unknown> | undefined
+  if (local !== undefined) {
+    const localStamp = typeof local.updatedAt === 'string' && local.updatedAt ? local.updatedAt : null
+    // The settings record exists on every phone from the first tap; on a fresh install, before the
+    // cloud has seen this phone's copy, the cloud's is the one to restore.
+    const restoringSettings = row.store === 'settings' && !known
+    const stamps = [known?.updatedAt, localStamp].filter((s): s is string => Boolean(s)).sort()
+    const basis = restoringSettings ? null : (stamps.pop() ?? null)
+    // A row the cloud has never seen and that carries no timestamp is the phone's to keep.
+    if (basis === null && !restoringSettings) return
+    if (basis !== null && !(row.updated_at > basis)) return
+  }
+  if (row.deleted) {
+    if (local !== undefined) await table.delete(key)
+  } else if (row.body) {
+    const body = JSON.parse(row.body) as Record<string, unknown>
+    if (row.store === 'settings') {
+      // The settings record comes back without its device credentials; this phone keeps its own.
+      const mine = local as Settings | undefined
+      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {} }
+      await db.settings.put(merged)
+    } else {
+      await table.put(body)
+    }
+  }
+  await tx.cloudRows.put({ store: row.store, key: row.id, updatedAt: row.updated_at, syncedAt: row.synced_at })
+  // The remote won: any change still queued for this row is older than what the phone now holds.
+  await db.outbox.where('[store+key]').equals([row.store, row.id]).delete()
+}
+
+const ALL_TABLES = () => [...SYNCED_STORES.map((s) => db.table(s)), db.cloudRows, db.cloudMeta, db.outbox]
+
+/** Pulls rows newer than the watermark, page by page, and applies each page in one silent transaction. */
+async function pull(store: CloudStore): Promise<number> {
+  let applied = 0
+  for (;;) {
+    const meta = await getMeta()
+    const rows = await store.pull(APP, meta.watermark, PAGE)
+    if (!rows.length) break
+    await db.transaction('rw', ALL_TABLES(), async () => {
+      markSilent()
+      for (const row of rows) await applyRow(row, { cloudRows: db.cloudRows })
+      await patchMeta({ watermark: rows[rows.length - 1].synced_at })
+    })
+    applied += rows.length
+    if (rows.length < PAGE) break
+  }
+  return applied
+}
+
+/** The latest queued change per row, in queue order, so one push carries one row per record. */
+export function latestPerRow(rows: readonly OutboxRow[]): OutboxRow[] {
+  const latest = new Map<string, OutboxRow>()
+  for (const r of rows) latest.set(`${r.store}|${r.key}`, r)
+  return [...latest.values()]
+}
+
+export function toCloudRow(r: OutboxRow, deviceId: string, syncedAt: string): CloudRow {
+  return { app: APP, store: r.store, id: r.key, day: r.day, body: r.op === 'delete' ? null : r.body, updated_at: r.updatedAt, deleted: r.op === 'delete' ? 1 : 0, device_id: deviceId, synced_at: syncedAt }
+}
+
+/** Drains the outbox in batches. Each pushed row gets its own synced_at, a millisecond apart, so paging never skips one. */
+async function push(store: CloudStore, deviceId: string): Promise<number> {
+  let pushed = 0
+  for (;;) {
+    const batch = await db.outbox.orderBy('id').limit(BATCH * 4).toArray()
+    if (!batch.length) break
+    const latest = latestPerRow(batch).slice(0, BATCH)
+    const carried = new Set(latest.map((r) => `${r.store}|${r.key}`))
+    const base = Date.now()
+    const rows = latest.map((r, i) => toCloudRow(r, deviceId, new Date(base + i).toISOString()))
+    await store.upsert(rows)
+    await db.transaction('rw', [db.outbox, db.cloudRows], async () => {
+      const ids = batch.filter((r) => carried.has(`${r.store}|${r.key}`)).map((r) => r.id as number)
+      await db.outbox.bulkDelete(ids)
+      await db.cloudRows.bulkPut(rows.map((r) => ({ store: r.store, key: r.id, updatedAt: r.updated_at, syncedAt: r.synced_at })))
+    })
+    pushed += rows.length
+  }
+  return pushed
+}
+
+function backoffMs(): number {
+  return Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 3 ** Math.min(attempts, 6))
+}
+
+function scheduleRetry(): void {
+  if (retryTimer) clearTimeout(retryTimer)
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    void syncNow()
+  }, backoffMs())
+}
+
+async function run(): Promise<SyncOutcome> {
+  const settings = await getSettings()
+  const token = settings.cloud.token
+  if (!token) {
+    setLive('off')
+    return 'noToken'
+  }
+  if (!isOnline()) {
+    setLive('offline')
+    return 'offline'
+  }
+  setLive('syncing')
+  try {
+    const deviceId = await ensureDeviceId()
+    const store = await factory(token)
+    await pull(store)
+    await push(store, deviceId)
+    const now = new Date().toISOString()
+    await store.touchDevice({ device_id: deviceId, app: APP, label: DEVICE_LABEL, at: now })
+    await patchMeta({ lastSyncAt: now, lastError: null })
+    attempts = 0
+    setLive('idle')
+    return 'done'
+  } catch (e) {
+    attempts++
+    const message = e instanceof Error ? e.message : String(e)
+    await patchMeta({ lastError: message }).catch(() => undefined)
+    setLive(isOnline() ? 'error' : 'offline')
+    scheduleRetry()
+    return 'failed'
+  }
+}
+
+/** One sync, pull then push. A second call while one runs waits for it and then runs once more. */
+export function syncNow(): Promise<SyncOutcome> {
+  if (running) {
+    again = true
+    return running
+  }
+  running = run().finally(() => {
+    running = null
+    if (again) {
+      again = false
+      void syncNow()
+    }
+  })
+  return running
+}
+
+/** Deletes this app's rows in the cloud, before a wipe. True when there is nothing to delete or it went through. */
+export async function deleteCloudCopy(): Promise<boolean> {
+  const settings = await getSettings()
+  if (!settings.cloud.token) return true
+  try {
+    const store = await factory(settings.cloud.token)
+    await store.deleteApp(APP, settings.cloud.deviceId || 'unregistered')
+    return true
+  } catch {
+    return false
+  }
+}
+
+function schedulePush(): void {
+  if (pushTimer) clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => {
+    pushTimer = null
+    void syncNow()
+  }, PUSH_DEBOUNCE_MS)
+}
+
+/** On open, every fifteen minutes, when the network returns, and soon after any change. Returns the stop function. */
+export function startCloud(): () => void {
+  void syncNow()
+  const interval = setInterval(() => void syncNow(), PULL_EVERY_MS)
+  const onOnline = () => void syncNow()
+  window.addEventListener('online', onOnline)
+  const stopOutbox = onOutboxChange(schedulePush)
+  return () => {
+    clearInterval(interval)
+    window.removeEventListener('online', onOnline)
+    stopOutbox()
+    if (pushTimer) clearTimeout(pushTimer)
+    if (retryTimer) clearTimeout(retryTimer)
+  }
+}
+
+/** The status for the screen: the live state, the last sync, the last error, and how much is waiting. */
+export function useCloudStatus(): SyncStatus | undefined {
+  const settings = useLive(getSettings, [])
+  const meta = useLive(getMeta, [])
+  const pending = useLive(() => db.outbox.count(), [])
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const w = () => bump((n) => n + 1)
+    watchers.add(w)
+    return () => void watchers.delete(w)
+  }, [])
+  if (!settings || !meta || pending === undefined) return undefined
+  const hasToken = Boolean(settings.cloud.token)
+  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending }
+}

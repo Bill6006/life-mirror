@@ -3,6 +3,8 @@ import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, P
 import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
+import { CloudScreen } from './cloudScreen'
+import { startCloud } from './cloudSync'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
 import { allCheckIns, getDayContext, getSettings } from './db'
@@ -41,6 +43,7 @@ type View =
   | { kind: 'ladder' }
   | { kind: 'follow' }
   | { kind: 'becoming' }
+  | { kind: 'cloud' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -50,6 +53,8 @@ export function App() {
   const all = useLive(allCheckIns, [])
   const pending = useLive(pendingOffers, [])
   useReminders(settings, all)
+  // The cloud copy: pull on open and every fifteen minutes, push soon after any change; nothing without a token.
+  useEffect(() => startCloud(), [])
 
   useEffect(() => {
     // The phone's back gesture returns to the tabs; ask the browser to keep our storage.
@@ -147,6 +152,8 @@ export function App() {
         return <FollowScreen onClose={closeAll} />
       case 'becoming':
         return <BecomingScreen onClose={closeAll} />
+      case 'cloud':
+        return <CloudScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -182,6 +189,7 @@ export function App() {
             onLegend={() => open({ kind: 'legend' })}
             onPrivate={() => open({ kind: 'private' })}
             onData={() => open({ kind: 'data' })}
+            onCloud={() => open({ kind: 'cloud' })}
           />
         )
     }

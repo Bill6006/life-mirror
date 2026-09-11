@@ -367,3 +367,32 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await expect(page.getByTestId('becoming-study')).toContainText('1 · last')
   await expect(page.locator('#main')).not.toContainText('%')
 })
+
+test('the cloud copy shows its database, stays off without a token, and never touches the network in the pipeline', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', (r) => requests.push(r.url()))
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Cloud copy/ }).click()
+  await expect(page.getByTestId('cloud')).toBeVisible()
+  await expect(page.getByTestId('cloud-url')).toHaveText('libsql://life-record-bill6006.aws-us-east-1.turso.io')
+  await expect(page.getByTestId('cloud-status')).toHaveText('Sync is off until a token exists.')
+  // Opening the app already wrote today's context record, so something can be pending before any tap.
+  const pendingOf = async () => Number(((await page.getByTestId('cloud-pending').textContent()) ?? '').match(/[0-9]+/)?.[0] ?? '0')
+  const before = await pendingOf()
+  await expect(page.getByTestId('sync-now')).toBeDisabled()
+  await expect(page.getByTestId('token-input')).toHaveAttribute('type', 'password')
+  await expect(page.getByTestId('token-keep')).toBeDisabled()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // A check-in queues its changes; without a token they wait on the phone and no request leaves for the database.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Cloud copy/ }).click()
+  await expect(page.getByTestId('cloud-pending')).toContainText(/[0-9]+ pending/)
+  expect(await pendingOf()).toBeGreaterThan(before)
+  expect(requests.some((u) => u.includes('turso.io'))).toBe(false)
+})

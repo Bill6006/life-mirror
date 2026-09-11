@@ -31,6 +31,13 @@ export interface WeekShape {
   soloUntil: string
 }
 
+/** The cloud copy: the token you pasted once and this phone's id. Never exported, never synced, never logged. */
+export interface CloudSettings {
+  token: string | null
+  /** Generated once on this phone; empty until the first sync sets it. */
+  deviceId: string
+}
+
 export interface Settings {
   id: 1
   depth: Depth
@@ -57,6 +64,7 @@ export interface Settings {
   direction: string | null
   /** The one-time ask happened, whether or not a line was written. Never asked again. */
   directionAskedAt: string | null
+  cloud: CloudSettings
   updatedAt: string
 }
 
@@ -83,6 +91,7 @@ export const DEFAULT_SETTINGS: Settings = {
   week: DEFAULT_WEEK,
   direction: null,
   directionAskedAt: null,
+  cloud: { token: null, deviceId: '' },
   updatedAt: '',
 }
 
@@ -102,6 +111,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
       studyNights: { ...DEFAULT_WEEK.studyNights, ...(stored.week?.studyNights ?? {}) },
     },
     reminded: stored.reminded ?? {},
+    cloud: { ...DEFAULT_SETTINGS.cloud, ...(stored.cloud ?? {}) },
   }
 }
 

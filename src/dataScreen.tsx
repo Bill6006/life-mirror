@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { aimsSnapshot } from './aimFlow'
+import { deleteCloudCopy } from './cloudSync'
 import { dayKey } from './blocks'
 import { copy } from './copy'
 import { allCheckIns, allWins, getSettings, privateItems, updateSettings, wipeEverything } from './db'
@@ -21,6 +22,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [failed, setFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [word, setWord] = useState('')
+  const [cloudFailed, setCloudFailed] = useState(false)
   if (!settings || !all || !wins || !items || !aims) return <section class="screen" />
 
   async function exportAll() {
@@ -44,6 +46,12 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   }
 
   async function deleteAll() {
+    // Rule 21: the cloud copy's rows go first; if they cannot be reached, nothing is deleted.
+    setCloudFailed(false)
+    if (!(await deleteCloudCopy())) {
+      setCloudFailed(true)
+      return
+    }
     try {
       await unsubscribePush()
     } catch {
@@ -80,6 +88,12 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
       <h2 class="section">{copy.data.deleteTitle}</h2>
       <div class="card pad">
         <p class="note">{copy.data.deleteNote}</p>
+      {settings.cloud.token && <p class="note faint">{copy.data.deleteCloudFirst}</p>}
+      {cloudFailed && (
+        <p class="note" data-testid="delete-cloud-failed">
+          {copy.data.deleteCloudFailed}
+        </p>
+      )}
         {!deleting ? (
           <div class="actions">
             <button type="button" class="pill-quiet" data-testid="delete-start" onClick={() => setDeleting(true)}>

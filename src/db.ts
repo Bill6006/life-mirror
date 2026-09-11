@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import { compareSlots, parseDay, type Block, type Slot } from './blocks'
+import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, withDefaults, type Settings, type Weekday } from './settings'
 
@@ -181,6 +182,9 @@ export interface RungMark {
 }
 
 class LifeMirrorDB extends Dexie {
+  outbox!: Table<OutboxRow, number>
+  cloudRows!: Table<CloudRowState, [string, string]>
+  cloudMeta!: Table<CloudMeta, string>
   checkins!: Table<CheckIn, number>
   settings!: Table<Settings, number>
   wins!: Table<Win, number>
@@ -227,6 +231,25 @@ class LifeMirrorDB extends Dexie {
       skills: '++id, order',
       rungMarks: '++id, skillId, at',
     })
+    // Phase 8: the outbox every change is queued to, what the cloud copy knows of each row, and the sync state.
+    this.version(5).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
+      studyNights: '++id, day',
+      aims: '++id, kind',
+      skills: '++id, order',
+      rungMarks: '++id, skillId, at',
+      outbox: '++id, [store+key]',
+      cloudRows: '[store+key]',
+      cloudMeta: 'key',
+    })
+    installOutbox(this)
   }
 }
 
@@ -445,10 +468,15 @@ export async function archivePrivateItem(id: number): Promise<void> {
   await db.privateItems.update(id, { archived: 1 })
 }
 
-/** Everything on this phone, gone. Nothing is kept anywhere else, so nothing comes back. */
+/** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta], async () => {
+    // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
+    markSilent()
     await Promise.all([
+      db.outbox.clear(),
+      db.cloudRows.clear(),
+      db.cloudMeta.clear(),
       db.checkins.clear(),
       db.wins.clear(),
       db.privateItems.clear(),
