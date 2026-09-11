@@ -84,7 +84,7 @@ function TodayLine({ ctx }: { ctx: DayContext }) {
   )
 }
 
-export function NowScreen({ onCheckIn, onOpen, onCrisis }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onCrisis: () => void }) {
+export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
   const [tick, setTick] = useState(0)
@@ -224,12 +224,6 @@ export function NowScreen({ onCheckIn, onOpen, onCrisis }: { onCheckIn: (day: st
           </div>
         </>
       )}
-
-      <div class="actions foot">
-        <button type="button" class="textbtn faint" data-testid="crisis-link" onClick={onCrisis}>
-          {copy.crisis.link}
-        </button>
-      </div>
     </section>
   )
 }

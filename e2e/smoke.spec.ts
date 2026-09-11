@@ -89,8 +89,8 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   const summary = page.getByTestId('summary')
   await expect(summary).toBeVisible()
 
-  // Correct one reading: the first row, then the first phrase.
-  await summary.getByRole('button').first().click()
+  // Correct one reading: the first reading row, then the first phrase.
+  await summary.getByTestId('reading-row').first().click()
   await page.getByTestId('anchor').first().click()
   await expect(summary).toBeVisible()
 
@@ -172,7 +172,7 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
   await expect(rows.filter({ hasText: 'Skipped' }).first()).toBeVisible()
 })
 
-test('the evening chips answer from the record, the text line is kept, and the crisis screen is always reachable', async ({ page }) => {
+test('the evening chips answer from the record and the text line is kept', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
@@ -188,15 +188,14 @@ test('the evening chips answer from the record, the text line is kept, and the c
   await expect(page.getByTestId('chip-answer')).toContainText('First time recorded')
   await page.getByTestId('note-input').fill('A line the app had no question for')
   await page.getByTestId('note-input').blur()
-  await page.getByTestId('crisis-link').click()
-  await expect(page.getByTestId('crisis')).toBeVisible()
-  await expect(page.getByText('988', { exact: false }).first()).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('give-back')).toBeVisible()
 
-  await page.goto('./')
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('button', { name: /^If it is urgent/ }).click()
-  await expect(page.getByTestId('crisis')).toBeVisible()
+  // The line survives a relaunch, on the check-in it belongs to.
+  await page.reload()
+  await page.getByRole('button', { name: /Logged/ }).click()
+  await page.getByRole('button', { name: /^Change the extras/ }).click()
+  await expect(page.getByTestId('note-input')).toHaveValue('A line the app had no question for')
 })
 
 test('the mirror draws from the record, and delete everything empties it', async ({ page }) => {

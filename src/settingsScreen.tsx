@@ -53,19 +53,7 @@ function DirectionField({ value, onSave }: { value: string; onSave: (v: string) 
   )
 }
 
-export function SettingsScreen({
-  onWording,
-  onLegend,
-  onPrivate,
-  onData,
-  onCrisis,
-}: {
-  onWording: () => void
-  onLegend: () => void
-  onPrivate: () => void
-  onData: () => void
-  onCrisis: () => void
-}) {
+export function SettingsScreen({ onWording, onLegend, onPrivate, onData }: { onWording: () => void; onLegend: () => void; onPrivate: () => void; onData: () => void }) {
   const settings = useLive(getSettings, [])
   const [perm, setPerm] = useState<Permission>(currentPermission)
   const [copied, setCopied] = useState(false)
@@ -124,12 +112,6 @@ export function SettingsScreen({
       <header class="screen-head">
         <h1 class="eyebrow">{copy.tabs.settings}</h1>
       </header>
-
-      <div class="card">
-        <ul class="rows">
-          <NavRow label={copy.crisis.title} note={copy.crisis.intro} onClick={onCrisis} />
-        </ul>
-      </div>
 
       <h2 class="section">{copy.settings.checkins}</h2>
       <div class="card">

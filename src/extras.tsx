@@ -30,7 +30,7 @@ const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint']
  * tap on Done. "Felt close to God today?" carries its own permanent off switch. The two chips
  * about how today landed are answered at once from your own record.
  */
-export function ExtrasScreen({ day, block, onDone, onCrisis }: { day: string; block: Block; onDone: () => void; onCrisis: () => void }) {
+export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block; onDone: () => void }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
   const settings = useLive(getSettings, [])
   const items = useLive(privateItems, [])
@@ -159,11 +159,6 @@ export function ExtrasScreen({ day, block, onDone, onCrisis }: { day: string; bl
       <button type="button" class="pill-ink" onClick={onDone}>
         {copy.extras.done}
       </button>
-      <div class="actions">
-        <button type="button" class="textbtn faint" data-testid="crisis-link" onClick={onCrisis}>
-          {copy.crisis.link}
-        </button>
-      </div>
     </section>
   )
 }

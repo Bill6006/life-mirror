@@ -836,14 +836,6 @@ a.chip {
   color: var(--ink);
 }
 
-.actions.foot {
-  margin-top: 16px;
-}
-
-a.row {
-  text-decoration: none;
-}
-
 .direction-ask .input {
   margin: 4px 0 8px;
 }

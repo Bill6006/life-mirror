@@ -266,7 +266,7 @@ export function SummaryScreen({
             const p = record.answers[id]
             return (
               <li key={id}>
-                <button type="button" class="row" onClick={() => onChange(id)}>
+                <button type="button" class="row" data-testid="reading-row" onClick={() => onChange(id)}>
                   <span class="row-main">{readingById(id).name}</span>
                   <span class={p ? 'row-side ink' : 'row-side'}>{p ? headword(anchorFor(id, p)) : copy.summary.notLogged}</span>
                   <span class="chev" aria-hidden="true">›</span>

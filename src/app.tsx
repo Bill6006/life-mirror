@@ -3,7 +3,6 @@ import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { copy } from './copy'
-import { CrisisScreen } from './crisis'
 import { DataScreen } from './dataScreen'
 import { allCheckIns, getSettings } from './db'
 import { ExtrasScreen } from './extras'
@@ -35,7 +34,6 @@ type View =
   | { kind: 'data' }
   | { kind: 'catalogue' }
   | { kind: 'history' }
-  | { kind: 'crisis' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -99,14 +97,7 @@ export function App() {
           />
         )
       case 'extras':
-        return (
-          <ExtrasScreen
-            day={view.day}
-            block={view.block}
-            onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })}
-            onCrisis={() => setView({ kind: 'crisis' })}
-          />
-        )
+        return <ExtrasScreen day={view.day} block={view.block} onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })} />
       case 'summary':
         return (
           <SummaryScreen
@@ -131,8 +122,6 @@ export function App() {
         return <CatalogueScreen onClose={closeAll} />
       case 'history':
         return <HistoryScreen onClose={closeAll} />
-      case 'crisis':
-        return <CrisisScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -145,7 +134,6 @@ export function App() {
           <NowScreen
             onCheckIn={(day, block) => open({ kind: 'checkin', day, block })}
             onOpen={(day, block) => open({ kind: 'summary', day, block, fresh: false })}
-            onCrisis={() => open({ kind: 'crisis' })}
           />
         )
       case 'mirror':
@@ -161,7 +149,6 @@ export function App() {
             onLegend={() => open({ kind: 'legend' })}
             onPrivate={() => open({ kind: 'private' })}
             onData={() => open({ kind: 'data' })}
-            onCrisis={() => open({ kind: 'crisis' })}
           />
         )
     }
