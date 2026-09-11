@@ -56,6 +56,11 @@ export function moveById(id: string): Move {
   return m
 }
 
+/** Whether an id names a catalogue move; a rung of the ladder or "nothing" does not. */
+export function hasMove(id: string): boolean {
+  return byId.has(id)
+}
+
 export function movesInFamily(familyId: string): Move[] {
   return moves.filter((m) => m.family === familyId)
 }

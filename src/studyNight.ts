@@ -2,6 +2,7 @@ import { moves, type Move } from './catalogue'
 import { copy } from './copy'
 import type { StudyNight, StudyReason } from './db'
 import { fill } from './format'
+import { sittingOf, smallerRung, type Sitting } from './ladder'
 import { anchorFor, headword, type Answers } from './readings'
 import type { Weekday } from './settings'
 
@@ -24,6 +25,14 @@ export function smallerThan(move: Move): Move | null {
     if (!best || m.minutes > best.minutes) best = m
   }
   return best
+}
+
+/** The smaller version of what the study step offered: a rung in fewer minutes, or the smaller catalogue version. */
+export function smallerOf(s: Sitting): Sitting | null {
+  if (s.kind === 'rung') return smallerRung(s)
+  const m = moves.find((x) => x.id === s.id)
+  const smaller = m ? smallerThan(m) : null
+  return smaller ? sittingOf(smaller) : null
 }
 
 export interface ReasonCheck {

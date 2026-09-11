@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import { AimsOnNow } from './aimsScreen'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { copy } from './copy'
 import { allCheckIns, answeredCount, askedOf, ensureDayContext, getDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
@@ -164,6 +165,8 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
           {studyNights && studyNights.length > 0 && ` · ${fill(copy.study.kept, { kept: String(keptCount(studyNights).kept), total: String(keptCount(studyNights).total) })}`}
         </p>
       )}
+
+      <AimsOnNow offer={offer} showTonight={!settings.hideMoves && Boolean(offer || pickup)} />
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />}

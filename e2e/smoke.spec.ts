@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
-/** Taps the middle phrase of the reading on screen, then waits for the screen to move on: the next reading, the extras, or the card. */
-async function tapAnchor(page: Page): Promise<boolean> {
+/** Taps one phrase of the reading on screen (the middle one unless told otherwise), then waits for the screen to move on: the next reading, the extras, or the card. */
+async function tapAnchor(page: Page, nth = 2): Promise<boolean> {
   // The screen can move on by itself after the last tap (the save is async), so a reading that
   // is gone by the time we look is not an error: report no tap and let the caller look again.
   const title = await page.locator('#ci-title').textContent({ timeout: 1500 }).catch(() => null)
   if (title === null) return false
   try {
-    await page.getByTestId('anchor').nth(2).click({ timeout: 3000 })
+    await page.getByTestId('anchor').nth(nth).click({ timeout: 3000 })
   } catch {
     return false
   }
@@ -17,11 +17,11 @@ async function tapAnchor(page: Page): Promise<boolean> {
 }
 
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
-async function tapThrough(page: Page): Promise<number> {
+async function tapThrough(page: Page, nth = 2): Promise<number> {
   const card = page.getByTestId('give-back')
   const extras = page.getByTestId('extras')
   const ask = page.getByTestId('outcome-ask')
-  const anchor = page.getByTestId('anchor').nth(2)
+  const anchor = page.getByTestId('anchor').nth(nth)
   let taps = 0
   for (let i = 0; i < 24; i++) {
     await expect(card.or(extras).or(ask).or(anchor).first()).toBeVisible()
@@ -36,7 +36,7 @@ async function tapThrough(page: Page): Promise<number> {
       await expect(extras).toBeHidden()
       continue
     }
-    if (await tapAnchor(page)) taps++
+    if (await tapAnchor(page, nth)) taps++
   }
   await expect(card).toBeVisible()
   return taps
@@ -296,4 +296,74 @@ test('Low-demand mode and depth change the check-in at once and persist', async 
   const taps = await tapThrough(page)
   expect(taps).toBe(3)
   await expect(page.getByTestId('give-back').getByTestId('reading-100')).toContainText('3 of 6')
+})
+
+test('aims: a commitment with nothing typed, a step held above the move, Resume asked next time, a ladder moved by tap, counts only', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  // The direction line, asked once, so Becoming has something to show back unchanged.
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+
+  // Aims → add a commitment → the certification. Nothing typed; the step is pre-filled.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-certification').click()
+  await expect(page.getByTestId('aim-card')).toHaveCount(1)
+  await expect(page.getByTestId('aim-step')).toContainText('Write the exact next study step')
+
+  // Now: the lowest phrase on everything, and the step still sits above the move, both named.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page, 0)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('your-aims')).toBeVisible()
+  await expect(page.getByTestId('aim-card')).toBeVisible()
+  await expect(page.getByTestId('tonight')).toBeVisible()
+  await expect(page.getByTestId('differ')).toContainText('on purpose')
+  const stepBox = await page.getByTestId('aim-card').boundingBox()
+  const moveBox = await page.getByTestId('move-card').first().boundingBox()
+  expect(stepBox && moveBox && stepBox.y < moveBox.y).toBe(true)
+
+  // Resume is one tap; the next check-in asks about it, one tap.
+  await page.getByTestId('aim-resume').click()
+  await expect(page.getByTestId('aim-started')).toBeVisible()
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const ask = page.getByTestId('outcome-ask')
+  for (let i = 0; i < 4; i++) {
+    await expect(ask.or(page.getByTestId('anchor').first()).first()).toBeVisible()
+    if (!(await ask.isVisible())) break
+    const title = (await ask.locator('h1').textContent()) ?? ''
+    if (title.includes('Write the exact next study step')) await page.getByTestId('outcome').first().click()
+    else await page.getByRole('button', { name: 'Not now', exact: true }).click()
+    await expect(ask.locator('h1', { hasNotText: title }).or(page.getByTestId('anchor').first()).first()).toBeVisible()
+  }
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Follow-through: counts only, and never a proportion anywhere under Aims.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Follow-through/ }).click()
+  await expect(page.getByTestId('follow-steps')).toContainText('1 started, 1 finished')
+  await expect(page.locator('#main')).not.toContainText('%')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // The proof ladder: a skill typed once on the phone, moved only by tap; the step follows it.
+  await page.getByRole('button', { name: /^The proof ladder/ }).click()
+  await page.getByTestId('skill-input').fill('Subnetting')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByTestId('skill-row')).toContainText('Not started')
+  await page.getByTestId('rung-up').click()
+  await expect(page.getByTestId('skill-row')).toContainText('Watched or read')
+  await expect(page.locator('#main')).not.toContainText('%')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('aim-step')).toContainText('Subnetting · practise it')
+
+  // Becoming: the direction line unchanged, and a dated count from what was marked done.
+  await page.getByRole('button', { name: /^Becoming/ }).click()
+  await expect(page.getByTestId('direction-line')).toHaveText('One line, mine')
+  await expect(page.getByTestId('becoming-study')).toContainText('1 · last')
+  await expect(page.locator('#main')).not.toContainText('%')
 })

@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks'
+import { aimsSnapshot } from './aimFlow'
 import { dayKey } from './blocks'
 import { copy } from './copy'
 import { allCheckIns, allWins, getSettings, privateItems, updateSettings, wipeEverything } from './db'
@@ -14,19 +15,20 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const all = useLive(allCheckIns, [])
   const wins = useLive(allWins, [])
   const items = useLive(privateItems, [])
+  const aims = useLive(aimsSnapshot, [])
   const [includePrivate, setIncludePrivate] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [word, setWord] = useState('')
-  if (!settings || !all || !wins || !items) return <section class="screen" />
+  if (!settings || !all || !wins || !items || !aims) return <section class="screen" />
 
   async function exportAll() {
-    if (!settings || !all || !wins || !items) return
+    if (!settings || !all || !wins || !items || !aims) return
     setBusy(true)
     setFailed(false)
     try {
-      const bundle = buildExport(all, wins, items, settings, { includePrivate })
+      const bundle = buildExport(all, wins, items, settings, { includePrivate }, aims)
       const stamp = dayKey(new Date())
       const files = [
         new File([bundle.json], `life-mirror-${stamp}.json`, { type: 'application/json' }),

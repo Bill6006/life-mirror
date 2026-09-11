@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { askedOf, type CheckIn, type PrivateItem, type Win } from './db'
+import { askedOf, type Aim, type CheckIn, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
 import type { Settings } from './settings'
 
@@ -8,6 +8,13 @@ import type { Settings } from './settings'
 
 export interface ExportOptions {
   includePrivate: boolean
+}
+
+/** The aims as recorded: commitments, the skills you typed, and every mark that moved one. */
+export interface AimsData {
+  aims: readonly Aim[]
+  skills: readonly Skill[]
+  marks: readonly RungMark[]
 }
 
 export interface ExportBundle {
@@ -24,7 +31,7 @@ function yesNo(v: boolean): string {
   return v ? 'yes' : ''
 }
 
-export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions): ExportBundle {
+export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData): ExportBundle {
   const exportedAt = new Date().toISOString()
   const names = new Map(items.map((it) => [String(it.id), it.name]))
   const sorted = [...all].sort(compareSlots)
@@ -65,6 +72,15 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         extras: settings.extras,
       },
       ...(opts.includePrivate ? { privateItems: items.map((it) => it.name) } : {}),
+      ...(aims
+        ? {
+            aims: {
+              commitments: aims.aims.map((a) => ({ kind: a.kind, step: a.stepMoveId, createdAt: a.createdAt, archivedAt: a.archivedAt })),
+              skills: aims.skills.map((s) => ({ id: s.id, name: s.name, order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
+              ladderMarks: aims.marks.map((m) => ({ skill: m.skillId, rung: m.rung, at: m.at, via: m.via })),
+            },
+          }
+        : {}),
     },
     null,
     2,

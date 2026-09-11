@@ -74,7 +74,7 @@ export function HistoryScreen({ onClose }: { onClose: () => void }) {
                     {moveName}
                     <span class="sub">
                       {formatDayShort(offer.day)} · {copy.blocks[offer.block]}
-                      {offer.kind === 'pickup' ? ` · ${h.pickup}` : offer.kind === 'study' ? ` · ${h.study}` : ` · ${readingById(offer.target).name}`}
+                      {offer.kind === 'pickup' ? ` · ${h.pickup}` : offer.kind === 'study' ? ` · ${h.study}` : offer.kind === 'step' ? ` · ${h.step}` : offer.kind === 'unblock' ? ` · ${h.unblock}` : ` · ${readingById(offer.target).name}`}
                       {offer.coinFlip ? ` · ${h.coinFlip}` : ''} · {fill(h.offer, { id: String(offer.id) })} ·{' '}
                       {card ? fill(h.card, { id: String(card.id), window: copy.catalogue.windows[card.window as keyof typeof copy.catalogue.windows] ?? card.window }) : h.noCard} ·{' '}
                       {outcome ? fill(h.outcome, { id: String(outcome.id) }) : h.noOutcome}

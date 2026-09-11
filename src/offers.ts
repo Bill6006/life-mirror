@@ -1,5 +1,5 @@
 import type { Block } from './blocks'
-import { moveById, moves, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, moveById, moves, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band, type Stance } from './score'
@@ -75,7 +75,8 @@ export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
   if (move.conflicts.some((c) => blocked.has(c))) return true
   for (const id of blocked) {
-    if (id === NOTHING) continue
+    // "Nothing today" and a rung of the proof ladder are not catalogue moves and conflict with nothing.
+    if (id === NOTHING || !hasMove(id)) continue
     if (moveById(id).conflicts.includes(move.id)) return true
   }
   return false

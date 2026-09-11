@@ -282,6 +282,10 @@ main {
   border-bottom: 1px solid currentColor;
 }
 
+.textbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .textbtn {
   min-height: 48px;
   padding: 0 4px;
@@ -1218,4 +1222,50 @@ code {
 .tab.is-active {
   color: var(--ink);
   box-shadow: inset 0 1px 0 var(--ink);
+}
+
+/* Aims: the protected step above the move, the ladder, the counts */
+.aim-card .move-title {
+  font-size: 22px;
+}
+.aim-card .move-state {
+  margin: 4px 0 0;
+}
+.differ {
+  margin: -4px 0 12px;
+}
+.skill-row {
+  display: block;
+  padding: 12px 0;
+}
+.skill-row .row-main {
+  display: block;
+}
+.skill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 2px 0 0;
+}
+.ladder-counts {
+  margin: 0 0 12px;
+}
+.count-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.count-row:last-child {
+  border-bottom: 0;
+}
+.count-row .row-side {
+  white-space: normal;
+  text-align: right;
+}
+.direction-line {
+  margin: 0 0 16px;
+  font-size: 20px;
+  color: var(--ink);
 }

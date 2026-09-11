@@ -1,6 +1,7 @@
 import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
 import { beliefFor, choose, type Rng } from './bandit'
-import { LADDERS, moveById, type Move } from './catalogue'
+import { activeAims, liveSkills, markRungByStep, rungMarks } from './aimFlow'
+import { LADDERS, moveById } from './catalogue'
 import {
   db,
   ensureDayContext,
@@ -17,6 +18,7 @@ import {
   type WinOutcome,
 } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, whyNotThat, windowFor, type TodayState } from './offers'
+import { nextStep, parseRungId, rungStep, sittingOf, type Sitting } from './ladder'
 import { minutesOf, type Settings, type Weekday } from './settings'
 import { studyVersions, type ReasonCheck } from './studyNight'
 
@@ -226,8 +228,17 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
   })
 }
 
-/** The study version to offer tonight: one of the study moves not offered today, drawn by the same bandit. */
-export async function studyOfferMove(day: string, rng?: Rng): Promise<Move | null> {
+/**
+ * What the study step offers tonight: with the certification among your aims, the proof
+ * ladder's next rung, sized to one sitting; otherwise one of the catalogue's study versions not
+ * offered today, drawn by the same bandit.
+ */
+export async function studyOfferSitting(day: string, rng?: Rng): Promise<Sitting | null> {
+  const certification = (await activeAims()).find((a) => a.kind === 'certification')
+  if (certification) {
+    const next = nextStep(await liveSkills(), await rungMarks())
+    if (next) return rungStep(next.skill, next.rung)
+  }
   const today = await db.offers.where('day').equals(day).toArray()
   const versions = studyVersions(today.map((o) => o.moveId))
   const choice = choose(
@@ -235,7 +246,7 @@ export async function studyOfferMove(day: string, rng?: Rng): Promise<Move | nul
     (id) => beliefFor(id, 'study:evening'),
     rng,
   )
-  return choice ? moveById(choice.id) : null
+  return choice ? sittingOf(moveById(choice.id)) : null
 }
 
 /**
@@ -244,11 +255,11 @@ export async function studyOfferMove(day: string, rng?: Rng): Promise<Move | nul
  */
 export function recordStudyNight(
   day: string,
-  offered: Move,
+  offered: Sitting,
   decision: StudyDecision,
   reason: StudyReason | null,
   check: ReasonCheck,
-  smaller: Move | null,
+  smaller: Sitting | null,
 ): Promise<void> {
   return db.transaction('rw', [db.offers, db.studyNights], async () => {
     const now = new Date().toISOString()
@@ -264,6 +275,7 @@ export function recordStudyNight(
       band: '',
       reading: 0,
       moveId: started?.id ?? offered.id,
+      label: started?.name ?? offered.name,
       cardId: null,
       candidates: [offered.id],
       coinFlip: false,
@@ -301,11 +313,14 @@ export async function skipOffer(offer: Offer): Promise<Offer | null> {
 
 /** What happened, in one tap, kept apart from what was offered. Null closes the question without an answer. */
 export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }): Promise<void> {
-  return db.transaction('rw', [db.offers, db.outcomes], async () => {
+  return db.transaction('rw', [db.offers, db.outcomes, db.rungMarks], async () => {
     const now = new Date().toISOString()
     const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome }
     await db.outcomes.add(record)
     await db.offers.update(offer.id as number, { closedAt: now })
+    // Done on a rung's step is your tap that moves the skill up the proof ladder.
+    const rung = parseRungId(offer.moveId)
+    if (rung && outcome === 'done') await markRungByStep(rung.skillId, rung.rung, now)
   })
 }
 
@@ -320,6 +335,11 @@ export function nameOf(moveId: string, nothingLabel: string): string {
   return moveId === NOTHING ? nothingLabel : moveById(moveId).name
 }
 
+/** What an offer was, in words: its label when it carries one (a rung of the ladder), else the move's name. */
+export function offerName(offer: Pick<Offer, 'moveId' | 'label'>, nothingLabel: string): string {
+  return offer.label ?? nameOf(offer.moveId, nothingLabel)
+}
+
 /** Every offer, newest first, with its card and its outcome as separate records. */
 export async function offerHistory(nothingLabel: string): Promise<HistoryEntry[]> {
   const offers = await db.offers.toArray()
@@ -330,7 +350,7 @@ export async function offerHistory(nothingLabel: string): Promise<HistoryEntry[]
     offer,
     card: offer.cardId === null ? null : (cards.get(offer.cardId) ?? null),
     outcome: outcomes.find((x) => x.offerId === offer.id) ?? null,
-    moveName: nameOf(offer.moveId, nothingLabel),
+    moveName: offerName(offer, nothingLabel),
   }))
 }
 

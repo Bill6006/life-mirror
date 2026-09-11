@@ -71,7 +71,7 @@ export interface PrivateItem {
   archived: 0 | 1
 }
 
-export type OfferKind = 'block' | 'pickup' | 'study'
+export type OfferKind = 'block' | 'pickup' | 'study' | 'step' | 'unblock'
 export type OutcomeWhy = 'noTime' | 'didntWant'
 export type StudyReason = 'tired' | 'tooMuch' | 'noTime' | 'didntWant'
 export type StudyDecision = 'started' | 'smaller' | 'notNow'
@@ -104,8 +104,10 @@ export interface Offer {
   stance: string
   band: string
   reading: number
-  /** A catalogue id, or "nothing" for the null offer. */
+  /** A catalogue id, "nothing" for the null offer, or a rung of the proof ladder ("rung:skill:rung"). */
   moveId: string
+  /** What was offered, in words, when the id alone cannot say (a rung of the ladder). */
+  label?: string
   cardId: number | null
   /** The candidate set the draw was made from. */
   candidates: string[]
@@ -148,6 +150,36 @@ export interface Outcome {
   passiveOutcome: 'done' | 'no' | null
 }
 
+export type AimKind = 'certification' | 'person' | 'practice'
+
+/** A commitment you chose, with nothing to type: its kind, and for a person or a practice the catalogue move that is its step. */
+export interface Aim {
+  id?: number
+  kind: AimKind
+  /** Null for the certification, whose step comes from the ladder. */
+  stepMoveId: string | null
+  createdAt: string
+  archivedAt: string | null
+}
+
+/** A skill on the proof ladder, typed once on this phone. */
+export interface Skill {
+  id?: number
+  name: string
+  order: number
+  createdAt: string
+  archivedAt: string | null
+}
+
+/** One tap that moved a skill to a rung: by Done on its step, or by hand on the ladder. A lower rung later is a correction. */
+export interface RungMark {
+  id?: number
+  skillId: number
+  rung: number
+  at: string
+  via: 'tap' | 'step'
+}
+
 class LifeMirrorDB extends Dexie {
   checkins!: Table<CheckIn, number>
   settings!: Table<Settings, number>
@@ -158,6 +190,9 @@ class LifeMirrorDB extends Dexie {
   outcomes!: Table<Outcome, number>
   days!: Table<DayContext, string>
   studyNights!: Table<StudyNight, number>
+  aims!: Table<Aim, number>
+  skills!: Table<Skill, number>
+  rungMarks!: Table<RungMark, number>
   constructor() {
     super('life-mirror')
     this.version(1).stores({ checkins: '++id, &[day+block], day, completedAt' })
@@ -177,6 +212,20 @@ class LifeMirrorDB extends Dexie {
       outcomes: '++id, offerId, day, moveId',
       days: 'day',
       studyNights: '++id, day',
+    })
+    this.version(4).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
+      studyNights: '++id, day',
+      aims: '++id, kind',
+      skills: '++id, order',
+      rungMarks: '++id, skillId, at',
     })
   }
 }
@@ -398,7 +447,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone. Nothing is kept anywhere else, so nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks], async () => {
     await Promise.all([
       db.checkins.clear(),
       db.wins.clear(),
@@ -409,6 +458,9 @@ export function wipeEverything(): Promise<void> {
       db.outcomes.clear(),
       db.days.clear(),
       db.studyNights.clear(),
+      db.aims.clear(),
+      db.skills.clear(),
+      db.rungMarks.clear(),
     ])
   })
 }
