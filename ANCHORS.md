@@ -84,10 +84,10 @@ _Holding attention_
 
 _Right now_
 
-- Connected — people feel close
+- Connected — or fine on my own
 - Faint — a small wish for company
 - Some — I'd like someone around
-- Alone — nobody feels close today
+- Lonely — nobody feels close
 - Cut off — alone even around people
 
 ## Social energy
