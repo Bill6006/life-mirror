@@ -5,7 +5,7 @@ import { updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatTime, formatWhen } from './format'
 import { useLive } from './live'
 import { privateAssociationsToday } from './learningFlow'
-import { cardById, doneAvailableAt, nameOf, offerCounts, outcomeFor, recordDoneNow } from './offerFlow'
+import { cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
 import { INGREDIENTS } from './score'
@@ -45,14 +45,13 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
   // The outcome logged for this offer: from the card at the moment, or at the next check-in.
   const logged = useLive(() => outcomeFor(offer.id), [offer.id])
   const known = outcome ?? logged ?? null
-  // The Done tap opens once the move's stated minutes have passed; the clock is read again every so often.
+  // The Done tap opens once the move's stated minutes have passed and closes with the block; the clock is read again every so often.
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 15_000)
     return () => clearInterval(id)
   }, [])
-  const availableAt = doneAvailableAt(offer)
-  const canDone = !compact && !known && offer.closedAt === null && offer.skippedAt === null && availableAt !== null && Date.now() >= availableAt
+  const canDone = !compact && !known && offer.closedAt === null && offer.skippedAt === null && doneOpen(offer)
 
   // Once logged, the card is a fact line: no box, nothing sits there unticked.
   if (!compact && known && known.outcome) {

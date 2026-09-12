@@ -57,11 +57,25 @@ export function doneAvailableAt(offer: Pick<Offer, 'at' | 'moveId'>): number | n
 }
 
 /**
+ * Whether the Done tap is open: the move's minutes have passed and the offer's block is still on.
+ * Once the block is over, the next check-in is the only way to record the move, so a later tap
+ * never writes a false time.
+ */
+export function doneOpen(offer: Pick<Offer, 'at' | 'moveId' | 'day' | 'block'>, now: Date = new Date()): boolean {
+  const availableAt = doneAvailableAt(offer)
+  if (availableAt === null || now.getTime() < availableAt) return false
+  const slot = blockAt(now)
+  return slot.day === offer.day && slot.block === offer.block
+}
+
+/**
  * Done, tapped on the card at the moment: the outcome as its own record with its own timestamp, in
  * the block the tap fell in. The offer is not touched; the next check-in sees the record and does not ask.
+ * Nothing is written once the block is over.
  */
 export function recordDoneNow(offer: Offer, now: Date = new Date()): Promise<void> {
   return db.transaction('rw', db.outcomes, async () => {
+    if (!doneOpen(offer, now)) return
     const existing = await db.outcomes.where('offerId').equals(offer.id as number).first()
     if (existing) return
     const slot = blockAt(now)

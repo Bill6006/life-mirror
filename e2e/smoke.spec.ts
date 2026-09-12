@@ -592,3 +592,17 @@ test('a Done tap on the card, once the move’s minutes have passed, writes the 
   await page.getByRole('button', { name: /^History/ }).click()
   await expect(page.getByTestId('history-row').filter({ hasText: 'Outcome' }).first()).toBeVisible()
 })
+
+test('the Done tap closes with its block: after that, only the next check-in records the move', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 12, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('move-card')).toBeVisible()
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await expect(page.getByTestId('move-done')).toHaveCount(0)
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await expect(page.getByTestId('outcome-ask')).toBeVisible()
+})
