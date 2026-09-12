@@ -9,7 +9,7 @@
   --ground: #14171f;
   --ink: #e9eaee;
   --muted: #9aa0ad;
-  --faint: #6b7180;
+  --faint: #7d8494;
   --hair: rgba(255, 255, 255, 0.09);
   --hair-2: rgba(255, 255, 255, 0.16);
   --surface: rgba(255, 255, 255, 0.025);
@@ -394,14 +394,36 @@ main {
   letter-spacing: 0.04em;
 }
 
+/* The five band names under the track, one fifth each; a two-word name takes two lines so nothing runs together at 390 pixels. */
+.scale-bands {
+  display: flex;
+  margin: -4px 0 0;
+  padding: 0 2.5%;
+  list-style: none;
+}
+
 .scale-band {
-  font-size: 9.5px;
-  fill: var(--faint);
-  letter-spacing: 0.1em;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  color: var(--faint);
 }
 
 .scale-band.is-active {
-  fill: var(--ink);
+  color: var(--ink);
+}
+
+.scale-band.is-active.is-firing {
+  color: var(--accent);
+}
+
+.hero-stance.is-firing {
+  color: var(--accent);
 }
 
 .scale-mark {
@@ -843,7 +865,7 @@ a.chip {
 
 .day {
   flex: 1;
-  min-height: 44px;
+  min-height: 48px;
   border: 1px solid var(--hair);
   border-radius: 10px;
   background: none;
@@ -888,81 +910,6 @@ a.chip {
 }
 
 /* Coming panels for tabs not built yet */
-.panel {
-  padding: 20px;
-}
-
-.sketch {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin: 0 0 20px;
-}
-
-.sk-line {
-  fill: none;
-  stroke: var(--hair-2);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.sk-dot {
-  fill: var(--faint);
-}
-
-.sk-cell {
-  fill: var(--muted);
-}
-
-.sk-accent {
-  fill: var(--accent);
-}
-
-.panel-title {
-  margin: 0 0 8px;
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-
-.panel-body {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.panel-when {
-  margin: 0;
-  font-size: 15px;
-  color: var(--ink);
-}
-
-.phases {
-  display: flex;
-  gap: 4px;
-  margin: 22px 0 8px;
-}
-
-.phase {
-  flex: 1;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--hair);
-}
-
-.phase.is-done {
-  background: var(--muted);
-}
-
-.phase.is-this {
-  background: var(--accent);
-}
-
-.phases-label {
-  margin: 0;
-  font-size: 12px;
-  color: var(--faint);
-}
 
 /* Check-in */
 .checkin .screen-head {
@@ -1056,7 +1003,7 @@ a.chip {
 }
 
 .seg-opt {
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 16px;
   border: 1px solid var(--hair);
   border-radius: 999px;
@@ -1130,7 +1077,7 @@ a.chip {
 
 .input,
 input[type="time"] {
-  min-height: 44px;
+  min-height: 48px;
   padding: 8px 12px;
   border: 1px solid var(--hair-2);
   border-radius: 10px;
@@ -1278,7 +1225,7 @@ code {
 .move-status {
   margin: 0 0 6px;
   font-size: 14px;
-  color: var(--accent);
+  color: var(--muted);
 }
 .prior {
   margin: 8px 0;
@@ -1310,4 +1257,12 @@ code {
 }
 .conclusion .calc-line {
   margin: 0 0 4px;
+}
+
+/* Rule 15: tappable chips are forty-eight pixels tall; the read-only context chips are not targets */
+a.chip,
+button.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
 }

@@ -65,7 +65,7 @@ export function StudyNightStep({ day, block, onDone }: { day: string; block: Blo
     setReason(why)
     setCheck(result)
     setPattern(found)
-    if (result.supported === false && smaller) return setStage('checked')
+    if (result.supported === false) return setStage('checked')
     if (found) return setStage('pattern')
     finish('notNow', why, result)
   }
@@ -116,16 +116,25 @@ export function StudyNightStep({ day, block, onDone }: { day: string; block: Blo
         </>
       )}
 
-      {stage === 'checked' && reason && smaller && (
+      {stage === 'checked' && reason && (
         <>
           <div class="calc" data-testid="study-check">
             <p class="calc-line ink">{fill(c.said, { reason: c.reasons[reason].toLowerCase(), evidence: check.evidence ?? '' })}</p>
             {pattern && <p class="calc-line">{pattern}</p>}
           </div>
-          <h1 class="title">{smallerTitle(smaller)}</h1>
-          <p class="note">{smaller.what}</p>
-          <p class="note faint">{fill(c.sized, { n: String(smaller.minutes) })}</p>
-          <button type="button" class="pill-ink" data-testid="study-start-smaller" onClick={() => finish('smaller', reason, check)}>
+          {smaller ? (
+            <>
+              <h1 class="title">{smallerTitle(smaller)}</h1>
+              <p class="note">{smaller.what}</p>
+              <p class="note faint">{fill(c.sized, { n: String(smaller.minutes) })}</p>
+            </>
+          ) : (
+            <>
+              <h1 class="title">{sitting.name}</h1>
+              <p class="note faint">{c.smallest}</p>
+            </>
+          )}
+          <button type="button" class="pill-ink" data-testid="study-start-smaller" onClick={() => finish(smaller ? 'smaller' : 'started', reason, check)}>
             {c.start}
           </button>
           <div class="actions">

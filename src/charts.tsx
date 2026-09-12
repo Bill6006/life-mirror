@@ -5,7 +5,7 @@ import type { ContextPoint, DayValues } from './series'
 
 // Hand-drawn SVG, hairlines throughout, the accent for now. Gaps stay gaps.
 
-const BAND_LINES = [25, 50, 75]
+const BAND_LINES = [20, 40, 60, 80]
 
 /** Today's trace: the reading by block on the 0 to 100 scale, one warm mark on the latest, an optional context overlay. */
 export function Trace({ day, overlay, latest }: { day: DayValues; overlay: ContextPoint[] | null; latest: Block | null }) {
@@ -46,7 +46,7 @@ export function Trace({ day, overlay, latest }: { day: DayValues; overlay: Conte
         <line key={v} class="ch-band" x1={left} x2={right} y1={y(v)} y2={y(v)} />
       ))}
       <line class="ch-axis" x1={left} x2={right} y1={bottom} y2={bottom} />
-      {[0, 50, 100].map((v) => (
+      {[0, ...BAND_LINES, 100].map((v) => (
         <text key={v} class="ch-num" x={left - 6} y={y(v) + 3.5} text-anchor="end">
           {v}
         </text>

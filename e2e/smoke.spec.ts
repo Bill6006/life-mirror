@@ -82,13 +82,19 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   // The card: the reading out of 100 with its recipe, and the change since last time.
   const card = page.getByTestId('give-back')
   await expect(card.getByTestId('reading-100')).toContainText('50')
-  await expect(card.getByTestId('stance')).toHaveText('Stabilize')
+  await expect(card.getByTestId('stance')).toHaveText('Getting by')
+  await expect(card.getByTestId('stance')).toHaveAttribute('data-band', 'gettingBy')
   await expect(card.getByTestId('reading-100')).toContainText(/6 of 6 ingredients · equal weights/)
   await expect(card.getByText(/first reading/)).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
-  // Now carries the same reading.
+  // Now carries the same reading, on a scale that reads as five bands with both endpoints shown.
   await expect(page.getByTestId('reading-100')).toContainText('50')
+  const hero = page.getByTestId('reading-100')
+  await expect(hero.getByTestId('scale-band')).toHaveCount(5)
+  await expect(hero.getByTestId('scale-num').first()).toHaveText('0')
+  await expect(hero.getByTestId('scale-num').last()).toHaveText('100')
+  await expect(hero.getByTestId('scale-band').filter({ hasText: 'GETTING BY' })).toHaveClass(/is-active/)
   await expect(page.getByRole('button', { name: /Logged/ })).toBeVisible()
 
   // Relaunch: every answer is still there.
@@ -216,7 +222,8 @@ test('the evening chips answer from the record and the text line is kept', async
   await page.getByTestId('study-not-now').click()
   await page.getByTestId('study-reason-tired').click()
   await expect(page.getByTestId('study-check')).toContainText('You said tired. Tonight Energy reads Even.')
-  await expect(page.getByText(/instead\?$/)).toBeVisible()
+  // The smaller version is offered when one exists; the smallest version says so instead of going quiet.
+  await expect(page.getByText('instead?').or(page.getByText('This is already the smallest version'))).toBeVisible()
   await page.getByTestId('study-not-now-final').click()
   await expect(page.getByTestId('give-back')).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()

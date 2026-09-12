@@ -4,7 +4,7 @@ import { askedOf, type CheckIn } from './db'
 import { fill, formatDayShort, formatTime } from './format'
 import { anchorFor, headword, readingById } from './readings'
 import { Scale } from './scale'
-import { INGREDIENTS, latestContext, latestFullReading, readingOf, todayGlance, TOTAL_INGREDIENTS, type Reading100 } from './score'
+import { bandOf, INGREDIENTS, latestContext, latestFullReading, readingOf, todayGlance, TOTAL_INGREDIENTS, type Reading100 } from './score'
 
 // The reading out of 100 and what sits beside it. Everything derived is in the calculation
 // register (the thin rule on the left); the context values are facts.
@@ -24,11 +24,12 @@ function answeredIngredients(c: CheckIn): number {
 }
 
 function Value({ reading }: { reading: Reading100 }) {
+  const band = bandOf(reading.value)
   return (
     <p class="hero-value">
       <span class="hero-num">{reading.value}</span>
-      <span class="hero-stance" data-testid="stance">
-        {copy.stances[reading.stance]}
+      <span class={band === 'firing' ? 'hero-stance is-firing' : 'hero-stance'} data-testid="stance" data-band={band}>
+        {copy.bands[band]}
       </span>
     </p>
   )

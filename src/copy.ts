@@ -21,6 +21,13 @@ export const copy = {
     Stabilize: 'Stabilize',
     Build: 'Build',
   },
+  bands: {
+    empty: 'Empty',
+    wornDown: 'Worn down',
+    gettingBy: 'Getting by',
+    solid: 'Solid',
+    firing: 'Firing',
+  },
   now: {
     notLogged: 'Not logged yet',
     checkIn: 'Check in',
@@ -55,6 +62,7 @@ export const copy = {
     evidence: '{reading} reads {phrase}',
     smaller: '{name} instead?',
     smallerMinutes: '{n} minutes of it instead?',
+    smallest: 'This is already the smallest version. It stays on offer; you decide.',
     patternWeekday: "You've said {reason} the last {n} {weekday}.",
     patternAll: "You've said {reason} the last {n} study nights.",
     continue: 'Continue',
@@ -657,7 +665,7 @@ export const copy = {
     dataNote: 'The phone is the source of truth. A copy syncs to a database you control once you paste its token under Cloud copy; no other party ever receives it. Nothing else leaves the phone but the ping address, if you set one up, and whatever you choose to export.',
     cloudRow: 'Cloud copy',
     cloudRowNote: 'Paste the token once; the copy syncs on its own.',
-    phase: 'Phase 12 of the build plan: testing smarter.',
+    phase: 'Phase 13 of the build plan: design pass.',
   },
   private: {
     title: 'Private',
@@ -705,8 +713,8 @@ export const copy = {
     recipe: 'The reading out of 100',
     recipeNote:
       'Six readings have a clear better direction: mood, energy and focus up; stress, overwhelm and irritation down. Each phrase maps to 0, 25, 50, 75 or 100, reversed where lower is better. The reading is their equal-weight mean; every block asks all six, and a block missing any of them reads Incomplete, never a number. Weights stay equal until a learned weighting clears the bar in Phase 10.',
-    stances: 'Stances',
-    stancesNote: '0 to 24 Protect · 25 to 49 Recover · 50 to 74 Stabilize · 75 to 100 Build',
+    stances: 'The five bands',
+    stancesNote: '0 to 19 Empty · 20 to 39 Worn down · 40 to 59 Getting by · 60 to 79 Solid · 80 to 100 Firing. Descriptions of a state, never a verdict. From 80 the band’s name turns the accent; the number stays white.',
     context: 'Context',
     contextNote: 'Hunger, sleep, confidence, loneliness and social energy sit beside the reading. They never enter it.',
     silence: 'Silence',
