@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, PickStepScreen } from './aimsScreen'
+import { HerPickScreen, HerScreen } from './herScreen'
 import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
@@ -48,6 +49,8 @@ type View =
   | { kind: 'ladder' }
   | { kind: 'follow' }
   | { kind: 'becoming' }
+  | { kind: 'her' }
+  | { kind: 'herPick' }
   | { kind: 'cloud' }
   | { kind: 'evidence' }
   | { kind: 'weekly' }
@@ -172,6 +175,10 @@ export function App() {
         return <FollowScreen onClose={closeAll} />
       case 'becoming':
         return <BecomingScreen onClose={closeAll} />
+      case 'her':
+        return <HerScreen onPick={() => setView({ kind: 'herPick' })} onClose={closeAll} />
+      case 'herPick':
+        return <HerPickScreen onClose={() => setView({ kind: 'her' })} />
       case 'cloud':
         return <CloudScreen onClose={closeAll} />
       case 'evidence':
@@ -206,6 +213,7 @@ export function App() {
             onLadder={() => open({ kind: 'ladder' })}
             onFollow={() => open({ kind: 'follow' })}
             onBecoming={() => open({ kind: 'becoming' })}
+            onHer={() => open({ kind: 'her' })}
           />
         )
       case 'settings':

@@ -51,6 +51,10 @@
     {
       "id": "setup",
       "name": "Setup moves"
+    },
+    {
+      "id": "fatherhood",
+      "name": "Fatherhood"
     }
   ],
   "moves": [
@@ -5251,6 +5255,230 @@
         "note": "The recovery cost is measured; the gap is the untested remedy; about a fifth of a step on social energy next morning"
       },
       "passive": true
+    },
+    {
+      "id": "practise-one-of-her-skills",
+      "name": "Practise one of her skills together",
+      "family": "fatherhood",
+      "what": "Pick one skill from her list under Aims → Her and do it side by side for ten minutes, then count what she did and how much help she needed. Teaching on purpose: time with her, no agenda, is a different move and stays one.",
+      "source": {
+        "who": "CDC",
+        "what": "Learn the Signs. Act Early. tips and activities for 4 years and 5 years: each milestone practised in everyday play with a parent",
+        "year": 2022,
+        "strength": "practice"
+      },
+      "minutes": 10,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "flashcards",
+        "a drill",
+        "homework at four"
+      ],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection",
+          "mastery"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.25,
+        "note": "CDC 2022 tips, practice evidence; on your own mood, about a quarter of a step this evening, read from time with her"
+      }
+    },
+    {
+      "id": "story-what-happens-next",
+      "name": "One story, and she tells what happens next",
+      "family": "fatherhood",
+      "what": "Read one short book she knows and stop before the turn: she says what comes next, then tells the whole thing back with two events. Ten minutes, her words more than yours.",
+      "source": {
+        "who": "Mol, Bus, de Jong and Smeets",
+        "what": "Meta-analysis of dialogic parent-child book reading across 16 studies: the child answering and telling during the story lifts expressive vocabulary",
+        "year": 2008,
+        "strength": "moderate"
+      },
+      "minutes": 10,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "reading to her while she listens",
+        "a bedtime story with no questions"
+      ],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection",
+          "mastery"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.25,
+        "note": "Mol and colleagues 2008 meta-analysis on her vocabulary; on your own mood, about a quarter of a step this evening"
+      }
+    },
+    {
+      "id": "chore-together",
+      "name": "One small chore together",
+      "family": "fatherhood",
+      "what": "Matching socks or clearing the table after eating, her hands on it and you beside her, ten minutes. The chore gets done and she did it.",
+      "source": {
+        "who": "CDC",
+        "what": "Learn the Signs. Act Early. tips for 5 years: simple chores at home done together, matching socks or clearing the table",
+        "year": 2022,
+        "strength": "practice"
+      },
+      "minutes": 10,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "doing the chore yourself while she watches"
+      ],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection",
+          "mastery"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "CDC 2022 tips, practice evidence; on your own mood, about a fifth of a step this evening"
+      }
+    },
+    {
+      "id": "game-with-turns",
+      "name": "A game with rules, turns taken",
+      "family": "fatherhood",
+      "what": "A short board or card game with one rule and turns, ten minutes. Counting the spaces counts to ten on the way, and waiting for a turn is the skill.",
+      "source": {
+        "who": "Ramani and Siegler",
+        "what": "Randomised trial of a number board game played with an adult over four short sessions: lasting gains in counting and number knowledge in preschoolers",
+        "year": 2008,
+        "strength": "moderate"
+      },
+      "minutes": 10,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "a screen game",
+        "a race with no rule"
+      ],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection",
+          "mastery"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.25,
+        "note": "Ramani and Siegler 2008 on her counting; on your own mood, about a quarter of a step this evening"
+      }
     }
   ],
   "learnedTags": [

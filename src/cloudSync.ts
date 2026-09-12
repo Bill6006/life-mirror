@@ -85,7 +85,7 @@ export async function ensureDeviceId(): Promise<string> {
 }
 
 function keyFor(store: string, id: string): string | number {
-  return store === 'days' ? id : Number(id)
+  return store === 'days' || store === 'herSkills' ? id : Number(id)
 }
 
 /** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. */

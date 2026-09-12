@@ -1266,3 +1266,8 @@ button.chip {
   align-items: center;
   min-height: 48px;
 }
+
+/* Phase F: the count and rung pickers open under a skill row */
+.her-pick {
+  margin-top: 8px;
+}

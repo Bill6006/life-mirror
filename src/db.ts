@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import type { HelpLevel, HerRung } from './her'
 import { compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -288,7 +289,27 @@ export interface RungMark {
   via: 'tap' | 'step'
 }
 
+/** A skill from the checklists you chose to watch (Phase F). Its rung moves only by your tap; no count moves it. */
+export interface HerSkill {
+  skillId: string
+  rung: HerRung
+  addedAt: string
+  rungAt: string
+  archivedAt: string | null
+}
+
+/** One moment with her, dated: on its own, or one skill she did and how much help she needed. */
+export interface Moment {
+  id?: number
+  day: string
+  at: string
+  skillId: string | null
+  help: HelpLevel | null
+}
+
 class LifeMirrorDB extends Dexie {
+  herSkills!: Table<HerSkill, string>
+  moments!: Table<Moment, number>
   declarations!: Table<Declaration, number>
   forecasts!: Table<Forecast, number>
   forecastScores!: Table<ForecastScore, number>
@@ -433,6 +454,33 @@ class LifeMirrorDB extends Dexie {
       forecasts: '++id, &[day+block+horizon], day',
       forecastScores: '++id, &[day+block+horizon], day',
       anchorSwaps: '++id, reading',
+    })
+    // Phase F: her skills, keyed by the checklist id, and the moments with her.
+    this.version(9).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
+      studyNights: '++id, day',
+      aims: '++id, kind',
+      skills: '++id, order',
+      rungMarks: '++id, skillId, at',
+      outbox: '++id, [store+key]',
+      cloudRows: '[store+key]',
+      cloudMeta: 'key',
+      declarations: '++id, cardId',
+      beliefs: '[situationKey+moveId], moveId',
+      tagBeliefs: 'id',
+      derived: 'key',
+      forecasts: '++id, &[day+block+horizon], day',
+      forecastScores: '++id, &[day+block+horizon], day',
+      anchorSwaps: '++id, reading',
+      herSkills: 'skillId',
+      moments: '++id, day, skillId',
     })
     installOutbox(this)
   }
@@ -669,7 +717,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -695,6 +743,8 @@ export function wipeEverything(): Promise<void> {
       db.aims.clear(),
       db.skills.clear(),
       db.rungMarks.clear(),
+      db.herSkills.clear(),
+      db.moments.clear(),
     ])
   })
 }

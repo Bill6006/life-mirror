@@ -26,7 +26,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [cloudFailed, setCloudFailed] = useState(false)
   const [hypothesis, setHypothesis] = useState('')
   const [imported, setImported] = useState<string | null>(null)
-  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray() }), [])
+  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray() }), [])
   if (!settings || !all || !wins || !items || !aims || !records) return <section class="screen" />
 
   async function exportAll() {

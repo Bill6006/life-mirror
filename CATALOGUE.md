@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-95 moves across 13 families, 0 of them proposed in Phase 9 and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+99 moves across 14 families, 0 of them proposed in Phase 9 and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -1375,6 +1375,56 @@ Nappies, coffee, the thing that is always gone: one recurring order, set up once
 - Starting belief: Overwhelm ↓ by about a tenth of a step over the seven days · A necessity made automatic; about a tenth of a step, thin.
 - When: morning, afternoon, evening
 - Stands in for: a shopping list, remember the essentials
+
+## Fatherhood
+
+### Practise one of her skills together
+
+Pick one skill from her list under Aims → Her and do it side by side for ten minutes, then count what she did and how much help she needed. Teaching on purpose: time with her, no agenda, is a different move and stays one.
+
+- Source: CDC (2022). Learn the Signs. Act Early. tips and activities for 4 years and 5 years: each milestone practised in everyday play with a parent. Evidence: practice, untested.
+- Takes: 10 min · effort to start: low · cost to assign: medium · needs: another person
+- Tags: with people, short, connection, mastery · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (next block)
+- Starting belief: Mood ↑ by about 0.25 of a step over the this evening · CDC 2022 tips, practice evidence; on your own mood, about a quarter of a step this evening, read from time with her.
+- When: morning, afternoon, evening
+- Stands in for: flashcards, a drill, homework at four
+
+### One story, and she tells what happens next
+
+Read one short book she knows and stop before the turn: she says what comes next, then tells the whole thing back with two events. Ten minutes, her words more than yours.
+
+- Source: Mol, Bus, de Jong and Smeets (2008). Meta-analysis of dialogic parent-child book reading across 16 studies: the child answering and telling during the story lifts expressive vocabulary. Evidence: moderate.
+- Takes: 10 min · effort to start: low · cost to assign: medium · needs: another person
+- Tags: with people, short, connection, mastery · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (next block)
+- Starting belief: Mood ↑ by about 0.25 of a step over the this evening · Mol and colleagues 2008 meta-analysis on her vocabulary; on your own mood, about a quarter of a step this evening.
+- When: morning, afternoon, evening
+- Stands in for: reading to her while she listens, a bedtime story with no questions
+
+### One small chore together
+
+Matching socks or clearing the table after eating, her hands on it and you beside her, ten minutes. The chore gets done and she did it.
+
+- Source: CDC (2022). Learn the Signs. Act Early. tips for 5 years: simple chores at home done together, matching socks or clearing the table. Evidence: practice, untested.
+- Takes: 10 min · effort to start: low · cost to assign: medium · needs: another person
+- Tags: with people, short, connection, mastery · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (next block)
+- Starting belief: Mood ↑ by about a fifth of a step over the this evening · CDC 2022 tips, practice evidence; on your own mood, about a fifth of a step this evening.
+- When: morning, afternoon, evening
+- Stands in for: doing the chore yourself while she watches
+
+### A game with rules, turns taken
+
+A short board or card game with one rule and turns, ten minutes. Counting the spaces counts to ten on the way, and waiting for a turn is the skill.
+
+- Source: Ramani and Siegler (2008). Randomised trial of a number board game played with an adult over four short sessions: lasting gains in counting and number knowledge in preschoolers. Evidence: moderate.
+- Takes: 10 min · effort to start: low · cost to assign: medium · needs: another person
+- Tags: with people, short, connection, mastery · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (next block)
+- Starting belief: Mood ↑ by about 0.25 of a step over the this evening · Ramani and Siegler 2008 on her counting; on your own mood, about a quarter of a step this evening.
+- When: morning, afternoon, evening
+- Stands in for: a screen game, a race with no rule
 
 ## Proposed trades
 

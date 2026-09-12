@@ -63,12 +63,14 @@ export function AimsScreen({
   onLadder,
   onFollow,
   onBecoming,
+  onHer,
 }: {
   onAdd: () => void
   onChangeStep: (aimId: number) => void
   onLadder: () => void
   onFollow: () => void
   onBecoming: () => void
+  onHer: () => void
 }) {
   const today = blockAt(new Date())
   const aims = useLive(activeAims, [])
@@ -93,6 +95,7 @@ export function AimsScreen({
           <NavRow label={c.ladder} note={c.ladderNote} onClick={onLadder} />
           <NavRow label={c.follow} note={c.followNote} onClick={onFollow} />
           <NavRow label={c.becoming} note={c.becomingNote} onClick={onBecoming} />
+          <NavRow label={c.her} note={c.herNote} onClick={onHer} />
         </ul>
       </div>
       {missing.length === 0 && <p class="note faint">{c.allAdded}</p>}

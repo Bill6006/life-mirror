@@ -272,7 +272,7 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Read the catalogue/ }).click()
   await expect(page.getByText('The catalogue', { exact: true })).toBeVisible()
-  await expect(page.getByTestId('family-moves')).toHaveCount(13)
+  await expect(page.getByTestId('family-moves')).toHaveCount(14)
   const count = await page.locator('[data-testid="family-moves"] .move').count()
   expect(count).toBeGreaterThanOrEqual(60)
   expect(count).toBeLessThanOrEqual(100)
@@ -444,7 +444,7 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await expect(page.getByTestId('weekly')).toBeVisible()
   await expect(page.getByTestId('hit-rate')).toContainText('No day-ahead forecasts scored yet')
   await expect(page.getByTestId('best-silent')).toContainText('0 so far')
-  await expect(page.getByTestId('family-health')).toHaveCount(13)
+  await expect(page.getByTestId('family-health')).toHaveCount(14)
   await expect(page.getByTestId('weekly-prompt')).toContainText('THE RULES')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
@@ -510,4 +510,49 @@ test('the cloud copy shows its database, stays off without a token, and never to
   await expect(page.getByTestId('cloud-pending')).toContainText(/[0-9]+ pending/)
   expect(await pendingOf()).toBeGreaterThan(before)
   expect(requests.some((u) => u.includes('turso.io'))).toBe(false)
+})
+
+test('fatherhood: Aims → Her adds a skill from the checklists, counts one with the help she needed, and the rung moves only by your tap', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Her/ }).click()
+  await expect(page.getByTestId('her')).toBeVisible()
+  await expect(page.getByTestId('her-source')).toContainText('CDC')
+  await expect(page.getByTestId('her-moments')).toContainText('None counted yet')
+
+  await page.getByRole('button', { name: /^Add a skill from the checklists/ }).click()
+  await expect(page.getByTestId('her-pick')).toBeVisible()
+  await page.getByTestId('her-add-counts-to-ten').click()
+  await expect(page.getByTestId('her-add-counts-to-ten')).toBeDisabled()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('her-skill')).toHaveCount(1)
+  await expect(page.getByTestId('her-rung')).toHaveText('Not introduced')
+
+  // One count: the moment is dated, the counts are plain, and the rung has not moved.
+  await page.getByTestId('her-count').click()
+  await page.getByTestId('her-help-some').click()
+  await expect(page.getByTestId('her-counts')).toContainText('Did it 1 · on her own 0 · a little help 1 · a lot of help 0')
+  await expect(page.getByTestId('her-rung')).toHaveText('Not introduced')
+  await expect(page.getByTestId('her-moments')).toContainText('1 moment')
+
+  // The rung moves by the tap and by nothing else; no proportion of skills anywhere on the screen.
+  await page.getByTestId('her-rung-open').click()
+  await page.getByTestId('her-rung-practicingWithDaddy').click()
+  await expect(page.getByTestId('her-rung')).toHaveText('Practicing with Daddy')
+  await expect(page.getByTestId('her')).not.toContainText('%')
+  await expect(page.getByTestId('her')).not.toContainText(/[0-9]+ of [0-9]+/)
+
+  // Kept across a relaunch.
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Her/ }).click()
+  await expect(page.getByTestId('her-rung')).toHaveText('Practicing with Daddy')
+  await expect(page.getByTestId('her-moments')).toContainText('1 moment')
+
+  // The catalogue: the fatherhood family is there, and time with her, no agenda, is still its own move under people.
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Read the catalogue/ }).click()
+  await expect(page.getByRole('heading', { name: 'Practise one of her skills together' })).toBeVisible()
+  await expect(page.locator('#family-people').getByRole('heading', { name: 'Time with her, no agenda' })).toBeVisible()
 })

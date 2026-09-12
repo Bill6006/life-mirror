@@ -8,7 +8,7 @@ import Dexie, { type DbSchema, type DBCore, type DBCoreMutateRequest, type DBCor
 export const APP = 'life-mirror'
 
 /** Every table that is part of your record. The outbox and the sync state are not. */
-export const SYNCED_STORES: readonly string[] = ['checkins', 'settings', 'wins', 'privateItems', 'offers', 'cards', 'outcomes', 'days', 'studyNights', 'aims', 'skills', 'rungMarks', 'declarations', 'forecasts', 'forecastScores', 'anchorSwaps']
+export const SYNCED_STORES: readonly string[] = ['checkins', 'settings', 'wins', 'privateItems', 'offers', 'cards', 'outcomes', 'days', 'studyNights', 'aims', 'skills', 'rungMarks', 'declarations', 'forecasts', 'forecastScores', 'anchorSwaps', 'herSkills', 'moments']
 
 /** One queued change: a put with the record as JSON, or a delete (a tombstone in the cloud). */
 export interface OutboxRow {

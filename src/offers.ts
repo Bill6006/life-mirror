@@ -98,6 +98,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
   if (move.family === 'study') return 'study'
   if (move.id === 'time-with-her' && !t.withHer) return 'schedule'
+  // Phase F: practising a skill together needs her here; the day's context says so, never a draw.
+  if (move.family === 'fatherhood' && !t.withHer) return 'schedule'
   if (move.id === 'church-early' && !t.churchDay) return 'schedule'
   if (!move.when.includes(s.block)) return 'block'
   if (t.hiddenFamilies.has(move.family)) return 'hidden'

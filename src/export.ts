@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
@@ -19,6 +19,8 @@ export interface RecordsData {
   forecasts?: readonly Forecast[]
   forecastScores?: readonly ForecastScore[]
   anchorSwaps?: readonly AnchorSwap[]
+  herSkills?: readonly HerSkill[]
+  moments?: readonly Moment[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -105,6 +107,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             declarations: records.declarations.map((d) => ({ cardId: d.cardId, at: d.at, diff: d.diff, lo: d.lo, hi: d.hi, level: d.level, nDone: d.nDone, nAlternative: d.nAlternative })),
             forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
             forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
+            her: {
+              skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt })),
+              moments: (records.moments ?? []).map((m) => ({ day: m.day, at: m.at, skill: m.skillId, help: m.help })),
+            },
           }
         : {}),
       minimumWins: wins.map((w) => ({ forDay: w.forDay, setOn: w.setOn, text: w.text, outcome: w.outcome, answeredAt: w.answeredAt })),

@@ -1,0 +1,47 @@
+{
+  "source": {
+    "who": "CDC",
+    "what": "Learn the Signs. Act Early. developmental milestone checklists, the lists for 4 years and 5 years",
+    "year": 2022
+  },
+  "areas": [
+    { "id": "social", "name": "Social and emotional" },
+    { "id": "language", "name": "Language and communication" },
+    { "id": "thinking", "name": "Learning and thinking" },
+    { "id": "movement", "name": "Movement" }
+  ],
+  "skills": [
+    { "id": "pretend-play", "age": 4, "area": "social", "name": "Pretends to be something else during play", "example": "a teacher, a superhero, a dog" },
+    { "id": "asks-to-play", "age": 4, "area": "social", "name": "Asks to go play with children if none are around", "example": "Can I play with Alex?" },
+    { "id": "comforts-others", "age": 4, "area": "social", "name": "Comforts others who are hurt or sad", "example": "hugging a crying friend" },
+    { "id": "avoids-danger", "age": 4, "area": "social", "name": "Avoids danger", "example": "not jumping from tall heights at the playground" },
+    { "id": "likes-to-help", "age": 4, "area": "social", "name": "Likes to be a helper", "example": null },
+    { "id": "behaves-for-the-place", "age": 4, "area": "social", "name": "Changes behavior based on where she is", "example": "a place of worship, the library, the playground" },
+    { "id": "four-word-sentences", "age": 4, "area": "language", "name": "Says sentences with four or more words", "example": null },
+    { "id": "words-from-a-song", "age": 4, "area": "language", "name": "Says some words from a song, story or nursery rhyme", "example": null },
+    { "id": "talks-about-her-day", "age": 4, "area": "language", "name": "Talks about at least one thing that happened during her day", "example": "I played soccer." },
+    { "id": "answers-what-for", "age": 4, "area": "language", "name": "Answers simple questions", "example": "What is a coat for? What is a crayon for?" },
+    { "id": "names-colors", "age": 4, "area": "thinking", "name": "Names a few colors of items", "example": null },
+    { "id": "what-comes-next", "age": 4, "area": "thinking", "name": "Tells what comes next in a well-known story", "example": null },
+    { "id": "draws-a-person", "age": 4, "area": "thinking", "name": "Draws a person with three or more body parts", "example": null },
+    { "id": "catches-a-ball", "age": 4, "area": "movement", "name": "Catches a large ball most of the time", "example": null },
+    { "id": "serves-herself", "age": 4, "area": "movement", "name": "Serves herself food or pours water, with an adult watching", "example": null },
+    { "id": "unbuttons", "age": 4, "area": "movement", "name": "Unbuttons some buttons", "example": null },
+    { "id": "pencil-grip", "age": 4, "area": "movement", "name": "Holds a crayon or pencil between fingers and thumb, not a fist", "example": null },
+    { "id": "takes-turns", "age": 5, "area": "social", "name": "Follows rules or takes turns when playing games with other children", "example": null },
+    { "id": "performs-for-you", "age": 5, "area": "social", "name": "Sings, dances or acts for you", "example": null },
+    { "id": "simple-chores", "age": 5, "area": "social", "name": "Does simple chores at home", "example": "matching socks, clearing the table after eating" },
+    { "id": "tells-a-story", "age": 5, "area": "language", "name": "Tells a story she heard or made up, with at least two events", "example": "a cat was stuck in a tree and a firefighter saved it" },
+    { "id": "answers-about-a-story", "age": 5, "area": "language", "name": "Answers simple questions about a book or story after you read or tell it", "example": null },
+    { "id": "keeps-a-conversation", "age": 5, "area": "language", "name": "Keeps a conversation going with more than three back-and-forth exchanges", "example": null },
+    { "id": "simple-rhymes", "age": 5, "area": "language", "name": "Uses or recognizes simple rhymes", "example": "bat and cat, ball and tall" },
+    { "id": "counts-to-ten", "age": 5, "area": "thinking", "name": "Counts to 10", "example": null },
+    { "id": "names-numbers", "age": 5, "area": "thinking", "name": "Names some numbers between 1 and 5 when you point to them", "example": null },
+    { "id": "words-about-time", "age": 5, "area": "thinking", "name": "Uses words about time", "example": "yesterday, tomorrow, morning, night" },
+    { "id": "pays-attention", "age": 5, "area": "thinking", "name": "Pays attention for 5 to 10 minutes during an activity", "example": "story time, arts and crafts; screen time does not count" },
+    { "id": "writes-letters-of-her-name", "age": 5, "area": "thinking", "name": "Writes some letters in her name", "example": null },
+    { "id": "names-letters", "age": 5, "area": "thinking", "name": "Names some letters when you point to them", "example": null },
+    { "id": "buttons", "age": 5, "area": "movement", "name": "Buttons some buttons", "example": null },
+    { "id": "hops-on-one-foot", "age": 5, "area": "movement", "name": "Hops on one foot", "example": null }
+  ]
+}
