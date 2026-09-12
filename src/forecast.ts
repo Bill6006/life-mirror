@@ -196,6 +196,17 @@ export function forecastsDue(chosen: Chosen, values: ReadonlyMap<string, number>
   return out
 }
 
+/** The lowest of the days ahead, the one worth planning around; -1 when none of them has a forecast. */
+export function lowestAhead(rows: readonly { expected: number | null }[]): number {
+  let at = -1
+  for (let i = 0; i < rows.length; i++) {
+    const v = rows[i].expected
+    if (v === null) continue
+    if (at === -1 || v < (rows[at].expected as number)) at = i
+  }
+  return at
+}
+
 /** A forecast is scored once its slot is logged; a slot never logged is never scored. */
 export function scoresDue(forecasts: readonly Forecast[], values: ReadonlyMap<string, number>, scored: readonly ForecastScore[], today: string): ForecastScore[] {
   const have = new Set(scored.map((s) => `${s.day}|${s.block}|${s.horizon}`))

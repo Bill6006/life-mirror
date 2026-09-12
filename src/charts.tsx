@@ -1,6 +1,7 @@
 import { BLOCKS, type Block } from './blocks'
 import { copy } from './copy'
-import { formatDayTiny, formatTime } from './format'
+import { formatDayTiny, formatTime, weekdayShort } from './format'
+import { lowestAhead } from './forecast'
 import type { ContextPoint, DayValues } from './series'
 
 // Hand-drawn SVG, hairlines throughout, the accent for now. Gaps stay gaps.
@@ -156,6 +157,96 @@ export function PairBar({ rho }: { rho: number }) {
     <svg class="pair-bar" viewBox="0 0 64 8" aria-hidden="true">
       <line class="pb-axis" x1="32" x2="32" y1="0" y2="8" />
       <rect class={rho < 0 ? 'pb-bar is-neg' : 'pb-bar'} x={rho < 0 ? 32 - w : 32} y="1.5" width={w} height="5" rx="1" />
+    </svg>
+  )
+}
+
+export interface AheadDay {
+  day: string
+  expected: number | null
+  lo: number | null
+  hi: number | null
+}
+
+const BAND_NAMES: readonly { band: 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'; at: number }[] = [
+  { band: 'empty', at: 10 },
+  { band: 'wornDown', at: 30 },
+  { band: 'gettingBy', at: 50 },
+  { band: 'solid', at: 70 },
+  { band: 'firing', at: 90 },
+]
+
+/**
+ * The week ahead: one step per day at the expected reading, a whisker for the range it should
+ * land in, the five bands named down the left, and the lowest day in the accent. A day with no
+ * forecast is a gap, not a guess.
+ */
+export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
+  const W = 340
+  const H = 236
+  const top = 16
+  const bottom = 196
+  const left = 26
+  const right = W - 4
+  const x0 = 96
+  const step = (right - x0) / rows.length
+  // A forecast plus its error band can reach past either end; the scale is 0 to 100, so the drawing stops there.
+  const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
+  const startOf = (i: number) => x0 + i * step
+  const endOf = (i: number) => x0 + (i + 1) * step
+  const centreOf = (i: number) => x0 + (i + 0.5) * step
+  const low = lowestAhead(rows)
+
+  return (
+    <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={copy.weekly.ahead}>
+      <rect class="ch-axis" x={left} y={top} width={right - left} height={bottom - top} fill="none" />
+      {BAND_LINES.map((v) => (
+        <line key={v} class="ch-band" x1={left} x2={right} y1={y(v)} y2={y(v)} />
+      ))}
+      {[0, ...BAND_LINES, 100].map((v) => (
+        <text key={v} class="ch-num" x={left - 6} y={y(v) + 3.5} text-anchor="end">
+          {v}
+        </text>
+      ))}
+      {BAND_NAMES.map((b) => (
+        <text key={b.band} class="ch-label" x={left + 6} y={y(b.at) + 3.5}>
+          {copy.bands[b.band]}
+        </text>
+      ))}
+      {rows.map((_, i) => i > 0 && <line key={rows[i].day} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={top} y2={bottom} />)}
+      <line class="ch-band" x1={x0} x2={x0} y1={top} y2={bottom} />
+
+      {rows.map((d, i) => {
+        const next = rows[i + 1]
+        if (d.expected === null || !next || next.expected === null) return null
+        return <line key={`c${d.day}`} class="ch-line thin" x1={endOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(next.expected)} />
+      })}
+      {rows.map((d, i) =>
+        d.expected === null ? null : (
+          <line key={`s${d.day}`} class={i === low ? 'ch-line is-low' : 'ch-line'} x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />
+        ),
+      )}
+      {rows.map((d, i) =>
+        d.lo === null || d.hi === null ? null : (
+          <g key={`w${d.day}`} class={i === low ? 'ch-whisker is-low' : 'ch-whisker'}>
+            <line x1={centreOf(i)} x2={centreOf(i)} y1={y(d.hi)} y2={y(d.lo)} />
+            <line x1={centreOf(i) - 4} x2={centreOf(i) + 4} y1={y(d.hi)} y2={y(d.hi)} />
+            <line x1={centreOf(i) - 4} x2={centreOf(i) + 4} y1={y(d.lo)} y2={y(d.lo)} />
+          </g>
+        ),
+      )}
+      {rows.map((d, i) =>
+        d.expected === null ? null : (
+          <text key={`v${d.day}`} class={i === low ? 'ch-val is-low' : 'ch-val'} x={centreOf(i)} y={Math.max(top + 11, y(d.expected) - 7)} text-anchor="middle" data-testid="ahead-value">
+            {Math.round(d.expected)}
+          </text>
+        ),
+      )}
+      {rows.map((d, i) => (
+        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 18} text-anchor="middle">
+          {weekdayShort(d.day)}
+        </text>
+      ))}
     </svg>
   )
 }

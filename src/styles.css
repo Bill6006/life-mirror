@@ -623,6 +623,38 @@ main {
   stroke-width: 1;
 }
 
+/* The week ahead: the lowest day in the accent, its whisker and its number with it */
+.ch-line.is-low {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.ch-whisker line {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.ch-whisker.is-low line {
+  stroke: var(--accent);
+}
+
+.ch-val {
+  font-size: 11px;
+  fill: var(--ink);
+  /* The whisker passes behind the number; the ground is painted around the digits so they stay legible. */
+  stroke: var(--ground);
+  stroke-width: 3;
+  paint-order: stroke fill;
+}
+
+.ch-val.is-low {
+  fill: var(--accent);
+}
+
+.ch-x.is-low {
+  fill: var(--ink);
+}
+
 .ch-dot {
   fill: var(--ink);
 }

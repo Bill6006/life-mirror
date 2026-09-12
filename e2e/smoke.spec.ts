@@ -442,6 +442,10 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   await expect(page.getByTestId('weekly')).toBeVisible()
+  // The week ahead is the first thing on the screen, and says what it is waiting for.
+  await expect(page.getByTestId('week-ahead')).toContainText('The week ahead appears after fourteen days of record')
+  const order = await page.getByTestId('weekly').locator('h2.section').allInnerTexts()
+  expect(order[0].toLowerCase()).toBe('the week ahead, as you usually are')
   await expect(page.getByTestId('hit-rate')).toContainText('No day-ahead forecasts scored yet')
   await expect(page.getByTestId('best-silent')).toContainText('0 so far')
   await expect(page.getByTestId('family-health')).toHaveCount(14)

@@ -391,6 +391,7 @@ export const copy = {
     ahead: 'The week ahead, as you usually are',
     aheadLine: '{day}: {expected} ({lo} to {hi})',
     aheadNone: 'The week ahead appears after fourteen days of record.',
+    aheadCaption: 'The step is the expected reading, the whisker the range three readings in five should land in. {day} is your lowest day.',
     best: 'Best-days',
     bestSilent: 'Silent until twenty days with two logged blocks: {days} so far.',
     bestNote: 'Your top tenth of days, {k} of {days}, and what was different.',

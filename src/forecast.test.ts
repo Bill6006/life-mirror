@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
 import type { CheckIn, Forecast } from './db'
-import { backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, loggedDays, predict, scoresDue, valuesByKey } from './forecast'
+import { lowestAhead, backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, loggedDays, predict, scoresDue, valuesByKey } from './forecast'
 import { slotKey } from './learning'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -122,5 +122,15 @@ describe('early warning', () => {
     }
     expect(earlyWarning(mixed, () => 40, TODAY)).toMatchObject({ under: 4, of: 6, warning: true })
     expect(earlyWarning(values, () => null, TODAY)).toMatchObject({ of: 0, warning: false })
+  })
+})
+
+describe('the lowest day ahead', () => {
+  it('is the smallest expected reading, skips days with no forecast, and is -1 when none has one', () => {
+    expect(lowestAhead([{ expected: 52 }, { expected: null }, { expected: 43 }, { expected: 57 }])).toBe(2)
+    expect(lowestAhead([{ expected: null }, { expected: null }])).toBe(-1)
+    expect(lowestAhead([])).toBe(-1)
+    // A tie keeps the first of them, so the chart never jumps between equals.
+    expect(lowestAhead([{ expected: 40 }, { expected: 40 }])).toBe(0)
   })
 })

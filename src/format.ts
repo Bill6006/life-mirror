@@ -28,6 +28,11 @@ export function formatDayTiny(day: string): string {
   return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.getDate()}`
 }
 
+/** "Sun": the weekday alone, for a chart's x axis. */
+export function weekdayShort(day: string): string {
+  return parseDay(day).toLocaleDateString(undefined, { weekday: 'short' })
+}
+
 export function weekdayInitial(day: string): string {
   return parseDay(day).toLocaleDateString(undefined, { weekday: 'narrow' })
 }

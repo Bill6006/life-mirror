@@ -1,8 +1,10 @@
 import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
+import { WeekAhead } from './charts'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { fill, formatDayShort } from './format'
+import { lowestAhead } from './forecast'
 import { weeklyData } from './forecastFlow'
 import { useLive } from './live'
 import { readingById } from './readings'
@@ -30,6 +32,18 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{c.title}</p>
       </header>
 
+      <h2 class="section">{c.ahead}</h2>
+      <div class="card pad" data-testid="week-ahead">
+        {w.weekAheadReady ? (
+          <>
+            <WeekAhead rows={w.weekAhead} />
+            <p class="note faint no-gap">{fill(c.aheadCaption, { day: formatDayShort(w.weekAhead[lowestAhead(w.weekAhead)].day) })}</p>
+          </>
+        ) : (
+          <p class="note no-gap">{c.aheadNone}</p>
+        )}
+      </div>
+
       <h2 class="section">{c.baseline}</h2>
       {w.shift?.shifted ? (
         <div class="card pad">
@@ -55,21 +69,6 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
           <p class="calc-line">{fill(c.gaveBack, { gaveBack: String(sc.gaveBack), all: String(sc.checkins) })}</p>
           <p class="calc-line">{fill(c.answering, { m: seconds(sc.medianAnswerMs.morning), a: seconds(sc.medianAnswerMs.afternoon), e: seconds(sc.medianAnswerMs.evening) })}</p>
         </div>
-      </div>
-
-      <h2 class="section">{c.ahead}</h2>
-      <div class="card pad">
-        {w.weekAheadReady ? (
-          <div class="calc">
-            {w.weekAhead.map((d) => (
-              <p key={d.day} class="calc-line">
-                {fill(c.aheadLine, { day: formatDayShort(d.day), expected: num(d.expected), lo: num(d.lo), hi: num(d.hi) })}
-              </p>
-            ))}
-          </div>
-        ) : (
-          <p class="note no-gap">{c.aheadNone}</p>
-        )}
       </div>
 
       <h2 class="section">{c.best}</h2>
