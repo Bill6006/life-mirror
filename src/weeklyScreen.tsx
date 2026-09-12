@@ -36,7 +36,9 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
       <div class="card pad" data-testid="week-ahead">
         {w.weekAheadReady ? (
           <>
-            <WeekAhead rows={w.weekAhead} />
+            <div class="week-chart">
+              <WeekAhead rows={w.weekAhead} />
+            </div>
             <p class="note faint no-gap">{fill(c.aheadCaption, { day: formatDayShort(w.weekAhead[lowestAhead(w.weekAhead)].day) })}</p>
           </>
         ) : (

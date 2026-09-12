@@ -168,29 +168,30 @@ export interface AheadDay {
   hi: number | null
 }
 
-const BAND_NAMES: readonly { band: 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'; at: number }[] = [
-  { band: 'empty', at: 10 },
-  { band: 'wornDown', at: 30 },
-  { band: 'gettingBy', at: 50 },
-  { band: 'solid', at: 70 },
-  { band: 'firing', at: 90 },
+/** The five bands from the bottom up, with the value each name sits beside. */
+const BAND_ROWS: readonly { band: 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'; from: number; to: number }[] = [
+  { band: 'empty', from: 0, to: 20 },
+  { band: 'wornDown', from: 20, to: 40 },
+  { band: 'gettingBy', from: 40, to: 60 },
+  { band: 'solid', from: 60, to: 80 },
+  { band: 'firing', from: 80, to: 100 },
 ]
 
 /**
- * The week ahead: one step per day at the expected reading, a whisker for the range it should
- * land in, the five bands named down the left, and the lowest day in the accent. A day with no
- * forecast is a gap, not a guess.
+ * The week ahead: one flat step per day at the expected reading, a whisker for the range it
+ * should land in, the five bands striped and named down the left, and the lowest day in the
+ * accent. A day with no forecast is a gap, not a guess.
  */
 export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const W = 340
-  const H = 236
-  const top = 16
-  const bottom = 196
+  const H = 216
+  const top = 20
+  const bottom = 188
   const left = 26
   const right = W - 4
-  const x0 = 96
+  // The band names sit in a gutter inside the plot; the days share what is left.
+  const x0 = left + 58
   const step = (right - x0) / rows.length
-  // A forecast plus its error band can reach past either end; the scale is 0 to 100, so the drawing stops there.
   const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
   const startOf = (i: number) => x0 + i * step
   const endOf = (i: number) => x0 + (i + 1) * step
@@ -199,51 +200,55 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
 
   return (
     <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={copy.weekly.ahead}>
-      <rect class="ch-axis" x={left} y={top} width={right - left} height={bottom - top} fill="none" />
+      {BAND_ROWS.map((b, i) => (
+        <rect key={b.band} class={i % 2 === 0 ? 'ch-stripe' : 'ch-stripe is-dim'} x={x0} y={y(b.to)} width={right - x0} height={y(b.from) - y(b.to)} />
+      ))}
       {BAND_LINES.map((v) => (
         <line key={v} class="ch-band" x1={left} x2={right} y1={y(v)} y2={y(v)} />
       ))}
+      {rows.map((d, i) => i > 0 && <line key={`g${d.day}`} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={top} y2={bottom} />)}
+      <line class="ch-band" x1={x0} x2={x0} y1={top} y2={bottom} />
+      <rect class="ch-axis" x={left} y={top} width={right - left} height={bottom - top} fill="none" />
+
       {[0, ...BAND_LINES, 100].map((v) => (
-        <text key={v} class="ch-num" x={left - 6} y={y(v) + 3.5} text-anchor="end">
+        <text key={v} class="ch-tick" x={left - 7} y={y(v) + 3.5} text-anchor="end">
           {v}
         </text>
       ))}
-      {BAND_NAMES.map((b) => (
-        <text key={b.band} class="ch-label" x={left + 6} y={y(b.at) + 3.5}>
+      {BAND_ROWS.map((b) => (
+        <text key={b.band} class="ch-label" x={left + 5} y={y((b.from + b.to) / 2) + 3.5}>
           {copy.bands[b.band]}
         </text>
       ))}
-      {rows.map((_, i) => i > 0 && <line key={rows[i].day} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={top} y2={bottom} />)}
-      <line class="ch-band" x1={x0} x2={x0} y1={top} y2={bottom} />
 
       {rows.map((d, i) => {
         const next = rows[i + 1]
         if (d.expected === null || !next || next.expected === null) return null
-        return <line key={`c${d.day}`} class="ch-line thin" x1={endOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(next.expected)} />
+        return <line key={`c${d.day}`} class="ch-step" x1={endOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(next.expected)} />
       })}
-      {rows.map((d, i) =>
-        d.expected === null ? null : (
-          <line key={`s${d.day}`} class={i === low ? 'ch-line is-low' : 'ch-line'} x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />
-        ),
-      )}
       {rows.map((d, i) =>
         d.lo === null || d.hi === null ? null : (
           <g key={`w${d.day}`} class={i === low ? 'ch-whisker is-low' : 'ch-whisker'}>
             <line x1={centreOf(i)} x2={centreOf(i)} y1={y(d.hi)} y2={y(d.lo)} />
-            <line x1={centreOf(i) - 4} x2={centreOf(i) + 4} y1={y(d.hi)} y2={y(d.hi)} />
-            <line x1={centreOf(i) - 4} x2={centreOf(i) + 4} y1={y(d.lo)} y2={y(d.lo)} />
+            <line x1={centreOf(i) - 4.5} x2={centreOf(i) + 4.5} y1={y(d.hi)} y2={y(d.hi)} />
+            <line x1={centreOf(i) - 4.5} x2={centreOf(i) + 4.5} y1={y(d.lo)} y2={y(d.lo)} />
           </g>
         ),
       )}
       {rows.map((d, i) =>
         d.expected === null ? null : (
-          <text key={`v${d.day}`} class={i === low ? 'ch-val is-low' : 'ch-val'} x={centreOf(i)} y={Math.max(top + 11, y(d.expected) - 7)} text-anchor="middle" data-testid="ahead-value">
+          <line key={`s${d.day}`} class={i === low ? 'ch-step is-low' : 'ch-step'} x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />
+        ),
+      )}
+      {rows.map((d, i) =>
+        d.expected === null ? null : (
+          <text key={`v${d.day}`} class={i === low ? 'ch-val is-low' : 'ch-val'} x={centreOf(i)} y={Math.max(top + 11, y(d.expected) - 8)} text-anchor="middle" data-testid="ahead-value">
             {Math.round(d.expected)}
           </text>
         ),
       )}
       {rows.map((d, i) => (
-        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 18} text-anchor="middle">
+        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 20} text-anchor="middle">
           {weekdayShort(d.day)}
         </text>
       ))}

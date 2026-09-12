@@ -608,8 +608,8 @@ main {
 }
 
 .ch-label {
-  font-size: 10px;
-  fill: var(--muted);
+  font-size: 9.5px;
+  fill: var(--faint);
 }
 
 .ch-line {
@@ -623,27 +623,48 @@ main {
   stroke-width: 1;
 }
 
-/* The week ahead: the lowest day in the accent, its whisker and its number with it */
-.ch-line.is-low {
-  stroke: var(--accent);
+/* The week ahead. The band stripes, the line weights and the text order are measured off the
+   reference: every other band a shade lighter, the steps white, the numbers brightest of all. */
+.ch-stripe {
+  fill: var(--ink);
+  fill-opacity: 0.034;
+}
+
+.ch-stripe.is-dim {
+  fill-opacity: 0.021;
+}
+
+.ch-step {
+  stroke: var(--ink);
   stroke-width: 2;
+  stroke-linecap: square;
+}
+
+.ch-step.is-low {
+  stroke: var(--accent);
 }
 
 .ch-whisker line {
   stroke: var(--muted);
-  stroke-width: 1;
+  stroke-width: 1.25;
 }
 
 .ch-whisker.is-low line {
   stroke: var(--accent);
 }
 
+.ch-tick {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
 .ch-val {
   font-size: 11px;
+  font-weight: 500;
   fill: var(--ink);
-  /* The whisker passes behind the number; the ground is painted around the digits so they stay legible. */
+  /* The whisker runs behind the number; the ground is painted around the digits so they stay clean. */
   stroke: var(--ground);
-  stroke-width: 3;
+  stroke-width: 3.5;
   paint-order: stroke fill;
 }
 
@@ -1309,4 +1330,13 @@ button.chip {
   margin: 4px 0 0;
   font-size: 17px;
   color: var(--ink);
+}
+
+/* The week-ahead card: air around the chart, and a clear gap before its caption */
+.week-chart {
+  margin: 2px 0 0;
+}
+
+.week-chart + .note {
+  margin-top: 14px;
 }
