@@ -5,6 +5,8 @@ import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { CloudScreen } from './cloudScreen'
 import { EvidenceScreen } from './evidenceScreen'
+import { runForecasting } from './forecastFlow'
+import { WeeklyScreen } from './weeklyScreen'
 import { runLearning } from './learningFlow'
 import { startCloud } from './cloudSync'
 import { copy } from './copy'
@@ -47,6 +49,7 @@ type View =
   | { kind: 'becoming' }
   | { kind: 'cloud' }
   | { kind: 'evidence' }
+  | { kind: 'weekly' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -60,8 +63,13 @@ export function App() {
   useEffect(() => startCloud(), [])
   // Phase 10: beliefs update once a day, on open.
   useEffect(() => {
-    void runLearning(blockAt(new Date()).day)
+    const day = blockAt(new Date()).day
+    void runLearning(day).then(() => runForecasting(day))
   }, [])
+  // Phase 11: a forecast for a block is written before that block is logged; after each completed check-in the next slots may be due.
+  useEffect(() => {
+    void runForecasting(blockAt(new Date()).day)
+  }, [all?.length])
 
   useEffect(() => {
     // The phone's back gesture returns to the tabs; ask the browser to keep our storage.
@@ -163,6 +171,8 @@ export function App() {
         return <CloudScreen onClose={closeAll} />
       case 'evidence':
         return <EvidenceScreen onClose={closeAll} />
+      case 'weekly':
+        return <WeeklyScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -178,7 +188,7 @@ export function App() {
           />
         )
       case 'mirror':
-        return <MirrorScreen />
+        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} />
       case 'moves':
         return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} onEvidence={() => open({ kind: 'evidence' })} />
       case 'aims':

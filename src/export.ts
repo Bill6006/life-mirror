@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { askedOf, type Aim, type Card, type CheckIn, type Declaration, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { askedOf, type Aim, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
@@ -16,6 +16,8 @@ export interface RecordsData {
   outcomes: readonly Outcome[]
   cards: readonly Card[]
   declarations: readonly Declaration[]
+  forecasts?: readonly Forecast[]
+  forecastScores?: readonly ForecastScore[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -69,6 +71,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       hardToSeeThePointToday: Boolean(c.extras?.hardToSeePoint),
       coolingOffEvent: Boolean(c.extras?.coolingOff),
       bigSocialEvent: Boolean(c.extras?.bigSocial),
+      necessitiesMissed: Object.keys(c.extras?.necessities ?? {}),
       note: c.extras?.note ?? null,
       ...(opts.includePrivate ? { private: Object.keys(c.extras?.private ?? {}).map((id) => names.get(id) ?? `item ${id}`) } : {}),
     },
@@ -96,6 +99,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             }),
             cards: records.cards.map((c) => ({ id: c.id, createdAt: c.createdAt, situation: c.situationKey, target: c.target, move: c.moveId, alternative: c.alternativeId, window: c.window, worthwhile: c.worthwhile, origin: c.origin ?? 'app', weights: c.weights ?? null })),
             declarations: records.declarations.map((d) => ({ cardId: d.cardId, at: d.at, diff: d.diff, lo: d.lo, hi: d.hi, level: d.level, nDone: d.nDone, nAlternative: d.nAlternative })),
+            forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
+            forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
           }
         : {}),
       minimumWins: wins.map((w) => ({ forDay: w.forDay, setOn: w.setOn, text: w.text, outcome: w.outcome, answeredAt: w.answeredAt })),

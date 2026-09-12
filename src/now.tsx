@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { AimsOnNow } from './aimsScreen'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
+import { Brief } from './brief'
 import { copy } from './copy'
 import { allCheckIns, answeredCount, askedOf, ensureDayContext, getDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
 import { fill, formatDayLong, formatDayShort, formatTime } from './format'
@@ -126,6 +127,7 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
       {settings.directionAskedAt === null && <DirectionAsk />}
 
       <ReadingHero all={all} today={today} />
+      <Brief day={today.day} />
 
       <div class="card today" style={{ '--n': String(windows.length) }}>
         <div class="windows">

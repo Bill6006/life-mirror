@@ -14,6 +14,7 @@ import {
   privateItems,
   setDayContext,
   setExtra,
+  setNecessity,
   setNote,
   setPrivateLogged,
   setWin,
@@ -154,6 +155,16 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
           })}
         </ul>
       </div>
+
+      <h2 class="section">{copy.necessities.title}</h2>
+      <div class="card">
+        <ul class="rows">
+          {(['shower', 'teeth', 'food'] as const).map((key) => (
+            <ExtraRow key={key} label={copy.necessities[key]} on={Boolean(ex.necessities?.[key])} onLabel={copy.necessities.missed} testid={`necessity-${key}`} onClick={() => void setNecessity(slot, asked, key, !ex.necessities?.[key])} />
+          ))}
+        </ul>
+      </div>
+      <p class="note faint">{copy.necessities.note}</p>
 
       {ctx && (
         <>

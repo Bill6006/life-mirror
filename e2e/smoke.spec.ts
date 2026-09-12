@@ -428,6 +428,35 @@ test('learning: Evidence shows a card with its tier, the two new chips answer fr
   await expect(page.getByTestId('evidence-card').filter({ hasText: 'A ten-minute walk, now against' })).toBeVisible()
 })
 
+test('the brief and the weekly view: silent until the record is long enough, and the necessities are one tap', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  await expect(page.getByTestId('brief-starts')).toContainText('The brief starts after seven days of record')
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('weekly')).toBeVisible()
+  await expect(page.getByTestId('hit-rate')).toContainText('No day-ahead forecasts scored yet')
+  await expect(page.getByTestId('best-silent')).toContainText('0 so far')
+  await expect(page.getByTestId('family-health')).toHaveCount(13)
+  await expect(page.getByTestId('weekly-prompt')).toContainText('THE RULES')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // The necessities signal: a tap marks a miss, inside the evening check-in.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  for (let i = 0; i < 10; i++) {
+    await expect(extras.or(anchor).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    await tapAnchor(page)
+  }
+  await page.getByTestId('necessity-shower').click()
+  await expect(page.getByTestId('necessity-shower')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('give-back')).toBeVisible()
+})
+
 test('the cloud copy shows its database, stays off without a token, and never touches the network in the pipeline', async ({ page }) => {
   const requests: string[] = []
   page.on('request', (r) => requests.push(r.url()))

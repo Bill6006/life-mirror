@@ -8,6 +8,8 @@ import { remindedKey, withDefaults, type Settings, type Weekday } from './settin
 
 export type WinOutcome = 'done' | 'partly' | 'no'
 export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial'
+export type NecessityKey = 'shower' | 'teeth' | 'food'
+export type Necessities = Partial<Record<NecessityKey, true>>
 
 export interface Extras {
   caffeine?: true
@@ -19,6 +21,8 @@ export interface Extras {
   /** Phase 10: a cooling-off event, whose duration the readings say; and an unplanned big social event. */
   coolingOff?: true
   bigSocial?: true
+  /** Phase 11: the necessities signal. A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated. */
+  necessities?: Necessities
   /** One optional line for anything the app has no question for. Kept for the export. */
   note?: string
   /** Private items logged, keyed by item id. Names live only in privateItems. */
@@ -183,6 +187,38 @@ export interface TagBeliefRow {
   computedOn: string
 }
 
+/** A forecast, saved before its slot is logged and never rewritten: one per day, block and horizon. */
+export interface Forecast {
+  id?: number
+  day: string
+  block: Block
+  /** Days ahead when made: 0 is today's shape, 1 to 7 the week ahead. */
+  horizon: number
+  madeOn: string
+  model: string
+  point: number
+  lo: number
+  hi: number
+  /** "If you did nothing extra": an assumption the app has never verified. */
+  whatIf: number | null
+}
+
+/** A forecast scored once its slot was logged; a slot never logged is never scored. */
+export interface ForecastScore {
+  id?: number
+  day: string
+  block: Block
+  horizon: number
+  model: string
+  point: number
+  lo: number
+  hi: number
+  actual: number
+  error: number
+  hit: boolean
+  scoredOn: string
+}
+
 /** Bookkeeping the app derives and can recompute; never synced. */
 export interface Derived {
   key: string
@@ -237,6 +273,8 @@ export interface RungMark {
 
 class LifeMirrorDB extends Dexie {
   declarations!: Table<Declaration, number>
+  forecasts!: Table<Forecast, number>
+  forecastScores!: Table<ForecastScore, number>
   beliefs!: Table<BeliefRow, [string, string]>
   tagBeliefs!: Table<TagBeliefRow, string>
   derived!: Table<Derived, string>
@@ -328,6 +366,30 @@ class LifeMirrorDB extends Dexie {
       beliefs: '[situationKey+moveId], moveId',
       tagBeliefs: 'id',
       derived: 'key',
+    })
+    // Phase 11: forecasts and their scores are records, never rewritten.
+    this.version(7).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
+      studyNights: '++id, day',
+      aims: '++id, kind',
+      skills: '++id, order',
+      rungMarks: '++id, skillId, at',
+      outbox: '++id, [store+key]',
+      cloudRows: '[store+key]',
+      cloudMeta: 'key',
+      declarations: '++id, cardId',
+      beliefs: '[situationKey+moveId], moveId',
+      tagBeliefs: 'id',
+      derived: 'key',
+      forecasts: '++id, &[day+block+horizon], day',
+      forecastScores: '++id, &[day+block+horizon], day',
     })
     installOutbox(this)
   }
@@ -421,6 +483,20 @@ export function setNote(slot: Slot, asked: readonly ReadingId[], text: string): 
     if (trimmed) extras.note = trimmed
     else delete extras.note
     rec.extras = extras
+    rec.updatedAt = now
+    rec.id = await db.checkins.put(rec)
+  })
+}
+
+/** The necessities signal: a tap marks a miss for the day; a second tap takes it back. */
+export function setNecessity(slot: Slot, asked: readonly ReadingId[], key: NecessityKey, missed: boolean): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const now = new Date().toISOString()
+    const rec = (await getCheckIn(slot.day, slot.block)) ?? newCheckIn(slot, asked, now)
+    const necessities: Necessities = { ...(rec.extras?.necessities ?? {}) }
+    if (missed) necessities[key] = true
+    else delete necessities[key]
+    rec.extras = { ...(rec.extras ?? {}), necessities }
     rec.updatedAt = now
     rec.id = await db.checkins.put(rec)
   })
@@ -550,7 +626,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -558,6 +634,8 @@ export function wipeEverything(): Promise<void> {
       db.cloudRows.clear(),
       db.cloudMeta.clear(),
       db.declarations.clear(),
+      db.forecasts.clear(),
+      db.forecastScores.clear(),
       db.beliefs.clear(),
       db.tagBeliefs.clear(),
       db.derived.clear(),

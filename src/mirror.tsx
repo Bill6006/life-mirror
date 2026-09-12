@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import { blockAt, BLOCKS } from './blocks'
 import { Heatmap, MiniTrace, PairBar, Trace } from './charts'
+import { NavRow } from './controls'
 import { copy } from './copy'
 import { allCheckIns } from './db'
 import { fill, formatDayLong, weekdayInitial } from './format'
@@ -16,7 +17,7 @@ function signed(rho: number): string {
 }
 
 /** Your own record, drawn. Every chart here is a calculation from the check-ins; each carries its caption. */
-export function MirrorScreen() {
+export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
   const [overlayId, setOverlayId] = useState<ReadingId | null>(null)
@@ -39,6 +40,12 @@ export function MirrorScreen() {
       </header>
 
       {all.length === 0 && <p class="note">{copy.mirror.empty}</p>}
+
+      <div class="card">
+        <ul class="rows">
+          <NavRow label={copy.weekly.door} note={copy.weekly.doorNote} onClick={onWeekly} />
+        </ul>
+      </div>
 
       <h2 class="section">{copy.mirror.today}</h2>
       <div class="card chart-card">
