@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
 import { addDays, parseDay, type Block } from './blocks'
 import { coolingOffDuration } from './associations'
+import { chipRetired, chipStates } from './audit'
 import { chipAnswer, type ChipKey } from './chips'
 import { copy } from './copy'
 import {
   allCheckIns,
   answerWin,
   askedOf,
+  db,
   ensureDayContext,
   getCheckIn,
   getDayContext,
@@ -46,12 +48,16 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
     if (settings) void ensureDayContext(day, settings)
   }, [settings?.updatedAt, day])
   const ctx = useLive(() => getDayContext(day), [day])
+  const contexts = useLive(() => db.days.toArray(), [])
   const [showPrivate, setShowPrivate] = useState(false)
 
-  if (record === undefined || !settings || !items || !all || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
+  if (record === undefined || !settings || !items || !all || !contexts || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
+  // Phase 12: a chip untapped across thirty logged evenings stops appearing; Settings brings it back.
+  const states = chipStates(all, contexts, settings.chipsBack, day)
+  const showing = (id: Parameters<typeof chipRetired>[0]) => !chipRetired(id, states)
 
   const slot = { day, block }
-  const asked = record ? askedOf(record) : askedReadings(block, settings.depth)
+  const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings)
   const ex = record?.extras ?? {}
   const toggle = (key: ExtraKey) => void setExtra(slot, asked, key, !ex[key])
   const loggedPrivate = items.filter((it) => ex.private?.[String(it.id)]).length
@@ -123,7 +129,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
       <h2 class="section">{copy.extras.chips}</h2>
       <div class="card">
         <ul class="rows">
-          {CHIPS.map((key) => {
+          {CHIPS.filter(showing).map((key) => {
             const on = Boolean(ex[key])
             const a = chipAnswer(all, key, day)
             const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
@@ -159,7 +165,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
       <h2 class="section">{copy.necessities.title}</h2>
       <div class="card">
         <ul class="rows">
-          {(['shower', 'teeth', 'food'] as const).map((key) => (
+          {(['shower', 'teeth', 'food'] as const).filter(showing).map((key) => (
             <ExtraRow key={key} label={copy.necessities[key]} on={Boolean(ex.necessities?.[key])} onLabel={copy.necessities.missed} testid={`necessity-${key}`} onClick={() => void setNecessity(slot, asked, key, !ex.necessities?.[key])} />
           ))}
         </ul>
@@ -171,7 +177,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
           <h2 class="section">{copy.today.context}</h2>
           <div class="card">
             <ul class="rows">
-              <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />
+              {showing('away') && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />}
               <ExtraRow
                 label={settings.week.studyNights[parseDay(day).getDay() as Weekday] ? copy.today.notStudyNight : copy.today.studyNight}
                 on={ctx.studyNight !== settings.week.studyNights[parseDay(day).getDay() as Weekday]}

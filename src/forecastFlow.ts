@@ -4,7 +4,8 @@ import { allCheckIns, db, getSettings, type Forecast } from './db'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, type ModelId, type Warning } from './forecast'
 import { observations, slotKey } from './learning'
 import { evaluateCards } from './tiers'
-import { bestDays, catalogueHealth, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type Scorecard } from './weekly'
+import { baselineShift, type Shift } from './shift'
+import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type Scorecard } from './weekly'
 
 // Forecasts on the phone: written before their slot is logged and never rewritten; scored in
 // their own record once the slot is logged; the model named. The brief and the weekly view
@@ -83,6 +84,7 @@ export interface Weekly {
   prompt: string
   weekAhead: { day: string; expected: number | null; lo: number | null; hi: number | null }[]
   weekAheadReady: boolean
+  shift: Shift | null
 }
 
 /** Everything the weekly view shows, from the records at the moment of asking. */
@@ -120,6 +122,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     prompt: extensionPromptText({ situations, offers, outcomes, health, stats, cardMoves }, extensionPrompt.template),
     weekAhead,
     weekAheadReady: weekAhead.some((w) => w.expected !== null),
+    shift: baselineShift(dayReadings(checkins, today), today),
   }
 }
 

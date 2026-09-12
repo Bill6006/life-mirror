@@ -7,7 +7,8 @@ import { CloudScreen } from './cloudScreen'
 import { EvidenceScreen } from './evidenceScreen'
 import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
-import { runLearning } from './learningFlow'
+import { loadAudits, runLearning } from './learningFlow'
+import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
@@ -50,6 +51,7 @@ type View =
   | { kind: 'cloud' }
   | { kind: 'evidence' }
   | { kind: 'weekly' }
+  | { kind: 'readings' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -64,7 +66,9 @@ export function App() {
   // Phase 10: beliefs update once a day, on open.
   useEffect(() => {
     const day = blockAt(new Date()).day
-    void runLearning(day).then(() => runForecasting(day))
+    void loadAudits()
+      .then(() => runLearning(day))
+      .then(() => runForecasting(day))
   }, [])
   // Phase 11: a forecast for a block is written before that block is logged; after each completed check-in the next slots may be due.
   useEffect(() => {
@@ -116,6 +120,7 @@ export function App() {
             day={view.day}
             block={view.block}
             depth={settings?.depth ?? 'full'}
+            retired={settings?.retiredReadings ?? []}
             only={view.only}
             pending={pending ?? []}
             onDone={() => {
@@ -173,6 +178,8 @@ export function App() {
         return <EvidenceScreen onClose={closeAll} />
       case 'weekly':
         return <WeeklyScreen onClose={closeAll} />
+      case 'readings':
+        return <ReadingsScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -209,6 +216,7 @@ export function App() {
             onPrivate={() => open({ kind: 'private' })}
             onData={() => open({ kind: 'data' })}
             onCloud={() => open({ kind: 'cloud' })}
+            onReadings={() => open({ kind: 'readings' })}
           />
         )
     }

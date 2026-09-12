@@ -1,3 +1,4 @@
+import { adaptiveDiff, type Opportunity } from './adaptive'
 import { seeded, type Rng } from './bandit'
 import type { Window } from './catalogue'
 import type { Card, CheckIn, Declaration } from './db'
@@ -76,11 +77,18 @@ export function holmLevels(pvalues: readonly number[], alpha = ALPHA): number[] 
   return levels
 }
 
+export type Estimator = 'adaptive' | 'coinFlip'
+
 export interface CardStats {
   cardId: number
   window: Window
   n: { done: number; alternative: number; partly: number; doneAll: number; alternativeAll: number }
+  /** The interval the claim rests on, from the named estimator. */
   interval: Interval | null
+  /** Which estimator produced the claim: the adaptive weights over all the data, or the coin-flip slice. */
+  estimator: Estimator | null
+  /** The coin-flip slice's own interval, kept running beside the adaptive one. */
+  slice: Interval | null
   partlyMean: number | null
   tier: Tier
   declared: Declaration | null
@@ -91,6 +99,19 @@ function armsOf(obs: readonly Observation[], moveId: string, situationKey: strin
   return obs.filter((o) => o.moveId === moveId && o.situationKey === situationKey && o.arm === kind && (!coinFlipOnly || o.coinFlip)).map((o) => ({ value: o.effect, weight: o.weight }))
 }
 
+/** Every done opportunity in the situation whose draw recorded its probabilities, as the adaptive estimator reads it. */
+function opportunitiesOf(obs: readonly Observation[], card: Card, after: string | null): Opportunity[] {
+  return obs
+    .filter((o) => o.situationKey === card.situationKey && o.arm === 'done' && o.propensities !== null && (after === null || o.day > after))
+    .map((o) => ({
+      arm: o.moveId === card.moveId ? 'move' : o.moveId === card.alternativeId ? 'alternative' : 'other',
+      effect: o.effect,
+      weight: o.weight,
+      eMove: (o.propensities as Record<string, number>)[card.moveId] ?? 0,
+      eAlternative: (o.propensities as Record<string, number>)[card.alternativeId] ?? 0,
+    }))
+}
+
 function tierFrom(interval: Interval, worthwhile: number, declared: Declaration | null, replication: CardStats['replication']): Tier {
   if (interval.hi < 0) return 'unhelpful'
   if (interval.lo <= 0) return 'unclear'
@@ -99,8 +120,10 @@ function tierFrom(interval: Interval, worthwhile: number, declared: Declaration 
 }
 
 /**
- * One card's evidence. A declared card is judged on its frozen declaration plus the data
- * gathered after it: nothing collected before the declaration can change a Holds up.
+ * One card's evidence. The adaptive estimator is used once eight done opportunities per arm
+ * exist with their probabilities recorded; until then the coin-flip slice, resampled. A
+ * declared card is judged on its frozen declaration plus the data gathered after it, by the
+ * estimator that declared it: nothing collected before the declaration can change a Holds up.
  */
 export function evaluateCard(card: Card, obs: readonly Observation[], declarations: readonly Declaration[], level: number, rng: Rng): CardStats {
   const id = card.id as number
@@ -111,31 +134,38 @@ export function evaluateCard(card: Card, obs: readonly Observation[], declaratio
   const doneAll = armsOf(obs, card.moveId, card.situationKey, 'done', false).length
   const alternativeAll = armsOf(obs, alternativeId, card.situationKey, 'done', false).length
   const declared = declarations.find((d) => d.cardId === id) ?? null
-  const n = { done: done.length, alternative: alternative.length, partly: partly.length, doneAll, alternativeAll }
   const partlyMean = partly.length >= MIN_PER_ARM ? weightedMean(partly) : null
-  if (done.length < MIN_PER_ARM || alternative.length < MIN_PER_ARM) {
-    return { cardId: id, window: card.window as Window, n, interval: null, partlyMean, tier: 'little', declared, replication: null }
-  }
+  const opps = opportunitiesOf(obs, card, null)
+  const adaptive = adaptiveDiff(opps, level)
+  const adaptiveUsable = adaptive.nMove >= MIN_PER_ARM && adaptive.nAlternative >= MIN_PER_ARM && Number.isFinite(adaptive.lo)
+  const sliceUsable = done.length >= MIN_PER_ARM && alternative.length >= MIN_PER_ARM
+  const slice: Interval | null = sliceUsable ? bootstrapDiff(done, alternative, level, rng) : null
+  const n = { done: adaptiveUsable ? adaptive.nMove : done.length, alternative: adaptiveUsable ? adaptive.nAlternative : alternative.length, partly: partly.length, doneAll, alternativeAll }
+  const estimator: Estimator | null = declared?.estimator === 'coinFlip' ? 'coinFlip' : declared?.estimator === 'adaptive' ? 'adaptive' : adaptiveUsable ? 'adaptive' : sliceUsable ? 'coinFlip' : null
+  if (!estimator) return { cardId: id, window: card.window as Window, n, interval: null, estimator: null, slice, partlyMean, tier: 'little', declared, replication: null }
   let interval: Interval
   let replication: CardStats['replication'] = null
   if (declared) {
-    // Frozen at declaration; only what came after can replicate it.
     interval = { diff: declared.diff, lo: declared.lo, hi: declared.hi, p: declared.p, level: declared.level }
-    const later = (arm: Arm[], ids: readonly Observation[]) => arm.filter((_, i) => ids[i].day > declared.at)
-    const doneObs = obs.filter((o) => o.moveId === card.moveId && o.situationKey === card.situationKey && o.arm === 'done' && o.coinFlip)
-    const altObs = obs.filter((o) => o.moveId === alternativeId && o.situationKey === card.situationKey && o.arm === 'done' && o.coinFlip)
-    const postDone = later(done, doneObs)
-    const postAlt = later(alternative, altObs)
-    if (postDone.length >= REPLICATION_MIN && postAlt.length >= REPLICATION_MIN) {
-      const post = bootstrapDiff(postDone, postAlt, level, rng)
-      replication = { done: postDone.length, alternative: postAlt.length, lo: post.lo, hi: post.hi, holds: post.lo > 0 }
+    if (estimator === 'adaptive') {
+      const post = adaptiveDiff(opportunitiesOf(obs, card, declared.at), level)
+      const enough = post.nMove >= REPLICATION_MIN && post.nAlternative >= REPLICATION_MIN && Number.isFinite(post.lo)
+      replication = { done: post.nMove, alternative: post.nAlternative, lo: enough ? post.lo : NaN, hi: enough ? post.hi : NaN, holds: enough && post.lo > 0 }
     } else {
-      replication = { done: postDone.length, alternative: postAlt.length, lo: NaN, hi: NaN, holds: false }
+      const later = (kind: 'done', moveId: string) => obs.filter((o) => o.moveId === moveId && o.situationKey === card.situationKey && o.arm === kind && o.coinFlip && o.day > declared.at).map((o) => ({ value: o.effect, weight: o.weight }))
+      const postDone = later('done', card.moveId)
+      const postAlt = later('done', alternativeId)
+      if (postDone.length >= REPLICATION_MIN && postAlt.length >= REPLICATION_MIN) {
+        const post = bootstrapDiff(postDone, postAlt, level, rng)
+        replication = { done: postDone.length, alternative: postAlt.length, lo: post.lo, hi: post.hi, holds: post.lo > 0 }
+      } else {
+        replication = { done: postDone.length, alternative: postAlt.length, lo: NaN, hi: NaN, holds: false }
+      }
     }
   } else {
-    interval = bootstrapDiff(done, alternative, level, rng)
+    interval = estimator === 'adaptive' ? { diff: adaptive.diff, lo: adaptive.lo, hi: adaptive.hi, p: adaptive.p, level } : (slice as Interval)
   }
-  return { cardId: id, window: card.window as Window, n, interval, partlyMean, tier: tierFrom(interval, card.worthwhile, declared, replication), declared, replication }
+  return { cardId: id, window: card.window as Window, n, interval, estimator, slice, partlyMean, tier: tierFrom(interval, card.worthwhile, declared, replication), declared, replication }
 }
 
 /** Every active card, short windows first, p-values ranked once so Holm's levels apply across the day. */
@@ -148,14 +178,14 @@ export function evaluateCards(cards: readonly Card[], obs: readonly Observation[
   return stats.sort((a, b) => WINDOW_PENALTY[a.window] - WINDOW_PENALTY[b.window] || a.cardId - b.cardId)
 }
 
-/** Cards whose interval now lies wholly beyond the worthwhile change and carry no declaration yet: declare today, dated, frozen. */
+/** Cards whose interval now lies wholly beyond the worthwhile change and carry no declaration yet: declare today, dated, frozen, with the estimator named. */
 export function declarationsDue(cards: readonly Card[], stats: readonly CardStats[], declarations: readonly Declaration[], today: string): Declaration[] {
   const out: Declaration[] = []
   for (const s of stats) {
-    if (!s.interval || s.declared || declarations.some((d) => d.cardId === s.cardId)) continue
+    if (!s.interval || !s.estimator || s.declared || declarations.some((d) => d.cardId === s.cardId)) continue
     const card = cards.find((c) => c.id === s.cardId)
     if (!card || !(s.interval.lo > card.worthwhile)) continue
-    out.push({ cardId: s.cardId, at: today, diff: s.interval.diff, lo: s.interval.lo, hi: s.interval.hi, p: s.interval.p, level: s.interval.level, nDone: s.n.done, nAlternative: s.n.alternative })
+    out.push({ cardId: s.cardId, at: today, diff: s.interval.diff, lo: s.interval.lo, hi: s.interval.hi, p: s.interval.p, level: s.interval.level, nDone: s.n.done, nAlternative: s.n.alternative, estimator: s.estimator })
   }
   return out
 }
@@ -208,6 +238,25 @@ export interface WeightStats {
   errorWeighted: number
   interval: Interval | null
   tier: Tier
+}
+
+export const WEIGHT_REPLICATION_MIN = 14
+
+/** A weight card's standing: declared when its interval clears the worthwhile change; Holds up once the pairs gathered after the declaration replicate it. */
+export function weightStanding(card: Card, checkins: readonly CheckIn[], declarations: readonly Declaration[], today: string): { stats: WeightStats; declared: Declaration | null; due: Declaration | null; holds: boolean } {
+  const stats = evaluateWeightCard(checkins, card.weights ?? {})
+  const declared = declarations.find((d) => d.cardId === card.id) ?? null
+  let due: Declaration | null = null
+  let holds = false
+  if (!declared && stats.interval && stats.interval.lo > card.worthwhile) {
+    due = { cardId: card.id as number, at: today, diff: stats.interval.diff, lo: stats.interval.lo, hi: stats.interval.hi, p: stats.interval.p, level: stats.interval.level, nDone: stats.n, nAlternative: stats.n, estimator: 'weights' }
+  }
+  if (declared) {
+    const later = evaluateWeightCard(checkins.filter((c) => c.day > declared.at), card.weights ?? {})
+    holds = later.n >= WEIGHT_REPLICATION_MIN && later.interval !== null && later.interval.lo > 0
+    return { stats: { ...stats, interval: { diff: declared.diff, lo: declared.lo, hi: declared.hi, p: declared.p, level: declared.level }, tier: holds ? 'holdsUp' : 'promising' }, declared, due, holds }
+  }
+  return { stats, declared, due, holds }
 }
 
 /** The card's evidence: the mean absolute error of each forecast, and the resampled difference (equal minus weighted, positive when the weights help). */

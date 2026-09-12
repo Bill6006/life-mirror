@@ -53,6 +53,19 @@ export interface Reading100 {
   /** Ingredients that went in, out of the six. */
   used: number
   total: number
+  /** Phase 12: true once learned weights apply, after a weight card held up. */
+  weighted: boolean
+}
+
+let learned: Readonly<Record<string, number>> | null = null
+
+/** Weights stay equal until a weight card holds up; then these apply everywhere the reading is computed. */
+export function setLearnedWeights(weights: Readonly<Record<string, number>> | null): void {
+  learned = weights && Object.keys(weights).length ? weights : null
+}
+
+export function learnedWeights(): Readonly<Record<string, number>> | null {
+  return learned
 }
 
 /** Equal-weight mean of the asked ingredients; null while any asked ingredient is unanswered. */
@@ -60,9 +73,11 @@ export function readingOutOf100(answers: Answers, asked: readonly ReadingId[]): 
   const ids = asked.filter((id) => id in INGREDIENTS)
   if (ids.length === 0) return null
   if (ids.some((id) => answers[id] === undefined)) return null
-  const sum = ids.reduce((s, id) => s + pointsFor(id, answers[id] as Position), 0)
-  const value = Math.round(sum / ids.length)
-  return { value, stance: stanceOf(value), used: ids.length, total: TOTAL_INGREDIENTS }
+  const w = (id: ReadingId) => (learned ? (learned[id] ?? 1) : 1)
+  const sum = ids.reduce((s, id) => s + w(id) * pointsFor(id, answers[id] as Position), 0)
+  const denominator = ids.reduce((s, id) => s + w(id), 0)
+  const value = Math.round(sum / denominator)
+  return { value, stance: stanceOf(value), used: ids.length, total: TOTAL_INGREDIENTS, weighted: learned !== null }
 }
 
 export function readingOf(c: CheckIn): Reading100 | null {

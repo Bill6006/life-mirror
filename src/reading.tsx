@@ -16,7 +16,7 @@ function whenOf(c: CheckIn, today: string): string {
 }
 
 function recipe(r: Reading100): string {
-  return fill(copy.reading.recipe, { used: String(r.used), total: String(TOTAL_INGREDIENTS) })
+  return fill(copy.reading.recipe, { used: String(r.used), total: String(TOTAL_INGREDIENTS), weights: r.weighted ? copy.reading.learnedWeights : copy.reading.equalWeights })
 }
 
 function answeredIngredients(c: CheckIn): number {

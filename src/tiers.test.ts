@@ -20,7 +20,7 @@ const card = (id: number, moveId = 'walk-ten', alternativeId = 'nap-ten', situat
 })
 
 let seq = 0
-function obs(moveId: string, effects: readonly number[], opts: { day?: (i: number) => string; coinFlip?: boolean; arm?: Observation['arm']; situationKey?: string } = {}): Observation[] {
+function obs(moveId: string, effects: readonly number[], opts: { day?: (i: number) => string; coinFlip?: boolean; arm?: Observation['arm']; situationKey?: string; propensities?: Record<string, number> } = {}): Observation[] {
   return effects.map((effect, i) => ({
     offerId: ++seq,
     moveId,
@@ -35,6 +35,8 @@ function obs(moveId: string, effects: readonly number[], opts: { day?: (i: numbe
     coinFlip: opts.coinFlip ?? true,
     spill: {},
     energy: null,
+    propensity: opts.propensities ? opts.propensities[moveId] ?? null : null,
+    propensities: opts.propensities ?? null,
   }))
 }
 

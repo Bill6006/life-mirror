@@ -35,8 +35,21 @@ export function blockReadings(block: Block): readonly ReadingId[] {
   return data.blocks[block]
 }
 
+const swapped = new Map<string, string>()
+
+/** Phase 12: the anchor swaps in force, loaded from the record at open and after the daily audit. */
+export function setAnchorSwaps(list: readonly { reading: string; position: number; to: string }[]): void {
+  swapped.clear()
+  for (const s of list) swapped.set(`${s.reading}|${s.position}`, s.to)
+}
+
 export function anchorFor(id: ReadingId, position: Position): string {
-  return readingById(id).anchors[position - 1]
+  return swapped.get(`${id}|${position}`) ?? readingById(id).anchors[position - 1]
+}
+
+/** The five phrases as the check-in shows them today, swaps applied. */
+export function activeAnchors(id: ReadingId): string[] {
+  return POSITIONS.map((p) => anchorFor(id, p))
 }
 
 /** The word before the dash, or the whole phrase for a band of hours. */

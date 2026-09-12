@@ -130,6 +130,9 @@ export interface Observation {
   spill: Partial<Record<ReadingId, number>>
   /** The energy read at the next block minus its forecast: the move's energy cost when negative. */
   energy: number | null
+  /** Phase 12: the probability this move had of being offered, and every candidate's, at the draw; null for offers made before. */
+  propensity: number | null
+  propensities: Record<string, number> | null
 }
 
 interface Read {
@@ -173,7 +176,7 @@ export function observations(checkins: readonly CheckIn[], offers: readonly Offe
     const move = moveById(o.moveId)
     if (x.outcome === 'no') {
       if (x.why === 'didntWant') {
-        out.push({ offerId: o.id, moveId: o.moveId, situationKey: o.situationKey, target: o.target, window: windowOf(move, o.target), day: o.day, block: o.block, arm: 'declined', effect: DECLINED_EFFECT, weight: DECLINED_WEIGHT, coinFlip: o.coinFlip, spill: {}, energy: null })
+        out.push({ offerId: o.id, moveId: o.moveId, situationKey: o.situationKey, target: o.target, window: windowOf(move, o.target), day: o.day, block: o.block, arm: 'declined', effect: DECLINED_EFFECT, weight: DECLINED_WEIGHT, coinFlip: o.coinFlip, spill: {}, energy: null, propensity: o.propensity ?? null, propensities: o.propensities ?? null })
       }
       continue
     }
@@ -188,7 +191,7 @@ export function observations(checkins: readonly CheckIn[], offers: readonly Offe
       if (r) spill[id] = r.effect
     }
     const energy = readAt(byKey, windowSlots(o.day, o.block, 'nextBlock'), 'energy')
-    out.push({ offerId: o.id, moveId: o.moveId, situationKey: o.situationKey, target: o.target, window, day: o.day, block: o.block, arm: x.outcome === 'done' ? 'done' : 'partly', effect: read.effect, weight: read.weight, coinFlip: o.coinFlip, spill, energy: energy ? energy.effect : null })
+    out.push({ offerId: o.id, moveId: o.moveId, situationKey: o.situationKey, target: o.target, window, day: o.day, block: o.block, arm: x.outcome === 'done' ? 'done' : 'partly', effect: read.effect, weight: read.weight, coinFlip: o.coinFlip, spill, energy: energy ? energy.effect : null, propensity: o.propensity ?? null, propensities: o.propensities ?? null })
   }
   return out
 }

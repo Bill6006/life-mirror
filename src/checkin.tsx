@@ -48,6 +48,7 @@ export function CheckInScreen({
   day,
   block,
   depth,
+  retired = [],
   only,
   pending,
   onDone,
@@ -56,13 +57,15 @@ export function CheckInScreen({
   day: string
   block: Block
   depth: Depth
+  /** Context readings you retired on a proposal; never asked again until brought back. */
+  retired?: readonly string[]
   only?: ReadingId
   pending: readonly Offer[]
   onDone: () => void
   onClose: () => void
 }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
-  const ids = record ? askedOf(record) : askedReadings(block, depth)
+  const ids = record ? askedOf(record) : askedReadings(block, depth, retired)
   const total = ids.length
   const [local, setLocal] = useState<Answers>({})
   const [index, setIndex] = useState(only ? Math.max(0, ids.indexOf(only)) : 0)

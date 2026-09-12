@@ -13,11 +13,11 @@ describe('the reading out of 100', () => {
     expect(pointsFor('energy', 3)).toBe(50)
     // mood 100, energy 50, focus 50, stress 100 (position 1, reversed), overwhelm 50, irritation 50 → 400/6
     const r = readingOutOf100({ ...allAt(blockReadings('morning'), 3), mood: 5, stress: 1 }, blockReadings('morning'))
-    expect(r).toEqual({ value: 67, stance: 'Stabilize', used: 6, total: 6 })
+    expect(r).toEqual({ value: 67, stance: 'Stabilize', used: 6, total: 6, weighted: false })
   })
 
   it('uses only the ingredients a block asks, and says how many', () => {
-    expect(readingOutOf100(allAt(blockReadings('evening'), 3), blockReadings('evening'))).toEqual({ value: 50, stance: 'Stabilize', used: 6, total: 6 })
+    expect(readingOutOf100(allAt(blockReadings('evening'), 3), blockReadings('evening'))).toEqual({ value: 50, stance: 'Stabilize', used: 6, total: 6, weighted: false })
     expect(readingOutOf100(allAt(blockReadings('afternoon'), 3), blockReadings('afternoon'))?.used).toBe(6)
     expect(readingOutOf100({ mood: 3, energy: 3, stress: 3 }, ['mood', 'energy', 'stress'])?.used).toBe(3)
   })
@@ -65,6 +65,6 @@ describe('the reading out of 100', () => {
     expect(latestFullReading([partial])).toBeNull()
     // A short-depth check-in fixed its own asked set when it began.
     const short = { ...mk('2026-09-05', 'evening', { mood: 4, energy: 4, stress: 2 }, true), asked: ['mood', 'energy', 'stress'] }
-    expect(latestFullReading([short, full])?.reading).toEqual({ value: 75, stance: 'Build', used: 3, total: 6 })
+    expect(latestFullReading([short, full])?.reading).toEqual({ value: 75, stance: 'Build', used: 3, total: 6, weighted: false })
   })
 })

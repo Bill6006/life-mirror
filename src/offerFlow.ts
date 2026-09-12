@@ -1,4 +1,5 @@
 import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
+import { propensities } from './adaptive'
 import { choose, type Rng } from './bandit'
 import { activeAims, liveSkills, markRungByStep, rungMarks } from './aimFlow'
 import { LADDERS, moveById } from './catalogue'
@@ -29,6 +30,7 @@ import { studyVersions, type ReasonCheck } from './studyNight'
 // card (what is being tested, written first), and the outcome (what happened).
 
 const PICKUP_WINDOW_MIN = 90
+const SIGN_FLIP_BONUS = 0.3
 
 /** Every open offer, oldest first: the next check-in asks about each in turn. */
 export async function pendingOffers(): Promise<Offer[]> {
@@ -131,10 +133,16 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     if (!situation) return null
 
     const t = await withLearning(await todayState(day, settings), block, day)
-    const set = withWindowPenalty(candidatesFor(situation, t), situation.target)
+    // Phase 12: a flagged sign flip is tested on purpose, offered a little more often here until its card has its eight.
+    const flips = await db.cards.where('situationKey').equals(situation.key).filter((c) => c.origin === 'signFlip').toArray()
+    const scheduled = new Set(flips.map((c) => c.moveId))
+    const base = withWindowPenalty(candidatesFor(situation, t), situation.target)
+    const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
     const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))
-    const choice = chooseFor(set, beliefs, rng)
+    const draw = rng ?? Math.random
+    const choice = chooseFor(set, beliefs, draw)
     if (!choice) return null
+    const odds = propensities(set.candidates, beliefs, draw)
     const history = await db.offers.where('situationKey').equals(situation.key).filter((o) => o.skippedAt === null).toArray()
     const expected = await mostRecentlyDoneIn(situation.key)
     const now = new Date().toISOString()
@@ -189,6 +197,8 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       coinFlip: choice.coinFlip,
       passiveId: passive?.id ?? null,
       whyNot: whyNot ? { moveId: whyNot.moveId, reason: whyNot.reason } : null,
+      propensity: odds[choice.id],
+      propensities: odds,
       skippedAt: null,
       closedAt: null,
     }
@@ -215,8 +225,11 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     const t = await withLearning(await todayState(day, settings), block, day)
     const set = pickupCandidates(block, t)
     const key = 'pickup:energy'
-    const choice = chooseFor(set, await beliefsFor(key, set.candidates.map((c) => c.id)), rng)
+    const pickupBeliefs = await beliefsFor(key, set.candidates.map((c) => c.id))
+    const draw = rng ?? Math.random
+    const choice = chooseFor(set, pickupBeliefs, draw)
     if (!choice) return null
+    const odds = propensities(set.candidates, pickupBeliefs, draw)
     const history = await db.offers.where('situationKey').equals(key).toArray()
     const nowIso = now.toISOString()
     let cardId: number | null = null
@@ -244,6 +257,8 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
       coinFlip: choice.coinFlip,
       passiveId: null,
       whyNot: null,
+      propensity: odds[choice.id],
+      propensities: odds,
       skippedAt: null,
       closedAt: null,
     }

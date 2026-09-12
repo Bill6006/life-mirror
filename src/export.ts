@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { askedOf, type Aim, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
@@ -18,6 +18,7 @@ export interface RecordsData {
   declarations: readonly Declaration[]
   forecasts?: readonly Forecast[]
   forecastScores?: readonly ForecastScore[]
+  anchorSwaps?: readonly AnchorSwap[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -86,6 +87,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, goodEnd: INGREDIENTS[r.id] === 'down' ? 'low' : INGREDIENTS[r.id] === 'up' ? 'high' : 'context', anchors: r.anchors, alternates: r.alternates ?? null })),
         positions: 'Each answer is a position 1 to 5 into the anchors, in order. Points are 0, 25, 50, 75, 100, reversed where the good end is low.',
         reworded: REWORDED,
+        swaps: (records?.anchorSwaps ?? []).map((s) => ({ reading: s.reading, position: s.position, from: s.from, to: s.to, on: s.at, answers: s.answers, stretchDays: s.stretchDays })),
+        retiredReadings: settings.retiredReadings,
+        weights: settings.weights,
         events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent'],
       },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),

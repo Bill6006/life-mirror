@@ -67,6 +67,14 @@ export interface Settings {
   /** The one-time ask happened, whether or not a line was written. Never asked again. */
   directionAskedAt: string | null
   cloud: CloudSettings
+  /** Phase 12: context readings you retired on a proposal; never an ingredient. */
+  retiredReadings: string[]
+  /** A proposal you kept for now, by the day you decided; it rests sixty days. */
+  readingDecisions: Record<string, string>
+  /** Chips brought back, by the day you did; the count of untapped evenings restarts there. */
+  chipsBack: Record<string, string>
+  /** Learned weights for the reading out of 100, applied only once a weight card holds up. */
+  weights: Record<string, number> | null
   updatedAt: string
 }
 
@@ -95,6 +103,10 @@ export const DEFAULT_SETTINGS: Settings = {
   direction: null,
   directionAskedAt: null,
   cloud: { token: null, deviceId: '' },
+  retiredReadings: [],
+  readingDecisions: {},
+  chipsBack: {},
+  weights: null,
   updatedAt: '',
 }
 
@@ -115,14 +127,18 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     },
     reminded: stored.reminded ?? {},
     cloud: { ...DEFAULT_SETTINGS.cloud, ...(stored.cloud ?? {}) },
+    retiredReadings: stored.retiredReadings ?? [],
+    readingDecisions: stored.readingDecisions ?? {},
+    chipsBack: stored.chipsBack ?? {},
+    weights: stored.weights ?? null,
   }
 }
 
 export const SHORT_READINGS: readonly ReadingId[] = ['mood', 'energy', 'stress']
 
-/** The readings a block asks at a given depth, in the block's own order. */
-export function askedReadings(block: Block, depth: Depth): readonly ReadingId[] {
-  const all = blockReadings(block)
+/** The readings a block asks at a given depth, in the block's own order, less any context reading you retired. */
+export function askedReadings(block: Block, depth: Depth, retired: readonly string[] = []): readonly ReadingId[] {
+  const all = blockReadings(block).filter((id) => !retired.includes(id))
   return depth === 'short' ? all.filter((id) => SHORT_READINGS.includes(id)) : all
 }
 

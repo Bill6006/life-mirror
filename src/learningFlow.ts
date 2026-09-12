@@ -1,11 +1,14 @@
+import { anchorSwapDue } from './audit'
 import { addDays } from './blocks'
 import { coolingOffDuration, associationFor, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
-import { allCheckIns, db, getSettings, privateItems, type BeliefRow, type Card, type Declaration, type Outcome, type TagBeliefRow } from './db'
+import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type Declaration, type Outcome, type TagBeliefRow } from './db'
 import { cardFromHypothesis, parseHypothesis, type Parsed } from './hypothesis'
 import { decayAfterStop, energyCost, FLAT, moveBelief, observations, priorOf, signFlips, spillover, tagBeliefs, type Belief, type MoveBelief, type Observation, type TagBelief } from './learning'
 import { NOTHING } from './offers'
-import { declarationsDue, evaluateCards, evaluateWeightCard, proposeWeights, type CardStats, type WeightStats } from './tiers'
+import { readings, setAnchorSwaps } from './readings'
+import { setLearnedWeights } from './score'
+import { declarationsDue, evaluateCards, proposeWeights, weightStanding, type CardStats, type WeightStats } from './tiers'
 
 // The learning engine on the phone. Once a day: every effect in the record, the beliefs the
 // bandit draws from, sign flips with cards to test them on purpose, declarations when a card
@@ -53,11 +56,26 @@ export async function runLearning(day: string, force = false): Promise<void> {
     computedOn: day,
   }))
   const tagRows: TagBeliefRow[] = tags.map((t) => ({ id: t.id, mean: t.belief.mean, sd: t.belief.sd, n: t.belief.n, researchMean: t.research.mean, recordMean: t.record?.mean ?? null, recordN: t.record?.n ?? 0, computedOn: day }))
-  const stats = evaluateCards(cards, obs, declarations)
-  const due = declarationsDue(cards, stats, declarations, day)
+  const effectCardsOnly = cards.filter((c) => c.origin !== 'weight')
+  const stats = evaluateCards(effectCardsOnly, obs, declarations)
+  const due = declarationsDue(effectCardsOnly, stats, declarations, day)
   const now = new Date().toISOString()
+  // Phase 12: the anchor swap guard, once per reading, never the middle, logged and dated.
+  const existingSwaps = await db.anchorSwaps.toArray()
+  const swapsDue = readings.map((r) => anchorSwapDue(r, checkins, existingSwaps, day)).filter((s): s is NonNullable<typeof s> => s !== null)
+  // Phase 12: weight cards can now be declared; weights apply only once one holds up.
+  const weightCards = cards.filter((c) => c.origin === 'weight')
+  const weightDue: Declaration[] = []
+  let weightsToApply: Record<string, number> | null = null
+  for (const w of weightCards) {
+    const standing = weightStanding(w, checkins, declarations, day)
+    if (standing.due) weightDue.push(standing.due)
+    if (standing.holds && w.weights) weightsToApply = w.weights
+  }
 
-  await db.transaction('rw', [db.beliefs, db.tagBeliefs, db.cards, db.declarations, db.derived], async () => {
+  await db.transaction('rw', [db.beliefs, db.tagBeliefs, db.cards, db.declarations, db.derived, db.anchorSwaps], async () => {
+    if (swapsDue.length) await db.anchorSwaps.bulkAdd(swapsDue)
+    if (weightDue.length) await db.declarations.bulkAdd(weightDue)
     await db.beliefs.clear()
     await db.beliefs.bulkPut(rows)
     await db.tagBeliefs.clear()
@@ -80,6 +98,15 @@ export async function runLearning(day: string, force = false): Promise<void> {
     }
     await db.derived.put({ key: LEARNING_KEY, day, count: obs.length })
   })
+  if (weightsToApply) await updateSettings((s) => (s.weights ? s : { ...s, weights: weightsToApply as Record<string, number> }))
+  await loadAudits()
+}
+
+/** What the audits have decided, loaded into the readings and the reading out of 100: at open and after each daily run. */
+export async function loadAudits(): Promise<void> {
+  const [swaps, settings] = await Promise.all([db.anchorSwaps.toArray(), getSettings()])
+  setAnchorSwaps(swaps)
+  setLearnedWeights(settings.weights)
 }
 
 /** The beliefs for one situation, for the draw: today's rows, else research alone; nothing today is flat. */
@@ -136,7 +163,7 @@ export async function evidence(today: string): Promise<Evidence> {
       decay: hasMove(card.moveId) ? decayAfterStop(obs, card.moveId, checkins, card.target) : null,
     }
   })
-  const weightCards = cards.filter((c) => c.origin === 'weight').map((card) => ({ card, stats: evaluateWeightCard(checkins, card.weights ?? {}) }))
+  const weightCards = cards.filter((c) => c.origin === 'weight').map((card) => ({ card, stats: weightStanding(card, checkins, declarations, today).stats }))
   const cooling = associationFor(checkins, today, (c) => Boolean(c.extras?.coolingOff))
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial))
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)

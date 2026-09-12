@@ -124,6 +124,9 @@ export interface Offer {
   /** A passive item riding alongside, or null. */
   passiveId: string | null
   whyNot: { moveId: string; reason: string } | null
+  /** Phase 12: the probability this move had of being offered, and every candidate's, at the draw. */
+  propensity?: number
+  propensities?: Record<string, number>
   skippedAt: string | null
   /** Set once the outcome has been asked, answered or not. */
   closedAt: string | null
@@ -159,6 +162,20 @@ export interface Declaration {
   level: number
   nDone: number
   nAlternative: number
+  /** Which estimator produced the claim: the adaptive weights over all the data, the coin-flip slice, or the weight card's pairs. */
+  estimator?: 'adaptive' | 'coinFlip' | 'weights'
+}
+
+/** An anchor swap: a pre-written alternate that took a phrase's place after a long unused stretch, once per reading, never the middle. Logged and dated. */
+export interface AnchorSwap {
+  id?: number
+  reading: ReadingId
+  position: number
+  from: string
+  to: string
+  at: string
+  answers: number
+  stretchDays: number
 }
 
 /** A belief the bandit draws from, recomputed once a day: research says, your record says, and the two combined. */
@@ -275,6 +292,7 @@ class LifeMirrorDB extends Dexie {
   declarations!: Table<Declaration, number>
   forecasts!: Table<Forecast, number>
   forecastScores!: Table<ForecastScore, number>
+  anchorSwaps!: Table<AnchorSwap, number>
   beliefs!: Table<BeliefRow, [string, string]>
   tagBeliefs!: Table<TagBeliefRow, string>
   derived!: Table<Derived, string>
@@ -390,6 +408,31 @@ class LifeMirrorDB extends Dexie {
       derived: 'key',
       forecasts: '++id, &[day+block+horizon], day',
       forecastScores: '++id, &[day+block+horizon], day',
+    })
+    // Phase 12: anchor swaps are records, logged and dated.
+    this.version(8).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
+      studyNights: '++id, day',
+      aims: '++id, kind',
+      skills: '++id, order',
+      rungMarks: '++id, skillId, at',
+      outbox: '++id, [store+key]',
+      cloudRows: '[store+key]',
+      cloudMeta: 'key',
+      declarations: '++id, cardId',
+      beliefs: '[situationKey+moveId], moveId',
+      tagBeliefs: 'id',
+      derived: 'key',
+      forecasts: '++id, &[day+block+horizon], day',
+      forecastScores: '++id, &[day+block+horizon], day',
+      anchorSwaps: '++id, reading',
     })
     installOutbox(this)
   }
@@ -626,7 +669,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -636,6 +679,7 @@ export function wipeEverything(): Promise<void> {
       db.declarations.clear(),
       db.forecasts.clear(),
       db.forecastScores.clear(),
+      db.anchorSwaps.clear(),
       db.beliefs.clear(),
       db.tagBeliefs.clear(),
       db.derived.clear(),

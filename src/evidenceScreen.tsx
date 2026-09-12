@@ -42,6 +42,13 @@ function CardBlock({ e }: { e: CardEvidence }) {
         {stats.interval && (
           <p class="calc-line">{fill(c.interval, { diff: steps(stats.interval.diff), lo: steps(stats.interval.lo), hi: steps(stats.interval.hi), level: String(Math.round(stats.interval.level * 100)) })}</p>
         )}
+        {stats.estimator && (
+          <p class="calc-line" data-testid="estimator">
+            {c.estimators[stats.estimator]}
+          </p>
+        )}
+        {stats.estimator === 'adaptive' && stats.slice && <p class="calc-line">{fill(c.sliceLine, { done: String(stats.n.done), alternative: String(stats.n.alternative), diff: steps(stats.slice.diff), lo: steps(stats.slice.lo), hi: steps(stats.slice.hi) })}</p>}
+        {card.origin === 'signFlip' && stats.tier === 'little' && <p class="calc-line">{c.scheduled}</p>}
         {stats.declared && (
           <p class="calc-line">
             {fill(c.declared, { date: formatDayShort(stats.declared.at), done: String(stats.replication?.done ?? 0), alternative: String(stats.replication?.alternative ?? 0) })} · {stats.replication?.holds ? c.replicated : c.notReplicated}

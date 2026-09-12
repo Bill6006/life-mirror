@@ -457,6 +457,25 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await expect(page.getByTestId('give-back')).toBeVisible()
 })
 
+test('testing smarter: readings and chips are decided by you, no swap yet, the baseline steady line, the estimator named', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Readings and chips/ }).click()
+  await expect(page.getByTestId('readings-screen')).toBeVisible()
+  await expect(page.getByTestId('proposals-none')).toContainText('No proposal')
+  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(8)
+  await expect(page.locator('[data-testid^="chip-back-"]')).toHaveCount(0)
+  await expect(page.getByTestId('swaps-none')).toContainText('No swap yet')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: /^Wording/ }).click()
+  await expect(page.getByTestId('swapped')).toHaveCount(0)
+  await expect(page.getByTestId('alternate')).toHaveCount(48)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('baseline-steady')).toContainText('needs ten days')
+})
+
 test('the cloud copy shows its database, stays off without a token, and never touches the network in the pipeline', async ({ page }) => {
   const requests: string[] = []
   page.on('request', (r) => requests.push(r.url()))

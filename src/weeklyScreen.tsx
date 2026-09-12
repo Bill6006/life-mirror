@@ -30,6 +30,21 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{c.title}</p>
       </header>
 
+      <h2 class="section">{c.baseline}</h2>
+      {w.shift?.shifted ? (
+        <div class="card pad">
+          <div class="conclusion" data-testid="baseline-shift">
+            <p class="calc-line ink">{fill(c.shifted, { since: formatDayShort(w.shift.since), before: String(w.shift.before.n), beforeMean: String(w.shift.before.mean), after: String(w.shift.after.n), afterMean: String(w.shift.after.mean), diff: String(w.shift.diff), t: String(Math.abs(w.shift.t)) })}</p>
+          </div>
+        </div>
+      ) : (
+        <div class="card pad">
+          <p class="note no-gap" data-testid="baseline-steady">
+            {w.shift ? fill(c.steady, { days: String(w.shift.days), t: String(Math.abs(w.shift.t)) }) : c.baselineNone}
+          </p>
+        </div>
+      )}
+
       <h2 class="section">{c.scorecard}</h2>
       <div class="card pad">
         <div class="calc">

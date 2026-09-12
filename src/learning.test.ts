@@ -167,8 +167,8 @@ describe('beliefs: research says, your record says', () => {
   it('lends the tags’ record to a move whose own record is thin, and never flips on one day', () => {
     const today = '2026-09-11'
     const obs = [
-      { offerId: 1, moveId: 'green-walk', situationKey: 'afternoon:mood', target: 'mood' as const, window: 'nextBlock' as const, day: '2026-09-09', block: 'afternoon' as const, arm: 'done' as const, effect: 2, weight: 1, coinFlip: true, spill: {}, energy: null },
-      { offerId: 2, moveId: 'green-walk', situationKey: 'afternoon:mood', target: 'mood' as const, window: 'nextBlock' as const, day: '2026-09-10', block: 'afternoon' as const, arm: 'done' as const, effect: 2, weight: 1, coinFlip: true, spill: {}, energy: null },
+      { offerId: 1, moveId: 'green-walk', situationKey: 'afternoon:mood', target: 'mood' as const, window: 'nextBlock' as const, day: '2026-09-09', block: 'afternoon' as const, arm: 'done' as const, effect: 2, weight: 1, coinFlip: true, spill: {}, energy: null, propensity: null, propensities: null },
+      { offerId: 2, moveId: 'green-walk', situationKey: 'afternoon:mood', target: 'mood' as const, window: 'nextBlock' as const, day: '2026-09-10', block: 'afternoon' as const, arm: 'done' as const, effect: 2, weight: 1, coinFlip: true, spill: {}, energy: null, propensity: null, propensities: null },
     ]
     const tags = tagBeliefs(obs, today)
     const outdoors = tags.find((t) => t.id === 'outdoors')
