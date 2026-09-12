@@ -16,6 +16,8 @@ export interface Reading {
   unit: Unit
   /** Five phrases, least to most of the thing named. */
   anchors: readonly string[]
+  /** Phase 9: one pre-written alternate per anchor except the middle, for your veto; null where a reading has none. */
+  alternates?: readonly (string | null)[] | null
 }
 
 export const readings: readonly Reading[] = data.readings as unknown as readonly Reading[]

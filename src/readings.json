@@ -15,8 +15,25 @@
       "sleepHours",
       "sleepQuality"
     ],
-    "afternoon": ["mood", "irritation", "energy", "hunger", "stress", "focus", "overwhelm"],
-    "evening": ["mood", "irritation", "energy", "hunger", "stress", "focus", "overwhelm", "loneliness"]
+    "afternoon": [
+      "mood",
+      "irritation",
+      "energy",
+      "hunger",
+      "stress",
+      "focus",
+      "overwhelm"
+    ],
+    "evening": [
+      "mood",
+      "irritation",
+      "energy",
+      "hunger",
+      "stress",
+      "focus",
+      "overwhelm",
+      "loneliness"
+    ]
   },
   "readings": [
     {
@@ -30,6 +47,13 @@
         "Flat — nothing wrong, nothing good",
         "Warm — quietly glad about things",
         "Bright — glad to be in this day"
+      ],
+      "alternates": [
+        "Leaden — everything takes lifting",
+        "Low — the day drags",
+        null,
+        "Easy — glad in a quiet way",
+        "Lit up — glad to be here"
       ]
     },
     {
@@ -43,6 +67,13 @@
         "Some — a shorter fuse than usual",
         "Snappy — biting at small things",
         "Seething — everything grates"
+      ],
+      "alternates": [
+        "Calm — nothing gets under my skin",
+        "Slight — a small thing or two grated",
+        null,
+        "Short — snapping at small things",
+        "Raw — everything sets me off"
       ]
     },
     {
@@ -56,6 +87,13 @@
         "Middling — pressure I can carry",
         "Wound tight — pressure most of the time",
         "Crushing — pressure with no let-up"
+      ],
+      "alternates": [
+        "Easy — nothing pressing",
+        "Mild — a thing or two on my mind",
+        null,
+        "Braced — under pressure most of the time",
+        "Flattened — no let-up at all"
       ]
     },
     {
@@ -69,6 +107,13 @@
         "Crowded — more than fits, still workable",
         "Swamped — can't see where to start",
         "Buried — shut down by how much there is"
+      ],
+      "alternates": [
+        "Open — I can see what to do next",
+        "Busy but sorted — I know the first step",
+        null,
+        "Flooded — no idea where to start",
+        "Frozen — shut down by the size of it"
       ]
     },
     {
@@ -82,6 +127,13 @@
         "Middling — I'll do what's in front of me",
         "Ready — there are things I want to get to",
         "Pulled — I want to start now"
+      ],
+      "alternates": [
+        "Inert — nothing pulls me toward anything",
+        "Reluctant — I would rather not, but could",
+        null,
+        "Keen — things I want to get to",
+        "Eager — I want to start this minute"
       ]
     },
     {
@@ -95,6 +147,13 @@
         "Even — no strong sense either way",
         "Sure-footed — I can handle today",
         "Solid — I trust myself with whatever comes"
+      ],
+      "alternates": [
+        "Unsure — I expect to get it wrong",
+        "Wobbly — not sure I am up to it",
+        null,
+        "Steady — I can handle today",
+        "Certain — I trust myself with what comes"
       ]
     },
     {
@@ -108,6 +167,13 @@
         "Fair — I can focus with effort",
         "Held — attention stays where I put it",
         "Locked in — nothing pulls me off"
+      ],
+      "alternates": [
+        "Fogged — cannot hold a thought",
+        "Slipping — attention keeps sliding away",
+        null,
+        "Anchored — attention stays put",
+        "Absorbed — nothing pulls me away"
       ]
     },
     {
@@ -121,6 +187,13 @@
         "Some — I'd like someone around",
         "Lonely — nobody feels close",
         "Cut off — alone even around people"
+      ],
+      "alternates": [
+        "Close — or content alone",
+        "Mild — a passing wish for company",
+        null,
+        "Adrift — nobody feels near",
+        "Walled off — alone even in company"
       ]
     },
     {
@@ -134,6 +207,13 @@
         "Neutral — could go either way",
         "Up for it — I'd enjoy people",
         "Drawn out — seeking company"
+      ],
+      "alternates": [
+        "Spent — I want nobody around",
+        "Thin — one quiet person, no more",
+        null,
+        "Warm — I would enjoy people",
+        "Hungry for it — seeking company"
       ]
     },
     {
@@ -147,6 +227,13 @@
         "Even — enough for the day",
         "Charged — plenty in the tank",
         "Buzzing — could run up a hill"
+      ],
+      "alternates": [
+        "Sapped — the body feels heavy",
+        "Sluggish — moving takes effort",
+        null,
+        "Fresh — plenty in the tank",
+        "Fizzing — could run up a hill"
       ]
     },
     {
@@ -160,6 +247,13 @@
         "Neutral — neither hungry nor full",
         "Hungry — ready to eat",
         "Ravenous — can't think past food"
+      ],
+      "alternates": [
+        "Overfull — uncomfortably so",
+        "Satisfied — no wish to eat",
+        null,
+        "Empty — could eat now",
+        "Starving — cannot think past food"
       ]
     },
     {
@@ -167,7 +261,14 @@
       "name": "Sleep hours",
       "prompt": "Last night",
       "unit": "band",
-      "anchors": ["Under 5 hours", "5 to 6 hours", "6 to 7 hours", "7 to 8 hours", "Over 8 hours"]
+      "anchors": [
+        "Under 5 hours",
+        "5 to 6 hours",
+        "6 to 7 hours",
+        "7 to 8 hours",
+        "Over 8 hours"
+      ],
+      "alternates": null
     },
     {
       "id": "sleepQuality",
@@ -180,6 +281,13 @@
         "Fair — slept, not refreshed",
         "Sound — slept through, mostly rested",
         "Deep — woke restored"
+      ],
+      "alternates": [
+        "Wrecked — barely slept",
+        "Patchy — woke often, unrested",
+        null,
+        "Solid — slept through, mostly rested",
+        "Full — woke restored"
       ]
     }
   ]

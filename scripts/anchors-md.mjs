@@ -12,9 +12,14 @@ md += `Morning asks all ${data.blocks.morning.length}: ${data.blocks.morning.map
 md += `Afternoon asks ${data.blocks.afternoon.length}: ${data.blocks.afternoon.map(name).join(', ')}.\n\n`
 md += `Evening asks ${data.blocks.evening.length}: ${data.blocks.evening.map(name).join(', ')}.\n\n`
 md += 'Every block asks all six ingredients of the reading out of 100 (mood, energy, focus, stress, overwhelm, irritation), so the three daily numbers compare.\n\n'
+md += 'Under each phrase but the middle, one pre-written alternate (Phase 9), for your veto. A swap happens only in Phase 12, once per reading, never the middle, logged and dated. Sleep hours is a band of hours and has none.\n\n'
 for (const r of data.readings) {
   md += `## ${r.name}\n\n_${r.prompt}_\n\n`
-  for (const a of r.anchors) md += `- ${a}\n`
+  r.anchors.forEach((a, i) => {
+    md += `- ${a}\n`
+    const alt = r.alternates?.[i]
+    if (alt) md += `  - or: ${alt}\n`
+  })
   md += '\n'
 }
 

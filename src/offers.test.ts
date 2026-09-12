@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { choose, COIN_FLIP_RATE, FLAT, seeded, type Candidate } from './bandit'
-import { CHARISMA_LADDER, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
+import { CHARISMA_LADDER, isProposed, moveById, moves, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, whyNotThat, type TodayState } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -45,6 +45,16 @@ describe('the candidate set', () => {
       const m = moveById(c.id)
       expect(m.when).toContain('evening')
       expect(m.targets.some((t) => t.reading === 'stress' && t.direction === 'down')).toBe(true)
+    }
+  })
+
+  it('never offers a Phase 9 proposal until Green wires it', () => {
+    const proposed = moves.filter(isProposed)
+    expect(proposed.length).toBeGreaterThan(0)
+    for (const m of proposed) expect(screen(m, s, quiet), m.id).toBe('proposed')
+    const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), mood: 1 }))!
+    for (const set of [candidatesFor(s, quiet), candidatesFor(evening, quiet), pickupCandidates('afternoon', quiet)]) {
+      for (const c of set.candidates) expect(proposed.some((m) => m.id === c.id), c.id).toBe(false)
     }
   })
 

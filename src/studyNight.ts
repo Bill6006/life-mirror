@@ -1,4 +1,4 @@
-import { moves, type Move } from './catalogue'
+import { isProposed, moves, type Move } from './catalogue'
 import { copy } from './copy'
 import type { StudyNight, StudyReason } from './db'
 import { fill } from './format'
@@ -14,14 +14,14 @@ export const STUDY_REASONS: readonly StudyReason[] = ['tired', 'tooMuch', 'noTim
 
 /** Study versions that fit an evening and were not offered today. */
 export function studyVersions(offeredToday: readonly string[]): Move[] {
-  return moves.filter((m) => m.family === 'study' && m.when.includes('evening') && !offeredToday.includes(m.id))
+  return moves.filter((m) => !isProposed(m) && m.family === 'study' && m.when.includes('evening') && !offeredToday.includes(m.id))
 }
 
 /** The smaller version: the study move with the most minutes still under the offered one, or null when there is none. */
 export function smallerThan(move: Move): Move | null {
   let best: Move | null = null
   for (const m of moves) {
-    if (m.family !== 'study' || m.id === move.id || m.minutes >= move.minutes) continue
+    if (isProposed(m) || m.family !== 'study' || m.id === move.id || m.minutes >= move.minutes) continue
     if (!best || m.minutes > best.minutes) best = m
   }
   return best

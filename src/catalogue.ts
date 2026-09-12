@@ -3,13 +3,18 @@ import type { Block } from './blocks'
 import type { ReadingId } from './readings'
 
 // The catalogue of moves lives in catalogue.json so the same source feeds the app, the tests,
-// and CATALOGUE.md (scripts/catalogue-md.mjs). Phase 5 only reads it; wiring comes in Phase 6.
+// and CATALOGUE.md (scripts/catalogue-md.mjs). Phase 9 added the tags, the starting beliefs,
+// the setup family and the proposed entries: content to read and veto, wired at Green.
 
 export type Strength = 'strong' | 'moderate' | 'weak' | 'practice'
 export type Effort = 'low' | 'medium' | 'high'
 export type Need = 'outdoors' | 'kit' | 'anotherPerson' | 'freeHour' | 'daylight' | 'quiet'
-export type Window = 'nextBlock' | 'evening' | 'nextMorning' | 'sevenDays'
+export type Window = 'nextBlock' | 'laterToday' | 'evening' | 'nextMorning' | 'sevenDays'
 export type Counter = 'study' | 'conversations' | 'timeWithHer' | 'faith' | 'finishing'
+export type Ingredient = 'outdoors' | 'withPeople' | 'short' | 'lowEffort'
+export type Reward = 'pleasure' | 'mastery' | 'connection'
+export type Intensity = 'low' | 'medium' | 'high'
+export type Necessity = 'food' | 'teeth' | 'shower'
 
 export interface Source {
   who: string
@@ -29,6 +34,19 @@ export interface Family {
   name: string
 }
 
+/** The learned tags: the app will estimate their effects from your record. No more than these. */
+export interface Tags {
+  ingredients: readonly Ingredient[]
+  reward: readonly Reward[]
+  intensity: Intensity
+}
+
+/** A starting belief: the expected change on the first target, in anchor steps, and how it was read from the source. */
+export interface Prior {
+  effect: number
+  note: string
+}
+
 export interface Move {
   id: string
   name: string
@@ -43,10 +61,82 @@ export interface Move {
   replaces: readonly string[]
   countsToward: readonly Counter[]
   when: readonly Block[]
+  tags: Tags
+  /** A filter tag: what being given this move costs you. */
+  costToAssign: Effort
+  prior: Prior
+  /** Proposed in Phase 9: read and veto; never offered until Green wires it. */
+  status?: 'proposed'
+  /** Proposed to park at the veto; offered as before until then. */
+  parkProposed?: boolean
+  ladder?: { id: string; rung: number }
+  setup?: { kind: string; necessity?: Necessity }
+  /** Proposed as a passive item, riding alongside a move. */
+  passive?: boolean
 }
 
-export const families: readonly Family[] = data.families
-export const moves: readonly Move[] = data.moves as unknown as readonly Move[]
+export interface LearnedTag {
+  id: string
+  kind: 'ingredient' | 'reward' | 'intensity'
+  name: string
+  what: string
+  prior: Prior
+  source: Source
+}
+
+export interface FilterTag {
+  id: string
+  name: string
+  what: string
+}
+
+export interface Research {
+  id: string
+  name: string
+  sources: readonly Source[]
+  contributes: readonly string[]
+  chips: string
+}
+
+export interface ExtensionPrompt {
+  intro: string
+  template: string
+}
+
+export interface Proposals {
+  money: { keep: readonly string[]; park: readonly string[]; move: readonly { id: string; to: string }[]; note: string }
+  charisma: { ladder: readonly string[]; note: string }
+  passive: readonly string[]
+  wiring: string
+}
+
+interface CatalogueData {
+  families: Family[]
+  moves: Move[]
+  learnedTags: LearnedTag[]
+  filterTags: FilterTag[]
+  research: Research[]
+  extensionPrompt: ExtensionPrompt
+  proposals: Proposals
+}
+
+const catalogue = data as unknown as CatalogueData
+
+export const families: readonly Family[] = catalogue.families
+/** Every entry, proposed ones included: what the catalogue screen and the document show. */
+export const moves: readonly Move[] = catalogue.moves
+export const learnedTags: readonly LearnedTag[] = catalogue.learnedTags
+export const filterTags: readonly FilterTag[] = catalogue.filterTags
+export const research: readonly Research[] = catalogue.research
+export const extensionPrompt: ExtensionPrompt = catalogue.extensionPrompt
+export const proposals: Proposals = catalogue.proposals
+
+export function isProposed(m: Move): boolean {
+  return m.status === 'proposed'
+}
+
+/** The entries the app may offer: everything not still proposed. Selection reads only this. */
+export const liveMoves: readonly Move[] = moves.filter((m) => !isProposed(m))
 
 const byId = new Map(moves.map((m) => [m.id, m]))
 
@@ -68,10 +158,15 @@ export function movesInFamily(familyId: string): Move[] {
 export const STRENGTHS: readonly Strength[] = ['strong', 'moderate', 'weak', 'practice']
 export const EFFORTS: readonly Effort[] = ['low', 'medium', 'high']
 export const NEEDS: readonly Need[] = ['outdoors', 'kit', 'anotherPerson', 'freeHour', 'daylight', 'quiet']
-export const WINDOWS: readonly Window[] = ['nextBlock', 'evening', 'nextMorning', 'sevenDays']
+export const WINDOWS: readonly Window[] = ['nextBlock', 'laterToday', 'evening', 'nextMorning', 'sevenDays']
 export const COUNTERS: readonly Counter[] = ['study', 'conversations', 'timeWithHer', 'faith', 'finishing']
+export const INGREDIENT_TAGS: readonly Ingredient[] = ['outdoors', 'withPeople', 'short', 'lowEffort']
+export const REWARD_TAGS: readonly Reward[] = ['pleasure', 'mastery', 'connection']
+export const INTENSITIES: readonly Intensity[] = ['low', 'medium', 'high']
+/** The plan names these learned tags and no others. */
+export const LEARNED_TAG_IDS: readonly string[] = [...INGREDIENT_TAGS, ...REWARD_TAGS, 'intensity']
 
-/** The charisma ladder, in order. */
+/** The charisma ladder, in order. The participation ladder replaces it at the Phase 9 Green. */
 export const CHARISMA_LADDER: readonly string[] = ['eye-contact-stranger', 'ten-seconds-past', 'say-the-thing', 'low-pressure-conversation']
 
 /** Ladders: rungs in order. The harder rung is offered when the readings say you can take it. */

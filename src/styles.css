@@ -1273,3 +1273,31 @@ code {
 .add .pill-quiet {
   white-space: nowrap;
 }
+
+/* The catalogue extension: proposals, priors, the research and the prompt */
+.move-status {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--accent);
+}
+.prior {
+  margin: 8px 0;
+}
+.plain {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.plain li {
+  margin: 0 0 4px;
+}
+.research .move-name {
+  margin-bottom: 8px;
+}
+.prompt {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}

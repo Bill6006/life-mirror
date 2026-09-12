@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCKS } from './blocks'
-import { CHARISMA_LADDER, COUNTERS, EFFORTS, families, moves, NEEDS, STRENGTHS, WINDOWS } from './catalogue'
+import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
 import { readings } from './readings'
 
 // The catalogue is content; these checks are what "the builder checks and says so" means in code.
@@ -11,10 +11,10 @@ const ids = new Set(moves.map((m) => m.id))
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
 
 describe('the catalogue of moves', () => {
-  it('has between sixty and ninety moves across the twelve families of the plan', () => {
+  it('has between sixty and a hundred moves across the thirteen families of the plan', () => {
     expect(moves.length).toBeGreaterThanOrEqual(60)
-    expect(moves.length).toBeLessThanOrEqual(90)
-    expect(families.map((f) => f.id)).toEqual(['ending', 'movement', 'steadying', 'food', 'study', 'house', 'people', 'rest', 'money', 'charisma', 'faith', 'finishing'])
+    expect(moves.length).toBeLessThanOrEqual(100)
+    expect(families.map((f) => f.id)).toEqual(['ending', 'movement', 'steadying', 'food', 'study', 'house', 'people', 'rest', 'money', 'charisma', 'faith', 'finishing', 'setup'])
     for (const f of families) expect(moves.some((m) => m.family === f.id), f.id).toBe(true)
   })
 
@@ -43,6 +43,53 @@ describe('the catalogue of moves', () => {
       expect(m.when.length, m.id).toBeGreaterThan(0)
       for (const b of m.when) expect(BLOCKS, m.id).toContain(b)
     }
+  })
+
+  it('tags every move with the learned tags the plan names and no others, a cost to assign, and a starting belief read from its source', () => {
+    for (const m of moves) {
+      for (const t of m.tags.ingredients) expect(INGREDIENT_TAGS, m.id).toContain(t)
+      for (const t of m.tags.reward) expect(REWARD_TAGS, m.id).toContain(t)
+      expect(INTENSITIES, m.id).toContain(m.tags.intensity)
+      expect(EFFORTS, m.id).toContain(m.costToAssign)
+      expect(typeof m.prior.effect, m.id).toBe('number')
+      expect(m.prior.effect, m.id).toBeGreaterThanOrEqual(0)
+      expect(m.prior.effect, m.id).toBeLessThanOrEqual(1)
+      expect(m.prior.note.length, m.id).toBeGreaterThan(10)
+    }
+    expect(learnedTags.map((t) => t.id)).toEqual([...LEARNED_TAG_IDS])
+    for (const t of learnedTags) {
+      expect(t.source.who.length, t.id).toBeGreaterThan(2)
+      expect(STRENGTHS, t.id).toContain(t.source.strength)
+      expect(t.prior.note.length, t.id).toBeGreaterThan(5)
+    }
+    expect(filterTags.map((t) => t.id)).toEqual(['costToAssign', 'startingEffort', 'needs', 'effectWindow'])
+  })
+
+  it('keeps every proposal out of what the app may offer until Green', () => {
+    const proposedIds = moves.filter(isProposed).map((m) => m.id)
+    expect(proposedIds.length).toBeGreaterThanOrEqual(20)
+    for (const id of proposedIds) expect(liveMoves.some((m) => m.id === id), id).toBe(false)
+    expect(liveMoves.length + proposedIds.length).toBe(moves.length)
+    expect(moves.filter((m) => m.family === 'setup').every(isProposed)).toBe(true)
+    for (const id of [...proposals.money.keep, ...proposals.money.park, ...proposals.charisma.ladder, ...proposals.passive]) expect(ids.has(id), id).toBe(true)
+    for (const id of proposals.money.park) expect(moves.find((m) => m.id === id)?.parkProposed, id).toBe(true)
+    expect(proposals.charisma.ladder.map((id) => moves.find((m) => m.id === id)?.ladder?.rung)).toEqual([1, 2, 3, 4])
+    expect(moves.filter((m) => m.setup?.kind === 'lateness').length).toBeGreaterThanOrEqual(1)
+    expect(moves.filter((m) => m.setup?.necessity).length).toBeGreaterThanOrEqual(3)
+    expect(moves.find((m) => m.id === 'notice-and-act')?.status).toBe('proposed')
+    expect(moves.find((m) => m.id === 'recovery-gap')?.passive).toBe(true)
+  })
+
+  it('carries the research behind the layer, read before wiring, and the extension prompt without a private item', () => {
+    expect(research.map((r) => r.id)).toEqual(['ba', 'act', 'sdt', 'meaning'])
+    for (const r of research) {
+      expect(r.sources.length, r.id).toBeGreaterThanOrEqual(3)
+      expect(r.contributes.length, r.id).toBeGreaterThanOrEqual(3)
+      expect(r.chips.length, r.id).toBeGreaterThan(20)
+    }
+    expect(extensionPrompt.template).toContain('THE RULES')
+    expect(extensionPrompt.template.toLowerCase()).toContain('private item')
+    expect(extensionPrompt.template.toLowerCase()).not.toContain('crisis')
   })
 
   it('never says the same thing twice: ids, names and descriptions are all distinct', () => {
@@ -81,10 +128,14 @@ describe('the catalogue of moves', () => {
   })
 
   it('uses no verdict words anywhere', () => {
-    for (const m of moves) {
-      for (const s of [m.name, m.what, m.source.who, m.source.what, ...m.replaces]) {
-        for (const w of banned) expect(s.toLowerCase(), `"${s}" uses "${w}"`).not.toMatch(new RegExp(`\\b${w}\\b`))
-      }
+    const texts: string[] = []
+    for (const m of moves) texts.push(m.name, m.what, m.source.who, m.source.what, m.prior.note, ...m.replaces)
+    for (const t of learnedTags) texts.push(t.name, t.what, t.prior.note, t.source.what)
+    for (const t of filterTags) texts.push(t.name, t.what)
+    for (const r of research) texts.push(r.name, r.chips, ...r.contributes, ...r.sources.map((s) => s.what))
+    texts.push(extensionPrompt.intro, extensionPrompt.template, proposals.money.note, proposals.charisma.note, proposals.wiring)
+    for (const s of texts) {
+      for (const w of banned) expect(s.toLowerCase(), `"${s}" uses "${w}"`).not.toMatch(new RegExp(`\\b${w}\\b`))
     }
   })
 })

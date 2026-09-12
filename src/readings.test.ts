@@ -60,6 +60,31 @@ describe('readings and anchors', () => {
     }
   })
 
+  it('carries one pre-written alternate per anchor except the middle, distinct, in the same voice, for the veto', () => {
+    const withAlternates = readings.filter((r) => r.unit !== 'band')
+    expect(withAlternates.length).toBe(12)
+    let count = 0
+    for (const r of withAlternates) {
+      const alts = r.alternates
+      expect(alts, r.id).toBeTruthy()
+      expect(alts!.length, r.id).toBe(5)
+      expect(alts![2], r.id).toBeNull()
+      for (const i of [0, 1, 3, 4]) {
+        const a = alts![i]
+        expect(typeof a, `${r.id} ${i}`).toBe('string')
+        const alt = a as string
+        count++
+        expect(alt.split(/\s+/).length, alt).toBeGreaterThanOrEqual(3)
+        expect(alt.includes(' — '), alt).toBe(true)
+        expect(r.anchors.includes(alt), alt).toBe(false)
+        expect(alt.split(' — ')[0].toLowerCase(), alt).not.toBe(r.anchors[i].split(' — ')[0].toLowerCase())
+        for (const w of banned) expect(alt.toLowerCase(), `"${alt}" uses "${w}"`).not.toMatch(new RegExp(`\\b${w}\\b`))
+      }
+    }
+    expect(count).toBe(48)
+    expect(readings.find((r) => r.unit === 'band')?.alternates ?? null).toBeNull()
+  })
+
   it('keeps headwords distinct within a reading and units valid', () => {
     for (const r of readings) {
       expect(['step', 'band']).toContain(r.unit)

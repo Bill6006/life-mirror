@@ -265,12 +265,28 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Read the catalogue/ }).click()
   await expect(page.getByText('The catalogue', { exact: true })).toBeVisible()
-  await expect(page.getByTestId('family-moves')).toHaveCount(12)
-  const count = await page.locator('.move').count()
+  await expect(page.getByTestId('family-moves')).toHaveCount(13)
+  const count = await page.locator('[data-testid="family-moves"] .move').count()
   expect(count).toBeGreaterThanOrEqual(60)
-  expect(count).toBeLessThanOrEqual(90)
+  expect(count).toBeLessThanOrEqual(100)
   await expect(page.getByRole('heading', { name: 'Time with her, no agenda' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'One low-pressure conversation with a woman' })).toBeVisible()
+
+  // Phase 9: tags and starting beliefs on every entry, proposals marked, the research and the prompt readable.
+  await expect(page.getByTestId('prior').first()).toContainText('Starting belief')
+  await expect(page.getByTestId('learned-tags').locator('.move')).toHaveCount(8)
+  await expect(page.getByRole('heading', { name: 'Ask one question in a group' })).toBeVisible()
+  await expect(page.locator('#move-ask-one-question .move-status')).toContainText('Proposed')
+  await expect(page.getByRole('heading', { name: 'Set the alarm for leaving, not arriving' })).toBeVisible()
+  await expect(page.getByTestId('research')).toHaveCount(4)
+  await expect(page.getByRole('heading', { name: 'Behavioural activation' })).toBeVisible()
+  await expect(page.getByTestId('extension-prompt')).toContainText('THE RULES')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // The alternates sit under the phrases, for the veto.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Wording/ }).click()
+  await expect(page.getByTestId('alternate')).toHaveCount(48)
 })
 
 test('Low-demand mode and depth change the check-in at once and persist', async ({ page }) => {

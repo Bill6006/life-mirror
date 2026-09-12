@@ -1,4 +1,5 @@
 import { copy } from './copy'
+import { fill } from './format'
 import { description, headword, readings } from './readings'
 
 /** Every reading and its five phrases, least to most, exactly as the check-in shows them. */
@@ -10,6 +11,7 @@ export function WordingScreen({ onClose }: { onClose: () => void }) {
       </header>
       <p class="note">{copy.wording.intro}</p>
       <p class="note">{copy.wording.sets}</p>
+      <p class="note faint">{copy.wording.alternatesNote}</p>
 
       {readings.map((r) => (
         <div key={r.id} class="wording-reading">
@@ -17,13 +19,19 @@ export function WordingScreen({ onClose }: { onClose: () => void }) {
           <p class="note faint">{r.prompt}</p>
           <div class="card">
             <ul class="rows">
-              {r.anchors.map((a) => {
+              {r.anchors.map((a, i) => {
                 const desc = description(a)
+                const alt = r.alternates?.[i] ?? null
                 return (
                   <li key={a} class="row is-static">
                     <span class="row-main">
                       <span class="head">{headword(a)}</span>
                       {desc && <span class="desc"> — {desc}</span>}
+                      {alt && (
+                        <span class="sub" data-testid="alternate">
+                          {fill(copy.wording.alternate, { phrase: alt })}
+                        </span>
+                      )}
                     </span>
                   </li>
                 )

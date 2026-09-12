@@ -1,5 +1,5 @@
 import type { Block } from './blocks'
-import { hasMove, moveById, moves, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, isProposed, liveMoves, moveById, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band, type Stance } from './score'
@@ -69,7 +69,7 @@ export interface TodayState {
   churchDay: boolean
 }
 
-export type Exclusion = 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
+export type Exclusion = 'proposed' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -88,6 +88,8 @@ function harderRungAllowed(band: Band): boolean {
 
 /** Why a move is out right now, or null when it is a candidate. Block and needs first, then band, then today. */
 export function screen(move: Move, s: Situation, t: TodayState): Exclusion | null {
+  // Phase 9 proposals are read and vetoed; nothing proposed is offered until Green wires it.
+  if (isProposed(move)) return 'proposed'
   if (OBSERVED_ONLY.has(move.id)) return 'observed'
   if (PASSIVE.has(move.id)) return 'passive'
   // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
@@ -119,7 +121,7 @@ export interface CandidateSet {
 export function candidatesFor(s: Situation, t: TodayState): CandidateSet {
   const candidates: Candidate[] = []
   const excluded = new Map<string, Exclusion>()
-  for (const m of moves) {
+  for (const m of liveMoves) {
     const why = screen(m, s, t)
     if (why) {
       excluded.set(m.id, why)
@@ -204,7 +206,7 @@ export function pickPassive(block: Block, t: TodayState, history: readonly Offer
 export function pickupCandidates(block: Block, t: TodayState): CandidateSet {
   const candidates: Candidate[] = []
   const excluded = new Map<string, Exclusion>()
-  for (const m of moves) {
+  for (const m of liveMoves) {
     const fits = (m.family === 'rest' || m.family === 'steadying' || m.id === 'glass-of-water') && m.minutes <= 10 && m.effort === 'low'
     if (!fits || OBSERVED_ONLY.has(m.id) || PASSIVE.has(m.id)) continue
     if (!m.when.includes(block)) {

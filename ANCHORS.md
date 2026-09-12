@@ -10,115 +10,161 @@ Evening asks 8: Mood, Irritation, Energy, Hunger, Stress, Focus, Overwhelm, Lone
 
 Every block asks all six ingredients of the reading out of 100 (mood, energy, focus, stress, overwhelm, irritation), so the three daily numbers compare.
 
+Under each phrase but the middle, one pre-written alternate (Phase 9), for your veto. A swap happens only in Phase 12, once per reading, never the middle, logged and dated. Sleep hours is a band of hours and has none.
+
 ## Mood
 
 _Right now_
 
 - Heavy — hard to lift anything
+  - or: Leaden — everything takes lifting
 - Down — the day feels dull and downhill
+  - or: Low — the day drags
 - Flat — nothing wrong, nothing good
 - Warm — quietly glad about things
+  - or: Easy — glad in a quiet way
 - Bright — glad to be in this day
+  - or: Lit up — glad to be here
 
 ## Irritation
 
 _How short the fuse is_
 
 - None — nothing is getting to me
+  - or: Calm — nothing gets under my skin
 - Faint — a small thing or two scratched
+  - or: Slight — a small thing or two grated
 - Some — a shorter fuse than usual
 - Snappy — biting at small things
+  - or: Short — snapping at small things
 - Seething — everything grates
+  - or: Raw — everything sets me off
 
 ## Stress
 
 _How much is pressing on you_
 
 - Loose — nothing pressing on me
+  - or: Easy — nothing pressing
 - Light — a task or two on my mind
+  - or: Mild — a thing or two on my mind
 - Middling — pressure I can carry
 - Wound tight — pressure most of the time
+  - or: Braced — under pressure most of the time
 - Crushing — pressure with no let-up
+  - or: Flattened — no let-up at all
 
 ## Overwhelm
 
 _How much there is to hold_
 
 - Clear — I can see what to do
+  - or: Open — I can see what to do next
 - Full but ordered — I know where to start
+  - or: Busy but sorted — I know the first step
 - Crowded — more than fits, still workable
 - Swamped — can't see where to start
+  - or: Flooded — no idea where to start
 - Buried — shut down by how much there is
+  - or: Frozen — shut down by the size of it
 
 ## Motivation
 
 _The pull to do things_
 
 - None — nothing pulls me to do anything
+  - or: Inert — nothing pulls me toward anything
 - Faint — I'd rather not, but might
+  - or: Reluctant — I would rather not, but could
 - Middling — I'll do what's in front of me
 - Ready — there are things I want to get to
+  - or: Keen — things I want to get to
 - Pulled — I want to start now
+  - or: Eager — I want to start this minute
 
 ## Confidence
 
 _Trust in yourself today_
 
 - Doubting — I expect to get things wrong
+  - or: Unsure — I expect to get it wrong
 - Shaky — unsure I'm up to it
+  - or: Wobbly — not sure I am up to it
 - Even — no strong sense either way
 - Sure-footed — I can handle today
+  - or: Steady — I can handle today
 - Solid — I trust myself with whatever comes
+  - or: Certain — I trust myself with what comes
 
 ## Focus
 
 _Holding attention_
 
 - Scattered — can't hold a thought
+  - or: Fogged — cannot hold a thought
 - Drifting — attention keeps sliding off
+  - or: Slipping — attention keeps sliding away
 - Fair — I can focus with effort
 - Held — attention stays where I put it
+  - or: Anchored — attention stays put
 - Locked in — nothing pulls me off
+  - or: Absorbed — nothing pulls me away
 
 ## Loneliness
 
 _Right now_
 
 - Connected — or fine on my own
+  - or: Close — or content alone
 - Faint — a small wish for company
+  - or: Mild — a passing wish for company
 - Some — I'd like someone around
 - Lonely — nobody feels close
+  - or: Adrift — nobody feels near
 - Cut off — alone even around people
+  - or: Walled off — alone even in company
 
 ## Social energy
 
 _Appetite for people_
 
 - Empty — I want no one around
+  - or: Spent — I want nobody around
 - Low — one quiet person at most
+  - or: Thin — one quiet person, no more
 - Neutral — could go either way
 - Up for it — I'd enjoy people
+  - or: Warm — I would enjoy people
 - Drawn out — seeking company
+  - or: Hungry for it — seeking company
 
 ## Energy
 
 _In the body_
 
 - Drained — body feels heavy
+  - or: Sapped — the body feels heavy
 - Low — moving takes effort
+  - or: Sluggish — moving takes effort
 - Even — enough for the day
 - Charged — plenty in the tank
+  - or: Fresh — plenty in the tank
 - Buzzing — could run up a hill
+  - or: Fizzing — could run up a hill
 
 ## Hunger
 
 _Right now_
 
 - Stuffed — uncomfortably full
+  - or: Overfull — uncomfortably so
 - Full — satisfied, no wish to eat
+  - or: Satisfied — no wish to eat
 - Neutral — neither hungry nor full
 - Hungry — ready to eat
+  - or: Empty — could eat now
 - Ravenous — can't think past food
+  - or: Starving — cannot think past food
 
 ## Sleep hours
 
@@ -135,8 +181,12 @@ _Last night_
 _Last night_
 
 - Broken — barely slept
+  - or: Wrecked — barely slept
 - Rough — woke often, unrested
+  - or: Patchy — woke often, unrested
 - Fair — slept, not refreshed
 - Sound — slept through, mostly rested
+  - or: Solid — slept through, mostly rested
 - Deep — woke restored
+  - or: Full — woke restored
 

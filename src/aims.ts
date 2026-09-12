@@ -1,4 +1,4 @@
-import { hasMove, moveById, movesInFamily, OBSERVED_ONLY, PASSIVE, type Counter, type Move } from './catalogue'
+import { hasMove, isProposed, moveById, movesInFamily, OBSERVED_ONLY, PASSIVE, type Counter, type Move } from './catalogue'
 import type { Aim, AimKind, Offer, Outcome, OutcomeWhy, RungMark, Skill, StudyNight, StudyReason, Win } from './db'
 import { nextStep, parseRungId, rungStep, sittingOf, type Sitting } from './ladder'
 import { NOTHING } from './offers'
@@ -29,7 +29,7 @@ export function unblockKey(kind: AimKind): string {
 
 /** The moves a person or a practice can take as its step: the family's active moves, never bedtime, never a passive item. */
 export function stepChoices(kind: AimKind): Move[] {
-  return STEP_FAMILIES[kind].flatMap((f) => movesInFamily(f)).filter((m) => !OBSERVED_ONLY.has(m.id) && !PASSIVE.has(m.id))
+  return STEP_FAMILIES[kind].flatMap((f) => movesInFamily(f)).filter((m) => !isProposed(m) && !OBSERVED_ONLY.has(m.id) && !PASSIVE.has(m.id))
 }
 
 /** The protected next step of a commitment, one line sized to one sitting. */
