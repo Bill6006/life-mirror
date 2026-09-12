@@ -288,6 +288,8 @@ export const copy = {
     },
     alongside: 'Alongside',
     skip: 'Skip · show the next',
+    done: 'Done',
+    doneLine: '{name} · {state} · {time}',
     hideFaith: 'Hide faith moves',
     pending: 'Asked at your next check-in.',
     happened: 'What happened',

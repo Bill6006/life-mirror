@@ -556,3 +556,39 @@ test('fatherhood: Aims → Her adds a skill from the checklists, counts one with
   await expect(page.getByRole('heading', { name: 'Practise one of her skills together' })).toBeVisible()
   await expect(page.locator('#family-people').getByRole('heading', { name: 'Time with her, no agenda' })).toBeVisible()
 })
+
+test('a Done tap on the card, once the move’s minutes have passed, writes the outcome at that moment, collapses the card, and the next check-in does not ask', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 12, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('move-card')).toBeVisible()
+  // The minutes have not passed: no tap, no box, nothing sits there unticked.
+  await expect(page.getByTestId('move-done')).toHaveCount(0)
+  await expect(page.getByTestId('move-card')).toContainText('Asked at your next check-in')
+
+  // Later in the same block the tap is there; one tap, and the card is a fact line with the time of the tap.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 16, 30))
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByTestId('move-done').click()
+  await expect(page.getByTestId('move-fact')).toContainText(/Done · 0?4:30 PM/)
+  await expect(page.getByTestId('move-card').getByRole('button')).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByTestId('move-fact')).toContainText('Done')
+
+  // The evening check-in goes straight to the readings: nothing left to ask.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await expect(page.getByTestId('anchor').first()).toBeVisible()
+  await expect(page.getByTestId('outcome-ask')).toHaveCount(0)
+
+  // History keeps the outcome as its own record beside the offer.
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^History/ }).click()
+  await expect(page.getByTestId('history-row').filter({ hasText: 'Outcome' }).first()).toBeVisible()
+})

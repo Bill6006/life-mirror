@@ -2,7 +2,7 @@ import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
 import { propensities } from './adaptive'
 import { choose, type Rng } from './bandit'
 import { activeAims, liveSkills, markRungByStep, rungMarks } from './aimFlow'
-import { LADDERS, moveById } from './catalogue'
+import { hasMove, LADDERS, moveById } from './catalogue'
 import {
   db,
   ensureDayContext,
@@ -35,7 +35,38 @@ const SIGN_FLIP_BONUS = 0.3
 /** Every open offer, oldest first: the next check-in asks about each in turn. */
 export async function pendingOffers(): Promise<Offer[]> {
   const open = await db.offers.filter((o) => o.closedAt === null && o.skippedAt === null).toArray()
-  return open.sort((a, b) => (a.at < b.at ? -1 : 1))
+  // An outcome logged from the card at the moment answers the question before it is asked.
+  const answered = new Set((await db.outcomes.toArray()).map((x) => x.offerId))
+  return open.filter((o) => !answered.has(o.id as number)).sort((a, b) => (a.at < b.at ? -1 : 1))
+}
+
+/** The outcome logged for an offer, from the card or at the next check-in, or null. */
+export function outcomeFor(offerId: number | undefined): Promise<Outcome | null> {
+  if (offerId === undefined) return Promise.resolve(null)
+  return db.outcomes
+    .where('offerId')
+    .equals(offerId)
+    .first()
+    .then((x) => x ?? null)
+}
+
+/** When the Done tap opens on a card: the offer's moment plus the move's stated minutes; null for the null offer. */
+export function doneAvailableAt(offer: Pick<Offer, 'at' | 'moveId'>): number | null {
+  if (offer.moveId === NOTHING || !hasMove(offer.moveId)) return null
+  return new Date(offer.at).getTime() + moveById(offer.moveId).minutes * 60_000
+}
+
+/**
+ * Done, tapped on the card at the moment: the outcome as its own record with its own timestamp, in
+ * the block the tap fell in. The offer is not touched; the next check-in sees the record and does not ask.
+ */
+export function recordDoneNow(offer: Offer, now: Date = new Date()): Promise<void> {
+  return db.transaction('rw', db.outcomes, async () => {
+    const existing = await db.outcomes.where('offerId').equals(offer.id as number).first()
+    if (existing) return
+    const slot = blockAt(now)
+    await db.outcomes.add({ offerId: offer.id as number, moveId: offer.moveId, day: slot.day, block: slot.block, at: now.toISOString(), outcome: 'done', why: null, passiveOutcome: null })
+  })
 }
 
 /** The live offer for a slot and kind: the latest one there that was not skipped. */

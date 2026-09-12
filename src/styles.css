@@ -1271,3 +1271,10 @@ button.chip {
 .her-pick {
   margin-top: 8px;
 }
+
+/* Once the move is logged from the card, the card is one fact line */
+.move-fact {
+  margin: 4px 0 0;
+  font-size: 17px;
+  color: var(--ink);
+}
