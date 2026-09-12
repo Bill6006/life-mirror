@@ -11,32 +11,41 @@ const mk = (day: string, block: CheckIn['block'], p: Position, extras?: CheckIn[
   startedAt: '',
   completedAt: 'x',
   updatedAt: '',
-  activeMs: 0,
+  activeMs: 30_000,
   extras,
 })
 
-describe('the evening chips, answered from the record', () => {
+describe('the evening chips, answered from the record like for like', () => {
   it('says first time recorded when the record has none', () => {
-    expect(chipAnswer([], 'nothingLanded', '2026-09-11')).toEqual({ times: 0, nextDayMean: null, nextDays: 0 })
+    expect(chipAnswer([], 'nothingLanded', '2026-09-11').times).toBe(0)
     const todayOnly = [mk('2026-09-11', 'evening', 3, { nothingLanded: true })]
     expect(chipAnswer(todayOnly, 'nothingLanded', '2026-09-11').times).toBe(0)
   })
 
-  it('counts earlier evenings with the chip and averages the readings of the days after', () => {
+  it('counts earlier evenings with the chip and sets the mornings after against the mornings after evenings that started the same', () => {
     const all = [
       mk('2026-09-01', 'evening', 2, { nothingLanded: true }),
       mk('2026-09-02', 'morning', 4),
       mk('2026-09-02', 'evening', 2),
+      mk('2026-09-03', 'morning', 2),
       mk('2026-09-05', 'evening', 1, { nothingLanded: true }),
+      mk('2026-09-06', 'morning', 4),
       mk('2026-09-06', 'evening', 4),
       mk('2026-09-08', 'evening', 1, { hardToSeePoint: true }),
     ]
     const a = chipAnswer(all, 'nothingLanded', '2026-09-11')
     expect(a.times).toBe(2)
-    expect(a.nextDays).toBe(3)
+    expect(a.withEvent.n).toBe(2)
     // Every reading at one position scores 50: three ingredients read up, three read down.
-    expect(a.nextDayMean).toBe(50)
+    expect(a.withEvent.mean).toBe(50)
+    expect(a.without.n).toBe(1)
+    // The one comparison evening (09-02, all at 2) started in the same band as 09-01 (all at 2): a matched difference of zero.
+    expect(a.bands).toBe(1)
+    expect(a.diff).toBe(0)
     const b = chipAnswer(all, 'hardToSeePoint', '2026-09-11')
-    expect(b).toEqual({ times: 1, nextDayMean: null, nextDays: 0 })
+    expect(b.times).toBe(1)
+    expect(b.withEvent.n).toBe(0)
+    expect(b.withEvent.mean).toBeNull()
+    expect(chipAnswer(all, 'coolingOff', '2026-09-11').times).toBe(0)
   })
 })

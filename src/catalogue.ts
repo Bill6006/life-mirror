@@ -65,10 +65,10 @@ export interface Move {
   /** A filter tag: what being given this move costs you. */
   costToAssign: Effort
   prior: Prior
-  /** Proposed in Phase 9: read and veto; never offered until Green wires it. */
+  /** Proposed and not yet wired: read and veto. None remain since the Phase 9 Green. */
   status?: 'proposed'
-  /** Proposed to park at the veto; offered as before until then. */
-  parkProposed?: boolean
+  /** Parked at the Phase 9 Green: shown in the catalogue, never offered. */
+  parked?: boolean
   ladder?: { id: string; rung: number }
   setup?: { kind: string; necessity?: Necessity }
   /** Proposed as a passive item, riding alongside a move. */
@@ -135,8 +135,12 @@ export function isProposed(m: Move): boolean {
   return m.status === 'proposed'
 }
 
-/** The entries the app may offer: everything not still proposed. Selection reads only this. */
-export const liveMoves: readonly Move[] = moves.filter((m) => !isProposed(m))
+export function isParked(m: Move): boolean {
+  return m.parked === true
+}
+
+/** The entries the app may offer: everything neither proposed nor parked. Selection reads only this. */
+export const liveMoves: readonly Move[] = moves.filter((m) => !isProposed(m) && !isParked(m))
 
 const byId = new Map(moves.map((m) => [m.id, m]))
 
@@ -166,8 +170,9 @@ export const INTENSITIES: readonly Intensity[] = ['low', 'medium', 'high']
 /** The plan names these learned tags and no others. */
 export const LEARNED_TAG_IDS: readonly string[] = [...INGREDIENT_TAGS, ...REWARD_TAGS, 'intensity']
 
-/** The charisma ladder, in order. The participation ladder replaces it at the Phase 9 Green. */
-export const CHARISMA_LADDER: readonly string[] = ['eye-contact-stranger', 'ten-seconds-past', 'say-the-thing', 'low-pressure-conversation']
+/** The charisma ladder, in order: audience to participant, since the Phase 9 Green. The four earlier reps stay as reps. */
+export const CHARISMA_LADDER: readonly string[] = ['ask-one-question', 'say-one-full-thought', 'tell-one-short-story', 'start-a-topic']
+export const CHARISMA_REPS: readonly string[] = ['eye-contact-stranger', 'ten-seconds-past', 'say-the-thing', 'low-pressure-conversation']
 
 /** Ladders: rungs in order. The harder rung is offered when the readings say you can take it. */
 export const LADDERS: readonly (readonly string[])[] = [CHARISMA_LADDER]
@@ -188,4 +193,4 @@ export function rungOf(id: string): { ladder: readonly string[]; index: number }
 export const OBSERVED_ONLY: ReadonlySet<string> = new Set(['early-night', 'fixed-lights-out'])
 
 /** Passive items: decisions that ride alongside the active move in the same block. */
-export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day'])
+export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day', 'recovery-gap'])

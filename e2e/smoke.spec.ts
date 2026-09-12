@@ -276,7 +276,8 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await expect(page.getByTestId('prior').first()).toContainText('Starting belief')
   await expect(page.getByTestId('learned-tags').locator('.move')).toHaveCount(8)
   await expect(page.getByRole('heading', { name: 'Ask one question in a group' })).toBeVisible()
-  await expect(page.locator('#move-ask-one-question .move-status')).toContainText('Proposed')
+  await expect(page.locator('#move-ask-one-question .move-status')).toContainText('rung 1 of the participation ladder')
+  await expect(page.locator('#move-no-spend-day .move-status')).toContainText('Parked')
   await expect(page.getByRole('heading', { name: 'Set the alarm for leaving, not arriving' })).toBeVisible()
   await expect(page.getByTestId('research')).toHaveCount(4)
   await expect(page.getByRole('heading', { name: 'Behavioural activation' })).toBeVisible()
@@ -382,6 +383,49 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await expect(page.getByTestId('direction-line')).toHaveText('One line, mine')
   await expect(page.getByTestId('becoming-study')).toContainText('1 · last')
   await expect(page.locator('#main')).not.toContainText('%')
+})
+
+test('learning: Evidence shows a card with its tier, the two new chips answer from the record, and an imported hypothesis is a card and nothing else', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  for (let i = 0; i < 10; i++) {
+    await expect(extras.or(anchor).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    await tapAnchor(page)
+  }
+  // The two Phase 10 chips: statements, answered from the record at once.
+  await page.getByTestId('chip-coolingOff').click()
+  await expect(page.getByTestId('chip-answer').first()).toContainText('First time recorded')
+  await page.getByTestId('chip-bigSocial').click()
+  await expect(page.getByText('The recovery gap rides alongside')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('give-back')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Evidence: the evening's card with its tier in the conclusion register, and the honest line.
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('evidence')).toBeVisible()
+  await expect(page.getByTestId('evidence-card').first()).toBeVisible()
+  await expect(page.getByTestId('tier').first()).toContainText('Little evidence')
+  await expect(page.getByText(/Some answers take months/)).toBeVisible()
+  await expect(page.getByText('Private items enter selection only when you turn that on', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // An imported hypothesis: a card, marked imported, and nowhere else.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Data Export everything/ }).click()
+  await page.getByTestId('hypothesis-input').fill('{"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}')
+  await page.getByTestId('hypothesis-add').click()
+  await expect(page.getByTestId('hypothesis-result')).toContainText('Card written')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('evidence-card').filter({ hasText: 'imported, to test' })).toHaveCount(1)
+  await expect(page.getByTestId('evidence-card').filter({ hasText: 'A ten-minute walk, now against' })).toBeVisible()
 })
 
 test('the cloud copy shows its database, stays off without a token, and never touches the network in the pipeline', async ({ page }) => {

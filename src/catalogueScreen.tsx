@@ -1,4 +1,4 @@
-import { extensionPrompt, families, filterTags, isProposed, learnedTags, moves, movesInFamily, proposals, research, type Move, type Source } from './catalogue'
+import { extensionPrompt, families, filterTags, isParked, isProposed, learnedTags, moves, movesInFamily, proposals, research, type Move, type Source } from './catalogue'
 import { copy } from './copy'
 import { fill } from './format'
 import { readingById } from './readings'
@@ -35,7 +35,7 @@ function statusLine(m: Move): string | null {
   const c = copy.catalogue
   const parts: string[] = []
   if (isProposed(m)) parts.push(`${c.proposed} · ${c.proposedNote}`)
-  if (m.parkProposed) parts.push(c.parkProposed)
+  if (isParked(m)) parts.push(c.parked)
   if (m.ladder) parts.push(fill(c.ladderRung, { n: String(m.ladder.rung) }))
   if (m.setup) parts.push(m.setup.kind === 'necessity' && m.setup.necessity ? fill(c.setupKinds.necessity, { necessity: c.necessities[m.setup.necessity] }) : (c.setupKinds[m.setup.kind as keyof typeof c.setupKinds] ?? m.setup.kind))
   if (m.passive) parts.push(c.passiveProposed)

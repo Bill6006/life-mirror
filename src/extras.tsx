@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { addDays, parseDay, type Block } from './blocks'
+import { coolingOffDuration } from './associations'
 import { chipAnswer, type ChipKey } from './chips'
 import { copy } from './copy'
 import {
@@ -26,7 +27,7 @@ import { useLive } from './live'
 import { askedReadings, type Weekday } from './settings'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
-const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint']
+const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial']
 
 /**
  * The evening's optional extras, one tap each, every tap saved at once. Skipping costs one
@@ -124,12 +125,16 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
           {CHIPS.map((key) => {
             const on = Boolean(ex[key])
             const a = chipAnswer(all, key, day)
+            const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
             const answer =
               a.times === 0
                 ? copy.extras.chipFirst
-                : a.nextDayMean === null
+                : a.withEvent.mean === null
                   ? fill(copy.extras.chipTimesNoNext, { n: String(a.times) })
-                  : fill(copy.extras.chipTimes, { n: String(a.times), mean: String(a.nextDayMean), k: String(a.nextDays) })
+                  : a.without.mean === null
+                    ? fill(copy.extras.chipUnmatched, { n: String(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
+                    : fill(copy.extras.chipTimes, { n: String(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+            const cooling = key === 'coolingOff' && on ? coolingOffDuration(all, day) : null
             return (
               <li key={key}>
                 <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`chip-${key}`} onClick={() => toggle(key)}>
@@ -139,7 +144,9 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
                 {on && (
                   <div class="calc chip-answer" data-testid="chip-answer">
                     <p class="calc-line">{answer}</p>
-                    {settings.direction && <p class="calc-line ink">{fill(copy.extras.chipDirection, { line: settings.direction })}</p>}
+                    {cooling && <p class="calc-line">{fill(copy.extras.coolingAnswer, { blocks: String(cooling.blocks), events: String(cooling.events) })}</p>}
+                    {key === 'bigSocial' && <p class="calc-line">{copy.extras.recoveryNote}</p>}
+                    {(key === 'nothingLanded' || key === 'hardToSeePoint') && settings.direction && <p class="calc-line ink">{fill(copy.extras.chipDirection, { line: settings.direction })}</p>}
                   </div>
                 )}
               </li>

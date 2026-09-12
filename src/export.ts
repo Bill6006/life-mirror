@@ -1,7 +1,22 @@
 import { compareSlots } from './blocks'
-import { askedOf, type Aim, type CheckIn, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { askedOf, type Aim, type Card, type CheckIn, type Declaration, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
+import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
+
+/** The record's own key: which end of each reading is good, and the phrases as they stood, dated where reworded. */
+export const REWORDED: readonly { reading: string; position: number; on: string; from: string; to: string }[] = [
+  { reading: 'loneliness', position: 1, on: '2026-09-11', from: 'Connected — people feel close', to: 'Connected — or fine on my own' },
+  { reading: 'loneliness', position: 4, on: '2026-09-11', from: 'Alone — nobody feels close today', to: 'Lonely — nobody feels close' },
+]
+
+/** Offers, cards, outcomes and declarations: what was offered against what you did. */
+export interface RecordsData {
+  offers: readonly Offer[]
+  outcomes: readonly Outcome[]
+  cards: readonly Card[]
+  declarations: readonly Declaration[]
+}
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
 // The push address is a device credential, not a record, and is never exported.
@@ -20,6 +35,8 @@ export interface AimsData {
 export interface ExportBundle {
   json: string
   csv: string
+  /** Offers against outcomes, one row per offer. */
+  offersCsv: string
   exportedAt: string
 }
 
@@ -31,7 +48,7 @@ function yesNo(v: boolean): string {
   return v ? 'yes' : ''
 }
 
-export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData): ExportBundle {
+export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {
   const exportedAt = new Date().toISOString()
   const names = new Map(items.map((it) => [String(it.id), it.name]))
   const sorted = [...all].sort(compareSlots)
@@ -50,6 +67,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       feltCloseToGod: Boolean(c.extras?.closeToGod),
       nothingLandedToday: Boolean(c.extras?.nothingLanded),
       hardToSeeThePointToday: Boolean(c.extras?.hardToSeePoint),
+      coolingOffEvent: Boolean(c.extras?.coolingOff),
+      bigSocialEvent: Boolean(c.extras?.bigSocial),
       note: c.extras?.note ?? null,
       ...(opts.includePrivate ? { private: Object.keys(c.extras?.private ?? {}).map((id) => names.get(id) ?? `item ${id}`) } : {}),
     },
@@ -60,8 +79,25 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       app: 'Life Mirror',
       exportedAt,
       includesPrivateItems: opts.includePrivate,
+      key: {
+        readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, goodEnd: INGREDIENTS[r.id] === 'down' ? 'low' : INGREDIENTS[r.id] === 'up' ? 'high' : 'context', anchors: r.anchors, alternates: r.alternates ?? null })),
+        positions: 'Each answer is a position 1 to 5 into the anchors, in order. Points are 0, 25, 50, 75, 100, reversed where the good end is low.',
+        reworded: REWORDED,
+        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent'],
+      },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
       checkins,
+      freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
+      ...(records
+        ? {
+            offers: records.offers.map((o) => {
+              const x = records.outcomes.find((y) => y.offerId === o.id)
+              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, answeredAt: x?.at ?? null }
+            }),
+            cards: records.cards.map((c) => ({ id: c.id, createdAt: c.createdAt, situation: c.situationKey, target: c.target, move: c.moveId, alternative: c.alternativeId, window: c.window, worthwhile: c.worthwhile, origin: c.origin ?? 'app', weights: c.weights ?? null })),
+            declarations: records.declarations.map((d) => ({ cardId: d.cardId, at: d.at, diff: d.diff, lo: d.lo, hi: d.hi, level: d.level, nDone: d.nDone, nAlternative: d.nAlternative })),
+          }
+        : {}),
       minimumWins: wins.map((w) => ({ forDay: w.forDay, setOn: w.setOn, text: w.text, outcome: w.outcome, answeredAt: w.answeredAt })),
       settings: {
         depth: settings.depth,
@@ -118,5 +154,12 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
   ])
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
 
-  return { json, csv, exportedAt }
+  const offerHeader = ['id', 'kind', 'day', 'block', 'situation', 'target', 'move', 'coin_flip', 'passive', 'skipped', 'card_id', 'outcome', 'why', 'passive_outcome']
+  const offerRows = (records?.offers ?? []).map((o) => {
+    const x = records?.outcomes.find((y) => y.offerId === o.id)
+    return [String(o.id ?? ''), o.kind, o.day, o.block, o.situationKey, o.target, o.moveId, yesNo(o.coinFlip), o.passiveId ?? '', yesNo(o.skippedAt !== null), String(o.cardId ?? ''), x?.outcome ?? '', x?.why ?? '', x?.passiveOutcome ?? '']
+  })
+  const offersCsv = [offerHeader, ...offerRows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
+
+  return { json, csv, offersCsv, exportedAt }
 }

@@ -8,6 +8,8 @@ import { NavRow } from './controls'
 import { copy } from './copy'
 import { allWins, db, getSettings, type Aim, type AimKind, type Offer } from './db'
 import { fill, formatDayLong, formatDayShort } from './format'
+import { whatBringsYouBack } from './associations'
+import { hasMove, moveById } from './catalogue'
 import { currentRung, ladderCounts, rungName, sittingOf, TOP_RUNG } from './ladder'
 import { useLive } from './live'
 
@@ -310,6 +312,7 @@ export function FollowScreen({ onClose }: { onClose: () => void }) {
   if (!offers || !outcomes || !wins) return <section class="screen" />
   const c = copy.aims
   const f = followThrough(offers, outcomes, wins)
+  const brings = whatBringsYouBack(offers, outcomes).filter((b) => hasMove(b.moveId)).slice(0, 5)
 
   return (
     <section class="screen" data-testid="follow">
@@ -332,6 +335,21 @@ export function FollowScreen({ onClose }: { onClose: () => void }) {
             <span class="calc-key">{c.followWins}</span> · {tallyLine(f.wins)}
           </p>
         </div>
+      </div>
+      <h2 class="section">{copy.evidence.brings}</h2>
+      <div class="card pad">
+        {brings.length === 0 ? (
+          <p class="note no-gap">{copy.evidence.bringsNone}</p>
+        ) : (
+          <div class="calc">
+            {brings.map((b) => (
+              <p key={b.moveId} class="calc-line">
+                {fill(copy.evidence.bringsLine, { move: moveById(b.moveId).name, n: String(b.n) })}
+              </p>
+            ))}
+          </div>
+        )}
+        <p class="note faint no-gap">{copy.evidence.bringsNote}</p>
       </div>
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>

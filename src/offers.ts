@@ -1,5 +1,5 @@
 import type { Block } from './blocks'
-import { hasMove, isProposed, liveMoves, moveById, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, isParked, isProposed, liveMoves, moveById, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band, type Stance } from './score'
@@ -67,9 +67,11 @@ export interface TodayState {
   studyNight: boolean
   withHer: boolean
   churchDay: boolean
+  /** Phase 10: moves at least this long stay out of the block after a "no time"; null when none. */
+  noTimeCeiling: number | null
 }
 
-export type Exclusion = 'proposed' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
+export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -90,6 +92,7 @@ function harderRungAllowed(band: Band): boolean {
 export function screen(move: Move, s: Situation, t: TodayState): Exclusion | null {
   // Phase 9 proposals are read and vetoed; nothing proposed is offered until Green wires it.
   if (isProposed(move)) return 'proposed'
+  if (isParked(move)) return 'parked'
   if (OBSERVED_ONLY.has(move.id)) return 'observed'
   if (PASSIVE.has(move.id)) return 'passive'
   // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
@@ -102,6 +105,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if (s.band === 'empty' && !(EMPTY_FAMILIES.has(move.family) && move.effort === 'low')) return 'band'
   if (s.band === 'wornDown' && move.effort === 'high') return 'band'
   if (t.offeredToday.includes(move.id)) return 'offeredToday'
+  // Phase 10: "no time" narrows the feasibility filter for a week in that block.
+  if (t.noTimeCeiling !== null && move.minutes >= t.noTimeCeiling) return 'noTime'
   if (conflictsWithToday(move, t)) return 'conflict'
   const rung = rungOf(move.id)
   if (rung) {
@@ -190,7 +195,7 @@ export function pickPassive(block: Block, t: TodayState, history: readonly Offer
   let bestCount = Infinity
   for (const id of PASSIVE) {
     const m = moveById(id)
-    if (!m.when.includes(block) || t.hiddenFamilies.has(m.family)) continue
+    if (isParked(m) || !m.when.includes(block) || t.hiddenFamilies.has(m.family)) continue
     if (t.offeredToday.includes(id) || t.doneToday.includes(id)) continue
     if (m.conflicts.some((c) => t.doneToday.includes(c) || t.offeredToday.includes(c))) continue
     const count = history.filter((o) => o.moveId === id).length

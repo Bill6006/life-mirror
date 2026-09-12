@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-95 moves across 13 families, 23 of them proposed in Phase 9 and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+95 moves across 13 families, 0 of them proposed in Phase 9 and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -335,8 +335,6 @@ For a minute, describe the situation as you would to a friend, using your own na
 - Stands in for: self-distancing, the friend test
 
 ### Notice it and act anyway
-
-_Proposed: read and veto; joins the candidates at Green_
 
 Name the pull to avoid in one word, then take the next step with it still there. The urge is allowed to come along.
 
@@ -767,8 +765,6 @@ A new route, a new shop, a new recipe, a new bench: one, today.
 
 ### One page of a paper book
 
-_Proposed: read and veto; joins the candidates at Green_
-
 A paper book, one page or more, in bed or on the sofa, phone in another room. For the late nights with nobody up.
 
 - Source: Finucane and colleagues (2021). Randomised trial of 991 people: a week of reading in bed left 42 percent reporting better sleep against 28 percent without. Evidence: moderate.
@@ -780,8 +776,6 @@ A paper book, one page or more, in bed or on the sofa, phone in another room. Fo
 - Stands in for: read more, a bedtime routine
 
 ### Three lines about today
-
-_Proposed: read and veto; joins the candidates at Green_
 
 What happened, what it was like, one thing for tomorrow. Three lines, then closed. Late at night, alone, it puts the day down.
 
@@ -796,8 +790,6 @@ What happened, what it was like, one thing for tomorrow. Three lines, then close
 
 ### Ten minutes of a thing you like, on purpose
 
-_Proposed: read and veto; joins the candidates at Green_
-
 Pick one thing you enjoy for its own sake and give it ten whole minutes, phone elsewhere. Pleasure scheduled, not stumbled on.
 
 - Source: MacPhillamy and Lewinsohn (1982). The Pleasant Events Schedule: day-to-day mood tracks the number and enjoyment of pleasant activities. Evidence: moderate.
@@ -810,7 +802,7 @@ Pick one thing you enjoy for its own sake and give it ten whole minutes, phone e
 
 ### Keep the evening after a big social day empty
 
-_Proposed: read and veto; joins the candidates at Green · proposed as a passive item_
+_proposed as a passive item_
 
 The evening after a big social event, plan nothing and see no one. A gap on purpose, so the next day starts full.
 
@@ -825,7 +817,7 @@ The evening after a big social event, plan nothing and see no one. A gap on purp
 
 ## Money
 
-The money family cut to its two strongest: keep the balance check and the week ahead, park the bill and the no-spend day, and move cancelling a subscription to Setup moves where it belongs. Nothing changes until Green.
+Applied at the Phase 9 Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves.
 
 ### Look at every balance, once
 
@@ -843,7 +835,7 @@ Bank, card and cash, one look each, the total written on one line.
 
 ### Pay or sort one bill, start to finish
 
-_Proposed to park_
+_Parked: shown here, never offered_
 
 The one you have been avoiding, done in one sitting today.
 
@@ -859,7 +851,7 @@ The one you have been avoiding, done in one sitting today.
 
 ### Spend nothing today
 
-_Proposed to park_
+_Parked: shown here, never offered_
 
 Decided at breakfast: no purchases at all until tomorrow.
 
@@ -885,23 +877,9 @@ Rent, food, fuel, her things, anything due: one line each, one total.
 - Stands in for: make a budget, plan the week's money
 - Counts toward: finishing
 
-### Cancel one subscription you do not use
-
-Find it, cancel it, screenshot the confirmation, done in one sitting.
-
-- Source: Common practice (2026). Standard money advice; the relief is plausible and untested. Evidence: practice, untested.
-- Takes: 10 min · effort to start: low · cost to assign: low · needs: kit
-- Tags: short, low effort, mastery · intensity low
-- Should move: Stress ↓ (seven days)
-- Starting belief: Stress ↓ by about a fifth of a step over the seven days · Common practice; about a fifth of a step over seven days.
-- When: morning, afternoon, evening
-- Not alongside: Pay or sort one bill, start to finish
-- Stands in for: audit subscriptions
-- Counts toward: finishing
-
 ## Charisma and presence
 
-The participation ladder, audience to participant, becomes the charisma ladder at Green; the four existing reps stay as reps.
+Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps.
 
 ### Eye contact with a stranger
 
@@ -984,14 +962,14 @@ One honest line about how it went, then this beneath it: they probably liked you
 
 ### Ask one question in a group
 
-_Proposed: read and veto; joins the candidates at Green · rung 1 of the participation ladder_
+_rung 1 of the participation ladder_
 
 In the next group you are in, ask one real question and listen to the whole answer. Audience to participant in one move.
 
 - Source: Huang, Yeomans, Brooks, Minson and Gino (2017). Asking questions, especially follow-ups, raised how much the asker was liked. Evidence: moderate.
 - Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
 - Tags: with people, short, connection, mastery · intensity medium
-- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Mood ↑ (next block)
 - Starting belief: Confidence ↑ by about a fifth of a step over the next block · One rep on the participation ladder; about a fifth of a step on confidence.
 - When: morning, afternoon, evening
 - Stands in for: join in more
@@ -999,14 +977,14 @@ In the next group you are in, ask one real question and listen to the whole answ
 
 ### Say one full thought, start to finish
 
-_Proposed: read and veto; joins the candidates at Green · rung 2 of the participation ladder_
+_rung 2 of the participation ladder_
 
 One complete thought in a group, without trailing off or handing it away. Counted, never rated.
 
 - Source: Speed, Goldstein and Goldfried (2018). Review of assertiveness training: practice speaking fully raises confidence and lowers social distress. Evidence: moderate.
 - Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
 - Tags: with people, short, mastery · intensity medium
-- Should move: Confidence ↑ (next block)
+- Should move: Confidence ↑ (next block), Mood ↑ (next block)
 - Starting belief: Confidence ↑ by about a fifth of a step over the next block · Rung two; about a fifth of a step on confidence.
 - When: morning, afternoon, evening
 - Stands in for: finish your sentences, stop trailing off
@@ -1014,14 +992,14 @@ One complete thought in a group, without trailing off or handing it away. Counte
 
 ### Tell one short story
 
-_Proposed: read and veto; joins the candidates at Green · rung 3 of the participation ladder_
+_rung 3 of the participation ladder_
 
 One story under a minute, with a beginning and an end, to people who are there. The rep is the telling, not how it lands.
 
 - Source: Epley and Schroeder (2014). People expected talking to strangers to be unpleasant and found it the opposite, across nine experiments. Evidence: moderate.
 - Takes: 2 min · effort to start: high · cost to assign: high · needs: another person
 - Tags: with people, short, mastery, connection · intensity high
-- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Mood ↑ (next block)
 - Starting belief: Confidence ↑ by about a fifth of a step over the next block · Rung three; about a fifth of a step on confidence.
 - When: morning, afternoon, evening
 - Stands in for: be more interesting, hold the room
@@ -1029,22 +1007,20 @@ One story under a minute, with a beginning and an end, to people who are there. 
 
 ### Start a topic
 
-_Proposed: read and veto; joins the candidates at Green · rung 4 of the participation ladder_
+_rung 4 of the participation ladder_
 
 When the conversation lulls, bring up something new rather than waiting for someone else to. The rung above answering.
 
 - Source: Sandstrom and Boothby (2021). People avoid initiating conversation from fear of the reaction, and enjoy it when they do. Evidence: moderate.
 - Takes: 1 min · effort to start: high · cost to assign: high · needs: another person
 - Tags: with people, short, mastery, connection · intensity high
-- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Mood ↑ (next block)
 - Starting belief: Confidence ↑ by about a fifth of a step over the next block · Rung four, the top; about a fifth of a step on confidence.
 - When: morning, afternoon, evening
 - Stands in for: lead the conversation
 - Counts toward: conversations
 
 ### Record one story and listen back once
-
-_Proposed: read and veto; joins the candidates at Green_
 
 Sixty seconds into the phone, one story you might tell this week; listen once, no notes. A rep that works with nobody home.
 
@@ -1058,8 +1034,6 @@ Sixty seconds into the phone, one story you might tell this week; listen once, n
 
 ### Read one page aloud, as if to a room
 
-_Proposed: read and veto; joins the candidates at Green_
-
 One page of anything, out loud, with the pauses and the emphasis you would use for a room. Voice practice with nobody present.
 
 - Source: Common practice (2026). Untested; the voice is the part of presence that can be trained alone. Evidence: practice, untested.
@@ -1071,8 +1045,6 @@ One page of anything, out loud, with the pauses and the emphasis you would use f
 - Stands in for: voice coaching
 
 ### Three things about the other person
-
-_Proposed: read and veto; joins the candidates at Green_
 
 In the next conversation, notice three things about them: what they said, how they said it, what they seem to want. Attention outward, not on yourself.
 
@@ -1228,9 +1200,25 @@ Two lines, sent, in the next three minutes.
 
 ## Setup moves
 
+### Cancel one subscription you do not use
+
+_removes a step before a move, for good_
+
+Find it, cancel it, screenshot the confirmation, done in one sitting.
+
+- Source: Common practice (2026). Standard money advice; the relief is plausible and untested. Evidence: practice, untested.
+- Takes: 10 min · effort to start: low · cost to assign: low · needs: kit
+- Tags: short, low effort, mastery · intensity low
+- Should move: Stress ↓ (seven days)
+- Starting belief: Stress ↓ by about a fifth of a step over the seven days · Common practice; about a fifth of a step over seven days.
+- When: morning, afternoon, evening
+- Not alongside: Pay or sort one bill, start to finish
+- Stands in for: audit subscriptions
+- Counts toward: finishing
+
 ### Set the alarm for leaving, not arriving
 
-_Proposed: read and veto; joins the candidates at Green · a setup for chronic lateness_
+_a setup for chronic lateness_
 
 One alarm, set once, for the minute you must be out of the door for the thing you are always late to. Arriving is not the cue; leaving is.
 
@@ -1246,7 +1234,7 @@ One alarm, set once, for the minute you must be out of the door for the thing yo
 
 ### A fifteen-minute buffer before every appointment
 
-_Proposed: read and veto; joins the candidates at Green · a setup for chronic lateness_
+_a setup for chronic lateness_
 
 Once, in the calendar settings: every new event gets a fifteen-minute reminder and a fifteen-minute travel buffer. The plan stops assuming a clear road.
 
@@ -1262,7 +1250,7 @@ Once, in the calendar settings: every new event gets a fifteen-minute reminder a
 
 ### A bin in the car
 
-_Proposed: read and veto; joins the candidates at Green · removes a step before a move, for good_
+_removes a step before a move, for good_
 
 One small bin that lives in the car, once. The rubbish never becomes a job again.
 
@@ -1276,7 +1264,7 @@ One small bin that lives in the car, once. The rubbish never becomes a job again
 
 ### Book the appointment you keep putting off, today
 
-_Proposed: read and veto; joins the candidates at Green · closes an avoided task, for good_
+_closes an avoided task, for good_
 
 The dentist, the doctor, the car: one call or one form, today, and it is off the list for good.
 
@@ -1291,7 +1279,7 @@ The dentist, the doctor, the car: one call or one form, today, and it is off the
 
 ### Put the one bill you forget on autopay
 
-_Proposed: read and veto; joins the candidates at Green · a default that holds without reminders_
+_a default that holds without reminders_
 
 Ten minutes, once, and that bill never needs remembering again.
 
@@ -1306,7 +1294,7 @@ Ten minutes, once, and that bill never needs remembering again.
 
 ### Five no-cook dinners in the cupboard
 
-_Proposed: read and veto; joins the candidates at Green · a setup whose target is a necessity: food_
+_a setup whose target is a necessity: food_
 
 Once: five dinners that need no cooking, for the nights nothing else will happen. Eating is the target; cooking is not.
 
@@ -1320,7 +1308,7 @@ Once: five dinners that need no cooking, for the nights nothing else will happen
 
 ### A toothbrush where you actually are at night
 
-_Proposed: read and veto; joins the candidates at Green · a setup whose target is a necessity: teeth_
+_a setup whose target is a necessity: teeth_
 
 A second brush and paste by the bed or the sofa, once. The necessity meets you where the evening ends.
 
@@ -1334,7 +1322,7 @@ A second brush and paste by the bed or the sofa, once. The necessity meets you w
 
 ### A speaker in the bathroom, set up once
 
-_Proposed: read and veto; joins the candidates at Green · a setup whose target is a necessity: the shower_
+_a setup whose target is a necessity: the shower_
 
 Music makes the shower a place to be rather than a job. Set it up once; the necessity gets easier every day after.
 
@@ -1348,7 +1336,7 @@ Music makes the shower a place to be rather than a job. Set it up once; the nece
 
 ### Delete the one app that eats the evening
 
-_Proposed: read and veto; joins the candidates at Green · removes a step before a move, for good_
+_removes a step before a move, for good_
 
 Two minutes, once. Not a limit, not a timer: gone from the phone. Reinstalling is allowed and counts as a decision.
 
@@ -1362,7 +1350,7 @@ Two minutes, once. Not a limit, not a timer: gone from the phone. Reinstalling i
 
 ### Running shoes by the door, always
 
-_Proposed: read and veto; joins the candidates at Green · removes a step before a move, for good_
+_removes a step before a move, for good_
 
 One place, by the door, where the shoes live from now on. The walk starts with the door open.
 
@@ -1376,7 +1364,7 @@ One place, by the door, where the shoes live from now on. The walk starts with t
 
 ### A recurring order for what you keep running out of
 
-_Proposed: read and veto; joins the candidates at Green · a setup whose target is a necessity: food_
+_a setup whose target is a necessity: food_
 
 Nappies, coffee, the thing that is always gone: one recurring order, set up once. The shop stops being a surprise.
 
@@ -1390,10 +1378,10 @@ Nappies, coffee, the thing that is always gone: one recurring order, set up once
 
 ## Proposed trades
 
-- The money family cut to its two strongest: keep the balance check and the week ahead, park the bill and the no-spend day, and move cancelling a subscription to Setup moves where it belongs. Nothing changes until Green.
-- The participation ladder, audience to participant, becomes the charisma ladder at Green; the four existing reps stay as reps.
+- Applied at the Phase 9 Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves.
+- Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps.
 - Proposed as passive items: Keep the evening after a big social day empty.
-- What Green wires: At Green the proposed entries join the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaces the charisma ladder, the recovery gap joins the passive items, and the money trade is applied. Until then nothing here changes what is offered.
+- What Green wires: Applied at the Phase 9 Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made.
 
 ## The research the layer rests on
 

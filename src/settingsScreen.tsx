@@ -229,6 +229,7 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData, onCloud
       <h2 class="section">{copy.settings.movesSection}</h2>
       <div class="card">
         <SwitchRow label={copy.settings.offerFaith} note={copy.settings.offerFaithNote} on={!settings.hideFaith} onChange={(on) => set((s) => ({ ...s, hideFaith: !on }))} />
+        <SwitchRow label={copy.settings.privateInSelection} note={copy.settings.privateInSelectionNote} on={settings.privateInSelection} onChange={(on) => set((s) => ({ ...s, privateInSelection: on }))} testid="private-in-selection" />
       </div>
 
       <h2 class="section">{copy.settings.extras}</h2>

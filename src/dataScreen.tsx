@@ -1,9 +1,10 @@
 import { useState } from 'preact/hooks'
 import { aimsSnapshot } from './aimFlow'
 import { deleteCloudCopy } from './cloudSync'
+import { importHypothesis } from './learningFlow'
 import { dayKey } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, allWins, getSettings, privateItems, updateSettings, wipeEverything } from './db'
+import { allCheckIns, allWins, db, getSettings, privateItems, updateSettings, wipeEverything } from './db'
 import { buildExport } from './export'
 import { fill, formatWhen } from './format'
 import { useLive } from './live'
@@ -23,18 +24,22 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [deleting, setDeleting] = useState(false)
   const [word, setWord] = useState('')
   const [cloudFailed, setCloudFailed] = useState(false)
-  if (!settings || !all || !wins || !items || !aims) return <section class="screen" />
+  const [hypothesis, setHypothesis] = useState('')
+  const [imported, setImported] = useState<string | null>(null)
+  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray() }), [])
+  if (!settings || !all || !wins || !items || !aims || !records) return <section class="screen" />
 
   async function exportAll() {
-    if (!settings || !all || !wins || !items || !aims) return
+    if (!settings || !all || !wins || !items || !aims || !records) return
     setBusy(true)
     setFailed(false)
     try {
-      const bundle = buildExport(all, wins, items, settings, { includePrivate }, aims)
+      const bundle = buildExport(all, wins, items, settings, { includePrivate }, aims, records)
       const stamp = dayKey(new Date())
       const files = [
         new File([bundle.json], `life-mirror-${stamp}.json`, { type: 'application/json' }),
         new File([bundle.csv], `life-mirror-${stamp}.csv`, { type: 'text/csv' }),
+        new File([bundle.offersCsv], `life-mirror-offers-${stamp}.csv`, { type: 'text/csv' }),
       ]
       await shareOrDownload(files, copy.appName)
       await updateSettings((s) => ({ ...s, lastExportAt: new Date().toISOString() }))
@@ -83,6 +88,33 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
         </div>
         <p class="note faint no-gap">{settings.lastExportAt ? fill(copy.data.lastExport, { when: formatWhen(settings.lastExportAt) }) : copy.data.neverExported}</p>
         {failed && <p class="note no-gap">{copy.data.exportFailed}</p>}
+      </div>
+
+      <h2 class="section">{copy.data.importTitle}</h2>
+      <div class="card pad">
+        <p class="note">{copy.data.importNote}</p>
+        <input class="input" type="text" placeholder={copy.data.importPlaceholder} value={hypothesis} data-testid="hypothesis-input" onInput={(e) => setHypothesis((e.currentTarget as HTMLInputElement).value)} />
+        <div class="actions">
+          <button
+            type="button"
+            class="pill-quiet"
+            data-testid="hypothesis-add"
+            disabled={!hypothesis.trim()}
+            onClick={() =>
+              void importHypothesis(hypothesis).then((r) => {
+                setImported(r.ok ? copy.data.importDone : copy.data.importErrors[r.error])
+                if (r.ok) setHypothesis('')
+              })
+            }
+          >
+            {copy.data.importButton}
+          </button>
+        </div>
+        {imported && (
+          <p class="note no-gap" data-testid="hypothesis-result">
+            {imported}
+          </p>
+        )}
       </div>
 
       <h2 class="section">{copy.data.deleteTitle}</h2>

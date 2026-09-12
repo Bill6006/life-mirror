@@ -1301,3 +1301,13 @@ code {
   line-height: 1.5;
   color: var(--muted);
 }
+
+/* Conclusions: behind a double rule, always with their tier */
+.conclusion {
+  margin: 10px 0;
+  padding-left: 12px;
+  border-left: 3px double var(--muted);
+}
+.conclusion .calc-line {
+  margin: 0 0 4px;
+}

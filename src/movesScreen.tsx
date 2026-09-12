@@ -9,7 +9,7 @@ import { offerForSlot, offerHistory, pendingOffers, skipOffer } from './offerFlo
 import { readingById } from './readings'
 
 /** The Moves tab: the live move with why and testing, then the doors to History and the catalogue. */
-export function MovesScreen({ onHistory, onCatalogue }: { onHistory: () => void; onCatalogue: () => void }) {
+export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory: () => void; onCatalogue: () => void; onEvidence: () => void }) {
   const today = blockAt(new Date())
   const settings = useLive(getSettings, [])
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block])
@@ -40,6 +40,7 @@ export function MovesScreen({ onHistory, onCatalogue }: { onHistory: () => void;
 
       <div class="card">
         <ul class="rows">
+          <NavRow label={copy.evidence.title} note={copy.movesTab.evidenceNote} onClick={onEvidence} />
           <NavRow label={copy.history.title} note={copy.movesTab.historyNote} onClick={onHistory} />
           <NavRow label={copy.catalogue.read} note={copy.catalogue.readNote} onClick={onCatalogue} />
         </ul>

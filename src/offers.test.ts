@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { choose, COIN_FLIP_RATE, FLAT, seeded, type Candidate } from './bandit'
-import { CHARISMA_LADDER, isProposed, moveById, moves, OBSERVED_ONLY, PASSIVE } from './catalogue'
+import { CHARISMA_LADDER, isParked, moveById, moves, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, whyNotThat, type TodayState } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -16,7 +16,7 @@ const mk = (block: CheckIn['block'], answers: Answers): CheckIn => ({
   updatedAt: '',
   activeMs: 0,
 })
-const quiet: TodayState = { doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs: new Map(), studyNight: false, withHer: true, churchDay: false }
+const quiet: TodayState = { doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs: new Map(), studyNight: false, withHer: true, churchDay: false, noTimeCeiling: null }
 const flat = () => FLAT
 
 describe('the situation', () => {
@@ -48,20 +48,24 @@ describe('the candidate set', () => {
     }
   })
 
-  it('never offers a Phase 9 proposal until Green wires it', () => {
-    const proposed = moves.filter(isProposed)
-    expect(proposed.length).toBeGreaterThan(0)
-    for (const m of proposed) expect(screen(m, s, quiet), m.id).toBe('proposed')
+  it('never offers a parked entry, and after a "no time" keeps anything that long out of the block for a week', () => {
+    const parked = moves.filter(isParked)
+    expect(parked.length).toBe(2)
+    for (const m of parked) expect(screen(m, s, quiet), m.id).toBe('parked')
     const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), mood: 1 }))!
     for (const set of [candidatesFor(s, quiet), candidatesFor(evening, quiet), pickupCandidates('afternoon', quiet)]) {
-      for (const c of set.candidates) expect(proposed.some((m) => m.id === c.id), c.id).toBe(false)
+      for (const c of set.candidates) expect(parked.some((m) => m.id === c.id), c.id).toBe(false)
     }
+    const narrowed = { ...quiet, noTimeCeiling: 10 }
+    for (const c of candidatesFor(s, narrowed).candidates.filter((c) => c.id !== NOTHING)) expect(moveById(c.id).minutes, c.id).toBeLessThan(10)
+    const long = moves.find((m) => m.minutes >= 10 && m.when.includes('evening') && m.targets.some((t) => t.reading === 'stress' && t.direction === 'down') && !isParked(m) && !PASSIVE.has(m.id) && !OBSERVED_ONLY.has(m.id) && m.family !== 'study')
+    if (long) expect(screen(long, s, narrowed)).toBe('noTime')
   })
 
   it('never offers bedtime itself, and never a passive item as the move', () => {
     expect([...OBSERVED_ONLY]).toEqual(['early-night', 'fixed-lights-out'])
     for (const id of OBSERVED_ONLY) expect(screen(moveById(id), s, quiet)).toBe('observed')
-    for (const id of PASSIVE) expect(screen(moveById(id), s, quiet)).toBe('passive')
+    for (const id of PASSIVE) if (!isParked(moveById(id))) expect(screen(moveById(id), s, quiet)).toBe('passive')
     const { candidates } = candidatesFor(s, quiet)
     for (const c of candidates) {
       expect(OBSERVED_ONLY.has(c.id)).toBe(false)
@@ -107,10 +111,10 @@ describe('the candidate set', () => {
   })
 
   it('offers the harder rung only when the band allows it', () => {
-    // "Say the thing" is rung three and targets irritation in the evening, an ingredient, so it can be the day's move.
+    // Rung three of the participation ladder also targets mood, an ingredient, so it can be the day's move.
     const rung = moveById(CHARISMA_LADDER[2])
-    const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), irritation: 5 }))!
-    expect(evening.target).toBe('irritation')
+    const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), mood: 1 }))!
+    expect(evening.target).toBe('mood')
     const solid = { ...evening, band: 'solid' as const }
     expect(screen(rung, solid, quiet)).toBe('rung')
     expect(screen(rung, solid, { ...quiet, doneRungs: new Map([[CHARISMA_LADDER[0], 1]]) })).toBeNull()

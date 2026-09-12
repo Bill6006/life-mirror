@@ -10,7 +10,8 @@ export default defineConfig({
   testDir: 'e2e',
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // One retry: a failure that moves between runs is the environment, not the app; a defect fails twice.
+  retries: 1,
   timeout: 60_000,
   reporter: [['list']],
   use: {

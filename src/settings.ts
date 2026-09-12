@@ -55,6 +55,8 @@ export interface Settings {
   extras: { minimumWin: boolean; caffeine: boolean; dinner: boolean; privateLog: boolean; faith: boolean }
   /** Show private items by name outside the Private screen. */
   showPrivate: boolean
+  /** Rule 11: private items are used to pick moves only when you turn this on. A fresh install has it off. */
+  privateInSelection: boolean
   /** Reminders already shown, keyed day:block, so each block gets at most one. */
   reminded: Record<string, true>
   push: PushState
@@ -85,6 +87,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reminders: { enabled: false, times: { morning: '07:30', afternoon: '13:00', evening: '19:30' } },
   extras: { minimumWin: true, caffeine: true, dinner: true, privateLog: true, faith: true },
   showPrivate: false,
+  privateInSelection: false,
   reminded: {},
   push: { subscription: null, subscribedAt: null, changed: false },
   lastExportAt: null,

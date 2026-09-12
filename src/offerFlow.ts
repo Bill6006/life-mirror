@@ -1,5 +1,5 @@
 import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
-import { beliefFor, choose, type Rng } from './bandit'
+import { choose, type Rng } from './bandit'
 import { activeAims, liveSkills, markRungByStep, rungMarks } from './aimFlow'
 import { LADDERS, moveById } from './catalogue'
 import {
@@ -18,7 +18,10 @@ import {
   type WinOutcome,
 } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, whyNotThat, windowFor, type TodayState } from './offers'
+import type { ReadingId } from './readings'
 import { nextStep, parseRungId, rungStep, sittingOf, type Sitting } from './ladder'
+import { noTimeCeiling, WINDOW_PENALTY } from './learning'
+import { beliefsFor, recoveryGapDue } from './learningFlow'
 import { minutesOf, type Settings, type Weekday } from './settings'
 import { studyVersions, type ReasonCheck } from './studyNight'
 
@@ -90,7 +93,19 @@ async function todayState(day: string, settings: Settings): Promise<TodayState> 
   }
   const hiddenFamilies = new Set<string>(settings.hideFaith ? ['faith'] : [])
   const ctx = await ensureDayContext(day, settings)
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null }
+}
+
+/** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */
+async function withLearning(t: TodayState, block: Block, day: string): Promise<TodayState> {
+  const offers = await db.offers.filter((o) => o.block === block).toArray()
+  const ids = new Set(offers.map((o) => o.id as number))
+  const outcomes = await db.outcomes.filter((x) => ids.has(x.offerId)).toArray()
+  return { ...t, noTimeCeiling: noTimeCeiling(offers, outcomes, block, day) }
+}
+
+function withWindowPenalty(set: ReturnType<typeof candidatesFor>, target: ReadingId): ReturnType<typeof candidatesFor> {
+  return { ...set, candidates: set.candidates.map((c) => (c.id === NOTHING ? c : { ...c, bonus: (c.bonus ?? 0) - WINDOW_PENALTY[windowFor(c.id, target)] })) }
 }
 
 async function mostRecentlyDoneIn(situationKey: string): Promise<string | null> {
@@ -105,7 +120,7 @@ async function mostRecentlyDoneIn(situationKey: string): Promise<string | null> 
  * then the offer. Returns the live offer, or null when nothing fits or moves are hidden.
  */
 export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days], async () => {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const existing = await offerForSlot(day, block)
@@ -115,9 +130,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const situation = situationOf(checkin)
     if (!situation) return null
 
-    const t = await todayState(day, settings)
-    const set = candidatesFor(situation, t)
-    const choice = chooseFor(set, (id) => beliefFor(id, situation.key), rng)
+    const t = await withLearning(await todayState(day, settings), block, day)
+    const set = withWindowPenalty(candidatesFor(situation, t), situation.target)
+    const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))
+    const choice = chooseFor(set, beliefs, rng)
     if (!choice) return null
     const history = await db.offers.where('situationKey').equals(situation.key).filter((o) => o.skippedAt === null).toArray()
     const expected = await mostRecentlyDoneIn(situation.key)
@@ -146,7 +162,15 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     }
 
     const passiveHistory = await db.offers.filter((o) => o.passiveId !== null).toArray()
-    const passive = pickPassive(block, t, passiveHistory.map((o) => ({ moveId: o.passiveId as string, at: o.at })))
+    // The recovery gap is assigned the evening after an unplanned big social day; otherwise the least-offered passive item rides along.
+    const assigned = block === 'evening' && (await recoveryGapDue(day)) && !t.offeredToday.includes('recovery-gap') ? moveById('recovery-gap') : null
+    const passive = assigned ?? pickPassive(block, t, passiveHistory.map((o) => ({ moveId: o.passiveId as string, at: o.at })))
+    // A passive item is its own experiment, in the same moment but on another target: its card is written too.
+    if (passive) {
+      const pKey = `passive:${block}`
+      const has = await db.cards.where('situationKey').equals(pKey).filter((c) => c.moveId === passive.id).first()
+      if (!has) await db.cards.add({ createdAt: now, situationKey: pKey, block, target: passive.targets[0].reading, moveId: passive.id, alternativeId: NOTHING, window: passive.targets[0].window, worthwhile: 1, origin: 'passive' })
+    }
     const whyNot = whyNotThat(expected, choice, set)
 
     const offer: Offer = {
@@ -175,7 +199,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
 
 /** Inside the ninety minutes before pickup, on a day she is with you: one short move whose job is arriving with something left. */
 export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days], async () => {
+  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const day = dayKey(now)
@@ -188,10 +212,10 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     const existing = await db.offers.where('day').equals(day).filter((o) => o.kind === 'pickup').first()
     if (existing) return existing.skippedAt ? null : existing
 
-    const t = await todayState(day, settings)
+    const t = await withLearning(await todayState(day, settings), block, day)
     const set = pickupCandidates(block, t)
     const key = 'pickup:energy'
-    const choice = chooseFor(set, (id) => beliefFor(id, key), rng)
+    const choice = chooseFor(set, await beliefsFor(key, set.candidates.map((c) => c.id)), rng)
     if (!choice) return null
     const history = await db.offers.where('situationKey').equals(key).toArray()
     const nowIso = now.toISOString()
@@ -243,7 +267,7 @@ export async function studyOfferSitting(day: string, rng?: Rng): Promise<Sitting
   const versions = studyVersions(today.map((o) => o.moveId))
   const choice = choose(
     versions.map((m) => ({ id: m.id, effort: m.effort })),
-    (id) => beliefFor(id, 'study:evening'),
+    await beliefsFor('study:evening', versions.map((m) => m.id)),
     rng,
   )
   return choice ? sittingOf(moveById(choice.id)) : null

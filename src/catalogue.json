@@ -2896,7 +2896,7 @@
         "effect": 0.2,
         "note": "Amabile and Kramer 2011; about a fifth of a step"
       },
-      "parkProposed": true
+      "parked": true
     },
     {
       "id": "no-spend-day",
@@ -2946,7 +2946,7 @@
         "effect": 0.1,
         "note": "Common practice; about a tenth of a step"
       },
-      "parkProposed": true
+      "parked": true
     },
     {
       "id": "next-week-costs",
@@ -3007,7 +3007,7 @@
     {
       "id": "cancel-one-thing",
       "name": "Cancel one subscription you do not use",
-      "family": "money",
+      "family": "setup",
       "what": "Find it, cancel it, screenshot the confirmation, done in one sitting.",
       "source": {
         "who": "Common practice",
@@ -3055,6 +3055,9 @@
       "prior": {
         "effect": 0.2,
         "note": "Common practice; about a fifth of a step over seven days"
+      },
+      "setup": {
+        "kind": "friction"
       }
     },
     {
@@ -3969,7 +3972,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [
         "calendar-buffer"
       ],
@@ -4032,7 +4034,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [
         "leaving-alarm"
       ],
@@ -4090,7 +4091,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "keep the car tidy"
@@ -4143,7 +4143,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "get round to it",
@@ -4202,7 +4201,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "remember the bill",
@@ -4258,7 +4256,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "meal prep",
@@ -4314,7 +4311,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "brush before bed",
@@ -4367,7 +4363,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "make mornings nicer"
@@ -4421,7 +4416,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "screen-time limits",
@@ -4478,7 +4472,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "get into a walking habit"
@@ -4527,7 +4520,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "a shopping list",
@@ -4582,7 +4574,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "join in more"
@@ -4615,6 +4606,11 @@
           "reading": "socialEnergy",
           "direction": "up",
           "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
         }
       ],
       "when": [
@@ -4644,7 +4640,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "finish your sentences",
@@ -4671,6 +4666,11 @@
       "targets": [
         {
           "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
           "direction": "up",
           "window": "nextBlock"
         }
@@ -4701,7 +4701,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "be more interesting",
@@ -4735,6 +4734,11 @@
           "reading": "socialEnergy",
           "direction": "up",
           "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
         }
       ],
       "when": [
@@ -4764,7 +4768,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "lead the conversation"
@@ -4797,6 +4800,11 @@
           "reading": "socialEnergy",
           "direction": "up",
           "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
         }
       ],
       "when": [
@@ -4826,7 +4834,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "practise in the mirror"
@@ -4876,7 +4883,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "voice coaching"
@@ -4927,7 +4933,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "stop overthinking",
@@ -4986,7 +4991,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "push through",
@@ -5041,7 +5045,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "read more",
@@ -5095,7 +5098,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [
         "brain-dump",
         "todo-list-before-bed"
@@ -5152,7 +5154,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [],
       "replaces": [
         "self-care",
@@ -5200,7 +5201,6 @@
       }
     },
     {
-      "status": "proposed",
       "conflicts": [
         "invite-someone"
       ],
@@ -5562,7 +5562,7 @@
           "to": "setup"
         }
       ],
-      "note": "The money family cut to its two strongest: keep the balance check and the week ahead, park the bill and the no-spend day, and move cancelling a subscription to Setup moves where it belongs. Nothing changes until Green."
+      "note": "Applied at the Phase 9 Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves."
     },
     "charisma": {
       "ladder": [
@@ -5571,11 +5571,11 @@
         "tell-one-short-story",
         "start-a-topic"
       ],
-      "note": "The participation ladder, audience to participant, becomes the charisma ladder at Green; the four existing reps stay as reps."
+      "note": "Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps."
     },
     "passive": [
       "recovery-gap"
     ],
-    "wiring": "At Green the proposed entries join the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaces the charisma ladder, the recovery gap joins the passive items, and the money trade is applied. Until then nothing here changes what is offered."
+    "wiring": "Applied at the Phase 9 Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made."
   }
 }

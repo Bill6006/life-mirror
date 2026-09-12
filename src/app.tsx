@@ -4,6 +4,8 @@ import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
 import { CloudScreen } from './cloudScreen'
+import { EvidenceScreen } from './evidenceScreen'
+import { runLearning } from './learningFlow'
 import { startCloud } from './cloudSync'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
@@ -44,6 +46,7 @@ type View =
   | { kind: 'follow' }
   | { kind: 'becoming' }
   | { kind: 'cloud' }
+  | { kind: 'evidence' }
 
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
@@ -55,6 +58,10 @@ export function App() {
   useReminders(settings, all)
   // The cloud copy: pull on open and every fifteen minutes, push soon after any change; nothing without a token.
   useEffect(() => startCloud(), [])
+  // Phase 10: beliefs update once a day, on open.
+  useEffect(() => {
+    void runLearning(blockAt(new Date()).day)
+  }, [])
 
   useEffect(() => {
     // The phone's back gesture returns to the tabs; ask the browser to keep our storage.
@@ -154,6 +161,8 @@ export function App() {
         return <BecomingScreen onClose={closeAll} />
       case 'cloud':
         return <CloudScreen onClose={closeAll} />
+      case 'evidence':
+        return <EvidenceScreen onClose={closeAll} />
       case 'tabs':
         return screen(tab)
     }
@@ -171,7 +180,7 @@ export function App() {
       case 'mirror':
         return <MirrorScreen />
       case 'moves':
-        return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} />
+        return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} onEvidence={() => open({ kind: 'evidence' })} />
       case 'aims':
         return (
           <AimsScreen

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCKS } from './blocks'
-import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
+import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isParked, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, PASSIVE, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
 import { readings } from './readings'
 
 // The catalogue is content; these checks are what "the builder checks and says so" means in code.
@@ -65,18 +65,19 @@ describe('the catalogue of moves', () => {
     expect(filterTags.map((t) => t.id)).toEqual(['costToAssign', 'startingEffort', 'needs', 'effectWindow'])
   })
 
-  it('keeps every proposal out of what the app may offer until Green', () => {
-    const proposedIds = moves.filter(isProposed).map((m) => m.id)
-    expect(proposedIds.length).toBeGreaterThanOrEqual(20)
-    for (const id of proposedIds) expect(liveMoves.some((m) => m.id === id), id).toBe(false)
-    expect(liveMoves.length + proposedIds.length).toBe(moves.length)
-    expect(moves.filter((m) => m.family === 'setup').every(isProposed)).toBe(true)
+  it('carries the Phase 9 proposals as wired at Green: nothing proposed, the parked two never offered, the trade made', () => {
+    expect(moves.filter(isProposed).length).toBe(0)
+    const parked = moves.filter(isParked).map((m) => m.id)
+    expect(parked).toEqual([...proposals.money.park])
+    for (const id of parked) expect(liveMoves.some((m) => m.id === id), id).toBe(false)
+    expect(liveMoves.length + parked.length).toBe(moves.length)
     for (const id of [...proposals.money.keep, ...proposals.money.park, ...proposals.charisma.ladder, ...proposals.passive]) expect(ids.has(id), id).toBe(true)
-    for (const id of proposals.money.park) expect(moves.find((m) => m.id === id)?.parkProposed, id).toBe(true)
+    expect(moves.find((m) => m.id === 'cancel-one-thing')?.family).toBe('setup')
     expect(proposals.charisma.ladder.map((id) => moves.find((m) => m.id === id)?.ladder?.rung)).toEqual([1, 2, 3, 4])
+    expect(CHARISMA_LADDER).toEqual([...proposals.charisma.ladder])
+    expect(PASSIVE.has('recovery-gap')).toBe(true)
     expect(moves.filter((m) => m.setup?.kind === 'lateness').length).toBeGreaterThanOrEqual(1)
     expect(moves.filter((m) => m.setup?.necessity).length).toBeGreaterThanOrEqual(3)
-    expect(moves.find((m) => m.id === 'notice-and-act')?.status).toBe('proposed')
     expect(moves.find((m) => m.id === 'recovery-gap')?.passive).toBe(true)
   })
 
@@ -110,8 +111,8 @@ describe('the catalogue of moves', () => {
   })
 
   it('carries the charisma ladder in order, the three faith basics, and time with her as its own move', () => {
-    const charisma = moves.filter((m) => m.family === 'charisma').map((m) => m.id)
-    expect(charisma.slice(0, 4)).toEqual(CHARISMA_LADDER)
+    const rungs = moves.filter((m) => m.ladder?.id === 'participation').sort((a, b) => (a.ladder?.rung ?? 0) - (b.ladder?.rung ?? 0)).map((m) => m.id)
+    expect(rungs).toEqual(CHARISMA_LADDER)
     const faith = moves.filter((m) => m.family === 'faith').map((m) => m.id)
     expect(faith).toEqual(expect.arrayContaining(['one-verse', 'five-minutes-prayer', 'one-honest-sentence']))
     const her = moves.find((m) => m.id === 'time-with-her')

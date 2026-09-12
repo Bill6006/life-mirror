@@ -52,7 +52,7 @@ for (const f of data.families) {
     md += `### ${m.name}\n\n`
     const status = []
     if (m.status === 'proposed') status.push('Proposed: read and veto; joins the candidates at Green')
-    if (m.parkProposed) status.push('Proposed to park')
+    if (m.parked) status.push('Parked: shown here, never offered')
     if (m.ladder) status.push(`rung ${m.ladder.rung} of the participation ladder`)
     if (m.setup) status.push(m.setup.kind === 'necessity' ? `a setup whose target is a necessity: ${NECESSITY[m.setup.necessity]}` : SETUP[m.setup.kind])
     if (m.passive) status.push('proposed as a passive item')

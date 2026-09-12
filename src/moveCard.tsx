@@ -3,6 +3,7 @@ import { copy } from './copy'
 import { updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatWhen } from './format'
 import { useLive } from './live'
+import { privateAssociationsToday } from './learningFlow'
 import { cardById, nameOf, offerCounts } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
@@ -37,6 +38,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
   const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
   const whyNot = reasonText(offer)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
+  const privates = useLive(() => (offer.block === 'evening' ? privateAssociationsToday(offer.day) : Promise.resolve([])), [offer.day, offer.block])
+  const round = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
   return (
     <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind}>
@@ -75,6 +78,14 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
             <span class="calc-key">{c.whyNot}</span> · {whyNot}
           </p>
         )}
+        {privates &&
+          privates
+            .filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
+            .map((p) => (
+              <p key={p.itemId} class="calc-line" data-testid="private-line">
+                {fill(c.privateInline, { name: p.name, with: round(p.association.withEvent.mean), without: round(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: moveById(p.alternativeId).name })}
+              </p>
+            ))}
         <p class="calc-line testing">
           <span class="calc-key">{c.testing}</span> ·{' '}
           {card === undefined

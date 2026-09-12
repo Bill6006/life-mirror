@@ -7,7 +7,7 @@ import { remindedKey, withDefaults, type Settings, type Weekday } from './settin
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
 export type WinOutcome = 'done' | 'partly' | 'no'
-export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint'
+export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial'
 
 export interface Extras {
   caffeine?: true
@@ -16,6 +16,9 @@ export interface Extras {
   /** The two evening chips, answered at once from the record. */
   nothingLanded?: true
   hardToSeePoint?: true
+  /** Phase 10: a cooling-off event, whose duration the readings say; and an unplanned big social event. */
+  coolingOff?: true
+  bigSocial?: true
   /** One optional line for anything the app has no question for. Kept for the export. */
   note?: string
   /** Private items logged, keyed by item id. Names live only in privateItems. */
@@ -134,6 +137,57 @@ export interface Card {
   window: string
   /** Worthwhile change, in anchor steps on the target reading. */
   worthwhile: number
+  /** Where the card came from: the app's own draw, an imported hypothesis, a sign flip to test on purpose, a passive item, or a weight card. */
+  origin?: 'app' | 'import' | 'signFlip' | 'passive' | 'weight'
+  /** A weight card's proposed weights for the six ingredients. */
+  weights?: Record<string, number>
+}
+
+/** A dated declaration: the card's interval when it first lay wholly beyond the worthwhile change, frozen. Later data replicates it or not. */
+export interface Declaration {
+  id?: number
+  cardId: number
+  at: string
+  diff: number
+  lo: number
+  hi: number
+  p: number
+  level: number
+  nDone: number
+  nAlternative: number
+}
+
+/** A belief the bandit draws from, recomputed once a day: research says, your record says, and the two combined. */
+export interface BeliefRow {
+  situationKey: string
+  moveId: string
+  mean: number
+  sd: number
+  n: number
+  researchMean: number
+  researchSd: number
+  recordMean: number | null
+  recordN: number
+  signFlip: boolean
+  computedOn: string
+}
+
+export interface TagBeliefRow {
+  id: string
+  mean: number
+  sd: number
+  n: number
+  researchMean: number
+  recordMean: number | null
+  recordN: number
+  computedOn: string
+}
+
+/** Bookkeeping the app derives and can recompute; never synced. */
+export interface Derived {
+  key: string
+  day: string
+  count: number
 }
 
 /** What HAPPENED: the one-tap answer at the next check-in. Null means the question was passed over. */
@@ -182,6 +236,10 @@ export interface RungMark {
 }
 
 class LifeMirrorDB extends Dexie {
+  declarations!: Table<Declaration, number>
+  beliefs!: Table<BeliefRow, [string, string]>
+  tagBeliefs!: Table<TagBeliefRow, string>
+  derived!: Table<Derived, string>
   outbox!: Table<OutboxRow, number>
   cloudRows!: Table<CloudRowState, [string, string]>
   cloudMeta!: Table<CloudMeta, string>
@@ -248,6 +306,28 @@ class LifeMirrorDB extends Dexie {
       outbox: '++id, [store+key]',
       cloudRows: '[store+key]',
       cloudMeta: 'key',
+    })
+    // Phase 10: declarations are records; beliefs and tag beliefs are derived once a day.
+    this.version(6).stores({
+      checkins: '++id, &[day+block], day, completedAt',
+      settings: 'id',
+      wins: '++id, &forDay',
+      privateItems: '++id, archived',
+      offers: '++id, day, situationKey, moveId, closedAt',
+      cards: '++id, situationKey, moveId',
+      outcomes: '++id, offerId, day, moveId',
+      days: 'day',
+      studyNights: '++id, day',
+      aims: '++id, kind',
+      skills: '++id, order',
+      rungMarks: '++id, skillId, at',
+      outbox: '++id, [store+key]',
+      cloudRows: '[store+key]',
+      cloudMeta: 'key',
+      declarations: '++id, cardId',
+      beliefs: '[situationKey+moveId], moveId',
+      tagBeliefs: 'id',
+      derived: 'key',
     })
     installOutbox(this)
   }
@@ -470,13 +550,17 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
       db.outbox.clear(),
       db.cloudRows.clear(),
       db.cloudMeta.clear(),
+      db.declarations.clear(),
+      db.beliefs.clear(),
+      db.tagBeliefs.clear(),
+      db.derived.clear(),
       db.checkins.clear(),
       db.wins.clear(),
       db.privateItems.clear(),
