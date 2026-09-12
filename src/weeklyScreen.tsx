@@ -32,14 +32,14 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{c.title}</p>
       </header>
 
-      <h2 class="section">{c.ahead}</h2>
-      <div class="card pad" data-testid="week-ahead">
+      <h2 class="section is-lead">{c.ahead}</h2>
+      <div class="card pad is-chart" data-testid="week-ahead">
         {w.weekAheadReady ? (
           <>
             <div class="week-chart">
               <WeekAhead rows={w.weekAhead} />
             </div>
-            <p class="note faint no-gap">{fill(c.aheadCaption, { day: formatDayShort(w.weekAhead[lowestAhead(w.weekAhead)].day) })}</p>
+            <p class="note no-gap">{fill(c.aheadCaption, { day: formatDayShort(w.weekAhead[lowestAhead(w.weekAhead)].day) })}</p>
           </>
         ) : (
           <p class="note no-gap">{c.aheadNone}</p>

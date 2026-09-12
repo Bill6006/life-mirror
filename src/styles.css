@@ -600,7 +600,7 @@ main {
 
 .ch-x {
   font-size: 11px;
-  fill: var(--muted);
+  fill: var(--ink);
 }
 
 .ch-y.is-today {
@@ -609,7 +609,7 @@ main {
 
 .ch-label {
   font-size: 9.5px;
-  fill: var(--faint);
+  fill: var(--muted);
 }
 
 .ch-line {
@@ -623,15 +623,25 @@ main {
   stroke-width: 1;
 }
 
-/* The week ahead. The band stripes, the line weights and the text order are measured off the
-   reference: every other band a shade lighter, the steps white, the numbers brightest of all. */
+/* The week ahead. Every value here was read off the reference image: the two stripe strengths,
+   the line tones, the notch depth and the order the text is lit in. */
 .ch-stripe {
   fill: var(--ink);
-  fill-opacity: 0.034;
+  fill-opacity: 0.029;
 }
 
 .ch-stripe.is-dim {
-  fill-opacity: 0.021;
+  fill-opacity: 0.017;
+}
+
+.ch-frame {
+  stroke: var(--hair);
+  stroke-width: 1;
+}
+
+.ch-notch {
+  stroke: var(--hair-2);
+  stroke-width: 1;
 }
 
 .ch-step {
@@ -645,21 +655,23 @@ main {
 }
 
 .ch-whisker line {
-  stroke: var(--muted);
+  stroke: var(--ink);
+  stroke-opacity: 0.72;
   stroke-width: 1.25;
 }
 
 .ch-whisker.is-low line {
   stroke: var(--accent);
+  stroke-opacity: 1;
 }
 
 .ch-tick {
-  font-size: 10px;
-  fill: var(--muted);
+  font-size: 11px;
+  fill: var(--ink);
 }
 
 .ch-val {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 500;
   fill: var(--ink);
   /* The whisker runs behind the number; the ground is painted around the digits so they stay clean. */
@@ -670,10 +682,6 @@ main {
 
 .ch-val.is-low {
   fill: var(--accent);
-}
-
-.ch-x.is-low {
-  fill: var(--ink);
 }
 
 .ch-dot {
@@ -1333,10 +1341,23 @@ button.chip {
 }
 
 /* The week-ahead card: air around the chart, and a clear gap before its caption */
+.card.is-chart {
+  background: rgba(255, 255, 255, 0.015);
+}
+
 .week-chart {
   margin: 2px 0 0;
 }
 
 .week-chart + .note {
   margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* The heading over the chart is lit and weighted as the reference has it. */
+.section.is-lead {
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
