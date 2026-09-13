@@ -179,6 +179,9 @@ const BAND_ROWS: readonly { band: 'empty' | 'wornDown' | 'gettingBy' | 'solid' |
 
 const AXIS_TICKS = [0, 20, 40, 60, 80, 100]
 
+/** Half the break the whisker leaves where the step crosses it, so the two never touch. */
+const WHISKER_GAP = 1.3
+
 /**
  * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
  * names, and the seven days across the rest. One flat step per day at the expected reading with
@@ -246,15 +249,23 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
         </text>
       ))}
 
-      {rows.map((d, i) =>
-        d.lo === null || d.hi === null ? null : (
+      {rows.map((d, i) => {
+        if (d.lo === null || d.hi === null) return null
+        // The whisker parts around the step so it never reads as piercing it.
+        const hi = y(d.hi)
+        const lo = y(d.lo)
+        const mid = d.expected === null ? null : y(d.expected)
+        const upper = mid === null ? lo : mid - WHISKER_GAP
+        const lower = mid === null ? hi : mid + WHISKER_GAP
+        return (
           <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
-            <line x1={centreOf(i)} x2={centreOf(i)} y1={y(d.hi)} y2={y(d.lo)} />
-            <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={y(d.hi)} y2={y(d.hi)} />
-            <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={y(d.lo)} y2={y(d.lo)} />
+            {upper > hi && <line x1={centreOf(i)} x2={centreOf(i)} y1={hi} y2={upper} />}
+            {mid !== null && lo > lower && <line x1={centreOf(i)} x2={centreOf(i)} y1={lower} y2={lo} />}
+            <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={hi} y2={hi} />
+            <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={lo} y2={lo} />
           </g>
-        ),
-      )}
+        )
+      })}
       <path class="wa-step" d={stepPath} />
       {low >= 0 && rows[low].expected !== null && (
         <line class="wa-step is-low" x1={startOf(low)} x2={endOf(low)} y1={y(rows[low].expected as number)} y2={y(rows[low].expected as number)} />

@@ -654,10 +654,9 @@ main {
   fill: none;
   stroke: #e1e3e8;
   stroke-width: 1.8;
-  /* Butt caps and mitred corners: nothing overshoots where a connector meets a segment. */
+  /* Butt caps so nothing overshoots, round joins so the corners stay soft. */
   stroke-linecap: butt;
-  stroke-linejoin: miter;
-  stroke-miterlimit: 4;
+  stroke-linejoin: round;
 }
 
 .wa-step.is-low {
