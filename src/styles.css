@@ -599,12 +599,8 @@ main {
 }
 
 .ch-x {
-  font-size: 10px;
+  font-size: 11px;
   fill: var(--muted);
-}
-
-.ch-x.is-low {
-  fill: var(--ink);
 }
 
 .ch-y.is-today {
@@ -612,8 +608,8 @@ main {
 }
 
 .ch-label {
-  font-size: 8.5px;
-  fill: var(--faint);
+  font-size: 10px;
+  fill: var(--muted);
 }
 
 .ch-line {
@@ -627,32 +623,75 @@ main {
   stroke-width: 1;
 }
 
-/* The week ahead: a compact strip. One hairline weight throughout, no band fills, no heavy axis. */
-.ch-step {
-  stroke: var(--ink);
-  stroke-width: 1.5;
-  stroke-linecap: square;
+/* The week-ahead strip. Its own names, so the trace and the heatmap keep theirs. The depth is
+   all flat translucent charcoal: a pane over the plot, a fainter one per band, a fainter one
+   again on every other day. No gradient, no shadow, nothing but opacity and stroke weight. */
+.wa-pane {
+  fill: #ffffff;
+  fill-opacity: 0.01;
 }
 
-.ch-step.is-low {
+.wa-row {
+  fill: #ffffff;
+  fill-opacity: 0.022;
+}
+
+.wa-row.is-dim {
+  fill-opacity: 0.012;
+}
+
+.wa-col {
+  fill: #ffffff;
+  fill-opacity: 0.008;
+}
+
+.wa-grid {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.75;
+}
+
+.wa-step {
+  fill: none;
+  stroke: #e1e3e8;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wa-step.is-low {
   stroke: var(--accent);
 }
 
-.ch-whisker line {
-  stroke: var(--muted);
-  stroke-width: 1;
+.wa-whisker line {
+  stroke: #aeb3bf;
+  stroke-width: 1.15;
+  stroke-linecap: butt;
 }
 
-.ch-whisker.is-low line {
+.wa-whisker.is-low line {
   stroke: var(--accent);
 }
 
-.ch-tick {
+.wa-tick {
   font-size: 9px;
   fill: var(--muted);
 }
 
-.ch-val {
+.wa-band {
+  font-size: 8.5px;
+  fill: var(--faint);
+}
+
+.wa-day {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.wa-day.is-low {
+  fill: var(--ink);
+}
+
+.wa-val {
   font-size: 10.5px;
   fill: var(--ink);
   /* The whisker runs behind the number; the ground is painted around the digits so they stay clean. */
@@ -661,7 +700,7 @@ main {
   paint-order: stroke fill;
 }
 
-.ch-val.is-low {
+.wa-val.is-low {
   fill: var(--accent);
 }
 

@@ -183,7 +183,8 @@ const AXIS_TICKS = [0, 20, 40, 60, 80, 100]
  * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
  * names, and the seven days across the rest. One flat step per day at the expected reading with
  * a vertical connector between days, a thin whisker for the range, and the lowest day in the
- * accent. A day with no forecast is a gap, not a guess.
+ * accent. A day with no forecast is a gap, not a guess. The plot is a few translucent charcoal
+ * panes laid over one another, so the cells read without ever looking striped.
  */
 export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const W = 340
@@ -192,7 +193,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const bottom = 114
   const left = 20
   const right = 336
-  // The band names have a gutter of their own, about the width of one day.
+  // The band names have a gutter of their own.
   const x0 = left + 49
   const step = (right - x0) / rows.length
   const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
@@ -203,25 +204,31 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
 
   return (
     <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={copy.weekly.ahead}>
-      {AXIS_TICKS.map((v) => (
-        <line key={v} class="ch-band" x1={left} x2={right} y1={y(v)} y2={y(v)} />
+      <rect class="wa-pane" x={left} y={top} width={right - left} height={bottom - top} />
+      {BAND_ROWS.map((b, i) => (
+        <rect key={b.band} class={i % 2 === 0 ? 'wa-row' : 'wa-row is-dim'} x={x0} y={y(b.at + 10)} width={right - x0} height={y(b.at - 10) - y(b.at + 10)} />
       ))}
-      {rows.map((d, i) => i > 0 && <line key={`g${d.day}`} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={top} y2={bottom} />)}
-      <line class="ch-band" x1={x0} x2={x0} y1={top} y2={bottom} />
-      <line class="ch-band" x1={left} x2={left} y1={top} y2={bottom} />
-      <line class="ch-band" x1={right} x2={right} y1={top} y2={bottom} />
-      {rows.map((d, i) => (
-        <line key={`n${d.day}`} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={bottom} y2={bottom + 3.5} />
-      ))}
-      <line class="ch-band" x1={right} x2={right} y1={bottom} y2={bottom + 3.5} />
+      {rows.map((d, i) => i % 2 === 1 && <rect key={`p${d.day}`} class="wa-col" x={startOf(i)} y={top} width={step} height={bottom - top} />)}
 
       {AXIS_TICKS.map((v) => (
-        <text key={v} class="ch-tick" x={left - 4} y={y(v) + 3.2} text-anchor="end">
+        <line key={v} class="wa-grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
+      ))}
+      {rows.map((d, i) => i > 0 && <line key={`g${d.day}`} class="wa-grid" x1={startOf(i)} x2={startOf(i)} y1={top} y2={bottom} />)}
+      <line class="wa-grid" x1={x0} x2={x0} y1={top} y2={bottom} />
+      <line class="wa-grid" x1={left} x2={left} y1={top} y2={bottom} />
+      <line class="wa-grid" x1={right} x2={right} y1={top} y2={bottom} />
+      {rows.map((d, i) => (
+        <line key={`n${d.day}`} class="wa-grid" x1={startOf(i)} x2={startOf(i)} y1={bottom} y2={bottom + 3.5} />
+      ))}
+      <line class="wa-grid" x1={right} x2={right} y1={bottom} y2={bottom + 3.5} />
+
+      {AXIS_TICKS.map((v) => (
+        <text key={v} class="wa-tick" x={left - 4} y={y(v) + 3.2} text-anchor="end">
           {v}
         </text>
       ))}
       {BAND_ROWS.map((b) => (
-        <text key={b.band} class="ch-label" x={(left + x0) / 2} y={y(b.at) + 2.8} text-anchor="middle">
+        <text key={b.band} class="wa-band" x={(left + x0) / 2} y={y(b.at) + 2.8} text-anchor="middle">
           {copy.bands[b.band]}
         </text>
       ))}
@@ -229,11 +236,11 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
       {rows.map((d, i) => {
         const next = rows[i + 1]
         if (d.expected === null || !next || next.expected === null) return null
-        return <line key={`c${d.day}`} class="ch-step" x1={endOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(next.expected)} />
+        return <line key={`c${d.day}`} class="wa-step" x1={endOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(next.expected)} />
       })}
       {rows.map((d, i) =>
         d.lo === null || d.hi === null ? null : (
-          <g key={`w${d.day}`} class={i === low ? 'ch-whisker is-low' : 'ch-whisker'}>
+          <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
             <line x1={centreOf(i)} x2={centreOf(i)} y1={y(d.hi)} y2={y(d.lo)} />
             <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={y(d.hi)} y2={y(d.hi)} />
             <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={y(d.lo)} y2={y(d.lo)} />
@@ -242,18 +249,18 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
       )}
       {rows.map((d, i) =>
         d.expected === null ? null : (
-          <line key={`s${d.day}`} class={i === low ? 'ch-step is-low' : 'ch-step'} x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />
+          <line key={`s${d.day}`} class={i === low ? 'wa-step is-low' : 'wa-step'} x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />
         ),
       )}
       {rows.map((d, i) =>
         d.expected === null ? null : (
-          <text key={`v${d.day}`} class={i === low ? 'ch-val is-low' : 'ch-val'} x={centreOf(i)} y={Math.max(top + 9, y(d.expected) - 3.5)} text-anchor="middle" data-testid="ahead-value">
+          <text key={`v${d.day}`} class={i === low ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={Math.max(top + 9, y(d.expected) - 3.5)} text-anchor="middle" data-testid="ahead-value">
             {Math.round(d.expected)}
           </text>
         ),
       )}
       {rows.map((d, i) => (
-        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 14} text-anchor="middle">
+        <text key={`d${d.day}`} class={i === low ? 'wa-day is-low' : 'wa-day'} x={centreOf(i)} y={bottom + 14} text-anchor="middle">
           {weekdayShort(d.day)}
         </text>
       ))}
