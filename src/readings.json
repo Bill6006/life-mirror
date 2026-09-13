@@ -99,21 +99,21 @@
     {
       "id": "overwhelm",
       "name": "Overwhelm",
-      "prompt": "How much there is to hold",
+      "prompt": "How much is active in your head",
       "unit": "step",
       "anchors": [
-        "Clear — I can see what to do",
-        "Full but ordered — I know where to start",
-        "Crowded — more than fits, still workable",
-        "Swamped — can't see where to start",
-        "Buried — shut down by how much there is"
+        "Open — barely anything",
+        "Occupied — a few things",
+        "Full — several things",
+        "Crowded — many at once",
+        "Buried — too much at once"
       ],
       "alternates": [
-        "Open — I can see what to do next",
-        "Busy but sorted — I know the first step",
+        "Clear — hardly anything there",
+        "Busy — a couple on the go",
         null,
-        "Flooded — no idea where to start",
-        "Frozen — shut down by the size of it"
+        "Swamped — a great many at once",
+        "Flooded — far too much at once"
       ]
     },
     {

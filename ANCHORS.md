@@ -56,17 +56,17 @@ _How much is pressing on you_
 
 ## Overwhelm
 
-_How much there is to hold_
+_How much is active in your head_
 
-- Clear — I can see what to do
-  - or: Open — I can see what to do next
-- Full but ordered — I know where to start
-  - or: Busy but sorted — I know the first step
-- Crowded — more than fits, still workable
-- Swamped — can't see where to start
-  - or: Flooded — no idea where to start
-- Buried — shut down by how much there is
-  - or: Frozen — shut down by the size of it
+- Open — barely anything
+  - or: Clear — hardly anything there
+- Occupied — a few things
+  - or: Busy — a couple on the go
+- Full — several things
+- Crowded — many at once
+  - or: Swamped — a great many at once
+- Buried — too much at once
+  - or: Flooded — far too much at once
 
 ## Motivation
 
