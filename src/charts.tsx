@@ -179,6 +179,15 @@ const BAND_ROWS: readonly { band: 'empty' | 'wornDown' | 'gettingBy' | 'solid' |
 
 const AXIS_TICKS = [0, 20, 40, 60, 80, 100]
 
+/** Half a band, in reading points: a name sits at its middle and its shading spans this either side. */
+const BAND_HALF = 10
+
+/** Half the width of a whisker's end cap. */
+const CAP_HALF = 3.5
+
+/** How far a day's edge notch drops below the axis. */
+const NOTCH = 3.5
+
 /** Half the break the whisker leaves where the step crosses it, so the two never touch. */
 const WHISKER_GAP = 1.3
 
@@ -204,6 +213,11 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const endOf = (i: number) => x0 + (i + 1) * step
   const centreOf = (i: number) => x0 + (i + 0.5) * step
   const low = lowestAhead(rows)
+  const lowValue = low === -1 ? null : rows[low].expected
+  // Every vertical the grid draws: the plot's own edges and each day's, plus a notch under each.
+  const dayEdges = rows.map((_, i) => startOf(i))
+  const verticals = [left, ...dayEdges, right]
+  const notches = [...dayEdges, right]
   // One path for the whole step, so every corner is a join rather than two caps overlapping.
   let stepPath = ''
   let open = false
@@ -222,21 +236,19 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
     <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={copy.weekly.ahead}>
       <rect class="wa-pane" x={left} y={top} width={right - left} height={bottom - top} />
       {BAND_ROWS.map((b, i) => (
-        <rect key={b.band} class={i % 2 === 0 ? 'wa-row' : 'wa-row is-dim'} x={x0} y={y(b.at + 10)} width={right - x0} height={y(b.at - 10) - y(b.at + 10)} />
+        <rect key={b.band} class={i % 2 === 0 ? 'wa-row' : 'wa-row is-dim'} x={x0} y={y(b.at + BAND_HALF)} width={right - x0} height={y(b.at - BAND_HALF) - y(b.at + BAND_HALF)} />
       ))}
       {rows.map((d, i) => i % 2 === 1 && <rect key={`p${d.day}`} class="wa-col" x={startOf(i)} y={top} width={step} height={bottom - top} />)}
 
       {AXIS_TICKS.map((v) => (
-        <line key={v} class="wa-grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
+        <line key={`h${v}`} class="wa-grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
       ))}
-      {rows.map((d, i) => i > 0 && <line key={`g${d.day}`} class="wa-grid" x1={startOf(i)} x2={startOf(i)} y1={top} y2={bottom} />)}
-      <line class="wa-grid" x1={x0} x2={x0} y1={top} y2={bottom} />
-      <line class="wa-grid" x1={left} x2={left} y1={top} y2={bottom} />
-      <line class="wa-grid" x1={right} x2={right} y1={top} y2={bottom} />
-      {rows.map((d, i) => (
-        <line key={`n${d.day}`} class="wa-grid" x1={startOf(i)} x2={startOf(i)} y1={bottom} y2={bottom + 3.5} />
+      {verticals.map((x) => (
+        <line key={`v${x}`} class="wa-grid" x1={x} x2={x} y1={top} y2={bottom} />
       ))}
-      <line class="wa-grid" x1={right} x2={right} y1={bottom} y2={bottom + 3.5} />
+      {notches.map((x) => (
+        <line key={`n${x}`} class="wa-grid" x1={x} x2={x} y1={bottom} y2={bottom + NOTCH} />
+      ))}
 
       {AXIS_TICKS.map((v) => (
         <text key={v} class="wa-tick" x={left - 4} y={y(v) + 3.2} text-anchor="end">
@@ -251,25 +263,22 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
 
       {rows.map((d, i) => {
         if (d.lo === null || d.hi === null) return null
-        // The whisker parts around the step so it never reads as piercing it.
+        const cx = centreOf(i)
         const hi = y(d.hi)
         const lo = y(d.lo)
         const mid = d.expected === null ? null : y(d.expected)
-        const upper = mid === null ? lo : mid - WHISKER_GAP
-        const lower = mid === null ? hi : mid + WHISKER_GAP
+        // The whisker parts around its own step, so the two never touch. With no step, it runs whole.
+        const parts: readonly (readonly [number, number])[] = mid === null ? [[hi, lo]] : [[hi, mid - WHISKER_GAP], [mid + WHISKER_GAP, lo]]
         return (
           <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
-            {upper > hi && <line x1={centreOf(i)} x2={centreOf(i)} y1={hi} y2={upper} />}
-            {mid !== null && lo > lower && <line x1={centreOf(i)} x2={centreOf(i)} y1={lower} y2={lo} />}
-            <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={hi} y2={hi} />
-            <line x1={centreOf(i) - 3.5} x2={centreOf(i) + 3.5} y1={lo} y2={lo} />
+            {parts.map(([from, to]) => to > from && <line key={from} x1={cx} x2={cx} y1={from} y2={to} />)}
+            <line x1={cx - CAP_HALF} x2={cx + CAP_HALF} y1={hi} y2={hi} />
+            <line x1={cx - CAP_HALF} x2={cx + CAP_HALF} y1={lo} y2={lo} />
           </g>
         )
       })}
       <path class="wa-step" d={stepPath} />
-      {low >= 0 && rows[low].expected !== null && (
-        <line class="wa-step is-low" x1={startOf(low)} x2={endOf(low)} y1={y(rows[low].expected as number)} y2={y(rows[low].expected as number)} />
-      )}
+      {lowValue !== null && <line class="wa-step is-low" x1={startOf(low)} x2={endOf(low)} y1={y(lowValue)} y2={y(lowValue)} />}
       {rows.map((d, i) =>
         d.expected === null ? null : (
           <text key={`v${d.day}`} class={i === low ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={Math.max(top + 9, y(d.expected) - 3.5)} text-anchor="middle" data-testid="ahead-value">
