@@ -187,13 +187,13 @@ const AXIS_TICKS = [0, 20, 40, 60, 80, 100]
  */
 export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const W = 340
-  const H = 160
-  const top = 14
-  const bottom = 134
+  const H = 133
+  const top = 10
+  const bottom = 114
   const left = 20
   const right = 336
   // The band names have a gutter of their own, about the width of one day.
-  const x0 = left + 41
+  const x0 = left + 38
   const step = (right - x0) / rows.length
   const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
   const startOf = (i: number) => x0 + i * step
@@ -211,9 +211,9 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
       <line class="ch-band" x1={left} x2={left} y1={top} y2={bottom} />
       <line class="ch-band" x1={right} x2={right} y1={top} y2={bottom} />
       {rows.map((d, i) => (
-        <line key={`n${d.day}`} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={bottom} y2={bottom + 4} />
+        <line key={`n${d.day}`} class="ch-band" x1={startOf(i)} x2={startOf(i)} y1={bottom} y2={bottom + 3.5} />
       ))}
-      <line class="ch-band" x1={right} x2={right} y1={bottom} y2={bottom + 4} />
+      <line class="ch-band" x1={right} x2={right} y1={bottom} y2={bottom + 3.5} />
 
       {AXIS_TICKS.map((v) => (
         <text key={v} class="ch-tick" x={left - 4} y={y(v) + 3.2} text-anchor="end">
@@ -253,7 +253,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
         ),
       )}
       {rows.map((d, i) => (
-        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 16} text-anchor="middle">
+        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 14} text-anchor="middle">
           {weekdayShort(d.day)}
         </text>
       ))}

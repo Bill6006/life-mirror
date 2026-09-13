@@ -612,8 +612,8 @@ main {
 }
 
 .ch-label {
-  /* Sized so the longest band name sits inside a gutter no wider than one day. */
-  font-size: 7.2px;
+  /* Sized so the longest band name sits inside a gutter narrower than one day. */
+  font-size: 6.6px;
   fill: var(--faint);
 }
 
@@ -649,7 +649,7 @@ main {
 }
 
 .ch-tick {
-  font-size: 9.5px;
+  font-size: 9px;
   fill: var(--muted);
 }
 
@@ -1324,12 +1324,12 @@ button.chip {
 
 /* The week-ahead card: air around the chart, and a clear gap before its caption */
 .week-chart {
-  margin: 2px 0 0;
+  margin: 0;
 }
 
 .week-chart + .note {
-  margin-top: 10px;
-  font-size: 12.5px;
+  margin-top: 6px;
+  font-size: 9px;
   color: var(--faint);
 }
 
