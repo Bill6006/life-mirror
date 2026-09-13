@@ -201,6 +201,19 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const endOf = (i: number) => x0 + (i + 1) * step
   const centreOf = (i: number) => x0 + (i + 0.5) * step
   const low = lowestAhead(rows)
+  // One path for the whole step, so every corner is a join rather than two caps overlapping.
+  let stepPath = ''
+  let open = false
+  rows.forEach((d, i) => {
+    if (d.expected === null) {
+      open = false
+      return
+    }
+    if (!open) stepPath += `M${startOf(i)},${y(d.expected)}`
+    else stepPath += `V${y(d.expected)}`
+    stepPath += `H${endOf(i)}`
+    open = true
+  })
 
   return (
     <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={copy.weekly.ahead}>
@@ -233,11 +246,6 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
         </text>
       ))}
 
-      {rows.map((d, i) => {
-        const next = rows[i + 1]
-        if (d.expected === null || !next || next.expected === null) return null
-        return <line key={`c${d.day}`} class="wa-step" x1={endOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(next.expected)} />
-      })}
       {rows.map((d, i) =>
         d.lo === null || d.hi === null ? null : (
           <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
@@ -247,10 +255,9 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
           </g>
         ),
       )}
-      {rows.map((d, i) =>
-        d.expected === null ? null : (
-          <line key={`s${d.day}`} class={i === low ? 'wa-step is-low' : 'wa-step'} x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />
-        ),
+      <path class="wa-step" d={stepPath} />
+      {low >= 0 && rows[low].expected !== null && (
+        <line class="wa-step is-low" x1={startOf(low)} x2={endOf(low)} y1={y(rows[low].expected as number)} y2={y(rows[low].expected as number)} />
       )}
       {rows.map((d, i) =>
         d.expected === null ? null : (
