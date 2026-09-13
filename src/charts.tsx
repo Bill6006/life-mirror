@@ -193,7 +193,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const left = 20
   const right = 336
   // The band names have a gutter of their own, about the width of one day.
-  const x0 = left + 38
+  const x0 = left + 49
   const step = (right - x0) / rows.length
   const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
   const startOf = (i: number) => x0 + i * step

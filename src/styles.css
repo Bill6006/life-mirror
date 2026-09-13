@@ -612,8 +612,7 @@ main {
 }
 
 .ch-label {
-  /* Sized so the longest band name sits inside a gutter narrower than one day. */
-  font-size: 6.6px;
+  font-size: 8.5px;
   fill: var(--faint);
 }
 
@@ -1328,8 +1327,8 @@ button.chip {
 }
 
 .week-chart + .note {
-  margin-top: 6px;
-  font-size: 9px;
+  margin-top: 4px;
+  font-size: 10px;
   color: var(--faint);
 }
 
