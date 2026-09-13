@@ -253,7 +253,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
         ),
       )}
       {rows.map((d, i) => (
-        <text key={`d${d.day}`} class="ch-x" x={centreOf(i)} y={bottom + 20} text-anchor="middle">
+        <text key={`d${d.day}`} class={i === low ? 'ch-x is-low' : 'ch-x'} x={centreOf(i)} y={bottom + 20} text-anchor="middle">
           {weekdayShort(d.day)}
         </text>
       ))}
