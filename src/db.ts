@@ -333,7 +333,10 @@ class LifeMirrorDB extends Dexie {
   skills!: Table<Skill, number>
   rungMarks!: Table<RungMark, number>
   constructor() {
-    super('life-mirror')
+    // Every write is flushed to disk before it counts. The browser's default lets a write sit
+    // acknowledged but unflushed, the one way a committed record can still be gone after the
+    // process is killed; the records here are small and rare enough that the cost is nothing.
+    super('life-mirror', { chromeTransactionDurability: 'strict' })
     this.version(1).stores({ checkins: '++id, &[day+block], day, completedAt' })
     this.version(2).stores({
       checkins: '++id, &[day+block], day, completedAt',

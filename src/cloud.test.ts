@@ -2,8 +2,10 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { deleteCloudCopy, getMeta, latestPerRow, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { deleteCloudCopy, ensureDeviceId, getMeta, latestPerRow, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
+import { markSilent } from './cloudOutbox'
+import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
 import { blockReadings } from './readings'
 
 // The cloud copy, against a fake client. CI never has a token: every token here is made up and
@@ -74,7 +76,7 @@ describe('the outbox', () => {
   })
 
   it('never carries the token, the push address or the reminders shown', async () => {
-    await updateSettings((s) => ({ ...s, cloud: { token: TOKEN, deviceId: 'dev' }, direction: 'One line' }))
+    await updateSettings((s) => ({ ...s, cloud: { token: TOKEN, deviceId: 'dev', tokenSavedAt: null }, direction: 'One line' }))
     const rows = (await db.outbox.toArray()).filter((r) => r.store === 'settings')
     expect(rows.length).toBeGreaterThan(0)
     for (const r of rows) {
@@ -232,5 +234,146 @@ describe('the sync worker', () => {
     // Restored rows are known to the cloud and never queued again.
     expect(await db.outbox.count()).toBe(0)
     expect([...store.rows.values()].filter((r) => r.app === APP).length).toBe(before)
+  })
+})
+
+describe('the token on the phone', () => {
+  let phone: KeyValue
+  beforeEach(() => {
+    phone = memoryKeyValue()
+    setTokenStorageForTests(phone)
+  })
+  afterEach(() => setTokenStorageForTests(null))
+
+  /** A check-in gone from the phone with no tombstone and no queue entry: the way a record was lost. */
+  async function loseCheckIn(): Promise<void> {
+    await db.transaction('rw', [db.checkins, db.outbox], async () => {
+      markSilent()
+      await db.checkins.clear()
+    })
+    expect(await db.checkins.count()).toBe(0)
+  }
+
+  /** The token gone from the app's database with no removal: the way it was lost. */
+  async function loseDatabaseToken(): Promise<void> {
+    await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, token: null, tokenSavedAt: null } }))
+  }
+
+  /** Saves, pushes one check-in, then syncs again so the watermark sits past the pushed rows, as on the phone. */
+  async function connectAndSettle(store: MemoryStore): Promise<number> {
+    setStoreFactory(async () => store)
+    await saveToken(TOKEN)
+    await oneCheckIn()
+    expect(await syncNow()).toBe('done')
+    expect(await syncNow()).toBe('done')
+    const rows = [...store.rows.values()].filter((r) => r.app === APP)
+    expect(rows.some((r) => r.store === 'checkins')).toBe(true)
+    expect((await getMeta()).watermark).toBe(rows.map((r) => r.synced_at).sort().at(-1))
+    return rows.length
+  }
+
+  it('keeps the token in both homes, reads it back, starts the next pull from the beginning, and the log never carries it', async () => {
+    const store = memoryStore()
+    setStoreFactory(async () => store)
+    await saveToken(`  ${TOKEN}  `)
+    const s = await getSettings()
+    expect(s.cloud.token).toBe(TOKEN)
+    expect(s.cloud.tokenSavedAt).toBeTruthy()
+    expect(phone.getItem(MIRROR_KEY)).toBe(TOKEN)
+    expect(JSON.parse(phone.getItem(MARK_KEY) ?? '{}')).toMatchObject({ savedAt: s.cloud.tokenSavedAt })
+    expect(readLog().map((e) => e.kind)).toEqual(['saved'])
+    expect(JSON.stringify(readLog())).not.toContain(TOKEN)
+    expect(phone.getItem(MARK_KEY)).not.toContain(TOKEN)
+    expect((await getMeta()).watermark).toBe('')
+    expect(await syncNow()).toBe('done')
+    expect(latestNotice()).toBeNull()
+  })
+
+  it('a database that lost the token gets it back from the phone, and a lost record comes back with it', async () => {
+    const store = memoryStore()
+    const before = await connectAndSettle(store)
+    await loseDatabaseToken()
+    await loseCheckIn()
+
+    expect(await syncNow()).toBe('done')
+    expect((await getSettings()).cloud.token).toBe(TOKEN)
+    expect(await db.checkins.count()).toBe(1)
+    expect((await db.checkins.get(1))?.day).toBe(DAY)
+    expect(readLog().map((e) => e.kind)).toEqual(['saved', 'restored'])
+    expect(latestNotice()?.detail).toMatch(/database had lost the token/)
+    // Nothing in the cloud was touched: no tombstone, no new row.
+    const rows = [...store.rows.values()].filter((r) => r.app === APP)
+    expect(rows.length).toBe(before)
+    expect(rows.every((r) => r.deleted === 0)).toBe(true)
+  })
+
+  it('with the token intact a routine sync cannot see an old row; a token pasted again walks everything back', async () => {
+    const store = memoryStore()
+    const before = await connectAndSettle(store)
+    await loseCheckIn()
+
+    expect(await syncNow()).toBe('done')
+    expect(await db.checkins.count()).toBe(0)
+    await saveToken(TOKEN)
+    expect(await syncNow()).toBe('done')
+    expect(await db.checkins.count()).toBe(1)
+    expect([...store.rows.values()].filter((r) => r.app === APP).length).toBe(before)
+  })
+
+  it('both homes empty after a save: says missing once, with when it was last seen, and pasting again restores everything', async () => {
+    const store = memoryStore()
+    await connectAndSettle(store)
+    const lastSeen = JSON.parse(phone.getItem(MARK_KEY) ?? '{}').lastSeenAt as string
+    await loseDatabaseToken()
+    phone.removeItem(MIRROR_KEY)
+    await loseCheckIn()
+
+    const calls = store.calls
+    expect(await syncNow()).toBe('noToken')
+    expect(store.calls).toBe(calls)
+    const lost = await resolveToken()
+    expect(lost.token).toBeNull()
+    expect(lost.notice).toMatchObject({ kind: 'missing', lastSeenAt: lastSeen })
+    expect(readLog().filter((e) => e.kind === 'missing')).toHaveLength(1)
+
+    await saveToken(TOKEN)
+    expect(await syncNow()).toBe('done')
+    expect(await db.checkins.count()).toBe(1)
+    expect(latestNotice()).toBeNull()
+    expect([...store.rows.values()].every((r) => r.deleted === 0)).toBe(true)
+  })
+
+  it('removing the token clears both homes and the marks, keeps the log, and is not a loss', async () => {
+    const store = memoryStore()
+    setStoreFactory(async () => store)
+    await saveToken(TOKEN)
+    await removeToken()
+    expect((await getSettings()).cloud).toMatchObject({ token: null, tokenSavedAt: null })
+    expect(phone.getItem(MIRROR_KEY)).toBeNull()
+    expect(phone.getItem(MARK_KEY)).toBeNull()
+    expect(readLog().map((e) => e.kind)).toEqual(['saved', 'removed'])
+    expect(await syncNow()).toBe('noToken')
+    expect((await resolveToken()).notice).toBeNull()
+  })
+
+  it('a phone from before the second copy writes it on the first run and walks the history once, quietly', async () => {
+    const store = memoryStore()
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    expect(phone.getItem(MIRROR_KEY)).toBe(TOKEN)
+    expect((await getSettings()).cloud.tokenSavedAt).toBeTruthy()
+    expect(readLog()).toHaveLength(1)
+    expect(readLog()[0]).toMatchObject({ kind: 'saved' })
+    expect(readLog()[0]?.detail).toMatch(/second copy/)
+    expect(latestNotice()).toBeNull()
+    expect(await syncNow()).toBe('done')
+    expect(readLog()).toHaveLength(1)
+  })
+
+  it('a phone that lost its settings keeps its device id from the second copy', async () => {
+    const id = await ensureDeviceId()
+    expect(phone.getItem(DEVICE_KEY)).toBe(id)
+    await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, deviceId: '' } }))
+    expect(await ensureDeviceId()).toBe(id)
   })
 })

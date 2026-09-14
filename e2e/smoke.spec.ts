@@ -610,3 +610,47 @@ test('the Done tap closes with its block: after that, only the next check-in rec
   await page.getByRole('button', { name: /Check in/ }).click()
   await expect(page.getByTestId('outcome-ask')).toBeVisible()
 })
+
+test('the cloud token survives its database copy going missing, and the screen says what happened', async ({ page }) => {
+  // The database is never reached: every request to the host is refused at the browser.
+  await page.route(/turso\.io/, (route) => route.abort())
+  const token = 'e2e-token-never-real'
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /Cloud copy/ }).click()
+  await page.getByTestId('token-input').fill(token)
+  await page.getByTestId('token-keep').click()
+  await expect(page.getByTestId('token-set')).toBeVisible()
+  await expect(page.getByTestId('token-log')).toContainText('saved')
+
+  // The token gone from the app's database with no removal, the way it went on the phone.
+  await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('life-mirror')
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('settings', 'readwrite')
+      const store = tx.objectStore('settings')
+      const read = store.get(1)
+      read.onsuccess = () => {
+        const settings = read.result as { cloud: { token: string | null; tokenSavedAt: string | null } }
+        settings.cloud.token = null
+        settings.cloud.tokenSavedAt = null
+        store.put(settings)
+      }
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  })
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /Cloud copy/ }).click()
+  await expect(page.getByTestId('token-set')).toBeVisible()
+  await expect(page.getByTestId('token-notice')).toContainText('written again')
+  expect(await page.getByTestId('token-notice').textContent()).not.toContain(token)
+  expect(await page.getByTestId('token-log').textContent()).not.toContain(token)
+})

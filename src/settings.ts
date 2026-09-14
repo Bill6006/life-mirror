@@ -36,6 +36,8 @@ export interface CloudSettings {
   token: string | null
   /** Generated once on this phone; empty until the first sync sets it. */
   deviceId: string
+  /** When the token was saved on this phone: the mark that tells a loss from never having had one. */
+  tokenSavedAt: string | null
 }
 
 export interface Settings {
@@ -102,7 +104,7 @@ export const DEFAULT_SETTINGS: Settings = {
   week: DEFAULT_WEEK,
   direction: null,
   directionAskedAt: null,
-  cloud: { token: null, deviceId: '' },
+  cloud: { token: null, deviceId: '', tokenSavedAt: null },
   retiredReadings: [],
   readingDecisions: {},
   chipsBack: {},

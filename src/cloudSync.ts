@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
+import { copy } from './copy'
 import { db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
 import { withDefaults, type Settings } from './settings'
+import { appendLog, clearMark, clearMirror, latestNotice, readDeviceMirror, readMark, readMirror, tokenStorage, writeDeviceMirror, writeMark, writeMirror, type TokenEvent, type TokenMark } from './tokenVault'
 
 // The sync worker. Pull first (rows newer than the watermark, applied only where the remote is
 // newer, silently, never re-queued), then push (the outbox, latest change per row, in batches).
@@ -27,6 +29,8 @@ export interface SyncStatus {
   lastSyncAt: string | null
   lastError: string | null
   pending: number
+  /** The latest thing that happened to the token when it was a loss: a copy written again, or both gone. */
+  notice: TokenEvent | null
 }
 
 let factory: StoreFactory = libsqlStore
@@ -75,13 +79,113 @@ async function patchMeta(patch: Partial<CloudMeta>): Promise<void> {
   await db.cloudMeta.put({ ...current, ...patch, key: 'state' })
 }
 
-/** This phone's id: generated once, kept in settings, registered in `devices`. */
+/** This phone's id: generated once, kept in settings with a second copy on the phone, registered in `devices`. */
 export async function ensureDeviceId(): Promise<string> {
   const s = await getSettings()
-  if (s.cloud.deviceId) return s.cloud.deviceId
-  const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  if (s.cloud.deviceId) {
+    if (readDeviceMirror() !== s.cloud.deviceId) writeDeviceMirror(s.cloud.deviceId)
+    return s.cloud.deviceId
+  }
+  // A phone that lost its settings takes its id back from the second copy before a new one is minted,
+  // so it stays the same device in the cloud.
+  const id = readDeviceMirror() ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`)
   await updateSettings((cur) => ({ ...cur, cloud: { ...cur.cloud, deviceId: id } }))
+  writeDeviceMirror(id)
   return id
+}
+
+/** Sends the next pull back to the beginning, so it restores whatever this phone has lost. Rows the phone still holds are kept where they are newer. */
+export function restartPull(): Promise<void> {
+  return patchMeta({ watermark: '' })
+}
+
+/**
+ * Keeps the token in both of its homes, reads each back, and sends the next pull to the beginning:
+ * a phone pasting a token again has lost something, or is a new phone with an old token, and either
+ * way the whole history comes back before anything is pushed.
+ */
+export async function saveToken(raw: string): Promise<void> {
+  const token = raw.trim()
+  if (!token) return
+  const now = new Date().toISOString()
+  await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, token, tokenSavedAt: now } }))
+  if ((await getSettings()).cloud.token !== token) throw new Error(copy.cloud.notKept)
+  const mirrored = writeMirror(token)
+  writeMark({ savedAt: now, lastSeenAt: now })
+  appendLog({ at: now, kind: 'saved', detail: mirrored || tokenStorage() === null ? copy.cloud.logSaved : copy.cloud.logSavedNoMirror })
+  await restartPull()
+}
+
+/** Removes both copies and the marks; the log keeps the removal. Nothing leaves the phone after this. */
+export async function removeToken(): Promise<void> {
+  await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, token: null, tokenSavedAt: null } }))
+  clearMirror()
+  clearMark()
+  appendLog({ at: new Date().toISOString(), kind: 'removed', detail: copy.cloud.logRemoved })
+}
+
+export interface TokenResolution {
+  token: string | null
+  /** True when the next pull was sent to the beginning: the database copy had gone, or this is the first run with two copies. */
+  recover: boolean
+  notice: TokenEvent | null
+}
+
+/**
+ * Finds the token in either home, heals the other, and says what it found. Runs before every sync.
+ * Without local storage at all (Node, or a browser that blocks it) there is one home and nothing to heal.
+ */
+export async function resolveToken(): Promise<TokenResolution> {
+  const now = new Date().toISOString()
+  const s = await getSettings()
+  const database = s.cloud.token
+  if (tokenStorage() === null) return { token: database, recover: false, notice: null }
+  const local = readMirror()
+  const localMark = readMark()
+  const mark: TokenMark | null = s.cloud.tokenSavedAt ? { savedAt: s.cloud.tokenSavedAt, lastSeenAt: localMark?.lastSeenAt ?? s.cloud.tokenSavedAt } : localMark
+  const keepMark = async (savedAt: string) => {
+    writeMark({ savedAt, lastSeenAt: now })
+    if (s.cloud.tokenSavedAt !== savedAt) await updateSettings((cur) => ({ ...cur, cloud: { ...cur.cloud, tokenSavedAt: savedAt } }))
+  }
+
+  if (database && local) {
+    if (database !== local) {
+      // Two different tokens: a later save reached only one home. The later mark wins.
+      const preferLocal = localMark !== null && s.cloud.tokenSavedAt !== null && localMark.savedAt > s.cloud.tokenSavedAt
+      const token = preferLocal ? local : database
+      if (preferLocal) await updateSettings((cur) => ({ ...cur, cloud: { ...cur.cloud, token } }))
+      else writeMirror(token)
+      await keepMark(mark?.savedAt ?? now)
+      const notice = appendLog({ at: now, kind: 'restored', detail: copy.cloud.logDisagreed })
+      if (preferLocal) await restartPull()
+      return { token, recover: preferLocal, notice }
+    }
+    await keepMark(mark?.savedAt ?? now)
+    return { token: database, recover: false, notice: latestNotice() }
+  }
+
+  if (database) {
+    writeMirror(database)
+    const firstRun = mark === null
+    await keepMark(mark?.savedAt ?? now)
+    const event = appendLog(firstRun ? { at: now, kind: 'saved', detail: copy.cloud.logSecondCopy } : { at: now, kind: 'restored', detail: copy.cloud.logLocalRestored })
+    if (firstRun) await restartPull()
+    return { token: database, recover: firstRun, notice: firstRun ? null : event }
+  }
+
+  if (local) {
+    await updateSettings((cur) => ({ ...cur, cloud: { ...cur.cloud, token: local } }))
+    await keepMark(mark?.savedAt ?? now)
+    const notice = appendLog({ at: now, kind: 'restored', detail: copy.cloud.logDatabaseRestored })
+    await restartPull()
+    return { token: local, recover: true, notice }
+  }
+
+  if (!mark) return { token: null, recover: false, notice: null }
+  // Both homes empty after a token was saved here. Say so once, not on every open.
+  const last = latestNotice()
+  const notice = last?.kind === 'missing' ? last : appendLog({ at: now, kind: 'missing', detail: copy.cloud.logMissing, lastSeenAt: mark.lastSeenAt })
+  return { token: null, recover: false, notice }
 }
 
 function keyFor(store: string, id: string): string | number {
@@ -189,8 +293,7 @@ function scheduleRetry(): void {
 }
 
 async function run(): Promise<SyncOutcome> {
-  const settings = await getSettings()
-  const token = settings.cloud.token
+  const { token } = await resolveToken()
   if (!token) {
     setLive('off')
     return 'noToken'
@@ -287,5 +390,5 @@ export function useCloudStatus(): SyncStatus | undefined {
   }, [])
   if (!settings || !meta || pending === undefined) return undefined
   const hasToken = Boolean(settings.cloud.token)
-  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending }
+  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending, notice: latestNotice() }
 }
