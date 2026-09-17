@@ -139,6 +139,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   uncontrolled.push(count('she was away', (d) => ctx.get(d)?.withHer === false))
   uncontrolled.push(count('a study night', (d) => ctx.get(d)?.studyNight === true))
   uncontrolled.push(count('the church day', (d) => ctx.get(d)?.churchDay === true))
+  uncontrolled.push(count('an office day', (d) => ctx.get(d)?.atOffice === true))
 
   const pick = (list: Difference[]) =>
     list

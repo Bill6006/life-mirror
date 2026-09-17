@@ -1,6 +1,10 @@
 import { extensionPrompt, families, filterTags, isParked, isProposed, learnedTags, moves, movesInFamily, proposals, research, type Move, type Source } from './catalogue'
+import { blockAt } from './blocks'
 import { copy } from './copy'
-import { fill } from './format'
+import { updateSettings } from './db'
+import { fill, formatDayShort } from './format'
+import { useLive } from './live'
+import { standingSince } from './offerFlow'
 import { readingById } from './readings'
 
 // Every move, readable in full on the phone, with its tags and its starting belief; the learned
@@ -48,10 +52,20 @@ function MoveCard({ m, names }: { m: Move; names: Map<string, string> }) {
   const needs = m.needs.length ? m.needs.map((n) => c.needs[n]).join(', ') : c.needsNothing
   const first = m.targets[0]
   const status = statusLine(m)
+  // A one-time setup already made: the day it was, and the one word that brings it back (Rule 13).
+  const standing = useLive(() => (m.setup ? standingSince(m.id) : Promise.resolve(null)), [m.id])
   return (
     <li class={isProposed(m) ? 'move is-proposed' : 'move'} id={`move-${m.id}`} data-proposed={isProposed(m) ? 'true' : undefined}>
       <h3 class="move-name">{m.name}</h3>
       {status && <p class="move-status">{status}</p>}
+      {standing && (
+        <p class="move-status" data-testid="standing">
+          {fill(c.standingSince, { date: formatDayShort(standing) })} ·{' '}
+          <button type="button" class="textbtn faint" data-testid="came-undone" onClick={() => void updateSettings((s) => ({ ...s, setupUndone: { ...s.setupUndone, [m.id]: blockAt(new Date()).day } }))}>
+            {c.cameUndone}
+          </button>
+        </p>
+      )}
       <p class="move-what">{m.what}</p>
       <p class="move-meta">
         {takes} · {fill(c.effort, { level: c.efforts[m.effort] })} · {fill(c.costLabel, { level: c.efforts[m.costToAssign] })} · {fill(c.needsLabel, { needs })}

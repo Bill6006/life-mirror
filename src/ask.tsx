@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { moveById } from './catalogue'
 import { copy } from './copy'
 import type { Offer, OutcomeWhy, WinOutcome } from './db'
-import { offerName } from './offerFlow'
+import { useLive } from './live'
+import { offerName, outcomeFor } from './offerFlow'
 import { NOTHING } from './offers'
 
 const ANSWERS: readonly WinOutcome[] = ['done', 'partly', 'no']
@@ -16,20 +17,26 @@ export interface Answer {
 /**
  * The one-tap question at the start of the next check-in: what happened, kept apart from what
  * was offered. After a No, one optional tap for why, never required, never asked twice. If a
- * passive item rode alongside, one tap for that too.
+ * passive item rode alongside, one tap for that too; when the move was already recorded from
+ * the card, that one tap is all that is asked.
  */
 export function OutcomeAsk({ offer, onAnswer }: { offer: Offer; onAnswer: (a: Answer) => void }) {
   const [outcome, setOutcome] = useState<WinOutcome | null | undefined>(undefined)
   const [why, setWhy] = useState<OutcomeWhy | null | undefined>(undefined)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
   const nothing = offer.moveId === NOTHING
+  const existing = useLive(() => outcomeFor(offer.id), [offer.id])
   const c = copy.ask
+  if (existing === undefined) return <section class="screen" />
 
-  const askWhy = outcome === 'no' && why === undefined
-  const askPassive = passive !== null && outcome !== undefined && !askWhy
+  // Recorded from the card already: the move's answer stands, only the passive item is asked.
+  const passiveOnly = existing !== null && passive !== null && existing.passiveOutcome === null
+  const askWhy = !passiveOnly && outcome === 'no' && why === undefined
+  const askPassive = passive !== null && (passiveOnly || (outcome !== undefined && !askWhy))
 
   function finish(passiveOutcome: 'done' | 'no' | null) {
-    onAnswer({ outcome: outcome ?? null, why: why ?? null, passiveOutcome })
+    if (passiveOnly && existing) onAnswer({ outcome: existing.outcome, why: existing.why, passiveOutcome })
+    else onAnswer({ outcome: outcome ?? null, why: why ?? null, passiveOutcome })
   }
 
   function chooseOutcome(o: WinOutcome | null) {
@@ -49,7 +56,7 @@ export function OutcomeAsk({ offer, onAnswer }: { offer: Offer; onAnswer: (a: An
       </header>
       <h1 class="title">{offerName(offer, copy.move.nothing)}</h1>
 
-      {outcome === undefined && (
+      {outcome === undefined && !passiveOnly && (
         <>
           <p class="note">{nothing ? c.questionNothing : c.question}</p>
           <div class="card">

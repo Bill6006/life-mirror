@@ -25,6 +25,8 @@ export interface WeekShape {
   /** The constant: she lives with you. The exception is one chip inside the check-in. */
   livesWithMe: boolean
   studyNights: Record<Weekday, boolean>
+  /** Days at the office rather than at home; the exception is one chip inside the check-in. Quiet is not to be had there. */
+  officeDays: Record<Weekday, boolean>
   /** Daycare pickup, HH:MM, or null when there is none. */
   pickupTime: string | null
   /** Solo-parenting hours run from pickup until this time. */
@@ -77,12 +79,16 @@ export interface Settings {
   chipsBack: Record<string, string>
   /** Learned weights for the reading out of 100, applied only once a weight card holds up. */
   weights: Record<string, number> | null
+  /** Daylight hours, HH:MM: a move that needs daylight is offered only inside them. */
+  daylight: { from: string; to: string }
+  /** One-time setups you said came undone, by the day you said so; each is offered again after that day. */
+  setupUndone: Record<string, string>
   updatedAt: string
 }
 
 const NO_DAY: Record<Weekday, boolean> = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }
 
-export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyNights: NO_DAY, pickupTime: null, soloUntil: '20:00' }
+export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyNights: NO_DAY, officeDays: NO_DAY, pickupTime: null, soloUntil: '20:00' }
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 1,
@@ -108,6 +114,8 @@ export const DEFAULT_SETTINGS: Settings = {
   retiredReadings: [],
   readingDecisions: {},
   chipsBack: {},
+  daylight: { from: '07:00', to: '19:00' },
+  setupUndone: {},
   weights: null,
   updatedAt: '',
 }
@@ -126,6 +134,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
       ...(stored.week ?? {}),
       livesWithMe: stored.week?.livesWithMe ?? DEFAULT_WEEK.livesWithMe,
       studyNights: { ...DEFAULT_WEEK.studyNights, ...(stored.week?.studyNights ?? {}) },
+      officeDays: { ...DEFAULT_WEEK.officeDays, ...(stored.week?.officeDays ?? {}) },
     },
     reminded: stored.reminded ?? {},
     cloud: { ...DEFAULT_SETTINGS.cloud, ...(stored.cloud ?? {}) },
@@ -133,6 +142,8 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     readingDecisions: stored.readingDecisions ?? {},
     chipsBack: stored.chipsBack ?? {},
     weights: stored.weights ?? null,
+    daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
+    setupUndone: stored.setupUndone ?? {},
   }
 }
 
@@ -158,6 +169,14 @@ export function activeBlocks(frequency: Frequency): readonly Block[] {
 export function minutesOf(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
+}
+
+/** Whether a moment falls inside the daylight hours; a window that ends before it starts wraps past midnight. */
+export function inDaylight(window: { from: string; to: string }, now: Date): boolean {
+  const m = now.getHours() * 60 + now.getMinutes()
+  const from = minutesOf(window.from)
+  const to = minutesOf(window.to)
+  return from <= to ? m >= from && m < to : m >= from || m < to
 }
 
 export function hhmmOf(d: Date): string {

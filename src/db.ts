@@ -37,6 +37,8 @@ export interface DayContext {
   withHer: boolean
   studyNight: boolean
   churchDay: boolean
+  /** At the office rather than at home, from the week's office days; the exception is one chip inside the check-in. Older days lack it and read as home. */
+  atOffice?: boolean
   pickupTime: string | null
   soloUntil: string
   /** Set when you changed today by hand. */
@@ -649,6 +651,7 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
       withHer: w.livesWithMe,
       studyNight: w.studyNights[weekday],
       churchDay: w.churchDay === weekday,
+      atOffice: w.officeDays[weekday],
       pickupTime: w.pickupTime,
       soloUntil: w.soloUntil,
       changed: false,
@@ -660,7 +663,7 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
 }
 
 /** Changes today alone. */
-export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay'>>): Promise<void> {
+export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay' | 'atOffice'>>): Promise<void> {
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
     if (!existing) return

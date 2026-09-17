@@ -54,6 +54,8 @@ export interface Move {
   what: string
   source: Source
   minutes: number
+  /** Minutes until the move can honestly be called done, when that is longer than the sitting. */
+  span?: number
   effort: Effort
   needs: readonly Need[]
   targets: readonly Target[]

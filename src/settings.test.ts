@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Block } from './blocks'
 import type { CheckIn } from './db'
 import { blockReadings } from './readings'
-import { activeBlocks, applyLowDemand, askedReadings, DEFAULT_SETTINGS, inQuietHours, pushDecision, reminderDue, withDefaults, type Settings } from './settings'
+import { activeBlocks, applyLowDemand, askedReadings, DEFAULT_SETTINGS, inQuietHours, pushDecision, reminderDue, withDefaults, type Settings, inDaylight, DEFAULT_WEEK } from './settings'
 
 describe('depth, frequency, quiet hours and Low-demand mode', () => {
   it('short depth asks mood, energy and stress in every block; full asks the block set', () => {
@@ -90,5 +90,23 @@ describe('what the worker does with a ping', () => {
     expect(pushDecision(at(13, 5), { ...enabled, reminders: { ...enabled.reminders, enabled: false } }, new Map(), false)).toEqual({ kind: 'quiet' })
     expect(pushDecision(at(13, 5), { ...enabled, reminded: { '2026-09-05:afternoon': true } }, new Map(), false)).toEqual({ kind: 'quiet' })
     expect(pushDecision(at(13, 5), { ...enabled, frequency: 'one' }, new Map(), false)).toEqual({ kind: 'quiet' })
+  })
+})
+
+describe('daylight hours and the fields a Part 3 record adds', () => {
+  it('reads daylight from the window, wrapping past midnight when the window does', () => {
+    const at = (h: number, m = 0) => new Date(2026, 8, 11, h, m)
+    expect(inDaylight({ from: '07:00', to: '19:00' }, at(12))).toBe(true)
+    expect(inDaylight({ from: '07:00', to: '19:00' }, at(6, 59))).toBe(false)
+    expect(inDaylight({ from: '07:00', to: '19:00' }, at(19))).toBe(false)
+    expect(inDaylight({ from: '20:00', to: '05:00' }, at(23))).toBe(true)
+    expect(inDaylight({ from: '20:00', to: '05:00' }, at(12))).toBe(false)
+  })
+
+  it('fills office days, daylight hours and the undone setups an older record lacks', () => {
+    const s = withDefaults({ week: { churchDay: 6, livesWithMe: true, studyNights: DEFAULT_WEEK.studyNights, pickupTime: null, soloUntil: '20:00' } as never })
+    expect(s.week.officeDays).toEqual(DEFAULT_WEEK.officeDays)
+    expect(s.daylight).toEqual({ from: '07:00', to: '19:00' })
+    expect(s.setupUndone).toEqual({})
   })
 })

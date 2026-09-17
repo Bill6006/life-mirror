@@ -5,7 +5,7 @@ import { updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatTime, formatWhen } from './format'
 import { useLive } from './live'
 import { privateAssociationsToday } from './learningFlow'
-import { cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow } from './offerFlow'
+import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
 import { INGREDIENTS } from './score'
@@ -62,6 +62,17 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
         <p class="move-fact" data-testid="move-fact">
           {fill(c.doneLine, { name: nothing ? c.nothing : (move?.name ?? ''), state, time: formatTime(known.at) })}
         </p>
+        {passive && known.passiveOutcome === null && offer.closedAt === null && (
+          <div class="actions" data-testid="passive-inline">
+            <span class="note">{fill(copy.ask.passiveQuestion, { item: passive.name })}</span>
+            <button type="button" class="pill-quiet" data-testid="passive-inline-done" onClick={() => void answerPassive(offer, 'done')}>
+              {copy.ask.passiveDone}
+            </button>
+            <button type="button" class="pill-quiet" data-testid="passive-inline-no" onClick={() => void answerPassive(offer, 'no')}>
+              {copy.ask.passiveNo}
+            </button>
+          </div>
+        )}
       </div>
     )
   }

@@ -2019,7 +2019,8 @@
       "prior": {
         "effect": 0.2,
         "note": "Allen 2016: lower CO2 doubled cognitive scores in a lab; at home about a fifth of a step on focus"
-      }
+      },
+      "span": 10
     },
     {
       "id": "message-a-friend",
@@ -5677,7 +5678,7 @@
     {
       "id": "needs",
       "name": "Needs",
-      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Stated on the card so you can judge it; the app does not yet filter on it."
+      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days; the rest are stated on the card so you can judge them."
     },
     {
       "id": "effectWindow",

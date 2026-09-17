@@ -71,9 +71,9 @@ export function markRungByStep(skillId: number, rung: number, at: string): Promi
   })
 }
 
-/** Every open step or unblock offer: started, not yet asked about. */
+/** Every open step, unblock or started study offer: begun, not yet asked about. */
 export async function openAimOffers(): Promise<Offer[]> {
-  return db.offers.filter((o) => (o.kind === 'step' || o.kind === 'unblock') && o.closedAt === null && o.skippedAt === null).toArray()
+  return db.offers.filter((o) => (o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study') && o.closedAt === null && o.skippedAt === null).toArray()
 }
 
 export interface AimRecords {

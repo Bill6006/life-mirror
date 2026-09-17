@@ -59,7 +59,7 @@ for (const f of data.families) {
     if (status.length) md += `_${status.join(' · ')}_\n\n`
     md += `${m.what}\n\n`
     md += `- Source: ${source(m.source)}\n`
-    md += `- Takes: ${m.minutes === 0 ? 'no time, a decision' : `${m.minutes} min`} · effort to start: ${m.effort} · cost to assign: ${m.costToAssign} · needs: ${m.needs.length ? m.needs.map((n) => NEED[n]).join(', ') : 'nothing'}\n`
+    md += `- Takes: ${m.minutes === 0 ? 'no time, a decision' : `${m.minutes} min`}${m.span ? ` (done after ${m.span} min)` : ''} · effort to start: ${m.effort} · cost to assign: ${m.costToAssign} · needs: ${m.needs.length ? m.needs.map((n) => NEED[n]).join(', ') : 'nothing'}\n`
     md += `- Tags: ${[...m.tags.ingredients.map((t) => TAG[t]), ...m.tags.reward.map((t) => TAG[t])].join(', ')}${m.tags.ingredients.length + m.tags.reward.length ? ' · ' : ''}intensity ${m.tags.intensity}\n`
     md += `- Should move: ${m.targets.map((t) => `${readingName(t.reading)} ${arrow(t.direction)} (${WINDOW[t.window]})`).join(', ')}\n`
     const first = m.targets[0]

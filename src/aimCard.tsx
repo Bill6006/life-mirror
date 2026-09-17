@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'preact/hooks'
 import type { BlockReason } from './aims'
 import type { Move } from './catalogue'
 import { copy } from './copy'
-import type { Aim } from './db'
+import type { Aim, Offer } from './db'
 import { fill } from './format'
 import type { Sitting } from './ladder'
+import { doneOpen, recordDoneNow } from './offerFlow'
 
 /**
  * A commitment's protected next step: one line sized to one sitting, held above the move on
@@ -14,6 +16,7 @@ export function AimCard({
   aim,
   step,
   open,
+  openOffer,
   blocked,
   unblock,
   onResume,
@@ -24,6 +27,8 @@ export function AimCard({
   aim: Aim
   step: Sitting
   open: boolean
+  /** The open offer behind a started step, for the Done tap once its minutes have passed and while its block is on. */
+  openOffer: Offer | null
   blocked: BlockReason | null
   unblock: Move | null
   onResume: () => void
@@ -32,6 +37,12 @@ export function AimCard({
   onChangeStep?: () => void
 }) {
   const c = copy.aims
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 15_000)
+    return () => clearInterval(id)
+  }, [])
+  const canDone = openOffer !== null && doneOpen(openOffer)
   return (
     <div class="card pad move-card aim-card" data-testid="aim-card" data-kind={aim.kind}>
       <p class="eyebrow small">{c.kinds[aim.kind]}</p>
@@ -42,9 +53,18 @@ export function AimCard({
       <p class="move-meta">{fill(c.sized, { n: String(step.minutes) })}</p>
 
       {open ? (
-        <p class="move-state" data-testid="aim-started">
-          {c.started}
-        </p>
+        <>
+          <p class="move-state" data-testid="aim-started">
+            {c.started}
+          </p>
+          {canDone && openOffer && (
+            <div class="actions">
+              <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(openOffer)}>
+                {copy.move.done}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div class="actions">
           <button type="button" class="pill-quiet" data-testid="aim-resume" onClick={onResume}>

@@ -72,7 +72,7 @@ These only select. They are never learned.
 
 - **Cost to assign.** What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16). Shown here; not yet used in selection.
 - **Starting effort.** The effort to begin: low, medium or high. The top selection field.
-- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Stated on the card so you can judge it; the app does not yet filter on it.
+- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days; the rest are stated on the card so you can judge them.
 - **Effect window.** When the effect should show: next block, later that day, this evening, next morning, seven days. Later that day is new in this phase.
 
 ## Ending the day well
@@ -569,7 +569,7 @@ Washed, dried and put away today, the whole loop closed.
 Every window, ten minutes, fresh air through the place.
 
 - Source: Allen, MacNaughton, Satish, Santanam, Vallarino and Spengler (2016). Cognitive scores fell as indoor carbon dioxide rose in a controlled office study of 24 people; fresh air reversed it. Evidence: moderate.
-- Takes: 1 min · effort to start: low · cost to assign: low · needs: nothing
+- Takes: 1 min (done after 10 min) · effort to start: low · cost to assign: low · needs: nothing
 - Tags: short, low effort · intensity low
 - Should move: Focus ↑ (next block), Energy ↑ (next block)
 - Starting belief: Focus ↑ by about a fifth of a step over the next block · Allen 2016: lower CO2 doubled cognitive scores in a lab; at home about a fifth of a step on focus.

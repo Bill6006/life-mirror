@@ -47,7 +47,6 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
   useEffect(() => {
     if (settings) void ensureDayContext(day, settings)
   }, [settings?.updatedAt, day])
-  const ctx = useLive(() => getDayContext(day), [day])
   const contexts = useLive(() => db.days.toArray(), [])
   const [showPrivate, setShowPrivate] = useState(false)
 
@@ -172,24 +171,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
       </div>
       <p class="note faint">{copy.necessities.note}</p>
 
-      {ctx && (
-        <>
-          <h2 class="section">{copy.today.context}</h2>
-          <div class="card">
-            <ul class="rows">
-              {showing('away') && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />}
-              <ExtraRow
-                label={settings.week.studyNights[parseDay(day).getDay() as Weekday] ? copy.today.notStudyNight : copy.today.studyNight}
-                on={ctx.studyNight !== settings.week.studyNights[parseDay(day).getDay() as Weekday]}
-                onLabel={copy.extras.yes}
-                testid="chip-study"
-                onClick={() => void setDayContext(day, { studyNight: !ctx.studyNight })}
-              />
-            </ul>
-          </div>
-          <p class="note faint">{copy.today.note}</p>
-        </>
-      )}
+      <TodayChips day={day} />
 
       <h2 class="section">{copy.extras.noteLabel}</h2>
       <div class="card pad">
@@ -210,6 +192,50 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         {copy.extras.done}
       </button>
     </section>
+  )
+}
+
+/**
+ * Today, if different: the exceptions to the week as statement chips, inside the check-in and
+ * never on Now (Rules 19 and 20), on every block's summary, since the away flag decides what is
+ * offered all day. Each changes today alone.
+ */
+export function TodayChips({ day }: { day: string }) {
+  const settings = useLive(getSettings, [])
+  const all = useLive(allCheckIns, [])
+  const contexts = useLive(() => db.days.toArray(), [])
+  useEffect(() => {
+    if (settings) void ensureDayContext(day, settings)
+  }, [settings?.updatedAt, day])
+  const ctx = useLive(() => getDayContext(day), [day])
+  if (!settings || !all || !contexts || !ctx) return null
+  const states = chipStates(all, contexts, settings.chipsBack, day)
+  const weekday = parseDay(day).getDay() as Weekday
+  const office = settings.week.officeDays[weekday]
+  return (
+    <>
+      <h2 class="section">{copy.today.context}</h2>
+      <div class="card">
+        <ul class="rows">
+          {!chipRetired('away', states) && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />}
+          <ExtraRow
+            label={settings.week.studyNights[weekday] ? copy.today.notStudyNight : copy.today.studyNight}
+            on={ctx.studyNight !== settings.week.studyNights[weekday]}
+            onLabel={copy.extras.yes}
+            testid="chip-study"
+            onClick={() => void setDayContext(day, { studyNight: !ctx.studyNight })}
+          />
+          <ExtraRow
+            label={office ? copy.today.homeToday : copy.today.officeToday}
+            on={Boolean(ctx.atOffice) !== office}
+            onLabel={copy.extras.yes}
+            testid="chip-office"
+            onClick={() => void setDayContext(day, { atOffice: !ctx.atOffice })}
+          />
+        </ul>
+      </div>
+      <p class="note faint">{copy.today.note}</p>
+    </>
   )
 }
 

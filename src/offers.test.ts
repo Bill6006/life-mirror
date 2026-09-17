@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { choose, COIN_FLIP_RATE, FLAT, seeded, type Candidate } from './bandit'
 import { CHARISMA_LADDER, isParked, moveById, moves, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn } from './db'
-import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, whyNotThat, type TodayState } from './offers'
+import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, standingSetups, whyNotThat, type TodayState } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { INGREDIENTS } from './score'
 
@@ -215,5 +215,33 @@ describe('cards, why not that, passive items and the pickup slot', () => {
       expect(['rest', 'steadying', 'food']).toContain(m.family)
     }
     expect(candidates.some((c) => c.id === NOTHING)).toBe(false)
+  })
+})
+
+describe('the needs the app can know, and a setup already made', () => {
+  const afternoon = situationOf(mk('afternoon', { ...allAt(blockReadings('afternoon'), 3), stress: 4 }))!
+  const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 3), stress: 4 }))!
+  const daylightMove = moves.find((m) => m.needs.includes('daylight') && m.targets.some((t) => t.reading === 'stress' && t.direction === 'down'))
+  const quietMove = moves.find((m) => m.needs.includes('quiet') && m.when.includes('afternoon') && m.when.includes('evening') && m.targets.some((t) => t.reading === 'stress' && t.direction === 'down'))
+  const setupMove = moves.find((m) => m.setup && m.targets.some((t) => t.reading === 'stress' && t.direction === 'down'))!
+
+  it('keeps a daylight move for daylight hours, and a quiet move for a day at home or for the evening', () => {
+    if (daylightMove) {
+      expect(screen(daylightMove, afternoon, { ...quiet, daylight: false })).toBe('daylight')
+      expect(screen(daylightMove, afternoon, { ...quiet, daylight: true })).toBeNull()
+    }
+    expect(quietMove).toBeDefined()
+    expect(screen(quietMove!, afternoon, { ...quiet, atOffice: true })).toBe('quiet')
+    expect(screen(quietMove!, afternoon, { ...quiet, atOffice: false })).toBeNull()
+    expect(screen(quietMove!, evening, { ...quiet, atOffice: true })).toBeNull()
+  })
+
+  it('offers a one-time setup no more once it stands, and again once you said it came undone', () => {
+    expect(screen(setupMove, afternoon, { ...quiet, standing: [setupMove.id] })).toBe('standing')
+    expect(screen(setupMove, afternoon, quiet)).toBeNull()
+    const done = [{ moveId: setupMove.id, day: '2026-09-01' }, { moveId: 'walk-ten', day: '2026-09-01' }]
+    expect(standingSetups(done, {})).toEqual([setupMove.id])
+    expect(standingSetups(done, { [setupMove.id]: '2026-09-05' })).toEqual([])
+    expect(standingSetups([{ moveId: setupMove.id, day: '2026-09-09' }], { [setupMove.id]: '2026-09-05' })).toEqual([setupMove.id])
   })
 })

@@ -69,9 +69,15 @@ export interface TodayState {
   churchDay: boolean
   /** Phase 10: moves at least this long stay out of the block after a "no time"; null when none. */
   noTimeCeiling: number | null
+  /** One-time setups already made (a done outcome, not since undone): offered no more. Absent means none. */
+  standing?: readonly string[]
+  /** At the office today: quiet is not to be had in the working blocks. Absent means at home. */
+  atOffice?: boolean
+  /** Whether the draw is being made in daylight hours. Absent means it is. */
+  daylight?: boolean
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung'
+export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -97,11 +103,16 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if (PASSIVE.has(move.id)) return 'passive'
   // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
   if (move.family === 'study') return 'study'
+  // A one-time setup already made stays made; if it came undone, its catalogue entry says so and it returns (Rule 13).
+  if (t.standing?.includes(move.id)) return 'standing'
   if (move.id === 'time-with-her' && !t.withHer) return 'schedule'
   // Phase F: practising a skill together needs her here; the day's context says so, never a draw.
   if (move.family === 'fatherhood' && !t.withHer) return 'schedule'
   if (move.id === 'church-early' && !t.churchDay) return 'schedule'
   if (!move.when.includes(s.block)) return 'block'
+  // The two needs the app can know: daylight from your daylight hours, quiet from your office days.
+  if (move.needs.includes('daylight') && t.daylight === false) return 'daylight'
+  if (move.needs.includes('quiet') && t.atOffice === true && s.block !== 'evening') return 'quiet'
   if (t.hiddenFamilies.has(move.family)) return 'hidden'
   if (!move.targets.some((x) => x.reading === s.target && x.direction === INGREDIENTS[s.target])) return 'target'
   if (s.band === 'empty' && !(EMPTY_FAMILIES.has(move.family) && move.effort === 'low')) return 'band'
@@ -117,6 +128,18 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
     if (rung.index > allowed) return 'rung'
   }
   return null
+}
+
+/** One-time setups already made: a done outcome on an entry of the setup family, unless you said it came undone since. */
+export function standingSetups(done: readonly { moveId: string; day: string }[], undone: Readonly<Record<string, string>>): string[] {
+  const out = new Set<string>()
+  for (const x of done) {
+    if (!hasMove(x.moveId) || !moveById(x.moveId).setup) continue
+    const since = undone[x.moveId]
+    if (since && since >= x.day) continue
+    out.add(x.moveId)
+  }
+  return [...out]
 }
 
 const ALL_BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firing']

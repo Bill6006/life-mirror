@@ -35,7 +35,8 @@ export function AimCards({ onRemove, onChangeStep }: { onRemove?: (aim: Aim) => 
     <>
       {aims.map((aim) => {
         const step = stepFor(aim, skills, marks)
-        const isOpen = open.some((o) => o.situationKey === aimKey(aim.kind) || o.situationKey === unblockKey(aim.kind))
+        const openOffer = open.find((o) => o.situationKey === aimKey(aim.kind) || o.situationKey === unblockKey(aim.kind) || (aim.kind === 'certification' && o.kind === 'study')) ?? null
+        const isOpen = openOffer !== null
         const blocked = blockedBy(aim, records.offers, records.outcomes, records.nights)
         const unblock = blocked ? unblockFor(blocked) : null
         return (
@@ -44,6 +45,7 @@ export function AimCards({ onRemove, onChangeStep }: { onRemove?: (aim: Aim) => 
             aim={aim}
             step={step}
             open={isOpen}
+            openOffer={openOffer}
             blocked={blocked}
             unblock={unblock}
             onResume={() => void resumeAim(aim, step, 'step')}
