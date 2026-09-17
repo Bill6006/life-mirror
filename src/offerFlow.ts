@@ -178,7 +178,7 @@ async function todayState(day: string, settings: Settings, now: Date = new Date(
   const ctx = await ensureDayContext(day, settings)
   // A one-time setup already made stays out; the office and the daylight hours decide the two needs the app can know.
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now) }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */

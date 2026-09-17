@@ -73,3 +73,14 @@ describe('the proof ladder with more than one subject', () => {
     expect(groups[2].skills.map((s) => s.name)).toEqual(['Verbs', 'Nouns'])
   })
 })
+
+describe('a step’s title beside its subject', () => {
+  it('keeps the subject out of the title, so a card can say it once', () => {
+    const s = rungStep({ id: 2, name: 'Past tense', order: 2, createdAt: '', archivedAt: null, subject: 'Language' }, 2)
+    expect(s.title).toBe('Past tense · practise it')
+    expect(s.subject).toBe('Language')
+    const plain = rungStep({ id: 1, name: 'Subnetting', order: 1, createdAt: '', archivedAt: null }, 1)
+    expect(plain.title).toBe(plain.name)
+    expect(plain.subject).toBeUndefined()
+  })
+})

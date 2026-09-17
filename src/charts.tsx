@@ -2,6 +2,7 @@ import { BLOCKS, type Block } from './blocks'
 import { copy } from './copy'
 import { formatDayTiny, formatTime, weekdayShort } from './format'
 import { lowestAhead } from './forecast'
+import { valuePlacement, whiskerParts } from './chartGeometry'
 import type { ContextPoint, DayValues } from './series'
 
 // Hand-drawn SVG, hairlines throughout, the accent for now. Gaps stay gaps.
@@ -190,8 +191,6 @@ const NOTCH = 3.5
 
 /** Half the break the whisker leaves where the step crosses it, so the two never touch. */
 const WHISKER_GAP = 1.3
-/** How far above its baseline a value's digits stand, with a hair of air: where the whisker stops. */
-const VALUE_HEIGHT = 9
 
 /**
  * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
@@ -214,8 +213,8 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const startOf = (i: number) => x0 + i * step
   const endOf = (i: number) => x0 + (i + 1) * step
   const centreOf = (i: number) => x0 + (i + 0.5) * step
-  /** A value's baseline: just above its step, never above the plot. */
-  const labelY = (v: number) => Math.max(top + 9, y(v) - 3.5)
+  /** A value's baseline: just above its step, or just under it when the step is too near the top. */
+  const labelY = (v: number) => valuePlacement(y(v), top).y
   const low = lowestAhead(rows)
   const lowValue = low === -1 ? null : rows[low].expected
   // Every vertical the grid draws: the plot's own edges and each day's, plus a notch under each.
@@ -271,8 +270,8 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
         const hi = y(d.hi)
         const lo = y(d.lo)
         const mid = d.expected === null ? null : y(d.expected)
-        // The whisker stops at the top of its number and starts again under its step, so it runs through neither. With no step, it runs whole.
-        const parts: readonly (readonly [number, number])[] = mid === null || d.expected === null ? [[hi, lo]] : [[hi, labelY(d.expected) - VALUE_HEIGHT], [mid + WHISKER_GAP, lo]]
+        // The whisker stops at its number and starts again past its step, so it runs through neither. With no step, it runs whole.
+        const parts: readonly (readonly [number, number])[] = whiskerParts(hi, lo, mid, top, WHISKER_GAP)
         return (
           <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
             {parts.map(([from, to]) => to > from && <line key={from} x1={cx} x2={cx} y1={from} y2={to} />)}

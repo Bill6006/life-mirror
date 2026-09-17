@@ -45,9 +45,9 @@ export function AimCard({
   const canDone = openOffer !== null && doneOpen(openOffer)
   return (
     <div class="card pad move-card aim-card" data-testid="aim-card" data-kind={aim.kind}>
-      <p class="eyebrow small">{c.kinds[aim.kind]}</p>
+      <p class="eyebrow small">{step.subject ?? c.kinds[aim.kind]}</p>
       <h2 class="move-title" data-testid="aim-step">
-        {step.name}
+        {step.title}
       </h2>
       <p class="move-what">{step.what}</p>
       <p class="move-meta">{fill(c.sized, { n: String(step.minutes) })}</p>

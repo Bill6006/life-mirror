@@ -1,9 +1,10 @@
-import { BLOCKS, type Block } from './blocks'
+import { BLOCKS, blockStart, type Block } from './blocks'
 import { hasMove, isParked, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band } from './score'
 import { choose, type Belief, type Candidate, type Choice, type Rng } from './bandit'
+import { minutesOf } from './settings'
 
 // The situation and the candidate set, as the plan's bar states them. A situation is a block
 // plus the target reading: the lowest ingredient with a clear direction right now. The band
@@ -73,9 +74,11 @@ export interface TodayState {
   atOffice?: boolean
   /** Whether the draw is being made in daylight hours. Absent means it is. */
   daylight?: boolean
+  /** Daycare pickup on this day, HH:MM, or null: she is away from the drop-off until then. Absent means no daycare. */
+  pickupTime?: string | null
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet'
+export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -106,6 +109,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if (move.id === 'time-with-her' && !t.withHer) return 'schedule'
   // Phase F: practising a skill together needs her here; the day's context says so, never a draw.
   if (move.family === 'fatherhood' && !t.withHer) return 'schedule'
+  // On a daycare day she is there only after pickup: her moves fit the evening, and the afternoon only when pickup falls inside it.
+  if ((move.family === 'fatherhood' || move.id === 'time-with-her') && t.pickupTime && (s.block === 'morning' || (s.block === 'afternoon' && minutesOf(t.pickupTime) >= minutesOf(blockStart.evening)))) return 'daycare'
   if (move.id === 'church-early' && !t.churchDay) return 'schedule'
   if (!move.when.includes(s.block)) return 'block'
   // The two needs the app can know: daylight from your daylight hours, quiet from your office days.

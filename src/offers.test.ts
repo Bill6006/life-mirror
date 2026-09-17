@@ -245,3 +245,20 @@ describe('the needs the app can know, and a setup already made', () => {
     expect(standingSetups([{ moveId: setupMove.id, day: '2026-09-09' }], { [setupMove.id]: '2026-09-05' })).toEqual([setupMove.id])
   })
 })
+
+describe('a daycare day', () => {
+  const her = moves.find((m) => m.family === 'fatherhood')!
+  const morning = situationOf(mk('morning', { ...allAt(blockReadings('morning'), 3), mood: 2 }))!
+  const afternoon = situationOf(mk('afternoon', { ...allAt(blockReadings('afternoon'), 3), mood: 2 }))!
+  const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 3), mood: 2 }))!
+
+  it('keeps her moves for the evening when pickup falls after the afternoon, and lets the afternoon through when it does not', () => {
+    const daycare = { ...quiet, pickupTime: '17:30' }
+    expect(screen(her, morning, daycare)).toBe('daycare')
+    expect(screen(her, afternoon, daycare)).toBe('daycare')
+    expect(screen(her, evening, daycare)).toBeNull()
+    expect(screen(her, afternoon, { ...quiet, pickupTime: '15:00' })).toBeNull()
+    expect(screen(her, afternoon, quiet)).toBeNull()
+    expect(screen(moveById('walk-ten'), afternoon, daycare)).toBeNull()
+  })
+})

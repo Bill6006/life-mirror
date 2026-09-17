@@ -677,7 +677,8 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
       studyNight: w.studyNights[weekday],
       churchDay: w.churchDay === weekday,
       atOffice: w.officeDays[weekday],
-      pickupTime: w.pickupTime,
+      // Daycare is a weekday matter: the pickup, and the daycare day it implies, hold Monday to Friday.
+      pickupTime: weekday >= 1 && weekday <= 5 ? w.pickupTime : null,
       soloUntil: w.soloUntil,
       changed: false,
       createdAt: new Date().toISOString(),

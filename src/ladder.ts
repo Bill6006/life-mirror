@@ -11,6 +11,10 @@ import type { RungMark, Skill } from './db'
 export interface Sitting {
   id: string
   name: string
+  /** The name without its subject, for a card that says the subject elsewhere. */
+  title: string
+  /** The subject the step belongs to, when its skill has one. */
+  subject?: string
   what: string
   minutes: number
   effort: Effort
@@ -23,7 +27,7 @@ export const TOP_RUNG = 6
 export const RUNG_MINUTES: readonly number[] = [0, 20, 25, 25, 25, 10, 5]
 
 export function sittingOf(move: Move): Sitting {
-  return { id: move.id, name: move.name, what: move.what, minutes: move.minutes, effort: move.effort, kind: 'move' }
+  return { id: move.id, name: move.name, title: move.name, what: move.what, minutes: move.minutes, effort: move.effort, kind: 'move' }
 }
 
 export function rungId(skillId: number, rung: number): string {
@@ -60,9 +64,12 @@ export function rungName(rung: number): string {
 export function rungStep(skill: Skill, rung: number): Sitting {
   const r = Math.max(1, Math.min(TOP_RUNG, rung))
   const subject = skill.subject?.trim()
+  const title = `${skill.name} · ${copy.ladder.steps[r - 1]}`
   return {
     id: rungId(skill.id as number, r),
-    name: `${subject ? `${subject} · ` : ''}${skill.name} · ${copy.ladder.steps[r - 1]}`,
+    name: subject ? `${subject} · ${title}` : title,
+    title,
+    ...(subject ? { subject } : {}),
     what: copy.ladder.what[r - 1],
     minutes: RUNG_MINUTES[r],
     effort: r === 3 || r === 4 ? 'medium' : 'low',
