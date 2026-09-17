@@ -1329,7 +1329,8 @@
       "prior": {
         "effect": 0.4,
         "note": "Ebrahim 2013 review: alcohol cuts REM and fragments the second half of the night; about four tenths of a step on sleep quality"
-      }
+      },
+      "parked": true
     },
     {
       "id": "snack-before-four",
@@ -2339,6 +2340,11 @@
           "reading": "socialEnergy",
           "direction": "up",
           "window": "sevenDays"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
         }
       ],
       "conflicts": [
@@ -2369,7 +2375,7 @@
       "costToAssign": "medium",
       "prior": {
         "effect": 0.2,
-        "note": "Sandstrom and Boothby 2021: people avoid initiating and enjoy it when they do; about a fifth of a step over seven days"
+        "note": "Sandstrom and Boothby 2021: people avoid initiating and enjoy it when they do; about a fifth of a step over seven days; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -2576,7 +2582,8 @@
       "prior": {
         "effect": 0.3,
         "note": "Haghayegh 2019 meta-analysis: warm bathing one to two hours before bed sped sleep onset by about ten minutes; about a third of a step"
-      }
+      },
+      "passive": true
     },
     {
       "id": "sit-outside-five",
@@ -3068,7 +3075,7 @@
       "id": "eye-contact-stranger",
       "name": "Eye contact with a stranger",
       "family": "charisma",
-      "what": "Rung one: hold a stranger's eyes for a beat, a nod, and move on. A rep, not a result.",
+      "what": "Hold a stranger's eyes for a beat, a nod, and move on. A rep, not a result.",
       "source": {
         "who": "Mayo-Wilson, Dias, Mavranezouli and colleagues",
         "what": "Network meta-analysis of 101 trials: exposure-based cognitive therapy, facing feared social situations in small graded steps, is the best-supported route out of social anxiety",
@@ -3088,6 +3095,11 @@
         },
         {
           "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
           "direction": "up",
           "window": "nextBlock"
         }
@@ -3117,14 +3129,14 @@
       "costToAssign": "medium",
       "prior": {
         "effect": 0.2,
-        "note": "Mayo-Wilson 2014: exposure-based work is the strongest treatment for social anxiety; one rep, about a fifth of a step on confidence"
+        "note": "Mayo-Wilson 2014: exposure-based work is the strongest treatment for social anxiety; one rep, about a fifth of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
       "id": "ten-seconds-past",
       "name": "Ten seconds past comfortable",
       "family": "charisma",
-      "what": "Rung two: in a queue or a conversation, stay ten seconds longer than the urge to leave.",
+      "what": "In a queue or a conversation, stay ten seconds longer than the urge to leave. A rep, not a result.",
       "source": {
         "who": "Abramowitz, Deacon and Whiteside",
         "what": "Clinical text on exposure: staying in a feared situation past the urge to escape is what teaches the nervous system it is safe",
@@ -3139,6 +3151,11 @@
       "targets": [
         {
           "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
           "direction": "up",
           "window": "nextBlock"
         }
@@ -3168,14 +3185,14 @@
       "costToAssign": "medium",
       "prior": {
         "effect": 0.2,
-        "note": "Abramowitz 2019: staying in discomfort teaches that it passes; about a fifth of a step"
+        "note": "Abramowitz 2019: staying in discomfort teaches that it passes; about a fifth of a step; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
       "id": "say-the-thing",
       "name": "Say the thing",
       "family": "charisma",
-      "what": "Rung three: the opinion, the compliment or the ask you were about to swallow, said once today.",
+      "what": "The opinion, the compliment or the ask you were about to swallow, said once today.",
       "source": {
         "who": "Speed, Goldstein and Goldfried",
         "what": "Review of decades of trials: assertiveness training, practising saying what you mean, is an evidence-based treatment that helps across many problems",
@@ -3232,7 +3249,7 @@
       "id": "low-pressure-conversation",
       "name": "One low-pressure conversation with a woman",
       "family": "charisma",
-      "what": "Rung four: somewhere ordinary, a question and a follow-up, with no aim beyond the conversation itself.",
+      "what": "Somewhere ordinary, a question and a follow-up, with no aim beyond the conversation itself.",
       "source": {
         "who": "Sandstrom and Boothby",
         "what": "Meta-analysis of seven studies, 2,304 people: the fears people have before talking to someone new run well ahead of how the talks actually go",
@@ -3258,6 +3275,11 @@
         {
           "reading": "loneliness",
           "direction": "down",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
           "window": "nextBlock"
         }
       ],
@@ -3291,7 +3313,7 @@
       "costToAssign": "high",
       "prior": {
         "effect": 0.3,
-        "note": "Sandstrom and Boothby 2021; about a third of a step on confidence"
+        "note": "Sandstrom and Boothby 2021; about a third of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -3318,6 +3340,11 @@
         },
         {
           "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
           "direction": "up",
           "window": "nextBlock"
         }
@@ -3352,7 +3379,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.3,
-        "note": "Huang 2017: follow-up questions raised liking; about a third of a step on social energy"
+        "note": "Huang 2017: follow-up questions raised liking; about a third of a step on social energy; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -3379,6 +3406,11 @@
           "reading": "loneliness",
           "direction": "down",
           "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
         }
       ],
       "conflicts": [],
@@ -3403,7 +3435,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.2,
-        "note": "Boothby 2018: people underestimate how much they were liked; about a fifth of a step on confidence"
+        "note": "Boothby 2018: people underestimate how much they were liked; about a fifth of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -4451,6 +4483,11 @@
           "reading": "loneliness",
           "direction": "down",
           "window": "sevenDays"
+        },
+        {
+          "reading": "energy",
+          "direction": "up",
+          "window": "nextMorning"
         }
       ],
       "when": [
@@ -4469,7 +4506,7 @@
       "costToAssign": "medium",
       "prior": {
         "effect": 0.3,
-        "note": "Less evening scrolling; about a third of a step on sleep quality"
+        "note": "Less evening scrolling; about a third of a step on sleep quality; energy the next morning is a target too, so the day’s draw can reach it"
       },
       "setup": {
         "kind": "friction"
@@ -4718,10 +4755,10 @@
       "family": "charisma",
       "what": "One story under a minute, with a beginning and an end, to people who are there. The rep is the telling, not how it lands.",
       "source": {
-        "who": "Epley and Schroeder",
-        "what": "People expected talking to strangers to be unpleasant and found it the opposite, across nine experiments",
-        "year": 2014,
-        "strength": "moderate"
+        "who": "Speed, Goldstein and Goldfried",
+        "what": "Review of decades of trials: assertiveness training, practising saying what you mean in full, is an evidence-based treatment; a short story told to people who are there is that practice, evidence for something adjacent",
+        "year": 2018,
+        "strength": "weak"
       },
       "minutes": 2,
       "effort": "high",
@@ -4849,9 +4886,9 @@
       "what": "Sixty seconds into the phone, one story you might tell this week; listen once, no notes. A rep that works with nobody home.",
       "source": {
         "who": "Mayo-Wilson, Dias, Mavranezouli and colleagues",
-        "what": "Network meta-analysis: rehearsal and exposure are the active parts of what works for social anxiety",
+        "what": "Network meta-analysis of 101 trials: individual cognitive therapy with exposure is the best-supported treatment for social anxiety; rehearsing alone is untested on its own",
         "year": 2014,
-        "strength": "weak"
+        "strength": "practice"
       },
       "minutes": 5,
       "effort": "medium",
@@ -4862,6 +4899,11 @@
       "targets": [
         {
           "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
           "direction": "up",
           "window": "nextBlock"
         }
@@ -4883,7 +4925,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.2,
-        "note": "A solo rehearsal; about a fifth of a step on confidence, thin"
+        "note": "A solo rehearsal; about a fifth of a step on confidence, thin; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -4913,6 +4955,11 @@
           "reading": "confidence",
           "direction": "up",
           "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
         }
       ],
       "when": [
@@ -4933,7 +4980,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.1,
-        "note": "A solo rep; about a tenth of a step, untested"
+        "note": "A solo rep; about a tenth of a step, untested; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -4951,9 +4998,9 @@
       "what": "In the next conversation, notice three things about them: what they said, how they said it, what they seem to want. Attention outward, not on yourself.",
       "source": {
         "who": "Wells and Papageorgiou",
-        "what": "Turning attention outward during social exposure cut anxiety and self-consciousness more than exposure alone",
+        "what": "Turning attention outward during social exposure cut anxiety and self-consciousness more than exposure alone, in a single-case series of eight",
         "year": 1998,
-        "strength": "moderate"
+        "strength": "weak"
       },
       "minutes": 1,
       "effort": "low",
@@ -4968,6 +5015,11 @@
         },
         {
           "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
           "direction": "up",
           "window": "nextBlock"
         }
@@ -4991,7 +5043,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.3,
-        "note": "External focus is the tested ingredient; about a third of a step on confidence"
+        "note": "External focus is the tested ingredient; about a third of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
       }
     },
     {
@@ -5615,7 +5667,7 @@
     {
       "id": "costToAssign",
       "name": "Cost to assign",
-      "what": "What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16)."
+      "what": "What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16). Shown here; not yet used in selection."
     },
     {
       "id": "startingEffort",
@@ -5625,7 +5677,7 @@
     {
       "id": "needs",
       "name": "Needs",
-      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. A move whose need is missing is never offered."
+      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Stated on the card so you can judge it; the app does not yet filter on it."
     },
     {
       "id": "effectWindow",
@@ -5804,6 +5856,12 @@
     "passive": [
       "recovery-gap"
     ],
-    "wiring": "Applied at the Phase 9 Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made."
+    "wiring": "Applied at the Phase 9 Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made.",
+    "parkedLater": {
+      "ids": [
+        "no-alcohol-tonight"
+      ],
+      "note": "Parked 2026-09-17 by the owner’s veto: shown here, never offered, kept in the catalogue so every past offer still reads."
+    }
   }
 }

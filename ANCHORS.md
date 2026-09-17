@@ -114,15 +114,15 @@ _Holding attention_
 
 _Right now_
 
-- Connected — or fine on my own
-  - or: Close — or content alone
-- Faint — a small wish for company
-  - or: Mild — a passing wish for company
-- Some — I'd like someone around
-- Lonely — nobody feels close
-  - or: Adrift — nobody feels near
-- Cut off — alone even around people
-  - or: Walled off — alone even in company
+- Content — nothing feels missing
+  - or: Settled — nothing is missing
+- Slight — a little feels missing
+  - or: Mild — a little is missing
+- Wanting — a fair bit feels missing
+- Lonely — a lot feels missing
+  - or: Hollow — a lot feels missing
+- Cut off — all closeness feels missing
+  - or: Walled off — all closeness feels gone
 
 ## Social energy
 

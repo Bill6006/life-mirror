@@ -182,18 +182,18 @@
       "prompt": "Right now",
       "unit": "step",
       "anchors": [
-        "Connected — or fine on my own",
-        "Faint — a small wish for company",
-        "Some — I'd like someone around",
-        "Lonely — nobody feels close",
-        "Cut off — alone even around people"
+        "Content — nothing feels missing",
+        "Slight — a little feels missing",
+        "Wanting — a fair bit feels missing",
+        "Lonely — a lot feels missing",
+        "Cut off — all closeness feels missing"
       ],
       "alternates": [
-        "Close — or content alone",
-        "Mild — a passing wish for company",
+        "Settled — nothing is missing",
+        "Mild — a little is missing",
         null,
-        "Adrift — nobody feels near",
-        "Walled off — alone even in company"
+        "Hollow — a lot feels missing",
+        "Walled off — all closeness feels gone"
       ]
     },
     {

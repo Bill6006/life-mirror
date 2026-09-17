@@ -108,6 +108,8 @@ export interface Proposals {
   charisma: { ladder: readonly string[]; note: string }
   passive: readonly string[]
   wiring: string
+  /** Entries parked after the Phase 9 Green, by the owner's veto. */
+  parkedLater: { ids: readonly string[]; note: string }
 }
 
 interface CatalogueData {
@@ -193,7 +195,7 @@ export function rungOf(id: string): { ladder: readonly string[]; index: number }
 export const OBSERVED_ONLY: ReadonlySet<string> = new Set(['early-night', 'fixed-lights-out'])
 
 /** Passive items: decisions that ride alongside the active move in the same block. */
-export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day', 'recovery-gap'])
+export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day', 'recovery-gap', 'warm-shower-bath'])
 
 /** "Nothing today": the null offer, a candidate the bandit can learn to pick. Never a catalogue move; named here so the learning engine can see it. */
 export const NOTHING = 'nothing'

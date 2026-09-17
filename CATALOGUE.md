@@ -70,9 +70,9 @@ Low, medium or high demand on the body or the nerve.
 
 These only select. They are never learned.
 
-- **Cost to assign.** What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16).
+- **Cost to assign.** What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16). Shown here; not yet used in selection.
 - **Starting effort.** The effort to begin: low, medium or high. The top selection field.
-- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. A move whose need is missing is never offered.
+- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Stated on the card so you can judge it; the app does not yet filter on it.
 - **Effect window.** When the effect should show: next block, later that day, this evening, next morning, seven days. Later that day is new in this phase.
 
 ## Ending the day well
@@ -388,6 +388,8 @@ Twenty minutes, at a table, away from the screen, a plate not a packet.
 
 ### No alcohol tonight
 
+_Parked: shown here, never offered_
+
 Water or tea in the evening instead, decided before dinner.
 
 - Source: Ebrahim, Shapiro, Williams and Fenwick (2013). Review of 27 studies: alcohol helps you fall asleep but breaks up the second half of the night. Evidence: strong.
@@ -652,8 +654,8 @@ Coffee after church, a walk, a game night: one invitation, sent today.
 - Source: Sandstrom and Boothby (2021). Meta-analysis of seven studies, 2,304 people: fears about talking to others ran far ahead of how the conversations actually went. Evidence: moderate.
 - Takes: 5 min · effort to start: medium · cost to assign: medium · needs: another person
 - Tags: with people, short, connection · intensity medium
-- Should move: Loneliness ↓ (seven days), Social energy ↑ (seven days)
-- Starting belief: Loneliness ↓ by about a fifth of a step over the seven days · Sandstrom and Boothby 2021: people avoid initiating and enjoy it when they do; about a fifth of a step over seven days.
+- Should move: Loneliness ↓ (seven days), Social energy ↑ (seven days), Mood ↑ (next block)
+- Starting belief: Loneliness ↓ by about a fifth of a step over the seven days · Sandstrom and Boothby 2021: people avoid initiating and enjoy it when they do; about a fifth of a step over seven days; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Not alongside: Keep the evening after a big social day empty
 - Stands in for: make plans, reach out
@@ -701,6 +703,8 @@ Paper, a bath, a walk, the kitchen: anything but glass, for thirty minutes.
 - Stands in for: a digital detox, put the phone away
 
 ### A warm shower or bath an hour before bed
+
+_proposed as a passive item_
 
 Ten minutes of warm water, one to two hours before lights-out.
 
@@ -883,33 +887,33 @@ Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience t
 
 ### Eye contact with a stranger
 
-Rung one: hold a stranger's eyes for a beat, a nod, and move on. A rep, not a result.
+Hold a stranger's eyes for a beat, a nod, and move on. A rep, not a result.
 
 - Source: Mayo-Wilson, Dias, Mavranezouli and colleagues (2014). Network meta-analysis of 101 trials: exposure-based cognitive therapy, facing feared social situations in small graded steps, is the best-supported route out of social anxiety. Evidence: moderate.
 - Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
 - Tags: with people, short, mastery · intensity medium
-- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
-- Starting belief: Confidence ↑ by about a fifth of a step over the next block · Mayo-Wilson 2014: exposure-based work is the strongest treatment for social anxiety; one rep, about a fifth of a step on confidence.
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a fifth of a step over the next block · Mayo-Wilson 2014: exposure-based work is the strongest treatment for social anxiety; one rep, about a fifth of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Not alongside: Ten seconds past comfortable
 - Stands in for: work on eye contact
 
 ### Ten seconds past comfortable
 
-Rung two: in a queue or a conversation, stay ten seconds longer than the urge to leave.
+In a queue or a conversation, stay ten seconds longer than the urge to leave. A rep, not a result.
 
 - Source: Abramowitz, Deacon and Whiteside (2019). Clinical text on exposure: staying in a feared situation past the urge to escape is what teaches the nervous system it is safe. Evidence: moderate.
 - Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
 - Tags: with people, short, mastery · intensity high
-- Should move: Confidence ↑ (next block)
-- Starting belief: Confidence ↑ by about a fifth of a step over the next block · Abramowitz 2019: staying in discomfort teaches that it passes; about a fifth of a step.
+- Should move: Confidence ↑ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a fifth of a step over the next block · Abramowitz 2019: staying in discomfort teaches that it passes; about a fifth of a step; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Not alongside: Eye contact with a stranger
 - Stands in for: push through the awkwardness
 
 ### Say the thing
 
-Rung three: the opinion, the compliment or the ask you were about to swallow, said once today.
+The opinion, the compliment or the ask you were about to swallow, said once today.
 
 - Source: Speed, Goldstein and Goldfried (2018). Review of decades of trials: assertiveness training, practising saying what you mean, is an evidence-based treatment that helps across many problems. Evidence: moderate.
 - Takes: 1 min · effort to start: high · cost to assign: high · needs: another person
@@ -922,13 +926,13 @@ Rung three: the opinion, the compliment or the ask you were about to swallow, sa
 
 ### One low-pressure conversation with a woman
 
-Rung four: somewhere ordinary, a question and a follow-up, with no aim beyond the conversation itself.
+Somewhere ordinary, a question and a follow-up, with no aim beyond the conversation itself.
 
 - Source: Sandstrom and Boothby (2021). Meta-analysis of seven studies, 2,304 people: the fears people have before talking to someone new run well ahead of how the talks actually go. Evidence: moderate.
 - Takes: 3 min · effort to start: high · cost to assign: high · needs: another person
 - Tags: with people, short, connection, mastery · intensity high
-- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Loneliness ↓ (next block)
-- Starting belief: Confidence ↑ by about a third of a step over the next block · Sandstrom and Boothby 2021; about a third of a step on confidence.
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Loneliness ↓ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a third of a step over the next block · Sandstrom and Boothby 2021; about a third of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Not alongside: One sentence past hello; Ask one follow-up question
 - Stands in for: approach someone, practise flirting
@@ -941,8 +945,8 @@ In any conversation today, ask about the thing the other person just said.
 - Source: Huang, Yeomans, Brooks, Minson and Gino (2017). Speed-dating and lab data: people who asked more follow-up questions were liked more, and rarely knew it. Evidence: moderate.
 - Takes: 1 min · effort to start: low · cost to assign: low · needs: another person
 - Tags: with people, short, low effort, connection · intensity low
-- Should move: Social energy ↑ (next block), Confidence ↑ (next block)
-- Starting belief: Social energy ↑ by about a third of a step over the next block · Huang 2017: follow-up questions raised liking; about a third of a step on social energy.
+- Should move: Social energy ↑ (next block), Confidence ↑ (next block), Mood ↑ (next block)
+- Starting belief: Social energy ↑ by about a third of a step over the next block · Huang 2017: follow-up questions raised liking; about a third of a step on social energy; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Not alongside: One sentence past hello; One low-pressure conversation with a woman
 - Stands in for: be a better listener, show interest
@@ -955,8 +959,8 @@ One honest line about how it went, then this beneath it: they probably liked you
 - Source: Boothby, Cooney, Sandstrom and Clark (2018). Five studies: after talking, people consistently underestimated how much the other person liked them and enjoyed it, the liking gap. Evidence: moderate.
 - Takes: 2 min · effort to start: low · cost to assign: low · needs: nothing
 - Tags: short, low effort, mastery · intensity low
-- Should move: Confidence ↑ (next block), Loneliness ↓ (next block)
-- Starting belief: Confidence ↑ by about a fifth of a step over the next block · Boothby 2018: people underestimate how much they were liked; about a fifth of a step on confidence.
+- Should move: Confidence ↑ (next block), Loneliness ↓ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a fifth of a step over the next block · Boothby 2018: people underestimate how much they were liked; about a fifth of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: afternoon, evening
 - Stands in for: stop replaying the conversation
 
@@ -996,7 +1000,7 @@ _rung 3 of the participation ladder_
 
 One story under a minute, with a beginning and an end, to people who are there. The rep is the telling, not how it lands.
 
-- Source: Epley and Schroeder (2014). People expected talking to strangers to be unpleasant and found it the opposite, across nine experiments. Evidence: moderate.
+- Source: Speed, Goldstein and Goldfried (2018). Review of decades of trials: assertiveness training, practising saying what you mean in full, is an evidence-based treatment; a short story told to people who are there is that practice, evidence for something adjacent. Evidence: thin.
 - Takes: 2 min · effort to start: high · cost to assign: high · needs: another person
 - Tags: with people, short, mastery, connection · intensity high
 - Should move: Confidence ↑ (next block), Social energy ↑ (next block), Mood ↑ (next block)
@@ -1024,11 +1028,11 @@ When the conversation lulls, bring up something new rather than waiting for some
 
 Sixty seconds into the phone, one story you might tell this week; listen once, no notes. A rep that works with nobody home.
 
-- Source: Mayo-Wilson, Dias, Mavranezouli and colleagues (2014). Network meta-analysis: rehearsal and exposure are the active parts of what works for social anxiety. Evidence: thin.
+- Source: Mayo-Wilson, Dias, Mavranezouli and colleagues (2014). Network meta-analysis of 101 trials: individual cognitive therapy with exposure is the best-supported treatment for social anxiety; rehearsing alone is untested on its own. Evidence: practice, untested.
 - Takes: 5 min · effort to start: medium · cost to assign: low · needs: kit, quiet
 - Tags: short, mastery · intensity medium
-- Should move: Confidence ↑ (next block)
-- Starting belief: Confidence ↑ by about a fifth of a step over the next block · A solo rehearsal; about a fifth of a step on confidence, thin.
+- Should move: Confidence ↑ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a fifth of a step over the next block · A solo rehearsal; about a fifth of a step on confidence, thin; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Stands in for: practise in the mirror
 
@@ -1039,8 +1043,8 @@ One page of anything, out loud, with the pauses and the emphasis you would use f
 - Source: Common practice (2026). Untested; the voice is the part of presence that can be trained alone. Evidence: practice, untested.
 - Takes: 5 min · effort to start: low · cost to assign: low · needs: kit, quiet
 - Tags: short, low effort, mastery · intensity low
-- Should move: Confidence ↑ (next block)
-- Starting belief: Confidence ↑ by about a tenth of a step over the next block · A solo rep; about a tenth of a step, untested.
+- Should move: Confidence ↑ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a tenth of a step over the next block · A solo rep; about a tenth of a step, untested; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Stands in for: voice coaching
 
@@ -1048,11 +1052,11 @@ One page of anything, out loud, with the pauses and the emphasis you would use f
 
 In the next conversation, notice three things about them: what they said, how they said it, what they seem to want. Attention outward, not on yourself.
 
-- Source: Wells and Papageorgiou (1998). Turning attention outward during social exposure cut anxiety and self-consciousness more than exposure alone. Evidence: moderate.
+- Source: Wells and Papageorgiou (1998). Turning attention outward during social exposure cut anxiety and self-consciousness more than exposure alone, in a single-case series of eight. Evidence: thin.
 - Takes: 1 min · effort to start: low · cost to assign: low · needs: another person
 - Tags: with people, short, low effort, connection · intensity low
-- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
-- Starting belief: Confidence ↑ by about a third of a step over the next block · External focus is the tested ingredient; about a third of a step on confidence.
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block), Mood ↑ (next block)
+- Starting belief: Confidence ↑ by about a third of a step over the next block · External focus is the tested ingredient; about a third of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence.
 - When: morning, afternoon, evening
 - Stands in for: stop overthinking, get out of your head
 - Counts toward: conversations
@@ -1343,8 +1347,8 @@ Two minutes, once. Not a limit, not a timer: gone from the phone. Reinstalling i
 - Source: Hunt, Marx, Lipson and Young (2018). Randomised trial: limiting social media to thirty minutes a day cut loneliness and low mood over three weeks. Evidence: moderate.
 - Takes: 2 min · effort to start: low · cost to assign: medium · needs: kit
 - Tags: short, low effort · intensity low
-- Should move: Sleep quality ↑ (next morning), Loneliness ↓ (seven days)
-- Starting belief: Sleep quality ↑ by about a third of a step over the next morning · Less evening scrolling; about a third of a step on sleep quality.
+- Should move: Sleep quality ↑ (next morning), Loneliness ↓ (seven days), Energy ↑ (next morning)
+- Starting belief: Sleep quality ↑ by about a third of a step over the next morning · Less evening scrolling; about a third of a step on sleep quality; energy the next morning is a target too, so the day’s draw can reach it.
 - When: morning, afternoon, evening
 - Stands in for: screen-time limits, a digital detox
 

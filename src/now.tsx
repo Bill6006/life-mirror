@@ -168,7 +168,7 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
         </p>
       )}
 
-      <AimsOnNow offer={offer} showTonight={!settings.hideMoves && Boolean(offer || pickup)} />
+      <AimsOnNow />
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />}

@@ -73,7 +73,7 @@ describe('export', () => {
     expect(parsed.key.readings.find((r: { id: string }) => r.id === 'stress').goodEnd).toBe('low')
     expect(parsed.key.readings.find((r: { id: string }) => r.id === 'mood').goodEnd).toBe('high')
     expect(parsed.key.readings.find((r: { id: string }) => r.id === 'hunger').goodEnd).toBe('context')
-    expect(parsed.key.readings.find((r: { id: string }) => r.id === 'loneliness').anchors[0]).toBe('Connected — or fine on my own')
+    expect(parsed.key.readings.find((r: { id: string }) => r.id === 'loneliness').anchors[0]).toBe('Content — nothing feels missing')
     expect(parsed.key.reworded.some((r: { reading: string; on: string }) => r.reading === 'loneliness' && r.on === '2026-09-11')).toBe(true)
     expect(parsed.key.events).toContain('coolingOffEvent')
     expect(bundle.offersCsv.split(String.fromCharCode(10))[0]).toContain('outcome')

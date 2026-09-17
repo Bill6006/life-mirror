@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCKS } from './blocks'
 import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isParked, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, PASSIVE, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
+import { CHARISMA_REPS } from './catalogue'
 import { readings } from './readings'
 
 // The catalogue is content; these checks are what "the builder checks and says so" means in code.
@@ -65,10 +66,10 @@ describe('the catalogue of moves', () => {
     expect(filterTags.map((t) => t.id)).toEqual(['costToAssign', 'startingEffort', 'needs', 'effectWindow'])
   })
 
-  it('carries the Phase 9 proposals as wired at Green: nothing proposed, the parked two never offered, the trade made', () => {
+  it('carries the Phase 9 proposals as wired at Green: nothing proposed, the parked entries never offered, the trade made', () => {
     expect(moves.filter(isProposed).length).toBe(0)
-    const parked = moves.filter(isParked).map((m) => m.id)
-    expect(parked).toEqual([...proposals.money.park])
+    const parked = moves.filter(isParked).map((m) => m.id).sort()
+    expect(parked).toEqual([...proposals.money.park, ...proposals.parkedLater.ids].sort())
     for (const id of parked) expect(liveMoves.some((m) => m.id === id), id).toBe(false)
     expect(liveMoves.length + parked.length).toBe(moves.length)
     for (const id of [...proposals.money.keep, ...proposals.money.park, ...proposals.charisma.ladder, ...proposals.passive]) expect(ids.has(id), id).toBe(true)
@@ -126,6 +127,15 @@ describe('the catalogue of moves', () => {
     for (const m of moves.filter((m) => m.family === 'finishing')) expect(m.minutes, m.id).toBeLessThanOrEqual(25)
     const basics = ['one-verse', 'five-minutes-prayer', 'one-honest-sentence']
     for (const a of basics) for (const b of basics) if (a !== b) expect(moves.find((m) => m.id === a)?.conflicts, `${a} vs ${b}`).toContain(b)
+  })
+
+  it('keeps the four one-on-one reps as reps, in their own words, since the Phase 9 Green', () => {
+    for (const id of CHARISMA_REPS) {
+      const m = moves.find((x) => x.id === id)
+      expect(m, id).toBeDefined()
+      expect(m?.what, id).not.toMatch(/^Rung/)
+      expect(m?.ladder, id).toBeUndefined()
+    }
   })
 
   it('uses no verdict words anywhere', () => {

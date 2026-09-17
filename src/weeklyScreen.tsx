@@ -157,6 +157,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
           {w.health.map((h) => (
             <p key={h.family} class="calc-line" data-testid="family-health" data-reachable={h.reachable ? 'true' : 'false'}>
               {fill(c.healthLine, { name: h.name, live: String(h.live), offered: String(h.offered), done: String(h.done) })}
+              {h.dead.length > 0 && ` · ${fill(c.deadLine, { moves: h.dead.map((d) => `${d.name} (${copy.move.whyNotReasons[d.blocker as keyof typeof copy.move.whyNotReasons] ?? d.blocker})`).join('; ') })}`}
               {!h.reachable && ` · ${fill(c.unreachable, { blocker: copy.move.whyNotReasons[h.blocker as keyof typeof copy.move.whyNotReasons] ?? h.blocker ?? '' })}`}
             </p>
           ))}

@@ -1,8 +1,8 @@
 import { BLOCKS, daysBetween, type Block } from './blocks'
-import { families, hasMove, liveMoves, moveById } from './catalogue'
+import { families, hasMove, liveMoves, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
 import { decayAfterStop, type Observation } from './learning'
-import { candidatesFor, type Situation, type TodayState } from './offers'
+import { candidatesFor, reachableAnywhere, type Situation, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { INGREDIENT_IDS, INGREDIENTS, readingOf, type Band } from './score'
 import type { CardStats } from './tiers'
@@ -241,6 +241,8 @@ export interface FamilyHealth {
   reachable: boolean
   /** The filter that blocked every entry in every recent situation, when unreachable. */
   blocker: string | null
+  /** Entries no situation at all admits, whatever the day, with the filter that keeps each out. */
+  dead: { id: string; name: string; blocker: string }[]
 }
 
 const QUIET: TodayState = { doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs: new Map(), studyNight: true, withHer: true, churchDay: true, noTimeCeiling: null }
@@ -273,7 +275,13 @@ export function catalogueHealth(offers: readonly Offer[], outcomes: readonly Out
       }
     }
     const blocker = !reachable && situations.length ? ([...reasons.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null) : null
-    return { family: f.id, name: f.name, live: entries.length, offered: offered.length, done: offered.filter((o) => o.id !== undefined && done.has(o.id)).length, reachable: reachable || situations.length === 0, blocker }
+    // Dead on paper: an entry the draw is meant to reach that no situation at all admits.
+    const dead = entries
+      .filter((m) => !PASSIVE.has(m.id) && !OBSERVED_ONLY.has(m.id) && m.family !== 'study')
+      .map((m) => ({ m, r: reachableAnywhere(m) }))
+      .filter((x) => !x.r.reachable)
+      .map((x) => ({ id: x.m.id, name: x.m.name, blocker: x.r.blocker ?? 'target' }))
+    return { family: f.id, name: f.name, live: entries.length, offered: offered.length, done: offered.filter((o) => o.id !== undefined && done.has(o.id)).length, reachable: reachable || situations.length === 0, blocker, dead }
   })
 }
 
@@ -302,7 +310,10 @@ export function extensionPromptText(inputs: PromptInputs, template: string): str
     offeredCount.set(o.moveId, c)
   }
   const neverDone = [...offeredCount.entries()].filter(([, c]) => c.offered >= NEVER_DONE_MIN && c.done === 0).map(([id, c]) => `${moveById(id).name}: offered ${c.offered}, done 0`)
-  const unreachable = inputs.health.filter((h) => !h.reachable).map((h) => `${h.name}: ${h.blocker ?? 'no situation fits'}`)
+  const unreachable = [
+    ...inputs.health.filter((h) => !h.reachable).map((h) => `${h.name}: ${h.blocker ?? 'no situation fits'}`),
+    ...inputs.health.flatMap((h) => h.dead.map((d) => `${h.name}: ${d.name} (${d.blocker})`)),
+  ]
   const held = inputs.stats
     .filter((s) => s.tier === 'holdsUp' || s.tier === 'promising')
     .map((s) => {

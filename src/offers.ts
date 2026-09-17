@@ -1,8 +1,8 @@
-import type { Block } from './blocks'
+import { BLOCKS, type Block } from './blocks'
 import { hasMove, isParked, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
-import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band, type Stance } from './score'
+import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, stanceOf, type Band, type Stance } from './score'
 import { choose, type Belief, type Candidate, type Choice, type Rng } from './bandit'
 
 // The situation and the candidate set, as the plan's bar states them. A situation is a block
@@ -117,6 +117,40 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
     if (rung.index > allowed) return 'rung'
   }
   return null
+}
+
+const ALL_BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firing']
+
+/** The most permissive state a move can be screened in: nothing done or offered today, every schedule on, and for a rung the one below it done. */
+export function permissiveState(move: Move): TodayState {
+  const rung = rungOf(move.id)
+  const doneRungs = new Map<string, number>()
+  if (rung && rung.index > 0) doneRungs.set(rung.ladder[0], rung.index - 1)
+  return { doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs, studyNight: true, withHer: true, churchDay: true, noTimeCeiling: null }
+}
+
+/** Every situation there is: each block, each ingredient as the target, each band. */
+export function everySituation(): Situation[] {
+  const out: Situation[] = []
+  for (const block of BLOCKS) for (const target of INGREDIENT_IDS) for (const band of ALL_BANDS) out.push({ block, target, stance: stanceOf(50), band, key: `${block}:${target}`, reading: 50, targetPosition: 1 })
+  return out
+}
+
+/**
+ * Whether a move can be a candidate anywhere at all, and when it cannot, the filter that keeps
+ * it out most. Passive, observed-only and study entries are offered by their own paths and
+ * come back as such; the catalogue check leaves them out.
+ */
+export function reachableAnywhere(move: Move): { reachable: boolean; blocker: Exclusion | null } {
+  const t = permissiveState(move)
+  const reasons = new Map<Exclusion, number>()
+  for (const s of everySituation()) {
+    const why = screen(move, s, t)
+    if (why === null) return { reachable: true, blocker: null }
+    reasons.set(why, (reasons.get(why) ?? 0) + 1)
+  }
+  const blocker = [...reasons.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  return { reachable: false, blocker }
 }
 
 export interface CandidateSet {

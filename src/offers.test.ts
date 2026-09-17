@@ -50,7 +50,7 @@ describe('the candidate set', () => {
 
   it('never offers a parked entry, and after a "no time" keeps anything that long out of the block for a week', () => {
     const parked = moves.filter(isParked)
-    expect(parked.length).toBe(2)
+    expect(parked.length).toBe(3)
     for (const m of parked) expect(screen(m, s, quiet), m.id).toBe('parked')
     const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 4), mood: 1 }))!
     for (const set of [candidatesFor(s, quiet), candidatesFor(evening, quiet), pickupCandidates('afternoon', quiet)]) {

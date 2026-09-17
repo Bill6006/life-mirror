@@ -6,7 +6,7 @@ import { blockAt } from './blocks'
 import { families } from './catalogue'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { allWins, db, getSettings, type Aim, type AimKind, type Offer } from './db'
+import { allWins, db, getSettings, type Aim, type AimKind } from './db'
 import { fill, formatDayLong, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
@@ -405,15 +405,12 @@ export function BecomingScreen({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * On Now: every commitment's protected step above the move, and when tonight's move and a step
- * differ, both shown under their own headings with one line saying so. Never blended (Rule 8).
+ * On Now: every commitment's protected step under its own heading, above the move under its own.
+ * Never blended (Rule 8); the two headings are what says so.
  */
-export function AimsOnNow({ offer, showTonight }: { offer: Offer | null; showTonight: boolean }) {
+export function AimsOnNow() {
   const data = useAims()
   if (!data || data.aims.length === 0) return null
-  const { aims, skills, marks } = data
-  const steps = aims.map((aim) => stepFor(aim, skills, marks))
-  const same = offer !== null && steps.some((s) => s.id === offer.moveId)
   const c = copy.aims
   return (
     <>
@@ -421,16 +418,6 @@ export function AimsOnNow({ offer, showTonight }: { offer: Offer | null; showTon
         {c.yourAims}
       </h2>
       <AimCards />
-      {showTonight && (
-        <>
-          <h2 class="section" data-testid="tonight">
-            {c.tonight}
-          </h2>
-          <p class="note faint differ" data-testid="differ">
-            {same ? c.same : c.differ}
-          </p>
-        </>
-      )}
     </>
   )
 }
