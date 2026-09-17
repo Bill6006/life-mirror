@@ -8,7 +8,7 @@ describe('the brief', () => {
   const ctx = (churchDay: boolean): DayContext => ({ day: '2026-09-10', weekday: 4, withHer: true, studyNight: false, churchDay, pickupTime: null, soloUntil: '20:00', changed: false, createdAt: '' })
 
   it('reads what last night carried from the evening, the day and the outside days', () => {
-    expect(lastNightKeys(evening({ dinner: true, necessities: { food: true } }), ctx(true), true)).toEqual(['dinner', 'necessity', 'churchDay', 'workout'])
+    expect(lastNightKeys(evening({ dinner: true, napped: true, necessities: { food: true } }), ctx(true), true)).toEqual(['dinner', 'napped', 'necessity', 'churchDay', 'workout'])
     expect(lastNightKeys(undefined, undefined, false)).toEqual([])
   })
 

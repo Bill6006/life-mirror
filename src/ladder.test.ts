@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { moveById } from './catalogue'
 import type { RungMark, Skill } from './db'
-import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG, groupBySubject, ladderOf } from './ladder'
+import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG, groupBySubject, ladderOf, orphanSubjects } from './ladder'
 
 const skill = (id: number, name: string, order = id): Skill => ({ id, name, order, createdAt: '', archivedAt: null })
 const mark = (skillId: number, rung: number, at: string, id?: number): RungMark => ({ id, skillId, rung, at, via: 'tap' })
@@ -119,5 +119,13 @@ describe('a skill learned by doing', () => {
     const s = rungStep({ id: 4, name: 'Scale of C', order: 1, createdAt: '', archivedAt: null, subject: 'Piano', ladder: 'craft' }, 3)
     expect(s.name).toBe('Piano · Scale of C · do it with the material')
     expect(s.minutes).toBe(10)
+  })
+})
+
+describe('subjects no commitment is named for', () => {
+  it('lists each once, and none that a commitment carries', () => {
+    const sk = (id: number, subject?: string): Skill => ({ id, name: 'x' + id, order: id, createdAt: '', archivedAt: null, ...(subject ? { subject } : {}) })
+    expect(orphanSubjects([sk(1, 'French'), sk(2, 'french'), sk(3), sk(4, 'Piano')], [{ name: 'Piano' }])).toEqual(['French'])
+    expect(orphanSubjects([sk(1, 'French')], [{ name: 'French' }])).toEqual([])
   })
 })

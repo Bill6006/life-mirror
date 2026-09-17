@@ -345,6 +345,7 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('your-aims')).toBeVisible()
   await expect(page.getByTestId('aim-card')).toBeVisible()
+  await expect(page.getByTestId('aim-card')).toContainText('Networking')
   // The two headings say it; there is no explaining line under Tonight any more.
   await expect(page.getByTestId('tonight')).toHaveCount(0)
   const stepBox = await page.getByTestId('aim-card').boundingBox()
@@ -478,7 +479,7 @@ test('testing smarter: readings and chips are decided by you, no swap yet, the b
   await page.getByRole('button', { name: /^Readings and chips/ }).click()
   await expect(page.getByTestId('readings-screen')).toBeVisible()
   await expect(page.getByTestId('proposals-none')).toContainText('No proposal')
-  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(9)
+  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(10)
   await expect(page.locator('[data-testid^="chip-back-"]')).toHaveCount(0)
   await expect(page.getByTestId('swaps-none')).toContainText('No swap yet')
   await page.getByRole('button', { name: 'Done', exact: true }).click()

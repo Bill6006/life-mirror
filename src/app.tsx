@@ -8,6 +8,7 @@ import { CloudScreen } from './cloudScreen'
 import { EvidenceScreen } from './evidenceScreen'
 import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
+import { adoptOrphanSubjects } from './aimFlow'
 import { loadAudits, runLearning } from './learningFlow'
 import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
@@ -70,6 +71,7 @@ export function App() {
   useEffect(() => {
     const day = blockAt(new Date()).day
     void loadAudits()
+      .then(adoptOrphanSubjects)
       .then(() => runLearning(day))
       .then(() => runForecasting(day))
   }, [])

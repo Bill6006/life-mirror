@@ -46,8 +46,8 @@ export function anchorSwapDue(reading: Reading, checkins: readonly CheckIn[], ex
   return null
 }
 
-export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'shower' | 'teeth' | 'food' | 'away' | 'heavyCaffeine'
-export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'shower', 'teeth', 'food', 'away', 'heavyCaffeine']
+export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'shower' | 'teeth' | 'food' | 'away' | 'heavyCaffeine'
+export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'shower', 'teeth', 'food', 'away', 'heavyCaffeine']
 
 export interface ChipState {
   id: ChipId
@@ -64,6 +64,7 @@ function tapped(id: ChipId, c: CheckIn, ctx: DayContext | undefined): boolean {
     case 'hardToSeePoint':
     case 'coolingOff':
     case 'bigSocial':
+    case 'napped':
       return Boolean(c.extras?.[id])
     case 'shower':
     case 'teeth':

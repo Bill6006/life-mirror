@@ -6,7 +6,7 @@ import type { CheckIn } from './db'
 // evenings that started the same. A calculation, shown in its register; "first time recorded"
 // until there is one. Association, never cause.
 
-export type ChipKey = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial'
+export type ChipKey = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped'
 
 export type ChipAnswer = Association
 

@@ -30,7 +30,7 @@ import { useLive } from './live'
 import { askedReadings, type Weekday } from './settings'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
-const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial']
+const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped']
 
 /**
  * The evening's optional extras, one tap each, every tap saved at once. Skipping costs one

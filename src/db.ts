@@ -8,7 +8,7 @@ import { remindedKey, withDefaults, type Settings, type Weekday } from './settin
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
 export type WinOutcome = 'done' | 'partly' | 'no'
-export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine'
+export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine' | 'napped'
 export type NecessityKey = 'shower' | 'teeth' | 'food'
 export type Necessities = Partial<Record<NecessityKey, true>>
 
@@ -24,6 +24,8 @@ export interface Extras {
   bigSocial?: true
   /** The morning's one statement chip, on the morning check-in: heavy caffeine this morning. Dose and timing stay out. */
   heavyCaffeine?: true
+  /** Napped today: the one daytime sleep the record cannot otherwise see, on the evening check-in. */
+  napped?: true
   /** Phase 11: the necessities signal. A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated. */
   necessities?: Necessities
   /** One optional line for anything the app has no question for. Kept for the export. */

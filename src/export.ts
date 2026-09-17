@@ -74,6 +74,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       feltCloseToGod: Boolean(c.extras?.closeToGod),
       nothingLandedToday: Boolean(c.extras?.nothingLanded),
       hardToSeeThePointToday: Boolean(c.extras?.hardToSeePoint),
+      nappedToday: Boolean(c.extras?.napped),
       coolingOffEvent: Boolean(c.extras?.coolingOff),
       bigSocialEvent: Boolean(c.extras?.bigSocial),
       heavyCaffeineThisMorning: Boolean(c.extras?.heavyCaffeine),
@@ -95,7 +96,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         swaps: (records?.anchorSwaps ?? []).map((s) => ({ reading: s.reading, position: s.position, from: s.from, to: s.to, on: s.at, answers: s.answers, stretchDays: s.stretchDays })),
         retiredReadings: settings.retiredReadings,
         weights: settings.weights,
-        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning'],
+        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday'],
       },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
       checkins,
@@ -155,6 +156,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     'nothing_landed_today',
     'hard_to_see_the_point_today',
     'heavy_caffeine_this_morning',
+    'napped_today',
     'note',
     ...privateItems.map((it) => `private: ${it.name}`),
   ]
@@ -170,6 +172,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     yesNo(Boolean(c.extras?.nothingLanded)),
     yesNo(Boolean(c.extras?.hardToSeePoint)),
     yesNo(Boolean(c.extras?.heavyCaffeine)),
+    yesNo(Boolean(c.extras?.napped)),
     c.extras?.note ?? '',
     ...privateItems.map((it) => yesNo(Boolean(c.extras?.private?.[String(it.id)]))),
   ])

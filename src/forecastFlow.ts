@@ -1,7 +1,7 @@
 import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, db, getSettings, type Forecast } from './db'
-import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
+import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
 import type { CheckIn, DayContext } from './db'
 import { observations, slotKey } from './learning'
@@ -35,7 +35,7 @@ export async function runForecasting(today: string): Promise<void> {
   })
 }
 
-export type LastNightKey = 'dinner' | 'caffeine' | 'coolingOff' | 'bigSocial' | 'nothingLanded' | 'hardToSeePoint' | 'necessity' | 'churchDay' | 'workout'
+export type LastNightKey = 'dinner' | 'caffeine' | 'coolingOff' | 'bigSocial' | 'napped' | 'nothingLanded' | 'hardToSeePoint' | 'necessity' | 'churchDay' | 'workout'
 
 /** What yesterday's evening carried that the record can set this morning against: its extras and chips, a necessity missed, the church day, a workout day. */
 export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | undefined, workout: boolean): LastNightKey[] {
@@ -45,6 +45,7 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   if (ex.caffeine) keys.push('caffeine')
   if (ex.coolingOff) keys.push('coolingOff')
   if (ex.bigSocial) keys.push('bigSocial')
+  if (ex.napped) keys.push('napped')
   if (ex.nothingLanded) keys.push('nothingLanded')
   if (ex.hardToSeePoint) keys.push('hardToSeePoint')
   if (Object.values(ex.necessities ?? {}).some(Boolean)) keys.push('necessity')
@@ -127,7 +128,8 @@ export async function briefData(today: string): Promise<Brief> {
   const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside)) }))
   const best = carried.filter((c) => c.assoc.diff !== null).sort((a, b) => b.assoc.times - a.assoc.times)[0] ?? carried[0] ?? null
   const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times } : null
-  const steady = ready && !w.warning && w.of > 0 ? { inside: w.of - w.under, of: w.of } : null
+  // Steady is a conclusion: it needs the same six logged blocks the warning does, or it says nothing.
+  const steady = ready && !w.warning && w.of >= WARNING_WINDOW ? { inside: w.of - w.under, of: w.of } : null
   const read = observations(checkins, offers, outcomes)
     .filter((o) => o.day === yesterday && o.arm !== 'declined')
     .sort((a, b) => b.offerId - a.offerId)

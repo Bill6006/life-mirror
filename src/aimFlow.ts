@@ -1,7 +1,7 @@
 import { blockAt } from './blocks'
 import { db, type Aim, type AimKind, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
 import { AIM_KINDS, keyFor, unblockKeyFor } from './aims'
-import { currentRung, ladderOf, TOP_RUNG, type Sitting } from './ladder'
+import { currentRung, ladderOf, orphanSubjects, TOP_RUNG, type Sitting } from './ladder'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
 // them, and the one-tap Resume that records a step as an offer to be asked about next time.
@@ -33,6 +33,32 @@ export function addAim(kind: AimKind, stepMoveId: string | null, name = '', ladd
 /** The study commitments, in the order they were made. */
 export async function studyAims(): Promise<Aim[]> {
   return (await activeAims()).filter((a) => a.kind === 'certification')
+}
+
+/** Names a study commitment made before names existed. */
+export async function nameAim(id: number, name: string): Promise<void> {
+  const n = name.trim()
+  if (!n) return
+  await db.aims.update(id, { name: n })
+}
+
+/**
+ * A study commitment made before names existed adopts the one subject its skills carry, when
+ * there is exactly one such subject and exactly one such commitment; otherwise it waits to be
+ * named on its card. Runs at open; changes nothing once every study commitment has a name.
+ */
+export function adoptOrphanSubjects(): Promise<void> {
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    const study = await db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
+    const unnamed = study.filter((a) => !(a.name ?? '').trim())
+    if (unnamed.length !== 1) return
+    const skills = await db.skills.toArray()
+    const orphans = orphanSubjects(skills, study)
+    if (orphans.length !== 1) return
+    const subject = orphans[0]
+    const under = skills.find((s) => s.archivedAt === null && (s.subject ?? '').trim().toLowerCase() === subject.toLowerCase() && s.ladder)
+    await db.aims.update(unnamed[0].id as number, { name: subject, ...(under?.ladder ? { ladder: under.ladder } : {}) })
+  })
 }
 
 export async function setAimStep(id: number, stepMoveId: string): Promise<void> {

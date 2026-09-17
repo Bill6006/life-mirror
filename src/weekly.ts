@@ -128,6 +128,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   controlled.push(count('a late or heavy dinner', (d) => Boolean(evening(d)?.extras?.dinner)))
   controlled.push(count('nothing landed', (d) => Boolean(evening(d)?.extras?.nothingLanded)))
   controlled.push(count('hard to see the point', (d) => Boolean(evening(d)?.extras?.hardToSeePoint)))
+  controlled.push(count('a nap', (d) => Boolean(evening(d)?.extras?.napped)))
   controlled.push(count('a necessity missed', (d) => Object.values(evening(d)?.extras?.necessities ?? {}).some(Boolean)))
 
   const ctx = new Map(contexts.map((c) => [c.day, c]))

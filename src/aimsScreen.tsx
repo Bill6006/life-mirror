@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { AimCard, AimRow } from './aimCard'
-import { activeAims, addAim, addSkill, aimRecords, liveSkills, moveSkill, openAimOffers, removeAim, removeSkill, resumeAim, rungMarks, setAimStep } from './aimFlow'
+import { activeAims, addAim, addSkill, aimRecords, liveSkills, moveSkill, nameAim, openAimOffers, removeAim, removeSkill, resumeAim, rungMarks, setAimStep } from './aimFlow'
 import { AIM_KINDS, BECOMING_KEYS, becoming, blockedBy, followThrough, keysOf, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
 import { blockAt } from './blocks'
 import { families } from './catalogue'
@@ -10,7 +10,7 @@ import { allWins, db, getSettings, type Aim, type AimKind, type LadderKind } fro
 import { fill, formatDayLong, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
-import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf, TOP_RUNG } from './ladder'
+import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from './ladder'
 import { useLive } from './live'
 
 // The Aims tab: the commitments you chose with their protected steps, and the doors to the
@@ -52,7 +52,15 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
     return compact ? (
       <AimRow key={aim.id} {...shared} />
     ) : (
-      <AimCard key={aim.id} {...shared} onRemove={onRemove ? () => onRemove(aim) : undefined} onChangeStep={onChangeStep && aim.kind !== 'certification' ? () => onChangeStep(aim) : undefined} />
+      <AimCard
+        key={aim.id}
+        {...shared}
+        onRemove={onRemove ? () => onRemove(aim) : undefined}
+        onChangeStep={onChangeStep && aim.kind !== 'certification' ? () => onChangeStep(aim) : undefined}
+        skillCount={aim.kind === 'certification' ? skillsOf(aim, skills, studyAims).length : undefined}
+        onAddSkill={aim.kind === 'certification' && aim.name ? (n) => void addSkill(n, aim.name ?? '') : undefined}
+        onName={aim.kind === 'certification' && !aim.name ? (n) => void nameAim(aim.id as number, n) : undefined}
+      />
     )
   })
   if (compact) {

@@ -99,6 +99,18 @@ export function firstStudyId(studyAims: readonly Pick<Aim, 'id'>[]): number | nu
   return studyAims.reduce<number | null>((m, a) => (a.id !== undefined && (m === null || a.id < m) ? a.id : m), null)
 }
 
+/** Subjects typed on skills that no study commitment is named for, each once. */
+export function orphanSubjects(skills: readonly Skill[], studyAims: readonly Pick<Aim, 'name'>[]): string[] {
+  const named = new Set(studyAims.map((a) => (a.name ?? '').trim().toLowerCase()).filter(Boolean))
+  const out: string[] = []
+  for (const s of liveSkillsOf(skills)) {
+    const subject = (s.subject ?? '').trim()
+    if (!subject || named.has(subject.toLowerCase()) || out.some((o) => o.toLowerCase() === subject.toLowerCase())) continue
+    out.push(subject)
+  }
+  return out
+}
+
 /** The skills a study commitment climbs: those carrying its name; the ones without a subject belong to the first study commitment. */
 export function skillsOf(aim: Pick<Aim, 'id' | 'name'>, skills: readonly Skill[], studyAims: readonly Pick<Aim, 'id'>[]): Skill[] {
   const name = (aim.name ?? '').trim().toLowerCase()
