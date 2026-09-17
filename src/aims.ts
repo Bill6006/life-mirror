@@ -1,6 +1,6 @@
 import { hasMove, isParked, isProposed, moveById, movesInFamily, OBSERVED_ONLY, PASSIVE, type Counter, type Move } from './catalogue'
 import type { Aim, AimKind, Offer, Outcome, OutcomeWhy, RungMark, Skill, StudyNight, StudyReason, Win } from './db'
-import { nextStep, parseRungId, rungStep, sittingOf, type Sitting } from './ladder'
+import { firstStudyId, nextStep, parseRungId, rungStep, sittingOf, skillsOf, type Sitting } from './ladder'
 import { NOTHING } from './offers'
 
 // Aims, the pure part: which step protects each commitment, what blocks it and what unblocks it,
@@ -27,15 +27,47 @@ export function unblockKey(kind: AimKind): string {
   return `aim:${kind}:unblock`
 }
 
+/** The key a commitment's step offers carry: study by its id, so several subjects stay apart; a person and a practice by kind. */
+export function keyFor(aim: Aim): string {
+  return aim.kind === 'certification' ? `aim:certification:${aim.id}` : aimKey(aim.kind)
+}
+
+export function unblockKeyFor(aim: Aim): string {
+  return aim.kind === 'certification' ? `aim:certification:${aim.id}:unblock` : unblockKey(aim.kind)
+}
+
+/** Every key that names this commitment's offers; the first study commitment also answers to the older keys by kind alone. */
+export function keysOf(aim: Aim, studyAims: readonly Aim[]): string[] {
+  const keys = [keyFor(aim), unblockKeyFor(aim)]
+  if (aim.kind === 'certification' && (aim.id === undefined || aim.id === firstStudyId(studyAims))) keys.push(aimKey('certification'), unblockKey('certification'))
+  return keys
+}
+
+/** The step keys alone: an unblock offer is not a step and never counts as a block. */
+export function stepKeysOf(aim: Aim, studyAims: readonly Aim[]): string[] {
+  return keysOf(aim, studyAims).filter((k) => !k.endsWith(':unblock'))
+}
+
+/** Whether a study-night offer belongs to this study commitment: by the rung's skill, or to the first commitment when the offer carried a catalogue version. */
+export function studyOfferBelongs(offer: Offer, aim: Aim, skills: readonly Skill[], studyAims: readonly Aim[]): boolean {
+  if (offer.kind !== 'study' || aim.kind !== 'certification') return false
+  const first = aim.id === undefined || aim.id === firstStudyId(studyAims)
+  const rung = parseRungId(offer.moveId)
+  if (!rung) return first
+  const skill = skills.find((s) => s.id === rung.skillId)
+  if (!skill) return first
+  return skillsOf(aim, skills, studyAims).some((s) => s.id === skill.id)
+}
+
 /** The moves a person or a practice can take as its step: the family's active moves, never bedtime, never a passive item. */
 export function stepChoices(kind: AimKind): Move[] {
   return STEP_FAMILIES[kind].flatMap((f) => movesInFamily(f)).filter((m) => !isProposed(m) && !isParked(m) && !OBSERVED_ONLY.has(m.id) && !PASSIVE.has(m.id))
 }
 
 /** The protected next step of a commitment, one line sized to one sitting. */
-export function stepFor(aim: Aim, skills: readonly Skill[], marks: readonly RungMark[]): Sitting {
+export function stepFor(aim: Aim, skills: readonly Skill[], marks: readonly RungMark[], studyAims: readonly Aim[] = [aim]): Sitting {
   if (aim.kind === 'certification') {
-    const next = nextStep(skills, marks)
+    const next = nextStep(skillsOf(aim, skills, studyAims), marks)
     return next ? rungStep(next.skill, next.rung) : sittingOf(moveById(EMPTY_LADDER_STEP))
   }
   const id = aim.stepMoveId && hasMove(aim.stepMoveId) ? aim.stepMoveId : stepChoices(aim.kind)[0].id
@@ -48,9 +80,9 @@ export type BlockReason = OutcomeWhy | StudyReason | 'unsaid'
  * What blocked a commitment last time, if its most recent step ended in No or Not now. A
  * later start clears it. Unblock offers themselves are not steps and do not count here.
  */
-export function blockedBy(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], nights: readonly StudyNight[]): BlockReason | null {
-  const key = aimKey(aim.kind)
-  const own = offers.filter((o) => o.situationKey === key || (aim.kind === 'certification' && o.kind === 'study'))
+export function blockedBy(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], nights: readonly StudyNight[], skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): BlockReason | null {
+  const keys = stepKeysOf(aim, studyAims)
+  const own = offers.filter((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, skills, studyAims))
   if (!own.length) return null
   const latest = own.reduce((a, b) => (a.at > b.at ? a : b))
   if (latest.kind === 'study' && latest.skippedAt) {

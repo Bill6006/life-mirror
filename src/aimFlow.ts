@@ -1,6 +1,6 @@
 import { blockAt } from './blocks'
 import { db, type Aim, type AimKind, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
-import { AIM_KINDS, aimKey, unblockKey } from './aims'
+import { AIM_KINDS, keyFor, unblockKeyFor } from './aims'
 import { currentRung, ladderOf, TOP_RUNG, type Sitting } from './ladder'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
@@ -11,13 +11,28 @@ export async function activeAims(): Promise<Aim[]> {
   return all.sort((a, b) => AIM_KINDS.indexOf(a.kind) - AIM_KINDS.indexOf(b.kind))
 }
 
-/** One commitment per kind, with nothing to type. A second of the same kind changes nothing. */
-export function addAim(kind: AimKind, stepMoveId: string | null): Promise<void> {
+/**
+ * A commitment. A person and a practice, one each, with nothing to type; study as many as you
+ * name, one per subject, each choosing its six proofs once. A second of a kind, or a name already
+ * on the list, changes nothing.
+ */
+export function addAim(kind: AimKind, stepMoveId: string | null, name = '', ladder: LadderKind = 'technical'): Promise<void> {
   return db.transaction('rw', db.aims, async () => {
-    const existing = await db.aims.filter((a) => a.kind === kind && a.archivedAt === null).first()
-    if (existing) return
+    const live = await db.aims.filter((a) => a.kind === kind && a.archivedAt === null).toArray()
+    if (kind === 'certification') {
+      const n = name.trim()
+      if (!n || live.some((a) => (a.name ?? '').trim().toLowerCase() === n.toLowerCase())) return
+      await db.aims.add({ kind, stepMoveId: null, name: n, ladder, createdAt: new Date().toISOString(), archivedAt: null })
+      return
+    }
+    if (live.length) return
     await db.aims.add({ kind, stepMoveId, createdAt: new Date().toISOString(), archivedAt: null })
   })
+}
+
+/** The study commitments, in the order they were made. */
+export async function studyAims(): Promise<Aim[]> {
+  return (await activeAims()).filter((a) => a.kind === 'certification')
 }
 
 export async function setAimStep(id: number, stepMoveId: string): Promise<void> {
@@ -40,15 +55,17 @@ export async function liveSkills(): Promise<Skill[]> {
  * subject's ladder, whatever was picked.
  */
 export function addSkill(name: string, subject = '', ladder: LadderKind = 'technical'): Promise<void> {
-  return db.transaction('rw', db.skills, async () => {
+  return db.transaction('rw', [db.skills, db.aims], async () => {
     const trimmed = name.trim()
     if (!trimmed) return
     const all = await db.skills.toArray()
     const order = all.reduce((m, s) => Math.max(m, s.order), 0) + 1
     const s = subject.trim()
+    // The subject's commitment chose the ladder; failing that, a skill already under the subject; failing that, what was asked.
+    const aim = s ? (await db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()).find((a) => (a.name ?? '').trim().toLowerCase() === s.toLowerCase()) : undefined
     const existing = s ? all.find((x) => x.archivedAt === null && (x.subject ?? '').trim().toLowerCase() === s.toLowerCase()) : undefined
-    const kind = existing ? ladderOf(existing) : ladder
-    await db.skills.add({ name: trimmed, ...(s ? { subject: s } : {}), ...(kind === 'language' ? { ladder: kind } : {}), order, createdAt: new Date().toISOString(), archivedAt: null })
+    const kind = aim?.ladder ?? (existing ? ladderOf(existing) : ladder)
+    await db.skills.add({ name: trimmed, ...(s ? { subject: s } : {}), ...(kind !== 'technical' ? { ladder: kind } : {}), order, createdAt: new Date().toISOString(), archivedAt: null })
   })
 }
 
@@ -111,7 +128,7 @@ export function resumeAim(aim: Aim, sitting: Sitting, kind: 'step' | 'unblock', 
       day,
       block,
       at: now.toISOString(),
-      situationKey: kind === 'step' ? aimKey(aim.kind) : unblockKey(aim.kind),
+      situationKey: kind === 'step' ? keyFor(aim) : unblockKeyFor(aim),
       target: aim.kind === 'certification' ? 'focus' : 'mood',
       stance: '',
       band: '',

@@ -329,10 +329,12 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
 
-  // Aims → add a commitment → the certification. Nothing typed; the step is pre-filled.
+  // Aims → add a commitment → study, named by you; with no skills yet the step is the catalogue's own.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await page.getByRole('button', { name: /^Add a commitment/ }).click()
   await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-name-input').fill('Networking')
+  await page.getByTestId('aim-name-add').click()
   await expect(page.getByTestId('aim-card')).toHaveCount(1)
   await expect(page.getByTestId('aim-step')).toContainText('Write the exact next study step')
 
@@ -376,7 +378,7 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
 
   // The proof ladder: a skill typed once on the phone, moved only by tap; the step follows it.
   await page.getByRole('button', { name: /^The proof ladder/ }).click()
-  await page.getByTestId('subject-input').fill('Networking')
+  await expect(page.getByTestId('subject-chip')).toHaveAttribute('aria-pressed', 'true')
   await page.getByTestId('skill-input').fill('Subnetting')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await expect(page.getByTestId('skill-subject')).toContainText('Networking')
@@ -679,23 +681,43 @@ test('the exception chips sit on a morning summary too, and change today alone',
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('a subject chooses its six proofs once: the language ladder reads in its own words', async ({ page }) => {
+test('study named by you: a language and an instrument sit beside each other, each with its own proofs and its own row on Now', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-name-input').fill('French')
+  await page.getByTestId('aim-ladder-language').click()
+  await page.getByTestId('aim-name-add').click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-name-input').fill('Piano')
+  await page.getByTestId('aim-ladder-craft').click()
+  await page.getByTestId('aim-name-add').click()
+  await expect(page.getByTestId('aim-card')).toHaveCount(2)
+  // The ladder: a skill under each subject, each climbing its own proofs.
   await page.getByRole('button', { name: /^The proof ladder/ }).click()
-  // The choice shows only for a subject not yet on the list.
-  await expect(page.getByTestId('ladder-kind-language')).toHaveCount(0)
-  await page.getByTestId('subject-input').fill('French')
-  await page.getByTestId('ladder-kind-language').click()
+  await expect(page.getByTestId('subject-chip')).toHaveCount(2)
   await page.getByTestId('skill-input').fill('Ten words')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
-  await expect(page.getByTestId('skill-subject')).toContainText('French')
-  await expect(page.getByTestId('skill-subject')).toContainText('Language')
-  await expect(page.getByTestId('ladder-kind-language')).toHaveCount(0)
-  await page.getByTestId('rung-up').click()
-  await expect(page.getByTestId('skill-row')).toContainText('Heard or read')
-  await expect(page.getByTestId('ladder-counts')).toContainText('1 at Heard or read')
+  await page.getByTestId('subject-chip').last().click()
+  await page.getByTestId('skill-input').fill('Scale of C')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByTestId('skill-subject')).toHaveCount(2)
+  await page.getByTestId('rung-up').first().click()
+  await expect(page.getByTestId('skill-row').first()).toContainText('Heard or read')
+  await page.getByTestId('rung-up').last().click()
+  await expect(page.getByTestId('skill-row').last()).toContainText('Watched or listened')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // Each subject's step, side by side; on Now, one row each, no card taller than a line or two.
+  await expect(page.getByTestId('aim-step').first()).toContainText('Ten words · say it')
+  await expect(page.getByTestId('aim-step').last()).toContainText('Scale of C · try it slowly')
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.getByTestId('aim-card')).toHaveCount(2)
+  await page.getByTestId('aim-resume').first().click()
+  await expect(page.getByTestId('aim-started')).toHaveCount(1)
+  await expect(page.getByTestId('aim-resume')).toHaveCount(1)
 })

@@ -262,3 +262,13 @@ describe('a daycare day', () => {
     expect(screen(moveById('walk-ten'), afternoon, daycare)).toBeNull()
   })
 })
+
+describe('her bedtime', () => {
+  const her = moves.find((m) => m.family === 'fatherhood')!
+  const evening = situationOf(mk('evening', { ...allAt(blockReadings('evening'), 3), mood: 2 }))!
+  it('keeps her moves back once she is asleep, and lets them through before', () => {
+    expect(screen(her, evening, { ...quiet, asleep: true })).toBe('asleep')
+    expect(screen(her, evening, { ...quiet, asleep: false })).toBeNull()
+    expect(screen(moveById('walk-ten'), evening, { ...quiet, asleep: true })).toBeNull()
+  })
+})

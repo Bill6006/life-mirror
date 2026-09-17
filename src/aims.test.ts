@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { becoming, blockedBy, EMPTY_LADDER_STEP, followThrough, stepChoices, stepFor, unblockFor } from './aims'
+import { skillsOf } from './ladder'
+import { becoming, blockedBy, EMPTY_LADDER_STEP, followThrough, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
 import { moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { Aim, Offer, Outcome, RungMark, Skill, StudyNight, Win } from './db'
 
@@ -111,5 +112,29 @@ describe('counts only', () => {
     expect(b.conversations).toEqual({ n: 0, last: null })
     expect(b.faith).toEqual({ n: 0, last: null })
     expect(b.timeWithHer).toEqual({ n: 0, last: null })
+  })
+})
+
+describe('several study subjects', () => {
+  const study = (id: number, name: string): Aim => ({ id, kind: 'certification', stepMoveId: null, name, ladder: 'technical', createdAt: '', archivedAt: null })
+  const sk = (id: number, name: string, order: number, subject?: string): Skill => ({ id, name, order, createdAt: '', archivedAt: null, ...(subject ? { subject } : {}) })
+
+  it('gives each study commitment the skills under its name, the unnamed ones to the first', () => {
+    const a = study(1, 'Networking')
+    const b = study(2, 'French')
+    const skills = [sk(1, 'Subnetting', 1), sk(2, 'Ten words', 2, 'French'), sk(3, 'Routing', 3, 'Networking')]
+    expect(skillsOf(a, skills, [a, b]).map((s) => s.name)).toEqual(['Subnetting', 'Routing'])
+    expect(skillsOf(b, skills, [a, b]).map((s) => s.name)).toEqual(['Ten words'])
+    expect(stepFor(b, skills, [], [a, b]).name).toBe('French · Ten words · watch or read it')
+    expect(stepFor(a, skills, [], [a, b]).name).toBe('Subnetting · watch or read it')
+  })
+
+  it('keeps each subject’s offers apart by key, the first also answering to the older key by kind', () => {
+    const a = study(1, 'Networking')
+    const b = study(2, 'French')
+    expect(keyFor(a)).toBe('aim:certification:1')
+    expect(keysOf(a, [a, b])).toEqual(['aim:certification:1', 'aim:certification:1:unblock', 'aim:certification', 'aim:certification:unblock'])
+    expect(keysOf(b, [a, b])).toEqual(['aim:certification:2', 'aim:certification:2:unblock'])
+    expect(keyFor({ id: 5, kind: 'person', stepMoveId: 'call-not-text', createdAt: '', archivedAt: null })).toBe('aim:person')
   })
 })

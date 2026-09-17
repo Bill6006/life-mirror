@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { moves } from './catalogue'
 import { db, type Offer } from './db'
-import { answerPassive, doneAvailableAt, doneOpen, pendingOffers, recordDoneNow, recordOutcome } from './offerFlow'
+import { answerPassive, doneAvailableAt, doneOpen, pendingOffers, recordDoneNow, recordOutcome, deleteOutcome } from './offerFlow'
 import { NOTHING } from './offers'
 import { RUNG_MINUTES } from './ladder'
 
@@ -107,5 +107,24 @@ describe('the Done tap, widened', () => {
     expect(marks).toHaveLength(1)
     expect(marks[0]).toMatchObject({ skillId: 1, rung: 1, via: 'step' })
     expect((await db.offers.get(id))?.closedAt).not.toBeNull()
+  })
+})
+
+describe('an answer deleted', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+
+  it('removes the record and opens the question again for the next check-in', async () => {
+    const id = await db.offers.add(offer())
+    const o = (await db.offers.get(id)) as Offer
+    await recordDoneNow(o, new Date(2026, 8, 11, 20, 40))
+    expect((await db.offers.get(id))?.closedAt).not.toBeNull()
+    const x = (await db.outcomes.toArray())[0]
+    await deleteOutcome(x)
+    expect(await db.outcomes.count()).toBe(0)
+    expect((await db.offers.get(id))?.closedAt).toBeNull()
+    expect((await pendingOffers()).map((p) => p.id)).toEqual([id])
   })
 })

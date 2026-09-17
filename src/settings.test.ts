@@ -110,3 +110,11 @@ describe('daylight hours and the fields a Part 3 record adds', () => {
     expect(s.setupUndone).toEqual({})
   })
 })
+
+describe('daycare days', () => {
+  it('defaults to Monday to Friday and is filled in for an older record', () => {
+    expect(DEFAULT_WEEK.daycareDays).toEqual({ 0: false, 1: true, 2: true, 3: true, 4: true, 5: true, 6: false })
+    const s = withDefaults({ week: { churchDay: 6, livesWithMe: true, studyNights: DEFAULT_WEEK.studyNights, officeDays: DEFAULT_WEEK.officeDays, pickupTime: '17:30', soloUntil: '20:00' } as never })
+    expect(s.week.daycareDays).toEqual(DEFAULT_WEEK.daycareDays)
+  })
+})

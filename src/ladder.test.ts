@@ -111,3 +111,13 @@ describe('a subject’s own six proofs', () => {
     ])
   })
 })
+
+describe('a skill learned by doing', () => {
+  it('climbs its own six proofs in ten-minute sittings', () => {
+    expect(rungName(1, 'craft')).toBe('Watched or listened')
+    expect(rungName(6, 'craft')).toBe('Taught')
+    const s = rungStep({ id: 4, name: 'Scale of C', order: 1, createdAt: '', archivedAt: null, subject: 'Piano', ladder: 'craft' }, 3)
+    expect(s.name).toBe('Piano · Scale of C · do it with the material')
+    expect(s.minutes).toBe(10)
+  })
+})

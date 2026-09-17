@@ -76,9 +76,11 @@ export interface TodayState {
   daylight?: boolean
   /** Daycare pickup on this day, HH:MM, or null: she is away from the drop-off until then. Absent means no daycare. */
   pickupTime?: string | null
+  /** Past her bedtime on a day she is with you: her moves wait for a day she is awake for. Absent means she is up. */
+  asleep?: boolean
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare'
+export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare' | 'asleep'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -109,6 +111,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if (move.id === 'time-with-her' && !t.withHer) return 'schedule'
   // Phase F: practising a skill together needs her here; the day's context says so, never a draw.
   if (move.family === 'fatherhood' && !t.withHer) return 'schedule'
+  // Past her bedtime she is asleep: her moves wait.
+  if ((move.family === 'fatherhood' || move.id === 'time-with-her') && t.asleep) return 'asleep'
   // On a daycare day she is there only after pickup: her moves fit the evening, and the afternoon only when pickup falls inside it.
   if ((move.family === 'fatherhood' || move.id === 'time-with-her') && t.pickupTime && (s.block === 'morning' || (s.block === 'afternoon' && minutesOf(t.pickupTime) >= minutesOf(blockStart.evening)))) return 'daycare'
   if (move.id === 'church-early' && !t.churchDay) return 'schedule'

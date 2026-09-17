@@ -22,6 +22,7 @@ import { useLive } from './live'
 import { MorningChips, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { offerForSlot, recordOutcome } from './offerFlow'
+import { usualFor } from './forecastFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
 import { activeBlocks, askedReadings, type Depth } from './settings'
@@ -244,6 +245,7 @@ export function SummaryScreen({
       </header>
 
       <ReadingOfCheckIn checkin={record} />
+      {complete && <UsualLine day={day} block={block} />}
 
       <div class="calc">
         <Glance all={all} day={day} blocks={glanceBlocks} />
@@ -325,6 +327,17 @@ export function SummaryScreen({
         </button>
       </div>
     </section>
+  )
+}
+
+/** What is usual at this time, beside the reading just given: the slot's forecast, when one was made. */
+function UsualLine({ day, block }: { day: string; block: Block }) {
+  const usual = useLive(() => usualFor(day, block), [day, block])
+  if (!usual) return null
+  return (
+    <p class="note no-gap" data-testid="usual-line">
+      {fill(copy.summary.usual, { expected: String(usual.point), lo: String(usual.lo), hi: String(usual.hi) })}
+    </p>
   )
 }
 

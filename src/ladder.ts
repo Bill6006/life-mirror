@@ -1,6 +1,6 @@
 import type { Effort, Move } from './catalogue'
 import { copy } from './copy'
-import type { LadderKind, RungMark, Skill } from './db'
+import type { Aim, LadderKind, RungMark, Skill } from './db'
 
 // The proof ladder for the certification: each skill climbs watched or read → practiced →
 // built once → broke and fixed → explained from memory → resume bullet. Counts only, never a
@@ -25,7 +25,7 @@ export const TOP_RUNG = 6
 
 /** Minutes for the step that proves each rung, indexed by rung 1 to 6; one sitting each. */
 export const RUNG_MINUTES: readonly number[] = [0, 20, 25, 25, 25, 10, 5]
-/** A word or a rule climbs in shorter sittings. */
+/** A word, a rule, a piece or a stroke climbs in shorter sittings. */
 export const LANGUAGE_RUNG_MINUTES: readonly number[] = [0, 10, 10, 10, 10, 10, 10]
 
 /** The ladder a skill climbs; older skills, and those without a subject, climb the technical one. */
@@ -34,7 +34,7 @@ export function ladderOf(skill: Pick<Skill, 'ladder'>): LadderKind {
 }
 
 function wording(kind: LadderKind): { rungs: readonly string[]; steps: readonly string[]; what: readonly string[] } {
-  return kind === 'language' ? copy.ladder.language : copy.ladder
+  return kind === 'language' ? copy.ladder.language : kind === 'craft' ? copy.ladder.craft : copy.ladder
 }
 
 export function sittingOf(move: Move): Sitting {
@@ -84,7 +84,7 @@ export function rungStep(skill: Skill, rung: number): Sitting {
     title,
     ...(subject ? { subject } : {}),
     what: words.what[r - 1],
-    minutes: (kind === 'language' ? LANGUAGE_RUNG_MINUTES : RUNG_MINUTES)[r],
+    minutes: (kind === 'technical' ? RUNG_MINUTES : LANGUAGE_RUNG_MINUTES)[r],
     effort: r === 3 || r === 4 ? 'medium' : 'low',
     kind: 'rung',
   }
@@ -92,6 +92,22 @@ export function rungStep(skill: Skill, rung: number): Sitting {
 
 export function liveSkillsOf(skills: readonly Skill[]): Skill[] {
   return skills.filter((s) => s.archivedAt === null).sort((a, b) => a.order - b.order)
+}
+
+/** The first study commitment: the one the skills typed before subjects existed belong to, and the one older offers name by kind alone. */
+export function firstStudyId(studyAims: readonly Pick<Aim, 'id'>[]): number | null {
+  return studyAims.reduce<number | null>((m, a) => (a.id !== undefined && (m === null || a.id < m) ? a.id : m), null)
+}
+
+/** The skills a study commitment climbs: those carrying its name; the ones without a subject belong to the first study commitment. */
+export function skillsOf(aim: Pick<Aim, 'id' | 'name'>, skills: readonly Skill[], studyAims: readonly Pick<Aim, 'id'>[]): Skill[] {
+  const name = (aim.name ?? '').trim().toLowerCase()
+  const first = firstStudyId(studyAims)
+  return liveSkillsOf(skills).filter((s) => {
+    const subject = (s.subject ?? '').trim().toLowerCase()
+    if (subject) return name !== '' && subject === name
+    return aim.id === undefined || aim.id === first
+  })
 }
 
 /**

@@ -1368,3 +1368,20 @@ button.chip {
   color: var(--faint);
 }
 
+/* A commitment as one row on Now: the subject or kind above the step, its minutes under, one tap beside. */
+.aim-row .row-main .sub {
+  display: block;
+}
+
+.aim-row-title {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.aim-row-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

@@ -112,6 +112,14 @@ export function answerPassive(offer: Offer, passiveOutcome: 'done' | 'no' | null
   })
 }
 
+/** Rule 13: an answer can be deleted; the offer's question then opens again for the next check-in. */
+export function deleteOutcome(outcome: Outcome): Promise<void> {
+  return db.transaction('rw', [db.outcomes, db.offers], async () => {
+    if (outcome.id !== undefined) await db.outcomes.delete(outcome.id)
+    await db.offers.update(outcome.offerId, { closedAt: null })
+  })
+}
+
 /** When a one-time setup was made: its latest done day while it stands, or null. */
 export async function standingSince(moveId: string): Promise<string | null> {
   const settings = await getSettings()
@@ -178,7 +186,7 @@ async function todayState(day: string, settings: Settings, now: Date = new Date(
   const ctx = await ensureDayContext(day, settings)
   // A one-time setup already made stays out; the office and the daylight hours decide the two needs the app can know.
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime, asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)) }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */

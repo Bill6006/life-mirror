@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { NavRow } from './controls'
 import { copy } from './copy'
@@ -5,7 +6,7 @@ import { getSettings } from './db'
 import { fill, formatDayLong, formatDayShort } from './format'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
-import { offerForSlot, offerHistory, pendingOffers, skipOffer } from './offerFlow'
+import { deleteOutcome, offerForSlot, offerHistory, pendingOffers, skipOffer } from './offerFlow'
 import { readingById } from './readings'
 
 /** The Moves tab: the live move with why and testing, then the doors to History and the catalogue. */
@@ -53,6 +54,7 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
 /** Every offer, its card, and what happened: three records, shown as three. */
 export function HistoryScreen({ onClose }: { onClose: () => void }) {
   const entries = useLive(() => offerHistory(copy.move.nothing), [])
+  const [confirm, setConfirm] = useState<number | null>(null)
   if (!entries) return <section class="screen" />
   const h = copy.history
 
@@ -83,6 +85,11 @@ export function HistoryScreen({ onClose }: { onClose: () => void }) {
                     </span>
                   </span>
                   <span class="row-side ink">{status}</span>
+                  {outcome && outcome.id !== undefined && (
+                    <button type="button" class="textbtn faint" data-testid="history-delete" onClick={() => (confirm === outcome.id ? void deleteOutcome(outcome).then(() => setConfirm(null)) : setConfirm(outcome.id as number))}>
+                      {confirm === outcome.id ? h.deleteConfirm : h.deleteAnswer}
+                    </button>
+                  )}
                 </li>
               )
             })}

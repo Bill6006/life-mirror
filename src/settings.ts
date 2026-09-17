@@ -27,6 +27,8 @@ export interface WeekShape {
   studyNights: Record<Weekday, boolean>
   /** Days at the office rather than at home; the exception is one chip inside the check-in. Quiet is not to be had there. */
   officeDays: Record<Weekday, boolean>
+  /** Days she is at daycare: the pickup, and the daycare day it implies, hold on these. */
+  daycareDays: Record<Weekday, boolean>
   /** Daycare pickup, HH:MM, or null when there is none. */
   pickupTime: string | null
   /** Solo-parenting hours run from pickup until this time. */
@@ -87,8 +89,9 @@ export interface Settings {
 }
 
 const NO_DAY: Record<Weekday, boolean> = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }
+const WEEKDAYS_ONLY: Record<Weekday, boolean> = { 0: false, 1: true, 2: true, 3: true, 4: true, 5: true, 6: false }
 
-export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyNights: NO_DAY, officeDays: NO_DAY, pickupTime: null, soloUntil: '20:00' }
+export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyNights: NO_DAY, officeDays: NO_DAY, daycareDays: WEEKDAYS_ONLY, pickupTime: null, soloUntil: '20:00' }
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 1,
@@ -135,6 +138,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
       livesWithMe: stored.week?.livesWithMe ?? DEFAULT_WEEK.livesWithMe,
       studyNights: { ...DEFAULT_WEEK.studyNights, ...(stored.week?.studyNights ?? {}) },
       officeDays: { ...DEFAULT_WEEK.officeDays, ...(stored.week?.officeDays ?? {}) },
+      daycareDays: { ...DEFAULT_WEEK.daycareDays, ...(stored.week?.daycareDays ?? {}) },
     },
     reminded: stored.reminded ?? {},
     cloud: { ...DEFAULT_SETTINGS.cloud, ...(stored.cloud ?? {}) },

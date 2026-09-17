@@ -159,6 +159,7 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData, onCloud
         <TimeRow label={copy.week.daylightTo} value={settings.daylight.to} onChange={(to) => set((s) => ({ ...s, daylight: { ...s.daylight, to } }))} />
         <SwitchRow label={copy.week.pickupOn} on={w.pickupTime !== null} onChange={(on) => setWeek((week) => ({ ...week, pickupTime: on ? '17:00' : null }))} testid="pickup-on" />
         {w.pickupTime !== null && <TimeRow label={copy.week.pickupTime} value={w.pickupTime} onChange={(pickupTime) => setWeek((week) => ({ ...week, pickupTime }))} />}
+        {w.pickupTime !== null && <DayChips label={copy.week.daycareDays} value={w.daycareDays} onChange={(daycareDays) => setWeek((week) => ({ ...week, daycareDays }))} testid="daycare-days" />}
         {w.pickupTime !== null && <TimeRow label={copy.week.soloUntil} value={w.soloUntil} onChange={(soloUntil) => setWeek((week) => ({ ...week, soloUntil }))} />}
       </div>
       <p class="note faint">{copy.week.note}</p>

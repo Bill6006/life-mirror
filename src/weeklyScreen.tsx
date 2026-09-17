@@ -39,6 +39,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
               <WeekAhead rows={w.weekAhead} />
             </div>
             <p class="note no-gap">{c.aheadCaption}</p>
+            {w.model && <p class="note faint no-gap">{fill(c.model, { model: copy.brief.models[w.model] })}</p>}
           </>
         ) : (
           <p class="note no-gap">{c.aheadNone}</p>

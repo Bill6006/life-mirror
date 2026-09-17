@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type OutsideDay, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
@@ -21,6 +21,8 @@ export interface RecordsData {
   anchorSwaps?: readonly AnchorSwap[]
   herSkills?: readonly HerSkill[]
   moments?: readonly Moment[]
+  /** The other app's finished workouts, as read from the shared cloud copy. */
+  outside?: readonly OutsideDay[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -98,6 +100,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
       checkins,
       freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
+      outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
       ...(records
         ? {
             offers: records.offers.map((o) => {
@@ -151,6 +154,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     'felt_close_to_god',
     'nothing_landed_today',
     'hard_to_see_the_point_today',
+    'heavy_caffeine_this_morning',
     'note',
     ...privateItems.map((it) => `private: ${it.name}`),
   ]
@@ -165,6 +169,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     yesNo(Boolean(c.extras?.closeToGod)),
     yesNo(Boolean(c.extras?.nothingLanded)),
     yesNo(Boolean(c.extras?.hardToSeePoint)),
+    yesNo(Boolean(c.extras?.heavyCaffeine)),
     c.extras?.note ?? '',
     ...privateItems.map((it) => yesNo(Boolean(c.extras?.private?.[String(it.id)]))),
   ])

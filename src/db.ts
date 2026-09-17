@@ -285,15 +285,19 @@ export type AimKind = 'certification' | 'person' | 'practice'
 export interface Aim {
   id?: number
   kind: AimKind
-  /** Null for the certification, whose step comes from the ladder. */
+  /** Null for a study commitment, whose step comes from its ladder. */
   stepMoveId: string | null
+  /** A study commitment's subject, typed once: the certification, the language, the instrument. Its skills carry the same name. */
+  name?: string
+  /** A study commitment's six proofs, chosen once. */
+  ladder?: LadderKind
   createdAt: string
   archivedAt: string | null
 }
 
 /** A skill on the proof ladder, typed once on this phone. */
-/** Which six proofs a skill climbs: the technical ladder, or the language one. */
-export type LadderKind = 'technical' | 'language'
+/** Which six proofs a skill climbs: the technical ladder, the language one, or the one for a skill learned by doing. */
+export type LadderKind = 'technical' | 'language' | 'craft'
 
 export interface Skill {
   id?: number
@@ -682,8 +686,8 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
       studyNight: w.studyNights[weekday],
       churchDay: w.churchDay === weekday,
       atOffice: w.officeDays[weekday],
-      // Daycare is a weekday matter: the pickup, and the daycare day it implies, hold Monday to Friday.
-      pickupTime: weekday >= 1 && weekday <= 5 ? w.pickupTime : null,
+      // The pickup, and the daycare day it implies, hold on the daycare days you set.
+      pickupTime: w.daycareDays[weekday] ? w.pickupTime : null,
       soloUntil: w.soloUntil,
       changed: false,
       createdAt: new Date().toISOString(),

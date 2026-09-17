@@ -102,3 +102,54 @@ export function AimCard({
     </div>
   )
 }
+
+/**
+ * The same commitment on Now, as one row: its subject or kind, the step, its minutes, and one
+ * tap. Several fit without a scroll; Change the step and Remove live on Aims.
+ */
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, onResume, onUnblock }: { aim: Aim; step: Sitting; open: boolean; openOffer: Offer | null; blocked: BlockReason | null; unblock: Move | null; onResume: () => void; onUnblock: () => void }) {
+  const c = copy.aims
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 15_000)
+    return () => clearInterval(id)
+  }, [])
+  const canDone = openOffer !== null && doneOpen(openOffer)
+  return (
+    <li class="row is-static aim-row" data-testid="aim-card" data-kind={aim.kind}>
+      <span class="row-main">
+        <span class="sub">{step.subject ?? c.kinds[aim.kind]}</span>
+        <span class="aim-row-title" data-testid="aim-step">
+          {step.title}
+        </span>
+        <span class="sub">
+          {fill(copy.catalogue.minutes, { n: String(step.minutes) })}
+          {blocked && unblock && !open && ` · ${fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })}`}
+        </span>
+      </span>
+      <span class="row-side aim-row-side">
+        {open ? (
+          <>
+            <span data-testid="aim-started">{c.startedShort}</span>
+            {canDone && openOffer && (
+              <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(openOffer)}>
+                {copy.move.done}
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {blocked && unblock && (
+              <button type="button" class="textbtn" data-testid="aim-unblock" onClick={onUnblock}>
+                {c.unblockStart}
+              </button>
+            )}
+            <button type="button" class="pill-quiet" data-testid="aim-resume" onClick={onResume}>
+              {c.resume}
+            </button>
+          </>
+        )}
+      </span>
+    </li>
+  )
+}
