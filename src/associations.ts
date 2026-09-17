@@ -82,6 +82,42 @@ export function associationFor(checkins: readonly CheckIn[], today: string, isEv
   return likeForLike(eveningPoints(checkins, today, isEvent))
 }
 
+/** Every morning before today as a point: whether it carried the event, its band, and what that afternoon read. */
+export function morningPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): DayPoint[] {
+  const byKey = indexCheckIns(checkins)
+  return checkins
+    .filter((c) => c.block === 'morning' && c.day < today)
+    .map((c) => {
+      const r = readingOf(c)
+      const a = byKey.get(slotKey(c.day, 'afternoon'))
+      const ar = a ? readingOf(a) : null
+      return { day: c.day, band: r ? bandOf(r.value) : null, event: isEvent(c), outcome: ar ? ar.value : null }
+    })
+}
+
+/** A morning's statement, like for like: the afternoons after mornings that carried it, against the afternoons after mornings that started the same. */
+export function morningAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): Association {
+  return likeForLike(morningPoints(checkins, today, isEvent))
+}
+
+/** Every day before today with a morning logged, as a point: whether the day carried the event, the morning's band, and what the evening read. */
+export function dayPoints(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean): DayPoint[] {
+  const byKey = indexCheckIns(checkins)
+  return checkins
+    .filter((c) => c.block === 'morning' && c.day < today)
+    .map((c) => {
+      const r = readingOf(c)
+      const e = byKey.get(slotKey(c.day, 'evening'))
+      const er = e ? readingOf(e) : null
+      return { day: c.day, band: r ? bandOf(r.value) : null, event: isEventDay(c.day), outcome: er ? er.value : null }
+    })
+}
+
+/** A day's event, like for like: the evenings of days that carried it, against the evenings of days that started the same. */
+export function dayAssociation(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean): Association {
+  return likeForLike(dayPoints(checkins, today, isEventDay))
+}
+
 export type AssociationTier = 'little' | 'unclear' | 'promising'
 
 /**

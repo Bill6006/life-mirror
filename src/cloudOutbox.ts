@@ -32,7 +32,8 @@ export interface CloudRowState {
 
 /** The sync state, one record. Never synced itself. */
 export interface CloudMeta {
-  key: 'state'
+  /** 'state' for this app's own rows; 'outside' for the other app's rows this app reads. */
+  key: 'state' | 'outside'
   /** The latest synced_at pulled; the next pull asks for rows after it. */
   watermark: string
   lastSyncAt: string | null

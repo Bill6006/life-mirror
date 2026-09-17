@@ -74,6 +74,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       hardToSeeThePointToday: Boolean(c.extras?.hardToSeePoint),
       coolingOffEvent: Boolean(c.extras?.coolingOff),
       bigSocialEvent: Boolean(c.extras?.bigSocial),
+      heavyCaffeineThisMorning: Boolean(c.extras?.heavyCaffeine),
       necessitiesMissed: Object.keys(c.extras?.necessities ?? {}),
       note: c.extras?.note ?? null,
       ...(opts.includePrivate ? { private: Object.keys(c.extras?.private ?? {}).map((id) => names.get(id) ?? `item ${id}`) } : {}),
@@ -92,7 +93,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         swaps: (records?.anchorSwaps ?? []).map((s) => ({ reading: s.reading, position: s.position, from: s.from, to: s.to, on: s.at, answers: s.answers, stretchDays: s.stretchDays })),
         retiredReadings: settings.retiredReadings,
         weights: settings.weights,
-        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent'],
+        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning'],
       },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
       checkins,
@@ -127,7 +128,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ? {
             aims: {
               commitments: aims.aims.map((a) => ({ kind: a.kind, step: a.stepMoveId, createdAt: a.createdAt, archivedAt: a.archivedAt })),
-              skills: aims.skills.map((s) => ({ id: s.id, name: s.name, order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
+              skills: aims.skills.map((s) => ({ id: s.id, name: s.name, subject: s.subject ?? null, order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
               ladderMarks: aims.marks.map((m) => ({ skill: m.skillId, rung: m.rung, at: m.at, via: m.via })),
             },
           }

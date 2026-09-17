@@ -10,7 +10,7 @@ import { allWins, db, getSettings, type Aim, type AimKind } from './db'
 import { fill, formatDayLong, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
-import { currentRung, ladderCounts, rungName, sittingOf, TOP_RUNG } from './ladder'
+import { currentRung, groupBySubject, ladderCounts, rungName, sittingOf, TOP_RUNG } from './ladder'
 import { useLive } from './live'
 
 // The Aims tab: the commitments you chose with their protected steps, and the doors to the
@@ -222,6 +222,7 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
   const skills = useLive(liveSkills, [])
   const marks = useLive(rungMarks, [])
   const [name, setName] = useState('')
+  const [subject, setSubject] = useState('')
   if (!skills || !marks) return <section class="screen" />
   const l = copy.ladder
   const counts = ladderCounts(skills, marks)
@@ -229,7 +230,7 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
   function add() {
     const n = name.trim()
     if (!n) return
-    void addSkill(n)
+    void addSkill(n, subject)
     setName('')
   }
 
@@ -251,7 +252,15 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
           <p class="note faint in-card">{l.noSkills}</p>
         ) : (
           <ul class="rows">
-            {skills.map((s) => {
+            {groupBySubject(skills).flatMap((g) => [
+              ...(g.subject
+                ? [
+                    <li key={`subject-${g.subject}`} class="row is-static" data-testid="skill-subject">
+                      <span class="row-main faint">{g.subject}</span>
+                    </li>,
+                  ]
+                : []),
+              ...g.skills.map((s) => {
               const rung = currentRung(marks, s.id as number)
               return (
                 <li key={s.id} class="skill-row" data-testid="skill-row">
@@ -272,12 +281,22 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
                   </div>
                 </li>
               )
-            })}
+              }),
+            ])}
           </ul>
         )}
       </div>
 
       <div class="add">
+        <input
+          class="input"
+          type="text"
+          maxLength={40}
+          placeholder={l.subjectPlaceholder}
+          value={subject}
+          data-testid="subject-input"
+          onInput={(e) => setSubject((e.currentTarget as HTMLInputElement).value)}
+        />
         <input
           class="input"
           type="text"
@@ -295,6 +314,7 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
         </button>
       </div>
       {skills.length === 0 && <p class="note faint">{l.emptyStep}</p>}
+      <p class="note faint">{l.subjectNote}</p>
 
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>

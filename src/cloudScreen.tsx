@@ -62,6 +62,9 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{c.title}</p>
       </header>
       <p class="note">{c.intro}</p>
+      <p class="note faint" data-testid="cloud-outside">
+        {c.outside}
+      </p>
 
       <h2 class="section">{c.url}</h2>
       <div class="card pad">

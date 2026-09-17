@@ -89,7 +89,7 @@ export interface Weekly {
 
 /** Everything the weekly view shows, from the records at the moment of asking. */
 export async function weeklyData(today: string): Promise<Weekly> {
-  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings] = await Promise.all([
+  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings, outside] = await Promise.all([
     allCheckIns(),
     db.offers.toArray(),
     db.outcomes.toArray(),
@@ -99,6 +99,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     db.forecasts.toArray(),
     db.forecastScores.toArray(),
     getSettings(),
+    db.outside.toArray(),
   ])
   const obs = observations(checkins, offers, outcomes)
   const effectCards = cards.filter((c) => c.origin !== 'weight')
@@ -114,7 +115,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
   })
   return {
     scorecard: scorecard(scores, checkins, declarations, stats),
-    best: bestDays(checkins, offers, outcomes, contexts, today),
+    best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day))),
     gap: gap(checkins, today),
     moved: movedThisWeek(checkins, today),
     lasts: whatLasts(obs, checkins),

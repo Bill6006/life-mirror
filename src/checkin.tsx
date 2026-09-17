@@ -19,7 +19,7 @@ import {
 } from './db'
 import { fill, formatTime } from './format'
 import { useLive } from './live'
-import { TodayChips } from './extras'
+import { MorningChips, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { offerForSlot, recordOutcome } from './offerFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
@@ -281,6 +281,7 @@ export function SummaryScreen({
         </ul>
       </div>
 
+      {block === 'morning' && <MorningChips day={day} />}
       {block !== 'evening' && <TodayChips day={day} />}
 
       {block === 'evening' && (

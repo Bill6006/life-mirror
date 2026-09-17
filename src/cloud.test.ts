@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { deleteCloudCopy, ensureDeviceId, getMeta, latestPerRow, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { deleteCloudCopy, ensureDeviceId, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
 import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
@@ -375,5 +375,46 @@ describe('the token on the phone', () => {
     expect(phone.getItem(DEVICE_KEY)).toBe(id)
     await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, deviceId: '' } }))
     expect(await ensureDeviceId()).toBe(id)
+  })
+})
+
+describe('the other app’s finished workouts, read from the same database', () => {
+  const outsideRow = (id: string, body: Record<string, unknown> | null, synced_at: string, deleted: 0 | 1 = 0): CloudRow => ({
+    app: OUTSIDE_APP,
+    store: 'workouts',
+    id,
+    day: null,
+    body: body ? JSON.stringify(body) : null,
+    updated_at: synced_at,
+    deleted,
+    device_id: 'other-app',
+    synced_at,
+  })
+
+  it('reads a completed workout as an outside day on its local date, takes a deleted one back, and never writes the other app’s rows', async () => {
+    const store = memoryStore()
+    await store.upsert([
+      outsideRow('w1', { id: 'w1', startedAt: '2026-09-10T22:30:00.000Z', completedAt: new Date(2026, 8, 11, 7, 45).toISOString(), elapsedSeconds: 2700 }, '2026-09-11T08:00:00.000Z'),
+      outsideRow('w2', { id: 'w2', startedAt: '2026-09-12T10:00:00.000Z', completedAt: null }, '2026-09-12T11:00:00.000Z'),
+      outsideRow('w3', { id: 'w3', completedAt: new Date(2026, 8, 13, 18, 0).toISOString() }, '2026-09-13T19:00:00.000Z'),
+    ])
+    await withToken(store)
+    await syncNow()
+    const days = await db.outside.toArray()
+    expect(days.map((d) => d.id).sort()).toEqual(['w1', 'w3'])
+    expect(days.find((d) => d.id === 'w1')).toMatchObject({ day: '2026-09-11', minutes: 45, source: 'workout' })
+    expect(days.find((d) => d.id === 'w3')?.minutes).toBeNull()
+    expect((await getOutsideMeta()).watermark).toBe('2026-09-13T19:00:00.000Z')
+    expect([...store.rows.values()].filter((r) => r.app === OUTSIDE_APP)).toHaveLength(3)
+
+    await store.upsert([outsideRow('w1', null, '2026-09-14T09:00:00.000Z', 1)])
+    await syncNow()
+    expect((await db.outside.toArray()).map((d) => d.id)).toEqual(['w3'])
+  })
+
+  it('says what an outside row means, and nothing for one it cannot read', () => {
+    expect(outsideDayOf('not json')).toBeNull()
+    expect(outsideDayOf(JSON.stringify({ completedAt: 'yesterday' }))).toBeNull()
+    expect(outsideDayOf(JSON.stringify({ completedAt: new Date(2026, 8, 11, 7, 45).toISOString(), elapsedSeconds: 90 }))).toMatchObject({ day: '2026-09-11', minutes: 2 })
   })
 })

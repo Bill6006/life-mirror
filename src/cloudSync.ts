@@ -1,3 +1,5 @@
+import { dayKey } from './blocks'
+import type { OutsideDay } from './db'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
@@ -69,6 +71,29 @@ function setLive(s: SyncState): void {
 }
 
 const DEFAULT_META: CloudMeta = { key: 'state', watermark: '', lastSyncAt: null, lastError: null }
+
+/** The other app of yours that writes to the same database; this app reads its finished workouts and writes none of its rows. */
+export const OUTSIDE_APP = 'workout-conductor'
+const OUTSIDE_STORE = 'workouts'
+const DEFAULT_OUTSIDE: CloudMeta = { key: 'outside', watermark: '', lastSyncAt: null, lastError: null }
+
+export async function getOutsideMeta(): Promise<CloudMeta> {
+  return (await db.cloudMeta.get('outside')) ?? DEFAULT_OUTSIDE
+}
+
+/** What an outside workout row says: its local day from the completion time, and its minutes when the record carries them. */
+export function outsideDayOf(body: string): Omit<OutsideDay, 'id'> | null {
+  try {
+    const r = JSON.parse(body) as { completedAt?: unknown; elapsedSeconds?: unknown }
+    if (typeof r.completedAt !== 'string' || !r.completedAt) return null
+    const at = new Date(r.completedAt)
+    if (Number.isNaN(at.getTime())) return null
+    const minutes = typeof r.elapsedSeconds === 'number' && r.elapsedSeconds > 0 ? Math.round(r.elapsedSeconds / 60) : null
+    return { day: dayKey(at), minutes, at: r.completedAt, source: 'workout' }
+  } catch {
+    return null
+  }
+}
 
 export async function getMeta(): Promise<CloudMeta> {
   return (await db.cloudMeta.get('state')) ?? DEFAULT_META
@@ -248,6 +273,33 @@ async function pull(store: CloudStore): Promise<number> {
   return applied
 }
 
+/**
+ * The other app's finished workouts, read from the same database: the plan lets this app read
+ * other apps' rows, and it writes none of them. A row of its workouts store with a completion
+ * time becomes an outside day here; a deleted row takes its day back. Its own watermark, so a
+ * wipe or a fresh install starts again from the beginning.
+ */
+async function pullOutside(store: CloudStore): Promise<number> {
+  let applied = 0
+  for (;;) {
+    const meta = await getOutsideMeta()
+    const rows = await store.pull(OUTSIDE_APP, meta.watermark, PAGE)
+    if (!rows.length) break
+    await db.transaction('rw', [db.outside, db.cloudMeta], async () => {
+      for (const row of rows) {
+        if (row.store !== OUTSIDE_STORE) continue
+        const day = row.deleted || !row.body ? null : outsideDayOf(row.body)
+        if (day) await db.outside.put({ id: row.id, ...day })
+        else await db.outside.delete(row.id)
+      }
+      await db.cloudMeta.put({ ...meta, key: 'outside', watermark: rows[rows.length - 1].synced_at })
+    })
+    applied += rows.length
+    if (rows.length < PAGE) break
+  }
+  return applied
+}
+
 /** The latest queued change per row, in queue order, so one push carries one row per record. */
 export function latestPerRow(rows: readonly OutboxRow[]): OutboxRow[] {
   const latest = new Map<string, OutboxRow>()
@@ -307,6 +359,7 @@ async function run(): Promise<SyncOutcome> {
     const deviceId = await ensureDeviceId()
     const store = await factory(token)
     await pull(store)
+    await pullOutside(store)
     await push(store, deviceId)
     const now = new Date().toISOString()
     await store.touchDevice({ device_id: deviceId, app: APP, label: DEVICE_LABEL, at: now })

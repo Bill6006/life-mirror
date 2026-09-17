@@ -151,7 +151,7 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
         <p class="note faint no-gap">{c.weightNote}</p>
       </div>
 
-      {(ev.coolingOff || ev.bigSocial) && (
+      {(ev.coolingOff || ev.bigSocial || ev.heavyCaffeine || ev.workouts) && (
         <>
           <h2 class="section">{c.eventsTitle}</h2>
           <div class="card pad">
@@ -165,6 +165,16 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
               {ev.bigSocial && (
                 <p class="calc-line" data-testid="big-social-line">
                   <span class="calc-key">{c.socialTitle}</span> · {fill(c.socialLine, { n: String(ev.bigSocial.times), with: pct(ev.bigSocial.withEvent.mean), without: pct(ev.bigSocial.without.mean) })}
+                </p>
+              )}
+              {ev.heavyCaffeine && (
+                <p class="calc-line" data-testid="caffeine-line">
+                  <span class="calc-key">{c.caffeineTitle}</span> · {fill(c.caffeineLine, { n: String(ev.heavyCaffeine.times), with: pct(ev.heavyCaffeine.withEvent.mean), without: pct(ev.heavyCaffeine.without.mean) })}
+                </p>
+              )}
+              {ev.workouts && (
+                <p class="calc-line" data-testid="workout-line">
+                  <span class="calc-key">{c.workoutTitle}</span> · {fill(c.workoutLine, { n: String(ev.workouts.times), with: pct(ev.workouts.withEvent.mean), without: pct(ev.workouts.without.mean) })}
                 </p>
               )}
             </div>

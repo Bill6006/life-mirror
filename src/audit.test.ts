@@ -48,7 +48,7 @@ describe('chips that stop appearing', () => {
   it('stops a chip after thirty logged evenings without a tap, and one tap in Settings brings it back', () => {
     const evenings = Array.from({ length: CHIP_STRETCH }, (_, i) => ci(addDays(TODAY, -(i + 1)), 'evening', allAt(blockReadings('evening'), 3)))
     const states = chipStates(evenings, [], {}, TODAY)
-    expect(states).toHaveLength(8)
+    expect(states).toHaveLength(9)
     expect(chipRetired('nothingLanded', states)).toBe(true)
     expect(states.find((s) => s.id === 'nothingLanded')).toMatchObject({ evenings: 30, lastTap: null, retired: true })
     // One tap in the stretch keeps it.

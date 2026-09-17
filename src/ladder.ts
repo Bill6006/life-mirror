@@ -59,9 +59,10 @@ export function rungName(rung: number): string {
 /** The step that proves a skill's next rung, sized to one sitting. */
 export function rungStep(skill: Skill, rung: number): Sitting {
   const r = Math.max(1, Math.min(TOP_RUNG, rung))
+  const subject = skill.subject?.trim()
   return {
     id: rungId(skill.id as number, r),
-    name: `${skill.name} · ${copy.ladder.steps[r - 1]}`,
+    name: `${subject ? `${subject} · ` : ''}${skill.name} · ${copy.ladder.steps[r - 1]}`,
     what: copy.ladder.what[r - 1],
     minutes: RUNG_MINUTES[r],
     effort: r === 3 || r === 4 ? 'medium' : 'low',
@@ -92,6 +93,17 @@ export function nextStep(skills: readonly Skill[], marks: readonly RungMark[]): 
   if (!pick) pick = live.find((s) => currentRung(marks, s.id as number) < TOP_RUNG) ?? null
   if (!pick) return null
   return { skill: pick, rung: currentRung(marks, pick.id as number) + 1 }
+}
+
+/** Skills by subject: the ones without a subject first, then each subject in the order it was first typed, skills in your order within each. */
+export function groupBySubject(skills: readonly Skill[]): { subject: string | null; skills: Skill[] }[] {
+  const groups = new Map<string | null, Skill[]>()
+  for (const s of liveSkillsOf(skills)) {
+    const key = s.subject?.trim() ? s.subject.trim() : null
+    groups.set(key, [...(groups.get(key) ?? []), s])
+  }
+  const out = [...groups.entries()].map(([subject, list]) => ({ subject, skills: list }))
+  return out.sort((a, b) => (a.subject === null ? -1 : b.subject === null ? 1 : 0))
 }
 
 /** How many skills stand on each rung, 0 to 6. Counts only. */

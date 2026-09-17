@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { moveById } from './catalogue'
 import type { RungMark, Skill } from './db'
-import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG } from './ladder'
+import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG, groupBySubject } from './ladder'
 
 const skill = (id: number, name: string, order = id): Skill => ({ id, name, order, createdAt: '', archivedAt: null })
 const mark = (skillId: number, rung: number, at: string, id?: number): RungMark => ({ id, skillId, rung, at, via: 'tap' })
@@ -56,5 +56,20 @@ describe('the proof ladder', () => {
     expect(smallerRung(rungStep(skill(1, 'One'), 5))?.minutes).toBe(5)
     expect(smallerRung(rungStep(skill(1, 'One'), 6))).toBeNull()
     expect(smallerRung(sittingOf(moveById('focused-block')))).toBeNull()
+  })
+})
+
+describe('the proof ladder with more than one subject', () => {
+  const skill = (id: number, name: string, order: number, subject?: string): Skill => ({ id, name, order, createdAt: '', archivedAt: null, ...(subject ? { subject } : {}) })
+
+  it('names a step with its subject when the skill has one', () => {
+    expect(rungStep(skill(1, 'Subnetting', 1), 1).name).toBe('Subnetting · watch or read it')
+    expect(rungStep(skill(2, 'Past tense', 2, 'Language'), 2).name).toBe('Language · Past tense · practise it')
+  })
+
+  it('groups skills by subject, the ones without a subject first, in your order within each', () => {
+    const groups = groupBySubject([skill(3, 'Verbs', 3, 'Language'), skill(1, 'Subnetting', 1), skill(2, 'Routing', 2, 'Networking'), skill(4, 'Nouns', 4, 'Language')])
+    expect(groups.map((g) => g.subject)).toEqual([null, 'Networking', 'Language'])
+    expect(groups[2].skills.map((s) => s.name)).toEqual(['Verbs', 'Nouns'])
   })
 })

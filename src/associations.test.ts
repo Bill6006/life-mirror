@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { associationFor, associationTier, coolingOffDuration, likeForLike, passiveAssociation, privateAssociations, whatBringsYouBack, type DayPoint } from './associations'
+import { associationFor, associationTier, coolingOffDuration, dayAssociation, likeForLike, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type DayPoint } from './associations'
 import { hasMove } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -115,5 +115,35 @@ describe('a passive item, like for like', () => {
     expect(associationTier({ ...a, times: 3 }, 25)).toBe('promising')
     expect(associationTier({ ...a, times: 3 }, 60)).toBe('unclear')
     expect(associationTier({ ...a, times: 3, diff: null }, 25)).toBe('little')
+  })
+})
+
+describe('a morning’s statement and a day’s event, like for like', () => {
+  // Every reading at one position scores 50; the three that read up are moved to make an afternoon or evening read 25 or 75.
+  const up = (day: string, block: CheckIn['block'], p: Position): CheckIn => ({ ...ci(day, block, 3), answers: { ...allAt(blockReadings(block), 3), mood: p, energy: p, focus: p } })
+  const all = [
+    ci('2026-09-01', 'morning', 3, { heavyCaffeine: true }),
+    up('2026-09-01', 'afternoon', 1),
+    up('2026-09-01', 'evening', 5),
+    ci('2026-09-02', 'morning', 3),
+    up('2026-09-02', 'afternoon', 5),
+    up('2026-09-02', 'evening', 1),
+    ci('2026-09-11', 'morning', 3, { heavyCaffeine: true }),
+  ]
+
+  it('sets the afternoons after marked mornings against the afternoons after mornings that started the same, today left out', () => {
+    const a = morningAssociation(all, '2026-09-11', (c) => Boolean(c.extras?.heavyCaffeine))
+    expect(a.times).toBe(1)
+    expect(a.withEvent).toEqual({ mean: 25, n: 1 })
+    expect(a.without).toEqual({ mean: 75, n: 1 })
+    expect(a.diff).toBe(-50)
+  })
+
+  it('sets the evenings of days that carried an event against the evenings of days that started the same', () => {
+    const a = dayAssociation(all, '2026-09-11', (d) => d === '2026-09-01')
+    expect(a.times).toBe(1)
+    expect(a.withEvent).toEqual({ mean: 75, n: 1 })
+    expect(a.without).toEqual({ mean: 25, n: 1 })
+    expect(a.diff).toBe(50)
   })
 })

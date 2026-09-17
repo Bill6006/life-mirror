@@ -1,4 +1,4 @@
-import { associationFor, type Association } from './associations'
+import { associationFor, morningAssociation, type Association } from './associations'
 import type { CheckIn } from './db'
 
 // The two evening chips are answered at once from your own record, like for like: how many
@@ -12,4 +12,9 @@ export type ChipAnswer = Association
 
 export function chipAnswer(all: readonly CheckIn[], key: ChipKey, today: string): ChipAnswer {
   return associationFor(all, today, (c) => Boolean(c.extras?.[key]))
+}
+
+/** The morning's chip, answered the same way: the afternoons after mornings that carried it. */
+export function morningChipAnswer(all: readonly CheckIn[], today: string): ChipAnswer {
+  return morningAssociation(all, today, (c) => Boolean(c.extras?.heavyCaffeine))
 }

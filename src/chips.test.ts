@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { chipStates } from './audit'
 import { chipAnswer } from './chips'
 import type { CheckIn } from './db'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -47,5 +48,14 @@ describe('the evening chips, answered from the record like for like', () => {
     expect(b.withEvent.n).toBe(0)
     expect(b.withEvent.mean).toBeNull()
     expect(chipAnswer(all, 'coolingOff', '2026-09-11').times).toBe(0)
+  })
+})
+
+describe('the morning’s chip retires by mornings', () => {
+  it('counts mornings, not evenings, for the heavy-caffeine chip', () => {
+    const mornings = Array.from({ length: 31 }, (_, i) => mk('2026-08-' + String(i + 1).padStart(2, '0'), 'morning', 3))
+    const states = chipStates(mornings, [], {}, '2026-09-01')
+    expect(states.find((s) => s.id === 'heavyCaffeine')).toMatchObject({ evenings: 31, retired: true })
+    expect(states.find((s) => s.id === 'nothingLanded')).toMatchObject({ evenings: 0, retired: false })
   })
 })

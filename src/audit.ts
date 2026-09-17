@@ -46,8 +46,8 @@ export function anchorSwapDue(reading: Reading, checkins: readonly CheckIn[], ex
   return null
 }
 
-export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'shower' | 'teeth' | 'food' | 'away'
-export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'shower', 'teeth', 'food', 'away']
+export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'shower' | 'teeth' | 'food' | 'away' | 'heavyCaffeine'
+export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'shower', 'teeth', 'food', 'away', 'heavyCaffeine']
 
 export interface ChipState {
   id: ChipId
@@ -71,16 +71,21 @@ function tapped(id: ChipId, c: CheckIn, ctx: DayContext | undefined): boolean {
       return Boolean(c.extras?.necessities?.[id])
     case 'away':
       return Boolean(ctx && ctx.changed && !ctx.withHer)
+    case 'heavyCaffeine':
+      return Boolean(c.extras?.heavyCaffeine)
   }
 }
 
 /** Every optional chip's state: a chip untapped across thirty logged evenings has stopped appearing until brought back. */
 export function chipStates(checkins: readonly CheckIn[], contexts: readonly DayContext[], chipsBack: Readonly<Record<string, string>>, today: string): ChipState[] {
   const ctx = new Map(contexts.map((c) => [c.day, c]))
-  const evenings = checkins.filter((c) => c.block === 'evening' && c.day <= today).sort((a, b) => (a.day < b.day ? -1 : 1))
+  const logged = (block: 'morning' | 'evening') => checkins.filter((c) => c.block === block && c.day <= today).sort((a, b) => (a.day < b.day ? -1 : 1))
+  const evenings = logged('evening')
+  const mornings = logged('morning')
   return CHIP_IDS.map((id) => {
     const broughtBack = chipsBack[id] ?? null
-    const since = evenings.filter((c) => !broughtBack || c.day >= broughtBack)
+    // The morning's chip counts mornings; every other chip counts evenings.
+    const since = (id === 'heavyCaffeine' ? mornings : evenings).filter((c) => !broughtBack || c.day >= broughtBack)
     const taps = since.filter((c) => tapped(id, c, ctx.get(c.day)))
     const lastTap = taps.length ? taps[taps.length - 1].day : null
     const untapped = lastTap ? since.filter((c) => c.day > lastTap).length : since.length

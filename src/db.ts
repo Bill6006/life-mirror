@@ -8,7 +8,7 @@ import { remindedKey, withDefaults, type Settings, type Weekday } from './settin
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
 export type WinOutcome = 'done' | 'partly' | 'no'
-export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial'
+export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine'
 export type NecessityKey = 'shower' | 'teeth' | 'food'
 export type Necessities = Partial<Record<NecessityKey, true>>
 
@@ -22,6 +22,8 @@ export interface Extras {
   /** Phase 10: a cooling-off event, whose duration the readings say; and an unplanned big social event. */
   coolingOff?: true
   bigSocial?: true
+  /** The morning's one statement chip, on the morning check-in: heavy caffeine this morning. Dose and timing stay out. */
+  heavyCaffeine?: true
   /** Phase 11: the necessities signal. A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated. */
   necessities?: Necessities
   /** One optional line for anything the app has no question for. Kept for the export. */
@@ -246,6 +248,21 @@ export interface Derived {
   count: number
 }
 
+/**
+ * A day another app of yours wrote a finished workout for, read from the shared cloud copy. Never
+ * a move, never a count: a fact the record can set against the others. Read from the cloud again
+ * after a wipe or on a fresh install; never synced from here.
+ */
+export interface OutsideDay {
+  /** The other app's record id. */
+  id: string
+  day: string
+  /** Minutes the session ran, when the record says. */
+  minutes: number | null
+  at: string
+  source: 'workout'
+}
+
 /** What HAPPENED: the one-tap answer at the next check-in. Null means the question was passed over. */
 export interface Outcome {
   id?: number
@@ -277,6 +294,8 @@ export interface Aim {
 export interface Skill {
   id?: number
   name: string
+  /** The subject the skill belongs to, typed once: a certification, a language. Empty when there is only the one. */
+  subject?: string
   order: number
   createdAt: string
   archivedAt: string | null
@@ -330,6 +349,7 @@ class LifeMirrorDB extends Dexie {
   cards!: Table<Card, number>
   outcomes!: Table<Outcome, number>
   days!: Table<DayContext, string>
+  outside!: Table<OutsideDay, string>
   studyNights!: Table<StudyNight, number>
   aims!: Table<Aim, number>
   skills!: Table<Skill, number>
@@ -486,6 +506,10 @@ class LifeMirrorDB extends Dexie {
       anchorSwaps: '++id, reading',
       herSkills: 'skillId',
       moments: '++id, day, skillId',
+    })
+    // Outside days: the other app's finished workouts, read from the cloud copy and never synced from here.
+    this.version(10).stores({
+      outside: 'id, day',
     })
     installOutbox(this)
   }
@@ -723,7 +747,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -737,6 +761,7 @@ export function wipeEverything(): Promise<void> {
       db.beliefs.clear(),
       db.tagBeliefs.clear(),
       db.derived.clear(),
+      db.outside.clear(),
       db.checkins.clear(),
       db.wins.clear(),
       db.privateItems.clear(),

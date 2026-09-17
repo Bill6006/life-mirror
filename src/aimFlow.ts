@@ -34,13 +34,15 @@ export async function liveSkills(): Promise<Skill[]> {
   return all.sort((a, b) => a.order - b.order)
 }
 
-export function addSkill(name: string): Promise<void> {
+/** A skill typed once, with the subject it belongs to when there is more than one. */
+export function addSkill(name: string, subject = ''): Promise<void> {
   return db.transaction('rw', db.skills, async () => {
     const trimmed = name.trim()
     if (!trimmed) return
     const all = await db.skills.toArray()
     const order = all.reduce((m, s) => Math.max(m, s.order), 0) + 1
-    await db.skills.add({ name: trimmed, order, createdAt: new Date().toISOString(), archivedAt: null })
+    const s = subject.trim()
+    await db.skills.add({ name: trimmed, ...(s ? { subject: s } : {}), order, createdAt: new Date().toISOString(), archivedAt: null })
   })
 }
 

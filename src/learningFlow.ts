@@ -1,6 +1,6 @@
 import { anchorSwapDue } from './audit'
 import { addDays } from './blocks'
-import { associationTier, coolingOffDuration, associationFor, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
+import { associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
 import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type Declaration, type Outcome, type TagBeliefRow } from './db'
 import { cardFromHypothesis, parseHypothesis, type Parsed } from './hypothesis'
@@ -141,6 +141,10 @@ export interface Evidence {
   privates: PrivateAssociation[]
   coolingOff: { association: Association; duration: { blocks: number; events: number } | null } | null
   bigSocial: Association | null
+  /** The morning's chip: the afternoons after mornings marked heavy caffeine, like for like. */
+  heavyCaffeine: Association | null
+  /** The other app's finished workouts: the evenings of workout days, like for like. */
+  workouts: Association | null
   bringsYouBack: { moveId: string; n: number }[]
   /** The null offer: how often it was offered, kept to, and skipped. */
   nothing: { offered: number; done: number; skipped: number }
@@ -175,6 +179,9 @@ export async function evidence(today: string): Promise<Evidence> {
   const weightCards = cards.filter((c) => c.origin === 'weight').map((card) => ({ card, stats: weightStanding(card, checkins, declarations, today).stats }))
   const cooling = associationFor(checkins, today, (c) => Boolean(c.extras?.coolingOff))
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial))
+  const caffeine = morningAssociation(checkins, today, (c) => Boolean(c.extras?.heavyCaffeine))
+  const outsideDays = new Set((await db.outside.toArray()).map((o) => o.day))
+  const workouts = dayAssociation(checkins, today, (d) => outsideDays.has(d))
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
   const weeks = first ? Math.floor((Math.max(0, (Date.parse(today) - Date.parse(first)) / 86_400_000) + 1) / 7) : 0
   const nulls = offers.filter((o) => o.moveId === NOTHING)
@@ -188,6 +195,8 @@ export async function evidence(today: string): Promise<Evidence> {
     privates: privateAssociations(settings.privateInSelection, items, checkins, today),
     coolingOff: cooling.times > 0 ? { association: cooling, duration: coolingOffDuration(checkins, today) } : null,
     bigSocial: social.times > 0 ? social : null,
+    heavyCaffeine: caffeine.times > 0 ? caffeine : null,
+    workouts: workouts.times > 0 ? workouts : null,
     bringsYouBack: whatBringsYouBack(offers, outcomes),
     nothing,
     weeks,

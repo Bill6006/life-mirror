@@ -98,7 +98,7 @@ function share(d: Difference): number {
  * passive items, the chips, the necessities) and what you don't (the weekday, last night's
  * sleep, who was around). Silent under twenty days, and always says how many it rests on.
  */
-export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string): BestDays {
+export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set()): BestDays {
   const readings = dayReadings(checkins, today)
   if (readings.length < BEST_DAYS_MIN) return { days: readings.length, threshold: BEST_DAYS_MIN, silent: true, top: [], controlled: [], uncontrolled: [] }
   const sorted = [...readings].sort((a, b) => b.value - a.value)
@@ -132,6 +132,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
 
   const ctx = new Map(contexts.map((c) => [c.day, c]))
   const morning = (day: string) => byDay.get(day)?.find((c) => c.block === 'morning')
+  controlled.push(count('heavy caffeine in the morning', (d) => Boolean(morning(d)?.extras?.heavyCaffeine)))
   const uncontrolled: Difference[] = []
   for (let w = 0; w < 7; w++) uncontrolled.push(count(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][w], (d) => ctx.get(d)?.weekday === w || (!ctx.has(d) && new Date(`${d}T12:00:00`).getDay() === w)))
   uncontrolled.push(count('slept seven hours or more', (d) => (morning(d)?.answers.sleepHours ?? 0) >= 4))
@@ -140,6 +141,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   uncontrolled.push(count('a study night', (d) => ctx.get(d)?.studyNight === true))
   uncontrolled.push(count('the church day', (d) => ctx.get(d)?.churchDay === true))
   uncontrolled.push(count('an office day', (d) => ctx.get(d)?.atOffice === true))
+  uncontrolled.push(count('a workout day', (d) => outside.has(d)))
 
   const pick = (list: Difference[]) =>
     list

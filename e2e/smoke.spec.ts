@@ -376,8 +376,10 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
 
   // The proof ladder: a skill typed once on the phone, moved only by tap; the step follows it.
   await page.getByRole('button', { name: /^The proof ladder/ }).click()
+  await page.getByTestId('subject-input').fill('Networking')
   await page.getByTestId('skill-input').fill('Subnetting')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByTestId('skill-subject')).toContainText('Networking')
   await expect(page.getByTestId('skill-row')).toContainText('Not started')
   await page.getByTestId('rung-up').click()
   await expect(page.getByTestId('skill-row')).toContainText('Watched or read')
@@ -474,7 +476,7 @@ test('testing smarter: readings and chips are decided by you, no swap yet, the b
   await page.getByRole('button', { name: /^Readings and chips/ }).click()
   await expect(page.getByTestId('readings-screen')).toBeVisible()
   await expect(page.getByTestId('proposals-none')).toContainText('No proposal')
-  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(8)
+  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(9)
   await expect(page.locator('[data-testid^="chip-back-"]')).toHaveCount(0)
   await expect(page.getByTestId('swaps-none')).toContainText('No swap yet')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
@@ -664,6 +666,10 @@ test('the exception chips sit on a morning summary too, and change today alone',
   await page.getByRole('button', { name: /Check in/ }).click()
   await tapThrough(page)
   await expect(page.getByTestId('give-back')).toBeVisible()
+  // The morning's own chip, answered from the record.
+  await page.getByTestId('chip-heavyCaffeine').click()
+  await expect(page.getByTestId('chip-heavyCaffeine')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('chip-answer').first()).toContainText('First time recorded')
   await expect(page.getByTestId('chip-away')).toBeVisible()
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'false')
   await page.getByTestId('chip-office').click()
