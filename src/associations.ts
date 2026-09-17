@@ -2,7 +2,8 @@ import { addDays, daysBetween } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
 import { forecast, indexCheckIns, slotKey } from './learning'
-import { bandOf, readingOf, type Band } from './score'
+import { bandOf, pointsFor, readingOf, type Band } from './score'
+import type { Position, ReadingId } from './readings'
 
 // Observational associations, all like-for-like: the mornings after evenings that carried an
 // event, against the mornings after evenings that started the same, headroom accounted for by
@@ -79,6 +80,46 @@ export function eveningPoints(checkins: readonly CheckIn[], today: string, isEve
 
 export function associationFor(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): Association {
   return likeForLike(eveningPoints(checkins, today, isEvent))
+}
+
+export type AssociationTier = 'little' | 'unclear' | 'promising'
+
+/**
+ * An observational association's standing: Little evidence under three events or with nothing
+ * to set against; Promising when the like-for-like difference clears the worthwhile change in
+ * the helpful direction; Unclear otherwise. Never above Promising, never a verdict.
+ */
+export function associationTier(a: Association, worthwhilePoints: number): AssociationTier {
+  if (a.times < LIKE_FOR_LIKE_MIN || a.diff === null || a.bands === 0) return 'little'
+  return a.diff >= worthwhilePoints ? 'promising' : 'unclear'
+}
+
+/**
+ * A passive item, like for like: the days it rode alongside and was done, against the days it
+ * was not (never assigned, or assigned and declined), matched on the evening's band; the
+ * outcome is the card's target reading the next morning, in points. A day it was assigned but
+ * never answered is left out: silence is not evidence.
+ */
+export function passiveAssociation(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], passiveId: string, target: ReadingId, today: string): Association {
+  const byKey = indexCheckIns(checkins)
+  const byOffer = new Map(outcomes.map((x) => [x.offerId, x]))
+  const state = new Map<string, 'done' | 'no' | 'unanswered'>()
+  for (const o of offers) {
+    if (o.passiveId !== passiveId || o.id === undefined || o.skippedAt) continue
+    const x = byOffer.get(o.id)
+    const s = x?.passiveOutcome === 'done' ? 'done' : x?.passiveOutcome === 'no' ? 'no' : 'unanswered'
+    const prev = state.get(o.day)
+    state.set(o.day, prev === 'done' || s === 'done' ? 'done' : prev === 'no' || s === 'no' ? 'no' : 'unanswered')
+  }
+  const points: DayPoint[] = []
+  for (const c of checkins) {
+    if (c.block !== 'evening' || c.day >= today) continue
+    const s = state.get(c.day)
+    if (s === 'unanswered') continue
+    const p = byKey.get(slotKey(addDays(c.day, 1), 'morning'))?.answers[target]
+    points.push({ day: c.day, band: eveningBand(byKey, c.day), event: s === 'done', outcome: p === undefined ? null : pointsFor(target, p as Position) })
+  }
+  return likeForLike(points)
 }
 
 /** A named private item: logged on the evening or not. */

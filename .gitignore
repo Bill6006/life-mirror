@@ -1,6 +1,7 @@
 # The plan describes its owner and the log tracks it; neither is ever committed.
 PLAN.md
 PROGRESS.md
+REVIEW_EXECUTION_PLAN.md
 
 # Build and tooling
 node_modules/

@@ -20,10 +20,12 @@ import {
   signedEffect,
   tagBeliefs,
   THIN_WEIGHT,
+  nothingBelief,
   windowSlots,
   type Belief,
   type MoveBelief,
 } from './learning'
+import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
 const allAt = (ids: readonly ReadingId[], p: Position): Answers => Object.fromEntries(ids.map((id) => [id, p]))
@@ -194,5 +196,32 @@ describe('beliefs: research says, your record says', () => {
     expect(noTimeCeiling(offers, outcomes, 'evening', '2026-09-11')).toBe(10)
     expect(noTimeCeiling(offers, outcomes, 'morning', '2026-09-11')).toBeNull()
     expect(noTimeCeiling(offers, [outcome(1, 'focused-block', 'no', 'didntWant')], 'evening', '2026-09-11')).toBeNull()
+  })
+})
+
+describe('the null offer', () => {
+  const nullOffer = offer(3, D, 'afternoon', NOTHING, 'mood')
+  const evening = ci(D, 'evening', { ...allAt(blockReadings('evening'), 3), mood: 4 })
+
+  it('kept to, is an effect like any move, read over the next block', () => {
+    const obs = observations([...priorEvenings, evening], [nullOffer], [outcome(3, NOTHING, 'done')])
+    expect(obs).toHaveLength(1)
+    expect(obs[0]).toMatchObject({ moveId: NOTHING, arm: 'done', window: 'nextBlock', situationKey: 'afternoon:mood' })
+    expect(obs[0].effect).toBeCloseTo(1, 10)
+  })
+
+  it('not wanted, leaves the same light mark a move does; passed over, nothing at all', () => {
+    const declined = observations([...priorEvenings, evening], [nullOffer], [outcome(3, NOTHING, 'no', 'didntWant')])
+    expect(declined[0]).toMatchObject({ arm: 'declined', effect: DECLINED_EFFECT, window: 'nextBlock' })
+    expect(observations([...priorEvenings, evening], [nullOffer], [outcome(3, NOTHING, null)])).toHaveLength(0)
+  })
+
+  it('has a belief per situation that starts flat and moves with the record', () => {
+    expect(nothingBelief('afternoon:mood', [], D).belief).toEqual({ mean: 0, sd: 1, n: 0 })
+    const obs = observations([...priorEvenings, evening], [nullOffer], [outcome(3, NOTHING, 'done')])
+    const b = nothingBelief('afternoon:mood', obs, D)
+    expect(b.record?.n).toBeGreaterThan(0)
+    expect(b.belief.mean).toBeGreaterThan(0)
+    expect(b.belief.sd).toBeLessThan(1)
   })
 })

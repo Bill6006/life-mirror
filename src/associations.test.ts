@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { associationFor, coolingOffDuration, likeForLike, privateAssociations, whatBringsYouBack, type DayPoint } from './associations'
+import { associationFor, associationTier, coolingOffDuration, likeForLike, passiveAssociation, privateAssociations, whatBringsYouBack, type DayPoint } from './associations'
 import { hasMove } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -78,5 +78,42 @@ describe('cooling off and what brings you back', () => {
       { moveId: 'cyclic-sigh', n: 1 },
     ])
     expect(whatBringsYouBack(offers, [])).toEqual([])
+  })
+})
+
+describe('a passive item, like for like', () => {
+  const off = (id: number, day: string, passiveId: string | null): Offer => ({ id, kind: 'block', day, block: 'evening', at: day + 'T20:00:00.000Z', situationKey: 'evening:mood', target: 'mood', stance: '', band: '', reading: 0, moveId: 'walk-ten', cardId: null, candidates: [], coinFlip: false, passiveId, whyNot: null, skippedAt: null, closedAt: null })
+  const out = (offerId: number, passiveOutcome: Outcome['passiveOutcome']): Outcome => ({ offerId, moveId: 'walk-ten', day: '', block: 'evening', at: '', outcome: 'done', why: null, passiveOutcome })
+  // Five evenings that started the same: the item done on two, declined on one, never assigned on one, assigned and never answered on one.
+  const all = [
+    ci('2026-09-01', 'evening', 3),
+    ci('2026-09-02', 'morning', 4),
+    ci('2026-09-02', 'evening', 3),
+    ci('2026-09-03', 'morning', 2),
+    ci('2026-09-03', 'evening', 3),
+    ci('2026-09-04', 'morning', 4),
+    ci('2026-09-04', 'evening', 3),
+    ci('2026-09-05', 'morning', 2),
+    ci('2026-09-05', 'evening', 3),
+    ci('2026-09-06', 'morning', 5),
+  ]
+  const offers = [off(1, '2026-09-01', 'caffeine-cutoff'), off(2, '2026-09-02', 'caffeine-cutoff'), off(3, '2026-09-03', 'caffeine-cutoff'), off(4, '2026-09-04', null), off(5, '2026-09-05', 'caffeine-cutoff')]
+  const outcomes = [out(1, 'done'), out(2, 'no'), out(3, 'done'), out(5, null)]
+
+  it('sets the mornings after it was done against the mornings after it was not, in points of its target, leaving unanswered days out', () => {
+    const a = passiveAssociation(all, offers, outcomes, 'caffeine-cutoff', 'sleepQuality', '2026-09-11')
+    expect(a.times).toBe(2)
+    expect(a.withEvent).toEqual({ mean: 75, n: 2 })
+    expect(a.without).toEqual({ mean: 25, n: 2 })
+    expect(a.diff).toBe(50)
+    expect(a.bands).toBe(1)
+  })
+
+  it('stands at Little evidence under three events, Promising only past the worthwhile change, never higher', () => {
+    const a = passiveAssociation(all, offers, outcomes, 'caffeine-cutoff', 'sleepQuality', '2026-09-11')
+    expect(associationTier(a, 25)).toBe('little')
+    expect(associationTier({ ...a, times: 3 }, 25)).toBe('promising')
+    expect(associationTier({ ...a, times: 3 }, 60)).toBe('unclear')
+    expect(associationTier({ ...a, times: 3, diff: null }, 25)).toBe('little')
   })
 })

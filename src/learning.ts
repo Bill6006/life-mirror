@@ -1,5 +1,5 @@
 import { addDays, blockIndex, BLOCKS, daysBetween, type Block } from './blocks'
-import { hasMove, learnedTags, moveById, type Move, type Strength, type Window } from './catalogue'
+import { hasMove, learnedTags, moveById, NOTHING, type Move, type Strength, type Window } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
 import { blockReadings, type ReadingId } from './readings'
 import { INGREDIENTS } from './score'
@@ -163,24 +163,26 @@ function windowOf(move: Move, target: ReadingId): Window {
 /**
  * Every effect the record holds: one per offer that was done or partly done, read at the
  * window's slots against the forecast; and a small, light "declined" mark for every No given
- * as "didn't want to", which feeds the bandit and nothing else.
+ * as "didn't want to", which feeds the bandit and nothing else. The null offer counts like a
+ * move: kept to, its effect is read over the next block, so the record can say what doing
+ * nothing does and the bandit can learn to pick it.
  */
 export function observations(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[]): Observation[] {
   const byKey = indexCheckIns(checkins)
   const byOffer = new Map(outcomes.map((x) => [x.offerId, x]))
   const out: Observation[] = []
   for (const o of offers) {
-    if (o.id === undefined || o.skippedAt || !hasMove(o.moveId)) continue
+    const isNull = o.moveId === NOTHING
+    if (o.id === undefined || o.skippedAt || (!isNull && !hasMove(o.moveId))) continue
     const x = byOffer.get(o.id)
     if (!x || !x.outcome) continue
-    const move = moveById(o.moveId)
+    const window: Window = isNull ? 'nextBlock' : windowOf(moveById(o.moveId), o.target)
     if (x.outcome === 'no') {
       if (x.why === 'didntWant') {
-        out.push({ offerId: o.id, moveId: o.moveId, situationKey: o.situationKey, target: o.target, window: windowOf(move, o.target), day: o.day, block: o.block, arm: 'declined', effect: DECLINED_EFFECT, weight: DECLINED_WEIGHT, coinFlip: o.coinFlip, spill: {}, energy: null, propensity: o.propensity ?? null, propensities: o.propensities ?? null })
+        out.push({ offerId: o.id, moveId: o.moveId, situationKey: o.situationKey, target: o.target, window, day: o.day, block: o.block, arm: 'declined', effect: DECLINED_EFFECT, weight: DECLINED_WEIGHT, coinFlip: o.coinFlip, spill: {}, energy: null, propensity: o.propensity ?? null, propensities: o.propensities ?? null })
       }
       continue
     }
-    const window = windowOf(move, o.target)
     const slots = windowSlots(o.day, o.block, window)
     const read = readAt(byKey, slots, o.target)
     if (!read) continue
@@ -277,6 +279,17 @@ export function moveBelief(move: Move, situationKey: string, obs: readonly Obser
     }
   }
   return { moveId: move.id, situationKey, research, record, belief: combine(start, record) }
+}
+
+/**
+ * The belief the bandit draws from for "nothing today" in one situation: no research prior,
+ * flat until the record says, corrected by every null offer kept to there.
+ */
+export function nothingBelief(situationKey: string, obs: readonly Observation[], today: string): MoveBelief {
+  const research: Belief = { ...FLAT }
+  const mine = obs.filter((o) => o.moveId === NOTHING && o.situationKey === situationKey)
+  const record = recordOf(mine, today)
+  return { moveId: NOTHING, situationKey, research, record, belief: combine(research, record) }
 }
 
 export interface SignFlip {

@@ -194,3 +194,6 @@ export const OBSERVED_ONLY: ReadonlySet<string> = new Set(['early-night', 'fixed
 
 /** Passive items: decisions that ride alongside the active move in the same block. */
 export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day', 'recovery-gap'])
+
+/** "Nothing today": the null offer, a candidate the bandit can learn to pick. Never a catalogue move; named here so the learning engine can see it. */
+export const NOTHING = 'nothing'

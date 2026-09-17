@@ -1,5 +1,5 @@
 import type { Block } from './blocks'
-import { hasMove, isParked, isProposed, liveMoves, moveById, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, isParked, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band, type Stance } from './score'
@@ -10,8 +10,8 @@ import { choose, type Belief, type Candidate, type Choice, type Rng } from './ba
 // filters what is feasible but does not split the comparison. Every filter here is a filter
 // tag; none of them is ever learned.
 
-/** "Nothing today" is a candidate the bandit can learn to pick. */
-export const NOTHING = 'nothing'
+/** "Nothing today" is a candidate the bandit can learn to pick. Its id lives with the catalogue so the learning engine can name it too. */
+export { NOTHING }
 
 export interface Situation {
   block: Block

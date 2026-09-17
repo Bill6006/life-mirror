@@ -17,6 +17,8 @@ function steps(x: number): string {
   return `${r > 0 ? '+' : ''}${r.toFixed(2)}`
 }
 
+const pctOf = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
+
 function nameOf(id: string): string {
   if (id === NOTHING) return copy.move.nothing
   if (id === 'equal') return copy.evidence.equalWeights
@@ -38,6 +40,15 @@ function CardBlock({ e }: { e: CardEvidence }) {
       </p>
       <div class="conclusion" data-testid="tier">
         <p class="calc-line ink">{c.tiers[stats.tier]}</p>
+        {e.association ? (
+          <>
+            <p class="calc-line" data-testid="passive-association">
+              {fill(c.passiveLine, { n: String(e.association.times), target, with: pctOf(e.association.withEvent.mean), without: pctOf(e.association.without.mean), k: String(e.association.withEvent.n), m: String(e.association.without.n) })}
+            </p>
+            <p class="calc-line">{c.associationNote}</p>
+          </>
+        ) : (
+          <>
         <p class="calc-line">{fill(c.counts, { done: String(stats.n.done), doneAll: String(stats.n.doneAll), alternative: String(stats.n.alternative), alternativeAll: String(stats.n.alternativeAll) })}</p>
         {stats.interval && (
           <p class="calc-line">{fill(c.interval, { diff: steps(stats.interval.diff), lo: steps(stats.interval.lo), hi: steps(stats.interval.hi), level: String(Math.round(stats.interval.level * 100)) })}</p>
@@ -53,6 +64,8 @@ function CardBlock({ e }: { e: CardEvidence }) {
           <p class="calc-line">
             {fill(c.declared, { date: formatDayShort(stats.declared.at), done: String(stats.replication?.done ?? 0), alternative: String(stats.replication?.alternative ?? 0) })} · {stats.replication?.holds ? c.replicated : c.notReplicated}
           </p>
+        )}
+          </>
         )}
       </div>
       <div class="calc">
@@ -99,6 +112,15 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
           </ul>
         </div>
       )}
+
+      <h2 class="section">{c.nothingTitle}</h2>
+      <div class="card pad">
+        <div class="calc">
+          <p class="calc-line" data-testid="nothing-line">
+            {fill(c.nothingLine, { offered: String(ev.nothing.offered), done: String(ev.nothing.done), skipped: String(ev.nothing.skipped) })}
+          </p>
+        </div>
+      </div>
 
       <h2 class="section">{c.tagsTitle}</h2>
       <div class="card pad">

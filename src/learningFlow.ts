@@ -1,10 +1,10 @@
 import { anchorSwapDue } from './audit'
 import { addDays } from './blocks'
-import { coolingOffDuration, associationFor, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
+import { associationTier, coolingOffDuration, associationFor, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
 import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type Declaration, type Outcome, type TagBeliefRow } from './db'
 import { cardFromHypothesis, parseHypothesis, type Parsed } from './hypothesis'
-import { decayAfterStop, energyCost, FLAT, moveBelief, observations, priorOf, signFlips, spillover, tagBeliefs, type Belief, type MoveBelief, type Observation, type TagBelief } from './learning'
+import { decayAfterStop, energyCost, FLAT, moveBelief, nothingBelief, observations, priorOf, signFlips, spillover, tagBeliefs, type Belief, type MoveBelief, type Observation, type TagBelief } from './learning'
 import { NOTHING } from './offers'
 import { readings, setAnchorSwaps } from './readings'
 import { setLearnedWeights } from './score'
@@ -40,7 +40,9 @@ export async function runLearning(day: string, force = false): Promise<void> {
   const tags = tagBeliefs(obs, day)
   const beliefs: MoveBelief[] = []
   for (const key of situationsOf(offers)) for (const m of liveMoves) beliefs.push(moveBelief(m, key, obs, tags, day))
-  const flips = signFlips(beliefs)
+  // The null offer has a belief per situation too, so the draw can learn to pick it; it never flips signs.
+  for (const key of situationsOf(offers)) beliefs.push(nothingBelief(key, obs, day))
+  const flips = signFlips(beliefs.filter((b) => b.moveId !== NOTHING))
   const flipped = new Set(flips.map((f) => `${f.moveId}|${f.hurts}`))
   const rows: BeliefRow[] = beliefs.map((b) => ({
     situationKey: b.situationKey,
@@ -124,6 +126,8 @@ export interface CardEvidence {
   card: Card
   stats: CardStats
   belief: MoveBelief | null
+  /** A passive item's like-for-like association, capped at Promising; null for every other card. */
+  association: Association | null
   spill: { reading: string; mean: number; n: number }[]
   energy: { mean: number; n: number } | null
   decay: { daysHeld: number; runs: number } | null
@@ -138,6 +142,8 @@ export interface Evidence {
   coolingOff: { association: Association; duration: { blocks: number; events: number } | null } | null
   bigSocial: Association | null
   bringsYouBack: { moveId: string; n: number }[]
+  /** The null offer: how often it was offered, kept to, and skipped. */
+  nothing: { offered: number; done: number; skipped: number }
   weeks: number
 }
 
@@ -154,10 +160,13 @@ export async function evidence(today: string): Promise<Evidence> {
   const list: CardEvidence[] = stats.map((s) => {
     const card = byId.get(s.cardId) as Card
     const belief = hasMove(card.moveId) ? moveBelief(moveById(card.moveId), card.situationKey, obs, tags, today) : null
+    // A passive item is assigned by rotation, never by a coin flip, so its card is read like for like and capped at Promising.
+    const association = card.origin === 'passive' ? passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today) : null
     return {
       card,
-      stats: s,
+      stats: association ? { ...s, tier: associationTier(association, card.worthwhile * 25) } : s,
       belief,
+      association,
       spill: hasMove(card.moveId) ? spillover(obs, card.moveId, card.situationKey, card.target) : [],
       energy: hasMove(card.moveId) ? energyCost(obs, card.moveId) : null,
       decay: hasMove(card.moveId) ? decayAfterStop(obs, card.moveId, checkins, card.target) : null,
@@ -168,6 +177,9 @@ export async function evidence(today: string): Promise<Evidence> {
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial))
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
   const weeks = first ? Math.floor((Math.max(0, (Date.parse(today) - Date.parse(first)) / 86_400_000) + 1) / 7) : 0
+  const nulls = offers.filter((o) => o.moveId === NOTHING)
+  const outcomeOf = new Map(outcomes.map((x) => [x.offerId, x]))
+  const nothing = { offered: nulls.length, done: nulls.filter((o) => o.id !== undefined && outcomeOf.get(o.id)?.outcome === 'done').length, skipped: nulls.filter((o) => o.skippedAt !== null).length }
   return {
     observations: obs.length,
     cards: list,
@@ -177,6 +189,7 @@ export async function evidence(today: string): Promise<Evidence> {
     coolingOff: cooling.times > 0 ? { association: cooling, duration: coolingOffDuration(checkins, today) } : null,
     bigSocial: social.times > 0 ? social : null,
     bringsYouBack: whatBringsYouBack(offers, outcomes),
+    nothing,
     weeks,
   }
 }
@@ -188,11 +201,17 @@ export async function importHypothesis(text: string, now: string = new Date().to
   return parsed
 }
 
-/** The recovery gap is assigned the evening after an unplanned big social day. */
+/**
+ * The recovery gap is assigned the evening after a big social day: one marked unplanned on the
+ * evening chip, or the church day, known from the day's own context and never from a draw.
+ */
 export async function recoveryGapDue(day: string): Promise<boolean> {
+  if (!PASSIVE.has('recovery-gap')) return false
   const yesterday = addDays(day, -1)
   const c = await db.checkins.where('[day+block]').equals([yesterday, 'evening']).first()
-  return Boolean(c?.extras?.bigSocial) && PASSIVE.has('recovery-gap')
+  if (c?.extras?.bigSocial) return true
+  const ctx = await db.days.get(yesterday)
+  return Boolean(ctx?.churchDay)
 }
 
 /** Private items in selection, for the evening card: only when you turned that on. */
