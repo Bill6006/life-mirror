@@ -95,6 +95,8 @@ export function predict(model: ModelId, values: ReadonlyMap<string, number>, day
 
 export interface Backtest {
   model: ModelId
+  /** Days ahead the forecasts were made, 1 by default. */
+  horizon: number
   /** Mean absolute error over the past days it could forecast. */
   mae: number | null
   n: number
@@ -102,21 +104,32 @@ export interface Backtest {
   errors: number[]
 }
 
-/** How a model would have done on the past days: each slot forecast from the record before its day. */
-export function backtest(model: ModelId, values: ReadonlyMap<string, number>, today: string, days = BACKTEST_DAYS): Backtest {
+/** The record as it stood at the end of a day: every slot on or before it. */
+export function visibleBefore(values: ReadonlyMap<string, number>, lastDay: string): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const [key, v] of values) if (key.slice(0, 10) <= lastDay) out.set(key, v)
+  return out
+}
+
+/**
+ * How a model would have done on the past days: each slot forecast from the record as it stood
+ * that many days before, so a range for a day seven out rests on errors made seven days out.
+ */
+export function backtest(model: ModelId, values: ReadonlyMap<string, number>, today: string, days = BACKTEST_DAYS, horizon = 1): Backtest {
   const errors: number[] = []
   for (let back = 1; back <= days; back++) {
     const day = addDays(today, -back)
+    const seen = horizon <= 1 ? values : visibleBefore(values, addDays(day, -horizon))
     for (const block of BLOCKS) {
       const actual = values.get(slotKey(day, block))
       if (actual === undefined) continue
-      const p = predict(model, values, day, block)
+      const p = predict(model, seen, day, block)
       if (p === null) continue
       errors.push(actual - p)
     }
   }
   const mae = errors.length ? errors.reduce((s, e) => s + Math.abs(e), 0) / errors.length : null
-  return { model, mae, n: errors.length, errors }
+  return { model, horizon, mae, n: errors.length, errors }
 }
 
 export interface Chosen {
@@ -153,10 +166,24 @@ export interface SlotForecast {
   hi: number
 }
 
-export function forecastSlot(chosen: Chosen, values: ReadonlyMap<string, number>, day: string, block: Block): SlotForecast | null {
+/** The one-step range of the chosen model: the band of its past errors a day out. */
+function oneStepBand(chosen: Chosen): { lo: number; hi: number } {
+  return errorBand(chosen.backtests.find((b) => b.model === chosen.model)?.errors ?? [])
+}
+
+/**
+ * The range for a horizon: the band of the chosen model's past errors made that many days out,
+ * or its one-step band while fewer than five past slots could be forecast that far ahead.
+ */
+export function horizonBand(chosen: Chosen, values: ReadonlyMap<string, number>, today: string, horizon: number): { lo: number; hi: number } {
+  if (horizon <= 1) return oneStepBand(chosen)
+  const far = backtest(chosen.model, values, today, BACKTEST_DAYS, horizon)
+  return far.n >= 5 ? errorBand(far.errors) : oneStepBand(chosen)
+}
+
+export function forecastSlot(chosen: Chosen, values: ReadonlyMap<string, number>, day: string, block: Block, band: { lo: number; hi: number } = oneStepBand(chosen)): SlotForecast | null {
   const p = predict(chosen.model, values, day, block)
   if (p === null) return null
-  const band = errorBand(chosen.backtests.find((b) => b.model === chosen.model)?.errors ?? [])
   return { point: clamp(p), lo: clamp(p + band.lo), hi: clamp(p + band.hi) }
 }
 
@@ -185,15 +212,37 @@ export function forecastsDue(chosen: Chosen, values: ReadonlyMap<string, number>
   const maxHorizon = days >= MIN_DAYS_WEEK ? HORIZON : days >= MIN_DAYS_TODAY ? 0 : -1
   for (let h = 0; h <= maxHorizon; h++) {
     const day = addDays(today, h)
+    // Today's shape and tomorrow rest on the one-step band; each day further out on the errors made that far out.
+    const band = horizonBand(chosen, values, today, Math.max(1, h))
     for (const block of BLOCKS) {
       if (have.has(`${day}|${block}|${h}`)) continue
       if (values.has(slotKey(day, block))) continue
-      const f = forecastSlot(chosen, values, day, block)
+      const f = forecastSlot(chosen, values, day, block, band)
       if (!f) continue
       out.push({ day, block, horizon: h, madeOn: today, model: chosen.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: whatIf(values, doneSlots, day, block) })
     }
   }
   return out
+}
+
+export interface AheadRow {
+  day: string
+  expected: number | null
+  lo: number | null
+  hi: number | null
+}
+
+/**
+ * The seven days ahead from the forecasts on record: each day's expected value and range as the
+ * mean of its blocks' forecasts made at that horizon; a day with none is a gap, not a guess.
+ */
+export function weekAheadRows(forecasts: readonly Forecast[], today: string): AheadRow[] {
+  const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((s, v) => s + v, 0) / xs.length) : null)
+  return Array.from({ length: HORIZON }, (_, i) => {
+    const day = addDays(today, i + 1)
+    const rows = forecasts.filter((f) => f.day === day && f.horizon === i + 1)
+    return { day, expected: mean(rows.map((f) => f.point)), lo: mean(rows.map((f) => f.lo)), hi: mean(rows.map((f) => f.hi)) }
+  })
 }
 
 /** The lowest of the days ahead, the one worth planning around; -1 when none of them has a forecast. */

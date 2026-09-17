@@ -271,7 +271,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       at: now,
       situationKey: situation.key,
       target: situation.target,
-      stance: situation.stance,
+      stance: '',
       band: situation.band,
       reading: situation.reading,
       moveId: choice.id,

@@ -22,16 +22,7 @@ export const TOTAL_INGREDIENTS = INGREDIENT_IDS.length
 /** Shown beside the reading, never inside it. */
 export const CONTEXT_IDS: readonly ReadingId[] = ['hunger', 'sleepHours', 'sleepQuality', 'confidence', 'loneliness', 'socialEnergy']
 
-export type Stance = 'Protect' | 'Recover' | 'Stabilize' | 'Build'
-
-export function stanceOf(value: number): Stance {
-  if (value < 25) return 'Protect'
-  if (value < 50) return 'Recover'
-  if (value < 75) return 'Stabilize'
-  return 'Build'
-}
-
-/** The five bands of the plan, boundaries at 20, 40, 60, 80. Selection uses them now; the screens adopt them in the design pass. */
+/** The five bands of the plan, boundaries at 20, 40, 60, 80. The four stances they replaced in the design pass are gone; older offers still carry one as a word. */
 export type Band = 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'
 
 export function bandOf(value: number): Band {
@@ -49,7 +40,6 @@ export function pointsFor(id: ReadingId, position: Position): number {
 
 export interface Reading100 {
   value: number
-  stance: Stance
   /** Ingredients that went in, out of the six. */
   used: number
   total: number
@@ -77,7 +67,7 @@ export function readingOutOf100(answers: Answers, asked: readonly ReadingId[]): 
   const sum = ids.reduce((s, id) => s + w(id) * pointsFor(id, answers[id] as Position), 0)
   const denominator = ids.reduce((s, id) => s + w(id), 0)
   const value = Math.round(sum / denominator)
-  return { value, stance: stanceOf(value), used: ids.length, total: TOTAL_INGREDIENTS, weighted: learned !== null }
+  return { value, used: ids.length, total: TOTAL_INGREDIENTS, weighted: learned !== null }
 }
 
 export function readingOf(c: CheckIn): Reading100 | null {

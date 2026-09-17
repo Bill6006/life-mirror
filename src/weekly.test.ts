@@ -115,7 +115,7 @@ describe('the gap and what moved', () => {
 })
 
 describe('catalogue health and the extension prompt', () => {
-  const situation: Situation = { block: 'evening', target: 'mood', key: 'evening:mood', band: 'gettingBy', reading: 50, stance: 'Stabilize', targetPosition: 2 }
+  const situation: Situation = { block: 'evening', target: 'mood', key: 'evening:mood', band: 'gettingBy', reading: 50, targetPosition: 2 }
 
   it('names an unreachable family with the filter that blocks it', () => {
     const health = catalogueHealth([], [], [situation])

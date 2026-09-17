@@ -1,7 +1,7 @@
 import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, db, getSettings, type Forecast } from './db'
-import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, type ModelId, type Warning } from './forecast'
+import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { observations, slotKey } from './learning'
 import { evaluateCards } from './tiers'
 import { baselineShift, type Shift } from './shift'
@@ -82,7 +82,7 @@ export interface Weekly {
   lasts: Lasts
   health: FamilyHealth[]
   prompt: string
-  weekAhead: { day: string; expected: number | null; lo: number | null; hi: number | null }[]
+  weekAhead: AheadRow[]
   weekAheadReady: boolean
   shift: Shift | null
 }
@@ -107,12 +107,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
   const situations = recentSituations(offers, today)
   const health = catalogueHealth(offers, outcomes, situations, new Set(settings.hideFaith ? ['faith'] : []))
   const cardMoves = new Map(effectCards.map((c) => [c.id as number, { moveId: c.moveId, situationKey: c.situationKey }]))
-  const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((s, v) => s + v, 0) / xs.length) : null)
-  const weekAhead = Array.from({ length: 7 }, (_, i) => {
-    const day = addDays(today, i + 1)
-    const rows = forecasts.filter((f) => f.day === day && f.horizon === i + 1)
-    return { day, expected: mean(rows.map((f) => f.point)), lo: mean(rows.map((f) => f.lo)), hi: mean(rows.map((f) => f.hi)) }
-  })
+  const weekAhead = weekAheadRows(forecasts, today)
   return {
     scorecard: scorecard(scores, checkins, declarations, stats),
     best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day))),

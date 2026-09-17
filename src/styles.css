@@ -695,10 +695,6 @@ main {
 .wa-val {
   font-size: 10.5px;
   fill: var(--ink);
-  /* The whisker runs behind the number; the ground is painted around the digits so they stay clean. */
-  stroke: var(--ground);
-  stroke-width: 3;
-  paint-order: stroke fill;
 }
 
 .wa-val.is-low {

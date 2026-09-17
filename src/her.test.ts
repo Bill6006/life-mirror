@@ -111,7 +111,7 @@ describe('on the phone', () => {
 })
 
 describe('the fatherhood family', () => {
-  const sit: Situation = { block: 'evening', target: 'mood', key: 'evening:mood', band: 'gettingBy', reading: 50, stance: 'Stabilize', targetPosition: 2 }
+  const sit: Situation = { block: 'evening', target: 'mood', key: 'evening:mood', band: 'gettingBy', reading: 50, targetPosition: 2 }
   const today = (withHer: boolean): TodayState => ({ doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs: new Map(), studyNight: false, withHer, churchDay: false, noTimeCeiling: null })
 
   it('is small, practises a skill together, is offered only on days she is with you, and never merges with time with her', () => {

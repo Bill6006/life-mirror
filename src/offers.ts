@@ -2,7 +2,7 @@ import { BLOCKS, type Block } from './blocks'
 import { hasMove, isParked, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import type { Position, ReadingId } from './readings'
-import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, stanceOf, type Band, type Stance } from './score'
+import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band } from './score'
 import { choose, type Belief, type Candidate, type Choice, type Rng } from './bandit'
 
 // The situation and the candidate set, as the plan's bar states them. A situation is a block
@@ -16,7 +16,6 @@ export { NOTHING }
 export interface Situation {
   block: Block
   target: ReadingId
-  stance: Stance
   band: Band
   /** block:target, the key comparable opportunities share. */
   key: string
@@ -45,7 +44,6 @@ export function situationOf(checkin: CheckIn): Situation | null {
   return {
     block: checkin.block,
     target,
-    stance: r.stance,
     band: bandOf(r.value),
     key: `${checkin.block}:${target}`,
     reading: r.value,
@@ -155,7 +153,7 @@ export function permissiveState(move: Move): TodayState {
 /** Every situation there is: each block, each ingredient as the target, each band. */
 export function everySituation(): Situation[] {
   const out: Situation[] = []
-  for (const block of BLOCKS) for (const target of INGREDIENT_IDS) for (const band of ALL_BANDS) out.push({ block, target, stance: stanceOf(50), band, key: `${block}:${target}`, reading: 50, targetPosition: 1 })
+  for (const block of BLOCKS) for (const target of INGREDIENT_IDS) for (const band of ALL_BANDS) out.push({ block, target, band, key: `${block}:${target}`, reading: 50, targetPosition: 1 })
   return out
 }
 

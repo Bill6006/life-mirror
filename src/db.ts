@@ -114,6 +114,7 @@ export interface Offer {
   at: string
   situationKey: string
   target: ReadingId
+  /** Empty since 2026-09-17; older offers carry one of the four stance words the design pass replaced with the bands. */
   stance: string
   band: string
   reading: number

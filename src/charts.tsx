@@ -190,6 +190,8 @@ const NOTCH = 3.5
 
 /** Half the break the whisker leaves where the step crosses it, so the two never touch. */
 const WHISKER_GAP = 1.3
+/** How far above its baseline a value's digits stand, with a hair of air: where the whisker stops. */
+const VALUE_HEIGHT = 9
 
 /**
  * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
@@ -212,6 +214,8 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const startOf = (i: number) => x0 + i * step
   const endOf = (i: number) => x0 + (i + 1) * step
   const centreOf = (i: number) => x0 + (i + 0.5) * step
+  /** A value's baseline: just above its step, never above the plot. */
+  const labelY = (v: number) => Math.max(top + 9, y(v) - 3.5)
   const low = lowestAhead(rows)
   const lowValue = low === -1 ? null : rows[low].expected
   // Every vertical the grid draws: the plot's own edges and each day's, plus a notch under each.
@@ -267,8 +271,8 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
         const hi = y(d.hi)
         const lo = y(d.lo)
         const mid = d.expected === null ? null : y(d.expected)
-        // The whisker parts around its own step, so the two never touch. With no step, it runs whole.
-        const parts: readonly (readonly [number, number])[] = mid === null ? [[hi, lo]] : [[hi, mid - WHISKER_GAP], [mid + WHISKER_GAP, lo]]
+        // The whisker stops at the top of its number and starts again under its step, so it runs through neither. With no step, it runs whole.
+        const parts: readonly (readonly [number, number])[] = mid === null || d.expected === null ? [[hi, lo]] : [[hi, labelY(d.expected) - VALUE_HEIGHT], [mid + WHISKER_GAP, lo]]
         return (
           <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
             {parts.map(([from, to]) => to > from && <line key={from} x1={cx} x2={cx} y1={from} y2={to} />)}
@@ -281,7 +285,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
       {lowValue !== null && <line class="wa-step is-low" x1={startOf(low)} x2={endOf(low)} y1={y(lowValue)} y2={y(lowValue)} />}
       {rows.map((d, i) =>
         d.expected === null ? null : (
-          <text key={`v${d.day}`} class={i === low ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={Math.max(top + 9, y(d.expected) - 3.5)} text-anchor="middle" data-testid="ahead-value">
+          <text key={`v${d.day}`} class={i === low ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={labelY(d.expected)} text-anchor="middle" data-testid="ahead-value">
             {Math.round(d.expected)}
           </text>
         ),

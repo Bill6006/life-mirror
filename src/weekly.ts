@@ -255,7 +255,7 @@ export function recentSituations(offers: readonly Offer[], today: string): Situa
   const seen = new Map<string, Situation>()
   for (const o of offers) {
     if (o.kind !== 'block' || daysBetween(o.day, today) > 14 || !o.band) continue
-    if (!seen.has(o.situationKey)) seen.set(o.situationKey, { block: o.block, target: o.target as Situation['target'], key: o.situationKey, band: o.band as Band, reading: o.reading, stance: o.stance as Situation['stance'], targetPosition: 1 })
+    if (!seen.has(o.situationKey)) seen.set(o.situationKey, { block: o.block, target: o.target as Situation['target'], key: o.situationKey, band: o.band as Band, reading: o.reading, targetPosition: 1 })
   }
   return [...seen.values()]
 }

@@ -15,12 +15,6 @@ export const copy = {
     afternoon: 'Afternoon',
     evening: 'Evening',
   },
-  stances: {
-    Protect: 'Protect',
-    Recover: 'Recover',
-    Stabilize: 'Stabilize',
-    Build: 'Build',
-  },
   bands: {
     empty: 'Empty',
     wornDown: 'Worn down',

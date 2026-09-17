@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
 import type { CheckIn, Forecast } from './db'
-import { lowestAhead, backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, loggedDays, predict, scoresDue, valuesByKey } from './forecast'
+import { BACKTEST_DAYS, backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, horizonBand, loggedDays, lowestAhead, predict, scoresDue, valuesByKey, visibleBefore, weekAheadRows } from './forecast'
 import { slotKey } from './learning'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -132,5 +132,51 @@ describe('the lowest day ahead', () => {
     expect(lowestAhead([])).toBe(-1)
     // A tie keeps the first of them, so the chart never jumps between equals.
     expect(lowestAhead([{ expected: 40 }, { expected: 40 }])).toBe(0)
+  })
+})
+
+describe('ranges by horizon, and the week ahead', () => {
+  /** Twenty-eight days rising a point and a half a day, every block alike: a forecast made further out is further off. */
+  const trend = new Map<string, number>()
+  for (let back = 28; back >= 1; back--) {
+    const day = addDays(TODAY, -back)
+    for (const block of ['morning', 'afternoon', 'evening'] as const) trend.set(slotKey(day, block), 30 + (28 - back) * 1.5)
+  }
+
+  it('sees the record only as it stood that many days before', () => {
+    expect(visibleBefore(trend, addDays(TODAY, -8)).size).toBe(21 * 3)
+    const seven = backtest('lastValue', trend, TODAY, BACKTEST_DAYS, 7)
+    const one = backtest('lastValue', trend, TODAY)
+    expect(seven.horizon).toBe(7)
+    expect(one.horizon).toBe(1)
+    expect(seven.mae as number).toBeGreaterThan(one.mae as number)
+  })
+
+  it('gives a day seven out a range no narrower than tomorrow’s, and writes each day’s forecasts on its own band', () => {
+    const chosen = chooseModel(trend, TODAY)!
+    const near = horizonBand(chosen, trend, TODAY, 1)
+    const far = horizonBand(chosen, trend, TODAY, 7)
+    expect(far.hi - far.lo).toBeGreaterThanOrEqual(near.hi - near.lo)
+    const due = forecastsDue(chosen, trend, [], TODAY, new Set())
+    const width = (h: number) => {
+      const f = due.find((x) => x.horizon === h && x.block === 'morning')!
+      return f.hi - f.lo
+    }
+    expect(width(7)).toBeGreaterThanOrEqual(width(1))
+    // Too few far-out errors, and the one-step band stands in.
+    const short = new Map([...trend].filter(([k]) => k.slice(0, 10) >= addDays(TODAY, -8)))
+    const c2 = chooseModel(short, TODAY)!
+    expect(horizonBand(c2, short, TODAY, 7)).toEqual(horizonBand(c2, short, TODAY, 1))
+  })
+
+  it('reads the week ahead as the mean of each day’s blocks at that horizon, a gap where none was made', () => {
+    const f = (day: string, block: Forecast['block'], horizon: number, point: number): Forecast => ({ day, block, horizon, madeOn: TODAY, model: 'sameBlock', point, lo: point - 10, hi: point + 10, whatIf: null })
+    const rows = weekAheadRows([f(addDays(TODAY, 1), 'morning', 1, 40), f(addDays(TODAY, 1), 'evening', 1, 60), f(addDays(TODAY, 2), 'morning', 1, 99), f(addDays(TODAY, 3), 'morning', 3, 55)], TODAY)
+    expect(rows).toHaveLength(7)
+    expect(rows[0]).toEqual({ day: addDays(TODAY, 1), expected: 50, lo: 40, hi: 60 })
+    // A forecast for that day made at another horizon is not that day's row.
+    expect(rows[1]).toEqual({ day: addDays(TODAY, 2), expected: null, lo: null, hi: null })
+    expect(rows[2]).toMatchObject({ expected: 55, lo: 45, hi: 65 })
+    expect(rows[6].expected).toBeNull()
   })
 })
