@@ -1,7 +1,7 @@
 import { blockAt } from './blocks'
-import { db, type Aim, type AimKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
+import { db, type Aim, type AimKind, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
 import { AIM_KINDS, aimKey, unblockKey } from './aims'
-import { currentRung, TOP_RUNG, type Sitting } from './ladder'
+import { currentRung, ladderOf, TOP_RUNG, type Sitting } from './ladder'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
 // them, and the one-tap Resume that records a step as an offer to be asked about next time.
@@ -34,15 +34,21 @@ export async function liveSkills(): Promise<Skill[]> {
   return all.sort((a, b) => a.order - b.order)
 }
 
-/** A skill typed once, with the subject it belongs to when there is more than one. */
-export function addSkill(name: string, subject = ''): Promise<void> {
+/**
+ * A skill typed once, with the subject it belongs to when there is more than one. A subject
+ * chooses its ladder once: a skill added under a subject already on the list climbs that
+ * subject's ladder, whatever was picked.
+ */
+export function addSkill(name: string, subject = '', ladder: LadderKind = 'technical'): Promise<void> {
   return db.transaction('rw', db.skills, async () => {
     const trimmed = name.trim()
     if (!trimmed) return
     const all = await db.skills.toArray()
     const order = all.reduce((m, s) => Math.max(m, s.order), 0) + 1
     const s = subject.trim()
-    await db.skills.add({ name: trimmed, ...(s ? { subject: s } : {}), order, createdAt: new Date().toISOString(), archivedAt: null })
+    const existing = s ? all.find((x) => x.archivedAt === null && (x.subject ?? '').trim().toLowerCase() === s.toLowerCase()) : undefined
+    const kind = existing ? ladderOf(existing) : ladder
+    await db.skills.add({ name: trimmed, ...(s ? { subject: s } : {}), ...(kind === 'language' ? { ladder: kind } : {}), order, createdAt: new Date().toISOString(), archivedAt: null })
   })
 }
 

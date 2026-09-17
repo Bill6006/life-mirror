@@ -10,7 +10,7 @@ import { allWins, db, getSettings, type Aim, type AimKind } from './db'
 import { fill, formatDayLong, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
-import { currentRung, groupBySubject, ladderCounts, rungName, sittingOf, TOP_RUNG } from './ladder'
+import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf, TOP_RUNG } from './ladder'
 import { useLive } from './live'
 
 // The Aims tab: the commitments you chose with their protected steps, and the doors to the
@@ -223,14 +223,16 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
   const marks = useLive(rungMarks, [])
   const [name, setName] = useState('')
   const [subject, setSubject] = useState('')
+  const [kind, setKind] = useState<'technical' | 'language'>('technical')
   if (!skills || !marks) return <section class="screen" />
   const l = copy.ladder
-  const counts = ladderCounts(skills, marks)
+  // A subject chooses its ladder once: the choice shows only for a subject not yet on the list.
+  const newSubject = subject.trim() !== '' && !skills.some((s) => (s.subject ?? '').trim().toLowerCase() === subject.trim().toLowerCase())
 
   function add() {
     const n = name.trim()
     if (!n) return
-    void addSkill(n, subject)
+    void addSkill(n, subject, kind)
     setName('')
   }
 
@@ -243,7 +245,9 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
 
       {skills.length > 0 && (
         <div class="calc ladder-counts" data-testid="ladder-counts">
-          {counts.map((n, i) => n > 0 && <p key={i} class="calc-line">{fill(l.countLine, { n: String(n), rung: l.rungs[i] })}</p>)}
+          {(['technical', 'language'] as const).map((k) =>
+            ladderCounts(skills, marks, k).map((n, i) => n > 0 && <p key={`${k}${i}`} class="calc-line">{fill(l.countLine, { n: String(n), rung: rungName(i, k) })}</p>),
+          )}
         </div>
       )}
 
@@ -256,7 +260,10 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
               ...(g.subject
                 ? [
                     <li key={`subject-${g.subject}`} class="row is-static" data-testid="skill-subject">
-                      <span class="row-main faint">{g.subject}</span>
+                      <span class="row-main faint">
+                        {g.subject}
+                        <span class="sub">{l.kinds[g.kind]}</span>
+                      </span>
                     </li>,
                   ]
                 : []),
@@ -266,7 +273,7 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
                 <li key={s.id} class="skill-row" data-testid="skill-row">
                   <span class="row-main">
                     {s.name}
-                    <span class="sub">{rungName(rung)}</span>
+                    <span class="sub">{rungName(rung, ladderOf(s))}</span>
                   </span>
                   <div class="skill-actions">
                     <button type="button" class="textbtn" data-testid="rung-up" disabled={rung >= TOP_RUNG} onClick={() => void moveSkill(s.id as number, 1)}>
@@ -297,6 +304,15 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
           data-testid="subject-input"
           onInput={(e) => setSubject((e.currentTarget as HTMLInputElement).value)}
         />
+        {newSubject && (
+          <div class="days" role="group" aria-label={l.kindLabel}>
+            {(['technical', 'language'] as const).map((k) => (
+              <button key={k} type="button" class={kind === k ? 'day is-on' : 'day'} aria-pressed={kind === k} data-testid={`ladder-kind-${k}`} onClick={() => setKind(k)}>
+                {l.kinds[k]}
+              </button>
+            ))}
+          </div>
+        )}
         <input
           class="input"
           type="text"
@@ -315,6 +331,7 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
       </div>
       {skills.length === 0 && <p class="note faint">{l.emptyStep}</p>}
       <p class="note faint">{l.subjectNote}</p>
+      <p class="note faint">{l.kindNote}</p>
 
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>

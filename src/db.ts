@@ -292,11 +292,16 @@ export interface Aim {
 }
 
 /** A skill on the proof ladder, typed once on this phone. */
+/** Which six proofs a skill climbs: the technical ladder, or the language one. */
+export type LadderKind = 'technical' | 'language'
+
 export interface Skill {
   id?: number
   name: string
   /** The subject the skill belongs to, typed once: a certification, a language. Empty when there is only the one. */
   subject?: string
+  /** The ladder its subject chose once; absent means technical. */
+  ladder?: LadderKind
   order: number
   createdAt: string
   archivedAt: string | null

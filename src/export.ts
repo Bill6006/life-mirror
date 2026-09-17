@@ -128,7 +128,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ? {
             aims: {
               commitments: aims.aims.map((a) => ({ kind: a.kind, step: a.stepMoveId, createdAt: a.createdAt, archivedAt: a.archivedAt })),
-              skills: aims.skills.map((s) => ({ id: s.id, name: s.name, subject: s.subject ?? null, order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
+              skills: aims.skills.map((s) => ({ id: s.id, name: s.name, subject: s.subject ?? null, ladder: s.ladder ?? 'technical', order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
               ladderMarks: aims.marks.map((m) => ({ skill: m.skillId, rung: m.rung, at: m.at, via: m.via })),
             },
           }

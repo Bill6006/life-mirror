@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { moveById } from './catalogue'
 import type { RungMark, Skill } from './db'
-import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG, groupBySubject } from './ladder'
+import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG, groupBySubject, ladderOf } from './ladder'
 
 const skill = (id: number, name: string, order = id): Skill => ({ id, name, order, createdAt: '', archivedAt: null })
 const mark = (skillId: number, rung: number, at: string, id?: number): RungMark => ({ id, skillId, rung, at, via: 'tap' })
@@ -82,5 +82,32 @@ describe('a step’s title beside its subject', () => {
     const plain = rungStep({ id: 1, name: 'Subnetting', order: 1, createdAt: '', archivedAt: null }, 1)
     expect(plain.title).toBe(plain.name)
     expect(plain.subject).toBeUndefined()
+  })
+})
+
+describe('a subject’s own six proofs', () => {
+  const lang = (id: number, name: string, order: number): Skill => ({ id, name, order, createdAt: '', archivedAt: null, subject: 'French', ladder: 'language' })
+
+  it('names a language skill’s rungs and steps in its own words, in ten-minute sittings', () => {
+    expect(rungName(1, 'language')).toBe('Heard or read')
+    expect(rungName(6, 'language')).toBe('Taught')
+    expect(rungName(2)).toBe('Practiced')
+    const s = rungStep(lang(9, 'Ten words', 1), 2)
+    expect(s.name).toBe('French · Ten words · say it')
+    expect(s.minutes).toBe(10)
+    expect(s.what).toContain('Say it out loud')
+    expect(ladderOf(lang(9, 'Ten words', 1))).toBe('language')
+    expect(ladderOf({ ladder: undefined })).toBe('technical')
+  })
+
+  it('counts each ladder on its own, and a group carries its kind', () => {
+    const skills = [lang(9, 'Ten words', 1), { id: 1, name: 'Subnetting', order: 2, createdAt: '', archivedAt: null } as Skill]
+    expect(ladderCounts(skills, [], 'language')[0]).toBe(1)
+    expect(ladderCounts(skills, [], 'technical')[0]).toBe(1)
+    expect(ladderCounts(skills, [])[0]).toBe(2)
+    expect(groupBySubject(skills).map((g) => [g.subject, g.kind])).toEqual([
+      [null, 'technical'],
+      ['French', 'language'],
+    ])
   })
 })

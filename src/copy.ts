@@ -609,6 +609,21 @@ export const copy = {
       'Write the one resume line this proves, with what you built and what it did.',
     ],
     countLine: '{n} at {rung}',
+    kinds: { technical: 'Technical', language: 'Language' },
+    kindLabel: 'Which six proofs',
+    kindNote: 'A subject chooses its six proofs once, when it is first typed: the technical ladder above, or, for a word or a rule, heard or read it, said it, used it in a sentence, used it without notes, explained it, taught it.',
+    language: {
+      rungs: ['Not started', 'Heard or read', 'Said', 'Used in a sentence', 'Used without notes', 'Explained', 'Taught'],
+      steps: ['hear or read it', 'say it', 'use it in a sentence', 'use it without notes', 'explain it', 'teach it'],
+      what: [
+        'Hear it or read it in use, once through, notes closed.',
+        'Say it out loud a few times with the material open. Getting it wrong is the point.',
+        'Put it into one sentence of your own, said or written, material open.',
+        'Use it in a sentence with nothing open, from memory.',
+        'Explain what it means and when it is used, out loud, as if teaching.',
+        'Teach it to someone, or record yourself teaching it, once through.',
+      ],
+    },
     emptyStep: 'With no skills on the ladder, the step is the catalogue’s own: write the exact next study step.',
   },
   movesTab: {
