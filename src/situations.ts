@@ -294,7 +294,7 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['sunk-cost'],
     cooldownDays: 21,
     test: (sheet) => {
-      const c = factsWhere(sheet, 'card.').find((f) => (num(f, 'n') ?? 0) >= 12 && (f.tier === 'little' || f.tier === 'unclear'))
+      const c = factsWhere(sheet, 'test.').find((f) => (num(f, 'n') ?? 0) >= 12 && (f.tier === 'little' || f.tier === 'unclear'))
       return c ? { factIds: [c.id], strength: 0.6, vars: { move: s(str(c, 'move')), alt: s(str(c, 'alternative')), n: s(num(c, 'n')) } } : null
     },
   },
@@ -304,7 +304,7 @@ export const SITUATIONS: readonly Situation[] = [
     cards: [],
     cooldownDays: 14,
     test: (sheet) => {
-      const c = factsWhere(sheet, 'card.').find((f) => f.tier === 'promising' || f.tier === 'holdsUp')
+      const c = factsWhere(sheet, 'test.').find((f) => f.tier === 'promising' || f.tier === 'holdsUp')
       return c ? { factIds: [c.id], strength: 0.6, vars: { move: s(str(c, 'move')), alt: s(str(c, 'alternative')), tier: c.tier === 'holdsUp' ? 'holds up' : 'promising', n: s(num(c, 'n')) } } : null
     },
   },

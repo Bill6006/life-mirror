@@ -10,8 +10,13 @@ import { parseOutput, type Message } from './prompt'
 
 export type Runner = (model: string, messages: Message[], maxTokens: number) => Promise<unknown>
 
+/**
+ * Every model here answers in the chat-completion shape, and the reasoning ones spend their
+ * tokens thinking before the answer: the budget is generous and, where the model takes it,
+ * the effort is asked low so the answer arrives.
+ */
 export function aiRunner(ai: Env['AI']): Runner {
-  return (model, messages, maxTokens) => ai.run(model, { messages, max_tokens: maxTokens, temperature: 0.4 })
+  return (model, messages, maxTokens) => ai.run(model, { messages, max_tokens: maxTokens, temperature: 0.4, ...(model.includes('gpt-oss') ? { reasoning_effort: 'low' } : {}) })
 }
 
 /** The text in a Workers AI answer, whichever shape the model family returns it in. */
@@ -43,7 +48,7 @@ export interface Generation {
   attempts: string[]
 }
 
-export async function generateValid(models: readonly string[], run: Runner, messages: Message[], sheet: FactSheet, cards: readonly ClaimCard[], maxTokens = 800, attempts: string[] = []): Promise<Generation | null> {
+export async function generateValid(models: readonly string[], run: Runner, messages: Message[], sheet: FactSheet, cards: readonly ClaimCard[], maxTokens = 4000, attempts: string[] = []): Promise<Generation | null> {
   for (const model of models) {
     let thread = messages
     for (let attempt = 0; attempt < 2; attempt++) {

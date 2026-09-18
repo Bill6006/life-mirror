@@ -29,8 +29,8 @@ const SYSTEM = `You write one line a day for one person's phone. You get the day
 Decide the single most useful thing for this person to hear, understand, reconsider or do right now, and choose one mode: ${MODES.join(', ')}. Sometimes that is an observation, a challenge, a change of strategy, a warning, a recommendation, a perspective, or encouragement. Never comfort by default and never push by default; the facts and the evidence decide.
 
 Rules, all checked by a validator that refuses the line:
-- Ground the line in the facts and cite their ids in factIds. Every number you write must appear in a cited fact. Do not invent patterns; a fact's n and tier say how much stands behind it.
-- Cite in cardIds the cards you rely on. Speak of evidence only with the phrase matching the strongest cited card's grade: ${Object.entries(GRADE_PHRASES)
+- Ground the line in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact. Do not invent patterns; a fact's n and tier say how much stands behind it.
+- Cite in cardIds the cards you rely on: only the ids in brackets in CARDS, kebab-case words such as implementation-intentions. A fact id never goes in cardIds, even one that describes a test card. Speak of evidence only with the phrase matching the strongest cited card's grade: ${Object.entries(GRADE_PHRASES)
   .map(([g, p]) => `${g} "${p}"`)
   .join(', ')}. Never say a finding applies to this person unless a fact shows it.
 - Never use the words failed, bad, lazy, behind, weak, slipped again. No score of the person, no streaks, no shame.
@@ -45,7 +45,7 @@ export function buildMessages(kind: 'brief' | 'review', sheet: FactSheet, cards:
   const task = kind === 'review' ? 'Today is the weekly review: propose at most one change of strategy for the coming week, from the week as the facts show it (commitments, cues, cards, study nights, chips), in the same form.' : 'Today is an ordinary morning: one line for the day ahead.'
   return [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: `${task}\n\nFACTS\n${sheetLines(sheet)}\n\nCARDS\n${cardLines(cards)}\n\nSAID RECENTLY (useful / knew / not is how it landed)\n${recent}\n\nJSON only.` },
+    { role: 'user', content: `${task}\n\nFACTS (the ids in brackets are what factIds may hold)\n${sheetLines(sheet)}\n\nCARDS (the ids in brackets are what cardIds may hold)\n${cardLines(cards)}\n\nSAID RECENTLY (useful / knew / not is how it landed)\n${recent}\n\nJSON only.` },
   ]
 }
 

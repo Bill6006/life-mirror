@@ -17,6 +17,9 @@ export interface BriefResult {
   day?: string
   model?: string
   attempts?: string[]
+  text?: string
+  mode?: string
+  cardIds?: string[]
 }
 
 export interface BriefOptions {
@@ -48,11 +51,11 @@ export async function runBrief(env: Pick<Env, 'TIMEZONE' | 'BRIEF_HOUR' | 'MODEL
   const kind = local.weekday === 0 ? 'review' : 'brief'
   const models = env.MODELS.split(',').map((m) => m.trim()).filter(Boolean)
   const attempts: string[] = []
-  const generated = await generateValid(models, run, buildMessages(kind, facts.sheet, cards, said), facts.sheet, cards, 800, attempts)
+  const generated = await generateValid(models, run, buildMessages(kind, facts.sheet, cards, said), facts.sheet, cards, 4000, attempts)
   if (!generated) return { wrote: false, reason: 'no model produced a line that passed', day, attempts }
 
   const at = now.toISOString()
   const row: BriefRow = { id, day, kind: 'brief', text: generated.output.text, mode: generated.output.mode, factIds: generated.output.factIds, cardIds: generated.output.cardIds, model: generated.model, at, factsDay: facts.sheet.day, ...(kind === 'review' ? { weekly: true } : {}) }
   await store.writeBrief(row, at)
-  return { wrote: true, reason: kind, day, model: generated.model, attempts: generated.attempts }
+  return { wrote: true, reason: kind, day, model: generated.model, attempts: generated.attempts, text: row.text, mode: row.mode, cardIds: row.cardIds }
 }

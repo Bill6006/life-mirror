@@ -1,4 +1,4 @@
-import { aiRunner } from './ai'
+import { aiRunner, textOf } from './ai'
 import { runBrief } from './brief'
 import { runCues, type Sender } from './cues'
 import type { Env } from './env'
@@ -51,6 +51,16 @@ const handler: ExportedHandler<Env> = {
     const m = /^\/run\/(brief|cues)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       return json(await dispatch(m[1] as 'brief' | 'cues', env, new Date(), url.searchParams.get('force') === '1'))
+    }
+    // With the run key: one model, one tiny prompt, its raw answer and what the extractor reads from it. For diagnosing a model's shape.
+    if (url.pathname === '/run/probe' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      const model = url.searchParams.get('model') ?? env.MODELS.split(',')[0].trim()
+      try {
+        const raw = await aiRunner(env.AI)(model, [{ role: 'system', content: 'Answer with JSON only.' }, { role: 'user', content: 'Reply with {"ok": true, "model": "<your model name>"} and nothing else.' }], 300)
+        return json({ model, text: textOf(raw).slice(0, 1500), raw: JSON.stringify(raw).slice(0, 3000) })
+      } catch (e) {
+        return json({ model, error: e instanceof Error ? e.message : String(e) })
+      }
     }
     return new Response('Not found', { status: 404 })
   },

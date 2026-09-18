@@ -23,5 +23,6 @@ TURSO_URL = "https://life-record-bill6006.aws-us-east-1.turso.io"
 LIBRARY_URL = "https://raw.githubusercontent.com/Bill6006/life-mirror/main/src/library.json"
 VAPID_PUBLIC_KEY = "BPYgY5hFetfT7nh453uVV3ExHxaw3Ea8fl-AgvOjEuKmlfCjqjfEFXsdtb9cVUuta3Uz2toc1Gy6GkVc2kaSF_g"
 VAPID_SUBJECT = "https://github.com/Bill6006/life-mirror"
-# In order; every failure falls to the next. Prices and names are on developers.cloudflare.com/workers-ai.
-MODELS = "@cf/openai/gpt-oss-120b,@cf/deepseek-ai/deepseek-v4-flash-0731,@cf/google/gemma-4-26b-a4b-it,@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+# In order; every failure falls to the next. All four answer on the free plan (DeepSeek does not;
+# Gemma 4 and Qwen 3 spend the whole budget thinking). Prices are on developers.cloudflare.com/workers-ai.
+MODELS = "@cf/openai/gpt-oss-120b,@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct,@cf/openai/gpt-oss-20b"

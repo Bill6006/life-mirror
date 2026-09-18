@@ -216,7 +216,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const move = nameOfMove(c.card.moveId)
     const alt = nameOfMove(c.card.alternativeId)
     const n = c.stats.n.done + c.stats.n.alternative
-    facts.push(fact(`card.${c.card.id}`, ['monitoring'], `Card: ${move} against ${alt} on ${readingById(c.card.target).name} in ${c.card.situationKey}: ${c.stats.tier}, ${n} observations.`, { move, alternative: alt, target: readingById(c.card.target).name, tier: c.stats.tier, n, situation: c.card.situationKey }, { n, tier: c.stats.tier }))
+    facts.push(fact(`test.${c.card.id}`, ['monitoring'], `Card: ${move} against ${alt} on ${readingById(c.card.target).name} in ${c.card.situationKey}: ${c.stats.tier}, ${n} observations.`, { move, alternative: alt, target: readingById(c.card.target).name, tier: c.stats.tier, n, situation: c.card.situationKey }, { n, tier: c.stats.tier }))
   }
 
   // Commitments: the step, the last fact, what blocked it, today's plan, the cues' record, the ladder's shape.
