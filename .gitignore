@@ -11,3 +11,8 @@ unit-results.json
 test-results/
 playwright-report/
 .vite/
+
+# The Worker's local state and secrets; never committed.
+.wrangler/
+worker/.dev.vars
+

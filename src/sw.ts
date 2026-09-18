@@ -4,9 +4,9 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute, type 
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { blockAt, type Block } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, getSettings, markReminded, updateSettings, type CheckIn } from './db'
+import { allCheckIns, db, getSettings, markReminded, updateSettings, type CheckIn, type Intention } from './db'
 import { fill } from './format'
-import { pushDecision } from './settings'
+import { minutesOf, pushDecision } from './settings'
 import { VAPID_PUBLIC_KEY } from './vapid'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<PrecacheEntry | string> }
@@ -22,10 +22,41 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL(`${BASE}index.html`)))
 
-// The content-free ping. Everything that decides happens here, on the phone, from the record.
+// The content-free ping, and the content-free cue from the Worker. Everything that decides happens here, on the phone, from the record.
 self.addEventListener('push', (event) => {
-  event.waitUntil(onPing())
+  let kind = 'ping'
+  try {
+    kind = (event.data?.json() as { kind?: string } | null)?.kind ?? 'ping'
+  } catch {
+    kind = 'ping'
+  }
+  event.waitUntil(kind === 'cue' ? onCue() : onPing())
 })
+
+/** Nothing is due, but the browser insists a push shows something. A silent notice, taken down at once. */
+async function quiet(): Promise<void> {
+  await self.registration.showNotification(copy.appName, { body: copy.reminders.quiet, tag: 'quiet', silent: true, data: { url: BASE } })
+  setTimeout(() => {
+    void self.registration.getNotifications({ tag: 'quiet' }).then((ns) => ns.forEach((n) => n.close()))
+  }, 2500)
+}
+
+/**
+ * A cue whose moment has come: the Worker sent nothing but the fact of it; the words are the
+ * plan's own, recorded on this phone when it was made. Only plans not yet started, the latest
+ * per commitment.
+ */
+async function onCue(): Promise<void> {
+  const now = new Date()
+  const { day } = blockAt(now)
+  const minute = now.getHours() * 60 + now.getMinutes()
+  const plans = (await db.intentions.where('day').equals(day).toArray()).filter((p) => p.offerId === null && minutesOf(p.time) <= minute)
+  const latest = new Map<number, Intention>()
+  for (const p of plans.sort((a, b) => (a.setAt < b.setAt ? -1 : 1))) latest.set(p.aimId, p)
+  const lines = [...latest.values()].map((p) => (p.step ? `${copy.aims.cues[p.cue]} · ${p.step}` : copy.aims.cues[p.cue]))
+  if (!lines.length) return quiet()
+  await self.registration.showNotification(copy.appName, { body: lines.join(' · '), tag: 'cue', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+}
 
 async function onPing(): Promise<void> {
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
@@ -47,12 +78,7 @@ async function onPing(): Promise<void> {
     return
   }
   if (decision.kind === 'nothing') return
-
-  // Nothing is due, but the browser insists a push shows something. A silent notice, taken down at once.
-  await self.registration.showNotification(copy.appName, { body: copy.reminders.quiet, tag: 'quiet', silent: true, data: { url: BASE } })
-  setTimeout(() => {
-    void self.registration.getNotifications({ tag: 'quiet' }).then((ns) => ns.forEach((n) => n.close()))
-  }, 2500)
+  await quiet()
 }
 
 // The push service may rotate the address. Keep a fresh one and flag it for copying again.

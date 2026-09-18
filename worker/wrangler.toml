@@ -1,0 +1,27 @@
+# The brain: a Worker under your own Cloudflare account, on the free tier. Deployed by you with
+# `npm run worker:deploy` after `npx wrangler login`. Its secrets are pasted by you with
+# `npx wrangler secret put NAME --config worker/wrangler.toml` and never appear here, in source,
+# in tests, in the pipeline or in logs: TURSO_TOKEN, PUSH_SUBSCRIPTION, VAPID_PRIVATE_KEY, RUN_KEY.
+name = "life-mirror-brain"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[ai]
+binding = "AI"
+
+[triggers]
+# The morning line at 05:15 America/New_York: 09:15 UTC in summer, 10:15 UTC in winter; the code
+# checks the local hour and the other firing does nothing. Every fifteen minutes, a cue whose
+# moment has come.
+crons = ["15 9 * * *", "15 10 * * *", "*/15 * * * *"]
+
+[vars]
+TIMEZONE = "America/New_York"
+BRIEF_HOUR = "5"
+# The database address is a constant shown in Settings, not a secret; the token is.
+TURSO_URL = "https://life-record-bill6006.aws-us-east-1.turso.io"
+LIBRARY_URL = "https://raw.githubusercontent.com/Bill6006/life-mirror/main/src/library.json"
+VAPID_PUBLIC_KEY = "BPYgY5hFetfT7nh453uVV3ExHxaw3Ea8fl-AgvOjEuKmlfCjqjfEFXsdtb9cVUuta3Uz2toc1Gy6GkVc2kaSF_g"
+VAPID_SUBJECT = "https://github.com/Bill6006/life-mirror"
+# In order; every failure falls to the next. Prices and names are on developers.cloudflare.com/workers-ai.
+MODELS = "@cf/openai/gpt-oss-120b,@cf/deepseek-ai/deepseek-v4-flash-0731,@cf/google/gemma-4-26b-a4b-it,@cf/meta/llama-3.3-70b-instruct-fp8-fast"

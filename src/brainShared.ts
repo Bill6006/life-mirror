@@ -1,5 +1,5 @@
-import type { FactSheet } from './facts'
-import type { ClaimCard, Grade } from './library'
+import type { FactSheet } from './factTypes'
+import type { ClaimCard, Grade } from './libraryTypes'
 
 // What the brain may say, checked the same way on the phone and in the Worker: one of the
 // modes, grounded in facts named by id, every number taken from those facts, no evidence
