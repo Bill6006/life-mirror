@@ -657,9 +657,9 @@ export const copy = {
       'Write the one resume line this proves, with what you built and what it did.',
     ],
     countLine: '{n} at {rung}',
-    kinds: { technical: 'Technical', language: 'Language', craft: 'By doing' },
+    kinds: { technical: 'Knowledge', language: 'Language', craft: 'Performance' },
     kindLabel: 'Which six proofs',
-    kindNote: 'Chosen once; changed on its card, the marks stay. Technical: watched or read, practised, built once, broke and fixed, explained from memory, resume bullet. Language: heard or read, said, used with notes, used from memory, caught live, used with someone. By doing, for an instrument or a craft: watched or listened, tried slowly, done with the material, done from memory, done clean three times, done for someone.',
+    kindNote: 'Chosen once; changed on its card, the marks stay. Knowledge, for a certification or anything you build with and explain: watched or read, practised, built once, broke and fixed, explained from memory, resume bullet. Language: heard or read, said, used with notes, used from memory, caught live, used with someone. Performance, for an instrument or a craft: watched or listened, tried slowly, done with the material, done from memory, done clean three times, done for someone.',
     noSubjects: 'Add a study commitment under Aims first; its skills go here under its name.',
     subjectPick: 'Under',
     craft: {
