@@ -124,6 +124,8 @@ export interface Offer {
   moveId: string
   /** What was offered, in words, when the id alone cannot say (a rung of the ladder). */
   label?: string
+  /** The sitting's minutes when the offer is a rung of the ladder, so the Done tap opens on that ladder's clock. */
+  minutes?: number
   cardId: number | null
   /** The candidate set the draw was made from. */
   candidates: string[]
@@ -322,6 +324,22 @@ export interface RungMark {
   via: 'tap' | 'step'
 }
 
+/** A cue tapped for a step today: when you mean to do it. After pickup, after her bedtime, at the next check-in. */
+export type Cue = 'afterPickup' | 'afterBedtime' | 'nextCheckIn'
+
+/** One plan, one tap: the cue for a commitment's step on one day; kept once the step is started. */
+export interface Intention {
+  id?: number
+  aimId: number
+  day: string
+  cue: Cue
+  /** The clock time the cue named that day, HH:MM, as the week's shape had it. */
+  time: string
+  setAt: string
+  /** The offer that started the step, once it was; null until then. */
+  offerId: number | null
+}
+
 /** A skill from the checklists you chose to watch (Phase F). Its rung moves only by your tap; no count moves it. */
 export interface HerSkill {
   skillId: string
@@ -366,6 +384,7 @@ class LifeMirrorDB extends Dexie {
   aims!: Table<Aim, number>
   skills!: Table<Skill, number>
   rungMarks!: Table<RungMark, number>
+  intentions!: Table<Intention, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -522,6 +541,10 @@ class LifeMirrorDB extends Dexie {
     // Outside days: the other app's finished workouts, read from the cloud copy and never synced from here.
     this.version(10).stores({
       outside: 'id, day',
+    })
+    // A cue tapped for a step: when you mean to do it today; kept when the step is started.
+    this.version(11).stores({
+      intentions: '++id, aimId, day',
     })
     installOutbox(this)
   }
@@ -760,7 +783,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -787,6 +810,7 @@ export function wipeEverything(): Promise<void> {
       db.aims.clear(),
       db.skills.clear(),
       db.rungMarks.clear(),
+      db.intentions.clear(),
       db.herSkills.clear(),
       db.moments.clear(),
     ])

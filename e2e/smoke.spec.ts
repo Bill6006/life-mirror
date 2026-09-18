@@ -389,6 +389,12 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await expect(page.locator('#main')).not.toContainText('%')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('aim-step')).toContainText('Subnetting · practise it')
+  // The last fact on the card, and the six proofs changed in one tap: the mark stays, the words change.
+  await expect(page.getByTestId('aim-last')).toContainText('moved today')
+  await page.getByTestId('aim-ladder-change').click()
+  await page.getByTestId('aim-ladder-language').click()
+  await expect(page.getByTestId('aim-step')).toContainText('Subnetting · say it')
+  await expect(page.getByTestId('aim-proofs')).toContainText('Language proofs')
 
   // Becoming: the direction line unchanged, and a dated count from what was marked done.
   await page.getByRole('button', { name: /^Becoming/ }).click()
@@ -718,7 +724,19 @@ test('study named by you: a language and an instrument sit beside each other, ea
   await expect(page.getByTestId('aim-step').last()).toContainText('Scale of C · try it slowly')
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.getByTestId('aim-card')).toHaveCount(2)
+  // One tap says when: a cue for the first step, then Resume; the plan is kept and counted.
+  await page.getByTestId('aim-cue-afterBedtime').first().click()
+  await expect(page.getByTestId('aim-plan').first()).toContainText('After her bedtime, 20:00')
   await page.getByTestId('aim-resume').first().click()
   await expect(page.getByTestId('aim-started')).toHaveCount(1)
   await expect(page.getByTestId('aim-resume')).toHaveCount(1)
+  // Done on the step, once its ten minutes have passed, moves the skill up and says so on the same row.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 12))
+  await page.reload()
+  await page.getByTestId('aim-done').click()
+  await expect(page.getByTestId('aim-moved')).toContainText('Ten words advanced to Said.')
+  await expect(page.getByTestId('aim-step').first()).toContainText('Ten words · use it with notes')
+  await expect(page.getByTestId('aim-last').first()).toContainText('moved today')
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(page.getByTestId('aim-cue-count').first()).toContainText('After her bedtime · started 1 of 1 planned')
 })

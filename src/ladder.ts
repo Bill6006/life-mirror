@@ -1,3 +1,4 @@
+import { dayKey } from './blocks'
 import type { Effort, Move } from './catalogue'
 import { copy } from './copy'
 import type { Aim, LadderKind, RungMark, Skill } from './db'
@@ -19,6 +20,13 @@ export interface Sitting {
   minutes: number
   effort: Effort
   kind: 'move' | 'rung'
+}
+
+/** What Done on a rung's step did to the skill: up one rung, or nothing when it already stood there. */
+export interface RungMove {
+  skill: Skill
+  from: number
+  to: number
 }
 
 export const TOP_RUNG = 6
@@ -111,15 +119,28 @@ export function orphanSubjects(skills: readonly Skill[], studyAims: readonly Pic
   return out
 }
 
-/** The skills a study commitment climbs: those carrying its name; the ones without a subject belong to the first study commitment. */
-export function skillsOf(aim: Pick<Aim, 'id' | 'name'>, skills: readonly Skill[], studyAims: readonly Pick<Aim, 'id'>[]): Skill[] {
+/**
+ * The skills a study commitment climbs: those carrying its name; the ones without a subject belong
+ * to the first study commitment. Each climbs the commitment's own ladder, whatever it was filed under.
+ */
+export function skillsOf(aim: Pick<Aim, 'id' | 'name' | 'ladder'>, skills: readonly Skill[], studyAims: readonly Pick<Aim, 'id'>[]): Skill[] {
   const name = (aim.name ?? '').trim().toLowerCase()
   const first = firstStudyId(studyAims)
-  return liveSkillsOf(skills).filter((s) => {
-    const subject = (s.subject ?? '').trim().toLowerCase()
-    if (subject) return name !== '' && subject === name
-    return aim.id === undefined || aim.id === first
-  })
+  return liveSkillsOf(skills)
+    .filter((s) => {
+      const subject = (s.subject ?? '').trim().toLowerCase()
+      if (subject) return name !== '' && subject === name
+      return aim.id === undefined || aim.id === first
+    })
+    .map((s) => (aim.ladder && ladderOf(s) !== aim.ladder ? { ...s, ladder: aim.ladder } : s))
+}
+
+/** The day the ladder last moved among these skills, from the latest mark, or null before any. */
+export function lastMarkDay(skills: readonly Pick<Skill, 'id'>[], marks: readonly RungMark[]): string | null {
+  const ids = new Set(skills.map((s) => s.id as number))
+  let latest: RungMark | null = null
+  for (const m of marks) if (ids.has(m.skillId) && later(m, latest)) latest = m
+  return latest ? dayKey(new Date(latest.at)) : null
 }
 
 /**

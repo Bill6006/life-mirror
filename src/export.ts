@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Offer, type Outcome, type OutsideDay, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type Forecast, type ForecastScore, type Intention, type Offer, type Outcome, type OutsideDay, type PrivateItem, type RungMark, type Skill, type Win } from './db'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
@@ -37,6 +37,8 @@ export interface AimsData {
   aims: readonly Aim[]
   skills: readonly Skill[]
   marks: readonly RungMark[]
+  /** One tap says when: the cue planned for a step each day, and whether the step was started. */
+  intentions?: readonly Intention[]
 }
 
 export interface ExportBundle {
@@ -131,9 +133,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       ...(aims
         ? {
             aims: {
-              commitments: aims.aims.map((a) => ({ kind: a.kind, step: a.stepMoveId, createdAt: a.createdAt, archivedAt: a.archivedAt })),
+              commitments: aims.aims.map((a) => ({ id: a.id, kind: a.kind, name: a.name ?? null, ladder: a.kind === 'certification' ? (a.ladder ?? 'technical') : null, step: a.stepMoveId, createdAt: a.createdAt, archivedAt: a.archivedAt })),
               skills: aims.skills.map((s) => ({ id: s.id, name: s.name, subject: s.subject ?? null, ladder: s.ladder ?? 'technical', order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
               ladderMarks: aims.marks.map((m) => ({ skill: m.skillId, rung: m.rung, at: m.at, via: m.via })),
+              plans: (aims.intentions ?? []).map((i) => ({ aim: i.aimId, day: i.day, cue: i.cue, time: i.time, setAt: i.setAt, started: i.offerId !== null })),
             },
           }
         : {}),

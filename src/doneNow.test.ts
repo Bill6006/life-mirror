@@ -98,15 +98,24 @@ describe('the Done tap, widened', () => {
     expect(await pendingOffers()).toEqual([])
   })
 
-  it('on a rung’s step, moves the skill up as the check-in would', async () => {
+  it('on a rung’s step, moves the skill up as the check-in would, and says what it did', async () => {
     await db.skills.add({ name: 'one', order: 1, createdAt: '', archivedAt: null })
     const id = await db.offers.add({ ...offer('rung:1:1'), kind: 'step', situationKey: 'aim:certification', target: 'focus', label: 'one · step' })
     const o = (await db.offers.get(id)) as Offer
-    await recordDoneNow(o, new Date(2026, 8, 11, 21, 0))
+    const moved = await recordDoneNow(o, new Date(2026, 8, 11, 21, 0))
+    expect(moved).toMatchObject({ from: 0, to: 1, skill: { name: 'one' } })
     const marks = await db.rungMarks.toArray()
     expect(marks).toHaveLength(1)
     expect(marks[0]).toMatchObject({ skillId: 1, rung: 1, via: 'step' })
     expect((await db.offers.get(id))?.closedAt).not.toBeNull()
+    // Tapped again, nothing more is written and nothing is said.
+    expect(await recordDoneNow(o, new Date(2026, 8, 11, 21, 1))).toBeNull()
+  })
+
+  it('opens on the ladder’s own clock when the offer carries its minutes: ten for a language, twenty for the technical rung', () => {
+    const o = { ...offer('rung:1:1'), minutes: 10 }
+    expect(doneAvailableAt(o)).toBe(AT.getTime() + 10 * 60_000)
+    expect(doneAvailableAt(offer('rung:1:1'))).toBe(AT.getTime() + RUNG_MINUTES[1] * 60_000)
   })
 })
 

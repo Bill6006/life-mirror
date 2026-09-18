@@ -20,7 +20,7 @@ import {
 } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotThat, windowFor, type TodayState } from './offers'
 import type { ReadingId } from './readings'
-import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type Sitting } from './ladder'
+import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type RungMove, type Sitting } from './ladder'
 import { noTimeCeiling, WINDOW_PENALTY } from './learning'
 import { beliefsFor, recoveryGapDue } from './learningFlow'
 import { inDaylight, minutesOf, type Settings, type Weekday } from './settings'
@@ -63,10 +63,10 @@ export function outcomeFor(offerId: number | undefined): Promise<Outcome | null>
  * or longer when the move takes longer than the sitting, as airing a room does), or a rung's
  * minutes for a step of the proof ladder; null for the null offer.
  */
-export function doneAvailableAt(offer: Pick<Offer, 'at' | 'moveId'>): number | null {
+export function doneAvailableAt(offer: Pick<Offer, 'at' | 'moveId' | 'minutes'>): number | null {
   if (offer.moveId === NOTHING) return null
   const rung = parseRungId(offer.moveId)
-  const minutes = rung ? RUNG_MINUTES[rung.rung] : hasMove(offer.moveId) ? (moveById(offer.moveId).span ?? moveById(offer.moveId).minutes) : null
+  const minutes = rung ? (offer.minutes ?? RUNG_MINUTES[rung.rung]) : hasMove(offer.moveId) ? (moveById(offer.moveId).span ?? moveById(offer.moveId).minutes) : null
   if (minutes === null) return null
   return new Date(offer.at).getTime() + minutes * 60_000
 }
@@ -76,7 +76,7 @@ export function doneAvailableAt(offer: Pick<Offer, 'at' | 'moveId'>): number | n
  * Once the block is over, the next check-in is the only way to record the move, so a later tap
  * never writes a false time.
  */
-export function doneOpen(offer: Pick<Offer, 'at' | 'moveId' | 'day' | 'block'>, now: Date = new Date()): boolean {
+export function doneOpen(offer: Pick<Offer, 'at' | 'moveId' | 'day' | 'block' | 'minutes'>, now: Date = new Date()): boolean {
   const availableAt = doneAvailableAt(offer)
   if (availableAt === null || now.getTime() < availableAt) return false
   const slot = blockAt(now)
@@ -87,19 +87,19 @@ export function doneOpen(offer: Pick<Offer, 'at' | 'moveId' | 'day' | 'block'>, 
  * Done, tapped on the card at the moment: the outcome as its own record with its own timestamp, in
  * the block the tap fell in. With no passive item left to ask about, the question closes there;
  * else the offer stays open for that one question. Done on a rung's step moves the skill up, as
- * it does from the check-in. Nothing is written once the block is over.
+ * it does from the check-in, and says what it did. Nothing is written once the block is over.
  */
-export function recordDoneNow(offer: Offer, now: Date = new Date(), passiveOutcome: 'done' | 'no' | null = null): Promise<void> {
-  return db.transaction('rw', [db.outcomes, db.offers, db.rungMarks], async () => {
-    if (!doneOpen(offer, now)) return
+export function recordDoneNow(offer: Offer, now: Date = new Date(), passiveOutcome: 'done' | 'no' | null = null): Promise<RungMove | null> {
+  return db.transaction('rw', [db.outcomes, db.offers, db.rungMarks, db.skills], async () => {
+    if (!doneOpen(offer, now)) return null
     const existing = await db.outcomes.where('offerId').equals(offer.id as number).first()
-    if (existing) return
+    if (existing) return null
     const slot = blockAt(now)
     const at = now.toISOString()
     await db.outcomes.add({ offerId: offer.id as number, moveId: offer.moveId, day: slot.day, block: slot.block, at, outcome: 'done', why: null, passiveOutcome })
     if (!offer.passiveId || passiveOutcome !== null) await db.offers.update(offer.id as number, { closedAt: at })
     const rung = parseRungId(offer.moveId)
-    if (rung) await markRungByStep(rung.skillId, rung.rung, at)
+    return rung ? markRungByStep(rung.skillId, rung.rung, at) : null
   })
 }
 
@@ -406,6 +406,7 @@ export function recordStudyNight(
       reading: 0,
       moveId: started?.id ?? offered.id,
       label: started?.name ?? offered.name,
+      minutes: started?.minutes ?? offered.minutes,
       cardId: null,
       candidates: [offered.id],
       coinFlip: false,
@@ -442,22 +443,22 @@ export async function skipOffer(offer: Offer): Promise<Offer | null> {
 }
 
 /** What happened, in one tap, kept apart from what was offered. Null closes the question without an answer. */
-export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }): Promise<void> {
-  return db.transaction('rw', [db.offers, db.outcomes, db.rungMarks], async () => {
+export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }): Promise<RungMove | null> {
+  return db.transaction('rw', [db.offers, db.outcomes, db.rungMarks, db.skills], async () => {
     const now = new Date().toISOString()
     // Recorded from the card already: only the passive item was left to answer.
     const existing = await db.outcomes.where('offerId').equals(offer.id as number).first()
     if (existing?.id !== undefined) {
       await db.outcomes.update(existing.id, { passiveOutcome })
       await db.offers.update(offer.id as number, { closedAt: now })
-      return
+      return null
     }
     const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome }
     await db.outcomes.add(record)
     await db.offers.update(offer.id as number, { closedAt: now })
     // Done on a rung's step is your tap that moves the skill up the proof ladder.
     const rung = parseRungId(offer.moveId)
-    if (rung && outcome === 'done') await markRungByStep(rung.skillId, rung.rung, now)
+    return rung && outcome === 'done' ? markRungByStep(rung.skillId, rung.rung, now) : null
   })
 }
 

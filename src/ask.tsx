@@ -20,7 +20,7 @@ export interface Answer {
  * passive item rode alongside, one tap for that too; when the move was already recorded from
  * the card, that one tap is all that is asked.
  */
-export function OutcomeAsk({ offer, onAnswer }: { offer: Offer; onAnswer: (a: Answer) => void }) {
+export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; onAnswer: (a: Answer) => void; notice?: string | null }) {
   const [outcome, setOutcome] = useState<WinOutcome | null | undefined>(undefined)
   const [why, setWhy] = useState<OutcomeWhy | null | undefined>(undefined)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
@@ -55,6 +55,11 @@ export function OutcomeAsk({ offer, onAnswer }: { offer: Offer; onAnswer: (a: An
         <p class="eyebrow">{offer.kind === 'pickup' ? c.titlePickup : offer.kind === 'step' || offer.kind === 'study' ? c.titleStep : offer.kind === 'unblock' ? c.titleUnblock : c.title}</p>
       </header>
       <h1 class="title">{offerName(offer, copy.move.nothing)}</h1>
+      {notice && (
+        <p class="note ink" data-testid="rung-moved">
+          {notice}
+        </p>
+      )}
 
       {outcome === undefined && !passiveOnly && (
         <>

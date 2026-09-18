@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { skillsOf } from './ladder'
-import { becoming, blockedBy, EMPTY_LADDER_STEP, followThrough, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
+import { becoming, blockedBy, cueCounts, cuesFor, EMPTY_LADDER_STEP, followThrough, lastDoneDay, lastLine, lastMovedDay, movedLine, planFor, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
+import { dayKey } from './blocks'
 import { moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
-import type { Aim, Offer, Outcome, RungMark, Skill, StudyNight, Win } from './db'
+import type { Aim, Cue, Intention, Offer, Outcome, RungMark, Skill, StudyNight, Win } from './db'
 
 const aim = (kind: Aim['kind'], stepMoveId: string | null = null): Aim => ({ id: 1, kind, stepMoveId, createdAt: '', archivedAt: null })
 const skill = (id: number, name: string): Skill => ({ id, name, order: id, createdAt: '', archivedAt: null })
@@ -112,6 +113,68 @@ describe('counts only', () => {
     expect(b.conversations).toEqual({ n: 0, last: null })
     expect(b.faith).toEqual({ n: 0, last: null })
     expect(b.timeWithHer).toEqual({ n: 0, last: null })
+  })
+})
+
+describe('one tap says when', () => {
+  const ctx = { pickupTime: '17:30', soloUntil: '20:00' }
+
+  it('offers the cues still ahead today, each with its time, and none in the small hours', () => {
+    expect(cuesFor(ctx, new Date(2026, 8, 7, 9, 0))).toEqual([
+      { cue: 'afterPickup', time: '17:30' },
+      { cue: 'afterBedtime', time: '20:00' },
+      { cue: 'nextCheckIn', time: '12:00' },
+    ])
+    expect(cuesFor(ctx, new Date(2026, 8, 7, 14, 0)).map((c) => c.time)).toEqual(['17:30', '20:00', '17:00'])
+    expect(cuesFor(ctx, new Date(2026, 8, 7, 18, 0)).map((c) => c.cue)).toEqual(['afterBedtime'])
+    expect(cuesFor(ctx, new Date(2026, 8, 7, 21, 0))).toEqual([])
+    expect(cuesFor({ pickupTime: null, soloUntil: '20:00' }, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['afterBedtime', 'nextCheckIn'])
+    expect(cuesFor(null, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['nextCheckIn'])
+    expect(cuesFor(ctx, new Date(2026, 8, 8, 1, 0))).toEqual([])
+  })
+
+  it('takes the latest plan of the day, and counts plans and starts under each cue', () => {
+    const plan = (id: number, day: string, cue: Cue, setAt: string, offerId: number | null = null): Intention => ({ id, aimId: 1, day, cue, time: '20:00', setAt, offerId })
+    const list = [
+      plan(1, '2026-09-07', 'afterPickup', '2026-09-07T09:00:00Z'),
+      plan(2, '2026-09-07', 'afterBedtime', '2026-09-07T09:01:00Z', 5),
+      plan(3, '2026-09-08', 'afterBedtime', '2026-09-08T09:00:00Z'),
+      plan(4, '2026-09-09', 'nextCheckIn', '2026-09-09T09:00:00Z', 7),
+      { ...plan(5, '2026-09-09', 'afterBedtime', '2026-09-09T09:00:00Z'), aimId: 2 },
+    ]
+    expect(planFor(list, 1, '2026-09-07')?.id).toBe(2)
+    expect(planFor(list, 1, '2026-09-10')).toBeNull()
+    expect(cueCounts(list, 1)).toEqual([
+      { cue: 'afterBedtime', n: 2, started: 1 },
+      { cue: 'nextCheckIn', n: 1, started: 1 },
+    ])
+    expect(cueCounts(list, 3)).toEqual([])
+  })
+})
+
+describe('the last fact on a row', () => {
+  it('dates the last done step by the day it was started, and words the gap as a fact, never a streak', () => {
+    const a: Aim = { id: 5, kind: 'person', stepMoveId: 'call-not-text', createdAt: '', archivedAt: null }
+    const offers = [offer(1, 'step', 'call-not-text', '2026-09-05', '2026-09-05T20:00:00Z', 'aim:person'), offer(2, 'step', 'call-not-text', '2026-09-07', '2026-09-07T20:00:00Z', 'aim:person')]
+    expect(lastDoneDay(a, offers, [outcome(1, 'call-not-text', 'done'), outcome(2, 'call-not-text', 'no')])).toBe('2026-09-05')
+    expect(lastDoneDay(a, offers, [])).toBeNull()
+    expect(lastLine('done', '2026-09-05', '2026-09-08')).toBe('last done 3 days ago')
+    expect(lastLine('done', '2026-09-08', '2026-09-08')).toBe('done today')
+    expect(lastLine('moved', '2026-09-07', '2026-09-08')).toBe('moved yesterday')
+    expect(lastLine('moved', null, '2026-09-08')).toBe('not moved yet')
+    const study: Aim = { id: 1, kind: 'certification', stepMoveId: null, name: 'French', ladder: 'language', createdAt: '', archivedAt: null }
+    const skills = [{ id: 1, name: 'Ten words', subject: 'French', order: 1, createdAt: '', archivedAt: null } as Skill]
+    const at = new Date(2026, 8, 6, 23, 30).toISOString()
+    expect(lastMovedDay(study, skills, [mark(1, 1, at)])).toBe(dayKey(new Date(at)))
+    expect(lastMovedDay(study, skills, [])).toBeNull()
+  })
+
+  it('says what Done did to the skill, in its own ladder’s words', () => {
+    const skill = { id: 1, name: 'Ten words', subject: 'French', ladder: 'language', order: 1, createdAt: '', archivedAt: null } as Skill
+    expect(movedLine({ skill, from: 1, to: 2 })).toBe('Ten words advanced to Said.')
+    expect(movedLine({ skill, from: 2, to: 2 })).toBe('Ten words already stood at Said.')
+    expect(movedLine({ skill: { ...skill, ladder: 'technical' }, from: 2, to: 3 })).toBe('Ten words advanced to Built once.')
+    expect(movedLine(null)).toBeNull()
   })
 })
 

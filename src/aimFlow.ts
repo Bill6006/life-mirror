@@ -1,7 +1,7 @@
 import { blockAt } from './blocks'
-import { db, type Aim, type AimKind, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
-import { AIM_KINDS, keyFor, unblockKeyFor } from './aims'
-import { currentRung, ladderOf, orphanSubjects, TOP_RUNG, type Sitting } from './ladder'
+import { db, type Aim, type AimKind, type Cue, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
+import { AIM_KINDS, keyFor, planFor, unblockKeyFor } from './aims'
+import { currentRung, ladderOf, orphanSubjects, skillsOf, TOP_RUNG, type RungMove, type Sitting } from './ladder'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
 // them, and the one-tap Resume that records a step as an offer to be asked about next time.
@@ -35,11 +35,65 @@ export async function studyAims(): Promise<Aim[]> {
   return (await activeAims()).filter((a) => a.kind === 'certification')
 }
 
-/** Names a study commitment made before names existed. */
-export async function nameAim(id: number, name: string): Promise<void> {
+/** Names a study commitment made before names existed, and chooses its six proofs in the same tap. */
+export function nameAim(id: number, name: string, ladder?: LadderKind): Promise<void> {
   const n = name.trim()
-  if (!n) return
-  await db.aims.update(id, { name: n })
+  if (!n) return Promise.resolve()
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    await db.aims.update(id, { name: n })
+    if (ladder) await setLadder(id, ladder)
+  })
+}
+
+/**
+ * A subject's six proofs, changed on its card: the commitment and every skill under its name take
+ * the ladder. The marks stay; each rung keeps its number and takes the new words.
+ */
+export function setLadder(aimId: number, ladder: LadderKind): Promise<void> {
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    const aim = await db.aims.get(aimId)
+    if (!aim || aim.kind !== 'certification') return
+    await db.aims.update(aimId, { ladder })
+    const study = await db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
+    const skills = await db.skills.toArray()
+    const own = new Set(skillsOf({ ...aim, ladder: undefined }, skills, study).map((s) => s.id as number))
+    for (const s of skills) if (own.has(s.id as number) && ladderOf(s) !== ladder) await db.skills.update(s.id as number, { ladder })
+  })
+}
+
+/**
+ * Runs at open: every skill climbs its commitment's ladder. A commitment that never chose one
+ * takes the ladder its skills carry when they all carry the same; otherwise it waits for the tap
+ * on its card. Changes nothing once everything agrees.
+ */
+export function alignLadders(): Promise<void> {
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    const study = await db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
+    const skills = await db.skills.toArray()
+    for (const aim of study) {
+      const own = skillsOf({ ...aim, ladder: undefined }, skills, study)
+      let ladder = aim.ladder
+      if (!ladder) {
+        const kinds = new Set(own.filter((s) => s.ladder).map((s) => s.ladder as LadderKind))
+        if (kinds.size !== 1) continue
+        ladder = [...kinds][0]
+        await db.aims.update(aim.id as number, { ladder })
+      }
+      for (const s of own) if (ladderOf(s) !== ladder) await db.skills.update(s.id as number, { ladder })
+    }
+  })
+}
+
+/** One tap says when: the cue for a commitment's step today. A later tap replaces it; the plan is kept once the step is started. */
+export function planAim(aim: Aim, cue: Cue, time: string, now: Date = new Date()): Promise<void> {
+  return db.transaction('rw', db.intentions, async () => {
+    const { day } = blockAt(now)
+    await db.intentions.add({ aimId: aim.id as number, day, cue, time, setAt: now.toISOString(), offerId: null })
+  })
+}
+
+export function allIntentions(): Promise<Intention[]> {
+  return db.intentions.toArray()
 }
 
 /**
@@ -113,12 +167,16 @@ export function moveSkill(skillId: number, delta: 1 | -1): Promise<void> {
   })
 }
 
-/** Done on a rung's step is the tap that moves the skill up; it never moves a skill back. */
-export function markRungByStep(skillId: number, rung: number, at: string): Promise<void> {
-  return db.transaction('rw', db.rungMarks, async () => {
+/** Done on a rung's step is the tap that moves the skill up; it never moves a skill back. Says what it did. */
+export function markRungByStep(skillId: number, rung: number, at: string): Promise<RungMove | null> {
+  return db.transaction('rw', [db.rungMarks, db.skills], async () => {
+    const skill = await db.skills.get(skillId)
+    if (!skill) return null
     const marks = await db.rungMarks.where('skillId').equals(skillId).toArray()
-    if (currentRung(marks, skillId) >= rung) return
+    const from = currentRung(marks, skillId)
+    if (from >= rung) return { skill, from, to: from }
     await db.rungMarks.add({ skillId, rung, at, via: 'step' })
+    return { skill, from, to: rung }
   })
 }
 
@@ -147,7 +205,7 @@ export async function aimRecords(): Promise<AimRecords> {
  * from what happens. The next check-in asks done / partly / no like any other offer.
  */
 export function resumeAim(aim: Aim, sitting: Sitting, kind: 'step' | 'unblock', now: Date = new Date()): Promise<Offer> {
-  return db.transaction('rw', db.offers, async () => {
+  return db.transaction('rw', [db.offers, db.intentions], async () => {
     const { day, block } = blockAt(now)
     const offer: Offer = {
       kind,
@@ -161,6 +219,7 @@ export function resumeAim(aim: Aim, sitting: Sitting, kind: 'step' | 'unblock', 
       reading: 0,
       moveId: sitting.id,
       label: sitting.name,
+      minutes: sitting.minutes,
       cardId: null,
       candidates: [sitting.id],
       coinFlip: false,
@@ -170,11 +229,16 @@ export function resumeAim(aim: Aim, sitting: Sitting, kind: 'step' | 'unblock', 
       closedAt: null,
     }
     offer.id = await db.offers.add(offer)
+    // The step was planned for today and is now started: the plan is kept.
+    if (kind === 'step') {
+      const plan = planFor(await db.intentions.where('day').equals(day).toArray(), aim.id as number, day)
+      if (plan && plan.offerId === null) await db.intentions.update(plan.id as number, { offerId: offer.id })
+    }
     return offer
   })
 }
 
 /** Everything the aims hold, for the export. */
-export async function aimsSnapshot(): Promise<{ aims: Aim[]; skills: Skill[]; marks: RungMark[] }> {
-  return { aims: await db.aims.toArray(), skills: await db.skills.toArray(), marks: await db.rungMarks.toArray() }
+export async function aimsSnapshot(): Promise<{ aims: Aim[]; skills: Skill[]; marks: RungMark[]; intentions: Intention[] }> {
+  return { aims: await db.aims.toArray(), skills: await db.skills.toArray(), marks: await db.rungMarks.toArray(), intentions: await db.intentions.toArray() }
 }

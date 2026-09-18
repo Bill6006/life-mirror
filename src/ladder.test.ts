@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { moveById } from './catalogue'
-import type { RungMark, Skill } from './db'
-import { currentRung, ladderCounts, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, smallerRung, TOP_RUNG, groupBySubject, ladderOf, orphanSubjects } from './ladder'
+import type { Aim, RungMark, Skill } from './db'
+import { currentRung, ladderCounts, lastMarkDay, nextStep, parseRungId, rungId, rungName, rungStep, sittingOf, skillsOf, smallerRung, TOP_RUNG, groupBySubject, ladderOf, orphanSubjects } from './ladder'
+import { dayKey } from './blocks'
 
 const skill = (id: number, name: string, order = id): Skill => ({ id, name, order, createdAt: '', archivedAt: null })
 const mark = (skillId: number, rung: number, at: string, id?: number): RungMark => ({ id, skillId, rung, at, via: 'tap' })
@@ -90,7 +91,7 @@ describe('a subject’s own six proofs', () => {
 
   it('names a language skill’s rungs and steps in its own words, in ten-minute sittings', () => {
     expect(rungName(1, 'language')).toBe('Heard or read')
-    expect(rungName(6, 'language')).toBe('Taught')
+    expect(rungName(6, 'language')).toBe('Used with someone')
     expect(rungName(2)).toBe('Practiced')
     const s = rungStep(lang(9, 'Ten words', 1), 2)
     expect(s.name).toBe('French · Ten words · say it')
@@ -115,10 +116,35 @@ describe('a subject’s own six proofs', () => {
 describe('a skill learned by doing', () => {
   it('climbs its own six proofs in ten-minute sittings', () => {
     expect(rungName(1, 'craft')).toBe('Watched or listened')
-    expect(rungName(6, 'craft')).toBe('Taught')
+    expect(rungName(6, 'craft')).toBe('Done for someone')
     const s = rungStep({ id: 4, name: 'Scale of C', order: 1, createdAt: '', archivedAt: null, subject: 'Piano', ladder: 'craft' }, 3)
     expect(s.name).toBe('Piano · Scale of C · do it with the material')
     expect(s.minutes).toBe(10)
+  })
+})
+
+describe('the ladder a commitment chose', () => {
+  it('carries onto its skills whatever they were filed under, and dates the last mark among them', () => {
+    const a: Aim = { id: 1, kind: 'certification', stepMoveId: null, name: 'French', ladder: 'language', createdAt: '', archivedAt: null }
+    const filed = [{ id: 1, name: 'Ten words', order: 1, createdAt: '', archivedAt: null, subject: 'French' } as Skill]
+    expect(skillsOf(a, filed, [a]).map((s) => ladderOf(s))).toEqual(['language'])
+    expect(rungStep(skillsOf(a, filed, [a])[0], 2).name).toBe('French · Ten words · say it')
+    expect(rungStep(filed[0], 2).name).toBe('French · Ten words · practise it')
+    expect(lastMarkDay(filed, [])).toBeNull()
+    const at = new Date(2026, 8, 6, 23, 30).toISOString()
+    expect(lastMarkDay(filed, [{ skillId: 1, rung: 1, at, via: 'step' }, { skillId: 2, rung: 3, at: new Date(2026, 8, 9, 8, 0).toISOString(), via: 'tap' }])).toBe(dayKey(new Date(at)))
+  })
+
+  it('names each rung as a proof of its own, six per ladder, with a step and a definition each', () => {
+    for (const kind of ['technical', 'language', 'craft'] as const) {
+      const names = Array.from({ length: 7 }, (_, i) => rungName(i, kind))
+      expect(new Set(names).size).toBe(7)
+      for (let r = 1; r <= 6; r++) {
+        const s = rungStep({ id: 1, name: 'x', order: 1, createdAt: '', archivedAt: null, ladder: kind }, r)
+        expect(s.what.length).toBeGreaterThan(20)
+        expect(s.title).toContain('x · ')
+      }
+    }
   })
 })
 

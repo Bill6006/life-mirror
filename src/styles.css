@@ -1385,3 +1385,54 @@ button.chip {
   align-items: center;
   gap: 10px;
 }
+
+/* The cue chips, or the plan, on a line of their own under the row, so the row stays three lines and one. */
+.aim-row {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+.aim-row > .aim-when {
+  flex-basis: 100%;
+}
+
+.aim-row > .when {
+  margin-top: 6px;
+}
+
+/* One tap says when: the cues under a commitment's step, small enough for a row on Now. */
+.when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.when-chip {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.when-chip.is-on {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.sub.ink,
+.note.ink {
+  color: var(--ink);
+}
+
+/* A tap inside a line of text: Change, beside the plan or the proofs. */
+.textbtn.inline {
+  min-height: 0;
+  padding: 0;
+  font-size: inherit;
+}

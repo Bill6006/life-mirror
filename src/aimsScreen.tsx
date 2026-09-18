@@ -1,12 +1,12 @@
 import { useState } from 'preact/hooks'
 import { AimCard, AimRow } from './aimCard'
-import { activeAims, addAim, addSkill, aimRecords, liveSkills, moveSkill, nameAim, openAimOffers, removeAim, removeSkill, resumeAim, rungMarks, setAimStep } from './aimFlow'
-import { AIM_KINDS, BECOMING_KEYS, becoming, blockedBy, followThrough, keysOf, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { activeAims, addAim, addSkill, aimRecords, allIntentions, liveSkills, moveSkill, nameAim, openAimOffers, planAim, removeAim, removeSkill, resumeAim, rungMarks, setAimStep, setLadder } from './aimFlow'
+import { AIM_KINDS, BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
 import { blockAt } from './blocks'
 import { families } from './catalogue'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { allWins, db, getSettings, type Aim, type AimKind, type LadderKind } from './db'
+import { allWins, db, getDayContext, getSettings, type Aim, type AimKind, type Cue, type LadderKind } from './db'
 import { fill, formatDayLong, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
@@ -17,13 +17,16 @@ import { useLive } from './live'
 // proof ladder, follow-through and who you are becoming. Nothing here grades, ranks or streaks.
 
 function useAims() {
+  const today = blockAt(new Date()).day
   const aims = useLive(activeAims, [])
   const skills = useLive(liveSkills, [])
   const marks = useLive(rungMarks, [])
   const open = useLive(openAimOffers, [])
   const records = useLive(aimRecords, [])
-  if (!aims || !skills || !marks || !open || !records) return null
-  return { aims, skills, marks, open, records }
+  const intentions = useLive(allIntentions, [])
+  const ctx = useLive(() => getDayContext(today), [today])
+  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined) return null
+  return { aims, skills, marks, open, records, intentions, ctx, today }
 }
 
 /** The cards of every commitment, with Resume and the unblock offer; shared by Now and the Aims tab. */
@@ -31,7 +34,7 @@ function useAims() {
 export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; compact?: boolean }) {
   const data = useAims()
   if (!data || data.aims.length === 0) return null
-  const { aims, skills, marks, open, records } = data
+  const { aims, skills, marks, open, records, intentions, ctx, today } = data
   const studyAims = aims.filter((a) => a.kind === 'certification')
   const items = aims.map((aim) => {
     const step = stepFor(aim, skills, marks, studyAims)
@@ -39,6 +42,13 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
     const openOffer = open.find((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, skills, studyAims)) ?? null
     const blocked = blockedBy(aim, records.offers, records.outcomes, records.nights, skills, studyAims)
     const unblock = blocked ? unblockFor(blocked) : null
+    const study = aim.kind === 'certification'
+    // One plain fact: when the ladder last moved, or the step was last done. A study commitment with no skills yet has no ladder to move.
+    const last = study
+      ? skillsOf(aim, skills, studyAims).length
+        ? lastLine('moved', lastMovedDay(aim, skills, marks, studyAims), today)
+        : null
+      : lastLine('done', lastDoneDay(aim, records.offers, records.outcomes, studyAims), today)
     const shared = {
       aim,
       step,
@@ -46,8 +56,12 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
       openOffer,
       blocked,
       unblock,
+      ctx,
+      plan: planFor(intentions, aim.id as number, today),
+      last,
       onResume: () => void resumeAim(aim, step, 'step'),
       onUnblock: () => unblock && void resumeAim(aim, sittingOf(unblock), 'unblock'),
+      onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time),
     }
     return compact ? (
       <AimRow key={aim.id} {...shared} />
@@ -55,11 +69,13 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
       <AimCard
         key={aim.id}
         {...shared}
+        counts={cueCounts(intentions, aim.id as number)}
         onRemove={onRemove ? () => onRemove(aim) : undefined}
-        onChangeStep={onChangeStep && aim.kind !== 'certification' ? () => onChangeStep(aim) : undefined}
-        skillCount={aim.kind === 'certification' ? skillsOf(aim, skills, studyAims).length : undefined}
-        onAddSkill={aim.kind === 'certification' && aim.name ? (n) => void addSkill(n, aim.name ?? '') : undefined}
-        onName={aim.kind === 'certification' && !aim.name ? (n) => void nameAim(aim.id as number, n) : undefined}
+        onChangeStep={onChangeStep && !study ? () => onChangeStep(aim) : undefined}
+        skillCount={study ? skillsOf(aim, skills, studyAims).length : undefined}
+        onAddSkill={study && aim.name ? (n) => void addSkill(n, aim.name ?? '') : undefined}
+        onName={study && !aim.name ? (n, k) => void nameAim(aim.id as number, n, k) : undefined}
+        onLadder={study ? (k) => void setLadder(aim.id as number, k) : undefined}
       />
     )
   })

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { movedLine } from './aims'
 import { OutcomeAsk, type Answer } from './ask'
 import { addDays, BLOCKS, type Block } from './blocks'
 import { changesInWords } from './change'
@@ -18,6 +19,7 @@ import {
   type Offer,
 } from './db'
 import { fill, formatTime } from './format'
+import type { RungMove } from './ladder'
 import { useLive } from './live'
 import { MorningChips, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
@@ -74,6 +76,8 @@ export function CheckInScreen({
   const [asked, setAsked] = useState<Set<number>>(new Set())
   const resumed = useRef(Boolean(only))
   const lastTap = useRef(performance.now())
+  // Done on a rung's step: what it did, said once on the screen that follows.
+  const [moved, setMoved] = useState<RungMove | null>(null)
 
   const answers: Answers = { ...(record?.answers ?? {}), ...local }
 
@@ -90,9 +94,10 @@ export function CheckInScreen({
   if (toAsk) {
     const answer = (a: Answer) => {
       setAsked((s) => new Set(s).add(toAsk.id as number))
-      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block })
+      setMoved(null)
+      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }).then((m) => m && setMoved(m))
     }
-    return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} />
+    return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} notice={movedLine(moved)} />
   }
 
   const safeIndex = Math.min(index, total - 1)
@@ -101,6 +106,7 @@ export function CheckInScreen({
   const answered = ids.filter((r) => answers[r] !== undefined).length
 
   function pick(position: Position) {
+    setMoved(null)
     const now = performance.now()
     const gap = now - lastTap.current
     lastTap.current = now
@@ -136,6 +142,11 @@ export function CheckInScreen({
         {reading.name}
       </h1>
       <p class="note">{reading.prompt}</p>
+      {moved && (
+        <p class="note ink" data-testid="rung-moved">
+          {movedLine(moved)}
+        </p>
+      )}
 
       <div class="card">
         <ul class="rows anchors">
