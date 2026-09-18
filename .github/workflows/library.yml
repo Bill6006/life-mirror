@@ -1,0 +1,57 @@
+name: library
+
+# The evidence library's monthly builder. It holds no personal data and no database token:
+# free APIs for discovery and currency, and, when CF_ACCOUNT_ID and CF_AI_TOKEN are set (a
+# token scoped to Workers AI alone), a model drafts claim cards from abstracts. Nothing enters
+# src/library.json here: the run opens a pull request with candidates, drafts and flags, and a
+# person admits each card by hand. `node scripts/library-check.mjs --verify` runs before a merge.
+on:
+  schedule:
+    - cron: '23 7 3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Discover reviews and trials on each topic
+        run: node scripts/library-discover.mjs --max-per-topic 6
+
+      - name: Draft claim cards from abstracts
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+        run: node scripts/library-draft.mjs
+
+      - name: Ask Crossref about retractions, corrections and stale cards
+        run: node scripts/library-currency.mjs
+
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          stamp=$(date -u +%Y-%m)
+          branch="library/$stamp"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add library/candidates.json library/drafts.json library/currency.json
+          if git diff --cached --quiet; then echo "Nothing new this month."; exit 0; fi
+          git commit -m "Library builder: candidates, drafts and currency flags for $stamp"
+          git push -f origin "$branch"
+          n=$(node -e "console.log(JSON.parse(require('fs').readFileSync('library/drafts.json','utf8')).drafts.length)")
+          f=$(node -e "console.log(JSON.parse(require('fs').readFileSync('library/currency.json','utf8')).flags.length)")
+          gh pr create --base main --head "$branch" --title "Library: $n drafts and $f currency flags for $stamp" \
+            --body "Monthly builder run. Read library/drafts.json; move a card you admit into src/library.json with status admitted and a fresh reviewed date; run node scripts/library-check.mjs --verify before merging. library/currency.json lists retractions, corrections and stale cards to re-check." \
+            || gh pr edit "$branch" --title "Library: $n drafts and $f currency flags for $stamp"
