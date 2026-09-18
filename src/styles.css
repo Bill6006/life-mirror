@@ -1436,3 +1436,15 @@ button.chip {
   padding: 0;
   font-size: inherit;
 }
+
+/* The brain's line at the top of the brief, and the one tap under it. */
+.brain-line {
+  margin: 0 0 10px;
+}
+
+.brain-line .taps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}

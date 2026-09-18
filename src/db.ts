@@ -1,3 +1,4 @@
+import type { FactSheet } from './facts'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
 import { compareSlots, parseDay, type Block, type Slot } from './blocks'
@@ -338,6 +339,51 @@ export interface Intention {
   setAt: string
   /** The offer that started the step, once it was; null until then. */
   offerId: number | null
+  /** The step's name when the plan was made, for a reminder that carries it. */
+  step?: string
+}
+
+/** The day's fact sheet as a record of its own: what the brain may speak from, written by the phone and read by the Worker. */
+export interface FactsRow {
+  day: string
+  builtAt: string
+  updatedAt: string
+  sheet: FactSheet
+}
+
+/** The phone's own line for a day, chosen once by the situation engine; a null situation means it had nothing to say. */
+export interface BriefLog {
+  id?: number
+  day: string
+  situationId: string | null
+  mode: string
+  text: string
+  factIds: string[]
+  cardIds: string[]
+  at: string
+}
+
+/** One tap under a line: how it landed. Filed once per line. */
+export interface BriefFeedback {
+  id?: number
+  day: string
+  briefKey: string
+  situationId: string | null
+  answer: 'useful' | 'knew' | 'not'
+  at: string
+}
+
+/** A line the Worker wrote, read from its rows in the cloud copy; never written from here. */
+export interface BrainBrief {
+  id: string
+  day: string
+  kind: 'brief' | 'review'
+  text: string
+  mode: string
+  factIds: string[]
+  cardIds: string[]
+  model: string
+  at: string
 }
 
 /** A skill from the checklists you chose to watch (Phase F). Its rung moves only by your tap; no count moves it. */
@@ -385,6 +431,10 @@ class LifeMirrorDB extends Dexie {
   skills!: Table<Skill, number>
   rungMarks!: Table<RungMark, number>
   intentions!: Table<Intention, number>
+  facts!: Table<FactsRow, string>
+  briefLog!: Table<BriefLog, number>
+  briefFeedback!: Table<BriefFeedback, number>
+  brainBriefs!: Table<BrainBrief, string>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -545,6 +595,13 @@ class LifeMirrorDB extends Dexie {
     // A cue tapped for a step: when you mean to do it today; kept when the step is started.
     this.version(11).stores({
       intentions: '++id, aimId, day',
+    })
+    // The brain: the day's facts as a record, the phone's own lines and the taps under them, and the Worker's lines read from the cloud copy.
+    this.version(12).stores({
+      facts: 'day',
+      briefLog: '++id, day',
+      briefFeedback: '++id, day, briefKey',
+      brainBriefs: 'id, day',
     })
     installOutbox(this)
   }
@@ -783,7 +840,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -811,6 +868,10 @@ export function wipeEverything(): Promise<void> {
       db.skills.clear(),
       db.rungMarks.clear(),
       db.intentions.clear(),
+      db.facts.clear(),
+      db.briefLog.clear(),
+      db.briefFeedback.clear(),
+      db.brainBriefs.clear(),
       db.herSkills.clear(),
       db.moments.clear(),
     ])

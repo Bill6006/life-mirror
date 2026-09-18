@@ -15,7 +15,8 @@
     "e2e": "playwright test",
     "icons": "node scripts/make-icons.mjs",
     "anchors": "node scripts/anchors-md.mjs",
-    "catalogue": "node scripts/catalogue-md.mjs"
+    "catalogue": "node scripts/catalogue-md.mjs",
+    "library": "node scripts/library-check.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

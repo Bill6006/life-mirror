@@ -127,7 +127,7 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
       {settings.directionAskedAt === null && <DirectionAsk />}
 
       <ReadingHero all={all} today={today} />
-      <Brief day={today.day} />
+      <Brief day={today.day} version={all.length} />
 
       <div class="card today" style={{ '--n': String(windows.length) }}>
         <div class="windows">

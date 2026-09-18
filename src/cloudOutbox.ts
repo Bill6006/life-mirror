@@ -8,7 +8,7 @@ import Dexie, { type DbSchema, type DBCore, type DBCoreMutateRequest, type DBCor
 export const APP = 'life-mirror'
 
 /** Every table that is part of your record. The outbox and the sync state are not. */
-export const SYNCED_STORES: readonly string[] = ['checkins', 'settings', 'wins', 'privateItems', 'offers', 'cards', 'outcomes', 'days', 'studyNights', 'aims', 'skills', 'rungMarks', 'declarations', 'forecasts', 'forecastScores', 'anchorSwaps', 'herSkills', 'moments', 'intentions']
+export const SYNCED_STORES: readonly string[] = ['checkins', 'settings', 'wins', 'privateItems', 'offers', 'cards', 'outcomes', 'days', 'studyNights', 'aims', 'skills', 'rungMarks', 'declarations', 'forecasts', 'forecastScores', 'anchorSwaps', 'herSkills', 'moments', 'intentions', 'facts', 'briefLog', 'briefFeedback']
 
 /** One queued change: a put with the record as JSON, or a delete (a tombstone in the cloud). */
 export interface OutboxRow {
@@ -33,7 +33,7 @@ export interface CloudRowState {
 /** The sync state, one record. Never synced itself. */
 export interface CloudMeta {
   /** 'state' for this app's own rows; 'outside' for the other app's rows this app reads. */
-  key: 'state' | 'outside'
+  key: 'state' | 'outside' | 'brain'
   /** The latest synced_at pulled; the next pull asks for rows after it. */
   watermark: string
   lastSyncAt: string | null

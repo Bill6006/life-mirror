@@ -9,6 +9,7 @@ import { EvidenceScreen } from './evidenceScreen'
 import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
 import { adoptOrphanSubjects, alignLadders } from './aimFlow'
+import { writeFactsRow } from './brainFlow'
 import { loadAudits, runLearning } from './learningFlow'
 import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
@@ -75,10 +76,12 @@ export function App() {
       .then(alignLadders)
       .then(() => runLearning(day))
       .then(() => runForecasting(day))
+      .then(() => writeFactsRow(day))
   }, [])
   // Phase 11: a forecast for a block is written before that block is logged; after each completed check-in the next slots may be due.
   useEffect(() => {
-    void runForecasting(blockAt(new Date()).day)
+    const day = blockAt(new Date()).day
+    void runForecasting(day).then(() => writeFactsRow(day))
   }, [all?.length])
 
   useEffect(() => {

@@ -346,6 +346,10 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await expect(page.getByTestId('your-aims')).toBeVisible()
   await expect(page.getByTestId('aim-card')).toBeVisible()
   await expect(page.getByTestId('aim-card')).toContainText('Networking')
+  // The brief's line: the judgment engine speaks from the record, and one tap says how it landed.
+  await expect(page.getByTestId('brief-line')).toContainText('Networking has no skill on its ladder yet')
+  await page.getByTestId('brief-useful').click()
+  await expect(page.getByTestId('brief-noted')).toBeVisible()
   // The two headings say it; there is no explaining line under Tonight any more.
   await expect(page.getByTestId('tonight')).toHaveCount(0)
   const stepBox = await page.getByTestId('aim-card').boundingBox()
@@ -705,6 +709,10 @@ test('study named by you: a language and an instrument sit beside each other, ea
   await page.getByTestId('aim-ladder-craft').click()
   await page.getByTestId('aim-name-add').click()
   await expect(page.getByTestId('aim-card')).toHaveCount(2)
+  // The brief's line speaks to the record as it stands: two commitments and no skill yet.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.getByTestId('brief-line')).toContainText('French has no skill on its ladder yet')
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
   // The ladder: a skill under each subject, each climbing its own proofs.
   await page.getByRole('button', { name: /^The proof ladder/ }).click()
   await expect(page.getByTestId('subject-chip')).toHaveCount(2)
@@ -724,6 +732,9 @@ test('study named by you: a language and an instrument sit beside each other, ea
   await expect(page.getByTestId('aim-step').last()).toContainText('Scale of C · try it slowly')
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.getByTestId('aim-card')).toHaveCount(2)
+  // The morning's line is withdrawn once its facts no longer hold: both ladders moved today, and nothing else is true yet.
+  await expect(page.getByTestId('brief')).toBeVisible()
+  await expect(page.getByTestId('brief-line')).toHaveCount(0)
   // One tap says when: a cue for the first step, then Resume; the plan is kept and counted.
   await page.getByTestId('aim-cue-afterBedtime').first().click()
   await expect(page.getByTestId('aim-plan').first()).toContainText('After her bedtime, 20:00')

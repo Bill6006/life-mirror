@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { CLOUD_URL } from './cloudStore'
+import { brainStatus } from './brainFlow'
 import { removeToken, saveToken, syncNow, useCloudStatus } from './cloudSync'
 import { copy } from './copy'
 import { getSettings } from './db'
@@ -15,6 +16,7 @@ import { readLog } from './tokenVault'
 export function CloudScreen({ onClose }: { onClose: () => void }) {
   const settings = useLive(getSettings, [])
   const status = useCloudStatus()
+  const brain = useLive(brainStatus, [])
   const [token, setToken] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   if (!settings || !status) return <section class="screen" />
@@ -64,6 +66,9 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
       <p class="note">{c.intro}</p>
       <p class="note faint" data-testid="cloud-outside">
         {c.outside}
+      </p>
+      <p class="note faint" data-testid="cloud-brain">
+        {c.brain} {brain ? fill(c.brainStatus, { when: formatWhen(brain.at), model: brain.model }) : c.brainNone}
       </p>
 
       <h2 class="section">{c.url}</h2>

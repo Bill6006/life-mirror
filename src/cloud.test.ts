@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { deleteCloudCopy, ensureDeviceId, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { BRAIN_APP, brainBriefOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
 import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
@@ -416,5 +416,29 @@ describe('the other app’s finished workouts, read from the same database', () 
     expect(outsideDayOf('not json')).toBeNull()
     expect(outsideDayOf(JSON.stringify({ completedAt: 'yesterday' }))).toBeNull()
     expect(outsideDayOf(JSON.stringify({ completedAt: new Date(2026, 8, 11, 7, 45).toISOString(), elapsedSeconds: 90 }))).toMatchObject({ day: '2026-09-11', minutes: 2 })
+  })
+})
+
+describe('the brain’s lines, read from the same database', () => {
+  const brainRow = (id: string, body: Record<string, unknown> | null, synced_at: string, deleted: 0 | 1 = 0): CloudRow => ({ app: BRAIN_APP, store: 'briefs', id, day: null, body: body ? JSON.stringify(body) : null, updated_at: synced_at, deleted, device_id: 'worker', synced_at })
+
+  it('reads a line the Worker wrote, takes a deleted one back, and writes none of its rows', async () => {
+    const store = memoryStore()
+    await store.upsert([
+      brainRow('2026-09-18:brief', { day: '2026-09-18', kind: 'brief', text: 'One line.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z' }, '2026-09-18T09:15:01.000Z'),
+      brainRow('x', { day: '2026-09-18' }, '2026-09-18T09:15:02.000Z'),
+    ])
+    await withToken(store)
+    await syncNow()
+    const rows = await db.brainBriefs.toArray()
+    expect(rows.map((r) => r.id)).toEqual(['2026-09-18:brief'])
+    expect(rows[0]).toMatchObject({ day: '2026-09-18', kind: 'brief', text: 'One line.', model: 'm' })
+    expect((await getBrainMeta()).watermark).toBe('2026-09-18T09:15:02.000Z')
+    expect([...store.rows.values()].filter((r) => r.app === BRAIN_APP)).toHaveLength(2)
+    await store.upsert([brainRow('2026-09-18:brief', null, '2026-09-19T09:00:00.000Z', 1)])
+    await syncNow()
+    expect(await db.brainBriefs.count()).toBe(0)
+    expect(brainBriefOf('y', 'not json')).toBeNull()
+    expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', kind: 'review' }))?.kind).toBe('review')
   })
 })

@@ -61,7 +61,7 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
       last,
       onResume: () => void resumeAim(aim, step, 'step'),
       onUnblock: () => unblock && void resumeAim(aim, sittingOf(unblock), 'unblock'),
-      onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time),
+      onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), step.name),
     }
     return compact ? (
       <AimRow key={aim.id} {...shared} />

@@ -1,0 +1,1983 @@
+[
+  {
+    "id": "implementation-intentions",
+    "claim": "Forming an if-then plan (when situation X arises, I will do Y) raises the rate at which a goal is acted on, with a medium-to-large effect across many studies.",
+    "domain": "behaviour-change",
+    "tags": [
+      "cue",
+      "plan",
+      "study",
+      "habit"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = 0.65 across 94 independent tests (meta-analysis)",
+    "population": "adults and students; health, academic, work and everyday goals",
+    "sources": [
+      {
+        "cite": "Gollwitzer & Sheeran (2006). Implementation intentions and goal achievement: a meta-analysis of effects and processes. Advances in Experimental Social Psychology, 38, 69–119.",
+        "doi": "10.1016/S0065-2601(06)38002-1"
+      }
+    ],
+    "caveats": "Works when the goal itself is wanted; the specific cue does the work, not the resolve. Weaker for goals the person is ambivalent about.",
+    "app": "One tap says when: after pickup, after her bedtime, at the next check-in. The cue counts show which cue holds.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "monitoring-progress",
+    "claim": "Monitoring progress toward a goal, especially when the progress is recorded or made public, increases the chance the goal is reached.",
+    "domain": "behaviour-change",
+    "tags": [
+      "monitoring",
+      "plan",
+      "habit",
+      "ladder"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = 0.40 on goal attainment across 138 studies; larger when progress was recorded (d = 0.53)",
+    "population": "adults; health, work and academic goals",
+    "sources": [
+      {
+        "cite": "Harkin et al. (2016). Does monitoring goal progress promote goal attainment? A meta-analysis of the experimental evidence. Psychological Bulletin, 142(2), 198–229.",
+        "doi": "10.1037/bul0000025"
+      }
+    ],
+    "caveats": "The effect is on behaviour; it says nothing about mood. Monitoring that becomes grading can backfire; counts, not verdicts.",
+    "app": "The proof ladder, follow-through counts and the last-moved line are monitoring; they carry part of the effect on their own.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "habit-formation-time",
+    "claim": "A new daily behaviour takes weeks to months to feel automatic, and missing a single day does not measurably set the process back.",
+    "domain": "behaviour-change",
+    "tags": [
+      "habit",
+      "cue",
+      "lapse"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "median 66 days to plateau, range 18 to 254 days, in 96 volunteers",
+    "population": "adults choosing one new eating, drinking or activity behaviour",
+    "sources": [
+      {
+        "cite": "Lally et al. (2010). How are habits formed: modelling habit formation in the real world. European Journal of Social Psychology, 40(6), 998–1009.",
+        "doi": "10.1002/ejsp.674"
+      }
+    ],
+    "caveats": "One study, self-reported automaticity, a small sample; the 66-day figure is a median, not a rule.",
+    "app": "A missed day is a fact, never a streak lost. The same cue on the same days is what builds the habit.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "intention-behaviour-gap",
+    "claim": "A large change in intention produces only a small-to-medium change in behaviour; wanting to is not the bottleneck.",
+    "domain": "behaviour-change",
+    "tags": [
+      "plan",
+      "cue",
+      "habit"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "a medium-to-large change in intention (d = 0.66) led to a small-to-medium change in behaviour (d = 0.36) across 47 experiments",
+    "population": "adults; health and everyday behaviours",
+    "sources": [
+      {
+        "cite": "Webb & Sheeran (2006). Does changing behavioral intentions engender behavior change? A meta-analysis of the experimental evidence. Psychological Bulletin, 132(2), 249–268.",
+        "doi": "10.1037/0033-2909.132.2.249"
+      }
+    ],
+    "caveats": "Experimental studies only; the gap is smaller for behaviours under the person's direct control.",
+    "app": "The brief never asks for more resolve. It asks for a cue, a smaller step, or a different alternative.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "ego-depletion-not-replicated",
+    "claim": "The idea that willpower is a tank that drains with use did not survive a large pre-registered replication; a hard morning does not use up the evening's self-control.",
+    "domain": "behaviour-change",
+    "tags": [
+      "energy",
+      "evening",
+      "lapse"
+    ],
+    "grade": "A",
+    "replication": "failed",
+    "effect": "d = 0.04 across 23 laboratories and 2,141 participants, against an original claim of d ≈ 0.6",
+    "population": "adults in laboratory tasks",
+    "sources": [
+      {
+        "cite": "Hagger et al. (2016). A multilab preregistered replication of the ego-depletion effect. Perspectives on Psychological Science, 11(4), 546–573.",
+        "doi": "10.1177/1745691616652873"
+      }
+    ],
+    "caveats": "Tiredness and low energy are real and read directly; what failed is the specific tank model of self-control.",
+    "app": "A low energy reading is a reason to shrink the step, not to skip the evening. The record, not a theory, says what tired does.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "self-compassion-after-lapse",
+    "claim": "Responding to a lapse with self-compassion rather than self-criticism increases the motivation to improve and to try again.",
+    "domain": "behaviour-change",
+    "tags": [
+      "lapse",
+      "self-compassion",
+      "study",
+      "habit"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "four experiments; self-compassion induction raised motivation to improve and time spent studying for a retest",
+    "population": "undergraduates recalling or experiencing a failure",
+    "sources": [
+      {
+        "cite": "Breines & Chen (2012). Self-compassion increases self-improvement motivation. Personality and Social Psychology Bulletin, 38(9), 1133–1143.",
+        "doi": "10.1177/0146167212445599"
+      }
+    ],
+    "caveats": "Student samples and short-term outcomes; the effect on long-run behaviour is not shown here.",
+    "app": "After a step ends in No, the offer removes the obstacle and never shrinks the aim; the wording stays plain and unjudging.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "fresh-start-effect",
+    "claim": "People are more likely to begin working toward a goal right after a temporal landmark such as a new week, month, or birthday.",
+    "domain": "behaviour-change",
+    "tags": [
+      "fresh-start",
+      "plan",
+      "habit"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "field data on gym visits, goal searches and commitment contracts rise after landmarks; laboratory follow-ups vary",
+    "population": "adults; archival and field data",
+    "sources": [
+      {
+        "cite": "Dai, Milkman & Riis (2014). The fresh start effect: temporal landmarks motivate aspirational behavior. Management Science, 60(10), 2563–2582.",
+        "doi": "10.1287/mnsc.2014.1901"
+      }
+    ],
+    "caveats": "Starting rises; persistence after the landmark is not shown to rise with it.",
+    "app": "A Monday or the first of the month is a good day to restart a stalled step; it is not a reason to wait for one.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "temptation-bundling",
+    "claim": "Pairing a wanted-but-avoided activity with a pleasure allowed only during it raises how often the activity is done.",
+    "domain": "behaviour-change",
+    "tags": [
+      "habit",
+      "reward",
+      "workout",
+      "study"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "gym visits rose 29 to 51 percent while audiobooks were restricted to the gym; the effect faded when the restriction was lifted",
+    "population": "university staff and students, one field experiment",
+    "sources": [
+      {
+        "cite": "Milkman, Minson & Volpp (2014). Holding the Hunger Games hostage at the gym: an evaluation of temptation bundling. Management Science, 60(2), 283–299.",
+        "doi": "10.1287/mnsc.2013.1784"
+      }
+    ],
+    "caveats": "One field study; the gain did not survive the end of the restriction.",
+    "app": "A study sitting can be paired with the one thing allowed only then; the record can tell whether it held.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "default-effects",
+    "claim": "What happens by default is done far more often than what needs a choice; setting the default is a stronger lever than deciding each time.",
+    "domain": "decision",
+    "tags": [
+      "choice",
+      "habit",
+      "plan"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = 0.68 across 58 studies; larger for consumer and environmental domains, smaller for health",
+    "population": "adults; policy, consumer and health choices",
+    "sources": [
+      {
+        "cite": "Jachimowicz et al. (2019). When and why defaults influence decisions: a meta-analysis of default effects. Behavioural Public Policy, 3(2), 159–186.",
+        "doi": "10.1017/bpp.2018.43"
+      }
+    ],
+    "caveats": "Most studies are one-shot choices, not daily habits.",
+    "app": "The one offer per block and the pre-filled step are defaults on purpose: nothing to decide, one tap to accept or decline.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "goal-setting-specific",
+    "claim": "Setting a specific goal changes behaviour more than a vague intention, with a small-to-medium effect.",
+    "domain": "behaviour-change",
+    "tags": [
+      "plan",
+      "study",
+      "small-step"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = 0.34 on behaviour across 141 papers; larger when goals were set face to face or publicly",
+    "population": "adults; health, work and academic behaviours",
+    "sources": [
+      {
+        "cite": "Epton, Currie & Armitage (2017). Unique effects of setting goals on behavior change: systematic review and meta-analysis. Journal of Consulting and Clinical Psychology, 85(12), 1182–1198.",
+        "doi": "10.1037/ccp0000260"
+      }
+    ],
+    "caveats": "Difficulty and specificity interact; a specific goal that is too hard can lower persistence.",
+    "app": "A step is one line sized to one sitting, never a subject or a wish.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "rewards-undermine-intrinsic",
+    "claim": "Tangible rewards for an activity that was already interesting reduce later free-choice engagement in it.",
+    "domain": "behaviour-change",
+    "tags": [
+      "reward",
+      "habit",
+      "study"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = −0.34 on free-choice behaviour for expected tangible rewards across 128 studies; verbal praise did not undermine",
+    "population": "children and adults in laboratory and field tasks",
+    "sources": [
+      {
+        "cite": "Deci, Koestner & Ryan (1999). A meta-analytic review of experiments examining the effects of extrinsic rewards on intrinsic motivation. Psychological Bulletin, 125(6), 627–668.",
+        "doi": "10.1037/0033-2909.125.6.627"
+      }
+    ],
+    "caveats": "A long dispute over moderators; unexpected rewards and informational feedback do not show the effect.",
+    "app": "No badges, no streaks, no points. Counts of what was done, and the reading the next morning.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "prompts-and-reminders",
+    "claim": "Periodic prompts and reminders help people keep to a health behaviour, especially when the prompt names the behaviour and arrives at a relevant time.",
+    "domain": "behaviour-change",
+    "tags": [
+      "reminder",
+      "cue",
+      "plan"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "systematic review of 19 studies: most found prompts effective; frequency and personal relevance mattered",
+    "population": "adults in health promotion programmes",
+    "sources": [
+      {
+        "cite": "Fry & Neff (2009). Periodic prompts and reminders in health promotion and health behavior interventions: systematic review. Journal of Medical Internet Research, 11(2), e16.",
+        "doi": "10.2196/jmir.1138"
+      }
+    ],
+    "caveats": "Older studies, mixed quality; a prompt that arrives at the wrong moment is ignored.",
+    "app": "A push at the cue time carrying the planned step, not a push at a fixed hour.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "planning-fallacy",
+    "claim": "People predict their own tasks will finish sooner than they do, even when they know their past tasks ran late.",
+    "domain": "decision",
+    "tags": [
+      "plan",
+      "forecast",
+      "study"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "in the original studies fewer than half of students finished by their own predicted date",
+    "population": "students and adults predicting task completion",
+    "sources": [
+      {
+        "cite": "Buehler, Griffin & Ross (1994). Exploring the planning fallacy: why people underestimate their task completion times. Journal of Personality and Social Psychology, 67(3), 366–381.",
+        "doi": "10.1037/0022-3514.67.3.366"
+      }
+    ],
+    "caveats": "Effect sizes vary by task; using past records to predict reduces the bias.",
+    "app": "A step is sized to one sitting because the sitting is what gets done; the record says how long things really take.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "self-regulation-techniques",
+    "claim": "Interventions that teach self-monitoring together with goal setting, feedback and review change physical activity and eating more than those without them.",
+    "domain": "behaviour-change",
+    "tags": [
+      "monitoring",
+      "plan",
+      "workout"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "interventions with self-monitoring plus at least one other self-regulation technique were about twice as effective (d = 0.42 versus 0.26)",
+    "population": "adults in physical activity and healthy eating trials, 122 studies",
+    "sources": [
+      {
+        "cite": "Michie et al. (2009). Effective techniques in healthy eating and physical activity interventions: a meta-regression. Health Psychology, 28(6), 690–701.",
+        "doi": "10.1037/a0016136"
+      }
+    ],
+    "caveats": "Technique coding across trials; individual differences are not separated out.",
+    "app": "The check-in, the Done tap and the weekly view together are the self-monitoring the evidence points to.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "choice-overload-null",
+    "claim": "More options do not reliably reduce the chance of choosing; the average effect of choice overload across studies is near zero, and it appears only under particular conditions.",
+    "domain": "decision",
+    "tags": [
+      "choice"
+    ],
+    "grade": "A",
+    "replication": "mixed",
+    "effect": "mean effect near zero across 50 experiments, with real effects in some conditions such as no strong prior preference",
+    "population": "adults in consumer and laboratory choice tasks",
+    "sources": [
+      {
+        "cite": "Scheibehenne, Greifeneder & Todd (2010). Can there ever be too many options? A meta-analytic review of choice overload. Journal of Consumer Research, 37(3), 409–425.",
+        "doi": "10.1086/651235"
+      }
+    ],
+    "caveats": "Moderators matter more than the headline; one move per block is a design choice, not a finding.",
+    "app": "One offer per block is for the record's sake: one candidate per moment gives the learning a clean comparison.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "spacing-effect",
+    "claim": "Practice spread over time is remembered better than the same practice massed into one session; the gap should grow with the delay until the material is needed.",
+    "domain": "learning",
+    "tags": [
+      "study",
+      "ladder",
+      "knowledge",
+      "language",
+      "performance"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "spaced practice beat massed in the large majority of 254 studies; the best gap scales with the retention interval",
+    "population": "children and adults learning verbal material",
+    "sources": [
+      {
+        "cite": "Cepeda et al. (2006). Distributed practice in verbal recall tasks: a review and quantitative synthesis. Psychological Bulletin, 132(3), 354–380.",
+        "doi": "10.1037/0033-2909.132.3.354"
+      }
+    ],
+    "caveats": "Mostly verbal learning in the laboratory; the optimal gap depends on how long the memory must last.",
+    "app": "Returning beats starting: the step follows the skill moved most recently, and short sittings on several days beat one long one.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "testing-effect",
+    "claim": "Retrieving something from memory strengthens it more than restudying it; practice tests beat rereading for later recall.",
+    "domain": "learning",
+    "tags": [
+      "study",
+      "ladder",
+      "knowledge",
+      "language"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "g = 0.50 for testing over restudy across 159 effect sizes; g = 0.61 in a second meta-analysis of 118 studies",
+    "population": "students and adults; classroom and laboratory",
+    "sources": [
+      {
+        "cite": "Rowland (2014). The effect of testing versus restudy on retention: a meta-analytic review of the testing effect. Psychological Bulletin, 140(6), 1432–1463.",
+        "doi": "10.1037/a0037559"
+      },
+      {
+        "cite": "Adesope, Trevisan & Sundararajan (2017). Rethinking the use of tests: a meta-analysis of practice testing. Review of Educational Research, 87(3), 659–701.",
+        "doi": "10.3102/0034654316689306"
+      }
+    ],
+    "caveats": "Largest with feedback and with a delay before the final test.",
+    "app": "The ladder's from-memory rungs are retrieval practice; explaining from memory is the proof, not another read-through.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "interleaving",
+    "claim": "Mixing different kinds of problems or skills within a session improves later learning compared with practising one kind at a time, especially when the kinds are easily confused.",
+    "domain": "learning",
+    "tags": [
+      "study",
+      "ladder",
+      "knowledge",
+      "performance"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "g = 0.42 overall across 238 effect sizes; larger for similar categories, smaller or absent for very different ones",
+    "population": "students and adults; mathematics, categories, motor and perceptual tasks",
+    "sources": [
+      {
+        "cite": "Brunmair & Richter (2019). Similarity matters: a meta-analysis of interleaved learning and its moderators. Psychological Bulletin, 145(11), 1029–1052.",
+        "doi": "10.1037/bul0000209"
+      }
+    ],
+    "caveats": "Feels harder while learning, which is why people avoid it; the gain shows on the later test.",
+    "app": "Two skills under one subject alternated across sittings is fine; the ladder does not require finishing one first.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "learning-techniques-utility",
+    "claim": "Practice testing and distributed practice have high utility across learners and materials; rereading, highlighting and summarising have low utility.",
+    "domain": "learning",
+    "tags": [
+      "study",
+      "knowledge",
+      "reading"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "ten techniques reviewed; two rated high utility, three moderate, five low",
+    "population": "students across ages and subjects",
+    "sources": [
+      {
+        "cite": "Dunlosky et al. (2013). Improving students' learning with effective learning techniques: promising directions from cognitive and educational psychology. Psychological Science in the Public Interest, 14(1), 4–58.",
+        "doi": "10.1177/1529100612453266"
+      }
+    ],
+    "caveats": "Utility ratings are the authors' synthesis; some low-utility techniques help as a first pass.",
+    "app": "The first rung is watched or read once; every rung after it is doing, building, breaking or explaining.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "learning-by-teaching",
+    "claim": "Teaching material to someone else, or preparing to, improves the teacher's own retention, largely because teaching forces retrieval.",
+    "domain": "learning",
+    "tags": [
+      "study",
+      "ladder",
+      "knowledge"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "teaching without notes improved retention as much as retrieval practice did; teaching with notes did not",
+    "population": "undergraduates learning a science passage",
+    "sources": [
+      {
+        "cite": "Koh, Lee & Lim (2018). The learning benefits of teaching: a retrieval practice hypothesis. Applied Cognitive Psychology, 32(3), 401–410.",
+        "doi": "10.1002/acp.3410"
+      }
+    ],
+    "caveats": "One study; the benefit depends on teaching from memory rather than reading from notes.",
+    "app": "Explained from memory is a rung because it is retrieval; reading notes aloud would not be.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "deliberate-practice-share",
+    "claim": "Deliberate practice explains a real but limited share of performance differences: more in games, music and sport, little in education and professions.",
+    "domain": "learning",
+    "tags": [
+      "performance",
+      "study",
+      "ladder"
+    ],
+    "grade": "A",
+    "replication": "mixed",
+    "effect": "practice explained 26% of variance in games, 21% in music, 18% in sports, 4% in education and under 1% in professions across 88 studies",
+    "population": "learners and performers across domains",
+    "sources": [
+      {
+        "cite": "Macnamara, Hambrick & Oswald (2014). Deliberate practice and performance in music, games, sports, education, and professions: a meta-analysis. Psychological Science, 25(8), 1608–1618.",
+        "doi": "10.1177/0956797614535810"
+      }
+    ],
+    "caveats": "Disputed by the original practice researchers over what counts as deliberate; the share is large enough to matter for an instrument.",
+    "app": "For an instrument or a craft, sittings compound; for a certification, what is practised matters more than how long.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "mental-practice",
+    "claim": "Rehearsing a task in the mind, without moving, improves later performance, most for tasks with a cognitive component and less as time passes without physical practice.",
+    "domain": "learning",
+    "tags": [
+      "performance",
+      "study"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "d = 0.53 overall across 35 studies; weaker than physical practice, stronger than none",
+    "population": "adults learning motor and cognitive tasks",
+    "sources": [
+      {
+        "cite": "Driskell, Copper & Moran (1994). Does mental practice enhance performance? Journal of Applied Psychology, 79(4), 481–492.",
+        "doi": "10.1037/0021-9010.79.4.481"
+      }
+    ],
+    "caveats": "Older meta-analysis; the gain decays over weeks unless refreshed.",
+    "app": "A piece can be rehearsed in the head in a spare ten minutes; it counts as a sitting on the way to from memory.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "distributed-practice-motor",
+    "claim": "Spaced practice sessions produce better skill performance than the same practice massed, for physical as well as mental tasks.",
+    "domain": "learning",
+    "tags": [
+      "performance",
+      "study",
+      "ladder"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "d = 0.46 favouring spaced practice across 63 studies; larger for simple tasks",
+    "population": "adults learning motor and cognitive skills",
+    "sources": [
+      {
+        "cite": "Donovan & Radosevich (1999). A meta-analytic review of the distribution of practice effect: now you see it, now you don't. Journal of Applied Psychology, 84(5), 795–805.",
+        "doi": "10.1037/0021-9010.84.5.795"
+      }
+    ],
+    "caveats": "The best spacing depends on task complexity; very complex tasks show smaller gains.",
+    "app": "Ten minutes on the scale most evenings beats an hour on Saturday; the ladder is built for that.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "sleep-consolidates-memory",
+    "claim": "Sleep after learning strengthens what was learned, for facts and for motor skills alike.",
+    "domain": "sleep",
+    "tags": [
+      "sleep",
+      "study",
+      "performance",
+      "knowledge",
+      "evening"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "review of experimental and physiological studies; sleep-dependent gains in declarative and procedural memory",
+    "population": "adults and animals in laboratory studies",
+    "sources": [
+      {
+        "cite": "Rasch & Born (2013). About sleep's role in memory. Physiological Reviews, 93(2), 681–766.",
+        "doi": "10.1152/physrev.00032.2012"
+      }
+    ],
+    "caveats": "Effect sizes vary by task; sleep loss the night after learning costs more than sleep loss before it.",
+    "app": "A study sitting after her bedtime is well placed: sleep follows it. A short night after it costs the sitting some of its value.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "exercise-after-learning",
+    "claim": "Exercise a few hours after learning, not immediately after, improved memory for the material two days later.",
+    "domain": "learning",
+    "tags": [
+      "workout",
+      "study",
+      "knowledge"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "72 participants; exercise four hours after learning improved retention and hippocampal pattern similarity; immediate exercise did not",
+    "population": "healthy adults in one experiment",
+    "sources": [
+      {
+        "cite": "van Dongen et al. (2016). Physical exercise performed four hours after learning improves memory retention and increases hippocampal pattern similarity during retrieval. Current Biology, 26(13), 1722–1727.",
+        "doi": "10.1016/j.cub.2016.04.071"
+      }
+    ],
+    "caveats": "One study, not yet replicated; the timing window is approximate.",
+    "app": "A workout day and a study sitting on the same day are not in competition; the record can test the order.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "language-vocabulary-spacing",
+    "claim": "Spacing the retrieval of new second-language words across a session and across days improves their retention; the size of the gaps matters less than that there are gaps.",
+    "domain": "learning",
+    "tags": [
+      "language",
+      "study",
+      "ladder"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "spaced retrieval beat massed; expanding and equal spacing did not differ reliably",
+    "population": "adult learners of English vocabulary",
+    "sources": [
+      {
+        "cite": "Nakata (2015). Effects of expanding and equal spacing on second language vocabulary learning: does gradually increasing spacing increase vocabulary learning? Studies in Second Language Acquisition, 37(4), 677–711.",
+        "doi": "10.1017/S0272263114000825"
+      }
+    ],
+    "caveats": "One learner population and one language; the general spacing result is the stronger claim.",
+    "app": "A word or a rule on the language ladder is met again on another day before it climbs to from memory.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "language-interaction",
+    "claim": "Conversation with another person, with its clarifications and corrections, produces measurably more second-language learning than exposure without interaction.",
+    "domain": "learning",
+    "tags": [
+      "language",
+      "social",
+      "study"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analyses of interaction studies: medium-to-large effects on immediate and delayed measures (d around 0.75 in one synthesis)",
+    "population": "adult second-language learners in classroom and laboratory studies",
+    "sources": [
+      {
+        "cite": "Mackey & Goo (2007). Interaction research in SLA: a meta-analysis and research synthesis. In Mackey (Ed.), Conversational interaction in second language acquisition (pp. 407–452). Oxford University Press.",
+        "doi": null
+      },
+      {
+        "cite": "Plonsky & Gass (2011). Quantitative research methods, study quality, and outcomes: the case of interaction research. Language Learning, 61(2), 325–366.",
+        "doi": "10.1111/j.1467-9922.2011.00640.x"
+      }
+    ],
+    "caveats": "A book chapter; effect sizes vary by outcome and by how interaction was arranged.",
+    "app": "Used with someone is the top rung of the language ladder because exchange is where the learning is measured.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "caffeine-six-hours",
+    "claim": "Caffeine taken six hours before bed still shortens and disturbs sleep, even when the person does not notice it.",
+    "domain": "sleep",
+    "tags": [
+      "caffeine",
+      "sleep",
+      "afternoon",
+      "evening"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "400 mg at 0, 3 or 6 hours before bed cut objective sleep by more than an hour; the 6-hour dose was not noticed subjectively",
+    "population": "twelve healthy adults, double-blind crossover",
+    "sources": [
+      {
+        "cite": "Drake et al. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.",
+        "doi": "10.5664/jcsm.3170"
+      }
+    ],
+    "caveats": "A small sample and a large dose; sensitivity varies widely between people.",
+    "app": "Heavy caffeine this morning is a chip; the like-for-like comparison says what it does to the afternoons and the nights.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "caffeine-half-life",
+    "claim": "Caffeine's half-life in healthy adults is around five hours, and varies from under two to over nine with genetics, smoking, pregnancy and medication.",
+    "domain": "sleep",
+    "tags": [
+      "caffeine",
+      "sleep",
+      "afternoon"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "pharmacology review; half-life commonly 2.5 to 4.5 hours in adults, longer in many",
+    "population": "adults; pharmacological studies",
+    "sources": [
+      {
+        "cite": "Fredholm et al. (1999). Actions of caffeine in the brain with special reference to factors that contribute to its widespread use. Pharmacological Reviews, 51(1), 83–133.",
+        "doi": null,
+        "pmid": "10049999"
+      }
+    ],
+    "caveats": "A review without a single effect size; individual variation is the point.",
+    "app": "Half of a midday coffee is still there at bedtime for many people; the record can show whether that is true here.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "naps-cognition",
+    "claim": "A short daytime nap improves alertness and cognitive performance afterwards.",
+    "domain": "sleep",
+    "tags": [
+      "nap",
+      "afternoon",
+      "focus",
+      "energy"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 11 studies: naps improved cognitive performance overall, with alertness and memory the clearest gains",
+    "population": "healthy adults, mostly young",
+    "sources": [
+      {
+        "cite": "Dutheil et al. (2021). Effects of a short daytime nap on the cognitive performance: a systematic review and meta-analysis. International Journal of Environmental Research and Public Health, 18(19), 10212.",
+        "doi": "10.3390/ijerph181910212"
+      }
+    ],
+    "caveats": "Mostly young adults; benefits depend on nap length and time of day.",
+    "app": "Napped today is an evening chip; the mornings after say what a nap does to the night here.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "sleep-inertia-after-naps",
+    "claim": "Grogginess after waking is worse after longer naps that reach deep sleep; naps under about thirty minutes limit it.",
+    "domain": "sleep",
+    "tags": [
+      "nap",
+      "afternoon",
+      "energy"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "review of countermeasures; inertia lasts minutes to an hour, worse from slow-wave sleep",
+    "population": "adults in laboratory and shift-work studies",
+    "sources": [
+      {
+        "cite": "Hilditch, Dorrian & Banks (2016). Time to wake up: reactive countermeasures to sleep inertia. Industrial Health, 54(6), 528–541.",
+        "doi": "10.2486/indhealth.2015-0236"
+      }
+    ],
+    "caveats": "A narrative review; individual thresholds vary.",
+    "app": "A long afternoon nap can cost the evening block and the night; the chip and the evening reading show it.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "sleep-loss-mood",
+    "claim": "Short sleep affects mood more than it affects thinking or physical performance.",
+    "domain": "sleep",
+    "tags": [
+      "sleep",
+      "mood",
+      "morning"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "meta-analysis of 19 studies: mood was the most affected outcome, with effects larger than for cognitive and motor performance",
+    "population": "adults under partial and total sleep deprivation",
+    "sources": [
+      {
+        "cite": "Pilcher & Huffcutt (1996). Effects of sleep deprivation on performance: a meta-analysis. Sleep, 19(4), 318–326.",
+        "doi": "10.1093/sleep/19.4.318"
+      }
+    ],
+    "caveats": "Older laboratory studies; partial sleep loss over days matters most for everyday life.",
+    "app": "A low morning reading after a short night is expected, not a verdict; the sleep readings sit beside the mood reading for this reason.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "sleep-regularity",
+    "claim": "Keeping sleep and wake times regular predicts health outcomes independently of sleep duration, and in one large cohort more strongly.",
+    "domain": "sleep",
+    "tags": [
+      "sleep",
+      "evening",
+      "morning",
+      "habit"
+    ],
+    "grade": "B",
+    "replication": "untested",
+    "effect": "in 60,977 adults, sleep regularity predicted all-cause mortality more strongly than duration did",
+    "population": "UK Biobank adults with wearable data",
+    "sources": [
+      {
+        "cite": "Windred et al. (2024). Sleep regularity is a stronger predictor of mortality risk than sleep duration: a prospective cohort study. Sleep, 47(1), zsad253.",
+        "doi": "10.1093/sleep/zsad253"
+      }
+    ],
+    "caveats": "Observational; regularity may mark other health behaviours.",
+    "app": "A bedtime kept on study nights and on rest nights alike is worth more than an early one now and then.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "warm-bath-before-bed",
+    "claim": "A warm bath or shower one to two hours before bed shortens the time it takes to fall asleep.",
+    "domain": "sleep",
+    "tags": [
+      "shower",
+      "sleep",
+      "evening"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 17 studies: sleep onset about ten minutes faster with water at 40 to 42.5 °C, 1 to 2 hours before bed",
+    "population": "adults, mostly healthy",
+    "sources": [
+      {
+        "cite": "Haghayegh et al. (2019). Before-bedtime passive body heating by warm shower or bath to improve sleep: a systematic review and meta-analysis. Sleep Medicine Reviews, 46, 124–135.",
+        "doi": "10.1016/j.smrv.2019.04.008"
+      }
+    ],
+    "caveats": "Small studies; timing matters, right before bed helps less.",
+    "app": "The warm shower is a passive item: it rides alongside a move and is read like for like against the mornings after.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "evening-screens",
+    "claim": "Reading on a light-emitting screen before bed delays melatonin and sleep onset compared with a printed page, by a modest amount.",
+    "domain": "sleep",
+    "tags": [
+      "screen",
+      "evening",
+      "sleep"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "twelve adults, crossover: sleep onset about ten minutes later, melatonin suppressed, less next-morning alertness",
+    "population": "healthy young adults in a laboratory",
+    "sources": [
+      {
+        "cite": "Chang et al. (2015). Evening use of light-emitting eReaders negatively affects sleep, circadian timing, and next-morning alertness. Proceedings of the National Academy of Sciences, 112(4), 1232–1237.",
+        "doi": "10.1073/pnas.1418490112"
+      }
+    ],
+    "caveats": "A bright screen at full brightness for hours; dimmer, shorter use shows smaller effects in later studies.",
+    "app": "Screen-free half hour is a catalogue move; the record says whether the mornings after differ here.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "exercise-and-sleep",
+    "claim": "Regular exercise improves sleep quality and shortens sleep onset by a small-to-medium amount; a single session helps a little the same night.",
+    "domain": "sleep",
+    "tags": [
+      "workout",
+      "sleep"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "meta-analysis of 66 studies: regular exercise small-to-medium effects on total sleep time, onset and quality; acute exercise small effects",
+    "population": "adults across ages and fitness",
+    "sources": [
+      {
+        "cite": "Kredlow et al. (2015). The effects of physical activity on sleep: a meta-analytic review. Journal of Behavioral Medicine, 38(3), 427–449.",
+        "doi": "10.1007/s10865-015-9617-6"
+      }
+    ],
+    "caveats": "Late intense exercise can delay sleep for some; the average effect is favourable.",
+    "app": "A workout day, read from the other app, is set against the night and the next morning like for like.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "bedtime-to-do-list",
+    "claim": "Writing tomorrow's to-do list for five minutes before bed shortened the time to fall asleep compared with writing about completed tasks.",
+    "domain": "sleep",
+    "tags": [
+      "writing",
+      "evening",
+      "sleep",
+      "plan"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "57 adults in a sleep laboratory: about nine minutes faster sleep onset; more specific lists helped more",
+    "population": "healthy young adults, one night each",
+    "sources": [
+      {
+        "cite": "Scullin et al. (2018). The effects of bedtime writing on difficulty falling asleep: a polysomnographic study comparing to-do lists and completed activity lists. Journal of Experimental Psychology: General, 147(1), 139–146.",
+        "doi": "10.1037/xge0000374"
+      }
+    ],
+    "caveats": "One laboratory night; not yet replicated in the home.",
+    "app": "Planning the next study step at the end of the evening is a catalogue move; it may also serve the night.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "behavioural-activation",
+    "claim": "Scheduling and doing small rewarding or necessary activities, regardless of mood, lifts low mood with a large effect in trials.",
+    "domain": "mood",
+    "tags": [
+      "mood",
+      "small-step",
+      "necessities",
+      "lapse"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = 0.87 against control conditions across 16 studies of behavioural activation for depression",
+    "population": "adults with depressive symptoms",
+    "sources": [
+      {
+        "cite": "Cuijpers, van Straten & Warmerdam (2007). Behavioral activation treatments of depression: a meta-analysis. Clinical Psychology Review, 27(3), 318–326.",
+        "doi": "10.1016/j.cpr.2006.11.001"
+      }
+    ],
+    "caveats": "Clinical samples; the mechanism, action before mood, is what transfers to a low stretch.",
+    "app": "When a stretch is starting, one easy move a day, kept, is the intervention; the necessities chips watch the same thing.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "exercise-depression",
+    "claim": "Exercise reduces depressive symptoms with a large effect, and the effect holds after correcting for publication bias.",
+    "domain": "mood",
+    "tags": [
+      "workout",
+      "mood",
+      "energy"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "SMD = 1.11 in 25 trials of exercise for depression, after adjustment for publication bias",
+    "population": "adults with depression",
+    "sources": [
+      {
+        "cite": "Schuch et al. (2016). Exercise as a treatment for depression: a meta-analysis adjusting for publication bias. Journal of Psychiatric Research, 77, 42–51.",
+        "doi": "10.1016/j.jpsychires.2016.02.023"
+      }
+    ],
+    "caveats": "Supervised, structured programmes in trials; the size of the everyday effect is smaller.",
+    "app": "Workout days from the other app are set against the evenings like for like; movement moves are in the catalogue for the afternoon dip.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "short-walk-mood",
+    "claim": "A brief walk of around twelve minutes raises positive mood at once, even without expectation that it will.",
+    "domain": "movement",
+    "tags": [
+      "walk",
+      "mood",
+      "afternoon",
+      "break"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "three experiments: walking raised positive affect versus sitting, indoors and out, regardless of expectations",
+    "population": "undergraduates",
+    "sources": [
+      {
+        "cite": "Miller & Krizan (2016). Walking facilitates positive affect (even when expecting the opposite). Emotion, 16(5), 775–785.",
+        "doi": "10.1037/a0040270"
+      }
+    ],
+    "caveats": "Student samples and short follow-up; the lift is immediate and modest.",
+    "app": "The ten-minute walk targets mood in the afternoon block; its card says whether the record agrees.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "nature-walk-rumination",
+    "claim": "A walk in a natural setting reduced rumination and its neural signature compared with a walk of the same length in an urban setting.",
+    "domain": "movement",
+    "tags": [
+      "nature",
+      "walk",
+      "stress",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "38 adults, 90-minute walk: self-reported rumination fell and subgenual prefrontal activity decreased after the nature walk only",
+    "population": "healthy urban adults",
+    "sources": [
+      {
+        "cite": "Bratman et al. (2015). Nature experience reduces rumination and subgenual prefrontal cortex activation. Proceedings of the National Academy of Sciences, 112(28), 8567–8572.",
+        "doi": "10.1073/pnas.1510459112"
+      }
+    ],
+    "caveats": "One study, a long walk; the general nature effect on attention is better supported.",
+    "app": "Outdoors is a learned tag on moves; the record estimates its effect on its own.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "nature-attention-restoration",
+    "claim": "Time in natural settings restores directed attention, with medium effects on working memory and attentional control.",
+    "domain": "attention",
+    "tags": [
+      "nature",
+      "focus",
+      "break",
+      "walk"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 42 studies: working memory d ≈ 0.5, cognitive flexibility and attentional control small-to-medium",
+    "population": "adults and children in experimental studies",
+    "sources": [
+      {
+        "cite": "Stevenson, Schilhab & Bentsen (2018). Attention Restoration Theory II: a systematic review to clarify attention processes affected by exposure to natural environments. Journal of Toxicology and Environmental Health, Part B, 21(4), 227–268.",
+        "doi": "10.1080/10937404.2018.1505571"
+      }
+    ],
+    "caveats": "Heterogeneous measures; many short exposures in the laboratory.",
+    "app": "An outdoor move before a study sitting is a fair test to run as a card: focus that evening against the alternative.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "micro-breaks",
+    "claim": "Breaks of a few minutes during work raise vigour and reduce fatigue; effects on task performance are small and depend on the task.",
+    "domain": "attention",
+    "tags": [
+      "break",
+      "energy",
+      "focus",
+      "nothing"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 22 studies: vigour d = 0.36, fatigue d = 0.35, performance small and task-dependent",
+    "population": "adults in work and laboratory tasks",
+    "sources": [
+      {
+        "cite": "Albulescu et al. (2022). \"Give me a break!\" A systematic review and meta-analysis on the efficacy of micro-breaks for increasing well-being and performance. PLoS ONE, 17(8), e0272460.",
+        "doi": "10.1371/journal.pone.0272460"
+      }
+    ],
+    "caveats": "Short follow-ups; longer breaks may be needed for creative tasks.",
+    "app": "Nothing extra is a real offer; a short break is one of the smallest moves and one of the best supported for energy.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "reappraisal",
+    "claim": "Reinterpreting a situation changes the feeling it produces; reappraisal is among the most effective regulation strategies, and suppression among the least.",
+    "domain": "mood",
+    "tags": [
+      "stress",
+      "mood",
+      "cooling-off"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "meta-analysis of 306 effect sizes: reappraisal small-to-medium, distraction effective, suppression of expression small, suppression of the feeling ineffective",
+    "population": "adults in laboratory emotion tasks",
+    "sources": [
+      {
+        "cite": "Webb, Miles & Sheeran (2012). Dealing with feeling: a meta-analysis of the effectiveness of strategies derived from the process model of emotion regulation. Psychological Bulletin, 138(4), 775–808.",
+        "doi": "10.1037/a0027600"
+      }
+    ],
+    "caveats": "Laboratory inductions; real-life intensity may reduce what reappraisal can do in the moment.",
+    "app": "Cooling off after a clash is a chip; the steadying moves are reappraisal and distraction, never suppression.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "affect-labelling",
+    "claim": "Putting a feeling into words reduces its intensity, without trying to change the feeling.",
+    "domain": "mood",
+    "tags": [
+      "stress",
+      "mood",
+      "writing"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "review of experimental and neuroimaging studies: labelling reduces subjective and physiological arousal; effects modest",
+    "population": "adults in laboratory studies",
+    "sources": [
+      {
+        "cite": "Torre & Lieberman (2018). Putting feelings into words: affect labeling as implicit emotion regulation. Emotion Review, 10(2), 116–124.",
+        "doi": "10.1177/1754073917742706"
+      }
+    ],
+    "caveats": "Modest effects; the mechanism is debated.",
+    "app": "The check-in's five phrases per reading are labelling; answering honestly is itself a small regulation.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "expressive-writing",
+    "claim": "Writing about feelings and stressful events has a small positive effect on health and wellbeing on average.",
+    "domain": "mood",
+    "tags": [
+      "writing",
+      "stress",
+      "mood"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "r = 0.075 across 146 studies; larger with more sessions and private, unprompted writing",
+    "population": "adults and students",
+    "sources": [
+      {
+        "cite": "Frattaroli (2006). Experimental disclosure and its moderators: a meta-analysis. Psychological Bulletin, 132(6), 823–865.",
+        "doi": "10.1037/0033-2909.132.6.823"
+      }
+    ],
+    "caveats": "Small on average; not everyone benefits and some feel worse briefly.",
+    "app": "The one optional line on the evening check-in is enough; the record does not push journaling.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "gratitude-interventions",
+    "claim": "Gratitude exercises have a small effect on symptoms of depression and anxiety, smaller than often claimed.",
+    "domain": "mood",
+    "tags": [
+      "gratitude",
+      "mood",
+      "faith"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "g ≈ 0.29 against passive controls and smaller against active ones, across 27 studies",
+    "population": "adults, mostly non-clinical",
+    "sources": [
+      {
+        "cite": "Cregg & Cheavens (2021). Gratitude interventions: effective self-help? A meta-analysis with implications for research and practice. Journal of Happiness Studies, 22, 413–445.",
+        "doi": "10.1007/s10902-020-00236-6"
+      }
+    ],
+    "caveats": "Short interventions and short follow-ups; the effect is real and small.",
+    "app": "A gratitude move is offered like any other and judged by its card, not by its reputation.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "acts-of-kindness",
+    "claim": "Doing something kind for another person raises the doer's wellbeing by a small-to-medium amount.",
+    "domain": "social",
+    "tags": [
+      "kindness",
+      "social",
+      "mood",
+      "faith"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "d = 0.28 across 27 experimental studies",
+    "population": "adults and children in experiments",
+    "sources": [
+      {
+        "cite": "Curry et al. (2018). Happy to help? A systematic review and meta-analysis of the effects of performing acts of kindness on the well-being of the actor. Journal of Experimental Social Psychology, 76, 320–329.",
+        "doi": "10.1016/j.jesp.2018.02.014"
+      }
+    ],
+    "caveats": "Mostly immediate measures; long-run effects are less studied.",
+    "app": "A kindness move belongs in the people family; connection is one of its learned tags.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "breathwork-stress",
+    "claim": "Slow, deliberate breathing exercises reduce self-reported stress by a small-to-medium amount compared with no intervention.",
+    "domain": "mood",
+    "tags": [
+      "breathing",
+      "stress",
+      "cooling-off"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "g = −0.35 for stress across 12 randomised trials, similar for anxiety and depression",
+    "population": "adults, clinical and non-clinical",
+    "sources": [
+      {
+        "cite": "Fincham et al. (2023). Effect of breathwork on stress and mental health: a meta-analysis of randomised-controlled trials. Scientific Reports, 13, 432.",
+        "doi": "10.1038/s41598-022-27247-y"
+      }
+    ],
+    "caveats": "Heterogeneous protocols and risk of bias in many trials.",
+    "app": "A one-minute breathing move is the smallest steadying move; it is offered when stress reads high.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "meditation-programmes",
+    "claim": "Mindfulness meditation programmes produce small-to-moderate reductions in anxiety, depression and pain after eight weeks.",
+    "domain": "mood",
+    "tags": [
+      "faith",
+      "stress",
+      "mood",
+      "breathing"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "anxiety d = 0.38, depression d = 0.30, pain d = 0.33 at eight weeks, across 47 trials with 3,515 participants",
+    "population": "adults with clinical and non-clinical conditions",
+    "sources": [
+      {
+        "cite": "Goyal et al. (2014). Meditation programs for psychological stress and well-being: a systematic review and meta-analysis. JAMA Internal Medicine, 174(3), 357–368.",
+        "doi": "10.1001/jamainternmed.2013.13018"
+      }
+    ],
+    "caveats": "No evidence that meditation beat active treatments such as exercise or medication.",
+    "app": "Quiet prayer and stillness moves sit in the faith and steadying families and are judged by their cards.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "music-and-stress",
+    "claim": "Listening to music reduces stress-related outcomes, both physiological and self-reported, with a medium effect.",
+    "domain": "mood",
+    "tags": [
+      "music",
+      "stress",
+      "mood"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 104 randomised trials: small-to-medium effects on physiological stress and medium on psychological stress",
+    "population": "adults in medical and everyday settings",
+    "sources": [
+      {
+        "cite": "de Witte et al. (2020). Effects of music interventions on stress-related outcomes: a systematic review and two meta-analyses. Health Psychology Review, 14(2), 294–324.",
+        "doi": "10.1080/17437199.2019.1627897"
+      }
+    ],
+    "caveats": "Many trials in medical settings; effect on everyday stress may be smaller.",
+    "app": "Music on purpose is a catalogue move and one of the alternatives a private item is compared against.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "hunger-and-irritability",
+    "claim": "Hunger makes negative feelings more likely in unpleasant situations, mostly when the person has not noticed the hunger.",
+    "domain": "mood",
+    "tags": [
+      "hunger",
+      "mood",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "two online experiments and one laboratory study: hungry participants reported more negative emotion in negative contexts unless attending to their feelings",
+    "population": "adults in the United States",
+    "sources": [
+      {
+        "cite": "MacCormack & Lindquist (2019). Feeling hangry? When hunger is conceptualized as emotion. Emotion, 19(2), 301–319.",
+        "doi": "10.1037/emo0000422"
+      }
+    ],
+    "caveats": "Modest effects and one research group so far.",
+    "app": "Hunger is a context reading beside mood; the necessities chips carry a missed meal.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "mild-dehydration-mood",
+    "claim": "Mild dehydration worsens mood, fatigue and attention in healthy adults.",
+    "domain": "mood",
+    "tags": [
+      "water",
+      "mood",
+      "energy",
+      "focus"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "review of experimental studies: consistent effects on mood and fatigue at 1 to 2 percent body-water loss; cognition mixed",
+    "population": "healthy adults in laboratory studies",
+    "sources": [
+      {
+        "cite": "Masento et al. (2014). Effects of hydration status on cognitive performance and mood. British Journal of Nutrition, 111(10), 1841–1852.",
+        "doi": "10.1017/S0007114513004455"
+      }
+    ],
+    "caveats": "Dehydration was often induced by exercise or heat, which confounds the mood effect.",
+    "app": "A glass of water is among the smallest moves; it needs no more evidence than this to be offered.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "daylight-and-mood",
+    "claim": "More time in daylight is associated with better mood and lower odds of depression, independently of exercise.",
+    "domain": "mood",
+    "tags": [
+      "light",
+      "mood",
+      "morning",
+      "nature"
+    ],
+    "grade": "B",
+    "replication": "untested",
+    "effect": "in about 400,000 UK Biobank adults, each additional hour outdoors in daylight was associated with lower depression odds and better mood",
+    "population": "middle-aged adults in the United Kingdom",
+    "sources": [
+      {
+        "cite": "Burns et al. (2021). Time spent in outdoor light is associated with mood, sleep, and circadian rhythm-related outcomes: a cross-sectional and longitudinal study in over 400,000 UK Biobank participants. Journal of Affective Disorders, 295, 347–352.",
+        "doi": "10.1016/j.jad.2021.08.056"
+      }
+    ],
+    "caveats": "Observational and self-reported time outdoors.",
+    "app": "Daylight is a rule on moves: the outdoor ones are offered inside your daylight hours, and outdoors is a learned tag.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "social-ties-and-survival",
+    "claim": "Stronger social relationships predict substantially longer survival, an association comparable to well-known health risks.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "loneliness"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "50 percent greater likelihood of survival for people with stronger relationships across 148 studies of 308,849 people",
+    "population": "adults followed for an average of 7.5 years",
+    "sources": [
+      {
+        "cite": "Holt-Lunstad, Smith & Layton (2010). Social relationships and mortality risk: a meta-analytic review. PLoS Medicine, 7(7), e1000316.",
+        "doi": "10.1371/journal.pmed.1000316"
+      }
+    ],
+    "caveats": "Observational; causation runs both ways.",
+    "app": "The loneliness reading is asked for this reason; conversations started is a count under your direction.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "loneliness-and-mortality",
+    "claim": "Loneliness, social isolation and living alone are each associated with higher mortality, at similar sizes.",
+    "domain": "social",
+    "tags": [
+      "loneliness",
+      "social"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "26 percent higher odds for loneliness, 29 percent for isolation, 32 percent for living alone across 70 studies",
+    "population": "adults, mean age 66, followed for seven years on average",
+    "sources": [
+      {
+        "cite": "Holt-Lunstad et al. (2015). Loneliness and social isolation as risk factors for mortality: a meta-analytic review. Perspectives on Psychological Science, 10(2), 227–237.",
+        "doi": "10.1177/1745691614568352"
+      }
+    ],
+    "caveats": "Older samples on average; effects were similar for younger adults where measured.",
+    "app": "Loneliness that reads high for a stretch is a warning the brief may raise, with a small contact as the move.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "loneliness-interventions",
+    "claim": "Among ways of reducing loneliness, changing how a person reads social situations worked best; simply adding contact or support worked less.",
+    "domain": "social",
+    "tags": [
+      "loneliness",
+      "social"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "randomised trials addressing maladaptive social cognition had the largest effect (mean d ≈ −0.6); social-support and contact interventions smaller",
+    "population": "adults and older adults in 50 studies",
+    "sources": [
+      {
+        "cite": "Masi et al. (2011). A meta-analysis of interventions to reduce loneliness. Personality and Social Psychology Review, 15(3), 219–266.",
+        "doi": "10.1177/1088868310377394"
+      }
+    ],
+    "caveats": "Few high-quality trials; the cognition finding rests on a handful of them.",
+    "app": "Wanting more closeness while among people is a reading, not a contradiction; the reading's phrases were written for that.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "weak-ties-and-belonging",
+    "claim": "Days with more interactions with acquaintances, not only close ties, are days with more happiness and a stronger sense of belonging.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "loneliness",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "two studies: within-person, more weak-tie interactions on a day predicted greater happiness and belonging that day",
+    "population": "students and community adults",
+    "sources": [
+      {
+        "cite": "Sandstrom & Dunn (2014). Social interactions and well-being: the surprising power of weak ties. Personality and Social Psychology Bulletin, 40(7), 910–922.",
+        "doi": "10.1177/0146167214529799"
+      }
+    ],
+    "caveats": "Correlational within days; direction not established.",
+    "app": "One small contact, a message or a question to someone, is the people family's smallest move.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "talking-to-strangers",
+    "claim": "People expect talking to a stranger to be unpleasant and find it more pleasant than expected; the mistaken expectation keeps them from doing it.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "loneliness",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "commuters instructed to talk to a stranger reported a more positive experience than those told to keep to themselves, against their predictions; replicated across settings",
+    "population": "commuters and adults in public settings",
+    "sources": [
+      {
+        "cite": "Epley & Schroeder (2014). Mistakenly seeking solitude. Journal of Experimental Psychology: General, 143(5), 1980–1999.",
+        "doi": "10.1037/a0037323"
+      },
+      {
+        "cite": "Schroeder, Lyons & Epley (2022). Hello, stranger? Pleasant conversations are preceded by concerns about starting one. Journal of Experimental Psychology: General, 151(5), 1141–1153.",
+        "doi": "10.1037/xge0001118"
+      }
+    ],
+    "caveats": "Brief exchanges; the effect is on the moment, not on loneliness over months.",
+    "app": "The people family's moves are small on purpose; the expected cost is the obstacle, not the exchange.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "asking-questions-liking",
+    "claim": "People who ask more questions in conversation, especially follow-up questions, are liked more by their partners.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "loneliness"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "in get-to-know-you conversations and speed dates, high question-askers were liked more; follow-up questions carried the effect",
+    "population": "adults in live and online conversations",
+    "sources": [
+      {
+        "cite": "Huang et al. (2017). It doesn't hurt to ask: question-asking increases liking. Journal of Personality and Social Psychology, 113(3), 430–452.",
+        "doi": "10.1037/pspi0000097"
+      }
+    ],
+    "caveats": "One research group; effects on longer relationships not shown.",
+    "app": "Ask one question is a move in the participation ladder; it is the smallest version of a conversation.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "hours-to-friendship",
+    "claim": "Friendship takes time in the tens of hours: roughly fifty hours of shared time to move from acquaintance to casual friend, and two hundred to close friend.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "loneliness"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "two studies of adults who had moved and of students: about 50 hours to casual friend, 90 to friend, 200 or more to close friend",
+    "population": "adults and students forming new friendships",
+    "sources": [
+      {
+        "cite": "Hall (2019). How many hours does it take to make a friend? Journal of Social and Personal Relationships, 36(4), 1278–1296.",
+        "doi": "10.1177/0265407518761225"
+      }
+    ],
+    "caveats": "Self-reported hours and retrospective estimates.",
+    "app": "A conversation started is one count; the counts under your direction are how the hours accumulate.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "acting-extraverted-costs-later",
+    "claim": "Behaving in an outgoing way lifts mood at the time and is followed by more fatigue some hours later.",
+    "domain": "social",
+    "tags": [
+      "social-event",
+      "recovery",
+      "energy",
+      "evening"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "experience-sampling study: extraverted behaviour predicted higher positive affect at the time and greater fatigue three hours later",
+    "population": "adults over twelve days of experience sampling",
+    "sources": [
+      {
+        "cite": "Leikas & Ilmarinen (2017). Happy now, tired later? Extraverted and conscientious behavior are related to immediate mood gains, but to later fatigue. Journal of Personality, 85(5), 603–615.",
+        "doi": "10.1111/jopy.12264"
+      }
+    ],
+    "caveats": "One study; the fatigue is modest and short-lived.",
+    "app": "A big social event is an evening chip; the recovery gap is offered the day after, never as a verdict on the event.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "religious-attendance-and-health",
+    "claim": "Regular attendance at religious services is associated with lower mortality, less depression and a greater sense of meaning in large cohorts.",
+    "domain": "faith",
+    "tags": [
+      "church",
+      "faith",
+      "mood",
+      "social"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "review of cohort studies: weekly attendance associated with about a quarter lower mortality and lower depression incidence",
+    "population": "adults in the United States, mostly nurses and health professionals",
+    "sources": [
+      {
+        "cite": "VanderWeele (2017). Religious communities and human flourishing. Current Directions in Psychological Science, 26(5), 476–481.",
+        "doi": "10.1177/0963721417721526"
+      }
+    ],
+    "caveats": "Observational; the community, not belief alone, appears to carry much of the association.",
+    "app": "Church day is a constant in the week's shape; faith is offered, never pushed, and its moves are judged by their cards.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "volunteering-and-wellbeing",
+    "claim": "Volunteering is associated with lower depression and higher wellbeing in observational studies; trials are too few to say it causes them.",
+    "domain": "social",
+    "tags": [
+      "kindness",
+      "social",
+      "church",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "systematic review of 40 studies: cohort studies show favourable associations; the five trials were inconclusive",
+    "population": "adults and older adults",
+    "sources": [
+      {
+        "cite": "Jenkinson et al. (2013). Is volunteering a public health intervention? A systematic review and meta-analysis of the health and survival of volunteers. BMC Public Health, 13, 773.",
+        "doi": "10.1186/1471-2458-13-773"
+      }
+    ],
+    "caveats": "Selection into volunteering is likely; the causal claim is not established.",
+    "app": "Serving at church sits in the faith and people families; connection is its learned tag.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "father-engagement",
+    "claim": "A father's active engagement with a young child predicts fewer behaviour problems and better cognitive development later.",
+    "domain": "parenting",
+    "tags": [
+      "her",
+      "parenting"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "systematic review of 24 longitudinal studies: engagement associated with better behavioural, social and cognitive outcomes",
+    "population": "children followed from infancy and early childhood",
+    "sources": [
+      {
+        "cite": "Sarkadi et al. (2008). Fathers' involvement and children's developmental outcomes: a systematic review of longitudinal studies. Acta Paediatrica, 97(2), 153–158.",
+        "doi": "10.1111/j.1651-2227.2007.00572.x"
+      }
+    ],
+    "caveats": "Observational and mostly two-parent households; engagement was measured many ways.",
+    "app": "Time with her is a count under your direction and a family of moves; the count is the fact, never a grade.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "shared-reading",
+    "claim": "Reading with a young child is associated with stronger language and later reading skills, a relationship that holds across studies.",
+    "domain": "parenting",
+    "tags": [
+      "her",
+      "parenting",
+      "reading"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "effect": "meta-analysis of 99 studies: print exposure explained about 12 percent of variance in oral language in preschool, more later",
+    "population": "children from preschool through university",
+    "sources": [
+      {
+        "cite": "Mol & Bus (2011). To read or not to read: a meta-analysis of print exposure from infancy to early adulthood. Psychological Bulletin, 137(2), 267–296.",
+        "doi": "10.1037/a0021890"
+      }
+    ],
+    "caveats": "Correlational; children who like language may seek more of it.",
+    "app": "Reading with her is one of the moves in her family; her language skills on the checklist are the count beside it.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "child-bedtime-routine",
+    "claim": "A consistent bedtime routine for a young child is associated with earlier bedtimes, faster sleep onset and fewer night wakings, more so the more nights it is kept.",
+    "domain": "parenting",
+    "tags": [
+      "her",
+      "parenting",
+      "sleep",
+      "evening"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "10,085 mothers in 14 countries: a dose-dependent association between routine nights per week and child sleep outcomes",
+    "population": "children from infancy to five years",
+    "sources": [
+      {
+        "cite": "Mindell et al. (2015). Bedtime routines for young children: a dose-dependent association with sleep outcomes. Sleep, 38(5), 717–722.",
+        "doi": "10.5665/sleep.4662"
+      }
+    ],
+    "caveats": "Parent report, cross-sectional.",
+    "app": "Her bedtime is the constant that ends the solo hours; a routine that holds is what makes the evening block usable.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "process-praise",
+    "claim": "Praising a young child's effort and strategies, rather than the child, predicts a later belief that ability grows with work.",
+    "domain": "parenting",
+    "tags": [
+      "her",
+      "parenting"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "parents' process praise at ages one to three predicted children's incremental beliefs at ages seven to eight in 53 families",
+    "population": "children observed at home",
+    "sources": [
+      {
+        "cite": "Gunderson et al. (2013). Parent praise to 1- to 3-year-olds predicts children's motivational frameworks 5 years later. Child Development, 84(5), 1526–1541.",
+        "doi": "10.1111/cdev.12064"
+      }
+    ],
+    "caveats": "A small longitudinal sample; the wider mindset literature has had mixed replications.",
+    "app": "Her checklist counts what she did and how much help she needed; the wording is about the doing.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "parental-burnout",
+    "claim": "Parental burnout, distinct from job burnout and from depression, is linked to escape thoughts, neglect and violence toward children; recovery time for the parent is protective.",
+    "domain": "parenting",
+    "tags": [
+      "parenting",
+      "stress",
+      "recovery",
+      "her"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "two studies of about 2,000 parents: burnout predicted escape ideation, neglect and violence beyond depression and job burnout",
+    "population": "parents in Belgium and the United Kingdom",
+    "sources": [
+      {
+        "cite": "Mikolajczak, Gross & Roskam (2019). Parental burnout: what is it, and why does it matter? Clinical Psychological Science, 7(6), 1319–1329.",
+        "doi": "10.1177/2167702619858430"
+      }
+    ],
+    "caveats": "Self-report and cross-sectional; the construct is newer than the others here.",
+    "app": "The solo hours are a fact in the week's shape; the recovery gap and the steadying moves exist for the parent, not only the child.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "task-switching-costs",
+    "claim": "Switching between tasks carries a measurable cost in time and errors, even when the switch is predictable.",
+    "domain": "attention",
+    "tags": [
+      "switching",
+      "focus",
+      "study"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "review of task-switching experiments: reliable switch costs of hundreds of milliseconds that shrink with preparation but do not vanish",
+    "population": "adults in laboratory tasks",
+    "sources": [
+      {
+        "cite": "Monsell (2003). Task switching. Trends in Cognitive Sciences, 7(3), 134–140.",
+        "doi": "10.1016/S1364-6613(03)00028-7"
+      }
+    ],
+    "caveats": "Laboratory tasks; the size of everyday costs depends on the tasks.",
+    "app": "A study sitting is one skill, one rung; the focused block move is a single-task block.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "interrupted-work",
+    "claim": "Interrupted work gets finished faster but at the price of more stress, frustration and effort.",
+    "domain": "attention",
+    "tags": [
+      "switching",
+      "stress",
+      "focus"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "48 participants: interruptions did not lengthen task time but raised stress, frustration, time pressure and effort",
+    "population": "adults in a simulated office task",
+    "sources": [
+      {
+        "cite": "Mark, Gudith & Klocke (2008). The cost of interrupted work: more speed and stress. Proceedings of the SIGCHI Conference on Human Factors in Computing Systems, 107–110.",
+        "doi": "10.1145/1357054.1357072"
+      }
+    ],
+    "caveats": "One laboratory study.",
+    "app": "Quiet is a rule on some moves: they wait for a moment without her and without the office.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "time-of-day-synchrony",
+    "claim": "People perform better at the time of day that matches their chronotype; morning types in the morning, evening types later.",
+    "domain": "attention",
+    "tags": [
+      "morning",
+      "evening",
+      "focus",
+      "energy"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "review of studies on attention, memory and executive tasks showing a synchrony effect, larger for demanding tasks",
+    "population": "adults across chronotypes and ages",
+    "sources": [
+      {
+        "cite": "Schmidt et al. (2007). A time to think: circadian rhythms in human cognition. Cognitive Neuropsychology, 24(7), 755–789.",
+        "doi": "10.1080/02643290701754158"
+      }
+    ],
+    "caveats": "Effects depend on the task and on sleep the night before.",
+    "app": "The usual reading per block is the record's own measure of this; the week ahead uses it.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "post-lunch-dip",
+    "claim": "Alertness and performance dip in the early afternoon as part of the circadian rhythm, whether or not lunch was eaten.",
+    "domain": "attention",
+    "tags": [
+      "afternoon",
+      "energy",
+      "nap",
+      "focus"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "review: a reliable dip in alertness around 13:00 to 16:00, mostly circadian, larger after a short night",
+    "population": "adults in laboratory and field studies",
+    "sources": [
+      {
+        "cite": "Monk (2005). The post-lunch dip in performance. Clinics in Sports Medicine, 24(2), e15–e23.",
+        "doi": "10.1016/j.csm.2004.12.002"
+      }
+    ],
+    "caveats": "A narrative review; the size of the dip varies between people.",
+    "app": "The afternoon block's usual reading often sits under the morning's; a short walk or a short nap are its moves.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "plan-quiets-intrusive-thoughts",
+    "claim": "Making a concrete plan for an unfinished goal reduces the intrusive thoughts about it, even before anything is done.",
+    "domain": "attention",
+    "tags": [
+      "plan",
+      "stress",
+      "focus",
+      "evening"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "five experiments: writing a plan for an unfulfilled goal removed its interference with later tasks; merely thinking about it did not",
+    "population": "undergraduates",
+    "sources": [
+      {
+        "cite": "Masicampo & Baumeister (2011). Consider it done! Plan making can eliminate the cognitive effects of unfulfilled goals. Journal of Personality and Social Psychology, 101(4), 667–683.",
+        "doi": "10.1037/a0024192"
+      }
+    ],
+    "caveats": "From a research programme with mixed replication history.",
+    "app": "Write the exact next study step exists for this; one tap says when does the same for a step.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "two-minute-rule",
+    "claim": "If the next action takes under two minutes, doing it at once costs less than tracking it; a practitioner's rule with no trials behind it.",
+    "domain": "behaviour-change",
+    "tags": [
+      "small-step",
+      "plan",
+      "habit"
+    ],
+    "grade": "D",
+    "replication": "untested",
+    "effect": "a heuristic from a productivity method; no controlled evidence",
+    "population": "none studied",
+    "sources": [
+      {
+        "cite": "Allen (2001). Getting Things Done: The Art of Stress-Free Productivity. Viking.",
+        "doi": null
+      }
+    ],
+    "caveats": "Thin evidence; kept because it is cheap and consistent with the small-step findings.",
+    "app": "The two-minute rule is the unblock move for no time.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "small-wins-progress",
+    "claim": "Of the everyday events that lift mood and motivation at work, making progress on meaningful work, even small progress, was the most common.",
+    "domain": "behaviour-change",
+    "tags": [
+      "small-step",
+      "monitoring",
+      "mood"
+    ],
+    "grade": "D",
+    "replication": "untested",
+    "effect": "diary study of about 12,000 entries from 238 professionals; progress days were the best days",
+    "population": "knowledge workers in seven companies",
+    "sources": [
+      {
+        "cite": "Amabile & Kramer (2011). The Progress Principle: Using Small Wins to Ignite Joy, Engagement, and Creativity at Work. Harvard Business Review Press.",
+        "doi": null
+      }
+    ],
+    "caveats": "A diary study reported in a book; correlational.",
+    "app": "Partly counts as a start; the minimum win is one line sized to be met.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "sunk-cost",
+    "claim": "People keep investing in a course of action because of what they have already put in, even when stopping would be better.",
+    "domain": "decision",
+    "tags": [
+      "choice",
+      "lapse"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "a series of experiments: prior investment raised the willingness to continue a losing course",
+    "population": "adults and students in decision scenarios",
+    "sources": [
+      {
+        "cite": "Arkes & Blumer (1985). The psychology of sunk cost. Organizational Behavior and Human Decision Processes, 35(1), 124–140.",
+        "doi": "10.1016/0749-5978(85)90049-4"
+      }
+    ],
+    "caveats": "Scenario studies; the size in real decisions varies.",
+    "app": "A card with many tries and no difference is retired or changed; the tries already made are not a reason to keep it.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "decision-fatigue-disputed",
+    "claim": "The finding that judges grew harsher before meal breaks, often cited as decision fatigue, is disputed: the order of cases can explain it.",
+    "domain": "decision",
+    "tags": [
+      "choice",
+      "energy",
+      "afternoon"
+    ],
+    "grade": "D",
+    "replication": "failed",
+    "effect": "the original study reported favourable rulings falling toward each break; a re-analysis attributed the pattern to case scheduling",
+    "population": "Israeli parole judges, archival data",
+    "sources": [
+      {
+        "cite": "Danziger, Levav & Avnaim-Pesso (2011). Extraneous factors in judicial decisions. Proceedings of the National Academy of Sciences, 108(17), 6889–6892.",
+        "doi": "10.1073/pnas.1018033108"
+      },
+      {
+        "cite": "Weinshall-Margel & Shapard (2011). Overlooked factors in the analysis of parole decisions. Proceedings of the National Academy of Sciences, 108(42), E833.",
+        "doi": "10.1073/pnas.1110910108"
+      }
+    ],
+    "caveats": "Kept as a disputed claim so the brief never cites decision fatigue as established.",
+    "app": "Fewer decisions is a design choice for the record's sake; it is not backed by this.",
+    "reviewed": "2026-09-18",
+    "status": "disputed"
+  },
+  {
+    "id": "cold-showers",
+    "claim": "Ending a shower with cold water reduced sickness absence from work by about a third, without reducing the number of days people felt ill.",
+    "domain": "movement",
+    "tags": [
+      "shower",
+      "morning",
+      "energy"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "randomised trial of 3,018 adults: 29 percent fewer sickness-absence days; no difference in illness days; many reported more energy",
+    "population": "healthy adults in the Netherlands",
+    "sources": [
+      {
+        "cite": "Buijze et al. (2016). The effect of cold showering on health and work: a randomized controlled trial. PLoS ONE, 11(9), e0161749.",
+        "doi": "10.1371/journal.pone.0161749"
+      }
+    ],
+    "caveats": "Unblinded, self-reported outcomes.",
+    "app": "A cold finish is a morning move for energy; its card will say what the afternoons after read.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "green-exercise-dose",
+    "claim": "Short bouts of activity in green settings improve self-esteem and mood, with the largest gains in the first five minutes.",
+    "domain": "movement",
+    "tags": [
+      "nature",
+      "walk",
+      "mood",
+      "workout"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "multi-study analysis of 1,252 participants: self-esteem d = 0.46 and mood d = 0.54, largest for light activity and five-minute doses",
+    "population": "adults in the United Kingdom",
+    "sources": [
+      {
+        "cite": "Barton & Pretty (2010). What is the best dose of nature and green exercise for improving mental health? A multi-study analysis. Environmental Science & Technology, 44(10), 3947–3955.",
+        "doi": "10.1021/es903183r"
+      }
+    ],
+    "caveats": "Pooled from the same group's studies; short-term measures.",
+    "app": "Step outside for five minutes is a real move; the daylight rule keeps it inside the hours it can be done.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "child-screen-time",
+    "claim": "More screen time at two and three years predicted slightly lower developmental screening scores a year later.",
+    "domain": "parenting",
+    "tags": [
+      "her",
+      "parenting",
+      "screen"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "2,441 children: higher screen time at 24 and 36 months predicted lower scores at 36 and 60 months; small effects, one direction only",
+    "population": "Canadian children followed from two to five years",
+    "sources": [
+      {
+        "cite": "Madigan et al. (2019). Association between screen time and children's performance on a developmental screening test. JAMA Pediatrics, 173(3), 244–250.",
+        "doi": "10.1001/jamapediatrics.2018.5056"
+      }
+    ],
+    "caveats": "Parent-reported screen time; small effects; content and co-viewing not separated.",
+    "app": "Her checklist and the moments with her are the counts; screens are not a chip and are not judged here.",
+    "reviewed": "2026-09-18",
+    "status": "admitted"
+  }
+]

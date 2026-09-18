@@ -85,10 +85,10 @@ export function alignLadders(): Promise<void> {
 }
 
 /** One tap says when: the cue for a commitment's step today. A later tap replaces it; the plan is kept once the step is started. */
-export function planAim(aim: Aim, cue: Cue, time: string, now: Date = new Date()): Promise<void> {
+export function planAim(aim: Aim, cue: Cue, time: string, now: Date = new Date(), step = ''): Promise<void> {
   return db.transaction('rw', db.intentions, async () => {
     const { day } = blockAt(now)
-    await db.intentions.add({ aimId: aim.id as number, day, cue, time, setAt: now.toISOString(), offerId: null })
+    await db.intentions.add({ aimId: aim.id as number, day, cue, time, setAt: now.toISOString(), offerId: null, ...(step ? { step } : {}) })
   })
 }
 

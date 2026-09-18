@@ -1,5 +1,5 @@
 import { dayKey } from './blocks'
-import type { OutsideDay } from './db'
+import type { BrainBrief, OutsideDay } from './db'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
@@ -79,6 +79,27 @@ const DEFAULT_OUTSIDE: CloudMeta = { key: 'outside', watermark: '', lastSyncAt: 
 
 export async function getOutsideMeta(): Promise<CloudMeta> {
   return (await db.cloudMeta.get('outside')) ?? DEFAULT_OUTSIDE
+}
+
+/** The brain under your own account: the Worker that writes the day's line to the same database. This app reads its rows and writes none. */
+export const BRAIN_APP = 'life-mirror-brain'
+const BRAIN_STORE = 'briefs'
+const DEFAULT_BRAIN: CloudMeta = { key: 'brain', watermark: '', lastSyncAt: null, lastError: null }
+
+export async function getBrainMeta(): Promise<CloudMeta> {
+  return (await db.cloudMeta.get('brain')) ?? DEFAULT_BRAIN
+}
+
+/** What a brain row says, or null for one that is not a line. */
+export function brainBriefOf(id: string, body: string): BrainBrief | null {
+  try {
+    const r = JSON.parse(body) as Partial<BrainBrief>
+    if (typeof r.day !== 'string' || typeof r.text !== 'string' || !r.text) return null
+    const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '' }
+  } catch {
+    return null
+  }
 }
 
 /** What an outside workout row says: its local day from the completion time, and its minutes when the record carries them. */
@@ -214,7 +235,7 @@ export async function resolveToken(): Promise<TokenResolution> {
 }
 
 function keyFor(store: string, id: string): string | number {
-  return store === 'days' || store === 'herSkills' ? id : Number(id)
+  return store === 'days' || store === 'herSkills' || store === 'facts' ? id : Number(id)
 }
 
 /** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. */
@@ -300,6 +321,31 @@ async function pullOutside(store: CloudStore): Promise<number> {
   return applied
 }
 
+/**
+ * The Worker's lines, read from the same database the way the other app's workouts are: a row of
+ * its briefs store becomes a line here, a deleted row takes it back, its own watermark.
+ */
+async function pullBrain(store: CloudStore): Promise<number> {
+  let applied = 0
+  for (;;) {
+    const meta = await getBrainMeta()
+    const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
+    if (!rows.length) break
+    await db.transaction('rw', [db.brainBriefs, db.cloudMeta], async () => {
+      for (const row of rows) {
+        if (row.store !== BRAIN_STORE) continue
+        const line = row.deleted || !row.body ? null : brainBriefOf(row.id, row.body)
+        if (line) await db.brainBriefs.put(line)
+        else await db.brainBriefs.delete(row.id)
+      }
+      await db.cloudMeta.put({ ...meta, key: 'brain', watermark: rows[rows.length - 1].synced_at })
+    })
+    applied += rows.length
+    if (rows.length < PAGE) break
+  }
+  return applied
+}
+
 /** The latest queued change per row, in queue order, so one push carries one row per record. */
 export function latestPerRow(rows: readonly OutboxRow[]): OutboxRow[] {
   const latest = new Map<string, OutboxRow>()
@@ -360,6 +406,7 @@ async function run(): Promise<SyncOutcome> {
     const store = await factory(token)
     await pull(store)
     await pullOutside(store)
+    await pullBrain(store)
     await push(store, deviceId)
     const now = new Date().toISOString()
     await store.touchDevice({ device_id: deviceId, app: APP, label: DEVICE_LABEL, at: now })
