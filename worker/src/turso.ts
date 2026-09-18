@@ -1,4 +1,5 @@
 import { createClient } from '@libsql/client/web'
+import type { LineAction } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 
 // The same database the phone syncs to, through the same generic `records` table. The Worker
@@ -22,7 +23,8 @@ export interface PlanRow {
 export interface BriefRow {
   id: string
   day: string
-  kind: 'brief'
+  /** The day's line, or on Sunday the week's review beside it. */
+  kind: 'brief' | 'review'
   text: string
   mode: string
   factIds: string[]
@@ -31,8 +33,10 @@ export interface BriefRow {
   at: string
   /** The day the facts described; the line is for the morning after. */
   factsDay: string
-  /** True on the Sunday line, which reviews the week. */
-  weekly?: boolean
+  /** The one tap the line offers, checked against the sheet before it was written; the phone checks again at the tap. */
+  action?: LineAction | null
+  /** The review's three parts, on a row of kind review. */
+  parts?: { held: string; didNot: string; change: string }
 }
 
 export interface SaidRow {

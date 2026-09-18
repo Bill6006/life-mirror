@@ -22,10 +22,10 @@ describe('the cue reminder', () => {
       sent.push(payload)
       return true
     }
-    expect(await runCues(env, store, AT_2005, send)).toEqual({ sent: true, due: ['5', '6'], reason: 'sent' })
+    expect(await runCues(env, store, AT_2005, send)).toEqual({ sent: true, due: ['5', '6'], followUps: [], reason: 'sent' })
     expect(sent).toEqual(['{"kind":"cue"}'])
     expect(store.rows.get(`${BRAIN_APP}|pushes|cue:5`)).toBeDefined()
-    expect(await runCues(env, store, new Date('2026-09-19T00:10:00Z'), send)).toEqual({ sent: false, due: [], reason: 'nothing due' })
+    expect(await runCues(env, store, new Date('2026-09-19T00:10:00Z'), send)).toEqual({ sent: false, due: [], followUps: [], reason: 'nothing due' })
     expect(sent).toHaveLength(1)
   })
 
@@ -38,15 +38,47 @@ describe('the cue reminder', () => {
     store.put(plan('5', { aimId: 4, cue: 'nextCheckIn', time: '21:00', setAt: '2026-09-18T12:30:00.000Z' }))
     store.put(plan('6', { aimId: 6 }, '2026-09-17'))
     const send = async () => true
-    expect(await runCues(env, store, AT_2005, send)).toEqual({ sent: false, due: [], reason: 'nothing due' })
+    expect(await runCues(env, store, AT_2005, send)).toEqual({ sent: false, due: [], followUps: [], reason: 'nothing due' })
   })
 
   it('sends nothing without a push address, and marks nothing when the push service refuses', async () => {
     const store = memoryStore()
     store.put(plan('5', {}))
-    expect(await runCues(env, store, AT_2005, null)).toEqual({ sent: false, due: ['5'], reason: 'no push address or key' })
-    expect(await runCues(env, store, AT_2005, async () => false)).toEqual({ sent: false, due: ['5'], reason: 'the push service refused it' })
+    expect(await runCues(env, store, AT_2005, null)).toEqual({ sent: false, due: ['5'], followUps: [], reason: 'no push address or key' })
+    expect(await runCues(env, store, AT_2005, async () => false)).toEqual({ sent: false, due: ['5'], followUps: [], reason: 'the push service refused it' })
     expect(store.rows.get(`${BRAIN_APP}|pushes|cue:5`)).toBeUndefined()
+  })
+})
+
+describe('one follow-up at the moment of decision', () => {
+  it('goes once, forty-five minutes on, only for a plan reminded of and still not started, and never again', async () => {
+    const store = memoryStore()
+    store.put(plan('5', {}))
+    const sent: string[] = []
+    const send = async (payload: string) => {
+      sent.push(payload)
+      return true
+    }
+    await runCues(env, store, AT_2005, send)
+    // 20:30: too soon. 20:45: the one follow-up. 21:00: never another.
+    expect((await runCues(env, store, new Date('2026-09-19T00:30:00Z'), send)).followUps).toEqual([])
+    expect(await runCues(env, store, new Date('2026-09-19T00:45:00Z'), send)).toEqual({ sent: true, due: [], followUps: ['5'], reason: 'sent' })
+    expect(sent).toEqual(['{"kind":"cue"}', '{"kind":"cue2"}'])
+    expect((await runCues(env, store, new Date('2026-09-19T01:00:00Z'), send)).followUps).toEqual([])
+    expect(sent).toHaveLength(2)
+  })
+
+  it('never follows up a plan that was started, or one that was never reminded of', async () => {
+    const store = memoryStore()
+    store.put(plan('5', {}))
+    const send = async () => true
+    // Never reminded of at 20:00, so nothing to follow up at 20:45.
+    expect((await runCues(env, store, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual([])
+    const started = memoryStore()
+    started.put(plan('7', {}))
+    await runCues(env, started, AT_2005, send)
+    started.put(plan('7', { offerId: 12 }))
+    expect((await runCues(env, started, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual([])
   })
 })
 

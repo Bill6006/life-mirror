@@ -3,7 +3,9 @@ import type { ClaimCard, Grade } from './libraryTypes'
 
 // What the brain may say, checked the same way on the phone and in the Worker: one of the
 // modes, grounded in facts named by id, every number taken from those facts, no evidence
-// claimed beyond the cited cards' grade, none of Rule 4's verdict words, and short.
+// claimed beyond the cited cards' grade, none of Rule 4's verdict words, and short. A line may
+// carry one action from a closed set, which the sheet must make possible; the weekly review is
+// three short parts held to the same rules.
 
 export type Mode = 'observation' | 'challenge' | 'perspective' | 'strategy' | 'warning' | 'recommendation' | 'encouragement'
 export const MODES: readonly Mode[] = ['observation', 'challenge', 'perspective', 'strategy', 'warning', 'recommendation', 'encouragement']
@@ -12,15 +14,37 @@ export const MODES: readonly Mode[] = ['observation', 'challenge', 'perspective'
 export const BANNED_WORDS: readonly string[] = ['failed', 'bad', 'lazy', 'behind', 'weak', 'slipped again']
 
 export const MAX_WORDS = 60
+export const REVIEW_PART_WORDS = 45
+
+export type LineCue = 'afterPickup' | 'afterBedtime' | 'nextCheckIn'
+export const LINE_CUES: readonly LineCue[] = ['afterPickup', 'afterBedtime', 'nextCheckIn']
+
+/**
+ * The one tap a line may offer, so advice can be acted on where it is read: pin a commitment's
+ * step to a cue today, make the check-in lighter, or set a test the record has never run.
+ * Nothing else; the phone checks again at the tap that it is still possible.
+ */
+export type LineAction = { kind: 'plan'; aimId: number; cue: LineCue } | { kind: 'depth'; value: 'short' } | { kind: 'test'; moveId: string }
 
 export interface BrainOutput {
   mode: Mode
   text: string
   factIds: string[]
   cardIds: string[]
+  action: LineAction | null
+}
+
+export interface ReviewOutput {
+  held: string
+  didNot: string
+  change: string
+  factIds: string[]
+  cardIds: string[]
 }
 
 export type Validation = { ok: true; value: BrainOutput } | { ok: false; reason: string }
+export type ReviewValidation = { ok: true; value: ReviewOutput } | { ok: false; reason: string }
+export type ActionValidation = { ok: true; value: LineAction | null } | { ok: false; reason: string }
 
 const GRADE_ORDER: Record<Grade, number> = { A: 0, B: 1, C: 2, D: 3 }
 /** The phrases a grade may be spoken as; a stronger phrase than the cited cards allow is refused. */
@@ -50,6 +74,60 @@ export function numberGrounded(token: string, sheet: FactSheet, factIds: readonl
   return false
 }
 
+function strings(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+}
+
+/** The reason a text is refused, or null when it may be said. */
+function refusal(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number): string | null {
+  if (!text) return 'no text'
+  if (words(text) > maxWords) return `${words(text)} words; at most ${maxWords}`
+  for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return `uses the word "${w}"`
+  for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
+  const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
+  for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
+    if (text.toLowerCase().includes(phrase) && GRADE_ORDER[grade] < best) return `says "${phrase}" beyond the cited cards' grade`
+  }
+  if (cardIds.length === 0 && EVIDENCE_WORDS.test(text)) return 'speaks of evidence without citing a card'
+  return null
+}
+
+/** The citations, checked: at least one fact, every fact on the sheet, every card admitted. */
+function citations(o: Record<string, unknown>, sheet: FactSheet, cards: readonly ClaimCard[]): { factIds: string[]; cardIds: string[]; admitted: Map<string, ClaimCard> } | string {
+  const factIds = strings(o.factIds)
+  const cardIds = strings(o.cardIds)
+  if (factIds.length === 0) return 'no fact cited'
+  const known = new Set(sheet.facts.map((f) => f.id))
+  for (const id of factIds) if (!known.has(id)) return `fact "${id}" is not on the sheet`
+  const admitted = new Map(cards.filter((c) => c.status === 'admitted').map((c) => [c.id, c]))
+  for (const id of cardIds) if (!admitted.has(id)) return `card "${id}" is not admitted`
+  return { factIds, cardIds, admitted }
+}
+
+/** An action is allowed only when the sheet makes it possible: the commitment exists, the check-in is at full depth, the move is one the record has never tested. */
+export function validateAction(raw: unknown, sheet: FactSheet): ActionValidation {
+  if (raw === undefined || raw === null) return { ok: true, value: null }
+  if (typeof raw !== 'object') return { ok: false, reason: 'action is not an object' }
+  const a = raw as Record<string, unknown>
+  if (a.kind === 'plan') {
+    const aimId = typeof a.aimId === 'number' ? a.aimId : Number(a.aimId)
+    if (!Number.isInteger(aimId) || !sheet.facts.some((f) => f.id === `aim.${aimId}`)) return { ok: false, reason: `action plan: no commitment aim.${String(a.aimId)} on the sheet` }
+    if (typeof a.cue !== 'string' || !(LINE_CUES as readonly string[]).includes(a.cue)) return { ok: false, reason: `action plan: cue must be one of ${LINE_CUES.join(', ')}` }
+    return { ok: true, value: { kind: 'plan', aimId, cue: a.cue as LineCue } }
+  }
+  if (a.kind === 'depth') {
+    const cadence = sheet.facts.find((f) => f.id === 'cadence')
+    if (a.value !== 'short' || cadence?.values.depth !== 'full') return { ok: false, reason: 'action depth: only to short, and only when the cadence fact says the depth is full' }
+    return { ok: true, value: { kind: 'depth', value: 'short' } }
+  }
+  if (a.kind === 'test') {
+    const untested = String(sheet.facts.find((f) => f.id === 'untested')?.values.moves ?? '').split(',')
+    if (typeof a.moveId !== 'string' || !untested.includes(a.moveId)) return { ok: false, reason: 'action test: moveId must be one the untested fact lists' }
+    return { ok: true, value: { kind: 'test', moveId: a.moveId } }
+  }
+  return { ok: false, reason: 'action kind must be plan, depth or test' }
+}
+
 export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS): Validation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
@@ -58,19 +136,27 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   const text = typeof o.text === 'string' ? o.text.trim() : ''
   if (!text) return { ok: false, reason: 'no text' }
   if (words(text) > maxWords) return { ok: false, reason: `${words(text)} words; at most ${maxWords}` }
-  const factIds = Array.isArray(o.factIds) ? o.factIds.filter((x): x is string => typeof x === 'string') : []
-  const cardIds = Array.isArray(o.cardIds) ? o.cardIds.filter((x): x is string => typeof x === 'string') : []
-  if (factIds.length === 0) return { ok: false, reason: 'no fact cited' }
-  const known = new Set(sheet.facts.map((f) => f.id))
-  for (const id of factIds) if (!known.has(id)) return { ok: false, reason: `fact "${id}" is not on the sheet` }
-  const admitted = new Map(cards.filter((c) => c.status === 'admitted').map((c) => [c.id, c]))
-  for (const id of cardIds) if (!admitted.has(id)) return { ok: false, reason: `card "${id}" is not admitted` }
-  for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return { ok: false, reason: `uses the word "${w}"` }
-  for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return { ok: false, reason: `the number ${n} is not in the cited facts` }
-  const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
-  for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
-    if (text.toLowerCase().includes(phrase) && GRADE_ORDER[grade] < best) return { ok: false, reason: `says "${phrase}" beyond the cited cards' grade` }
+  const cited = citations(o, sheet, cards)
+  if (typeof cited === 'string') return { ok: false, reason: cited }
+  const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords)
+  if (why) return { ok: false, reason: why }
+  const action = validateAction(o.action, sheet)
+  if (!action.ok) return { ok: false, reason: action.reason }
+  return { ok: true, value: { mode: mode as Mode, text, factIds: cited.factIds, cardIds: cited.cardIds, action: action.value } }
+}
+
+/** The weekly review: what held, what did not, one change; each part held to the rules of a line. */
+export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[]): ReviewValidation {
+  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
+  const o = raw as Record<string, unknown>
+  const cited = citations(o, sheet, cards)
+  if (typeof cited === 'string') return { ok: false, reason: cited }
+  const parts: Record<'held' | 'didNot' | 'change', string> = { held: '', didNot: '', change: '' }
+  for (const key of ['held', 'didNot', 'change'] as const) {
+    const text = typeof o[key] === 'string' ? (o[key] as string).trim() : ''
+    const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, REVIEW_PART_WORDS)
+    if (why) return { ok: false, reason: `${key}: ${why}` }
+    parts[key] = text
   }
-  if (cardIds.length === 0 && EVIDENCE_WORDS.test(text)) return { ok: false, reason: 'speaks of evidence without citing a card' }
-  return { ok: true, value: { mode: mode as Mode, text, factIds, cardIds } }
+  return { ok: true, value: { ...parts, factIds: cited.factIds, cardIds: cited.cardIds } }
 }

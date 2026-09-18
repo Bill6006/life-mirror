@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { numberGrounded, numbersIn, validateOutput } from './brainShared'
+import { numberGrounded, numbersIn, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -48,5 +48,36 @@ describe('what the brain may say', () => {
     expect(numberGrounded('20:00', sheet, ['aim.1'])).toBe(true)
     expect(numberGrounded('5', sheet, ['assoc.napped'])).toBe(true)
     expect(numberGrounded('5', sheet, ['aim.1'])).toBe(false)
+  })
+})
+
+describe('the one tap a line may offer, and the week in three parts', () => {
+  const withMore: FactSheet = {
+    ...sheet,
+    facts: [...sheet.facts, { id: 'cadence', tags: [], text: '', values: { w3: 18, w2: 19, w1: 17, w0: 6, depth: 'full', lowDemand: 0 } }, { id: 'untested', tags: [], text: '', values: { moves: 'walk-ten,cyclic-sigh', count: 2 } }],
+  }
+
+  it('allows an action only when the sheet makes it possible', () => {
+    expect(validateAction(null, withMore)).toEqual({ ok: true, value: null })
+    expect(validateAction(undefined, withMore)).toEqual({ ok: true, value: null })
+    expect(validateAction({ kind: 'plan', aimId: 1, cue: 'afterBedtime' }, withMore)).toEqual({ ok: true, value: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } })
+    expect(validateAction({ kind: 'plan', aimId: 9, cue: 'afterBedtime' }, withMore).ok).toBe(false)
+    expect(validateAction({ kind: 'plan', aimId: 1, cue: 'atDawn' }, withMore).ok).toBe(false)
+    expect(validateAction({ kind: 'depth', value: 'short' }, withMore).ok).toBe(true)
+    expect(validateAction({ kind: 'depth', value: 'short' }, sheet).ok).toBe(false)
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten' }, withMore).ok).toBe(true)
+    expect(validateAction({ kind: 'test', moveId: 'nap-ten' }, withMore).ok).toBe(false)
+    expect(validateAction({ kind: 'delete-everything' }, withMore).ok).toBe(false)
+    const v = validateOutput({ mode: 'strategy', text: 'French waited 3 days. Pin it to a moment today.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } }, withMore, library)
+    expect(v).toMatchObject({ ok: true, value: { action: { kind: 'plan', aimId: 1 } } })
+    expect(validateOutput({ mode: 'strategy', text: 'Pin it.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 9, cue: 'afterBedtime' } }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('aim.9') })
+  })
+
+  it('holds each part of the review to the rules of a line', () => {
+    expect(validateReview({ held: 'French waited 3 days and then moved.', didNot: 'Nothing else stalled.', change: 'Keep the cue at 20:00.', factIds: ['aim.1'], cardIds: [] }, withMore, library).ok).toBe(true)
+    expect(validateReview({ held: 'Fine.', didNot: 'A lazy week.', change: 'Fine.', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('didNot') })
+    expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: '', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: 'change: no text' })
+    expect(validateReview({ held: 'Read 99.', didNot: 'Fine.', change: 'Fine.', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('99') })
+    expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Fine.', factIds: [], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: 'no fact cited' })
   })
 })

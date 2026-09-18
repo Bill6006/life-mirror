@@ -385,7 +385,10 @@
     "caveats": "Mostly verbal learning in the laboratory; the optimal gap depends on how long the memory must last.",
     "app": "Returning beats starting: the step follows the skill moved most recently, and short sittings on several days beat one long one.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "spaced-review"
+    ]
   },
   {
     "id": "testing-effect",
@@ -414,7 +417,10 @@
     "caveats": "Largest with feedback and with a delay before the final test.",
     "app": "The ladder's from-memory rungs are retrieval practice; explaining from memory is the proof, not another read-through.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "retrieval-ten"
+    ]
   },
   {
     "id": "interleaving",
@@ -487,7 +493,10 @@
     "caveats": "One study; the benefit depends on teaching from memory rather than reading from notes.",
     "app": "Explained from memory is a rung because it is retrieval; reading notes aloud would not be.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "explain-aloud"
+    ]
   },
   {
     "id": "deliberate-practice-share",
@@ -685,7 +694,10 @@
     "caveats": "A small sample and a large dose; sensitivity varies widely between people.",
     "app": "Heavy caffeine this morning is a chip; the like-for-like comparison says what it does to the afternoons and the nights.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "caffeine-cutoff"
+    ]
   },
   {
     "id": "caffeine-half-life",
@@ -735,7 +747,10 @@
     "caveats": "Mostly young adults; benefits depend on nap length and time of day.",
     "app": "Napped today is an evening chip; the mornings after say what a nap does to the night here.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "nap-ten"
+    ]
   },
   {
     "id": "sleep-inertia-after-naps",
@@ -808,7 +823,10 @@
     "caveats": "Observational; regularity may mark other health behaviours.",
     "app": "A bedtime kept on study nights and on rest nights alike is worth more than an early one now and then.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "fixed-lights-out"
+    ]
   },
   {
     "id": "warm-bath-before-bed",
@@ -856,7 +874,10 @@
     "caveats": "A bright screen at full brightness for hours; dimmer, shorter use shows smaller effects in later studies.",
     "app": "Screen-free half hour is a catalogue move; the record says whether the mornings after differ here.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "screen-free-half-hour"
+    ]
   },
   {
     "id": "exercise-and-sleep",
@@ -904,7 +925,10 @@
     "caveats": "One laboratory night; not yet replicated in the home.",
     "app": "Planning the next study step at the end of the evening is a catalogue move; it may also serve the night.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "todo-list-before-bed"
+    ]
   },
   {
     "id": "behavioural-activation",
@@ -953,7 +977,11 @@
     "caveats": "Supervised, structured programmes in trials; the size of the everyday effect is smaller.",
     "app": "Workout days from the other app are set against the evenings like for like; movement moves are in the catalogue for the afternoon dip.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "walk-ten",
+      "strength-set"
+    ]
   },
   {
     "id": "short-walk-mood",
@@ -978,7 +1006,10 @@
     "caveats": "Student samples and short follow-up; the lift is immediate and modest.",
     "app": "The ten-minute walk targets mood in the afternoon block; its card says whether the record agrees.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "walk-ten"
+    ]
   },
   {
     "id": "nature-walk-rumination",
@@ -1003,7 +1034,10 @@
     "caveats": "One study, a long walk; the general nature effect on attention is better supported.",
     "app": "Outdoors is a learned tag on moves; the record estimates its effect on its own.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "green-walk"
+    ]
   },
   {
     "id": "nature-attention-restoration",
@@ -1028,7 +1062,11 @@
     "caveats": "Heterogeneous measures; many short exposures in the laboratory.",
     "app": "An outdoor move before a study sitting is a fair test to run as a card: focus that evening against the alternative.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "green-walk",
+      "sit-outside-five"
+    ]
   },
   {
     "id": "micro-breaks",
@@ -1053,7 +1091,10 @@
     "caveats": "Short follow-ups; longer breaks may be needed for creative tasks.",
     "app": "Nothing extra is a real offer; a short break is one of the smallest moves and one of the best supported for energy.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "stretch-five"
+    ]
   },
   {
     "id": "reappraisal",
@@ -1101,7 +1142,10 @@
     "caveats": "Modest effects; the mechanism is debated.",
     "app": "The check-in's five phrases per reading are labelling; answering honestly is itself a small regulation.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "name-it"
+    ]
   },
   {
     "id": "expressive-writing",
@@ -1125,7 +1169,10 @@
     "caveats": "Small on average; not everyone benefits and some feel worse briefly.",
     "app": "The one optional line on the evening check-in is enough; the record does not push journaling.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "brain-dump"
+    ]
   },
   {
     "id": "gratitude-interventions",
@@ -1149,7 +1196,10 @@
     "caveats": "Short interventions and short follow-ups; the effect is real and small.",
     "app": "A gratitude move is offered like any other and judged by its card, not by its reputation.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "gratitude-three"
+    ]
   },
   {
     "id": "acts-of-kindness",
@@ -1174,7 +1224,10 @@
     "caveats": "Mostly immediate measures; long-run effects are less studied.",
     "app": "A kindness move belongs in the people family; connection is one of its learned tags.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "thank-you-note"
+    ]
   },
   {
     "id": "breathwork-stress",
@@ -1198,7 +1251,10 @@
     "caveats": "Heterogeneous protocols and risk of bias in many trials.",
     "app": "A one-minute breathing move is the smallest steadying move; it is offered when stress reads high.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "cyclic-sigh"
+    ]
   },
   {
     "id": "meditation-programmes",
@@ -1223,7 +1279,11 @@
     "caveats": "No evidence that meditation beat active treatments such as exercise or medication.",
     "app": "Quiet prayer and stillness moves sit in the faith and steadying families and are judged by their cards.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "body-scan",
+      "five-minutes-prayer"
+    ]
   },
   {
     "id": "music-and-stress",
@@ -1247,7 +1307,10 @@
     "caveats": "Many trials in medical settings; effect on everyday stress may be smaller.",
     "app": "Music on purpose is a catalogue move and one of the alternatives a private item is compared against.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "music-on-purpose"
+    ]
   },
   {
     "id": "hunger-and-irritability",
@@ -1271,7 +1334,11 @@
     "caveats": "Modest effects and one research group so far.",
     "app": "Hunger is a context reading beside mood; the necessities chips carry a missed meal.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "snack-before-four",
+      "real-lunch"
+    ]
   },
   {
     "id": "mild-dehydration-mood",
@@ -1296,7 +1363,10 @@
     "caveats": "Dehydration was often induced by exercise or heat, which confounds the mood effect.",
     "app": "A glass of water is among the smallest moves; it needs no more evidence than this to be offered.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "glass-of-water"
+    ]
   },
   {
     "id": "daylight-and-mood",
@@ -1321,7 +1391,10 @@
     "caveats": "Observational and self-reported time outdoors.",
     "app": "Daylight is a rule on moves: the outdoor ones are offered inside your daylight hours, and outdoors is a learned tag.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "morning-daylight"
+    ]
   },
   {
     "id": "social-ties-and-survival",
@@ -1414,7 +1487,10 @@
     "caveats": "Correlational within days; direction not established.",
     "app": "One small contact, a message or a question to someone, is the people family's smallest move.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "message-a-friend"
+    ]
   },
   {
     "id": "talking-to-strangers",
@@ -1442,7 +1518,10 @@
     "caveats": "Brief exchanges; the effect is on the moment, not on loneliness over months.",
     "app": "The people family's moves are small on purpose; the expected cost is the obstacle, not the exchange.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "one-sentence-past-hello"
+    ]
   },
   {
     "id": "asking-questions-liking",
@@ -1465,7 +1544,11 @@
     "caveats": "One research group; effects on longer relationships not shown. A published correction exists (DOI 10.1037/pspi0000491).",
     "app": "Ask one question is a move in the participation ladder; it is the smallest version of a conversation.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "ask-one-question",
+      "ask-follow-up"
+    ]
   },
   {
     "id": "hours-to-friendship",
@@ -1707,7 +1790,11 @@
     "caveats": "Laboratory tasks; the size of everyday costs depends on the tasks.",
     "app": "A study sitting is one skill, one rung; the focused block move is a single-task block.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "close-tabs",
+      "focused-block"
+    ]
   },
   {
     "id": "interrupted-work",
@@ -1806,7 +1893,10 @@
     "caveats": "From a research programme with mixed replication history.",
     "app": "Write the exact next study step exists for this; one tap says when does the same for a step.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "tomorrow-laid-out"
+    ]
   },
   {
     "id": "two-minute-rule",
@@ -1830,7 +1920,10 @@
     "caveats": "Thin evidence; kept because it is cheap and consistent with the small-step findings.",
     "app": "The two-minute rule is the unblock move for no time.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "two-minute-rule"
+    ]
   },
   {
     "id": "small-wins-progress",
@@ -1854,7 +1947,10 @@
     "caveats": "A diary study reported in a book; correlational.",
     "app": "Partly counts as a start; the minimum win is one line sized to be met.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "finish-one-thing"
+    ]
   },
   {
     "id": "sunk-cost",
@@ -1929,7 +2025,10 @@
     "caveats": "Unblinded, self-reported outcomes. A published correction exists (DOI 10.1371/journal.pone.0201978).",
     "app": "A cold finish is a morning move for energy; its card will say what the afternoons after read.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "cold-finish-shower"
+    ]
   },
   {
     "id": "green-exercise-dose",
@@ -1954,7 +2053,10 @@
     "caveats": "Pooled from the same group's studies; short-term measures.",
     "app": "Step outside for five minutes is a real move; the daylight rule keeps it inside the hours it can be done.",
     "reviewed": "2026-09-18",
-    "status": "admitted"
+    "status": "admitted",
+    "moves": [
+      "sit-outside-five"
+    ]
   },
   {
     "id": "child-screen-time",

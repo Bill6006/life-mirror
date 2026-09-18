@@ -1,9 +1,10 @@
-import type { Mode } from './brainShared'
+import type { LineAction, Mode } from './brainShared'
 import { daysBetween } from './blocks'
+import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { factById, factsWhere, num, str, type Fact, type FactSheet } from './facts'
 import { fill } from './format'
-import { bestGrade, gradeWeight } from './library'
+import { admitted, bestGrade, gradeWeight, gradeWord } from './library'
 
 // The judgment engine on the phone: situations worth speaking to, each a test over the fact
 // sheet, linked to claim cards, carrying a mode and a line with slots. Every morning the ones
@@ -16,6 +17,10 @@ export interface Match {
   /** How much the facts behind it warrant saying it, 0 to 1. */
   strength: number
   vars: Record<string, string>
+  /** The one tap that does what the line says, when there is one. */
+  action?: LineAction
+  /** The cards behind this match, when they depend on what was found rather than on the situation. */
+  cardIds?: string[]
 }
 
 export interface Situation {
@@ -34,6 +39,7 @@ export interface Choice {
   factIds: string[]
   cardIds: string[]
   score: number
+  action: LineAction | null
 }
 
 export interface SaidBefore {
@@ -74,6 +80,22 @@ function otherCue(f: Fact, cue: Cue): Cue {
     }
   }
   return best ?? (cue === 'afterBedtime' ? 'nextCheckIn' : 'afterBedtime')
+}
+
+const aimIdOf = (f: Fact): number => Number(f.id.split('.')[1])
+
+/** The cue to pin a step to: the one with the best record of being kept, or after her bedtime when none has a record. */
+function bestCue(f: Fact): Cue {
+  let best: Cue = 'afterBedtime'
+  let rate = -1
+  for (const c of CUES) {
+    const r = cueOf(f, c)
+    if (r.n && r.started / r.n > rate) {
+      best = c
+      rate = r.started / r.n
+    }
+  }
+  return best
 }
 
 const assoc = (sheet: FactSheet, id: string, min: number): Fact | null => {
@@ -122,7 +144,7 @@ export const SITUATIONS: readonly Situation[] = [
       for (const a of aims(sheet)) {
         for (const cue of CUES) {
           const r = cueOf(a, cue)
-          if (r.n >= 3 && r.started / r.n <= 0.34) return { factIds: [a.id], strength: 0.9, vars: { cue: cueLabel(cue), started: s(r.started), n: s(r.n), other: cueLabel(otherCue(a, cue)).toLowerCase() } }
+          if (r.n >= 3 && r.started / r.n <= 0.34) return { factIds: [a.id], strength: 0.9, vars: { cue: cueLabel(cue), started: s(r.started), n: s(r.n), other: cueLabel(otherCue(a, cue)).toLowerCase() }, action: { kind: 'plan', aimId: aimIdOf(a), cue: otherCue(a, cue) } }
         }
       }
       return null
@@ -180,7 +202,7 @@ export const SITUATIONS: readonly Situation[] = [
         .map((f) => ({ f, d: num(f, 'gapDays') ?? -1 }))
         .filter((x) => x.d >= 7)
         .sort((a, b) => b.d - a.d)[0]
-      return stalled ? { factIds: [stalled.f.id], strength: Math.min(1, stalled.d / 14), vars: { name: s(str(stalled.f, 'name')), d: s(stalled.d) } } : null
+      return stalled ? { factIds: [stalled.f.id], strength: Math.min(1, stalled.d / 14), vars: { name: s(str(stalled.f, 'name')), d: s(stalled.d) }, action: { kind: 'plan', aimId: aimIdOf(stalled.f), cue: bestCue(stalled.f) } } : null
     },
   },
   {
@@ -263,7 +285,7 @@ export const SITUATIONS: readonly Situation[] = [
       const bedtime = str(today, 'bedtime')
       if (bedtime && sheet.hour >= Number(bedtime.split(':')[0])) return null
       const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || (num(f, 'skills') ?? 0) > 0))
-      return a ? { factIds: [a.id, today.id], strength: 0.6, vars: { name: s(str(a, 'name')), step: s(str(a, 'step')) } } : null
+      return a ? { factIds: [a.id, today.id], strength: 0.6, vars: { name: s(str(a, 'name')), step: s(str(a, 'step')) }, action: { kind: 'plan', aimId: aimIdOf(a), cue: bestCue(a) } } : null
     },
   },
   {
@@ -400,6 +422,132 @@ export const SITUATIONS: readonly Situation[] = [
       return f && diff >= 0 ? { factIds: [f.id], strength: 0.4, vars: { diff: signed(diff), n: s(num(f, 'times')) } } : null
     },
   },
+  {
+    // Two weeks of nothing after two weeks of something: where a commitment is usually let go, and the earliest place it shows.
+    id: 'commitment-fading',
+    mode: 'challenge',
+    cards: ['implementation-intentions', 'self-compassion-after-lapse'],
+    cooldownDays: 7,
+    test: (sheet) => {
+      const t = factsWhere(sheet, 'trajectory.')
+        .map((f) => ({ f, before: (num(f, 'w3') ?? 0) + (num(f, 'w2') ?? 0), lately: (num(f, 'w1') ?? 0) + (num(f, 'w0') ?? 0) }))
+        .filter((x) => x.before >= 2 && x.lately === 0 && (num(x.f, 'ageDays') ?? 0) >= 21)
+        .sort((a, b) => b.before - a.before)[0]
+      if (!t) return null
+      const aim = factById(sheet, `aim.${num(t.f, 'aimId')}`)
+      return { factIds: aim ? [t.f.id, aim.id] : [t.f.id], strength: 0.85, vars: { name: s(str(t.f, 'name')), before: s(t.before) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+    },
+  },
+  {
+    id: 'commitment-thinning',
+    mode: 'strategy',
+    cards: ['habit-formation-time', 'implementation-intentions'],
+    cooldownDays: 7,
+    test: (sheet) => {
+      const t = factsWhere(sheet, 'trajectory.')
+        .filter((f) => (num(f, 'w1') ?? 0) >= 2 && num(f, 'w0') === 0 && (num(f, 'ageDays') ?? 0) >= 14)
+        .sort((a, b) => (num(b, 'w1') ?? 0) - (num(a, 'w1') ?? 0))[0]
+      if (!t) return null
+      const aim = factById(sheet, `aim.${num(t, 'aimId')}`)
+      return { factIds: aim ? [t.id, aim.id] : [t.id], strength: 0.7, vars: { name: s(str(t, 'name')), before: s(num(t, 'w1')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+    },
+  },
+  {
+    // Logging less is the earliest sign of letting the whole record go; a lighter check-in keeps it alive.
+    id: 'cadence-dropping',
+    mode: 'strategy',
+    cards: ['monitoring-progress', 'habit-formation-time'],
+    cooldownDays: 7,
+    test: (sheet) => {
+      const f = factById(sheet, 'cadence')
+      if (!f || str(f, 'depth') !== 'full' || num(f, 'lowDemand') === 1) return null
+      const usual = Math.round(((num(f, 'w2') ?? 0) + (num(f, 'w1') ?? 0)) / 2)
+      const now = num(f, 'w0') ?? 0
+      return usual >= 6 && now <= usual / 2 ? { factIds: [f.id], strength: 0.85, vars: { usual: s(usual), now: s(now) }, action: { kind: 'depth', value: 'short' } } : null
+    },
+  },
+  {
+    id: 'loop-closed',
+    mode: 'encouragement',
+    cards: ['monitoring-progress'],
+    cooldownDays: 3,
+    test: (sheet) => {
+      const f = factById(sheet, 'followup')
+      if (!f || num(f, 'aimId') === null) return null
+      const started = num(f, 'started') ?? 0
+      const done = num(f, 'done') ?? 0
+      const moved = num(f, 'moved') ?? 0
+      if (started + done + moved === 0) return null
+      const what = [started ? `${started} ${started === 1 ? 'step' : 'steps'} started` : null, done ? `${done} marked done` : null, moved ? `the ladder moved ${moved === 1 ? 'once' : `${moved} times`}` : null].filter(Boolean).join(', ')
+      return { factIds: [f.id], strength: 0.55, vars: { name: s(str(f, 'about')), what } }
+    },
+  },
+  {
+    id: 'loop-planned',
+    mode: 'perspective',
+    cards: ['intention-behaviour-gap', 'implementation-intentions'],
+    cooldownDays: 4,
+    test: (sheet) => {
+      const f = factById(sheet, 'followup')
+      if (!f || num(f, 'aimId') === null || str(f, 'received') === 'not') return null
+      const missed = num(f, 'missed') ?? 0
+      if (missed === 0 || (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'moved') ?? 0) > 0) return null
+      const aim = factById(sheet, `aim.${num(f, 'aimId')}`)
+      if (aim && str(aim, 'plan') !== null) return null
+      return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.65, vars: { name: s(str(f, 'about')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+    },
+  },
+  {
+    id: 'loop-open',
+    mode: 'perspective',
+    cards: ['intention-behaviour-gap'],
+    cooldownDays: 4,
+    test: (sheet) => {
+      const f = factById(sheet, 'followup')
+      if (!f || num(f, 'aimId') === null || str(f, 'received') === 'not') return null
+      if ((num(f, 'planned') ?? 0) + (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'moved') ?? 0) > 0) return null
+      const aim = factById(sheet, `aim.${num(f, 'aimId')}`)
+      return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.6, vars: { name: s(str(f, 'about')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+    },
+  },
+  {
+    id: 'short-night-today',
+    mode: 'perspective',
+    cards: ['sleep-loss-mood', 'naps-cognition', 'sleep-inertia-after-naps'],
+    cooldownDays: 3,
+    test: (sheet) => {
+      const f = factById(sheet, 'today.shortSleep')
+      return f ? { factIds: [f.id], strength: 0.7, vars: { word: s(str(f, 'word')) } } : null
+    },
+  },
+  {
+    id: 'short-sleep-afternoons',
+    mode: 'observation',
+    cards: ['sleep-loss-mood', 'sleep-regularity'],
+    cooldownDays: 14,
+    test: (sheet) => {
+      const f = assoc(sheet, 'assoc.shortSleep', 4)
+      return f ? { factIds: [f.id], strength: f.tier === 'promising' ? 0.8 : 0.55, vars: { diff: signed(num(f, 'diff') as number), n: s(num(f, 'times')) } } : null
+    },
+  },
+  {
+    // A quiet day's line: something the library backs and the record has never tested, one tap to set.
+    id: 'propose-test',
+    mode: 'recommendation',
+    cards: [],
+    cooldownDays: 10,
+    test: (sheet) => {
+      const f = factById(sheet, 'untested')
+      const open = String(f?.values.moves ?? '').split(',').filter(Boolean)
+      if (!f || !open.length) return null
+      const order = { A: 0, B: 1, C: 2, D: 3 }
+      for (const card of admitted().sort((a, b) => order[a.grade] - order[b.grade])) {
+        const moveId = (card.moves ?? []).find((m) => open.includes(m) && hasMove(m))
+        if (moveId) return { factIds: [f.id], strength: 0.45, vars: { grade: gradeWord(card.grade), move: moveById(moveId).name }, action: { kind: 'test', moveId }, cardIds: [card.id] }
+      }
+      return null
+    },
+  },
 ]
 
 /** How you received a situation before: useful lifts it, knew it and not useful lower it, within bounds. */
@@ -410,9 +558,10 @@ export function usefulness(id: string, feedback: readonly FeedbackBefore[]): num
 }
 
 /** The one line for the day: the true situation with the highest score, or null when none is true or all are resting. */
-export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[]): Choice | null {
+export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice | null {
   let best: Choice | null = null
   for (const sit of SITUATIONS) {
+    if (only && !only(sit)) continue
     const m = sit.test(sheet)
     if (!m) continue
     const last = said
@@ -423,8 +572,38 @@ export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedba
     const since = last ? daysBetween(last, sheet.day) : null
     if (since !== null && since < sit.cooldownDays) continue
     const novelty = since !== null && since < 30 ? 0.8 : 1
-    const score = m.strength * gradeWeight(bestGrade(sit.cards)) * novelty * usefulness(sit.id, feedback)
-    if (!best || score > best.score) best = { situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: [...sit.cards], score }
+    const cards = m.cardIds ?? [...sit.cards]
+    const score = m.strength * gradeWeight(bestGrade(cards)) * novelty * usefulness(sit.id, feedback)
+    if (!best || score > best.score) best = { situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: cards, score, action: m.action ?? null }
   }
   return best
+}
+
+export interface ReviewParts {
+  held: string
+  didNot: string
+  change: string
+}
+
+/**
+ * The week from the record alone, for the days the Worker has not written a fuller one: what
+ * held (commitments with a step started in the last seven days), what did not (those with none,
+ * and the check-ins when they fell), and one change, the strongest strategy, challenge or
+ * recommendation the sheet supports, whatever was said lately.
+ */
+export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[]): ReviewParts {
+  const c = copy.brain.review
+  const t = factsWhere(sheet, 'trajectory.')
+  const held = t.filter((f) => (num(f, 'w0') ?? 0) > 0).map((f) => fill(c.heldItem, { name: s(str(f, 'name')), n: s(num(f, 'w0')), done: s(num(f, 'd0')) }))
+  // A commitment younger than the week is not set against a week it did not have.
+  const quiet = t.filter((f) => (num(f, 'w0') ?? 0) === 0)
+  const missed = quiet.map((f) => {
+    const d = num(f, 'ageDays') ?? 0
+    return fill(d >= 7 ? c.missedItem : d === 0 ? c.newToday : d === 1 ? c.newYesterday : c.newItem, { name: s(str(f, 'name')), d: s(d) })
+  })
+  const cadence = factById(sheet, 'cadence')
+  if (cadence && (num(cadence, 'w0') ?? 0) < (num(cadence, 'w1') ?? 0) / 2) missed.push(fill(c.missedCadence, { now: s(num(cadence, 'w0')), before: s(num(cadence, 'w1')) }))
+  const change = chooseLine(sheet, [], feedback, (sit) => sit.mode === 'strategy' || sit.mode === 'challenge' || sit.mode === 'recommendation')
+  if (!t.length) return { held: c.noCommitments, didNot: missed.length ? missed.join(' ') : c.nothingYet, change: change?.text ?? c.noChange }
+  return { held: held.length ? held.join(' ') : c.noneHeld, didNot: missed.length ? missed.join(' ') : c.noneMissed, change: change?.text ?? c.noChange }
 }

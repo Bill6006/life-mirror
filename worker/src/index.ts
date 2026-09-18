@@ -1,5 +1,5 @@
 import { aiRunner, textOf } from './ai'
-import { runBrief } from './brief'
+import { runBrief, runReview } from './brief'
 import { runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
@@ -31,7 +31,9 @@ function sender(env: Env): Sender | null {
   }
 }
 
-async function dispatch(job: 'brief' | 'cues', env: Env, now: Date, force = false): Promise<unknown> {
+type Job = 'brief' | 'review' | 'cues'
+
+async function dispatch(job: Job, env: Env, now: Date, force = false): Promise<unknown> {
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
   if (job === 'cues') {
@@ -40,23 +42,25 @@ async function dispatch(job: 'brief' | 'cues', env: Env, now: Date, force = fals
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
-  const result = await runBrief(env, store, aiRunner(env.AI), now, { force })
+  const result = job === 'review' ? await runReview(env, store, aiRunner(env.AI), now, { force }) : await runBrief(env, store, aiRunner(env.AI), now, { force })
   console.log(JSON.stringify({ job, ...result }))
   return { job, ...result }
 }
 
 const handler: ExportedHandler<Env> = {
   async scheduled(event, env, ctx) {
-    const job = event.cron === CUE_CRON ? 'cues' : 'brief'
-    ctx.waitUntil(dispatch(job, env, new Date(event.scheduledTime)))
+    const now = new Date(event.scheduledTime)
+    if (event.cron === CUE_CRON) ctx.waitUntil(dispatch('cues', env, now))
+    // The morning line every day; beside it on Sunday, the week reviewed. Each decides for itself whether it is its hour.
+    else ctx.waitUntil(dispatch('brief', env, now).then(() => dispatch('review', env, now)))
   },
 
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/health') return json({ ok: true, app: BRAIN_APP })
-    const m = /^\/run\/(brief|cues)$/.exec(url.pathname)
+    const m = /^\/run\/(brief|review|cues)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
-      return json(await dispatch(m[1] as 'brief' | 'cues', env, new Date(), url.searchParams.get('force') === '1'))
+      return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1'))
     }
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {

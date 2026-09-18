@@ -1448,3 +1448,8 @@ button.chip {
   gap: 6px;
   margin-top: 8px;
 }
+
+/* The one tap under the brain's line sits close to it. */
+.brain-line .actions {
+  margin: 10px 0 0;
+}

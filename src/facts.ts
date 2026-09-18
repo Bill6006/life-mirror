@@ -1,7 +1,8 @@
-import { addDays, BLOCKS, blockIndex, daysBetween, type Block } from './blocks'
-import { associationFor, associationTier, privateAssociations, type Association } from './associations'
+import { addDays, BLOCKS, blockIndex, dayKey, daysBetween, type Block } from './blocks'
+import { associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
 import { becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastMovedDay, planFor, stepFor, studyOfferBelongs } from './aims'
-import { hasMove, moveById } from './catalogue'
+import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
+import { library } from './library'
 import { copy } from './copy'
 import type { Aim, BrainBrief, BriefFeedback, BriefLog, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
 import { fill, formatDayLong } from './format'
@@ -43,11 +44,29 @@ export interface FactInput {
   log: BriefLog[]
   feedback: BriefFeedback[]
   brainBriefs: BrainBrief[]
+  /** The check-in's depth and whether low-demand mode is on: what a lighter check-in could still change. */
+  depth: string
+  lowDemand: boolean
 }
 
 /** A like-for-like difference worth calling promising for a chip: ten points on the reading out of 100. */
 export const CHIP_WORTHWHILE = 10
 const TREND_WINDOW = 6
+/** Sleep hours at or under this position is a short night: under five hours, or five to six. */
+export const SHORT_SLEEP = 2
+const NOTE_DAYS = 14
+const NOTES_KEPT = 5
+
+/** How many of these days fall in each of the last four weeks ending today, oldest week first. Rolling weeks, so today is always in the last. */
+export function weekBuckets(days: readonly string[], today: string): [number, number, number, number] {
+  const out: [number, number, number, number] = [0, 0, 0, 0]
+  for (const d of days) {
+    const ago = daysBetween(d, today)
+    if (ago < 0 || ago >= 28) continue
+    out[3 - Math.floor(ago / 7)]++
+  }
+  return out
+}
 
 function fact(id: string, tags: string[], text: string, values: Record<string, number | string | null> = {}, extra: { n?: number; tier?: string } = {}): Fact {
   return { id, tags, text, values, ...extra }
@@ -206,6 +225,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
   chip('assoc.heavyCaffeine', ['caffeine', 'afternoon'], 'a heavy-caffeine morning', i.evidence.heavyCaffeine, 'Afternoons after')
   chip('assoc.workouts', ['workout', 'evening'], 'a workout day', i.evidence.workouts, 'Evenings of')
   chip('assoc.napped', ['nap', 'sleep'], 'a nap', associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped)), 'Mornings after')
+  // Sleep is answered every full morning and is the largest lever on the day: short nights set against the afternoons that follow, like for like.
+  chip('assoc.shortSleep', ['sleep', 'afternoon', 'energy'], 'a short night (under six hours)', morningAssociation(i.checkins, today, (c) => (c.answers.sleepHours ?? 9) <= SHORT_SLEEP), 'Afternoons after')
   for (const p of privateAssociations(true, i.items, i.checkins, today)) {
     const f = assocFact(`private.${p.itemId}`, ['evening', 'sleep'], p.name, p.association, 'Mornings after')
     if (f) facts.push({ ...f, values: { ...f.values, name: p.name, alternative: nameOfMove(p.alternativeId) } })
@@ -216,13 +237,29 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const move = nameOfMove(c.card.moveId)
     const alt = nameOfMove(c.card.alternativeId)
     const n = c.stats.n.done + c.stats.n.alternative
-    facts.push(fact(`test.${c.card.id}`, ['monitoring'], `Card: ${move} against ${alt} on ${readingById(c.card.target).name} in ${c.card.situationKey}: ${c.stats.tier}, ${n} observations.`, { move, alternative: alt, target: readingById(c.card.target).name, tier: c.stats.tier, n, situation: c.card.situationKey }, { n, tier: c.stats.tier }))
+    facts.push(fact(`test.${c.card.id}`, ['monitoring'], `Card: ${move} against ${alt} on ${readingById(c.card.target).name} in ${c.card.situationKey}: ${c.stats.tier}, ${n} observations.`, { move, moveId: c.card.moveId, alternative: alt, target: readingById(c.card.target).name, tier: c.stats.tier, n, situation: c.card.situationKey }, { n, tier: c.stats.tier }))
   }
+
+  // What the library backs and the record has never tested: a test the brain may propose, one tap to set.
+  const tested = new Set(i.evidence.cards.map((c) => c.card.moveId))
+  const backed: string[] = []
+  for (const card of library) {
+    if (card.status !== 'admitted') continue
+    for (const m of card.moves ?? []) {
+      if (!hasMove(m) || tested.has(m) || backed.includes(m)) continue
+      const move = moveById(m)
+      if (isParked(move) || isProposed(move) || PASSIVE.has(m) || OBSERVED_ONLY.has(m)) continue
+      backed.push(m)
+    }
+  }
+  if (days >= 14 && backed.length) facts.push(fact('untested', ['monitoring'], `Moves the library backs that the record has never tested: ${backed.map((m) => `${moveById(m).name} (${m})`).join(', ')}.`, { moves: backed.join(','), count: backed.length }))
 
   // Commitments: the step, the last fact, what blocked it, today's plan, the cues' record, the ladder's shape.
   const studyAims = i.aims.filter((a) => a.kind === 'certification')
   const openOffers = i.offers.filter((o) => (o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study') && o.closedAt === null && o.skippedAt === null)
   const records = { offers: i.offers.filter((o) => o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study'), outcomes: i.outcomes, nights: i.nights }
+  const doneIds = new Set(i.outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
+  const perAim = new Map<number, { name: string; sittings: Offer[]; skillIds: Set<number> }>()
   for (const aim of i.aims) {
     const id = aim.id as number
     const study = aim.kind === 'certification'
@@ -260,10 +297,27 @@ export function buildFactSheet(i: FactInput): FactSheet {
       values[`cue_${c.cue}_started`] = c.started
     }
     const gapText = gap === null ? (study ? (own.length ? 'the ladder has not moved yet' : 'no skill on its ladder yet') : 'not done yet') : gap === 0 ? (study ? 'moved today' : 'done today') : `last ${study ? 'moved' : 'done'} ${gap} days ago`
-    const ladderText = study && own.length ? `; ${own.length} skills: ${rungs.map((n, r) => (n ? `${n} at ${rungName(r, kind)}` : null)).filter(Boolean).join(', ')}` : ''
+    const ladderText = study && own.length ? `; ${own.length} ${own.length === 1 ? 'skill' : 'skills'}: ${rungs.map((n, r) => (n ? `${n} at ${rungName(r, kind)}` : null)).filter(Boolean).join(', ')}` : ''
     const planText = plan ? `; planned today ${copy.aims.cues[plan.cue].toLowerCase()} at ${plan.time}${plan.offerId !== null ? ', started' : ', not started'}` : '; no plan today'
     const cueText = counts.length ? `; cues: ${counts.map((c) => `${copy.aims.cues[c.cue].toLowerCase()} started ${c.started} of ${c.n}`).join(', ')}` : ''
     facts.push(fact(`aim.${id}`, study ? ['study', 'ladder', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' ? 'social' : 'faith'], `${name} (${study ? 'study' : aim.kind}): the step is “${step.title}”, ${step.minutes} min; ${gapText}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}${ladderText}.`, values))
+
+    // The trajectory: steps started and marked done per week over four weeks. A commitment fading shows here before anywhere else.
+    const sittings = records.offers.filter((o) => (o.kind === 'step' || o.kind === 'study') && o.skippedAt === null && (keys.includes(o.situationKey) || studyOfferBelongs(o, aim, i.skills, studyAims)))
+    const started = weekBuckets(sittings.map((o) => o.day), today)
+    const finished = weekBuckets(sittings.filter((o) => doneIds.has(o.id as number)).map((o) => o.day), today)
+    const born = new Date(aim.createdAt)
+    const ageDays = Number.isNaN(born.getTime()) ? 0 : Math.max(0, daysBetween(dayKey(born), today))
+    facts.push(
+      fact(
+        `trajectory.${id}`,
+        study ? ['study', 'habit', 'lapse'] : ['habit', 'lapse'],
+        `${name}: steps started per week over the last four weeks, oldest first: ${started.join(', ')}; marked done: ${finished.join(', ')}; the commitment is ${ageDays} days old.`,
+        { name, aimId: id, w3: started[0], w2: started[1], w1: started[2], w0: started[3], d3: finished[0], d2: finished[1], d1: finished[2], d0: finished[3], ageDays },
+        { n: started.reduce((a, b) => a + b, 0) },
+      ),
+    )
+    perAim.set(id, { name, sittings, skillIds: new Set(own.map((sk) => sk.id as number)) })
   }
 
   const kept = keptCount(i.nights)
@@ -288,14 +342,66 @@ export function buildFactSheet(i: FactInput): FactSheet {
 
   const morning = i.checkins.find((c) => c.day === today && c.block === 'morning')
   if (morning?.extras?.heavyCaffeine) facts.push(fact('today.heavyCaffeine', ['caffeine', 'morning'], 'Heavy caffeine marked this morning.', { heavyCaffeine: 1 }))
+  const slept = morning?.answers.sleepHours
+  if (slept !== undefined && slept <= SHORT_SLEEP) {
+    const word = headword(anchorFor('sleepHours', slept))
+    facts.push(fact('today.shortSleep', ['sleep', 'morning', 'mood'], `Sleep hours read “${word}” this morning.`, { position: slept, word }))
+  }
+
+  // The cadence of the record itself: check-ins completed per week. Logging less is the earliest sign of letting the whole thing go.
+  if (days >= 14) {
+    const w = weekBuckets(i.checkins.filter((c) => c.completedAt !== null).map((c) => c.day), today)
+    facts.push(fact('cadence', ['monitoring', 'habit'], `Check-ins completed per week over the last four weeks, oldest first: ${w.join(', ')}; the check-in depth is ${i.depth}${i.lowDemand ? ', with low-demand mode on' : ''}.`, { w3: w[0], w2: w[1], w1: w[2], w0: w[3], depth: i.depth, lowDemand: i.lowDemand ? 1 : 0 }, { n: w.reduce((a, b) => a + b, 0) }))
+  }
+
+  // Your own words: the optional line typed at a check-in, the last few, as you wrote them. Only a model can read these; the phone's engine cannot.
+  const noteSince = addDays(today, -(NOTE_DAYS - 1))
+  const noted = i.checkins
+    .filter((c) => typeof c.extras?.note === 'string' && c.extras.note.trim() && c.day >= noteSince && c.day <= today)
+    .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : blockIndex(b.block) - blockIndex(a.block)))
+    .slice(0, NOTES_KEPT)
+  for (const c of noted) {
+    const note = (c.extras?.note ?? '').trim()
+    facts.push(fact(`note.${c.day}.${c.block}`, ['writing', 'mood'], `On ${c.day}, at the ${c.block} check-in, you wrote: “${note}”.`, { day: c.day, block: c.block, note }))
+  }
 
   if (i.direction) facts.push(fact('direction', ['monitoring'], `Your direction, in your words: “${i.direction}”.`, { direction: i.direction }))
 
   const said: SaidEntry[] = []
   const fb = (key: string) => i.feedback.find((f) => f.briefKey === key)?.answer ?? null
-  for (const l of i.log) said.push({ day: l.day, source: 'phone', situationId: l.situationId, text: l.text, feedback: fb(`phone:${l.day}:${l.id}`) })
+  for (const l of i.log) if (l.situationId !== null) said.push({ day: l.day, source: 'phone', situationId: l.situationId, text: l.text, feedback: fb(`phone:${l.day}:${l.id}`) })
   for (const w of i.brainBriefs) said.push({ day: w.day, source: 'worker', situationId: null, text: w.text, feedback: fb(`worker:${w.id}`) })
   said.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
+
+  // Closing the loop: the last line said before today, and what the record shows since it was said.
+  const lines = [
+    ...i.log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, at: l.at, text: l.text, factIds: l.factIds, key: `phone:${l.day}:${l.id}`, worker: false })),
+    ...i.brainBriefs.filter((w) => w.kind === 'brief').map((w) => ({ day: w.day, at: w.at, text: w.text, factIds: w.factIds, key: `worker:${w.id}`, worker: true })),
+  ]
+    .filter((l) => l.day < today)
+    .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : Number(b.worker) - Number(a.worker)))
+  const last = lines[0]
+  if (last) {
+    const received = fb(last.key) ?? 'untapped'
+    const ref = last.factIds.map((f) => /^aim\.(\d+)$/.exec(f)).find(Boolean)
+    const about = ref ? perAim.get(Number(ref[1])) : undefined
+    if (ref && about) {
+      const aimId = Number(ref[1])
+      const plans = i.intentions.filter((p) => p.aimId === aimId && p.setAt > last.at)
+      const planned = plans.length
+      // A plan whose day has passed with no step linked to it: its moment came and went.
+      const missed = plans.filter((p) => p.day < today && p.offerId === null).length
+      const since = about.sittings.filter((o) => o.at > last.at)
+      const sinceIds = new Set(since.map((o) => o.id as number))
+      const done = i.outcomes.filter((x) => x.outcome === 'done' && sinceIds.has(x.offerId)).length
+      const moved = i.marks.filter((m) => about.skillIds.has(m.skillId) && m.at > last.at).length
+      facts.push(
+        fact('followup', ['monitoring', 'plan'], `The last line, on ${last.day}, was about ${about.name}. Since then the record shows ${planned} plans made, ${missed} of them past their day with no step started, ${since.length} steps started, ${done} marked done, and the ladder moved ${moved} times. It was received as: ${received}.`, { day: last.day, about: about.name, aimId, planned, missed, started: since.length, done, moved, received, text: last.text }),
+      )
+    } else {
+      facts.push(fact('followup', ['monitoring'], `The last line, on ${last.day}, was: “${last.text}”. It was received as: ${received}.`, { day: last.day, about: null, aimId: null, planned: 0, missed: 0, started: 0, done: 0, moved: 0, received, text: last.text }))
+    }
+  }
 
   return { version: 1, day: today, builtAt: i.now.toISOString(), hour, weeks, days, direction: i.direction, facts, said: said.slice(0, 14) }
 }

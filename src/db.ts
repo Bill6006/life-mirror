@@ -1,3 +1,4 @@
+import type { LineAction } from './brainShared'
 import type { FactSheet } from './facts'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
@@ -360,7 +361,11 @@ export interface BriefLog {
   text: string
   factIds: string[]
   cardIds: string[]
+  /** The one tap the line offers, when it offers one. */
+  action?: LineAction
   at: string
+  /** Set when the line's facts stopped holding and it left the screen. It was still said: its cooldown counts, and the next day's follow-up can find it. */
+  withdrawnAt?: string
 }
 
 /** One tap under a line: how it landed. Filed once per line. */
@@ -384,6 +389,12 @@ export interface BrainBrief {
   cardIds: string[]
   model: string
   at: string
+  /** The one tap the line offers, when it offers one. */
+  action?: LineAction | null
+  /** The day whose facts the line was written from, for showing why it said what it said. */
+  factsDay?: string
+  /** The weekly review's three parts, on a row of kind review. */
+  parts?: { held: string; didNot: string; change: string }
 }
 
 /** A skill from the checklists you chose to watch (Phase F). Its rung moves only by your tap; no count moves it. */

@@ -26,6 +26,8 @@ export interface ClaimCard {
   caveats: string
   /** What it means for a move, a cue, a chip or a reading in this app. */
   app: string
+  /** Catalogue moves the claim speaks for, by id: what the brain may propose testing when the record never has. */
+  moves?: string[]
   reviewed: string
   status: CardStatus
 }

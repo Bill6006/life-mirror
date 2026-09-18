@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs'
 const mode = process.argv[2] ?? '--check'
 const cards = JSON.parse(readFileSync('src/library.json', 'utf8'))
 const vocabulary = JSON.parse(readFileSync('src/libraryTags.json', 'utf8'))
+const catalogueFile = JSON.parse(readFileSync('src/catalogue.json', 'utf8'))
+const catalogueIds = new Set((catalogueFile.moves ?? catalogueFile).map((m) => m.id))
 const GRADES = ['A', 'B', 'C', 'D']
 const REPLICATION = ['replicated', 'mixed', 'failed', 'untested']
 const STATUS = ['admitted', 'draft', 'superseded', 'disputed']
@@ -31,6 +33,7 @@ for (const c of cards) {
   if (typeof c.caveats !== 'string') problems.push(`${where}: caveats missing`)
   if (typeof c.app !== 'string' || !c.app) problems.push(`${where}: app mapping missing`)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(c.reviewed ?? '')) problems.push(`${where}: reviewed is not a date`)
+  if (c.moves !== undefined && (!Array.isArray(c.moves) || c.moves.some((m) => !catalogueIds.has(m)))) problems.push(`${where}: moves must be catalogue ids`)
   if (!Array.isArray(c.sources) || c.sources.length === 0) problems.push(`${where}: no sources`)
   for (const s of c.sources ?? []) {
     if (typeof s.cite !== 'string' || !s.cite) problems.push(`${where}: a source without a citation`)

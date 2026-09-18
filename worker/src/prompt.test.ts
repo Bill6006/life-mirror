@@ -3,7 +3,7 @@ import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import cards from '../../src/library.json'
 import { cardLines, retrieve } from './library'
-import { buildMessages, parseOutput, sheetLines } from './prompt'
+import { buildMessages, buildReviewMessages, parseOutput, sheetLines } from './prompt'
 import { textOf } from './ai'
 
 const library = (cards as ClaimCard[]).filter((c) => c.status === 'admitted')
@@ -27,13 +27,14 @@ describe('what the model is asked', () => {
     const lines = sheetLines(sheet)
     expect(lines).toContain('[aim.1] French: planned after her bedtime at 20:00. (n=5)')
     expect(lines).toContain('Direction, in the person\'s own words: One line, mine')
-    const messages = buildMessages('brief', sheet, retrieve(library, sheet), [{ day: '2026-09-16', text: 'Said before.', feedback: 'useful' }])
+    const messages = buildMessages(sheet, retrieve(library, sheet), [{ day: '2026-09-16', text: 'Said before.', feedback: 'useful' }])
     expect(messages[0].role).toBe('system')
     expect(messages[0].content).toContain('JSON only')
     expect(messages[0].content).toContain('failed, bad, lazy, behind, weak, slipped again')
     expect(messages[1].content).toContain('[implementation-intentions] grade A')
     expect(messages[1].content).toContain('2026-09-16 (useful): Said before.')
-    expect(buildMessages('review', sheet, [], [])[1].content).toContain('weekly review')
+    expect(buildReviewMessages(sheet, [], [])[1].content).toContain('weekly review')
+    expect(buildReviewMessages(sheet, [], [])[0].content).toContain('"held"')
   })
 
   it('retrieves the cards the facts touch, weighted by what stands behind them, strongest grade first', () => {

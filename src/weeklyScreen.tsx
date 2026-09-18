@@ -6,6 +6,7 @@ import { copy } from './copy'
 import { fill, formatDayShort } from './format'
 import { weeklyData } from './forecastFlow'
 import { useLive } from './live'
+import { WeekReviewCard } from './weekReview'
 import { readingById } from './readings'
 
 // Mirror → The weekly view: the scorecard, the week ahead, best-days, the gap, what moved, what
@@ -45,6 +46,8 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
           <p class="note no-gap">{c.aheadNone}</p>
         )}
       </div>
+
+      <WeekReviewCard day={today} />
 
       <h2 class="section">{c.baseline}</h2>
       {w.shift?.shifted ? (

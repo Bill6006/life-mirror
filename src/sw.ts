@@ -30,7 +30,7 @@ self.addEventListener('push', (event) => {
   } catch {
     kind = 'ping'
   }
-  event.waitUntil(kind === 'cue' ? onCue() : kind === 'test' ? onTest() : onPing())
+  event.waitUntil(kind === 'cue' ? onCue(false) : kind === 'cue2' ? onCue(true) : kind === 'test' ? onTest() : onPing())
 })
 
 /** A push sent by hand from the Worker to prove the path: it shows itself. */
@@ -47,20 +47,21 @@ async function quiet(): Promise<void> {
 }
 
 /**
- * A cue whose moment has come: the Worker sent nothing but the fact of it; the words are the
+ * A cue whose moment has come, or, once and no more, the same cue forty-five minutes on with the
+ * step still not started: the Worker sent nothing but the fact of it; the words are the
  * plan's own, recorded on this phone when it was made. Only plans not yet started, the latest
  * per commitment.
  */
-async function onCue(): Promise<void> {
+async function onCue(followUp: boolean): Promise<void> {
   const now = new Date()
   const { day } = blockAt(now)
   const minute = now.getHours() * 60 + now.getMinutes()
-  const plans = (await db.intentions.where('day').equals(day).toArray()).filter((p) => p.offerId === null && minutesOf(p.time) <= minute)
+  const plans = (await db.intentions.where('day').equals(day).toArray()).filter((p) => p.offerId === null && minutesOf(p.time) <= minute - (followUp ? 40 : 0))
   const latest = new Map<number, Intention>()
   for (const p of plans.sort((a, b) => (a.setAt < b.setAt ? -1 : 1))) latest.set(p.aimId, p)
   const lines = [...latest.values()].map((p) => (p.step ? `${copy.aims.cues[p.cue]} · ${p.step}` : copy.aims.cues[p.cue]))
   if (!lines.length) return quiet()
-  await self.registration.showNotification(copy.appName, { body: lines.join(' · '), tag: 'cue', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+  await self.registration.showNotification(copy.appName, { body: (followUp ? copy.reminders.stillOpen + ' · ' : '') + lines.join(' · '), tag: followUp ? 'cue2' : 'cue', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
 }
 
 async function onPing(): Promise<void> {

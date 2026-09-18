@@ -1,6 +1,3 @@
-import { validateOutput, type BrainOutput } from '../../src/brainShared'
-import type { FactSheet } from '../../src/factTypes'
-import type { ClaimCard } from '../../src/libraryTypes'
 import type { Env } from './env'
 import { parseOutput, type Message } from './prompt'
 
@@ -41,14 +38,15 @@ export function textOf(result: unknown): string {
   return ''
 }
 
-export interface Generation {
-  output: BrainOutput
+export type Check<T> = (raw: unknown) => { ok: true; value: T } | { ok: false; reason: string }
+
+export interface Generation<T> {
+  output: T
   model: string
-  /** What each try was refused for, in order, for the log. */
-  attempts: string[]
 }
 
-export async function generateValid(models: readonly string[], run: Runner, messages: Message[], sheet: FactSheet, cards: readonly ClaimCard[], maxTokens = 4000, attempts: string[] = []): Promise<Generation | null> {
+/** Runs the chain until an answer passes the check. What each try was refused for goes into `attempts`, in order, for the log. */
+export async function generateValid<T>(models: readonly string[], run: Runner, messages: Message[], check: Check<T>, maxTokens = 4000, attempts: string[] = []): Promise<Generation<T> | null> {
   for (const model of models) {
     let thread = messages
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -60,8 +58,8 @@ export async function generateValid(models: readonly string[], run: Runner, mess
         break
       }
       const parsed = parseOutput(text)
-      const v = parsed === null ? ({ ok: false, reason: 'no JSON in the answer' } as const) : validateOutput(parsed, sheet, cards)
-      if (v.ok) return { output: v.value, model, attempts }
+      const v = parsed === null ? ({ ok: false, reason: 'no JSON in the answer' } as const) : check(parsed)
+      if (v.ok) return { output: v.value, model }
       attempts.push(`${model}: ${v.reason}`)
       thread = [...thread, { role: 'assistant', content: text.slice(0, 2000) }, { role: 'user', content: `That answer was refused: ${v.reason}. Answer again, JSON only, keeping every rule.` }]
     }
