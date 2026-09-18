@@ -758,10 +758,10 @@ export const copy = {
     pushHide: 'Hide address',
     pushUnsubscribe: 'Unsubscribe',
     pushSubscribedAt: 'Set up {when}.',
-    pushChanged: 'The address changed. Copy it again and paste it to the builder.',
+    pushChanged: 'The address changed. Copy it again and paste it into the brain’s secret named PUSH_SUBSCRIPTION.',
     pushUnsupported: 'This browser has no push here. Open the installed app on the phone.',
     pushNote:
-      'A content-free ping arrives at 07:30, 13:00 and 19:30 (America/New_York), sent from your own repository. The worker on this phone decides whether to show anything. This address is the only thing that ever leaves the phone; it carries no content, and Unsubscribe kills it. Paste it to the builder once.',
+      'A content-free ping arrives at 07:30, 13:00 and 19:30 (America/New_York), and at the moment of a cue you planned, sent by the Worker under your own account. The worker on this phone decides whether to show anything. This address carries no content, and Unsubscribe kills it. Paste it once into the brain’s secret named PUSH_SUBSCRIPTION.',
     movesSection: 'Moves',
     offerFaith: 'Offer faith moves',
     offerFaithNote: 'Off hides the whole family with one tap. Nothing is counted either way.',
@@ -918,5 +918,6 @@ export const copy = {
   reminders: {
     body: 'Time for your {block} check-in.',
     quiet: 'Nothing due right now.',
+    test: 'The brain can reach this phone.',
   },
 } as const

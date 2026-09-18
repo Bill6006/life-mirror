@@ -13,6 +13,8 @@ export interface Env {
   /** Optional: lets you run a job by hand at /run/brief?key=… ; without it those routes are off. */
   RUN_KEY?: string
   TIMEZONE: string
+  /** The check-in pings' local times, HH:MM, comma-separated. */
+  PING_TIMES?: string
   BRIEF_HOUR: string
   LIBRARY_URL: string
   MODELS: string

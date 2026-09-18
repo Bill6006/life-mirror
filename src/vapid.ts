@@ -1,3 +1,4 @@
-// The public half of the signing key for the reminder ping. The private half lives only in
-// the repository secrets and is never in this code.
-export const VAPID_PUBLIC_KEY = "BPYgY5hFetfT7nh453uVV3ExHxaw3Ea8fl-AgvOjEuKmlfCjqjfEFXsdtb9cVUuta3Uz2toc1Gy6GkVc2kaSF_g"
+// The public half of the signing key for the pushes. The private half lives only in the Worker's
+// secrets, pasted there by you, and is never in this code. Replaced 2026-09-18 with a fresh pair;
+// a phone subscribed under the old key renews its address by itself on the next open.
+export const VAPID_PUBLIC_KEY = "BCaIRco378dsKVVBh0-wIIWYUqrTgY2aZuJA_uxEXnyojXNoZrYlsszUH3QzecsMBdvMCzXEw9ihMnf219GCNOA"

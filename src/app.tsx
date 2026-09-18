@@ -10,12 +10,13 @@ import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
 import { adoptOrphanSubjects, alignLadders } from './aimFlow'
 import { writeFactsRow } from './brainFlow'
+import { refreshPushIfKeyChanged } from './push'
 import { loadAudits, runLearning } from './learningFlow'
 import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
-import { allCheckIns, getDayContext, getSettings } from './db'
+import { allCheckIns, getDayContext, getSettings, updateSettings } from './db'
 import { ExtrasScreen } from './extras'
 import { LegendScreen } from './legend'
 import { useLive } from './live'
@@ -77,6 +78,10 @@ export function App() {
       .then(() => runLearning(day))
       .then(() => runForecasting(day))
       .then(() => writeFactsRow(day))
+    // A push address made under an older signing key is replaced; Settings then says to copy it again.
+    void refreshPushIfKeyChanged()
+      .then((subscription) => (subscription ? updateSettings((s) => ({ ...s, push: { subscription, subscribedAt: new Date().toISOString(), changed: true } })) : undefined))
+      .catch(() => undefined)
   }, [])
   // Phase 11: a forecast for a block is written before that block is logged; after each completed check-in the next slots may be due.
   useEffect(() => {

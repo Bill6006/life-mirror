@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runCues } from './cues'
+import { runCues, runPings } from './cues'
 import { APP, BRAIN_APP, memoryStore } from './turso'
 
 // A cue whose moment has come: once, only for a plan not yet started, only within twenty
@@ -47,5 +47,34 @@ describe('the cue reminder', () => {
     expect(await runCues(env, store, AT_2005, null)).toEqual({ sent: false, due: ['5'], reason: 'no push address or key' })
     expect(await runCues(env, store, AT_2005, async () => false)).toEqual({ sent: false, due: ['5'], reason: 'the push service refused it' })
     expect(store.rows.get(`${BRAIN_APP}|pushes|cue:5`)).toBeUndefined()
+  })
+})
+
+describe('the check-in ping', () => {
+  const pingEnv = { TIMEZONE: 'America/New_York', PING_TIMES: '07:30, 13:00,19:30' }
+
+  it('goes once inside the quarter hour that starts at each time, content-free, and never twice', async () => {
+    const store = memoryStore()
+    const sent: string[] = []
+    const send = async (payload: string) => {
+      sent.push(payload)
+      return true
+    }
+    // 19:30 in New York on 18 September is 23:30 UTC.
+    expect(await runPings(pingEnv, store, new Date('2026-09-18T23:30:00Z'), send)).toEqual({ sent: true, due: '19:30', reason: 'sent' })
+    expect(sent).toEqual(['{"kind":"ping"}'])
+    expect(await runPings(pingEnv, store, new Date('2026-09-18T23:40:00Z'), send)).toEqual({ sent: false, due: '19:30', reason: 'sent already' })
+    expect(await runPings(pingEnv, store, new Date('2026-09-18T23:45:00Z'), send)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
+    // The next morning's 07:30 is its own ping.
+    expect((await runPings(pingEnv, store, new Date('2026-09-19T11:30:00Z'), send)).sent).toBe(true)
+    expect(sent).toHaveLength(2)
+  })
+
+  it('says why when it cannot send, and marks nothing', async () => {
+    const store = memoryStore()
+    expect(await runPings(pingEnv, store, new Date('2026-09-18T17:00:00Z'), null)).toEqual({ sent: false, due: '13:00', reason: 'no push address or key' })
+    expect(await runPings(pingEnv, store, new Date('2026-09-18T17:00:00Z'), async () => false)).toEqual({ sent: false, due: '13:00', reason: 'the push service refused it' })
+    expect(await runPings({ TIMEZONE: 'America/New_York' }, store, new Date('2026-09-18T17:00:00Z'), async () => true)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
+    expect(store.rows.size).toBe(0)
   })
 })

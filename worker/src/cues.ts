@@ -17,6 +17,31 @@ export interface CueResult {
 
 export type Sender = (payload: string) => Promise<boolean>
 
+export interface PingResult {
+  sent: boolean
+  due: string | null
+  reason: string
+}
+
+/**
+ * The content-free check-in ping, at each of its local times: the fifteen-minute cron lands once
+ * inside the quarter hour that starts at the time, and a mark keeps it to once a day per time.
+ * The phone decides whether to show anything.
+ */
+export async function runPings(env: Pick<Env, 'TIMEZONE' | 'PING_TIMES'>, store: Store, now: Date, send: Sender | null): Promise<PingResult> {
+  const local = localTime(now, env.TIMEZONE)
+  const minute = local.hour * 60 + local.minute
+  const times = (env.PING_TIMES ?? '').split(',').map((t) => t.trim()).filter(Boolean)
+  const due = times.find((t) => minute >= minutesOf(t) && minute - minutesOf(t) < 15) ?? null
+  if (!due) return { sent: false, due, reason: 'not a ping time' }
+  const id = `ping:${local.day}:${due}`
+  if (await store.isPushed(id)) return { sent: false, due, reason: 'sent already' }
+  if (!send) return { sent: false, due, reason: 'no push address or key' }
+  if (!(await send(JSON.stringify({ kind: 'ping' })))) return { sent: false, due, reason: 'the push service refused it' }
+  await store.markPushed(id, now.toISOString())
+  return { sent: true, due, reason: 'sent' }
+}
+
 export async function runCues(env: Pick<Env, 'TIMEZONE'>, store: Store, now: Date, send: Sender | null): Promise<CueResult> {
   const local = localTime(now, env.TIMEZONE)
   const minute = local.hour * 60 + local.minute

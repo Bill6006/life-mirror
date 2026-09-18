@@ -5,7 +5,8 @@ sheet the phone wrote to the database, the evidence library as the app ships it,
 said recently; asks a model on Workers AI for one line; checks that line against the facts; and
 writes it back as a row of its own app. The phone shows it at the head of the brief. Every
 fifteen minutes it looks for a plan whose moment has come and sends a content-free push; the
-phone composes the reminder from the plan it recorded. Nothing here is paid for. If the free
+phone composes the reminder from the plan it recorded. It also sends the three content-free
+check-in pings (07:30, 13:00, 19:30 local), which the repository used to send. Nothing here is paid for. If the free
 tier or a model goes away, the phone's own line stands.
 
 The Worker never sees a check-in: only the derived facts. It holds its own database token, the
@@ -30,7 +31,7 @@ Wrangler asks you to confirm the free plan's Workers AI usage the first time.
 ## Check
 
 - `https://life-mirror-brain.<your-subdomain>.workers.dev/health` answers `{"ok":true}`.
-- With a run key: `/run/brief?key=…&force=1` writes today's line now (the phone shows it after its next sync, within fifteen minutes or at open); `/run/cues?key=…` sends a reminder for any plan whose moment has come.
+- With a run key: `/run/push?key=…&kind=test` shows a test notification on the phone; `/run/brief?key=…&force=1` writes today's line now (the phone shows it after its next sync, within fifteen minutes or at open); `/run/cues?key=…` sends a reminder for any plan whose moment has come.
 - The Cloud screen on the phone says when the brain last wrote and with which model.
 
 ## What it costs

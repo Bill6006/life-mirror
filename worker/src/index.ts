@@ -1,6 +1,6 @@
 import { aiRunner, textOf } from './ai'
 import { runBrief } from './brief'
-import { runCues, type Sender } from './cues'
+import { runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
@@ -34,7 +34,13 @@ function sender(env: Env): Sender | null {
 async function dispatch(job: 'brief' | 'cues', env: Env, now: Date, force = false): Promise<unknown> {
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
-  const result = job === 'cues' ? await runCues(env, store, now, sender(env)) : await runBrief(env, store, aiRunner(env.AI), now, { force })
+  if (job === 'cues') {
+    const send = sender(env)
+    const result = { ping: await runPings(env, store, now, send), cues: await runCues(env, store, now, send) }
+    console.log(JSON.stringify({ job, ...result }))
+    return { job, ...result }
+  }
+  const result = await runBrief(env, store, aiRunner(env.AI), now, { force })
   console.log(JSON.stringify({ job, ...result }))
   return { job, ...result }
 }
@@ -51,6 +57,17 @@ const handler: ExportedHandler<Env> = {
     const m = /^\/run\/(brief|cues)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       return json(await dispatch(m[1] as 'brief' | 'cues', env, new Date(), url.searchParams.get('force') === '1'))
+    }
+    // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
+    if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      const kind = url.searchParams.get('kind') ?? 'test'
+      const send = sender(env)
+      if (!send) return json({ sent: false, reason: 'no push address or key' })
+      try {
+        return json({ sent: await send(JSON.stringify({ kind })), kind })
+      } catch (e) {
+        return json({ sent: false, kind, reason: e instanceof Error ? e.message : String(e) })
+      }
     }
     // With the run key: one model, one tiny prompt, its raw answer and what the extractor reads from it. For diagnosing a model's shape.
     if (url.pathname === '/run/probe' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {

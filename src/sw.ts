@@ -30,8 +30,13 @@ self.addEventListener('push', (event) => {
   } catch {
     kind = 'ping'
   }
-  event.waitUntil(kind === 'cue' ? onCue() : onPing())
+  event.waitUntil(kind === 'cue' ? onCue() : kind === 'test' ? onTest() : onPing())
 })
+
+/** A push sent by hand from the Worker to prove the path: it shows itself. */
+async function onTest(): Promise<void> {
+  await self.registration.showNotification(copy.appName, { body: copy.reminders.test, tag: 'test', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+}
 
 /** Nothing is due, but the browser insists a push shows something. A silent notice, taken down at once. */
 async function quiet(): Promise<void> {
