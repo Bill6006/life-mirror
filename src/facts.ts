@@ -333,8 +333,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const bc = becoming(i.offers, i.outcomes)
   facts.push(fact('becoming', ['monitoring'], `Under the direction: ${bc.study.n} study sessions, ${bc.conversations.n} conversations started, ${bc.faith.n} faith practices, ${bc.timeWithHer.n} times with her.`, { study: bc.study.n, conversations: bc.conversations.n, faith: bc.faith.n, her: bc.timeWithHer.n }))
 
-  const workouts = i.outside.filter((o) => o.day >= since && o.day <= today)
-  facts.push(fact('outside.7d', ['workout'], `Workout days in the last seven: ${workouts.length}${workouts.length ? ` (${workouts.map((w) => w.day).join(', ')})` : ''}.`, { days: workouts.length }, { n: workouts.length }))
+  // Two workouts on one day are one workout day.
+  const workouts = [...new Set(i.outside.filter((o) => o.day >= since && o.day <= today).map((o) => o.day))].sort()
+  facts.push(fact('outside.7d', ['workout'], `Workout days in the last seven: ${workouts.length}${workouts.length ? ` (${workouts.join(', ')})` : ''}.`, { days: workouts.length }, { n: workouts.length }))
 
   const lastEvenings = [1, 2, 3].map((d) => i.checkins.find((c) => c.day === addDays(today, -d) && c.block === 'evening'))
   const misses = lastEvenings.reduce((n, c) => n + Object.values(c?.extras?.necessities ?? {}).filter(Boolean).length, 0)

@@ -94,6 +94,18 @@ describe('what the sheet learned to carry', () => {
     expect(weekBuckets(['2026-09-18', '2026-09-12', '2026-09-11', '2026-08-25', '2026-08-21', '2026-08-01', '2026-09-19'], DAY)).toEqual([1, 0, 1, 2])
   })
 
+  it('counts two workouts on one day as one workout day', async () => {
+    await db.outside.bulkPut([
+      { id: 'w1', day: '2026-09-17', minutes: 40, at: '2026-09-17T11:00:00.000Z', source: 'workout' },
+      { id: 'w2', day: '2026-09-17', minutes: 15, at: '2026-09-17T22:00:00.000Z', source: 'workout' },
+      { id: 'w3', day: '2026-09-15', minutes: null, at: '2026-09-15T11:00:00.000Z', source: 'workout' },
+      { id: 'w4', day: '2026-09-01', minutes: 30, at: '2026-09-01T11:00:00.000Z', source: 'workout' },
+    ])
+    const f = factById(await factSheet(DAY, NOW), 'outside.7d')
+    expect(f?.values.days).toBe(2)
+    expect(f?.text).toBe('Workout days in the last seven: 2 (2026-09-15, 2026-09-17).')
+  })
+
   it('carries your own words, the trajectory of a commitment, and what happened since the last line', async () => {
     await addAim('certification', null, 'French', 'language')
     const [aim] = await studyAims()

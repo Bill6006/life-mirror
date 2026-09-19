@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { BRAIN_APP, brainBriefOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { BRAIN_APP, brainBriefOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
 import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
@@ -410,6 +410,24 @@ describe('the other app’s finished workouts, read from the same database', () 
     await store.upsert([outsideRow('w1', null, '2026-09-14T09:00:00.000Z', 1)])
     await syncNow()
     expect((await db.outside.toArray()).map((d) => d.id)).toEqual(['w3'])
+  })
+
+  it('never loses a workout to a page that ends inside a batch the other app stamped with one time', async () => {
+    const store = memoryStore()
+    const stamp = (n: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, 0, n)).toISOString()
+    // Its other stores fill most of a page; then five workouts pushed in one batch share a timestamp, and the page boundary falls among them.
+    const filler: CloudRow[] = Array.from({ length: PAGE - 2 }, (_, n) => ({ app: OUTSIDE_APP, store: 'meta', id: 'm' + n, day: null, body: '{}', updated_at: stamp(n), deleted: 0, device_id: 'other-app', synced_at: stamp(n) }))
+    const batch = Array.from({ length: 5 }, (_, n) => outsideRow('b' + n, { id: 'b' + n, completedAt: new Date(2026, 8, 10 + n, 7, 0).toISOString() }, stamp(PAGE)))
+    await store.upsert([...filler, ...batch, outsideRow('later', { id: 'later', completedAt: new Date(2026, 8, 16, 7, 0).toISOString() }, stamp(PAGE + 1))])
+    await withToken(store)
+    await syncNow()
+    expect((await db.outside.toArray()).map((d) => d.id).sort()).toEqual(['b0', 'b1', 'b2', 'b3', 'b4', 'later'])
+    expect((await getOutsideMeta()).watermark).toBe(stamp(PAGE + 1))
+    // The rule on its own: a short page is whole; a full page gives up its last run; a page that is one run is taken as it is.
+    const r = (s: string) => ({ synced_at: s })
+    expect(wholeRuns([r('a'), r('b')], 3)).toHaveLength(2)
+    expect(wholeRuns([r('a'), r('b'), r('b')], 3)).toEqual([r('a')])
+    expect(wholeRuns([r('b'), r('b'), r('b')], 3)).toHaveLength(3)
   })
 
   it('says what an outside row means, and nothing for one it cannot read', () => {

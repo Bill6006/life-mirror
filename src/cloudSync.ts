@@ -295,6 +295,18 @@ async function pull(store: CloudStore): Promise<number> {
 }
 
 /**
+ * A full page may end inside a run of rows written with one timestamp: the other app stamps a
+ * whole batch alike, and the next page asks only for what is newer, so the rest of the run
+ * would never be read. Hold the last run back; the next page reads it whole. A page that is
+ * one run from end to end has nothing to hold back and is taken as it is.
+ */
+export function wholeRuns<T extends { synced_at: string }>(rows: T[], page: number): T[] {
+  if (rows.length < page) return rows
+  const cut = rows.findIndex((r) => r.synced_at === rows[rows.length - 1].synced_at)
+  return cut > 0 ? rows.slice(0, cut) : rows
+}
+
+/**
  * The other app's finished workouts, read from the same database: the plan lets this app read
  * other apps' rows, and it writes none of them. A row of its workouts store with a completion
  * time becomes an outside day here; a deleted row takes its day back. Its own watermark, so a
@@ -304,8 +316,9 @@ async function pullOutside(store: CloudStore): Promise<number> {
   let applied = 0
   for (;;) {
     const meta = await getOutsideMeta()
-    const rows = await store.pull(OUTSIDE_APP, meta.watermark, PAGE)
-    if (!rows.length) break
+    const page = await store.pull(OUTSIDE_APP, meta.watermark, PAGE)
+    if (!page.length) break
+    const rows = wholeRuns(page, PAGE)
     await db.transaction('rw', [db.outside, db.cloudMeta], async () => {
       for (const row of rows) {
         if (row.store !== OUTSIDE_STORE) continue
@@ -316,7 +329,7 @@ async function pullOutside(store: CloudStore): Promise<number> {
       await db.cloudMeta.put({ ...meta, key: 'outside', watermark: rows[rows.length - 1].synced_at })
     })
     applied += rows.length
-    if (rows.length < PAGE) break
+    if (page.length < PAGE) break
   }
   return applied
 }
