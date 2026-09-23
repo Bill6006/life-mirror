@@ -714,6 +714,12 @@ test('a Done tap on the card, once the move’s minutes have passed, writes the 
   await tapThrough(page)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('move-card')).toBeVisible()
+  // The draw may offer Nothing today, which by design has no Done tap: Skip shows the next, and
+  // the null offer is never offered twice in a day, so one skip reaches a move.
+  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing today') {
+    await page.getByRole('button', { name: /^Skip/ }).click()
+    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing today')
+  }
   // The minutes have not passed: no tap, no box, nothing sits there unticked.
   await expect(page.getByTestId('move-done')).toHaveCount(0)
   await expect(page.getByTestId('move-card')).toContainText('Asked at your next check-in')
