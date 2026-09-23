@@ -16,6 +16,57 @@ async function tapAnchor(page: Page, nth = 2): Promise<boolean> {
   return true
 }
 
+// Every test fails on an uncaught error in the page, not only on what it asserts (Part 18).
+let pageErrors: string[] = []
+test.beforeEach(async ({ page }) => {
+  pageErrors = []
+  page.on('pageerror', (e) => pageErrors.push(String(e)))
+})
+test.afterEach(() => {
+  expect(pageErrors).toEqual([])
+})
+
+/** Writes days of completed check-ins straight into the phone's store, the last evening lonely enough to be spoken to. */
+async function seedRecord(page: Page, days: number): Promise<void> {
+  await page.evaluate(async (n) => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const hours: Record<string, number> = { morning: 7, afternoon: 13, evening: 19 }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins'], 'readwrite')
+    const store = tx.objectStore('checkins')
+    const now = new Date()
+    for (let d = n; d >= 1; d--) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d)
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      let bi = 0
+      for (const block of Object.keys(blocks)) {
+        bi++
+        const answers: Record<string, number> = {}
+        blocks[block].forEach((id, ri) => {
+          answers[id] = 1 + ((d * 7 + bi * 3 + ri * 3 + (ri % 2) * d) % 5)
+        })
+        if (d === 1 && block === 'evening') answers.loneliness = 5
+        const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 40)
+        const done = new Date(at.getTime() + 95_000)
+        store.add({ day, block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done.toISOString(), updatedAt: done.toISOString(), answers, activeMs: 60_000 })
+      }
+    }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  }, days)
+}
+
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
 async function tapThrough(page: Page, nth = 2): Promise<number> {
   const card = page.getByTestId('give-back')
@@ -129,6 +180,47 @@ test('a past day is named by its day, never "Today so far", and the null offer i
   await expect(page.getByTestId('summary')).toBeVisible()
   await expect(page.getByTestId('day-glance')).toContainText('Sep 7')
   await expect(page.getByTestId('day-glance')).not.toContainText('Today so far')
+})
+
+test('the brief card: the line, its action and the taps by default; the readings, the grounds and the writer behind Why; no error on a seeded open', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 8, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  // Three and a half weeks written at once, then opened: forecasting runs twice on open and must not collide.
+  await seedRecord(page, 24)
+  await page.reload()
+  const card = page.getByTestId('brief')
+  await expect(card.getByTestId('brief-line')).toBeVisible()
+  await expect(card.getByTestId('brief-last-night')).toHaveCount(0)
+  await expect(card.getByTestId('brief-writer')).toHaveCount(0)
+  await expect(card.getByTestId('brief-writer-tag')).toHaveCount(0)
+  await card.getByTestId('brief-why').click()
+  const why = card.getByTestId('brief-why-panel')
+  await expect(why).toContainText('Why this line')
+  await expect(why).toContainText('Also from your record')
+  await expect(why.getByTestId('brief-last-night')).toBeVisible()
+  await expect(why.getByTestId('brief-writer')).toHaveText('Chosen on this phone from your record, by the situation engine.')
+  // A line the Worker wrote carries a one-word tag in the title row, and Why names the model.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['brainBriefs'], 'readwrite')
+    tx.objectStore('brainBriefs').put({ id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'A line the Worker wrote for this test.', mode: 'observation', factIds: ['record'], cardIds: [], model: '@cf/test/model', at: '2026-09-18T09:15:00.000Z', factsDay: '2026-09-17' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+  await expect(card.getByTestId('brief-line')).toHaveText('A line the Worker wrote for this test.')
+  await expect(card.getByTestId('brief-writer-tag')).toHaveText('Brain')
+  await card.getByTestId('brief-why').click()
+  await expect(card.getByTestId('brief-writer')).toContainText('@cf/test/model')
 })
 
 test('an incomplete block reads Incomplete and no number', async ({ page }) => {

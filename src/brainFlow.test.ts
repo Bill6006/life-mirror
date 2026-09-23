@@ -83,6 +83,45 @@ describe('the brain on the phone', () => {
   })
 })
 
+describe('a kept line, said as the record now stands', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await ensureDayContext(DAY, await getSettings())
+  })
+  const checkIn = (block: 'morning' | 'evening', loneliness: number, hour: number) => {
+    const ids = block === 'morning' ? ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'] : ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness']
+    const answers = Object.fromEntries(ids.map((id) => [id, id === 'loneliness' ? loneliness : 3])) as never
+    const at = new Date(2026, 8, 18, hour, 0).toISOString()
+    return db.checkins.add({ day: DAY, block, asked: ids, answers, startedAt: at, completedAt: at, updatedAt: at, activeMs: 30_000 })
+  }
+
+  it('keeps the same row, so its tap stays filed, and says the reading as it now is', async () => {
+    await checkIn('morning', 5, 7)
+    await chooseAndLog(DAY, new Date(2026, 8, 18, 8, 0))
+    const first = await todaysLine(DAY)
+    expect(first?.situationId).toBe('loneliness-high')
+    expect(first?.text).toContain('“Cut off”')
+    await checkIn('evening', 4, 19)
+    await chooseAndLog(DAY, new Date(2026, 8, 18, 20, 0))
+    const later = await todaysLine(DAY)
+    expect(later?.key).toBe(first?.key)
+    expect(later?.text).toContain('“Lonely”')
+    expect(later?.text).not.toContain('Cut off')
+    expect(await db.briefLog.count()).toBe(1)
+  })
+
+  it('leaves a line alone once it was answered: the tap belongs to the words it was given for', async () => {
+    await checkIn('morning', 5, 7)
+    await chooseAndLog(DAY, new Date(2026, 8, 18, 8, 0))
+    const first = await todaysLine(DAY)
+    await recordFeedback(DAY, first!, 'useful', new Date(2026, 8, 18, 8, 5))
+    await checkIn('evening', 4, 19)
+    await chooseAndLog(DAY, new Date(2026, 8, 18, 20, 0))
+    expect((await todaysLine(DAY))?.text).toBe(first?.text)
+  })
+})
+
 describe('what the sheet learned to carry', () => {
   beforeEach(async () => {
     await db.delete()

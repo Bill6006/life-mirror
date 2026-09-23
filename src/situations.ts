@@ -29,6 +29,8 @@ export interface Situation {
   cards: readonly string[]
   /** Days before the same situation may be said again. */
   cooldownDays: number
+  /** A pattern over days rather than a fact of one day: only these may supply the week's "One change". */
+  weekly?: true
   test: (s: FactSheet) => Match | null
 }
 
@@ -137,6 +139,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'cue-switch',
+    weekly: true,
     mode: 'strategy',
     cards: ['implementation-intentions', 'habit-formation-time'],
     cooldownDays: 7,
@@ -152,6 +155,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'first-skill',
+    weekly: true,
     mode: 'recommendation',
     cards: [],
     cooldownDays: 3,
@@ -162,6 +166,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'study-no-time',
+    weekly: true,
     mode: 'strategy',
     cards: ['implementation-intentions'],
     cooldownDays: 10,
@@ -184,6 +189,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'ladder-flat',
+    weekly: true,
     mode: 'strategy',
     cards: ['testing-effect', 'spacing-effect'],
     cooldownDays: 10,
@@ -194,6 +200,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'step-stalled',
+    weekly: true,
     mode: 'challenge',
     cards: ['self-compassion-after-lapse', 'habit-formation-time'],
     cooldownDays: 5,
@@ -290,6 +297,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'afternoon-walk',
+    weekly: true,
     mode: 'recommendation',
     cards: ['short-walk-mood', 'post-lunch-dip'],
     cooldownDays: 7,
@@ -312,6 +320,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'card-long-unclear',
+    weekly: true,
     mode: 'challenge',
     cards: ['sunk-cost'],
     cooldownDays: 21,
@@ -425,6 +434,7 @@ export const SITUATIONS: readonly Situation[] = [
   {
     // Two weeks of nothing after two weeks of something: where a commitment is usually let go, and the earliest place it shows.
     id: 'commitment-fading',
+    weekly: true,
     mode: 'challenge',
     cards: ['implementation-intentions', 'self-compassion-after-lapse'],
     cooldownDays: 7,
@@ -440,6 +450,7 @@ export const SITUATIONS: readonly Situation[] = [
   },
   {
     id: 'commitment-thinning',
+    weekly: true,
     mode: 'strategy',
     cards: ['habit-formation-time', 'implementation-intentions'],
     cooldownDays: 7,
@@ -455,6 +466,7 @@ export const SITUATIONS: readonly Situation[] = [
   {
     // Logging less is the earliest sign of letting the whole record go; a lighter check-in keeps it alive.
     id: 'cadence-dropping',
+    weekly: true,
     mode: 'strategy',
     cards: ['monitoring-progress', 'habit-formation-time'],
     cooldownDays: 7,
@@ -533,6 +545,7 @@ export const SITUATIONS: readonly Situation[] = [
   {
     // A quiet day's line: something the library backs and the record has never tested, one tap to set.
     id: 'propose-test',
+    weekly: true,
     mode: 'recommendation',
     cards: [],
     cooldownDays: 10,
@@ -558,6 +571,19 @@ export function usefulness(id: string, feedback: readonly FeedbackBefore[]): num
 }
 
 /** The one line for the day: the true situation with the highest score, or null when none is true or all are resting. */
+/** Whether a situation may supply the week's "One change": a pattern over days, never a fact of one day. */
+export function isWeekScoped(sit: Situation): boolean {
+  return sit.weekly === true
+}
+
+/** What one situation says of the sheet now, if it still holds: the same rendering the choice gives it, without cooldown or scoring. */
+export function lineFor(sheet: FactSheet, situationId: string): Omit<Choice, 'score'> | null {
+  const sit = SITUATIONS.find((x) => x.id === situationId)
+  const m = sit?.test(sheet)
+  if (!sit || !m) return null
+  return { situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: m.cardIds ?? [...sit.cards], action: m.action ?? null }
+}
+
 export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice | null {
   let best: Choice | null = null
   for (const sit of SITUATIONS) {
@@ -603,7 +629,8 @@ export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[
   })
   const cadence = factById(sheet, 'cadence')
   if (cadence && (num(cadence, 'w0') ?? 0) < (num(cadence, 'w1') ?? 0) / 2) missed.push(fill(c.missedCadence, { now: s(num(cadence, 'w0')), before: s(num(cadence, 'w1')) }))
-  const change = chooseLine(sheet, [], feedback, (sit) => sit.mode === 'strategy' || sit.mode === 'challenge' || sit.mode === 'recommendation')
+  // The week's one change comes only from a pattern over days; a fact of one day (a reading at the last check-in, last night) is never the week's change.
+  const change = chooseLine(sheet, [], feedback, isWeekScoped)
   if (!t.length) return { held: c.noCommitments, didNot: missed.length ? missed.join(' ') : c.nothingYet, change: change?.text ?? c.noChange }
   return { held: held.length ? held.join(' ') : c.noneHeld, didNot: missed.length ? missed.join(' ') : c.noneMissed, change: change?.text ?? c.noChange }
 }

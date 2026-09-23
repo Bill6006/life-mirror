@@ -21,15 +21,44 @@ async function doneSlots(): Promise<Set<string>> {
   return new Set(offers.map((o) => slotKey(o.day, o.block)))
 }
 
-/** Writes the forecasts due today and scores what can be scored. Existing forecasts are never touched: the write is add-only. */
-export async function runForecasting(today: string): Promise<void> {
+let inflight: Promise<void> | null = null
+let rerunFor: string | null = null
+
+/**
+ * Writes the forecasts due today and scores what can be scored. Existing forecasts are never
+ * touched: the write is add-only. Single-flight: a run already going is joined, and one more run
+ * follows it when asked for meanwhile, so two opens can never write the same slot twice. What is
+ * due is worked out inside the write, against what is there at that moment.
+ */
+export function runForecasting(today: string): Promise<void> {
+  if (inflight) {
+    rerunFor = today
+    return inflight
+  }
+  inflight = (async () => {
+    try {
+      let day: string | null = today
+      while (day !== null) {
+        rerunFor = null
+        await forecastOnce(day)
+        day = rerunFor
+      }
+    } finally {
+      inflight = null
+    }
+  })()
+  return inflight
+}
+
+async function forecastOnce(today: string): Promise<void> {
   const checkins = await allCheckIns()
   const values = valuesByKey(checkins)
-  const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
+  const done = await doneSlots()
   const chosen = loggedDays(values) >= MIN_DAYS_TODAY ? chooseModel(values, today) : null
-  const due = chosen ? forecastsDue(chosen, values, existing, today, await doneSlots()) : []
-  const scores = scoresDue(existing, values, scored, today)
   await db.transaction('rw', [db.forecasts, db.forecastScores], async () => {
+    const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
+    const due = chosen ? forecastsDue(chosen, values, existing, today, done) : []
+    const scores = scoresDue(existing, values, scored, today)
     if (due.length) await db.forecasts.bulkAdd(due)
     if (scores.length) await db.forecastScores.bulkAdd(scores)
   })
@@ -144,7 +173,8 @@ export async function briefData(today: string): Promise<Brief> {
     today: todays,
     yesterday: dayBeside(forecasts, values, addDays(today, -1)),
     warning: ready ? { ...w, chips, necessities } : null,
-    whatIf: evening?.whatIf ?? null,
+    // What-if speaks of an evening still to come; once the evening is logged it has nothing to say.
+    whatIf: (todays.find((t) => t.block === 'evening')?.actual ?? null) !== null ? null : (evening?.whatIf ?? null),
   }
 }
 

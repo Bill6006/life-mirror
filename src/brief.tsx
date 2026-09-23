@@ -3,18 +3,19 @@ import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, recordFeed
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
 import { fill } from './format'
-import { briefData, type LastNight, type YesterdayMove } from './forecastFlow'
+import { briefData, type Brief as BriefData, type LastNight, type YesterdayMove } from './forecastFlow'
 import { gradeWord } from './library'
 import { useLive } from './live'
 import { nameOf } from './offerFlow'
 import { readingById } from './readings'
 
-// The brief on Now. First the brain's line for the day: the Worker's when it wrote one, else the
-// phone's own, chosen by the situation engine from the fact sheet and the library. Under it, the
-// one tap that does what the line says when there is one, one tap that says how it landed, and
-// Why, which shows the facts and the cards behind it. Then the lines none of the other screens
-// carry: what last night carried against mornings like it, a stretch starting or steady, and
-// yesterday's move as one reading. Counts and ranges, not claims.
+// The brief on Now. The brain's line for the day comes first: the Worker's when it wrote one,
+// else the phone's own, chosen by the situation engine from the fact sheet and the library.
+// Visible by default, and nothing else: the line, its one action (or the note after it was
+// taken), the taps, a one-word writer tag when a model wrote it, and the stretch warning unless
+// the line is itself the stretch line. Everything else sits behind Why, in three labelled
+// sections: why this line, also from your record, written by. With no line the card shows its
+// readings as it always has, so it is never empty. Counts and ranges, not claims.
 
 const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
@@ -41,6 +42,11 @@ export function moveLine(m: YesterdayMove | null): string | null {
   return fill(c.move, { ...base, name: nameOf(m.moveId, copy.move.nothing), arm: m.arm === 'done' ? copy.move.done : copy.extras.winOutcome.partly })
 }
 
+/** Whether the line itself speaks to the stretch: the phone's stretch situation, or a Worker line citing the stretch fact. */
+export function isStretchLine(line: Pick<BriefLine, 'situationId' | 'factIds'> | null): boolean {
+  return Boolean(line && (line.situationId === 'stretch' || line.factIds.includes('stretch')))
+}
+
 /** What the one tap says it will do, in the line's own terms. */
 function actionLabel(line: BriefLine, state: ActionState): string {
   const c = copy.brain
@@ -51,21 +57,109 @@ function actionLabel(line: BriefLine, state: ActionState): string {
   return fill(c.actionTest, { move: hasMove(a.moveId) ? moveById(a.moveId).name : a.moveId })
 }
 
-/** The brain's line for the day. Kept while its situation holds; looked at again whenever the screen opens or the record changes. */
-function BrainLine({ day, version }: { day: string; version: number }) {
-  const line = useLive(() => todaysLine(day), [day])
-  const key = line?.key ?? null
-  const fb = useLive(() => feedbackFor(key), [key])
-  const act = useLive(() => lineActionState(day, line?.action ?? null), [day, key, version])
-  const [busy, setBusy] = useState(false)
-  const [open, setOpen] = useState(false)
-  const why = useLive(() => (open && line ? whyFor(line, day) : Promise.resolve(null)), [open, key])
-  useEffect(() => {
-    if (busy) return
-    setBusy(true)
-    void chooseAndLog(day).finally(() => setBusy(false))
-  }, [version, day])
-  if (!line) return null
+/** The early warning: a conclusion, in the double-rule register. */
+function Warning({ b }: { b: BriefData }) {
+  const c = copy.brief
+  if (!b.warning?.warning) return null
+  return (
+    <div class="conclusion" data-testid="brief-warning">
+      <p class="calc-line ink">{fill(c.warning, { under: String(b.warning.under), of: String(b.warning.of), chips: String(b.warning.chips), necessities: String(b.warning.necessities) })}</p>
+    </div>
+  )
+}
+
+/** The brief's own readings: last night, yesterday's move, steady (or, with no line, the warning), what-if; before seven days, the note that says so. */
+function Readings({ b, withWarning }: { b: BriefData; withWarning: boolean }) {
+  const c = copy.brief
+  if (!b.ready) {
+    return (
+      <p class="note no-gap" data-testid="brief-starts">
+        {fill(c.starts, { d: String(b.days) })}
+      </p>
+    )
+  }
+  const move = moveLine(b.move)
+  return (
+    <>
+      <div class="calc">
+        <p class="calc-line ink" data-testid="brief-last-night">
+          {lastNightLine(b)}
+        </p>
+        {move && (
+          <p class="calc-line" data-testid="brief-move">
+            {move}
+          </p>
+        )}
+      </div>
+      {withWarning && b.warning?.warning ? (
+        <Warning b={b} />
+      ) : (
+        b.steady && (
+          <p class="calc-line" data-testid="brief-steady">
+            {fill(c.steady, { inside: String(b.steady.inside), of: String(b.steady.of) })}
+          </p>
+        )
+      )}
+      {b.whatIf !== null && (
+        <p class="note faint no-gap" data-testid="brief-what-if">
+          {fill(c.whatIf, { v: String(b.whatIf) })}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Why, opened: the grounds of the line, the brief's other readings, and who wrote it. Nothing here is lost; it is one tap away. */
+function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData }) {
+  const why = useLive(() => whyFor(line, day), [line.key, day, line.factIds.join('|')])
+  const c = copy.brain
+  return (
+    <div class="calc why-panel" data-testid="brief-why-panel">
+      <p class="calc-line why-head">
+        <span class="calc-key">{c.whyLine}</span>
+      </p>
+      {why && (
+        <>
+          <p class="calc-line">
+            <span class="calc-key">{c.whyFacts}</span>
+          </p>
+          {why.facts.length === 0 && <p class="calc-line">{c.whyNoFacts}</p>}
+          {why.facts.map((f) => (
+            <p key={f.id} class="calc-line">
+              {f.text}
+            </p>
+          ))}
+          {why.cards.length > 0 && (
+            <p class="calc-line">
+              <span class="calc-key">{c.whyCards}</span>
+            </p>
+          )}
+          {why.cards.map((card) => (
+            <p key={card.id} class="calc-line">
+              {card.claim} <span class="muted">{fill(c.whyCard, { grade: gradeWord(card.grade), effect: card.effect, source: card.sources[0]?.cite ?? '' })}</span>
+            </p>
+          ))}
+        </>
+      )}
+      <p class="calc-line why-head">
+        <span class="calc-key">{c.whyAlso}</span>
+      </p>
+      {/* When the line is the stretch line the warning sits here, beside the readings it rests on; otherwise it stayed on the card. */}
+      <Readings b={b} withWarning={isStretchLine(line)} />
+      <p class="calc-line why-head">
+        <span class="calc-key">{c.whyWriter}</span>
+      </p>
+      <p class="calc-line" data-testid="brief-writer">
+        {line.source === 'worker' ? fill(c.fromWorker, { model: line.model ?? '' }) : c.fromPhone}
+      </p>
+    </div>
+  )
+}
+
+/** The line, its one action, and the taps. Kept while its situation holds; looked at again whenever the screen opens or the record changes. */
+function BrainLine({ day, line, version, open, onToggle }: { day: string; line: BriefLine; version: number; open: boolean; onToggle: () => void }) {
+  const fb = useLive(() => feedbackFor(line.key), [line.key])
+  const act = useLive(() => lineActionState(day, line.action ?? null), [day, line.key, version])
   const c = copy.brain
   return (
     <div class="brain-line">
@@ -98,81 +192,49 @@ function BrainLine({ day, version }: { day: string; version: number }) {
             </button>
           </>
         )}
-        <button type="button" class={open ? 'when-chip is-on' : 'when-chip'} aria-pressed={open} data-testid="brief-why" onClick={() => setOpen((v) => !v)}>
+        {fb && (
+          <span class="note faint no-gap" data-testid="brief-noted">
+            {c.noted}
+          </span>
+        )}
+        <button type="button" class={open ? 'when-chip is-on' : 'when-chip'} aria-pressed={open} data-testid="brief-why" onClick={onToggle}>
           {c.why}
         </button>
       </div>
-      {fb && (
-        <p class="note faint no-gap" data-testid="brief-noted">
-          {c.noted}
-        </p>
-      )}
-      {open && why && (
-        <div class="calc" data-testid="brief-why-panel">
-          <p class="calc-line">
-            <span class="calc-key">{c.whyFacts}</span>
-          </p>
-          {why.facts.length === 0 && <p class="calc-line">{c.whyNoFacts}</p>}
-          {why.facts.map((f) => (
-            <p key={f.id} class="calc-line">
-              {f.text}
-            </p>
-          ))}
-          {why.cards.length > 0 && (
-            <p class="calc-line">
-              <span class="calc-key">{c.whyCards}</span>
-            </p>
-          )}
-          {why.cards.map((card) => (
-            <p key={card.id} class="calc-line">
-              {card.claim} <span class="muted">{fill(c.whyCard, { grade: gradeWord(card.grade), effect: card.effect, source: card.sources[0]?.cite ?? '' })}</span>
-            </p>
-          ))}
-        </div>
-      )}
-      {line.source === 'worker' && <p class="note faint no-gap">{fill(c.fromWorker, { model: line.model ?? '' })}</p>}
     </div>
   )
 }
 
 export function Brief({ day, version = 0 }: { day: string; version?: number }) {
   const b = useLive(() => briefData(day), [day])
+  const line = useLive(() => todaysLine(day), [day])
+  const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (busy) return
+    setBusy(true)
+    void chooseAndLog(day).finally(() => setBusy(false))
+  }, [version, day])
   const c = copy.brief
-  if (!b) return null
-  const move = b.ready ? moveLine(b.move) : null
+  if (!b || line === undefined) return null
   return (
     <div class="card pad brief" data-testid="brief">
-      <p class="eyebrow small">{c.title}</p>
-      <BrainLine day={day} version={version} />
-      {!b.ready ? (
-        <p class="note no-gap" data-testid="brief-starts">
-          {fill(c.starts, { d: String(b.days) })}
-        </p>
-      ) : (
+      <div class="brief-head">
+        <p class="eyebrow small">{c.title}</p>
+        {line?.source === 'worker' && (
+          <span class="writer-tag" data-testid="brief-writer-tag">
+            {copy.brain.writerTag}
+          </span>
+        )}
+      </div>
+      {line ? (
         <>
-          <div class="calc">
-            <p class="calc-line ink" data-testid="brief-last-night">
-              {lastNightLine(b)}
-            </p>
-            {move && (
-              <p class="calc-line" data-testid="brief-move">
-                {move}
-              </p>
-            )}
-          </div>
-          {b.warning?.warning ? (
-            <div class="conclusion" data-testid="brief-warning">
-              <p class="calc-line ink">{fill(c.warning, { under: String(b.warning.under), of: String(b.warning.of), chips: String(b.warning.chips), necessities: String(b.warning.necessities) })}</p>
-            </div>
-          ) : (
-            b.steady && (
-              <p class="calc-line" data-testid="brief-steady">
-                {fill(c.steady, { inside: String(b.steady.inside), of: String(b.steady.of) })}
-              </p>
-            )
-          )}
-          {b.whatIf !== null && <p class="note faint no-gap">{fill(c.whatIf, { v: String(b.whatIf) })}</p>}
+          <BrainLine day={day} line={line} version={version} open={open} onToggle={() => setOpen((v) => !v)} />
+          {b.ready && !isStretchLine(line) && <Warning b={b} />}
+          {open && <WhyPanel day={day} line={line} b={b} />}
         </>
+      ) : (
+        <Readings b={b} withWarning />
       )}
     </div>
   )

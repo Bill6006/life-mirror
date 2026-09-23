@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Fact, FactSheet } from './facts'
 import { copy } from './copy'
-import { chooseLine, phoneReview, SITUATIONS, usefulness } from './situations'
+import { chooseLine, isWeekScoped, phoneReview, SITUATIONS, usefulness } from './situations'
 
 // The judgment engine: the true situation with the most behind it is said, a situation rests
 // after it was said, and how a line was received lifts or lowers it next time.
@@ -133,6 +133,16 @@ describe('what the engine sees early, and the one tap it offers', () => {
     expect(p?.action?.kind).toBe('test')
     expect(p?.cardIds).toHaveLength(1)
     expect(p?.text).toContain('your record has never tested it')
+  })
+
+  it('takes the week’s one change only from a pattern over days, never from a fact of one day', () => {
+    const dayScoped = ['loneliness-high', 'heavy-caffeine-today', 'short-night-today', 'say-when', 'stretch', 'necessities-missed', 'loop-closed', 'loop-open', 'loop-planned', 'church-morning']
+    for (const id of dayScoped) expect(isWeekScoped(SITUATIONS.find((x) => x.id === id)!), id).toBe(false)
+    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'ladder-flat', 'propose-test', 'step-stalled', 'study-no-time'])
+    // The smoke test's case: the only true thing is a reading at the last check-in; the week's change says nothing.
+    const lonely: Fact = { id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off' } }
+    expect(chooseLine(sheetOf([lonely]), [], [])?.situationId).toBe('loneliness-high')
+    expect(phoneReview(sheetOf([lonely]), []).change).toBe('Nothing the record supports changing; keep the cues that hold.')
   })
 
   it('reviews the week from the record alone: what held, what did not, one change', () => {

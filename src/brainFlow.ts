@@ -3,14 +3,14 @@ import { cuesFor, planFor, stepFor } from './aims'
 import { addDays, BLOCKS, type Block } from './blocks'
 import type { LineAction, LineCue } from './brainShared'
 import { hasMove, moveById } from './catalogue'
-import { allCheckIns, allWins, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type BriefFeedback } from './db'
+import { allCheckIns, allWins, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type BriefFeedback, type BriefLog } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
 import { briefData, usualFor } from './forecastFlow'
 import { cardFromHypothesis, type Hypothesis } from './hypothesis'
 import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
 import { INGREDIENTS } from './score'
-import { chooseLine, phoneReview, SITUATIONS, type ReviewParts } from './situations'
+import { chooseLine, lineFor, phoneReview, type ReviewParts } from './situations'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
@@ -90,7 +90,14 @@ export async function chooseAndLog(day: string, now: Date = new Date()): Promise
   const sheet = await factSheet(day, now)
   const current = existing.find((e) => e.situationId !== null && !e.withdrawnAt)
   if (current) {
-    if (SITUATIONS.find((s) => s.id === current.situationId)?.test(sheet)) return
+    const match = lineFor(sheet, current.situationId as string)
+    if (match) {
+      // Kept while its situation holds, and said as the record now stands: the same row, so a tap stays filed under it.
+      // A line already answered, by a tap on it or its one action taken, keeps the words it was answered in.
+      const answered = (await feedbackFor(`phone:${day}:${current.id}`)) !== null || (current.action ? (await lineActionState(day, current.action, now))?.state === 'done' : false)
+      if (!answered && !sameLine(current, match)) await db.briefLog.update(current.id as number, { text: match.text, factIds: match.factIds, cardIds: match.cardIds, action: match.action ?? undefined })
+      return
+    }
     if (current.action && (await lineActionState(day, current.action, now))?.state === 'done') return
   }
   const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
@@ -107,6 +114,10 @@ export async function chooseAndLog(day: string, now: Date = new Date()): Promise
       await db.briefLog.add({ day, situationId: null, mode: 'observation', text: '', factIds: [], cardIds: [], at: now.toISOString() })
     }
   })
+}
+
+function sameLine(a: Pick<BriefLog, 'text' | 'factIds' | 'cardIds' | 'action'>, b: { text: string; factIds: string[]; cardIds: string[]; action: LineAction | null }): boolean {
+  return a.text === b.text && a.factIds.join('|') === b.factIds.join('|') && a.cardIds.join('|') === b.cardIds.join('|') && JSON.stringify(a.action ?? null) === JSON.stringify(b.action ?? null)
 }
 
 export async function feedbackFor(key: string | null): Promise<BriefFeedback | null> {

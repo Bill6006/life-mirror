@@ -35,7 +35,7 @@ const RULES = `Rules, all checked by a validator that refuses the answer:
 - Facts named note.* are the person's own words, typed at a check-in. Read them as context for what is going on in their life and let them change what you say; refer to what they wrote in your own words, quote at most a few of theirs, and never judge them.
 - The facts trajectory.* and cadence are the earliest signs of a commitment, or the whole record, being let go. When one of them shows it, speak to that before anything smaller.
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
-- Do not restate what the phone already shows: the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch, yesterday's move. Use them as ground for something the person cannot read off the screen.
+- The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle.
 - Plain words, second person, no headings, no lists, no emoji.`
 

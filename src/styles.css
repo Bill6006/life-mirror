@@ -1437,6 +1437,30 @@ button.chip {
   font-size: inherit;
 }
 
+/* The brief's title row: the title, and on the right a one-word tag when a model wrote the line. */
+.brief-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.writer-tag {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Why, opened: three labelled sections. */
+.why-panel .why-head {
+  margin-top: 10px;
+}
+
+.why-panel .why-head:first-child {
+  margin-top: 0;
+}
+
 /* The brain's line at the top of the brief, and the one tap under it. */
 .brain-line {
   margin: 0 0 10px;
