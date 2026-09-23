@@ -1,6 +1,7 @@
 import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
-import { allCheckIns, db, getSettings, type Forecast } from './db'
+import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
+import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
 import type { CheckIn, DayContext } from './db'
@@ -193,6 +194,8 @@ export interface Weekly {
   moved: ReturnType<typeof movedThisWeek>
   lasts: Lasts
   health: FamilyHealth[]
+  /** Part 20's tier 2, use four: contexts the record shows carrying in-person reps that the week's shape never counts as people around. */
+  people: { kind: DayKind; block: Block; n: number }[]
   prompt: string
   weekAhead: AheadRow[]
   weekAheadReady: boolean
@@ -218,6 +221,8 @@ export async function weeklyData(today: string): Promise<Weekly> {
   const stats = evaluateCards(effectCards, obs, declarations)
   const situations = recentSituations(offers, today)
   const health = catalogueHealth(offers, outcomes, situations, new Set(settings.hideFaith ? ['faith'] : []))
+  const week = Array.from({ length: 7 }, (_, k) => addDays(today, k)).map((day) => contexts.find((c) => c.day === day) ?? contextFromWeek(day, settings))
+  const people = uncoveredContexts(carriedByContext(offers, outcomes, contexts, today), week)
   const cardMoves = new Map(effectCards.map((c) => [c.id as number, { moveId: c.moveId, situationKey: c.situationKey }]))
   const weekAhead = weekAheadRows(forecasts, today)
   const latest = forecasts.reduce<Forecast | null>((m, f) => (m === null || f.madeOn > m.madeOn ? f : m), null)
@@ -229,6 +234,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     moved: movedThisWeek(checkins, today),
     lasts: whatLasts(obs, checkins),
     health,
+    people,
     prompt: extensionPromptText({ situations, offers, outcomes, health, stats, cardMoves }, extensionPrompt.template),
     weekAhead,
     weekAheadReady: weekAhead.some((w) => w.expected !== null),

@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
+import { contextWords } from './people'
 import { WeekAhead } from './charts'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
@@ -177,6 +178,18 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <p class="note faint no-gap">{c.healthNote}</p>
+      </div>
+
+      <h2 class="section">{copy.people.healthTitle}</h2>
+      <div class="card pad" data-testid="people-health">
+        <div class="calc">
+          {w.people.length === 0 && <p class="calc-line">{copy.people.healthNone}</p>}
+          {w.people.map((p) => (
+            <p key={`${p.kind}|${p.block}`} class="calc-line">
+              {fill(copy.people.uncovered, { context: contextWords(p.kind, p.block), times: p.n === 1 ? copy.people.once : fill(copy.people.times, { n: String(p.n) }) })}
+            </p>
+          ))}
+        </div>
       </div>
 
       <h2 class="section">{c.prompt}</h2>

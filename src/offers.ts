@@ -1,6 +1,7 @@
 import { BLOCKS, blockStart, type Block } from './blocks'
 import { hasMove, isParked, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
+import { inPerson } from './people'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band } from './score'
 import { choose, type Belief, type Candidate, type Choice, type Rng } from './bandit'
@@ -78,9 +79,11 @@ export interface TodayState {
   pickupTime?: string | null
   /** Past her bedtime on a day she is with you: her moves wait for a day she is awake for. Absent means she is up. */
   asleep?: boolean
+  /** Part 20's tier 1: whether today's shape puts other adults around in each block. Absent means the draw is not told, as in the permissive states. */
+  peopleAround?: Readonly<Record<Block, boolean>>
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare' | 'asleep'
+export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare' | 'asleep' | 'people'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -120,6 +123,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   // The two needs the app can know: daylight from your daylight hours, quiet from your office days.
   if (move.needs.includes('daylight') && t.daylight === false) return 'daylight'
   if (move.needs.includes('quiet') && t.atOffice === true && s.block !== 'evening') return 'quiet'
+  // The third: an adult there in person, from today's shape alone (Part 20's tier 1). Past reps elsewhere never enter here.
+  if (inPerson(move) && t.peopleAround && !t.peopleAround[s.block]) return 'people'
   if (t.hiddenFamilies.has(move.family)) return 'hidden'
   if (!move.targets.some((x) => x.reading === s.target && x.direction === INGREDIENTS[s.target])) return 'target'
   if (s.band === 'empty' && !(EMPTY_FAMILIES.has(move.family) && move.effort === 'low')) return 'band'

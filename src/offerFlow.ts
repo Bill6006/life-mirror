@@ -1,4 +1,5 @@
 import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
+import { peopleAroundByBlock } from './people'
 import { propensities } from './adaptive'
 import { choose, type Rng } from './bandit'
 import { activeAims, liveSkills, markRungByStep, rungMarks } from './aimFlow'
@@ -167,7 +168,7 @@ export async function offerCounts(situationKey: string, moveId: string): Promise
   return { offered: offers.length, done: count('done'), partly: count('partly'), no: count('no') }
 }
 
-async function todayState(day: string, settings: Settings, now: Date = new Date()): Promise<TodayState> {
+export async function todayState(day: string, settings: Settings, now: Date = new Date()): Promise<TodayState> {
   const today = await db.offers.where('day').equals(day).toArray()
   const doneToday = (await db.outcomes.where('day').equals(day).toArray()).filter((x) => x.outcome === 'done' || x.outcome === 'partly').map((x) => x.moveId)
   const offeredToday = today.flatMap((o) => (o.passiveId ? [o.moveId, o.passiveId] : [o.moveId]))
@@ -186,7 +187,7 @@ async function todayState(day: string, settings: Settings, now: Date = new Date(
   const ctx = await ensureDayContext(day, settings)
   // A one-time setup already made stays out; the office and the daylight hours decide the two needs the app can know.
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime, asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)) }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime, asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx) }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */

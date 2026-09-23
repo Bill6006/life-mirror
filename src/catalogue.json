@@ -2096,6 +2096,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "remote",
       "targets": [
         {
           "reading": "loneliness",
@@ -2212,6 +2213,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "her",
       "targets": [
         {
           "reading": "mood",
@@ -2271,6 +2273,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "socialEnergy",
@@ -2331,6 +2334,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "remote",
       "targets": [
         {
           "reading": "loneliness",
@@ -2395,6 +2399,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "loneliness",
@@ -3088,6 +3093,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -3149,6 +3155,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -3205,6 +3212,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -3262,6 +3270,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -3333,6 +3342,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "socialEnergy",
@@ -4638,6 +4648,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -4705,6 +4716,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -4766,6 +4778,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -4832,6 +4845,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -5008,6 +5022,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "adult",
       "targets": [
         {
           "reading": "confidence",
@@ -5325,6 +5340,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "her",
       "targets": [
         {
           "reading": "mood",
@@ -5382,6 +5398,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "her",
       "targets": [
         {
           "reading": "mood",
@@ -5438,6 +5455,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "her",
       "targets": [
         {
           "reading": "mood",
@@ -5493,6 +5511,7 @@
       "needs": [
         "anotherPerson"
       ],
+      "with": "her",
       "targets": [
         {
           "reading": "mood",
@@ -5678,7 +5697,7 @@
     {
       "id": "needs",
       "name": "Needs",
-      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days; the rest are stated on the card so you can judge them."
+      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days. Another person, when the move needs an adult there in person, is filtered by today’s shape: an office day’s morning and afternoon, the church morning, a daycare day’s drop-off and the block of the pickup, as today’s chips set them; a call or a message is offered any time, and her moves keep their own gates. In-person reps you did elsewhere are shown as counts, never as a reason to offer one. Kit, outdoors and a free hour are stated on the card so you can judge them."
     },
     {
       "id": "effectWindow",

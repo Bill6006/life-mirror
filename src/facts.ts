@@ -4,6 +4,7 @@ import { becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, las
 import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import { library } from './library'
 import { copy } from './copy'
+import { carriedByContext, contextWords, type DayKind } from './people'
 import type { Aim, BrainBrief, BriefFeedback, BriefLog, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
@@ -357,6 +358,15 @@ export function buildFactSheet(i: FactInput): FactSheet {
   facts.push(fact('becoming', ['monitoring'], `Under the direction: ${bc.study.n} study sessions, ${bc.conversations.n} conversations started, ${bc.faith.n} faith practices, ${bc.timeWithHer.n} times with her.`, { study: bc.study.n, conversations: bc.conversations.n, faith: bc.faith.n, her: bc.timeWithHer.n }))
 
   // Two workouts on one day are one workout day.
+  // Part 20's tier 2: where in-person reps were done, as counts. An observation for the line; never a reason to offer one.
+  const carried = carriedByContext(i.offers, i.outcomes, i.contexts, today)
+  if (carried.size) {
+    const parts = [...carried.entries()].sort((a, b) => b[1] - a[1]).map(([key, n]) => {
+      const [kind, block] = key.split('|') as [DayKind, Block]
+      return `${contextWords(kind, block)} ${n}`
+    })
+    facts.push(fact('people.seen', ['people', 'social'], `In the last eight weeks, in-person reps marked done have been carried by: ${parts.join('; ')}. A count of the past, not who is around today.`, Object.fromEntries(carried), { n: [...carried.values()].reduce((a, b) => a + b, 0) }))
+  }
   const workouts = [...new Set(i.outside.filter((o) => o.day >= since && o.day <= today).map((o) => o.day))].sort()
   facts.push(fact('outside.7d', ['workout'], `Workout days in the last seven: ${workouts.length}${workouts.length ? ` (${workouts.join(', ')})` : ''}.`, { days: workouts.length }, { n: workouts.length }))
 

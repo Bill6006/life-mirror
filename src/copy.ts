@@ -2,6 +2,16 @@
 // live in readings.json, moves in catalogue.json), so one test can check all of them against
 // the plan's rule: a reading, never a verdict.
 export const copy = {
+  people: {
+    contexts: { weekday: 'Weekday {blocks} at home', office: 'Office-day {blocks}', weekend: 'Weekend {blocks}' },
+    blocks: { morning: 'mornings', afternoon: 'afternoons', evening: 'evenings' },
+    carried: '{context} have carried an in-person rep {times}.',
+    once: 'once',
+    times: '{n} times',
+    uncovered: '{context} have carried an in-person rep {times}, and your week’s shape never counts people around then, so in-person reps are not offered there. If people usually are, the week in Settings or today’s chips can say so.',
+    healthTitle: 'People around',
+    healthNone: 'Every context where you have done an in-person rep is one your week’s shape counts as people around.',
+  },
   when: { today: 'today', yesterday: 'yesterday', daysAgo: '{n} days ago' },
   appName: 'Life Mirror',
   tabs: {
@@ -302,6 +312,7 @@ export const copy = {
       quiet: 'it needs quiet and you are at the office',
       daycare: 'she is at daycare through this block',
       asleep: 'she is asleep by now',
+      people: 'it needs someone there in person, and today’s shape puts nobody around in this block',
     },
     alongside: 'Alongside',
     skip: 'Skip · show the next',

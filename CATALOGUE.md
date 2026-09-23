@@ -72,7 +72,7 @@ These only select. They are never learned.
 
 - **Cost to assign.** What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16). Shown here; not yet used in selection.
 - **Starting effort.** The effort to begin: low, medium or high. The top selection field.
-- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days; the rest are stated on the card so you can judge them.
+- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days. Another person, when the move needs an adult there in person, is filtered by today’s shape: an office day’s morning and afternoon, the church morning, a daycare day’s drop-off and the block of the pickup, as today’s chips set them; a call or a message is offered any time, and her moves keep their own gates. In-person reps you did elsewhere are shown as counts, never as a reason to offer one. Kit, outdoors and a free hour are stated on the card so you can judge them.
 - **Effect window.** When the effect should show: next block, later that day, this evening, next morning, seven days. Later that day is new in this phase.
 
 ## Ending the day well

@@ -58,6 +58,8 @@ export interface Move {
   span?: number
   effort: Effort
   needs: readonly Need[]
+  /** For a move that needs another person: an adult there in person, someone reached remotely, or her (Part 20). */
+  with?: 'adult' | 'remote' | 'her'
   targets: readonly Target[]
   conflicts: readonly string[]
   replaces: readonly string[]
