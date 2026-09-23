@@ -1,5 +1,6 @@
 import { compareSlots } from './blocks'
-import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type Offer, type Outcome, type OutsideDay, type PrivateItem, type RungMark, type Skill, type Win } from './db'
+import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type Win } from './db'
+import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
@@ -25,6 +26,10 @@ export interface RecordsData {
   outside?: readonly OutsideDay[]
   /** The brain: the phone's lines, the Worker's lines, and how each landed. */
   brain?: { log: readonly BriefLog[]; feedback: readonly BriefFeedback[]; briefs: readonly BrainBrief[] }
+  /** The paths' declarations, your notes on them, and the monthly checks (Part 27). */
+  pathMarks?: readonly PathMark[]
+  reflections?: readonly Reflection[]
+  monthlyChecks?: readonly MonthlyCheck[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -32,6 +37,16 @@ export interface RecordsData {
 
 export interface ExportOptions {
   includePrivate: boolean
+  /** The Partner path's record: its commitment, its steps, what you declared, your notes and the monthly checks (Part 27). */
+  includePartner?: boolean
+}
+
+/**
+ * A step of the Partner path's own: offered through its row, or a rep the Social path does not
+ * hold. A rep both paths hold, offered through the Social row, is Social's too and always goes in.
+ */
+export function partnerOwn(o: Pick<Offer, 'paths' | 'situationKey'>): boolean {
+  return o.situationKey === pathKey('partner') || (o.paths?.includes('partner') === true && !o.paths.includes('social'))
 }
 
 /** The aims as recorded: commitments, the skills you typed, and every mark that moved one. */
@@ -62,6 +77,12 @@ function yesNo(v: boolean): string {
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {
   const exportedAt = new Date().toISOString()
   const names = new Map(items.map((it) => [String(it.id), it.name]))
+  // The Partner path stays out unless ticked (Part 27): its commitment, its plans, its steps, and a line that cites it.
+  const partner = opts.includePartner === true
+  const partnerAims = new Set((aims?.aims ?? []).filter((a) => a.kind === 'path' && a.path === 'partner').map((a) => a.id))
+  const offers = (records?.offers ?? []).filter((o) => partner || !partnerOwn(o))
+  const pathsOf = (o: Offer) => (o.paths ? o.paths.filter((p) => partner || p !== 'partner') : null)
+  const aboutPartner = (factIds: readonly string[]) => !partner && factIds.some((f) => f.startsWith('partner.'))
   const sorted = [...all].sort(compareSlots)
 
   const checkins = sorted.map((c) => ({
@@ -97,6 +118,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       app: 'Life Mirror',
       exportedAt,
       includesPrivateItems: opts.includePrivate,
+      includesPartnerPath: partner,
       key: {
         readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, goodEnd: INGREDIENTS[r.id] === 'down' ? 'low' : INGREDIENTS[r.id] === 'up' ? 'high' : 'context', anchors: r.anchors, alternates: r.alternates ?? null })),
         positions: 'Each answer is a position 1 to 5 into the anchors, in order. Points are 0, 25, 50, 75, 100, reversed where the good end is low.',
@@ -113,9 +135,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
       ...(records
         ? {
-            offers: records.offers.map((o) => {
+            offers: offers.map((o) => {
               const x = records.outcomes.find((y) => y.offerId === o.id)
-              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, answeredAt: x?.at ?? null }
+              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null }
             }),
             cards: records.cards.map((c) => ({ id: c.id, createdAt: c.createdAt, situation: c.situationKey, target: c.target, move: c.moveId, alternative: c.alternativeId, window: c.window, worthwhile: c.worthwhile, origin: c.origin ?? 'app', weights: c.weights ?? null })),
             declarations: records.declarations.map((d) => ({ cardId: d.cardId, at: d.at, diff: d.diff, lo: d.lo, hi: d.hi, level: d.level, nDone: d.nDone, nAlternative: d.nAlternative })),
@@ -126,10 +148,19 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
               moments: (records.moments ?? []).map((m) => ({ day: m.day, at: m.at, skill: m.skillId, help: m.help })),
             },
             brain: {
-              lines: (records.brain?.log ?? []).map((l) => ({ day: l.day, source: 'phone', situation: l.situationId, mode: l.mode, text: l.text, facts: l.factIds, cards: l.cardIds, at: l.at })),
-              briefs: (records.brain?.briefs ?? []).map((b) => ({ id: b.id, day: b.day, kind: b.kind, mode: b.mode, text: b.text, facts: b.factIds, cards: b.cardIds, model: b.model, at: b.at })),
+              lines: (records.brain?.log ?? []).filter((l) => !aboutPartner(l.factIds)).map((l) => ({ day: l.day, source: 'phone', situation: l.situationId, mode: l.mode, text: l.text, facts: l.factIds, cards: l.cardIds, at: l.at })),
+              briefs: (records.brain?.briefs ?? []).filter((b) => !aboutPartner(b.factIds)).map((b) => ({ id: b.id, day: b.day, kind: b.kind, mode: b.mode, text: b.text, facts: b.factIds, cards: b.cardIds, model: b.model, at: b.at })),
               feedback: (records.brain?.feedback ?? []).map((f) => ({ day: f.day, line: f.briefKey, situation: f.situationId, answer: f.answer, at: f.at })),
             },
+            ...(partner
+              ? {
+                  partnerPath: {
+                    declarations: (records.pathMarks ?? []).filter((m) => m.path === 'partner').map((m) => ({ kind: m.kind, day: m.day, stage: m.stage ?? null, note: m.note ?? null, at: m.at })),
+                    reflections: (records.reflections ?? []).filter((r) => r.path === 'partner').map((r) => ({ kind: r.kind, step: r.step ?? null, day: r.day, text: r.text, createdAt: r.createdAt, updatedAt: r.updatedAt })),
+                    monthlyChecks: (records.monthlyChecks ?? []).map((m) => ({ month: m.month, day: m.day, answers: m.answers, at: m.at })),
+                  },
+                }
+              : {}),
           }
         : {}),
       minimumWins: wins.map((w) => ({ forDay: w.forDay, setOn: w.setOn, text: w.text, outcome: w.outcome, answeredAt: w.answeredAt })),
@@ -140,15 +171,16 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         lowDemand: settings.lowDemand,
         reminders: settings.reminders,
         extras: settings.extras,
+        ...(partner ? { partnerOnline: settings.partnerOnline } : {}),
       },
       ...(opts.includePrivate ? { privateItems: items.map((it) => it.name) } : {}),
       ...(aims
         ? {
             aims: {
-              commitments: aims.aims.map((a) => ({ id: a.id, kind: a.kind, name: a.name ?? null, ladder: a.kind === 'certification' ? (a.ladder ?? 'technical') : null, step: a.stepMoveId, createdAt: a.createdAt, archivedAt: a.archivedAt })),
+              commitments: aims.aims.filter((a) => partner || !partnerAims.has(a.id)).map((a) => ({ id: a.id, kind: a.kind, name: a.name ?? null, path: a.path ?? null, ladder: a.kind === 'certification' ? (a.ladder ?? 'technical') : null, step: a.stepMoveId, pausedAt: a.pausedAt ?? null, convertedFrom: a.convertedFrom ?? null, createdAt: a.createdAt, archivedAt: a.archivedAt })),
               skills: aims.skills.map((s) => ({ id: s.id, name: s.name, subject: s.subject ?? null, ladder: s.ladder ?? 'technical', order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
               ladderMarks: aims.marks.map((m) => ({ skill: m.skillId, rung: m.rung, at: m.at, via: m.via })),
-              plans: (aims.intentions ?? []).map((i) => ({ aim: i.aimId, day: i.day, cue: i.cue, time: i.time, setAt: i.setAt, started: i.offerId !== null })),
+              plans: (aims.intentions ?? []).filter((i) => partner || !partnerAims.has(i.aimId)).map((i) => ({ aim: i.aimId, day: i.day, cue: i.cue, time: i.time, setAt: i.setAt, started: i.offerId !== null })),
             },
           }
         : {}),
@@ -202,7 +234,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
 
   const offerHeader = ['id', 'kind', 'day', 'block', 'situation', 'target', 'move', 'coin_flip', 'passive', 'skipped', 'card_id', 'outcome', 'why', 'passive_outcome']
-  const offerRows = (records?.offers ?? []).map((o) => {
+  const offerRows = offers.map((o) => {
     const x = records?.outcomes.find((y) => y.offerId === o.id)
     return [String(o.id ?? ''), o.kind, o.day, o.block, o.situationKey, o.target, o.moveId, yesNo(o.coinFlip), o.passiveId ?? '', yesNo(o.skippedAt !== null), String(o.cardId ?? ''), x?.outcome ?? '', x?.why ?? '', x?.passiveOutcome ?? '']
   })

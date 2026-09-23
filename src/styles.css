@@ -1485,3 +1485,25 @@ button.chip {
 .brain-line .actions {
   margin: 10px 0 0;
 }
+
+/* Part 27: a note typed and kept whole, and the monthly check's questions. */
+.note-input {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.pre {
+  white-space: pre-wrap;
+}
+
+.check-question {
+  margin: 12px 0 0;
+}
+
+/* The check's fixed help: set apart from the last question, so no one answer seems to have called it. */
+.check-help {
+  margin: 20px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair-2);
+}

@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-127 moves across 15 families, 17 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+127 moves across 15 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -8,7 +8,7 @@ Proposed entries, tags, beliefs and trades are content to read and veto. Yellow 
 
 ## Paths
 
-Two paths, each a staged curriculum of reps, with your Green. The Social path is wired: add it under Aims, and its own reps are offered through its row alone. The Partner path is not wired yet; its reps marked proposed are offered nowhere until it is.
+Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.
 
 ### Social
 
@@ -120,7 +120,7 @@ Never counted, stored or asked: yeses and noes; replies, or whether anyone wrote
 
 #### The evidence
 
-Claim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.
+Claim cards, each source verified at Crossref, admitted once their path was wired; the disputed ones are never cited. A card about dating reaches the day’s line only on a date day you declared, and one about a relationship never does.
 
 - **good evidence** (admitted). For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting. Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.
 - **some evidence** (admitted). Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part. Craske et al. (2008). Optimizing inhibitory learning during exposure therapy. Behaviour Research and Therapy, 46(1), 5–27. Craske et al. (2014). Maximizing exposure therapy: an inhibitory learning approach. Behaviour Research and Therapy, 58, 10–23. Rupp et al. (2017). Emotional processing theory put to test: a meta-analysis on the association between process and outcome measures in exposure therapy. Clinical Psychology & Psychotherapy, 24(3), 697–711. Kircanski et al. (2012). Challenges to the traditional exposure paradigm: variability in exposure therapy for contamination fears. Journal of Behavior Therapy and Experimental Psychiatry, 43(2), 745–751. Knowles et al. (2023). Facing uncertainty: a comparison of hierarchical and variable exposure interventions for contamination-related concerns. Journal of Obsessive-Compulsive and Related Disorders, 36, 100777. Treanor et al. (2025). A randomized controlled trial comparing two processes of exposure therapy: extinction learning and habituation. Journal of Consulting and Clinical Psychology.
@@ -153,10 +153,10 @@ Be where you might meet someone among the people your week already holds, say he
 - **Arrive ten minutes early on Saturday and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
 - **Greet someone by name** (moves the stage · where: a recurring place, an errand). Attention on: Their name, and one thing you noticed about them today. Drop: A nod instead of the name. Done when you have said it, however they answer.
 - **Introduce yourself to someone new there** (moves the stage · where: a recurring place, a group). Attention on: Your name, then a question about them. Drop: Waiting for someone to introduce you. Done when you have introduced yourself, however they answer.
-- **Say hello again to someone you liked talking to** (moves the stage · where: a recurring place, a group · proposed). Attention on: The thing you talked about last time. Drop: Waiting for them to notice you first. Done when you have said hello and one more sentence, however they answer.
-- **Ask a friend for an introduction** (moves no stage · where: a call or a message, one to one · proposed). Attention on: The kind of person you would enjoy meeting, in a sentence. Drop: Hoping friends will guess you are open to it. Done when you have asked, whatever they say.
-- **Write or update one profile, honestly** (moves no stage · where: on your own · channel: online · proposed). Attention on: What a friend who knows you well would say you are like. Drop: Photos from years ago. Done when it is saved.
-- **Browse for fifteen minutes, then stop** (moves no stage · where: on your own · channel: online · proposed). Attention on: The timer, not the feed. Drop: One more profile. Done when the timer rings.
+- **Say hello again to someone you liked talking to** (moves the stage · where: a recurring place, a group). Attention on: The thing you talked about last time. Drop: Waiting for them to notice you first. Done when you have said hello and one more sentence, however they answer.
+- **Ask a friend for an introduction** (moves no stage · where: a call or a message, one to one). Attention on: The kind of person you would enjoy meeting, in a sentence. Drop: Hoping friends will guess you are open to it. Done when you have asked, whatever they say.
+- **Write or update one profile, honestly** (moves no stage · where: on your own · channel: online). Attention on: What a friend who knows you well would say you are like. Drop: Photos from years ago. Done when it is saved.
+- **Browse for fifteen minutes, then stop** (moves no stage · where: on your own · channel: online). Attention on: The timer, not the feed. Drop: One more profile. Done when the timer rings.
 
 #### Stage 2 · Initiating
 
@@ -169,7 +169,7 @@ Start and carry a light conversation with someone you might like to know: past h
 - **Ask one follow-up question** (moves the stage · where: one to one, a recurring place, an errand). Attention on: The last thing they said, and one question about it. Drop: A new topic whenever there is a silence. Done when you have asked, however they answer.
 - **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
 - **Return to something they said last time** (moves the stage · where: a recurring place). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
-- **Send one specific message** (moves no stage · where: a call or a message · channel: online · proposed). Attention on: One thing in their words that you would like to hear more about. Drop: The same opener to everyone. Done when it is sent, whatever the reply.
+- **Send one specific message** (moves no stage · where: a call or a message · channel: online). Attention on: One thing in their words that you would like to hear more about. Drop: The same opener to everyone. Done when it is sent, whatever the reply.
 
 #### Stage 3 · Expressing interest and inviting
 
@@ -178,9 +178,9 @@ Say plainly that you would like to see them again, offer your number, and make o
 - Not progress: Hints in place of a plain sentence; a second ask after a no, which is never offered.
 - How it moves: moves by the rule, or when you say you have a date
 - **Offer your number to stay in touch** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence: I have enjoyed this, can I give you my number? Drop: Hoping you will run into them again. Done when you have offered, whatever the answer. One offer. Anything other than a yes is final.
-- **Say your interest plainly** (moves the stage · where: one to one, a recurring place · proposed). Attention on: One plain sentence, then let them answer. Drop: Hinting and waiting for them to guess. Done when you have said it, whatever the answer. Say it once. Anything other than a yes is final: thank them and let it be.
-- **Make one specific, short, public invitation** (moves the stage · where: one to one, a recurring place · proposed). Attention on: A day, an hour, a public place. Drop: We should hang out sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered.
-- **Propose a short meeting in person** (moves no stage · where: a call or a message · channel: online · proposed). Attention on: A day, an hour, a public place. Drop: Another week of messages. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final.
+- **Say your interest plainly** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence, then let them answer. Drop: Hinting and waiting for them to guess. Done when you have said it, whatever the answer. Say it once. Anything other than a yes is final: thank them and let it be.
+- **Make one specific, short, public invitation** (moves the stage · where: one to one, a recurring place). Attention on: A day, an hour, a public place. Drop: We should hang out sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered.
+- **Propose a short meeting in person** (moves no stage · where: a call or a message · channel: online). Attention on: A day, an hour, a public place. Drop: Another week of messages. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final.
 
 #### Stage 4 · Dating
 
@@ -188,10 +188,10 @@ Your own conduct on a date: there on time with the phone away, attention on them
 
 - Not progress: Judging the date or the person; a date is not a result and is never counted.
 - How it moves: moves only when you declare it
-- **On time, phone away** (moves no stage · where: one to one · proposed). Attention on: Them, not the screen. Drop: A glance at the phone in a lull. Done when you did it, however the date went.
-- **Ask, then follow what they say** (moves no stage · where: one to one · proposed). Attention on: The last thing they said. Drop: Waiting for your turn to talk. Done when you did it, however the date went.
-- **Share something real in turn** (moves no stage · where: one to one · proposed). Attention on: What they just shared, and what you have of the same size. Drop: Keeping it all light so nothing can go wrong. Done when you did it, however the date went.
-- **End the date clearly and kindly** (moves no stage · where: one to one · proposed). Attention on: One plain sentence about what you would like next. Drop: Leaving it vague so nobody has to answer. Done when you have said it, whatever the answer. Their answer is final. A second ask after a no is never offered.
+- **On time, phone away** (moves no stage · where: one to one). Attention on: Them, not the screen. Drop: A glance at the phone in a lull. Done when you did it, however the date went.
+- **Ask, then follow what they say** (moves no stage · where: one to one). Attention on: The last thing they said. Drop: Waiting for your turn to talk. Done when you did it, however the date went.
+- **Share something real in turn** (moves no stage · where: one to one). Attention on: What they just shared, and what you have of the same size. Drop: Keeping it all light so nothing can go wrong. Done when you did it, however the date went.
+- **End the date clearly and kindly** (moves no stage · where: one to one). Attention on: One plain sentence about what you would like next. Drop: Leaving it vague so nobody has to answer. Done when you have said it, whatever the answer. Their answer is final. A second ask after a no is never offered.
 
 #### Stage 5 · Deciding
 
@@ -210,10 +210,10 @@ The small acts that build a relationship: meet good news with interest, thank sp
 
 - Not progress: Keeping a tally of who did more; a compatibility quiz.
 - How it moves: moves only when you declare it
-- **Meet their good news with real interest** (moves no stage · where: one to one · proposed). Attention on: Their face when they tell it. Drop: Topping it with news of your own. Done when you did it.
-- **Thank your partner for one specific thing** (moves no stage · where: one to one · proposed). Attention on: The thing they did, and what it saved or gave you. Drop: A general thanks for everything. Done when you have said it.
-- **Do one new thing together** (moves no stage · where: one to one · proposed). Attention on: Something neither of you would plan alone. Drop: The same evening as always. Done when you did it together.
-- **Reappraise a disagreement** (moves no stage · where: on your own · proposed). Attention on: How a fair friend of you both would tell it. Drop: Replaying who was right. Done when you have written it.
+- **Meet their good news with real interest** (moves no stage · where: one to one). Attention on: Their face when they tell it. Drop: Topping it with news of your own. Done when you did it.
+- **Thank your partner for one specific thing** (moves no stage · where: one to one). Attention on: The thing they did, and what it saved or gave you. Drop: A general thanks for everything. Done when you have said it.
+- **Do one new thing together** (moves no stage · where: one to one). Attention on: Something neither of you would plan alone. Drop: The same evening as always. Done when you did it together.
+- **Reappraise a disagreement** (moves no stage · where: on your own). Attention on: How a fair friend of you both would tell it. Drop: Replaying who was right. Done when you have written it.
 
 #### Stage 7 · Keeping
 
@@ -221,7 +221,7 @@ The same acts over years, talking openly about what you each want, and the month
 
 - Not progress: Counting on love to keep itself.
 - How it moves: moves only when you declare it
-- **Talk openly about what you each want** (moves no stage · where: one to one · proposed). Attention on: What you each like, said kindly. Drop: Waiting for it to come up on its own. Done when you have talked.
+- **Talk openly about what you each want** (moves no stage · where: one to one). Attention on: What you each like, said kindly. Drop: Waiting for it to come up on its own. Done when you have talked.
 
 #### How a stage is reached
 
@@ -269,39 +269,39 @@ For a parent, in general terms. One study found a mother’s dating after divorc
 
 #### The evidence
 
-Claim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.
+Claim cards, each source verified at Crossref, admitted once their path was wired; the disputed ones are never cited. A card about dating reaches the day’s line only on a date day you declared, and one about a relationship never does.
 
-- **some evidence** (draft, admitted when its path is wired). Meeting online has become the most common way heterosexual couples in the United States meet, and people in thin markets, such as middle-aged heterosexuals, are especially likely to meet partners online. Rosenfeld, Thomas & Hausen (2019). Disintermediating your friends: how online dating in the United States displaces other ways of meeting. Proceedings of the National Academy of Sciences, 116(36), 17753–17758. Rosenfeld & Thomas (2012). Searching for a mate: the rise of the Internet as a social intermediary. American Sociological Review, 77(4), 523–547.
-- **some evidence** (draft, admitted when its path is wired). What online dating adds is access to people you would not otherwise meet; browsing many profiles side by side can turn people into a menu, and brief messaging that leads to meeting serves better than long browsing. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66.
-- **some evidence** (draft, admitted when its path is wired). Online daters rated a first face-to-face meeting best after a moderate amount of messaging, and worse after very little or a great deal. Ramirez, Sumner, Fleuriet & Cole (2015). When online dating partners meet offline: the effect of modality switching on relational communication between online daters. Journal of Computer-Mediated Communication, 20(1), 99–114.
-- **some evidence** (draft, admitted when its path is wired). The longer people browse dating profiles in a session, the more likely they are to reject each next one. Pronk & Denissen (2020). A rejection mind-set: choice overload in online dating. Social Psychological and Personality Science, 11(3), 388–396.
-- **some evidence** (draft, admitted when its path is wired). About two-thirds of romantic relationships began as friendships, and the longer two people knew each other first, the less their pairing tracked consensus attractiveness and the more it rested on how they got on. Stinson, Cameron & Hoplock (2022). The friends-to-lovers pathway to romance: prevalent, preferred, and overlooked by science. Social Psychological and Personality Science, 13(2), 562–571. Hunt, Eastwick & Finkel (2015). Leveling the playing field: longer acquaintance predicts reduced assortative mating on attractiveness. Psychological Science, 26(7), 1046–1053. Eastwick & Hunt (2014). Relational mate value: consensus and uniqueness in romantic evaluations. Journal of Personality and Social Psychology, 106(5), 728–751.
-- **good evidence** (draft, admitted when its path is wired). The traits people say they want in an ideal partner barely predict whom they come to desire in person, and more than a hundred measured traits could not predict which particular pairs would click. Eastwick & Finkel (2008). Sex differences in mate preferences revisited: do people know what they initially desire in a romantic partner? Journal of Personality and Social Psychology, 94(2), 245–264. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489. Eastwick, Luchies, Finkel & Hunt (2014). The predictive validity of ideal partner preferences: a review and meta-analysis. Psychological Bulletin, 140(3), 623–665. Eastwick et al. (2025). A worldwide test of the predictive validity of ideal partner preference matching. Journal of Personality and Social Psychology, 128(1), 123–146.
-- **some evidence** (draft, admitted when its path is wired). Plain openings do best: a direct self-introduction or an introduction by a third person was rated most appropriate, and cute or flippant lines were rated worst. Kleinke, Meeker & Staneski (1986). Preference for opening lines: comparing ratings by men and women. Sex Roles, 15(11–12), 585–600. Weber, Goodboy & Cayanus (2010). Flirting competence: an experimental study on appropriate and effective opening lines. Communication Research Reports, 27(2), 184–191.
-- **some evidence** (draft, admitted when its path is wired). People detect flirting poorly, and those who fear rejection believe their own overtures show far more interest than they do. Hall, Xing, Ross & Silverman (2015). Accurately detecting flirting: error management theory, the traditional sexual script, and flirting base rate. Communication Research, 42(7), 939–958. Vorauer, Cameron, Holmes & Pearce (2003). Invisible overtures: fears of rejection and the signal amplification bias. Journal of Personality and Social Psychology, 84(4), 793–812.
-- **some evidence** (draft, admitted when its path is wired). People are less willing to turn down someone who asks them out in person than they predict, largely out of concern for the asker’s feelings. Joel, Teper & MacDonald (2014). People overestimate their willingness to reject potential romantic partners by overlooking their concern for other people. Psychological Science, 25(12), 2233–2240.
-- **some evidence** (draft, admitted when its path is wired). A rejection lingers when it changes how a person defines themselves, most for those who believe personality cannot change. Howe & Dweck (2016). Changes in self-definition impede recovery from rejection. Personality and Social Psychology Bulletin, 42(1), 54–71.
-- **some evidence** (draft, admitted when its path is wired). Persisting after a no is at the heart of stalking and harassment: much unwanted pursuit grows out of courtship that did not take no for an answer. Spitzberg & Cupach (2007). The state of the art of stalking: taking stock of the emerging literature. Aggression and Violent Behavior, 12(1), 64–86.
-- **some evidence** (draft, admitted when its path is wired). Unwanted attention from strangers in public is common for women and goes with feeling objectified. Fairchild & Rudman (2008). Everyday stranger harassment and women’s objectification. Social Justice Research, 21(3), 338–357.
-- **some evidence** (draft, admitted when its path is wired). Endorsing assertive pickup tactics tracks hostile sexism. Hall & Canterberry (2011). Sexism and assertive courtship strategies. Sex Roles, 65(11–12), 840–853.
-- **some evidence** (draft, admitted when its path is wired). Several changes in who lives in a child’s home go with more behaviour problems, partly because of what came before; one study found a mother’s dating after divorce had little direct effect; when to introduce a new partner has no tested answer. Fomby & Cherlin (2007). Family instability and child well-being. American Sociological Review, 72(2), 181–204. Hadfield, Amos, Ungar, Gosselin & Ganong (2018). Do changes to family structure affect child and family outcomes? A systematic review of the instability hypothesis. Journal of Family Theory & Review, 10(1), 87–110. Xiao, Langlais & Anderson (2022). Is it OK if mommy dates? The influence of mother’s post-divorce dating transitions on children’s well-being. Journal of Child and Family Studies, 31(2), 400–413. Kang & Nielson (2025). Helping postdivorce families enhance parent–child relationships: clinical applications for communicating postdivorce dating with children. Journal of Marital and Family Therapy, 51(1), e12764.
-- **some evidence** (draft, admitted when its path is wired). Shared religious practice at home goes with better relationship quality, modestly, and part of it is who chooses to share it. Ellison, Burdette & Wilcox (2010). The couple that prays together: race and ethnicity, religion, and relationship quality among working-age adults. Journal of Marriage and Family, 72(4), 963–975. Mahoney (2010). Religion in families, 1999–2009: a relational spirituality framework. Journal of Marriage and Family, 72(4), 805–827. Mahoney, Pargament, Tarakeshwar & Swank (2001). Religion in the home in the 1980s and 1990s: a meta-analytic review and conceptual analysis of links between religion, marriage, and parenting. Journal of Family Psychology, 15(4), 559–596.
-- **good evidence** (draft, admitted when its path is wired). A relationship’s quality is predicted mostly by each person’s own view of the relationship, their sense of the partner’s commitment and appreciation, conflict and satisfaction, and hardly at all by the partner’s reported traits. Joel et al. (2020). Machine learning uncovers the most robust self-report predictors of relationship quality across 43 longitudinal couples studies. Proceedings of the National Academy of Sciences, 117(32), 19061–19071.
-- **good evidence** (draft, admitted when its path is wired). In existing relationships, actual similarity between partners barely predicts satisfaction; perceived similarity does. Dyrenforth, Kashy, Donnellan & Lucas (2010). Predicting relationship and life satisfaction from personality in nationally representative samples from three countries: the relative importance of actor, partner, and similarity effects. Journal of Personality and Social Psychology, 99(4), 690–702. Montoya, Horton & Kirchner (2008). Is actual similarity necessary for attraction? A meta-analysis of actual and perceived similarity. Journal of Social and Personal Relationships, 25(6), 889–922.
-- **some evidence** (draft, admitted when its path is wired). People weigh a partner’s dealbreakers more heavily than the qualities they hope for, so knowing your own few non-negotiables in advance is useful. Jonason, Garcia, Webster, Li & Fisher (2015). Relationship dealbreakers: traits people avoid in potential mates. Personality and Social Psychology Bulletin, 41(12), 1697–1711.
-- **good evidence** (draft, admitted when its path is wired). A person’s own negative affectivity and insecure attachment weigh on relationship quality, and both can change with effort. Karney & Bradbury (1995). The longitudinal course of marital quality and stability: a review of theory, methods, and research. Psychological Bulletin, 118(1), 3–34. Li & Chan (2012). How anxious and avoidant attachment affect romantic relationship quality differently: a meta-analytic review. European Journal of Social Psychology, 42(4), 406–419. Roberts et al. (2017). A systematic review of personality trait change through intervention. Psychological Bulletin, 143(2), 117–141. Hudson, Chopik & Briley (2020). Volitional change in adult attachment: can people who want to become less anxious and avoidant move closer towards realizing those goals? European Journal of Personality, 34(1), 93–114.
-- **some evidence** (draft, admitted when its path is wired). People who decide their relationship steps thoughtfully report more dedication and satisfaction than those who slide into them, and couples who moved in together before engagement reported somewhat poorer marriages. Stanley, Rhoades & Markman (2006). Sliding versus deciding: inertia and the premarital cohabitation effect. Family Relations, 55(4), 499–509. Rhoades, Stanley & Markman (2009). The pre-engagement cohabitation effect: a replication and extension of previous findings. Journal of Family Psychology, 23(1), 107–111. Owen, Rhoades & Stanley (2013). Sliding versus deciding in relationships: associations with relationship quality, commitment, and infidelity. Journal of Couple & Relationship Therapy, 12(2), 135–149.
-- **good evidence** (draft, admitted when its path is wired). Relationship education improves couples’ communication, modestly; effects on quality are smaller and uncertain once unpublished studies count, and moderate courses of nine to twenty hours beat short ones. Hawkins, Blanchard, Baldwin & Fawcett (2008). Does marriage and relationship education work? A meta-analytic study. Journal of Consulting and Clinical Psychology, 76(5), 723–734. Fawcett, Hawkins, Blanchard & Carroll (2010). Do premarital education programs really work? A meta-analytic study. Family Relations, 59(3), 232–239. Hawkins, Stanley, Blanchard & Albright (2012). Exploring programmatic moderators of the effectiveness of marriage and relationship education programs: a meta-analytic study. Behavior Therapy, 43(1), 77–87. McAllister, Duncan & Hawkins (2012). Examining the early evidence for self-directed marriage and relationship education: a meta-analytic study. Family Relations, 61(5), 742–755.
-- **some evidence** (draft, admitted when its path is wired). The number and frequency of early warning signs in a relationship, such as reacting badly to a no or resenting questions, predicted abuse six months later. Charlot et al. (2023). The predictive validity of intimate partner violence warning signs. Social Psychological and Personality Science.
-- **good evidence** (draft, admitted when its path is wired). How couples talk predicts how they fare, modestly: negative communication goes with lower later quality and with breaking up, and hostility weighs most. Kanter et al. (2022). Does couple communication predict later relationship quality and dissolution? A meta-analysis. Journal of Marriage and Family, 84(2), 533–551. Woodin (2011). A two-dimensional approach to relationship conflict: meta-analytic findings. Journal of Family Psychology, 25(3), 325–335. Schrodt, Witt & Shimkowski (2014). A meta-analytical review of the demand/withdraw pattern of interaction and its associations with individual, relational, and communicative outcomes. Communication Monographs, 81(1), 28–58.
-- **some evidence** (draft, admitted when its path is wired). How a partner responds to good news matters: active, enthusiastic responses go with closer, more satisfying relationships, more so than responses to bad news. Gable, Reis, Impett & Asher (2004). What do you do when things go right? The intrapersonal and interpersonal benefits of sharing positive events. Journal of Personality and Social Psychology, 87(2), 228–245. Gable, Gonzaga & Strachman (2006). Will you be there for me when things go right? Supportive responses to positive event disclosures. Journal of Personality and Social Psychology, 91(5), 904–917.
-- **some evidence** (draft, admitted when its path is wired). Everyday gratitude between partners predicts more connection and satisfaction the next day for both, and expressing it in a lab session helped when the partner responded well. Algoe, Gable & Maisel (2010). It’s the little things: everyday gratitude as a booster shot for romantic relationships. Personal Relationships, 17(2), 217–233. Algoe & Zhaoyang (2016). Positive psychology in context: effects of expressing gratitude in ongoing relationships depend on perceptions of enactor responsiveness. The Journal of Positive Psychology, 11(4), 399–415.
-- **some evidence** (draft, admitted when its path is wired). Doing novel, lively things together raises couples’ experienced relationship quality. Aron, Norman, Aron, McKenna & Heyman (2000). Couples’ shared participation in novel and arousing activities and experienced relationship quality. Journal of Personality and Social Psychology, 78(2), 273–284. Coulter & Malouff (2013). Effects of an intervention designed to enhance romantic relationship excitement: a randomized-control trial. Couple and Family Psychology: Research and Practice, 2(1), 34–44.
-- **some evidence** (draft, admitted when its path is wired). A brief exercise in seeing a disagreement as a neutral third party would, done three times across a year, stopped the usual decline in marital quality. Finkel, Slotter, Luchies, Walton & Gross (2013). A brief intervention to promote conflict reappraisal preserves marital quality over time. Psychological Science, 24(8), 1595–1601.
-- **good evidence** (draft, admitted when its path is wired). Couples who talk about sex, and talk about it well, report more relationship and sexual satisfaction. Mallory (2022). Dimensions of couples’ sexual communication, relationship satisfaction, and sexual satisfaction: a meta-analysis. Journal of Family Psychology, 36(3), 358–371.
-- **some evidence** (draft, admitted when its path is wired). Forgiveness and sacrifice help a relationship in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly cost the one who made them. McNulty (2008). Forgiveness in marriage: putting the benefits into context. Journal of Family Psychology, 22(1), 171–175. Righetti et al. (2020). The link between sacrifice and relational and personal well-being: a meta-analysis. Psychological Bulletin, 146(10), 900–921.
-- **some evidence** (draft, admitted when its path is wired). On days of higher outside stress, partners behave more negatively toward each other and judge the relationship less kindly. Neff & Karney (2004). How does context affect intimate relationships? Linking external stress and cognitive processes within marriage. Personality and Social Psychology Bulletin, 30(2), 134–148. Neff & Karney (2009). Stress and reactivity to daily relationship experiences: how stress hinders adaptive processes in marriage. Journal of Personality and Social Psychology, 97(3), 435–450. Buck & Neff (2012). Stress spillover in early marriage: the role of self-regulatory depletion. Journal of Family Psychology, 26(5), 698–708.
-- **some evidence** (draft, admitted when its path is wired). Keeping a detailed diary about relationship conflict can itself shift how people rate their relationship, even when their behaviour does not change. Merrilees, Goeke-Morey & Cummings (2008). Do event-contingent diaries about marital conflict change marital interactions? Behaviour Research and Therapy, 46(2), 253–262.
+- **some evidence** (admitted). Meeting online has become the most common way heterosexual couples in the United States meet, and people in thin markets, such as middle-aged heterosexuals, are especially likely to meet partners online. Rosenfeld, Thomas & Hausen (2019). Disintermediating your friends: how online dating in the United States displaces other ways of meeting. Proceedings of the National Academy of Sciences, 116(36), 17753–17758. Rosenfeld & Thomas (2012). Searching for a mate: the rise of the Internet as a social intermediary. American Sociological Review, 77(4), 523–547.
+- **some evidence** (admitted). What online dating adds is access to people you would not otherwise meet; browsing many profiles side by side can turn people into a menu, and brief messaging that leads to meeting serves better than long browsing. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66.
+- **some evidence** (admitted). Online daters rated a first face-to-face meeting best after a moderate amount of messaging, and worse after very little or a great deal. Ramirez, Sumner, Fleuriet & Cole (2015). When online dating partners meet offline: the effect of modality switching on relational communication between online daters. Journal of Computer-Mediated Communication, 20(1), 99–114.
+- **some evidence** (admitted). The longer people browse dating profiles in a session, the more likely they are to reject each next one. Pronk & Denissen (2020). A rejection mind-set: choice overload in online dating. Social Psychological and Personality Science, 11(3), 388–396.
+- **some evidence** (admitted). About two-thirds of romantic relationships began as friendships, and the longer two people knew each other first, the less their pairing tracked consensus attractiveness and the more it rested on how they got on. Stinson, Cameron & Hoplock (2022). The friends-to-lovers pathway to romance: prevalent, preferred, and overlooked by science. Social Psychological and Personality Science, 13(2), 562–571. Hunt, Eastwick & Finkel (2015). Leveling the playing field: longer acquaintance predicts reduced assortative mating on attractiveness. Psychological Science, 26(7), 1046–1053. Eastwick & Hunt (2014). Relational mate value: consensus and uniqueness in romantic evaluations. Journal of Personality and Social Psychology, 106(5), 728–751.
+- **good evidence** (admitted). The traits people say they want in an ideal partner barely predict whom they come to desire in person, and more than a hundred measured traits could not predict which particular pairs would click. Eastwick & Finkel (2008). Sex differences in mate preferences revisited: do people know what they initially desire in a romantic partner? Journal of Personality and Social Psychology, 94(2), 245–264. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489. Eastwick, Luchies, Finkel & Hunt (2014). The predictive validity of ideal partner preferences: a review and meta-analysis. Psychological Bulletin, 140(3), 623–665. Eastwick et al. (2025). A worldwide test of the predictive validity of ideal partner preference matching. Journal of Personality and Social Psychology, 128(1), 123–146.
+- **some evidence** (admitted). Plain openings do best: a direct self-introduction or an introduction by a third person was rated most appropriate, and cute or flippant lines were rated worst. Kleinke, Meeker & Staneski (1986). Preference for opening lines: comparing ratings by men and women. Sex Roles, 15(11–12), 585–600. Weber, Goodboy & Cayanus (2010). Flirting competence: an experimental study on appropriate and effective opening lines. Communication Research Reports, 27(2), 184–191.
+- **some evidence** (admitted). People detect flirting poorly, and those who fear rejection believe their own overtures show far more interest than they do. Hall, Xing, Ross & Silverman (2015). Accurately detecting flirting: error management theory, the traditional sexual script, and flirting base rate. Communication Research, 42(7), 939–958. Vorauer, Cameron, Holmes & Pearce (2003). Invisible overtures: fears of rejection and the signal amplification bias. Journal of Personality and Social Psychology, 84(4), 793–812.
+- **some evidence** (admitted). People are less willing to turn down someone who asks them out in person than they predict, largely out of concern for the asker’s feelings. Joel, Teper & MacDonald (2014). People overestimate their willingness to reject potential romantic partners by overlooking their concern for other people. Psychological Science, 25(12), 2233–2240.
+- **some evidence** (admitted). A rejection lingers when it changes how a person defines themselves, most for those who believe personality cannot change. Howe & Dweck (2016). Changes in self-definition impede recovery from rejection. Personality and Social Psychology Bulletin, 42(1), 54–71.
+- **some evidence** (admitted). Persisting after a no is at the heart of stalking and harassment: much unwanted pursuit grows out of courtship that did not take no for an answer. Spitzberg & Cupach (2007). The state of the art of stalking: taking stock of the emerging literature. Aggression and Violent Behavior, 12(1), 64–86.
+- **some evidence** (admitted). Unwanted attention from strangers in public is common for women and goes with feeling objectified. Fairchild & Rudman (2008). Everyday stranger harassment and women’s objectification. Social Justice Research, 21(3), 338–357.
+- **some evidence** (admitted). Endorsing assertive pickup tactics tracks hostile sexism. Hall & Canterberry (2011). Sexism and assertive courtship strategies. Sex Roles, 65(11–12), 840–853.
+- **some evidence** (admitted). Several changes in who lives in a child’s home go with more behaviour problems, partly because of what came before; one study found a mother’s dating after divorce had little direct effect; when to introduce a new partner has no tested answer. Fomby & Cherlin (2007). Family instability and child well-being. American Sociological Review, 72(2), 181–204. Hadfield, Amos, Ungar, Gosselin & Ganong (2018). Do changes to family structure affect child and family outcomes? A systematic review of the instability hypothesis. Journal of Family Theory & Review, 10(1), 87–110. Xiao, Langlais & Anderson (2022). Is it OK if mommy dates? The influence of mother’s post-divorce dating transitions on children’s well-being. Journal of Child and Family Studies, 31(2), 400–413. Kang & Nielson (2025). Helping postdivorce families enhance parent–child relationships: clinical applications for communicating postdivorce dating with children. Journal of Marital and Family Therapy, 51(1), e12764.
+- **some evidence** (admitted). Shared religious practice at home goes with better relationship quality, modestly, and part of it is who chooses to share it. Ellison, Burdette & Wilcox (2010). The couple that prays together: race and ethnicity, religion, and relationship quality among working-age adults. Journal of Marriage and Family, 72(4), 963–975. Mahoney (2010). Religion in families, 1999–2009: a relational spirituality framework. Journal of Marriage and Family, 72(4), 805–827. Mahoney, Pargament, Tarakeshwar & Swank (2001). Religion in the home in the 1980s and 1990s: a meta-analytic review and conceptual analysis of links between religion, marriage, and parenting. Journal of Family Psychology, 15(4), 559–596.
+- **good evidence** (admitted). A relationship’s quality is predicted mostly by each person’s own view of the relationship, their sense of the partner’s commitment and appreciation, conflict and satisfaction, and hardly at all by the partner’s reported traits. Joel et al. (2020). Machine learning uncovers the most robust self-report predictors of relationship quality across 43 longitudinal couples studies. Proceedings of the National Academy of Sciences, 117(32), 19061–19071.
+- **good evidence** (admitted). In existing relationships, actual similarity between partners barely predicts satisfaction; perceived similarity does. Dyrenforth, Kashy, Donnellan & Lucas (2010). Predicting relationship and life satisfaction from personality in nationally representative samples from three countries: the relative importance of actor, partner, and similarity effects. Journal of Personality and Social Psychology, 99(4), 690–702. Montoya, Horton & Kirchner (2008). Is actual similarity necessary for attraction? A meta-analysis of actual and perceived similarity. Journal of Social and Personal Relationships, 25(6), 889–922.
+- **some evidence** (admitted). People weigh a partner’s dealbreakers more heavily than the qualities they hope for, so knowing your own few non-negotiables in advance is useful. Jonason, Garcia, Webster, Li & Fisher (2015). Relationship dealbreakers: traits people avoid in potential mates. Personality and Social Psychology Bulletin, 41(12), 1697–1711.
+- **good evidence** (admitted). A person’s own negative affectivity and insecure attachment weigh on relationship quality, and both can change with effort. Karney & Bradbury (1995). The longitudinal course of marital quality and stability: a review of theory, methods, and research. Psychological Bulletin, 118(1), 3–34. Li & Chan (2012). How anxious and avoidant attachment affect romantic relationship quality differently: a meta-analytic review. European Journal of Social Psychology, 42(4), 406–419. Roberts et al. (2017). A systematic review of personality trait change through intervention. Psychological Bulletin, 143(2), 117–141. Hudson, Chopik & Briley (2020). Volitional change in adult attachment: can people who want to become less anxious and avoidant move closer towards realizing those goals? European Journal of Personality, 34(1), 93–114.
+- **some evidence** (admitted). People who decide their relationship steps thoughtfully report more dedication and satisfaction than those who slide into them, and couples who moved in together before engagement reported somewhat poorer marriages. Stanley, Rhoades & Markman (2006). Sliding versus deciding: inertia and the premarital cohabitation effect. Family Relations, 55(4), 499–509. Rhoades, Stanley & Markman (2009). The pre-engagement cohabitation effect: a replication and extension of previous findings. Journal of Family Psychology, 23(1), 107–111. Owen, Rhoades & Stanley (2013). Sliding versus deciding in relationships: associations with relationship quality, commitment, and infidelity. Journal of Couple & Relationship Therapy, 12(2), 135–149.
+- **good evidence** (admitted). Relationship education improves couples’ communication, modestly; effects on quality are smaller and uncertain once unpublished studies count, and moderate courses of nine to twenty hours beat short ones. Hawkins, Blanchard, Baldwin & Fawcett (2008). Does marriage and relationship education work? A meta-analytic study. Journal of Consulting and Clinical Psychology, 76(5), 723–734. Fawcett, Hawkins, Blanchard & Carroll (2010). Do premarital education programs really work? A meta-analytic study. Family Relations, 59(3), 232–239. Hawkins, Stanley, Blanchard & Albright (2012). Exploring programmatic moderators of the effectiveness of marriage and relationship education programs: a meta-analytic study. Behavior Therapy, 43(1), 77–87. McAllister, Duncan & Hawkins (2012). Examining the early evidence for self-directed marriage and relationship education: a meta-analytic study. Family Relations, 61(5), 742–755.
+- **some evidence** (admitted). The number and frequency of early warning signs in a relationship, such as reacting badly to a no or resenting questions, predicted abuse six months later. Charlot et al. (2023). The predictive validity of intimate partner violence warning signs. Social Psychological and Personality Science.
+- **good evidence** (admitted). How couples talk predicts how they fare, modestly: negative communication goes with lower later quality and with breaking up, and hostility weighs most. Kanter et al. (2022). Does couple communication predict later relationship quality and dissolution? A meta-analysis. Journal of Marriage and Family, 84(2), 533–551. Woodin (2011). A two-dimensional approach to relationship conflict: meta-analytic findings. Journal of Family Psychology, 25(3), 325–335. Schrodt, Witt & Shimkowski (2014). A meta-analytical review of the demand/withdraw pattern of interaction and its associations with individual, relational, and communicative outcomes. Communication Monographs, 81(1), 28–58.
+- **some evidence** (admitted). How a partner responds to good news matters: active, enthusiastic responses go with closer, more satisfying relationships, more so than responses to bad news. Gable, Reis, Impett & Asher (2004). What do you do when things go right? The intrapersonal and interpersonal benefits of sharing positive events. Journal of Personality and Social Psychology, 87(2), 228–245. Gable, Gonzaga & Strachman (2006). Will you be there for me when things go right? Supportive responses to positive event disclosures. Journal of Personality and Social Psychology, 91(5), 904–917.
+- **some evidence** (admitted). Everyday gratitude between partners predicts more connection and satisfaction the next day for both, and expressing it in a lab session helped when the partner responded well. Algoe, Gable & Maisel (2010). It’s the little things: everyday gratitude as a booster shot for romantic relationships. Personal Relationships, 17(2), 217–233. Algoe & Zhaoyang (2016). Positive psychology in context: effects of expressing gratitude in ongoing relationships depend on perceptions of enactor responsiveness. The Journal of Positive Psychology, 11(4), 399–415.
+- **some evidence** (admitted). Doing novel, lively things together raises couples’ experienced relationship quality. Aron, Norman, Aron, McKenna & Heyman (2000). Couples’ shared participation in novel and arousing activities and experienced relationship quality. Journal of Personality and Social Psychology, 78(2), 273–284. Coulter & Malouff (2013). Effects of an intervention designed to enhance romantic relationship excitement: a randomized-control trial. Couple and Family Psychology: Research and Practice, 2(1), 34–44.
+- **some evidence** (admitted). A brief exercise in seeing a disagreement as a neutral third party would, done three times across a year, stopped the usual decline in marital quality. Finkel, Slotter, Luchies, Walton & Gross (2013). A brief intervention to promote conflict reappraisal preserves marital quality over time. Psychological Science, 24(8), 1595–1601.
+- **good evidence** (admitted). Couples who talk about sex, and talk about it well, report more relationship and sexual satisfaction. Mallory (2022). Dimensions of couples’ sexual communication, relationship satisfaction, and sexual satisfaction: a meta-analysis. Journal of Family Psychology, 36(3), 358–371.
+- **some evidence** (admitted). Forgiveness and sacrifice help a relationship in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly cost the one who made them. McNulty (2008). Forgiveness in marriage: putting the benefits into context. Journal of Family Psychology, 22(1), 171–175. Righetti et al. (2020). The link between sacrifice and relational and personal well-being: a meta-analysis. Psychological Bulletin, 146(10), 900–921.
+- **some evidence** (admitted). On days of higher outside stress, partners behave more negatively toward each other and judge the relationship less kindly. Neff & Karney (2004). How does context affect intimate relationships? Linking external stress and cognitive processes within marriage. Personality and Social Psychology Bulletin, 30(2), 134–148. Neff & Karney (2009). Stress and reactivity to daily relationship experiences: how stress hinders adaptive processes in marriage. Journal of Personality and Social Psychology, 97(3), 435–450. Buck & Neff (2012). Stress spillover in early marriage: the role of self-regulatory depletion. Journal of Family Psychology, 26(5), 698–708.
+- **some evidence** (admitted). Keeping a detailed diary about relationship conflict can itself shift how people rate their relationship, even when their behaviour does not change. Merrilees, Goeke-Morey & Cummings (2008). Do event-contingent diaries about marital conflict change marital interactions? Behaviour Research and Therapy, 46(2), 253–262.
 - **thin evidence** (disputed, never cited). Claims that divorce can be predicted with high accuracy from a few observed behaviours are disputed: they collapse without cross-validation, and a major model failed to replicate. Heyman & Slep (2001). The hazards of predicting divorce without crossvalidation. Journal of Marriage and Family, 63(2), 473–479. Kim, Capaldi & Crosby (2007). Generalizability of Gottman and colleagues’ affective process models of couples’ relationship outcomes. Journal of Marriage and Family, 69(1), 55–72.
 - **thin evidence** (disputed, never cited). The popular claims about love languages are disputed: the evidence does not support that each person has one preferred language, that there are five, or that matching them makes couples happier. Impett, Park & Muise (2024). Popular psychology through a scientific lens: evaluating love languages from a relationship science perspective. Current Directions in Psychological Science, 33(2), 87–92.
 - **thin evidence** (disputed, never cited). The claim that dating sites’ matching algorithms find compatible partners is disputed: no compelling evidence supports it, and traits measured in advance cannot predict which pairs will click. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489.
@@ -1918,7 +1918,7 @@ A short board or card game with one rule and turns, ten minutes. Counting the sp
 
 ### Say hello again to someone you liked talking to
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 1, moves the stage_
 
 Someone you have met before and enjoyed talking with: greet them again where you both go, and add one sentence.
 
@@ -1932,7 +1932,7 @@ Someone you have met before and enjoyed talking with: greet them again where you
 
 ### Ask a friend for an introduction
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 1, moves no stage_
 
 Tell one friend you are open to meeting someone, and ask whether they know anyone they would like to introduce.
 
@@ -1946,7 +1946,7 @@ Tell one friend you are open to meeting someone, and ask whether they know anyon
 
 ### Say your interest plainly
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 3, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 3, moves the stage_
 
 To someone you have come to like, say it in one plain sentence: you have enjoyed talking and would like to do it again.
 
@@ -1960,7 +1960,7 @@ To someone you have come to like, say it in one plain sentence: you have enjoyed
 
 ### Make one specific, short, public invitation
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 3, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 3, moves the stage_
 
 A coffee or a walk, somewhere public, an hour at most, with a day named. One ask; take the answer graciously, whatever it is.
 
@@ -1974,7 +1974,7 @@ A coffee or a walk, somewhere public, an hour at most, with a day named. One ask
 
 ### Write or update one profile, honestly
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 1, moves no stage_
 
 On one site you chose, write or update your profile: recent photos, plain words about who you are and what you are looking for.
 
@@ -1987,7 +1987,7 @@ On one site you chose, write or update your profile: recent photos, plain words 
 
 ### Browse for fifteen minutes, then stop
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 1, moves no stage_
 
 Set a timer for fifteen minutes, read profiles on the one site you chose, and stop when it rings, whatever you found.
 
@@ -2000,7 +2000,7 @@ Set a timer for fifteen minutes, read profiles on the one site you chose, and st
 
 ### Send one specific message
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 2, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 2, moves no stage_
 
 Send one message to one person, about something specific in what they wrote. One message, not a batch.
 
@@ -2014,7 +2014,7 @@ Send one message to one person, about something specific in what they wrote. One
 
 ### Propose a short meeting in person
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 3, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 3, moves no stage_
 
 After a few days of messages, propose a short public meeting: a coffee or a walk, with a day named, within the next two or three weeks.
 
@@ -2028,7 +2028,7 @@ After a few days of messages, propose a short public meeting: a coffee or a walk
 
 ### On time, phone away
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
 
 On a day you have a date: arrive on time, and keep the phone out of sight for the whole of it.
 
@@ -2041,7 +2041,7 @@ On a day you have a date: arrive on time, and keep the phone out of sight for th
 
 ### Ask, then follow what they say
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
 
 On a date, ask about something that matters to them, and follow their answer with a second question about it.
 
@@ -2054,7 +2054,7 @@ On a date, ask about something that matters to them, and follow their answer wit
 
 ### Share something real in turn
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
 
 On a date, when they share something that matters, share something of your own of the same weight.
 
@@ -2067,7 +2067,7 @@ On a date, when they share something that matters, share something of your own o
 
 ### End the date clearly and kindly
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
 
 At the end, say plainly whether you would like to meet again, and make it easy for them to say no. Their answer is final.
 
@@ -2080,7 +2080,7 @@ At the end, say plainly whether you would like to meet again, and make it easy f
 
 ### Meet their good news with real interest
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
 
 When your partner tells you something good, ask about it, let them tell it, and let it be theirs.
 
@@ -2093,7 +2093,7 @@ When your partner tells you something good, ask about it, let them tell it, and 
 
 ### Thank your partner for one specific thing
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
 
 Thank your partner for one specific thing they did, and say what it meant to you.
 
@@ -2106,7 +2106,7 @@ Thank your partner for one specific thing they did, and say what it meant to you
 
 ### Do one new thing together
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
 
 This week, do one thing together that neither of you has done before. Small is fine.
 
@@ -2119,7 +2119,7 @@ This week, do one thing together that neither of you has done before. Small is f
 
 ### Reappraise a disagreement
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
 
 After a disagreement, spend seven minutes writing it as a neutral friend who wants the best for you both would see it.
 
@@ -2132,7 +2132,7 @@ After a disagreement, spend seven minutes writing it as a neutral friend who wan
 
 ### Talk openly about what you each want
 
-_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 7, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 7, moves no stage_
 
 Once, kindly and without a deadline, talk with your partner about intimacy: what each of you likes and wants.
 

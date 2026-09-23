@@ -7,7 +7,7 @@ import { library } from './library'
 import { copy } from './copy'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
-import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
+import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { currentRung, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from './ladder'
@@ -54,6 +54,16 @@ export interface FactInput {
   /** The check-in's depth and whether low-demand mode is on: what a lighter check-in could still change. */
   depth: string
   lowDemand: boolean
+  /** Part 27: the paths' declarations, for the one Partner fact the sheet carries, the date day. */
+  pathMarks?: PathMark[]
+}
+
+/**
+ * A step the sheet may count: every offer but the Partner path's own. A rep both paths hold,
+ * offered through the Social path, is Social's too and stays (Part 27).
+ */
+export function onTheSheet(o: Pick<Offer, 'paths'>): boolean {
+  return !o.paths?.includes('partner') || o.paths.includes('social')
 }
 
 /** A like-for-like difference worth calling promising for a chip: ten points on the reading out of 100. */
@@ -375,8 +385,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const perAim = new Map<number, { name: string; sittings: Offer[]; skillIds: Set<number> }>()
   const block = blockAt(i.now).block
   for (const aim of i.aims) {
-    // A paused path says nothing; it has no row and no step (Part 24).
-    if (aim.kind === 'path' && aim.pausedAt) continue
+    // A paused path says nothing; it has no row and no step (Part 24). The Partner path writes no
+    // commitment fact at all: the sheet carries it only as the date-day fact (Part 27).
+    if (aim.kind === 'path' && (aim.pausedAt || aim.path === 'partner')) continue
     const id = aim.id as number
     const study = aim.kind === 'certification'
     const pt = aim.kind === 'path' ? pathToday({ aim, offers: i.offers, outcomes: i.outcomes, ctx, day: today, block }) : null
@@ -456,6 +467,12 @@ export function buildFactSheet(i: FactInput): FactSheet {
     perAim.set(id, { name, sittings, skillIds: new Set(own.map((sk) => sk.id as number)) })
   }
 
+  // Part 27: the Partner path's one fact, and only on a declared date day while the path is on.
+  const partnerOn = i.aims.some((a) => a.kind === 'path' && a.path === 'partner' && !a.pausedAt && a.archivedAt === null)
+  if (partnerOn && (i.pathMarks ?? []).some((m) => m.path === 'partner' && m.kind === 'date' && m.day === today)) {
+    facts.push(fact('partner.dateDay', ['dating'], 'Today is a declared date day.', { dateDay: 1 }))
+  }
+
   const kept = keptCount(i.nights)
   if (kept.total) {
     const lastTen = [...i.nights].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 10)
@@ -464,14 +481,16 @@ export function buildFactSheet(i: FactInput): FactSheet {
     facts.push(fact('study.nights', ['study', 'evening', 'energy'], `Study nights kept ${kept.kept} of ${kept.total}; of the last ${lastTen.length}, not now for tired ${reasons.tired}, no time ${reasons.noTime}, too much on ${reasons.tooMuch}, didn't want to ${reasons.didntWant}.`, { kept: kept.kept, total: kept.total, recent: lastTen.length, ...reasons }, { n: kept.total }))
   }
 
-  const ft = followThrough(i.offers, i.outcomes, i.wins)
+  // The counts the sheet carries leave the Partner path's own steps out (Part 27).
+  const sheetOffers = i.offers.filter(onTheSheet)
+  const ft = followThrough(sheetOffers, i.outcomes, i.wins)
   facts.push(fact('follow', ['monitoring'], `Follow-through: moves ${ft.moves.started} started ${ft.moves.finished} finished; steps ${ft.steps.started} started ${ft.steps.finished} finished; minimum wins ${ft.wins.started} written ${ft.wins.finished} done.`, { movesStarted: ft.moves.started, movesFinished: ft.moves.finished, stepsStarted: ft.steps.started, stepsFinished: ft.steps.finished, winsStarted: ft.wins.started, winsFinished: ft.wins.finished }))
-  const bc = becoming(i.offers, i.outcomes)
+  const bc = becoming(sheetOffers, i.outcomes)
   facts.push(fact('becoming', ['monitoring'], `Under the direction: ${bc.study.n} study sessions, ${bc.conversations.n} conversations started, ${bc.faith.n} faith practices, ${bc.timeWithHer.n} times with her.`, { study: bc.study.n, conversations: bc.conversations.n, faith: bc.faith.n, her: bc.timeWithHer.n }))
 
   // Two workouts on one day are one workout day.
   // Part 20's tier 2: where in-person reps were done, as counts. An observation for the line; never a reason to offer one.
-  const carried = carriedByContext(i.offers, i.outcomes, i.contexts, today)
+  const carried = carriedByContext(sheetOffers, i.outcomes, i.contexts, today)
   if (carried.size) {
     const parts = [...carried.entries()].sort((a, b) => b[1] - a[1]).map(([key, n]) => {
       const [kind, block] = key.split('|') as [DayKind, Block]

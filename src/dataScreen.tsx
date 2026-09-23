@@ -11,7 +11,7 @@ import { useLive } from './live'
 import { unsubscribePush } from './push'
 import { shareOrDownload } from './share'
 
-/** Rule 13 of the plan: anything recorded can be exported or deleted. Rule 11: private items stay out unless ticked. */
+/** Rule 13 of the plan: anything recorded can be exported or deleted. Rule 11: private items stay out unless ticked, and so does the Partner path (Part 27). */
 export function DataScreen({ onClose }: { onClose: () => void }) {
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
@@ -19,6 +19,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const items = useLive(privateItems, [])
   const aims = useLive(aimsSnapshot, [])
   const [includePrivate, setIncludePrivate] = useState(false)
+  const [includePartner, setIncludePartner] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -26,7 +27,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [cloudFailed, setCloudFailed] = useState(false)
   const [hypothesis, setHypothesis] = useState('')
   const [imported, setImported] = useState<string | null>(null)
-  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() } }), [])
+  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() }, pathMarks: await db.pathMarks.toArray(), reflections: await db.reflections.toArray(), monthlyChecks: await db.monthlyChecks.toArray() }), [])
   if (!settings || !all || !wins || !items || !aims || !records) return <section class="screen" />
 
   async function exportAll() {
@@ -34,7 +35,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
     setBusy(true)
     setFailed(false)
     try {
-      const bundle = buildExport(all, wins, items, settings, { includePrivate }, aims, records)
+      const bundle = buildExport(all, wins, items, settings, { includePrivate, includePartner }, aims, records)
       const stamp = dayKey(new Date())
       const files = [
         new File([bundle.json], `life-mirror-${stamp}.json`, { type: 'application/json' }),
@@ -80,6 +81,10 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
         <label class="check">
           <input type="checkbox" checked={includePrivate} data-testid="include-private" onChange={(e) => setIncludePrivate((e.currentTarget as HTMLInputElement).checked)} />
           <span>{copy.data.includePrivate}</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" checked={includePartner} data-testid="include-partner" onChange={(e) => setIncludePartner((e.currentTarget as HTMLInputElement).checked)} />
+          <span>{copy.data.includePartner}</span>
         </label>
         <div class="actions">
           <button type="button" class="pill-quiet" disabled={busy} onClick={() => void exportAll()}>

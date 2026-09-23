@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, PickStepScreen } from './aimsScreen'
 import { PathChangeScreen } from './pathCard'
+import { PartnerNotesScreen } from './partnerScreen'
 import { HerPickScreen, HerScreen } from './herScreen'
 import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
@@ -51,6 +52,7 @@ type View =
   | { kind: 'addAim' }
   | { kind: 'pickStep'; aimId: number }
   | { kind: 'pathChange'; aimId: number }
+  | { kind: 'partnerNotes' }
   | { kind: 'ladder' }
   | { kind: 'follow' }
   | { kind: 'becoming' }
@@ -186,6 +188,8 @@ export function App() {
         return <PickStepScreen aimId={view.aimId} onClose={closeAll} />
       case 'pathChange':
         return <PathChangeScreen aimId={view.aimId} onClose={closeAll} />
+      case 'partnerNotes':
+        return <PartnerNotesScreen onClose={closeAll} />
       case 'ladder':
         return <LadderScreen onClose={closeAll} />
       case 'follow':
@@ -233,6 +237,7 @@ export function App() {
             onFollow={() => open({ kind: 'follow' })}
             onBecoming={() => open({ kind: 'becoming' })}
             onHer={() => open({ kind: 'her' })}
+            onPartnerNotes={() => open({ kind: 'partnerNotes' })}
           />
         )
       case 'settings':

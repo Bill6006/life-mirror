@@ -6708,7 +6708,7 @@
         "effect": 0.2,
         "note": "Reis 2011: familiarity raised attraction in live interaction; a fifth of a step on social energy"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 1,
@@ -6783,7 +6783,7 @@
         "effect": 0.1,
         "note": "Weber 2010: introductions by a third person rated best; thin, a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 1,
@@ -6857,7 +6857,7 @@
         "effect": 0.2,
         "note": "Vorauer 2003: overtures signal less than the sender thinks; a fifth of a step on confidence"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 3,
@@ -6932,7 +6932,7 @@
         "effect": 0.2,
         "note": "Joel 2014: people find refusing harder than they expect; a plain ask with an easy way out; a fifth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 3,
@@ -6990,7 +6990,7 @@
         "effect": 0.1,
         "note": "Finkel 2012: access is what online dating adds; thin, a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 1,
@@ -7048,7 +7048,7 @@
         "effect": 0.1,
         "note": "Pronk and Denissen 2020: a rejection mind-set grows across a session, so the session is short; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 1,
@@ -7122,7 +7122,7 @@
         "effect": 0.1,
         "note": "Finkel 2012: message, then meet; thin, a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 2,
@@ -7196,7 +7196,7 @@
         "effect": 0.1,
         "note": "Ramirez 2015: moderate contact before meeting went best; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 3,
@@ -7262,7 +7262,7 @@
         "effect": 0.1,
         "note": "Laurenceau 1998: responsiveness carries closeness; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 4,
@@ -7327,7 +7327,7 @@
         "effect": 0.1,
         "note": "Reis 2011: responsiveness carried liking; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 4,
@@ -7392,7 +7392,7 @@
         "effect": 0.1,
         "note": "Collins and Miller 1994: disclosure and liking run both ways; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 4,
@@ -7457,7 +7457,7 @@
         "effect": 0.1,
         "note": "Joel 2014: refusing is harder than people expect; a plain ending with an easy no; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 4,
@@ -7524,7 +7524,7 @@
         "effect": 0.1,
         "note": "Gable 2004: active, constructive responses went with closer relationships; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 6,
@@ -7590,7 +7590,7 @@
         "effect": 0.1,
         "note": "Algoe 2010: everyday gratitude lifted the next day for both; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 6,
@@ -7655,7 +7655,7 @@
         "effect": 0.1,
         "note": "Aron 2000; a randomised four-week programme agreed (Coulter and Malouff 2013); a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 6,
@@ -7715,7 +7715,7 @@
         "effect": 0.1,
         "note": "Finkel 2013: reappraisal preserved quality through less conflict distress; a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 6,
@@ -7778,7 +7778,7 @@
         "effect": 0.1,
         "note": "Mallory 2022: quality of sexual communication went with satisfaction; correlational, a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "partner": {
           "stage": 7,

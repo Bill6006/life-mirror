@@ -1,19 +1,20 @@
-import { activeAims, aimRecords, allIntentions, liveSkills, planAim, rungMarks } from './aimFlow'
+import { activeAims, aimRecords, allIntentions, isOpenAimOffer, liveSkills, planAim, rungMarks } from './aimFlow'
 import { cuesFor, planFor, stepFor } from './aims'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import type { CoachBlock } from './factTypes'
-import { pathOn } from './pathFlow'
-import { coachBlock, pathToday } from './pathStage'
+import { pathOn, peopleRowOf } from './pathFlow'
+import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
 import type { LineAction, LineCue } from './brainShared'
 import { hasMove, moveById } from './catalogue'
-import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type BriefFeedback, type BriefLog } from './db'
+import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
 import { briefData, usualFor } from './forecastFlow'
 import { cardFromHypothesis, type Hypothesis } from './hypothesis'
 import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
 import { INGREDIENTS } from './score'
-import { chooseLine, lineFor, phoneReview, rankLines, type ReviewParts } from './situations'
+import { withDefaults } from './settings'
+import { lineFor, phoneReview, rankLines, type ReviewParts } from './situations'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
@@ -39,11 +40,11 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
     db.briefFeedback.toArray(),
     db.brainBriefs.toArray(),
   ])
-  const [offers, outcomes] = await Promise.all([db.offers.toArray(), db.outcomes.toArray()])
+  const [offers, outcomes, pathMarks] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray()])
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate })
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
   const answers = feedback.map((f) => ({ situationId: f.situationId, answer: f.answer }))
@@ -61,10 +62,68 @@ const SHORTLIST = 5
  * by allowlist, for the coach briefing alone. Null while no path is on.
  */
 export async function coachFor(day: string, now: Date = new Date()): Promise<CoachBlock | null> {
-  const [aims, offers, outcomes, ctx] = await Promise.all([activeAims(), db.offers.toArray(), db.outcomes.toArray(), getDayContext(day)])
+  const record = await pathRecord(day)
+  const views = pathViews(record, day, now)
+  return coachBlock(views, record.ctx, day, blockAt(now).block, views.some((v) => v.dateDay))
+}
+
+/** What the paths are computed from. */
+interface PathRecord {
+  aims: Aim[]
+  offers: Offer[]
+  outcomes: Outcome[]
+  ctx: DayContext | null
+  marks: PathMark[]
+  online: boolean
+  checkins: CheckIn[]
+}
+
+/**
+ * Every read the paths need, in one go and straight from the tables: a live query follows native
+ * awaits only so far, so what it shows must be read before anything is computed.
+ */
+async function pathRecord(day: string): Promise<PathRecord> {
+  const [aims, offers, outcomes, ctx, marks, settings, checkins] = await Promise.all([
+    db.aims.filter((a) => a.archivedAt === null).toArray(),
+    db.offers.toArray(),
+    db.outcomes.toArray(),
+    db.days.get(day),
+    db.pathMarks.toArray(),
+    db.settings.get(1),
+    db.checkins.where('day').equals(day).toArray(),
+  ])
+  return { aims, offers, outcomes, ctx: ctx ?? null, marks, online: withDefaults(settings).partnerOnline, checkins }
+}
+
+/** The paths on in this block, computed the one way their rows are: with their declarations, the online switch, and whether today reads hard. */
+function pathViews(r: PathRecord, day: string, now: Date): PathToday[] {
   const { block } = blockAt(now)
-  const views = aims.filter(pathOn).map((aim) => pathToday({ aim, offers, outcomes, ctx, day, block }))
-  return coachBlock(views, ctx, day, block)
+  const lightOnly = lightOnlyDay(r.checkins, day)
+  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, marks: r.marks, online: r.online, lightOnly }))
+}
+
+/**
+ * The facts no line may cite today (Part 27). With two paths on, the People row is one path's by
+ * the slot rule, and a line naming the other path's step or planning it would compete with the
+ * row. The sheet never changes for it, so the free models learn nothing of the Partner path: the
+ * phone's own engine chooses no such line, and a Worker line citing one is not shown that day.
+ */
+export async function offTheRow(day: string, now: Date = new Date()): Promise<Set<string>> {
+  return offOf(await pathRecord(day), day, now)
+}
+
+function offOf(r: PathRecord, day: string, now: Date): Set<string> {
+  const views = pathViews(r, day, now)
+  const off = new Set<string>()
+  if (views.length < 2) return off
+  const row = peopleRowOf(views, r.offers.filter(isOpenAimOffer), day, blockAt(now).block)
+  for (const v of views) if (row && v.aim.id !== row.view.aim.id) for (const kind of ['aim', 'path']) off.add(`${kind}.${v.aim.id}`)
+  return off
+}
+
+/** Whether a line may be shown today: it cites nothing off the People row. */
+function onTheRow(line: { factIds: readonly string[] }, off: ReadonlySet<string>): boolean {
+  return !line.factIds.some((f) => off.has(f))
 }
 
 /** The day's sheet as a record of its own, for the Worker to read, with the coach block beside it; written only when either changed. */
@@ -96,11 +155,17 @@ export interface BriefLine {
   factsDay: string
 }
 
-/** Today's line: the Worker's when it wrote one, else the phone's own; null when neither has anything to say. */
-export async function todaysLine(day: string): Promise<BriefLine | null> {
-  const worker = (await db.brainBriefs.where('day').equals(day).toArray()).filter((b) => b.kind === 'brief').sort((a, b) => (a.at < b.at ? 1 : -1))[0]
+/**
+ * Today's line: the Worker's when it wrote one, else the phone's own; null when neither has anything
+ * to say. A line that would compete with the People row is not shown (Part 27).
+ */
+export async function todaysLine(day: string, now: Date = new Date()): Promise<BriefLine | null> {
+  // Every read first, in one go, so the live query that shows the line tracks each table it reads.
+  const [briefs, log, record] = await Promise.all([db.brainBriefs.where('day').equals(day).toArray(), db.briefLog.where('day').equals(day).toArray(), pathRecord(day)])
+  const off = offOf(record, day, now)
+  const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
   if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1) }
-  const own = (await db.briefLog.where('day').equals(day).toArray()).filter((l) => l.situationId !== null && !l.withdrawnAt).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
+  const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
   if (!own) return null
   return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day }
 }
@@ -111,27 +176,30 @@ export async function todaysLine(day: string): Promise<BriefLine | null> {
  * was taken, with what was done under it. Once its facts no longer hold it is withdrawn, not
  * deleted: it was said, so it rests its situation and the next day's follow-up can find it; the
  * next true situation takes its place. A day with nothing to say is logged as such and looked at
- * again when the record changes.
+ * again when the record changes. A line about a path whose step is not the People row's today is
+ * never chosen, and one already said is withdrawn (Part 27).
  */
 export async function chooseAndLog(day: string, now: Date = new Date()): Promise<void> {
   const existing = await db.briefLog.where('day').equals(day).toArray()
   await ensureDayContext(day, await getSettings())
   const sheet = await factSheet(day, now)
+  const off = await offTheRow(day, now)
   const current = existing.find((e) => e.situationId !== null && !e.withdrawnAt)
   if (current) {
     const match = lineFor(sheet, current.situationId as string)
-    if (match) {
+    // Kept while its situation holds and it does not compete with the People row (Part 27).
+    if (match && onTheRow(match, off)) {
       // Kept while its situation holds, and said as the record now stands: the same row, so a tap stays filed under it.
       // A line already answered, by a tap on it or its one action taken, keeps the words it was answered in.
       const answered = (await feedbackFor(`phone:${day}:${current.id}`)) !== null || (current.action ? (await lineActionState(day, current.action, now))?.state === 'done' : false)
       if (!answered && !sameLine(current, match)) await db.briefLog.update(current.id as number, { text: match.text, factIds: match.factIds, cardIds: match.cardIds, action: match.action ?? undefined })
       return
     }
-    if (current.action && (await lineActionState(day, current.action, now))?.state === 'done') return
+    if (current.action && onTheRow(current, off) && (await lineActionState(day, current.action, now))?.state === 'done') return
   }
   const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
   const feedback = (await db.briefFeedback.toArray()).map((f) => ({ situationId: f.situationId, answer: f.answer }))
-  const choice = chooseLine(sheet, said, feedback)
+  const choice = rankLines(sheet, said, feedback).find((c) => onTheRow(c, off)) ?? null
   const empty = existing.filter((e) => e.situationId === null)
   if (!choice && !current && empty.length) return
   await db.transaction('rw', db.briefLog, async () => {

@@ -325,8 +325,8 @@ export interface Aim {
   /** A Social path converted from A person, which keeps that commitment's whole record. */
   convertedFrom?: 'person'
   convertedAt?: string
-  /** Today's rep, picked by you through Change: offered whatever the day's shape says. */
-  pick?: { day: string; moveId: string }
+  /** Today's rep, picked by you through Change: offered whatever the day's shape says. With two paths on, the later pick is the row's. */
+  pick?: { day: string; moveId: string; at?: string }
   createdAt: string
   archivedAt: string | null
 }
@@ -434,6 +434,60 @@ export interface BrainBrief {
   parts?: { held: string; didNot: string; change: string }
 }
 
+/**
+ * A declaration on a path (Part 27), dated and undone by deleting it (Rule 13): a stage you say you
+ * have reached, a date with its day and nothing else, or a milestone with its details. No name, no
+ * place, and nothing about anyone's answer.
+ */
+export interface PathMark {
+  id?: number
+  path: PathId
+  kind: 'stage' | 'date' | 'milestone'
+  /** The day it is for: a date's own day; a stage's or a milestone's, the day it was declared. */
+  day: string
+  /** For a stage: the stage declared. */
+  stage?: number
+  /** For a milestone: its details, as you wrote them. */
+  note?: string
+  at: string
+}
+
+export type ReflectionKind = 'values' | 'decide' | 'reflection'
+/** The steps a decide-don't-slide note is written before. */
+export type PartnerStep = 'exclusive' | 'families' | 'movingIn' | 'engagement'
+export const PARTNER_STEPS: readonly PartnerStep[] = ['exclusive', 'families', 'movingIn', 'engagement']
+
+/**
+ * A private note on a path (Part 27), typed and read by you: your values and non-negotiables, a
+ * decide-don't-slide note before a step, or a reflection on a date, an experience or a person.
+ * Kept whole in the record; exported only when ticked.
+ */
+export interface Reflection {
+  id?: number
+  path: PathId
+  kind: ReflectionKind
+  /** For a decide-don't-slide note: the step it is written before. */
+  step?: PartnerStep
+  day: string
+  text: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * The monthly private check (Part 27): three questions about your own safety, your own conduct and
+ * a doubt you keep setting aside, yes or no, once a month. A yes to the first or second shows the
+ * app's own fixed help inside the check; nothing here rates anyone.
+ */
+export interface MonthlyCheck {
+  id?: number
+  /** YYYY-MM: one check a month, answered again in place. */
+  month: string
+  day: string
+  answers: { safety: boolean | null; conduct: boolean | null; doubt: boolean | null }
+  at: string
+}
+
 /** A skill from the checklists you chose to watch (Phase F). Its rung moves only by your tap; no count moves it. */
 export interface HerSkill {
   skillId: string
@@ -483,6 +537,9 @@ class LifeMirrorDB extends Dexie {
   briefLog!: Table<BriefLog, number>
   briefFeedback!: Table<BriefFeedback, number>
   brainBriefs!: Table<BrainBrief, string>
+  pathMarks!: Table<PathMark, number>
+  reflections!: Table<Reflection, number>
+  monthlyChecks!: Table<MonthlyCheck, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -650,6 +707,12 @@ class LifeMirrorDB extends Dexie {
       briefLog: '++id, day',
       briefFeedback: '++id, day, briefKey',
       brainBriefs: 'id, day',
+    })
+    // Part 27: the Partner path's own record: declarations, private notes, and the monthly check.
+    this.version(13).stores({
+      pathMarks: '++id, path, kind, day',
+      reflections: '++id, path, kind, day',
+      monthlyChecks: '++id, &month',
     })
     installOutbox(this)
   }
@@ -927,7 +990,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -961,6 +1024,9 @@ export function wipeEverything(): Promise<void> {
       db.brainBriefs.clear(),
       db.herSkills.clear(),
       db.moments.clear(),
+      db.pathMarks.clear(),
+      db.reflections.clear(),
+      db.monthlyChecks.clear(),
     ])
   })
 }

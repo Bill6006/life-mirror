@@ -66,9 +66,9 @@ describe('the catalogue of moves', () => {
     expect(filterTags.map((t) => t.id)).toEqual(['costToAssign', 'startingEffort', 'needs', 'effectWindow'])
   })
 
-  it('carries the Phase 9 proposals as wired at Green: nothing proposed but the path reps awaiting their wiring, the parked entries never offered, the trade made', () => {
+  it('carries the Phase 9 proposals as wired at Green: nothing proposed now both paths are wired, the parked entries never offered, the trade made', () => {
     const proposed = moves.filter(isProposed)
-    for (const m of proposed) expect(m.path, `${m.id} is proposed outside a path`).toBeDefined()
+    expect(proposed.map((m) => m.id)).toEqual([])
     // Part 24: a wired path's own reps are offered through its row alone, never by the day's draw.
     const pathOnly = moves.filter(isPathOnly)
     for (const m of pathOnly) expect(m.path, `${m.id} is kept for a path it is not on`).toBeDefined()

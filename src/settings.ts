@@ -85,6 +85,8 @@ export interface Settings {
   daylight: { from: string; to: string }
   /** One-time setups you said came undone, by the day you said so; each is offered again after that day. */
   setupUndone: Record<string, string>
+  /** The Partner path's optional online channel (Part 27): off until you turn it on; off, none of its reps is offered. */
+  partnerOnline: boolean
   updatedAt: string
 }
 
@@ -120,6 +122,7 @@ export const DEFAULT_SETTINGS: Settings = {
   daylight: { from: '07:00', to: '19:00' },
   setupUndone: {},
   weights: null,
+  partnerOnline: false,
   updatedAt: '',
 }
 
@@ -148,6 +151,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     weights: stored.weights ?? null,
     daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
     setupUndone: stored.setupUndone ?? {},
+    partnerOnline: stored.partnerOnline === true,
   }
 }
 

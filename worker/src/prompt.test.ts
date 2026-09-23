@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import cards from '../../src/library.json'
-import { cardLines, retrieve } from './library'
+import { cardLines, GUARDED_TAGS, retrieve } from './library'
 import { buildMessages, buildReviewMessages, parseOutput, rankedLines } from './prompt'
 import { textOf } from './ai'
 import { lineBriefing, sheetLines, type LineBriefing, type Said } from './briefing'
@@ -78,6 +78,25 @@ describe('what the model is asked', () => {
     expect(picked.every((c) => c.status === 'admitted')).toBe(true)
     expect(retrieve(library, { ...sheet, facts: [] })).toEqual([])
     expect(cardLines(picked.slice(0, 1))).toMatch(/^\[implementation-intentions\] grade A, replicated: /)
+  })
+
+  it('brings a Partner card only on a day a fact carries its tag: a dating card on a declared date day, a relationship card never (Part 27)', () => {
+    const guarded = (c: ClaimCard) => c.tags.some((t) => GUARDED_TAGS.includes(t))
+    expect(library.filter((c) => c.tags.includes('dating')).length).toBeGreaterThan(0)
+    expect(library.filter((c) => c.tags.includes('relationship')).length).toBeGreaterThan(0)
+    // A day full of the tags Partner cards share (social, stress, conversation, kindness, choice) brings none of them.
+    const social: FactSheet = { ...sheet, facts: [...sheet.facts, { id: 'people.seen', tags: ['social', 'conversation', 'kindness', 'choice', 'stress', 'mood', 'gratitude', 'writing', 'parenting', 'faith'], text: 'People around.', values: {}, n: 9 }] }
+    const plain = retrieve(library, social, 60)
+    expect(plain.length).toBeGreaterThan(12)
+    expect(plain.filter(guarded)).toEqual([])
+    // A declared date day brings dating cards, and still no card about a relationship.
+    const dateDay: FactSheet = { ...social, facts: [...social.facts, { id: 'partner.dateDay', tags: ['dating'], text: 'Today is a declared date day.', values: { dateDay: 1 } }] }
+    const onDate = retrieve(library, dateDay, 60)
+    expect(onDate.some((c) => c.tags.includes('dating'))).toBe(true)
+    expect(onDate.filter((c) => c.tags.includes('relationship'))).toEqual([])
+    // A card carrying both needs both.
+    const both: ClaimCard = { ...library[0], id: 'both-tags', tags: ['dating', 'relationship'] }
+    expect(retrieve([both], dateDay)).toEqual([])
   })
 
   it('reads the JSON out of whatever surrounds it, and the text out of whichever shape the model family returns', () => {

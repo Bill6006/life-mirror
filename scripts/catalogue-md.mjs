@@ -40,7 +40,7 @@ md += 'Proposed entries, tags, beliefs and trades are content to read and veto. 
 
 // The paths (Parts 23 and 26): each stage with its reps, the rule, what is counted and never counted, what is left out, and the evidence.
 md += '## Paths\n\n'
-md += 'Two paths, each a staged curriculum of reps, with your Green. The Social path is wired: add it under Aims, and its own reps are offered through its row alone. The Partner path is not wired yet; its reps marked proposed are offered nowhere until it is.\n\n'
+md += 'Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.\n\n'
 for (const p of data.paths) {
   md += `### ${p.name}\n\n${p.what}\n\n`
   for (const st of p.stages) {
@@ -71,7 +71,7 @@ for (const p of data.paths) {
   for (const e of p.excluded) md += `- ${e.what}: ${e.why}\n`
   md += '\n'
   if (p.parents) md += `#### For a parent\n\n${p.parents}\n\n`
-  md += '#### The evidence\n\nClaim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.\n\n'
+  md += '#### The evidence\n\nClaim cards, each source verified at Crossref, admitted once their path was wired; the disputed ones are never cited. A card about dating reaches the day’s line only on a date day you declared, and one about a relationship never does.\n\n'
   for (const id of p.cards) {
     const c = cardOf.get(id)
     if (!c) continue

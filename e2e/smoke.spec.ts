@@ -396,7 +396,7 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await expect(page.locator('#move-ask-one-question .move-status')).toContainText('rung 1 of the participation ladder')
   await expect(page.locator('#move-ask-one-question .move-status')).toContainText('Social path, stage 4, moves the stage')
 
-  // Parts 23 and 26: both paths readable in full, for the veto; the new reps proposed and marked so.
+  // Parts 23 and 26: both paths readable in full; since Parts 24 and 27 their reps are offered through their rows alone.
   await expect(page.getByTestId('path')).toHaveCount(2)
   await expect(page.getByTestId('path-stage')).toHaveCount(13)
   await expect(page.getByTestId('path').first()).toContainText('Stage 1 · Presence')
@@ -409,11 +409,12 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await expect(check).toContainText('inside this check and nowhere else')
   expect(((await check.innerText()).match(/A yes shows the help\./g) ?? []).length).toBe(2)
   await expect(page.getByTestId('path-act').filter({ hasText: 'A yes shows the help.' })).toHaveCount(1)
-  // Part 24 wired the Social path, so its cards are admitted; the Partner path's stay drafts until Part 27.
+  // Parts 24 and 27 wired both paths, so their cards are admitted and their reps kept for their rows.
   await expect(page.getByTestId('path-evidence').first()).toContainText('(admitted;')
-  await expect(page.getByTestId('path-evidence').nth(1)).toContainText('draft, admitted when its path is wired')
+  await expect(page.getByTestId('path-evidence').nth(1)).toContainText('(admitted;')
+  await expect(page.getByTestId('path-evidence').nth(1)).not.toContainText('draft')
   await expect(page.locator('#move-greet-by-name .move-status')).toContainText('Offered through its path’s row alone, never by the day’s draw')
-  await expect(page.locator('#move-re-engage-someone .move-status')).toContainText('Proposed · Green given; joins the candidates when its path is wired')
+  await expect(page.locator('#move-re-engage-someone .move-status')).toContainText('Offered through its path’s row alone, never by the day’s draw')
   await expect(page.getByTestId('path-act').filter({ hasText: 'A relationship course, if you want one' })).toContainText('never needed to move on')
   await expect(page.locator('#move-no-spend-day .move-status')).toContainText('Parked')
   await expect(page.getByRole('heading', { name: 'Set the alarm for leaving, not arriving' })).toBeVisible()
@@ -1099,4 +1100,105 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await expect(picked.getByTestId('aim-step')).toHaveText(Object.entries(ids).find(([, id]) => id === other)?.[0] as string)
   await expect(picked).toContainText('Your pick')
   await expect(picked.getByTestId('aim-resume')).toBeVisible()
+})
+
+test('the Partner path: added by its own tap beside the Social path, one People row on Now, a shared rep counted for both, a date day, and the monthly check’s help only on a yes', async ({ page }) => {
+  // A Wednesday morning marked at the office: people are around by today's shape.
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByTestId('chip-office').click()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Aims: each path added by its own tap, two separate commitments; only one card holds today's rep.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-path-social').click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-path-partner').click()
+  await expect(page.locator('[data-kind="path"]')).toHaveCount(2)
+  const partnerCard = page.locator('[data-path="partner"]')
+  await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')
+  await expect(page.getByTestId('aim-resume')).toHaveCount(1)
+  await expect(page.getByTestId('path-elsewhere')).toHaveCount(1)
+  await expect(partnerCard.getByTestId('partner-online')).toHaveAttribute('aria-pressed', 'false')
+
+  // Now: exactly one People row; a Partner-only rep holds it on a day the bound allows.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const row = page.locator('[data-kind="path"]')
+  await expect(row).toHaveCount(1)
+  await expect(row.getByTestId('path-stage')).toContainText('The Partner path · Stage 1 of 7 · Meeting')
+  expect(['Say hello again to someone you liked talking to', 'Ask a friend for an introduction']).toContain(((await row.getByTestId('aim-step').textContent()) ?? '').trim())
+
+  // Change switches path: a rep both paths hold, picked through Social, is the row's and counts for both.
+  await row.getByTestId('path-change').click()
+  await page.getByTestId('path-switch-social').click()
+  await page.getByTestId('path-choice-greet-by-name').click()
+  await expect(row).toHaveCount(1)
+  await expect(row.getByTestId('aim-step')).toHaveText('Greet someone by name')
+  await expect(row.getByTestId('path-both')).toContainText('Counts for both paths')
+  await row.getByTestId('aim-resume').click()
+  await expect(row.getByTestId('aim-started')).toBeVisible()
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 9, 20))
+  await page.reload()
+  await page.locator('[data-kind="path"]').getByTestId('aim-done').click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  for (const p of ['social', 'partner']) await expect(page.locator(`[data-path="${p}"]`).getByTestId('path-rep-count')).toHaveText('Greet someone by name · done 1 · partly 0 · no 0')
+
+  // A date declared with its day: today moves the path to Dating, and a rep about your conduct on a date is the row's today.
+  await partnerCard.getByTestId('partner-date-2026-09-23').click()
+  await expect(partnerCard.getByTestId('partner-date-2026-09-23')).toHaveAttribute('aria-pressed', 'true')
+  await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 4 of 7 · Dating')
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.locator('[data-kind="path"]')).toHaveCount(1)
+  await expect(page.locator('[data-kind="path"]').getByTestId('path-stage')).toContainText('The Partner path · Stage 4 of 7 · Dating')
+  expect(['On time, phone away', 'Ask, then follow what they say', 'Share something real in turn', 'End the date clearly and kindly']).toContain(((await page.locator('[data-kind="path"]').getByTestId('aim-step').textContent()) ?? '').trim())
+  // A rep with a guardrail says it on the row: their answer is final.
+  await page.locator('[data-kind="path"]').getByTestId('path-change').click()
+  await page.getByTestId('path-choice-date-end-clearly').click()
+  await expect(page.locator('[data-kind="path"]').getByTestId('path-guardrail')).toHaveText('Their answer is final. A second ask after a no is never offered.')
+
+  // The next stage declared in one tap, with nothing asked first; the card then says this month's check is open.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await partnerCard.getByTestId('partner-declare').click()
+  await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 5 of 7 · Deciding')
+  await expect(partnerCard.getByTestId('partner-declared')).toContainText('Undo')
+  await expect(partnerCard.getByTestId('partner-check-open')).toBeVisible()
+
+  // Notes and checks: an engagement is one tap and needs no course; the course is a suggestion beside its note.
+  await partnerCard.getByRole('button', { name: /^Notes and checks/ }).click()
+  await expect(page.getByTestId('partner-notes')).toBeVisible()
+  await page.getByTestId('partner-step-engagement').click()
+  await expect(page.getByTestId('partner-milestone')).toContainText('We got engaged')
+  await expect(page.getByTestId('partner-course')).toContainText('never needed to move on')
+  await page.getByTestId('partner-reflection-input').fill('A good walk by the river.')
+  await page.getByTestId('partner-reflection-keep').click()
+  await expect(page.getByTestId('partner-reflection')).toContainText('A good walk by the river.')
+
+  // The monthly check: a doubt alone shows nothing; a yes to safety or conduct shows the fixed help, inside the check.
+  await expect(page.getByTestId('check-help')).toHaveCount(0)
+  await page.getByTestId('check-doubt-yes').click()
+  await expect(page.getByTestId('check-doubt-yes')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('check-help')).toHaveCount(0)
+  await page.getByTestId('check-safety-yes').click()
+  await expect(page.getByTestId('monthly-check').getByTestId('check-help')).toContainText('1-800-799-7233')
+  await page.getByTestId('check-safety-yes').click()
+  await expect(page.getByTestId('check-help')).toHaveCount(0)
+  await page.getByTestId('check-conduct-yes').click()
+  await expect(page.getByTestId('check-help')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+
+  // Answered this month, so the card's prompt is gone; the help appears on no other screen.
+  await expect(partnerCard.getByTestId('partner-check-open')).toHaveCount(0)
+  await expect(page.getByTestId('check-help')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.getByTestId('check-help')).toHaveCount(0)
+  await expect(page.locator('body')).not.toContainText('1-800-799-7233')
+
+  // Undo: the date deleted, the stage recomputed from what is left.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await partnerCard.getByTestId('partner-declared-undo').click()
+  await partnerCard.getByTestId('partner-date-2026-09-23').click()
+  await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')
 })

@@ -1,8 +1,8 @@
-import { addDays, daysBetween, type Block } from './blocks'
+import { addDays, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE, pathReps, paths, type Effort, type Move, type Path, type PathId, type PathPlace, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import type { CoachBlock } from './factTypes'
-import type { Aim, DayContext, Offer, Outcome } from './db'
+import type { Aim, CheckIn, DayContext, Offer, Outcome, PathMark } from './db'
 import { fill } from './format'
 import { inPerson, peopleAround } from './people'
 
@@ -147,6 +147,14 @@ export interface EligibilityInput {
   yesterday: string | null
   /** Reps done or partly done today, from any offer. */
   doneToday: ReadonlySet<string>
+  /** Part 27: a declared date day, the Partner path's tier 1 for the reps about his own conduct on a date. */
+  dateDay?: boolean
+  /** Part 27: the optional online channel is on. */
+  online?: boolean
+  /** Part 27: the online channel's reps offered in the last seven days. */
+  onlineThisWeek?: number
+  /** Part 27: the record reads high stress or overwhelm today, so only light reps fit. */
+  lightOnly?: boolean
 }
 
 export interface Eligibility {
@@ -160,20 +168,73 @@ export interface Eligibility {
   nobodyAround: boolean
 }
 
-/** The reps that fit now: the stage's (or the re-entry set's), in person only when tier 1 says someone is around, not yesterday's rep, not done today. */
+/** The first stage a path moves by declaration alone: on the Partner path, Dating, whose reps are about his own conduct on a date. */
+export function dateStageOf(path: Path): number | null {
+  return path.stages.find((s) => s.advance === 'declared')?.n ?? null
+}
+
+/**
+ * The reps that fit now: the stage's (or the re-entry set's), not yesterday's rep, not done today.
+ * In person only when tier 1 says someone is around; a date rep only on a declared date day, which
+ * is the Partner path's tier 1; a rep with a partner in the stages after it is not placed by who
+ * else is around (the day record does not place a partner). The online channel's reps only while
+ * it is on and under its weekly bound, and on a day the record reads high stress or overwhelm,
+ * light reps alone (Part 27).
+ */
 export function eligibility(i: EligibilityInput): Eligibility {
   const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
-  const stageReps = pathReps(i.path.id, stage).filter(offerable)
+  const channel = i.path.channels?.find((c) => c.id === 'online')
+  const stageReps = pathReps(i.path.id, stage).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true))
+  const dating = dateStageOf(i.path)
+  const declared = new Set(i.path.stages.filter((st) => st.advance === 'declared').map((st) => st.n))
   let nobodyAround = false
   const eligible = stageReps.filter((m) => {
-    if (inPerson(m) && !i.around) {
+    const place = m.path?.[i.path.id]
+    if (place && place.stage === dating) {
+      if (!i.dateDay) return false
+    } else if (!(place && declared.has(place.stage)) && inPerson(m) && !i.around) {
       nobodyAround = true
       return false
     }
+    if (m.channel === 'online' && (i.onlineThisWeek ?? 0) >= (channel?.maxRepsPerWeek ?? 0)) return false
+    if (i.lightOnly && m.effort !== 'low') return false
     return m.id !== i.yesterday && !i.doneToday.has(m.id)
   })
   return { stage, stageReps, eligible, nobodyAround }
 }
+
+/**
+ * The stage declared on a path (Part 27): the highest stage you declared, and a date declared on
+ * any day moves the Partner path to Dating at once. Only declarations made by today count; a
+ * deleted one counts for nothing (Rule 13).
+ */
+export function declaredStage(path: Path, marks: readonly PathMark[], today: string): { stage: number; day: string } | null {
+  const dating = dateStageOf(path)
+  let best: { stage: number; day: string } | null = null
+  for (const m of marks) {
+    if (m.path !== path.id) continue
+    const on = dayKey(new Date(m.at))
+    if (on > today) continue
+    const stage = m.kind === 'stage' ? (m.stage ?? 0) : m.kind === 'date' && dating !== null ? dating : 0
+    if (stage > (best?.stage ?? 1)) best = { stage, day: on }
+  }
+  return best
+}
+
+/** Whether today is a declared date day on a path. */
+export function isDateDay(path: Path, marks: readonly PathMark[], today: string): boolean {
+  return marks.some((m) => m.path === path.id && m.kind === 'date' && m.day === today)
+}
+
+/** Whether the record reads high stress or overwhelm today: the day's latest answer to either at its two hardest phrases. */
+export function lightOnlyDay(checkins: readonly Pick<CheckIn, 'day' | 'block' | 'answers'>[], today: string): boolean {
+  const todays = checkins.filter((c) => c.day === today).sort((a, b) => blockIndex(b.block) - blockIndex(a.block))
+  const latest = (id: 'stress' | 'overwhelm') => todays.find((c) => c.answers[id] !== undefined)?.answers[id]
+  return (latest('stress') ?? 0) >= HARD_POSITION || (latest('overwhelm') ?? 0) >= HARD_POSITION
+}
+
+/** Stress and overwhelm at this position or above ("Wound tight", "Crowded") read as a hard day. */
+export const HARD_POSITION = 4
 
 /** Answers of No in a row, the latest first; a rep passed over without an answer neither counts nor breaks the run. */
 export function refusalsInARow(entries: readonly PathEntry[]): number {
@@ -209,6 +270,8 @@ export interface RepPick {
   propensities: Record<string, number>
   /** A draw that leaned toward the reps he completes, after enough draws in the stage. */
   leaning: boolean
+  /** Part 27: which of the Partner path's reps the People row's slot rule drew among: its own, or those it shares with Social. */
+  turn?: 'own' | 'shared'
 }
 
 const EFFORT_ORDER: Record<Effort, number> = { low: 0, medium: 1, high: 2 }
@@ -308,7 +371,8 @@ export function whyThisRep(pick: RepPick): string {
             ? c.rotate
             : fill(pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
   const kinds = hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
-  return pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
+  const said = pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
+  return pick.turn ? `${c.turn[pick.turn]} ${said}` : said
 }
 
 /** A number in [0, 1) fixed by its text: the same commitment, day and block draw the same tie until the record changes. */
@@ -374,6 +438,7 @@ export function stageWords(path: Path, stage: number): string {
 }
 
 export interface PathToday {
+  aim: Aim
   path: Path
   entries: PathEntry[]
   state: StageState
@@ -381,6 +446,8 @@ export interface PathToday {
   /** Today's rep: yours through Change, else the app's pick; null when no rep of the stage fits this block. */
   pick: RepPick | null
   around: boolean
+  /** Part 27: today is a declared date day on this path. */
+  dateDay: boolean
 }
 
 export interface PathTodayInput {
@@ -390,22 +457,81 @@ export interface PathTodayInput {
   ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'> | null
   day: string
   block: Block
+  /** Part 27: the path's declarations: stages, date days and milestones. */
+  marks?: readonly PathMark[]
+  /** Part 27: the Partner path's online channel is on. */
+  online?: boolean
+  /** Part 27: the record reads high stress or overwhelm today. */
+  lightOnly?: boolean
 }
 
 /** Everything a path's row, card, fact and coach block show for this block, computed one way. */
 export function pathToday(i: PathTodayInput): PathToday {
   const path = pathById(i.aim.path as PathId)
+  const marks = i.marks ?? []
   const entries = pathEntries(path.id, i.offers, i.outcomes, i.aim.convertedFrom === 'person')
-  const state = stageOf(path, entries, i.day)
+  const state = stageOf(path, entries, i.day, declaredStage(path, marks, i.day))
   const around = peopleAround(i.ctx, i.block)
   const yesterday = entries.filter((e) => e.day === addDays(i.day, -1)).pop()?.moveId ?? null
   const doneToday = new Set(i.outcomes.filter((x) => x.day === i.day && (x.outcome === 'done' || x.outcome === 'partly')).map((x) => x.moveId))
-  const elig = eligibility({ path, state, around, yesterday, doneToday })
+  const dateDay = isDateDay(path, marks, i.day)
+  const weekAgo = addDays(i.day, -6)
+  const onlineThisWeek = entries.filter((e) => e.day >= weekAgo && e.day <= i.day && hasMove(e.moveId) && moveById(e.moveId).channel === 'online').length
+  // Light reps only on a hard day is the Partner path's rule (Part 27).
+  const elig = eligibility({ path, state, around, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true })
   const mine = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
   const pick: RepPick | null = mine
     ? { moveId: mine.id, setting: settingFor(mine, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [mine.id], propensities: { [mine.id]: 1 }, leaning: false }
     : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage)
-  return { path, entries, state, elig, pick, around }
+  return { aim: i.aim, path, entries, state, elig, pick, around, dateDay }
+}
+
+/** A rep the Partner path holds and the Social path does not. */
+export function partnerOnly(moveId: string): boolean {
+  return Boolean(placeOn('partner', moveId)) && !placeOn('social', moveId)
+}
+
+/** Days in seven a Partner-only rep may take the People row (Part 27). */
+export const PARTNER_ONLY_DAYS = 2
+
+/** The paths on today that hold a rep: it counts once for each. */
+export function pathsHolding(moveId: string, on: readonly PathId[]): PathId[] {
+  return on.filter((p) => Boolean(placeOn(p, moveId)))
+}
+
+export interface PeopleRow {
+  view: PathToday
+  pick: RepPick | null
+  /** The paths the rep counts for. */
+  paths: PathId[]
+}
+
+/**
+ * One People row, whatever paths are on (Part 27). A rep you picked through Change is the row's,
+ * the later pick of two. Otherwise a Partner-only rep takes the day when the Partner path is on,
+ * one fits, and Partner-only reps took fewer than two of the last seven days; otherwise Social's
+ * pick, which counts for both paths when both hold it. With the Partner path alone and its bound
+ * reached, the reps it shares with Social.
+ */
+export function peopleRow(social: PathToday | null, partner: PathToday | null, today: string, draw: number): PeopleRow | null {
+  const on = [social, partner].filter((v): v is PathToday => v !== null)
+  if (!on.length) return null
+  const ids = on.map((v) => v.path.id)
+  const row = (view: PathToday, pick: RepPick | null): PeopleRow => ({ view, pick, paths: pick ? pathsHolding(pick.moveId, ids) : [view.path.id] })
+  const yours = on.filter((v) => v.pick?.rule === 'you').sort((a, b) => ((a.aim.pick?.at ?? '') < (b.aim.pick?.at ?? '') ? 1 : -1))
+  if (yours.length) return row(yours[0], yours[0].pick)
+  if (partner) {
+    const weekAgo = addDays(today, -6)
+    const days = new Set(partner.entries.filter((e) => e.day >= weekAgo && e.day <= today && partnerOnly(e.moveId)).map((e) => e.day))
+    const only = partner.elig.eligible.filter((m) => partnerOnly(m.id))
+    const turn = (reps: readonly Move[], t: 'own' | 'shared') => {
+      const pick = pickRep(partner.path, reps, partner.entries, today, draw, partner.elig.stage)
+      return pick ? { ...pick, turn: t } : null
+    }
+    if (days.size < PARTNER_ONLY_DAYS && only.length) return row(partner, turn(only, 'own'))
+    if (!social) return row(partner, turn(partner.elig.eligible.filter((m) => !partnerOnly(m.id)), 'shared'))
+  }
+  return row(social as PathToday, (social as PathToday).pick)
 }
 
 /** Today's shape for a block, in words, from the day record alone (tier 1). */

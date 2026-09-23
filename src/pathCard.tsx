@@ -1,14 +1,16 @@
+import type { ComponentChildren } from 'preact'
+import { useState } from 'preact/hooks'
 import { When, useQuarterMinute } from './aimCard'
 import { lastLine, type CueCount } from './aims'
 import { blockAt, type Block } from './blocks'
-import { moveById, type Move, type Path, type SettingKind } from './catalogue'
+import { moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
 import { copy } from './copy'
-import { db, getDayContext, type Aim, type Cue, type DayContext, type Intention, type Offer } from './db'
+import { db, getDayContext, getSettings, type Aim, type Cue, type DayContext, type Intention, type Offer } from './db'
 import { fill } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { setPathPick } from './pathFlow'
-import { countsByRep, pathName, pathToday, stageWords, whyThisRep, type PathToday } from './pathStage'
+import { countsByRep, dateStageOf, pathById, pathName, pathToday, stageWords, whyThisRep, type PathToday } from './pathStage'
 import { carriedByContext, carriedLine, dayKindOf, inPerson, orderByEvidence } from './people'
 
 // A path on the screen (Part 24). On Now, one People row: the rep, its one line, its minutes and
@@ -27,6 +29,10 @@ export interface PathShared {
   plan: Intention | null
   /** Tier 2's one counted line for this context, shown only under "no people rep fits". */
   carried: string | null
+  /** The paths the rep on show counts for: both, when both paths are on and hold it (Part 27). */
+  paths?: readonly PathId[]
+  /** On a path's card, when today's one People rep is another path's: that path, and whether the rep counts for this one too. */
+  elsewhere?: { path: PathId; shared: boolean } | null
   onResume: () => void
   onChange: () => void
   onPlan: (cue: Cue, time: string) => void
@@ -51,8 +57,8 @@ function ChangeTap({ onChange }: { onChange: () => void }) {
   )
 }
 
-/** The rep in a row: its cue as its one line, then its minutes, where, whose pick, and Change. */
-function RepLines({ path, rep, setting, yours, onChange }: { path: Path; rep: Move; setting: SettingKind | null; yours: boolean; onChange: (() => void) | null }) {
+/** The rep in a row: its cue as its one line, then its minutes, where, whose pick, whether it counts for both paths, and Change; a rep with a guardrail says it (Part 26: one ask, and anything but a yes is final). */
+function RepLines({ path, rep, setting, yours, both, onChange }: { path: Path; rep: Move; setting: SettingKind | null; yours: boolean; both: boolean; onChange: (() => void) | null }) {
   const moves = rep.path?.[path.id]?.advances
   return (
     <>
@@ -65,6 +71,12 @@ function RepLines({ path, rep, setting, yours, onChange }: { path: Path; rep: Mo
         {fill(copy.catalogue.minutes, { n: String(rep.minutes) })}
         {setting && ` · ${whereWords(setting)}`}
         {yours && ` · ${copy.path.yours}`}
+        {both && (
+          <span data-testid="path-both">
+            {' · '}
+            {copy.path.both}
+          </span>
+        )}
         {onChange && (
           <>
             {' · '}
@@ -75,6 +87,11 @@ function RepLines({ path, rep, setting, yours, onChange }: { path: Path; rep: Mo
       {!moves && (
         <span class="sub" data-testid="path-warmup">
           {copy.path.warmUp}
+        </span>
+      )}
+      {rep.guardrail && (
+        <span class="sub ink" data-testid="path-guardrail">
+          {rep.guardrail}
         </span>
       )}
     </>
@@ -99,7 +116,7 @@ export function PathRow(p: PathShared) {
             <span class="aim-row-title" data-testid="aim-step">
               {rep.name}
             </span>
-            <RepLines path={p.pt.path} rep={rep} setting={setting} yours={!p.open && p.pt.pick?.chosenBy === 'you'} onChange={p.open ? null : p.onChange} />
+            <RepLines path={p.pt.path} rep={rep} setting={setting} yours={!p.open && p.pt.pick?.chosenBy === 'you'} both={(p.paths?.length ?? 0) > 1} onChange={p.open ? null : p.onChange} />
           </>
         ) : (
           <>
@@ -140,8 +157,8 @@ export function PathRow(p: PathShared) {
   )
 }
 
-/** On Aims: the path's card. */
-export function PathCard(p: PathShared & { today: string; counts: readonly CueCount[]; onPause: (paused: boolean) => void; onRemove: () => void }) {
+/** On Aims: the path's card. A path's own controls, such as the Partner path's, sit under its counts. */
+export function PathCard(p: PathShared & { today: string; counts: readonly CueCount[]; onPause: (paused: boolean) => void; onRemove: () => void; children?: ComponentChildren }) {
   const c = copy.path
   useQuarterMinute()
   const path = p.pt.path
@@ -169,6 +186,17 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         <p class="note" data-testid="path-paused">
           {c.paused}
         </p>
+      ) : p.elsewhere && !p.open ? (
+        <div class="calc">
+          <p class="calc-line" data-testid="path-elsewhere">
+            {fill(p.elsewhere.shared ? c.elsewhereShared : c.elsewhere, { path: pathById(p.elsewhere.path).name })}
+          </p>
+          <div class="actions">
+            <button type="button" class="textbtn" data-testid="path-change" onClick={p.onChange}>
+              {c.change}
+            </button>
+          </div>
+        </div>
       ) : (
         <div class="calc">
           {rep ? (
@@ -179,10 +207,16 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               <p class="calc-line" data-testid="path-rep-what">
                 {rep.what}
               </p>
+              {rep.guardrail && (
+                <p class="calc-line ink" data-testid="path-guardrail">
+                  {rep.guardrail}
+                </p>
+              )}
               <p class="calc-line">
                 {fill(copy.catalogue.minutes, { n: String(rep.minutes) })}
                 {setting && ` · ${whereWords(setting)}`}
                 {!p.open && p.pt.pick?.chosenBy === 'you' && ` · ${c.yours}`}
+                {(p.paths?.length ?? 0) > 1 && ` · ${c.both}`}
               </p>
               {!rep.path?.[path.id]?.advances && (
                 <p class="calc-line" data-testid="path-warmup">
@@ -271,6 +305,8 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         </div>
       )}
 
+      {p.children}
+
       <div class="actions">
         <button type="button" class="textbtn" data-testid="path-pause" onClick={() => p.onPause(!paused)}>
           {paused ? c.unpause : c.pause}
@@ -283,22 +319,33 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
   )
 }
 
-/** Change: every rep of the stage, in-person ones first where the record shows this context has carried one; a rep you pick is today's, whatever the shape says. */
+/**
+ * Change: every rep of the stage, in-person ones first where the record shows this context has
+ * carried one; a rep you pick is today's, whatever the shape says. With both paths on it switches
+ * path too: your later pick is the People row's (Part 27).
+ */
 export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: () => void }) {
   const now = new Date()
   const { day, block } = blockAt(now)
-  const aim = useLive(() => db.aims.get(aimId).then((a) => a ?? null), [aimId])
+  const [id, setId] = useState(aimId)
+  const aim = useLive(() => db.aims.get(id).then((a) => a ?? null), [id])
+  const others = useLive(() => db.aims.filter((a) => a.archivedAt === null && a.kind === 'path' && !a.pausedAt && a.id !== id).toArray(), [id])
   const offers = useLive(() => db.offers.toArray(), [])
   const outcomes = useLive(() => db.outcomes.toArray(), [])
   const contexts = useLive(() => db.days.toArray(), [])
+  const marks = useLive(() => db.pathMarks.toArray(), [])
+  const settings = useLive(getSettings, [])
   const ctx = useLive(() => getDayContext(day), [day])
-  if (aim === undefined || !offers || !outcomes || !contexts || ctx === undefined) return <section class="screen" />
+  if (aim === undefined || !others || !offers || !outcomes || !contexts || !marks || !settings || ctx === undefined) return <section class="screen" />
   if (aim === null || aim.kind !== 'path') {
     onClose()
     return <section class="screen" />
   }
   const c = copy.path
-  const pt = pathToday({ aim, offers, outcomes, ctx, day, block })
+  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, marks, online: settings.partnerOnline })
+  const dating = dateStageOf(pt.path)
+  // A rep with a partner, in the stages you declare, is not placed by who else is around (Part 27).
+  const declared = new Set(pt.path.stages.filter((s) => s.advance === 'declared').map((s) => s.n))
   const carried = carriedByContext(offers, outcomes, contexts, day)
   const list = orderByEvidence(pt.elig.stageReps, dayKindOf(day, ctx), block, carried)
   return (
@@ -310,16 +357,32 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
         {pathName(pt.path)} · {stageWords(pt.path, pt.elig.stage)}
       </p>
       <p class="note faint">{c.changeNote}</p>
+      {others.length > 0 && (
+        <div class="card">
+          <ul class="rows">
+            {others.map((o) => (
+              <li key={o.id}>
+                <button type="button" class="row" data-testid={`path-switch-${o.path}`} onClick={() => setId(o.id as number)}>
+                  <span class="row-main">{fill(c.switchTo, { path: pathById(o.path as PathId).name })}</span>
+                  <span class="chev" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div class="card">
         <ul class="rows">
           {list.map((m) => (
             <li key={m.id}>
-              <button type="button" class="row" data-testid={`path-choice-${m.id}`} onClick={() => void setPathPick(aimId, m.id, day).then(onClose)}>
+              <button type="button" class="row" data-testid={`path-choice-${m.id}`} onClick={() => void setPathPick(id, m.id, day).then(onClose)}>
                 <span class="row-main">
                   {m.name}
                   <span class="sub">
                     {fill(copy.catalogue.minutes, { n: String(m.minutes) })} · {m.path?.[pt.path.id]?.advances ? c.movesStage : copy.catalogue.paths.movesNothing}
-                    {inPerson(m) && !pt.around ? ` · ${c.notAround}` : ''}
+                    {m.path?.[pt.path.id]?.stage === dating && !pt.dateDay ? ` · ${c.notDateDay}` : inPerson(m) && !pt.around && !declared.has(m.path?.[pt.path.id]?.stage ?? 0) ? ` · ${c.notAround}` : ''}
                   </span>
                 </span>
                 <span class="chev" aria-hidden="true">

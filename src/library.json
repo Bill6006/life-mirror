@@ -2747,7 +2747,7 @@
     "caveats": "How couples meet describes the market, not what makes a relationship good.",
     "app": "Why the Partner path has an online channel at all: optional, bounded, off until chosen, and never a route to a stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "online-dating-access",
@@ -2771,7 +2771,7 @@
     "caveats": "A review from before most of today’s apps; read from the authors’ summary.",
     "app": "The online channel is short and points at meeting: one honest profile, a time-boxed browse, one message at a time, a short public meeting proposed soon.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "meeting-after-some-contact",
@@ -2794,7 +2794,7 @@
     "caveats": "Self-report of a first meeting; the turning point is the authors’ estimate.",
     "app": "The online channel proposes a short public meeting within a few weeks of first contact, not after months of messages.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "rejection-mindset-online",
@@ -2817,7 +2817,7 @@
     "caveats": "Session-level choices; what it means for relationships formed is not measured.",
     "app": "A browse is fifteen minutes and stops, whatever was found.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "friends-first",
@@ -2848,7 +2848,7 @@
     "caveats": "Mostly students; relationships that begin as friendships may differ in other ways too.",
     "app": "The Partner path’s first stages share the Social path’s reps: the people your week already holds are where most of it starts.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "ideals-and-desire",
@@ -2883,7 +2883,7 @@
     "caveats": "Physical attractiveness does predict initial evaluations moderately; ideals are not useless, only weak on specific traits.",
     "app": "No type list and no compatibility score anywhere in the path.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "plain-openers",
@@ -2910,7 +2910,7 @@
     "caveats": "Old, small, rated not lived; enough to rule lines out, not to write any.",
     "app": "The asking-a-friend and introduce-yourself reps; no lines anywhere in the path.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "flirting-detection",
@@ -2937,7 +2937,7 @@
     "caveats": "Laboratory judgements of strangers.",
     "app": "No rep reads signals; the say-your-interest-plainly rep says it in one sentence instead.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "turning-down-is-hard",
@@ -2960,7 +2960,7 @@
     "caveats": "A yes given to spare feelings is one more reason a yes is never counted.",
     "app": "Every ask on the path is plain and easy to decline, and a date ends with a clear, kind word from you.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "rejection-and-self-definition",
@@ -2984,7 +2984,7 @@
     "caveats": "Recalled and imagined rejection.",
     "app": "A rep is complete whatever the answer, so a no is never a verdict on you in the record.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "persistence-after-no",
@@ -3007,7 +3007,7 @@
     "caveats": "A review of harm, read as a boundary rather than a statistic.",
     "app": "One ask, and anything other than a yes is final; a second ask after a no is never offered.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "stranger-harassment",
@@ -3030,7 +3030,7 @@
     "caveats": "Surveys of students.",
     "app": "Approaching strangers in the street is excluded from the Partner path.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "pickup-tactics-sexism",
@@ -3052,7 +3052,7 @@
     "caveats": "Correlational surveys.",
     "app": "Lines, tactics and games are excluded from the Partner path.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "family-transitions",
@@ -3088,7 +3088,7 @@
     "caveats": "Mostly mothers; the timing of introductions is expert opinion.",
     "app": "General guidance for a parent in the Partner path’s text; the path never schedules an introduction.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "faith-and-couples",
@@ -3120,7 +3120,7 @@
     "caveats": "Correlational; selection is likely.",
     "app": "Context for the Partner path; never a requirement of anyone.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "relationship-quality-predictors",
@@ -3142,7 +3142,7 @@
     "caveats": "Self-report; prediction, not cause.",
     "app": "Choosing well is attending to how the relationship works and to your own side, never a quiz of traits.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "similarity-in-couples",
@@ -3168,7 +3168,7 @@
     "caveats": "Personality similarity; shared values were measured less.",
     "app": "No compatibility score and no opposites-attract either.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "dealbreakers",
@@ -3191,7 +3191,7 @@
     "caveats": "Stated, not observed, choices.",
     "app": "The private values-and-non-negotiables note at the Deciding stage, typed by you and read by you.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "own-side-can-change",
@@ -3226,7 +3226,7 @@
     "caveats": "Change is modest and slow; the trait studies are mostly clinical interventions.",
     "app": "The Partner path works on your own side, the part you can change, and never labels a partner’s attachment.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "sliding-versus-deciding",
@@ -3257,7 +3257,7 @@
     "caveats": "The general cohabitation effect is contested; selection is part of it.",
     "app": "The decide-don’t-slide note before each step at the Deciding stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "relationship-education",
@@ -3293,7 +3293,7 @@
     "caveats": "Modest effects; reading alone did little.",
     "app": "Education before a commitment at the Deciding stage: a course together, not a book on your own.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "warning-signs",
@@ -3316,7 +3316,7 @@
     "caveats": "Two studies; a sign is a reason to look closer, not a verdict on a person.",
     "app": "The monthly private check asks about your own safety and conduct; its fixed help is the app’s, never a model’s.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "couple-communication",
@@ -3347,7 +3347,7 @@
     "caveats": "Associations of modest size; they do not sort couples into futures.",
     "app": "The reappraisal rep and the good-news rep work on the talk itself; nothing tallies conflicts.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "good-news-responses",
@@ -3374,7 +3374,7 @@
     "caveats": "Correlational and observational.",
     "app": "The respond-to-good-news rep at the Building stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "gratitude-in-couples",
@@ -3401,7 +3401,7 @@
     "caveats": "Modest effects in the experiment.",
     "app": "The thank-them-specifically rep at the Building stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "novel-activities-together",
@@ -3428,7 +3428,7 @@
     "caveats": "Short tasks and a self-selected online sample.",
     "app": "The something-new-together rep at the Building stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "conflict-reappraisal",
@@ -3452,7 +3452,7 @@
     "caveats": "One study; replication attempts are worth watching.",
     "app": "The reappraise-a-disagreement rep at the Building stage, a few times a year.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "sexual-communication",
@@ -3475,7 +3475,7 @@
     "caveats": "Correlational.",
     "app": "The talk-openly rep at the Keeping stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "forgiveness-and-sacrifice",
@@ -3502,7 +3502,7 @@
     "caveats": "Context matters in both directions.",
     "app": "No rep asks for unconditional forgiveness or sacrifice.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "stress-spillover",
@@ -3533,7 +3533,7 @@
     "caveats": "Newlyweds; stress is self-reported.",
     "app": "On a day the record reads high stress or overwhelm, only light reps are offered and no evaluative prompt is shown.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "diaries-can-react",
@@ -3558,7 +3558,7 @@
     "caveats": "Non-randomised control; small reactivity signals.",
     "app": "The Partner path asks about one moment and your own part in it, never a daily verdict on the relationship.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "divorce-prediction-disputed",

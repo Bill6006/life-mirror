@@ -16,6 +16,25 @@ export const BANNED_WORDS: readonly string[] = ['failed', 'bad', 'lazy', 'behind
 export const MAX_WORDS = 60
 
 /**
+ * Rating and outcome language (Parts 23, 26 and 27): no path text, and no line that cites a path
+ * fact, rates a person or counts an outcome as success. A negation is guard language ("never
+ * rated", "not counted"), so it is struck out before the test. The catalogue's lexical test reads
+ * these same two lists.
+ */
+export const OUTCOME_WORDS = /\b(rate|rates|rating|rated|score|scores|scored|scoring|rank|ranks|ranking|ranked|success|successful|succeed|succeeded|win|wins|won|conquest|matches|reply rate|attractive|attractiveness|hot|league|mate value|close the deal|pulled)\b|number of (dates|women|men|people)/i
+export const NEGATED_OUTCOME = /\b(never|not|no)\s+(rate|rates|rated|rating|scored|ranked|counted)\b/gi
+
+/** Whether a text rates a person or counts an outcome, once its negations are struck out. */
+export function speaksOfOutcomes(text: string): boolean {
+  return OUTCOME_WORDS.test(text.replace(NEGATED_OUTCOME, ''))
+}
+
+/** A fact about a path: its stage and reps, or the Partner path's date day. */
+export function isPathFact(id: string): boolean {
+  return id.startsWith('path.') || id.startsWith('partner.')
+}
+
+/**
  * The repeat check (Part 28), deterministic: a line sharing at least this share of its content
  * words with a line said on one of the last seven days is a near-repeat. Engineering judgment:
  * an echo with a few words changed is caught; the same subject from a new angle is not.
@@ -121,6 +140,7 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   // Caffeine (Part 22): an untapped window is none reported, never caffeine-free; and caffeine is an association, never a cause.
   if (CAFFEINE_FREE.test(text)) return 'calls a window caffeine-free; none reported is not none'
   if (CAFFEINE_WORDS.test(text) && CAUSAL_WORDS.test(text)) return 'speaks of caffeine as a cause'
+  if (factIds.some(isPathFact) && speaksOfOutcomes(text)) return 'rates a person or counts an outcome, in a line about a path'
   for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {

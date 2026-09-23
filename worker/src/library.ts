@@ -15,6 +15,14 @@ export async function loadLibrary(url: string, fetcher: typeof fetch = fetch): P
 }
 
 /**
+ * The Partner path's concepts (Part 27). A card carrying one is retrieved only on a day a sheet
+ * fact carries that same tag: the sheet holds the Partner path as the date-day fact alone, so a
+ * dating card may reach a declared date day's line, and a card about a relationship reaches none.
+ * A shared tag such as social or stress never carries one in.
+ */
+export const GUARDED_TAGS: readonly string[] = ['dating', 'relationship']
+
+/**
  * The cards for the day: breadth first, the strongest card for each concept the facts touch,
  * heaviest concept first, so a nap fact brings its nap card even on a day full of study; then
  * depth, the rest by how much of the day they touch. Deterministic, and a shorter list is a
@@ -23,6 +31,7 @@ export async function loadLibrary(url: string, fetcher: typeof fetch = fetch): P
 export function retrieve(cards: readonly ClaimCard[], sheet: FactSheet, limit = 12): ClaimCard[] {
   const weight = new Map<string, number>()
   for (const f of sheet.facts) for (const t of f.tags) weight.set(t, (weight.get(t) ?? 0) + 1 + Math.min(3, (f.n ?? 0) / 3))
+  const pool = cards.filter((c) => c.tags.filter((t) => GUARDED_TAGS.includes(t)).every((t) => weight.has(t)))
   const score = (c: ClaimCard) => c.tags.reduce((s, t) => s + (weight.get(t) ?? 0), 0)
   const byId = (a: ClaimCard, b: ClaimCard) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
   const picked: ClaimCard[] = []
@@ -31,10 +40,10 @@ export function retrieve(cards: readonly ClaimCard[], sheet: FactSheet, limit = 
   }
   const tags = [...weight.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).map(([t]) => t)
   for (const t of tags) {
-    const best = cards.filter((c) => c.tags.includes(t)).sort((a, b) => ORDER[a.grade] - ORDER[b.grade] || score(b) - score(a) || byId(a, b))[0]
+    const best = pool.filter((c) => c.tags.includes(t)).sort((a, b) => ORDER[a.grade] - ORDER[b.grade] || score(b) - score(a) || byId(a, b))[0]
     if (best) take(best)
   }
-  for (const c of [...cards].filter((c) => score(c) > 0).sort((a, b) => score(b) - score(a) || ORDER[a.grade] - ORDER[b.grade] || byId(a, b))) take(c)
+  for (const c of [...pool].filter((c) => score(c) > 0).sort((a, b) => score(b) - score(a) || ORDER[a.grade] - ORDER[b.grade] || byId(a, b))) take(c)
   return picked
 }
 
