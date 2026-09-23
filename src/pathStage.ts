@@ -619,6 +619,6 @@ export function coachPickFor(row: PeopleRow, coach: CoachPick | null, today: str
     propensities: Object.fromEntries(ids.map((id) => [id, 1 / ids.length])),
     leaning: false,
     ...(base.turn ? { turn: base.turn } : {}),
-    ...(coach.version ? { version: coach.version } : {}),
+    ...(coach.versions[chosen] ? { version: coach.versions[chosen] } : {}),
   }
 }

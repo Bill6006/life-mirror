@@ -21,7 +21,8 @@ const wordsOf = (t: string) => t.trim().split(/\s+/).filter(Boolean).length
 
 export interface CoachAnswer {
   ids: string[]
-  version: string
+  /** Today's version of each rep named, by its id: the phone shows the drawn rep's own line. */
+  versions: Record<string, string>
 }
 
 type Verdict<T> = { ok: true; value: T } | { ok: false; reason: string }
@@ -33,27 +34,35 @@ export function rowOf(core: Partial<Record<CoachCoreKey, unknown>>): { path: str
   return { path: r.path, candidates: r.candidates.filter((c): c is string => typeof c === 'string') }
 }
 
-/** The coach's answer, checked: one or two of the row's own candidates, and one line of at most twenty-five words that breaks none of the rules. */
+/** One line of today's version, checked: at most twenty-five words that break none of the rules; the reason if not. */
+function versionRefusal(version: string, core: Partial<Record<CoachCoreKey, unknown>>, sheet: FactSheet, forDay: string, surface: Surface): string | null {
+  if (!version) return 'no version'
+  if (wordsOf(version) > COACH_WORDS) return `${wordsOf(version)} words; at most ${COACH_WORDS}`
+  for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(version)) return `uses the word "${w}"`
+  if (speaksOfOutcomes(version)) return 'rates, ranks or compares a person, or counts an outcome as success'
+  if (PEOPLE_VERDICTS.test(version)) return 'passes a verdict on a person'
+  if (SUCCESS_MEASURES.test(version)) return 'treats a reply, a match or a rejection as a measure'
+  if (core.ineligibleReason && PEOPLE_AROUND_WORDS.test(version)) return 'puts someone in person beside him when nobody is around by today’s shape'
+  return dayGuard(version, sheet, forDay) ?? surfaceGuard(version, surface)
+}
+
+/** The coach's answer, checked: one or two of the row's own candidates, each with its own line of today's version, every line held to the rules. */
 export function checkCoach(raw: unknown, core: Partial<Record<CoachCoreKey, unknown>>, sheet: FactSheet, forDay: string, surface: Surface): Verdict<CoachAnswer> {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const row = rowOf(core)
   if (!row || !row.candidates.length) return { ok: false, reason: 'the row has nothing to choose' }
-  const ids = Array.isArray(o.ids) ? o.ids : null
-  if (!ids || ids.length < 1 || ids.length > 2 || ids.some((id) => typeof id !== 'string')) return { ok: false, reason: 'ids must name one or two reps' }
+  const picks = Array.isArray(o.picks) ? o.picks : null
+  if (!picks || picks.length < 1 || picks.length > 2 || picks.some((p) => !p || typeof p !== 'object' || typeof (p as { id?: unknown }).id !== 'string')) return { ok: false, reason: 'picks must name one or two reps, each with its id and version' }
+  const ids = picks.map((p) => (p as { id: string }).id)
   if (new Set(ids).size !== ids.length) return { ok: false, reason: 'the same rep named twice' }
-  for (const id of ids as string[]) if (!row.candidates.includes(id)) return { ok: false, reason: `"${id}" is not one of the reps the row may offer now` }
-  const version = typeof o.version === 'string' ? o.version.trim() : ''
-  if (!version) return { ok: false, reason: 'no version' }
-  if (wordsOf(version) > COACH_WORDS) return { ok: false, reason: `${wordsOf(version)} words; at most ${COACH_WORDS}` }
-  for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(version)) return { ok: false, reason: `uses the word "${w}"` }
-  if (speaksOfOutcomes(version)) return { ok: false, reason: 'rates, ranks or compares a person, or counts an outcome as success' }
-  if (PEOPLE_VERDICTS.test(version)) return { ok: false, reason: 'passes a verdict on a person' }
-  if (SUCCESS_MEASURES.test(version)) return { ok: false, reason: 'treats a reply, a match or a rejection as a measure' }
-  if (core.ineligibleReason && PEOPLE_AROUND_WORDS.test(version)) return { ok: false, reason: 'puts someone in person beside him when nobody is around by today’s shape' }
-  const guarded = dayGuard(version, sheet, forDay)
-  if (guarded) return { ok: false, reason: guarded }
-  const g = surfaceGuard(version, surface)
-  if (g) return { ok: false, reason: g }
-  return { ok: true, value: { ids: ids as string[], version } }
+  for (const id of ids) if (!row.candidates.includes(id)) return { ok: false, reason: `"${id}" is not one of the reps the row may offer now` }
+  const versions: Record<string, string> = {}
+  for (const p of picks as { id: string; version?: unknown }[]) {
+    const version = typeof p.version === 'string' ? p.version.trim() : ''
+    const why = versionRefusal(version, core, sheet, forDay, surface)
+    if (why) return { ok: false, reason: ids.length > 1 ? `${p.id}: ${why}` : why }
+    versions[p.id] = version
+  }
+  return { ok: true, value: { ids, versions } }
 }

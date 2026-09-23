@@ -213,7 +213,7 @@ async function coachBriefing(deps: Deps, t: TaskRow): Promise<Reply> {
     instructions: claudeInstructions('coach'),
     briefing: text,
     core,
-    answer: { ids: ['one or two ids from ELIGIBLE NOW'], version: 'one line of today’s version, at most 25 words' },
+    answer: { picks: [{ id: 'an id from ELIGIBLE NOW', version: 'one line of today’s version of that rep, at most 25 words' }] },
     post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
     context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, tag, q, limit', categories: READABLE.filter((c) => access.allowed(c)), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: t.contextCalls, bytes: t.contextBytes } },
     attemptsLeft: MAX_POSTS - t.posts,
@@ -236,7 +236,7 @@ async function coachLine(deps: Deps, t: TaskRow, o: Record<string, unknown>): Pr
   const at = deps.now.toISOString()
   const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'
   const runnerModel = clip(o.runnerModel, 100)
-  if (!t.dry) await deps.store.writeCoach({ id: rowIdOf('coach', t.day), day: t.day, block: String(core.block ?? ''), path: row.path, ids: verdict.value.ids, version: verdict.value.version, model: writtenModel, askedModel: t.askedModel, runnerModel, at }, at)
+  if (!t.dry) await deps.store.writeCoach({ id: rowIdOf('coach', t.day), day: t.day, block: String(core.block ?? ''), path: row.path, ids: verdict.value.ids, versions: verdict.value.versions, model: writtenModel, askedModel: t.askedModel, runnerModel, at }, at)
   await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at) })
   return reply(200, { ok: true, ...(t.dry ? { dry: true } : {}) })
 }

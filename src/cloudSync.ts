@@ -95,7 +95,10 @@ export function coachPickOf(id: string, body: string): CoachPick | null {
     const r = JSON.parse(body) as Partial<CoachPick>
     const ids = Array.isArray(r.ids) ? r.ids.filter((x): x is string => typeof x === 'string') : []
     if (typeof r.day !== 'string' || (r.block !== 'morning' && r.block !== 'afternoon' && r.block !== 'evening') || (r.path !== 'social' && r.path !== 'partner') || ids.length < 1 || ids.length > 2) return null
-    return { id, day: r.day, block: r.block, path: r.path, ids, version: typeof r.version === 'string' ? r.version.slice(0, 400) : '', model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '' }
+    const raw = r.versions && typeof r.versions === 'object' ? (r.versions as Record<string, unknown>) : {}
+    const versions: Record<string, string> = {}
+    for (const id of ids) if (typeof raw[id] === 'string') versions[id] = (raw[id] as string).slice(0, 400)
+    return { id, day: r.day, block: r.block, path: r.path, ids, versions, model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '' }
   } catch {
     return null
   }

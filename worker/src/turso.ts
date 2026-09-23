@@ -115,7 +115,8 @@ export interface CoachRow {
   block: string
   path: string
   ids: string[]
-  version: string
+  /** Today's version of each rep named, by its id. */
+  versions: Record<string, string>
   model: string
   askedModel: string
   runnerModel: string | null

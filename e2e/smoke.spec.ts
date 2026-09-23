@@ -1210,20 +1210,22 @@ test('the coach: a pick stubbed for today shows its version under the rep and sa
   const ids: Record<string, string> = { 'Eye contact with a stranger': 'eye-contact-stranger', 'Three things about the other person': 'attention-outward', 'Greet someone by name': 'greet-by-name' }
   const shown = ids[((await row.getByTestId('aim-step').textContent()) ?? '').trim()]
   const other = Object.values(ids).find((id) => id !== shown) as string
-  const pick = (day: string, named: string[], version: string) => ({ id: `${day}:coach`, day, block: 'morning', path: 'social', ids: named, version, model: 'claude-opus-5-5', at: `${day}T13:00:00.000Z` })
+  // Each rep the coach names carries its own line of today's version.
+  const lineFor = (id: string) => `Today at the office: ${id.replace(/-/g, ' ')}, with your attention out there.`
+  const pick = (day: string, named: string[]) => ({ id: `${day}:coach`, day, block: 'morning', path: 'social', ids: named, versions: Object.fromEntries(named.map((id) => [id, lineFor(id)])), model: 'claude-opus-5-5', at: `${day}T13:00:00.000Z` })
 
   // Yesterday's pick is stale: the app's own pick stands, with no version.
-  await putInto(page, 'coachPicks', pick('2026-09-06', [other], 'Yesterday’s version.'))
+  await putInto(page, 'coachPicks', pick('2026-09-06', [other]))
   await page.reload()
   await expect(row.getByTestId('aim-step')).toBeVisible()
   await expect(row.getByTestId('path-coach-version')).toHaveCount(0)
 
-  // Today's names two reps the row may offer: one of them is drawn, with the coach's line under it.
-  const version = 'At the office, greet one colleague by name as you pass; notice what they carry.'
-  await putInto(page, 'coachPicks', pick('2026-09-07', [shown, other], version))
+  // Today's names two reps the row may offer: one of them is drawn, with its own line under it.
+  await putInto(page, 'coachPicks', pick('2026-09-07', [shown, other]))
   await page.reload()
-  await expect(row.getByTestId('path-coach-version')).toHaveText(version)
-  expect([shown, other]).toContain(ids[((await row.getByTestId('aim-step').textContent()) ?? '').trim()])
+  const drawn = ids[((await row.getByTestId('aim-step').textContent()) ?? '').trim()]
+  expect([shown, other]).toContain(drawn)
+  await expect(row.getByTestId('path-coach-version')).toHaveText(lineFor(drawn))
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(page.locator('[data-path="social"]')).toContainText('The coach named two of the reps that fit now; drawn between them, even chances, kept with the step.')
 })

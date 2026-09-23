@@ -17,7 +17,8 @@ const aim: Aim = { id: 1, kind: 'path', path: 'social', stepMoveId: null, create
 const office = { atOffice: true, churchDay: false, pickupTime: null }
 const home = { atOffice: false, churchDay: false, pickupTime: null }
 const view = (a: Aim = aim, offers: Offer[] = [], outcomes: Outcome[] = [], ctx = office, block: Block = 'morning'): PathToday => pathToday({ aim: a, offers, outcomes, ctx, day: DAY, block })
-const coach = (ids: string[], extra: Partial<CoachPick> = {}): CoachPick => ({ id: `${DAY}:coach`, day: DAY, block: 'morning', path: 'social', ids, version: 'At the office, greet one colleague by name as you pass.', model: 'claude-opus-5-5', at: `${DAY}T11:52:00.000Z`, ...extra })
+/** A coach pick naming reps, each with its own line of today's version. */
+const coach = (ids: string[], extra: Partial<CoachPick> = {}): CoachPick => ({ id: `${DAY}:coach`, day: DAY, block: 'morning', path: 'social', ids, versions: Object.fromEntries(ids.map((id) => [id, `Today's version of ${id}.`])), model: 'claude-opus-5-5', at: `${DAY}T11:52:00.000Z`, ...extra })
 
 beforeEach(async () => {
   await db.delete()
@@ -28,12 +29,17 @@ describe('the coach’s pick in the People row', () => {
   const base = peopleRowOf([view()], [], DAY, 'morning')
   const candidates = base?.pick?.candidates ?? []
 
-  it('draws between two reps it named at even chances, both kept, with its version under the rep', () => {
+  it('draws between two reps it named at even chances, both kept, with the drawn rep’s own line under it', () => {
     expect(candidates.length).toBeGreaterThanOrEqual(3)
     const two = candidates.slice(0, 2)
     const row = peopleRowOf([view()], [], DAY, 'morning', coach(two))
-    expect(row?.pick).toMatchObject({ rule: 'coach+draw', chosenBy: 'coach', candidates: two, propensities: { [two[0]]: 0.5, [two[1]]: 0.5 }, version: 'At the office, greet one colleague by name as you pass.' })
+    expect(row?.pick).toMatchObject({ rule: 'coach+draw', chosenBy: 'coach', candidates: two, propensities: { [two[0]]: 0.5, [two[1]]: 0.5 } })
     expect(two).toContain(row?.pick?.moveId)
+    expect(row?.pick?.version).toBe(`Today's version of ${row?.pick?.moveId}.`)
+    // Whatever order the lines come in, the drawn rep shows its own.
+    const flipped = { ...coach(two), versions: { [two[1]]: `Today's version of ${two[1]}.`, [two[0]]: `Today's version of ${two[0]}.` } }
+    const again = peopleRowOf([view()], [], DAY, 'morning', flipped)
+    expect(again?.pick?.version).toBe(`Today's version of ${again?.pick?.moveId}.`)
     expect(whyThisRep(row!.pick!)).toContain('The coach named two of the reps that fit now')
     // The same day draws the same, so the row does not flicker.
     expect(peopleRowOf([view()], [], DAY, 'morning', coach(two))?.pick?.moveId).toBe(row?.pick?.moveId)
@@ -96,8 +102,10 @@ describe('the coach block', () => {
 
 describe('a coach row as the phone reads it', () => {
   it('takes a whole pick and nothing else', () => {
-    const row = { day: DAY, block: 'morning', path: 'social', ids: ['greet-by-name'], version: 'Say it by name.', model: 'claude-opus-5-5', at: `${DAY}T11:52:00.000Z` }
+    const row = { day: DAY, block: 'morning', path: 'social', ids: ['greet-by-name'], versions: { 'greet-by-name': 'Say it by name.' }, model: 'claude-opus-5-5', at: `${DAY}T11:52:00.000Z` }
     expect(coachPickOf('x', JSON.stringify(row))).toEqual({ id: 'x', ...row })
+    // A line for a rep it did not name is dropped.
+    expect(coachPickOf('x', JSON.stringify({ ...row, versions: { 'greet-by-name': 'Say it by name.', other: 'No.' } }))?.versions).toEqual({ 'greet-by-name': 'Say it by name.' })
     expect(coachPickOf('x', JSON.stringify({ ...row, ids: ['a', 'b', 'c'] }))).toBeNull()
     expect(coachPickOf('x', JSON.stringify({ ...row, path: 'everyone' }))).toBeNull()
     expect(coachPickOf('x', 'not json')).toBeNull()

@@ -457,7 +457,8 @@ export interface CoachPick {
   block: Block
   path: PathId
   ids: string[]
-  version: string
+  /** Today's version of each rep named, by its id: the drawn rep's own line shows under it. */
+  versions: Record<string, string>
   model: string
   at: string
 }
