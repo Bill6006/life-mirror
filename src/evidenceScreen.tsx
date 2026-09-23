@@ -1,4 +1,5 @@
 import { blockAt } from './blocks'
+import { CaffeineEvidenceCard } from './caffeineEvidence'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { fill, formatDayShort, formatWhen } from './format'
@@ -182,6 +183,8 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
           </div>
         </>
       )}
+
+      <CaffeineEvidenceCard ev={ev.caffeine} />
 
       <h2 class="section">{c.privates}</h2>
       <div class="card pad">

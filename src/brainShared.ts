@@ -50,6 +50,9 @@ const GRADE_ORDER: Record<Grade, number> = { A: 0, B: 1, C: 2, D: 3 }
 /** The phrases a grade may be spoken as; a stronger phrase than the cited cards allow is refused. */
 export const GRADE_PHRASES: Record<Grade, string> = { A: 'strong evidence', B: 'good evidence', C: 'some evidence', D: 'thin evidence' }
 const EVIDENCE_WORDS = /\b(evidence|research|studies|study shows|meta-analys|trials?)\b/i
+const CAFFEINE_FREE = /\bcaffeine[- ]free\b|\bno caffeine\b(?! (?:was )?reported)/i
+const CAFFEINE_WORDS = /\b(caffeine|coffee|espresso|energy drinks?|pre-workout|\d+ ?mg)\b/i
+export const CAUSAL_WORDS = /\bcaus(?:e|es|ed|ing)\b|\bbecause of\b|\baffect(?:s|ed|ing)?\b/i
 
 function words(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
@@ -83,6 +86,9 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   if (!text) return 'no text'
   if (words(text) > maxWords) return `${words(text)} words; at most ${maxWords}`
   for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return `uses the word "${w}"`
+  // Caffeine (Part 22): an untapped window is none reported, never caffeine-free; and caffeine is an association, never a cause.
+  if (CAFFEINE_FREE.test(text)) return 'calls a window caffeine-free; none reported is not none'
+  if (CAFFEINE_WORDS.test(text) && CAUSAL_WORDS.test(text)) return 'speaks of caffeine as a cause'
   for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {

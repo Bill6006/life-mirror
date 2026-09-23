@@ -692,7 +692,7 @@
       }
     ],
     "caveats": "A small sample and a large dose; sensitivity varies widely between people.",
-    "app": "Heavy caffeine this morning is a chip; the like-for-like comparison says what it does to the afternoons and the nights.",
+    "app": "Caffeine is reported by band at each check-in; Evidence sets the next nights after the bands against each other, like for like.",
     "reviewed": "2026-09-18",
     "status": "admitted",
     "moves": [
@@ -722,6 +722,137 @@
     "caveats": "A review without a single effect size; individual variation is the point.",
     "app": "Half of a midday coffee is still there at bedtime for many people; the record can show whether that is true here.",
     "reviewed": "2026-09-18",
+    "status": "admitted"
+  },
+  {
+    "id": "caffeine-sleep-cutoffs",
+    "claim": "Across trials, caffeine shortened the night’s sleep by about 45 minutes; about 107 mg stopped shortening it only when taken 8.8 hours or more before bed, and about 217 mg only at 13.2 hours or more.",
+    "domain": "sleep",
+    "tags": [
+      "caffeine",
+      "sleep",
+      "afternoon",
+      "evening"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 24 studies: total sleep 45 minutes shorter, sleep efficiency 7% lower, 9 more minutes to fall asleep, 12 more minutes awake after sleep onset, less deep sleep",
+    "population": "adults in controlled studies of caffeine taken before night-time sleep",
+    "sources": [
+      {
+        "cite": "Gardiner et al. (2023). The effect of caffeine on subsequent sleep: a systematic review and meta-analysis. Sleep Medicine Reviews, 69, 101764.",
+        "doi": "10.1016/j.smrv.2023.101764",
+        "pmid": "36870101"
+      }
+    ],
+    "caveats": "The cut-offs are modelled from pooled studies with different doses and timings, not tested directly, and sensitivity varies widely between people.",
+    "app": "The late-caffeine line uses these cut-offs, and only a reported band of 100 mg or more can fire it; an untapped window never does, and no bedtime is assumed.",
+    "reviewed": "2026-09-23",
+    "status": "admitted",
+    "moves": [
+      "caffeine-cutoff"
+    ]
+  },
+  {
+    "id": "caffeine-withdrawal-reversal",
+    "claim": "In daily caffeine users, much of the lift from the day’s first caffeine may be the reversal of overnight withdrawal rather than a gain above baseline; how much is contested.",
+    "domain": "mood",
+    "tags": [
+      "caffeine",
+      "morning",
+      "energy",
+      "focus",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "after overnight abstinence, caffeine restored the alertness withdrawal had taken from regular users and gave non- or low users little but jitteriness; other trials found gains in non-consumers, and attention gains without withdrawal",
+    "population": "habitual and non-habitual caffeine users in double-blind laboratory trials",
+    "sources": [
+      {
+        "cite": "James & Rogers (2005). Effects of caffeine on performance and mood: withdrawal reversal is the most plausible explanation. Psychopharmacology, 182(1), 1–8.",
+        "doi": "10.1007/s00213-005-0084-6",
+        "pmid": "16001109"
+      },
+      {
+        "cite": "Rogers, Heatherley, Mullings & Smith (2013). Faster but not smarter: effects of caffeine and caffeine withdrawal on alertness and performance. Psychopharmacology, 226(2), 229–240.",
+        "doi": "10.1007/s00213-012-2889-4",
+        "pmid": "23108937"
+      },
+      {
+        "cite": "Haskell, Kennedy, Wesnes & Scholey (2005). Cognitive and mood improvements of caffeine in habitual consumers and habitual non-consumers of caffeine. Psychopharmacology, 179(4), 813–825.",
+        "doi": "10.1007/s00213-004-2104-3",
+        "pmid": "15678363"
+      },
+      {
+        "cite": "Addicott & Laurienti (2009). A comparison of the effects of caffeine following abstinence and normal caffeine use. Psychopharmacology, 207(3), 423–431.",
+        "doi": "10.1007/s00213-009-1668-3",
+        "pmid": "19777214"
+      }
+    ],
+    "caveats": "Contested: the last two trials found gains in non-consumers and in users who were not withdrawn. Kept as a caveat, never as a verdict.",
+    "app": "Beside any same-check-in caffeine comparison for someone who reports caffeine on most days: part of the difference may be withdrawal, not a lift.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "caffeine-dose-anxiety",
+    "claim": "Caffeine’s anxiety rises with the dose: 50 mg did not raise it in light users, 150 mg did in those with a sensitive gene variant, and 450 mg did in most; regular users grow largely tolerant to it.",
+    "domain": "mood",
+    "tags": [
+      "caffeine",
+      "stress",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "102 light users given 0, 50, 150 and 450 mg in separate double-blind sessions: anxiety at 150 mg tracked the ADORA2A variant and 450 mg raised it in most; in 379 more, the same variant carried more anxiety and medium or high users showed a smaller anxiety response",
+    "population": "healthy adults: light users in the first trial; non- or low and medium or high users in the second",
+    "sources": [
+      {
+        "cite": "Childs et al. (2008). Association between ADORA2A and DRD2 polymorphisms and caffeine-induced anxiety. Neuropsychopharmacology, 33(12), 2791–2800.",
+        "doi": "10.1038/npp.2008.17",
+        "pmid": "18305461"
+      },
+      {
+        "cite": "Rogers et al. (2010). Association of the anxiogenic and alerting effects of caffeine with ADORA2A and ADORA1 polymorphisms and habitual level of caffeine consumption. Neuropsychopharmacology, 35(9), 1973–1983.",
+        "doi": "10.1038/npp.2010.71",
+        "pmid": "20520601"
+      }
+    ],
+    "caveats": "Laboratory capsules in single sittings; genotype is unknown here, so the band is the only handle on dose, and anxiety is read here through Stress and Irritation, not measured directly.",
+    "app": "The bands’ cut points sit where these doses fall; Stress read beside a band of 200 mg or more is shown as an association only.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "caffeine-diary-understates-sleep",
+    "claim": "Self-reported sleep can understate a caffeine cost that measured sleep shows, and in daily life the link can be absent even when measured, so a record showing no difference says little either way.",
+    "domain": "sleep",
+    "tags": [
+      "caffeine",
+      "sleep",
+      "monitoring"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "400 mg six hours before bed cut measured sleep by more than an hour, while the sleep diary’s 41-minute drop did not reach significance; across 5,164 nights of 785 adults, evening caffeine showed no link with sleep measured at home",
+    "population": "twelve healthy adults in a home crossover trial; 785 adults, mean age 64, in their own homes",
+    "sources": [
+      {
+        "cite": "Drake, Roehrs, Shambroom & Roth (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.",
+        "doi": "10.5664/jcsm.3170",
+        "pmid": "24235903"
+      },
+      {
+        "cite": "Spadola et al. (2019). Evening intake of alcohol, caffeine, and nicotine: night-to-night associations with sleep duration and continuity among African Americans in the Jackson Heart Sleep Study. Sleep, 42(11), zsz136.",
+        "doi": "10.1093/sleep/zsz136",
+        "pmid": "31386152"
+      }
+    ],
+    "caveats": "One small trial with a large dose and one observational cohort; neither used bands like these.",
+    "app": "The fixed wording when caffeine and sleep show no difference: no difference is showing, and self-reported sleep is known to miss caffeine’s effect.",
+    "reviewed": "2026-09-23",
     "status": "admitted"
   },
   {

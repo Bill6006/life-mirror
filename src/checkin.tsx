@@ -256,7 +256,7 @@ export function SummaryScreen({
         </p>
       </header>
 
-      <ReadingOfCheckIn checkin={record} />
+      <ReadingOfCheckIn checkin={record} all={all ?? []} />
       {complete && <UsualLine day={day} block={block} />}
 
       <div class="calc">

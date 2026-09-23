@@ -71,15 +71,18 @@ export function morningAfter(byKey: ReadonlyMap<string, CheckIn>, day: string): 
   return r ? r.value : null
 }
 
-/** Every evening before today as a point: whether it carried the event, its band, and the morning after. */
-export function eveningPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): DayPoint[] {
+/**
+ * Every evening before today as a point: whether it carried the event, its band, and the morning
+ * after. An evening the record knows nothing about for this event (include says no) enters neither side.
+ */
+export function eveningPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include: (c: CheckIn) => boolean = () => true): DayPoint[] {
   const byKey = indexCheckIns(checkins)
-  const evenings = checkins.filter((c) => c.block === 'evening' && c.day < today)
+  const evenings = checkins.filter((c) => c.block === 'evening' && c.day < today && include(c))
   return evenings.map((c) => ({ day: c.day, band: eveningBand(byKey, c.day), event: isEvent(c), outcome: morningAfter(byKey, c.day) }))
 }
 
-export function associationFor(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): Association {
-  return likeForLike(eveningPoints(checkins, today, isEvent))
+export function associationFor(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include?: (c: CheckIn) => boolean): Association {
+  return likeForLike(eveningPoints(checkins, today, isEvent, include))
 }
 
 /** Every morning before today as a point: whether it carried the event, its band, and what that afternoon read. */

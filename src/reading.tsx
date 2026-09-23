@@ -1,4 +1,5 @@
 import type { Block, Slot } from './blocks'
+import { onBoard } from './caffeineRecord'
 import { copy } from './copy'
 import { askedOf, type CheckIn } from './db'
 import { fill, formatDayShort, formatTime } from './format'
@@ -66,13 +67,19 @@ export function ReadingHero({ all, today }: { all: CheckIn[]; today: Slot }) {
       <Scale value={full.reading.value} />
       <p class="hero-recipe">
         {recipe(full.reading)} · {whenOf(full.checkin, today.day)}
+        {onBoard(all, full.checkin) && <OnBoard />}
       </p>
     </div>
   )
 }
 
+/** Caffeine on board at the check-in the reading came from (Part 22a): a marker only. */
+function OnBoard() {
+  return <span data-testid="caffeine-on-board"> · {copy.caffeine.onBoard}</span>
+}
+
 /** The reading of one check-in, for its card: the same shape, smaller. */
-export function ReadingOfCheckIn({ checkin }: { checkin: CheckIn }) {
+export function ReadingOfCheckIn({ checkin, all = [] }: { checkin: CheckIn; all?: readonly CheckIn[] }) {
   const r = readingOf(checkin)
   if (!r) {
     return (
@@ -87,7 +94,10 @@ export function ReadingOfCheckIn({ checkin }: { checkin: CheckIn }) {
     <div class="hero compact" data-testid="reading-100">
       <Value reading={r} />
       <Scale value={r.value} compact />
-      <p class="hero-recipe">{recipe(r)}</p>
+      <p class="hero-recipe">
+        {recipe(r)}
+        {onBoard(all, checkin) && <OnBoard />}
+      </p>
     </div>
   )
 }

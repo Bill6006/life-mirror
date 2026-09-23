@@ -1,4 +1,5 @@
 import { BLOCKS, daysBetween, type Block } from './blocks'
+import { dayCaffeine, HABIT_DAYS, itemDays } from './caffeineRecord'
 import { families, hasMove, liveMoves, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
 import { decayAfterStop, type Observation } from './learning'
@@ -124,7 +125,20 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   }
   for (const [moveId, days] of doneMoves) controlled.push(count(moveById(moveId).name, (d) => days.has(d)))
   const evening = (day: string) => byDay.get(day)?.find((c) => c.block === 'evening')
-  controlled.push(count('caffeine after midday', (d) => Boolean(evening(d)?.extras?.caffeine)))
+  // Caffeine from reported bands (Part 22e), counted over the days the item recorded anything, so a
+  // day with nothing known is in neither count. The old yes/no rows stay until the item has 28 days.
+  const known = (d: string) => (byDay.get(d) ?? []).some((c) => c.extras?.caffeineIntake || c.extras?.caffeineShown)
+  const countKnown = (label: string, has: (day: string) => boolean): Difference => ({
+    label,
+    onBest: top.filter((d) => known(d) && has(d)).length,
+    ofBest: top.filter(known).length,
+    onOthers: others.filter((d) => known(d) && has(d)).length,
+    ofOthers: others.filter(known).length,
+  })
+  const legacyCaffeine = itemDays(checkins, today) < HABIT_DAYS
+  if (legacyCaffeine) controlled.push(count('caffeine after midday', (d) => Boolean(evening(d)?.extras?.caffeine)))
+  controlled.push(countKnown('at least 200 mg of caffeine reported', (d) => dayCaffeine(byDay.get(d) ?? [], d).floor >= 200))
+  controlled.push(countKnown('100 mg or more reported after the morning', (d) => dayCaffeine(byDay.get(d) ?? [], d).windows.some((w) => w.block !== 'morning' && w.band >= 2)))
   controlled.push(count('a late or heavy dinner', (d) => Boolean(evening(d)?.extras?.dinner)))
   controlled.push(count('nothing landed', (d) => Boolean(evening(d)?.extras?.nothingLanded)))
   controlled.push(count('hard to see the point', (d) => Boolean(evening(d)?.extras?.hardToSeePoint)))
@@ -133,7 +147,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
 
   const ctx = new Map(contexts.map((c) => [c.day, c]))
   const morning = (day: string) => byDay.get(day)?.find((c) => c.block === 'morning')
-  controlled.push(count('heavy caffeine in the morning', (d) => Boolean(morning(d)?.extras?.heavyCaffeine)))
+  if (legacyCaffeine) controlled.push(count('heavy caffeine in the morning', (d) => Boolean(morning(d)?.extras?.heavyCaffeine)))
   const uncontrolled: Difference[] = []
   for (let w = 0; w < 7; w++) uncontrolled.push(count(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][w], (d) => ctx.get(d)?.weekday === w || (!ctx.has(d) && new Date(`${d}T12:00:00`).getDay() === w)))
   uncontrolled.push(count('slept seven hours or more', (d) => (morning(d)?.answers.sleepHours ?? 0) >= 4))

@@ -5,7 +5,8 @@ import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE } from 
 import { library } from './library'
 import { copy } from './copy'
 import { carriedByContext, contextWords, type DayKind } from './people'
-import type { Aim, BrainBrief, BriefFeedback, BriefLog, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
+import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
+import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { currentRung, ladderOf, rungName, skillsOf, TOP_RUNG } from './ladder'
@@ -99,6 +100,71 @@ function assocFact(id: string, tags: string[], event: string, a: Association, af
       ? `${event} has ${a.times} ${a.times === 1 ? 'day' : 'days'} behind it; nothing can be compared yet.`
       : `${after} ${event} read ${signed(diff)} against ${after.toLowerCase()} without it, like for like, ${a.times} times (${tier}).`
   return fact(id, tags, text, { diff, with: round(a.withEvent.mean), without: round(a.without.mean), times: a.times, bands: a.bands }, { n: a.times, tier })
+}
+
+/**
+ * Caffeine (Part 22): today's windows, the habit, a late window, and the comparisons, each
+ * naming what was reported and what was seen and left untapped. None reported is never a zero,
+ * and every comparison is an association with its counts.
+ */
+export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence, today: string): Fact[] {
+  const out: Fact[] = []
+  const band = (b: CaffeineBand) => lower(copy.caffeine.bands[b])
+  const d = dayCaffeine(checkins, today)
+  if (d.windows.length || d.untapped.length) {
+    const values: Record<string, number | string | null> = { reported: d.windows.length, untapped: d.untapped.length, atLeast: d.floor }
+    const parts: string[] = []
+    for (const b of BLOCKS) {
+      const w = d.windows.find((x) => x.block === b)
+      values[b] = w ? band(w.band) : d.untapped.includes(b) ? 'none reported' : null
+      if (values[b]) parts.push(`${b} ${values[b]}`)
+    }
+    const total = !d.windows.length ? '' : d.floor > 0 ? `; at least ${d.floor} mg reported in all` : '; under 100 mg in each window that reported'
+    out.push(fact('today.caffeine', ['caffeine'], `Caffeine by check-in window today: ${parts.join('; ')}${total}. None reported is not a confirmed none.`, values, { n: d.windows.length }))
+  }
+  const h = ev.habit
+  if (h.reportedDays || h.untapped) {
+    const usual = h.usualMorning ? `, most often ${band(h.usualMorning)} in the morning` : ''
+    const habitual = h.habitual ? ' Reported on most days, so an untapped morning is more likely forgotten than empty.' : ''
+    out.push(fact('caffeine.habit', ['caffeine', 'habit'], `Caffeine was reported on ${h.reportedDays} of the last ${HABIT_DAYS} days${usual}; ${h.untapped} ${h.untapped === 1 ? 'window' : 'windows'} where the item was shown went untapped, which is no caffeine reported, never a confirmed none.${habitual}`, { reported: h.reportedDays, days: HABIT_DAYS, usualMorning: h.usualMorning ? band(h.usualMorning) : null, untapped: h.untapped, habitual: h.habitual ? 1 : 0 }, { n: h.reportedDays }))
+  }
+  // Fired only by a reported band of 100 mg or more; no bedtime is assumed: the cut-off, counted from the check-in, runs past midnight.
+  const late = lateCaffeine(checkins, today) ?? lateCaffeine(checkins, addDays(today, -1))
+  if (late) {
+    out.push(fact('caffeine.late', ['caffeine', 'sleep', 'evening'], `On ${late.day}, ${band(late.band)} was reported at the ${late.block} check-in at ${late.time}. A meta-analysis put the point where about ${late.mg} mg stops shortening sleep at ${late.hours} hours before bed; counted from ${late.time}, that runs past midnight.`, { day: late.day, when: late.day === today ? 'today' : 'yesterday', block: late.block, band: band(late.band), time: late.time, mg: late.mg, hours: late.hours }))
+  }
+  const sleep = <K,>(id: string, by: string, c: SleepComparison<K>, label: (keys: K[]) => string, unit: [string, string]) => {
+    if (!c.groups.length) return
+    const low = lower(label(c.groups[0].keys))
+    const high = lower(label(c.groups[c.groups.length - 1].keys))
+    const groups = c.groups.map((g) => `${lower(label(g.keys))} ${g.n} ${g.n === 1 ? unit[0] : unit[1]}`).join(', ')
+    const minutes = c.hoursDiff === null ? null : Math.round(c.hoursDiff * 60)
+    const quality = c.qualityDiff === null ? null : Math.round(c.qualityDiff * 10) / 10
+    const read = [minutes === null ? null : `sleep ${signed(minutes)} minutes`, quality === null ? null : `quality ${signed(quality)} of a step`].filter(Boolean).join(' and ')
+    const body = c.groups.length < 2 ? 'one group so far, and comparing needs two groups of five' : c.none ? 'no difference is showing, and self-reported sleep is known to miss caffeine’s effect' : `after ${high} ${unit[1]} the next night read ${read} against ${low} ${unit[1]}`
+    out.push(fact(id, ['caffeine', 'sleep'], `The next night's sleep ${by}, like for like on the sleep the day began with: ${groups}; ${body} (${c.standing}). Untapped windows (${h.untapped}) and days with nothing known are in no group.`, { low, high, n: c.groups[0].n, m: c.groups[c.groups.length - 1].n, groups: c.groups.length, minutes, quality, none: c.none ? 1 : 0, untapped: h.untapped }, { n: c.groups.reduce((t, g) => t + g.n, 0), tier: c.standing }))
+  }
+  sleep('assoc.caffeine.bands', 'by the day’s reported caffeine', ev.byDayBand, bandsLabel, ['day', 'days'])
+  sleep('assoc.caffeine.latest', 'by the last window with 100 mg or more', ev.byLatestWindow, windowsLabel, ['day', 'days'])
+  const m = ev.byMorningBand
+  if (m.groups.length) {
+    const low = lower(bandsLabel(m.groups[0].keys))
+    const high = lower(bandsLabel(m.groups[m.groups.length - 1].keys))
+    const groups = m.groups.map((g) => `${lower(bandsLabel(g.keys))} ${g.n} ${g.n === 1 ? 'morning' : 'mornings'}`).join(', ')
+    const diff = m.diff === null ? null : Math.round(m.diff)
+    const body = m.groups.length < 2 ? 'one group so far, and comparing needs two groups of five' : m.none ? 'no difference is showing' : `after ${high} mornings the afternoon read ${signed(diff ?? 0)} against ${low} mornings`
+    out.push(fact('assoc.caffeine.morning', ['caffeine', 'afternoon'], `That afternoon's reading by the morning's reported caffeine, like for like on the sleep the morning began with: ${groups}; ${body} (${m.standing}).`, { low, high, n: m.groups[0].n, m: m.groups[m.groups.length - 1].n, groups: m.groups.length, diff, none: m.none ? 1 : 0 }, { n: m.groups.reduce((t, g) => t + g.n, 0), tier: m.standing }))
+  }
+  const r = ev.reported
+  if (r.groups.length) {
+    const count = (k: 'reported' | 'untapped') => r.groups.filter((g) => g.keys.includes(k)).reduce((t, g) => t + g.n, 0)
+    const diff = r.diff === null ? null : Math.round(r.diff)
+    const body = r.groups.length < 2 ? 'one group so far, and comparing needs two groups of five' : r.none ? 'no difference is showing' : `where it was reported the check-in read ${signed(diff ?? 0)}`
+    const dropped = r.droppedMornings ? ` Untapped mornings left out: ${r.droppedMornings}, because caffeine was reported on most of the last ${HABIT_DAYS} days.` : ''
+    const withdrawal = r.habitual ? ' Reported on most days, part of a same-check-in difference may be withdrawal on the check-ins without it, not a lift on the ones with it.' : ''
+    out.push(fact('assoc.caffeine.reported', ['caffeine', 'energy'], `The same check-in's reading where caffeine was reported, against where the item was shown and none reported, like for like by time of day: reported ${count('reported')}, none reported ${count('untapped')}; ${body} (${r.standing}).${dropped}${withdrawal}`, { reported: count('reported'), untapped: count('untapped'), groups: r.groups.length, diff, none: r.none ? 1 : 0, dropped: r.droppedMornings, habitual: r.habitual ? 1 : 0 }, { n: count('reported') + count('untapped'), tier: r.standing }))
+  }
+  return out
 }
 
 /** The positions answered for one reading, oldest first. */
@@ -246,7 +312,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   }
   chip('assoc.coolingOff', ['cooling-off', 'stress'], 'a cooling-off event', i.evidence.coolingOff?.association ?? null, 'Mornings after')
   chip('assoc.bigSocial', ['social-event', 'recovery'], 'a big social event', i.evidence.bigSocial, 'Mornings after')
-  chip('assoc.heavyCaffeine', ['caffeine', 'afternoon'], 'a heavy-caffeine morning', i.evidence.heavyCaffeine, 'Afternoons after')
+  chip('assoc.heavyCaffeine', ['caffeine', 'afternoon'], 'a morning marked heavy caffeine, before amounts were recorded', i.evidence.heavyCaffeine, 'Afternoons after')
   chip('assoc.workouts', ['workout', 'evening'], 'a workout day', i.evidence.workouts, 'Evenings of')
   chip('assoc.napped', ['nap', 'sleep'], 'a nap', associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped)), 'Mornings after')
   // Sleep is answered every full morning and is the largest lever on the day: short nights set against the afternoons that follow, like for like.
@@ -375,7 +441,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   facts.push(fact('necessities.3d', ['necessities'], `Necessities marked missed over the last three evenings: ${misses}.`, { misses }, { n: 3 }))
 
   const morning = i.checkins.find((c) => c.day === today && c.block === 'morning')
-  if (morning?.extras?.heavyCaffeine) facts.push(fact('today.heavyCaffeine', ['caffeine', 'morning'], 'Heavy caffeine marked this morning.', { heavyCaffeine: 1 }))
+  facts.push(...caffeineFacts(i.checkins, i.evidence.caffeine, today))
   const slept = morning?.answers.sleepHours
   if (slept !== undefined && slept <= SHORT_SLEEP) {
     const word = headword(anchorFor('sleepHours', slept))

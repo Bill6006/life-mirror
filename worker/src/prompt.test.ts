@@ -31,6 +31,7 @@ describe('what the model is asked', () => {
     expect(messages[0].role).toBe('system')
     expect(messages[0].content).toContain('JSON only')
     expect(messages[0].content).toContain('failed, bad, lazy, behind, weak, slipped again')
+    expect(messages[0].content).toContain('A window where nothing was reported is "no caffeine reported", never caffeine-free')
     expect(messages[1].content).toContain('[implementation-intentions] grade A')
     expect(messages[1].content).toContain('2026-09-16 (useful): Said before.')
     expect(buildReviewMessages(sheet, [], [])[1].content).toContain('weekly review')

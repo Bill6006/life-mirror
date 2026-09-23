@@ -177,14 +177,24 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    id: 'caffeine-under',
+    // Next nights shorter or rougher after days with more caffeine reported, like for like; only from two groups of five.
+    id: 'caffeine-sleep-shorter',
+    weekly: true,
     mode: 'warning',
-    cards: ['caffeine-six-hours', 'caffeine-half-life'],
+    cards: ['caffeine-sleep-cutoffs', 'caffeine-half-life'],
     cooldownDays: 10,
     test: (sheet) => {
-      const f = assoc(sheet, 'assoc.heavyCaffeine', 4)
-      const diff = f ? (num(f, 'diff') as number) : 0
-      return f && diff < 0 ? { factIds: [f.id], strength: 0.8, vars: { diff: s(Math.abs(diff)), n: s(num(f, 'times')) } } : null
+      const f = factById(sheet, 'assoc.caffeine.bands')
+      if (!f || (num(f, 'groups') ?? 0) < 2 || num(f, 'none') === 1) return null
+      const minutes = num(f, 'minutes')
+      const quality = num(f, 'quality')
+      const what =
+        minutes !== null && minutes <= -30
+          ? fill(copy.caffeine.shorterHours, { minutes: s(Math.abs(minutes)) })
+          : quality !== null && quality <= -0.5
+            ? fill(copy.caffeine.lowerQuality, { q: s(Math.abs(quality)) })
+            : null
+      return what ? { factIds: [f.id], strength: 0.8, vars: { what, low: s(str(f, 'low')), high: s(str(f, 'high')), n: s(num(f, 'n')), m: s(num(f, 'm')) } } : null
     },
   },
   {
@@ -340,13 +350,16 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    id: 'heavy-caffeine-today',
+    // Fired only by a reported band of 100 mg or more, never by silence; no bedtime is assumed.
+    id: 'caffeine-late',
     mode: 'warning',
-    cards: ['caffeine-six-hours'],
+    cards: ['caffeine-sleep-cutoffs', 'caffeine-six-hours'],
     cooldownDays: 3,
     test: (sheet) => {
-      const f = factById(sheet, 'today.heavyCaffeine')
-      return f ? { factIds: [f.id], strength: 0.6, vars: {} } : null
+      const f = factById(sheet, 'caffeine.late')
+      if (!f) return null
+      const when = str(f, 'when') === 'today' ? copy.when.today : copy.when.yesterday
+      return { factIds: [f.id], strength: 0.6, vars: { when: when.charAt(0).toUpperCase() + when.slice(1), band: s(str(f, 'band')), block: s(str(f, 'block')), time: s(str(f, 'time')), mg: s(num(f, 'mg')), hours: s(num(f, 'hours')) } }
     },
   },
   {
@@ -421,14 +434,15 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    id: 'caffeine-even',
+    // The fixed null wording: no difference showing is never "does not affect".
+    id: 'caffeine-sleep-even',
+    weekly: true,
     mode: 'observation',
-    cards: ['caffeine-six-hours'],
+    cards: ['caffeine-diary-understates-sleep'],
     cooldownDays: 21,
     test: (sheet) => {
-      const f = assoc(sheet, 'assoc.heavyCaffeine', 4)
-      const diff = f ? (num(f, 'diff') as number) : -1
-      return f && diff >= 0 ? { factIds: [f.id], strength: 0.4, vars: { diff: signed(diff), n: s(num(f, 'times')) } } : null
+      const f = factById(sheet, 'assoc.caffeine.bands')
+      return f && (num(f, 'groups') ?? 0) >= 2 && num(f, 'none') === 1 ? { factIds: [f.id], strength: 0.4, vars: { low: s(str(f, 'low')), high: s(str(f, 'high')), n: s(num(f, 'n')), m: s(num(f, 'm')) } } : null
     },
   },
   {

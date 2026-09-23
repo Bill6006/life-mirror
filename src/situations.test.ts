@@ -68,9 +68,25 @@ describe('the judgment engine', () => {
   it('reads the chips like for like, in words that say which way', () => {
     const nap: Fact = { id: 'assoc.napped', tags: [], text: '', values: { diff: 6, with: 60, without: 54, times: 5, bands: 2 }, n: 5, tier: 'unclear' }
     expect(chooseLine(sheetOf([nap]), [], [])?.text).toContain('read +6 against the mornings without, 5 naps')
-    const caffeine: Fact = { id: 'assoc.heavyCaffeine', tags: [], text: '', values: { diff: -9, with: 50, without: 59, times: 4, bands: 2 }, n: 4, tier: 'unclear' }
-    expect(chooseLine(sheetOf([caffeine]), [], [])?.situationId).toBe('caffeine-under')
-    expect(chooseLine(sheetOf([caffeine]), [], [])?.text).toContain('read 9 under the others, 4 mornings')
+  })
+
+  it('speaks of caffeine from reported bands only: the next night like for like, the fixed null words, and a late window', () => {
+    const bands = (values: Fact['values']): Fact => ({ id: 'assoc.caffeine.bands', tags: [], text: '', values: { low: 'under 200 mg', high: '200 mg or more', n: 9, m: 6, groups: 2, minutes: -40, quality: -0.2, none: 0, ...values }, n: 15, tier: 'unclear' })
+    const shorter = chooseLine(sheetOf([bands({})]), [], [])
+    expect(shorter?.situationId).toBe('caffeine-sleep-shorter')
+    expect(shorter?.text).toBe('After days with 200 mg or more of caffeine reported, sleep read about 40 minutes shorter the next night than after days with under 200 mg (6 and 9 days, like for like on the sleep the day began with). An association in your record, not a verdict.')
+    expect(chooseLine(sheetOf([bands({ minutes: -10, quality: -0.6 })]), [], [])?.text).toContain('sleep quality read 0.6 of a step lower the next night')
+    // A small difference is no line of its own, and one group is nothing to compare.
+    expect(chooseLine(sheetOf([bands({ minutes: -10, quality: -0.2 })]), [], [])).toBeNull()
+    expect(chooseLine(sheetOf([bands({ groups: 1 })]), [], [])).toBeNull()
+    const even = chooseLine(sheetOf([bands({ none: 1, minutes: 5, quality: 0.1 })]), [], [])
+    expect(even?.situationId).toBe('caffeine-sleep-even')
+    expect(even?.text).toBe('Next nights show no difference yet between days with under 200 mg and days with 200 mg or more of caffeine reported (9 and 6 days). Self-reported sleep is known to miss caffeine’s effect.')
+    const late: Fact = { id: 'caffeine.late', tags: [], text: '', values: { day: '2026-09-17', when: 'yesterday', block: 'afternoon', band: '200–299 mg', time: '16:40', mg: 217, hours: 13.2 } }
+    const l = chooseLine(sheetOf([late]), [], [])
+    expect(l?.situationId).toBe('caffeine-late')
+    expect(l?.text).toBe('Yesterday, 200–299 mg was reported at the afternoon check-in, 16:40. A meta-analysis of trials put the point where about 217 mg stops shortening sleep at 13.2 hours before bed; counted from 16:40, that runs past midnight.')
+    expect(l?.cardIds).toContain('caffeine-sleep-cutoffs')
   })
 })
 
@@ -136,9 +152,9 @@ describe('what the engine sees early, and the one tap it offers', () => {
   })
 
   it('takes the week’s one change only from a pattern over days, never from a fact of one day', () => {
-    const dayScoped = ['loneliness-high', 'heavy-caffeine-today', 'short-night-today', 'say-when', 'stretch', 'necessities-missed', 'loop-closed', 'loop-open', 'loop-planned', 'church-morning']
+    const dayScoped = ['loneliness-high', 'caffeine-late', 'short-night-today', 'say-when', 'stretch', 'necessities-missed', 'loop-closed', 'loop-open', 'loop-planned', 'church-morning']
     for (const id of dayScoped) expect(isWeekScoped(SITUATIONS.find((x) => x.id === id)!), id).toBe(false)
-    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'ladder-flat', 'propose-test', 'step-stalled', 'study-no-time'])
+    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'caffeine-sleep-even', 'caffeine-sleep-shorter', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'ladder-flat', 'propose-test', 'step-stalled', 'study-no-time'])
     // The smoke test's case: the only true thing is a reading at the last check-in; the week's change says nothing.
     const lonely: Fact = { id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off' } }
     expect(chooseLine(sheetOf([lonely]), [], [])?.situationId).toBe('loneliness-high')

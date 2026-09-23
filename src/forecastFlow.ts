@@ -72,7 +72,7 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   const ex = evening?.extras ?? {}
   const keys: LastNightKey[] = []
   if (ex.dinner) keys.push('dinner')
-  if (ex.caffeine) keys.push('caffeine')
+  if (ex.caffeine || ex.caffeineIntake) keys.push('caffeine')
   if (ex.coolingOff) keys.push('coolingOff')
   if (ex.bigSocial) keys.push('bigSocial')
   if (ex.napped) keys.push('napped')
@@ -93,6 +93,8 @@ function eventTest(key: LastNightKey, ctxByDay: ReadonlyMap<string, DayContext>,
       return (c) => Boolean(ctxByDay.get(c.day)?.churchDay)
     case 'workout':
       return (c) => outside.has(c.day)
+    case 'caffeine':
+      return (c) => Boolean(c.extras?.caffeine || c.extras?.caffeineIntake)
     default:
       return (c) => Boolean(c.extras?.[key])
   }
@@ -155,7 +157,9 @@ export async function briefData(today: string): Promise<Brief> {
   const ctxByDay = new Map(contexts.map((c) => [c.day, c]))
   const outside = new Set(outsideRows.map((o) => o.day))
   const eve = checkins.find((c) => c.day === yesterday && c.block === 'evening')
-  const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside)) }))
+  // Caffeine is set only against evenings where the item was seen and left: an evening nobody saw it enters neither side (Part 22).
+  const caffeineKnown = (c: CheckIn) => Boolean(c.extras?.caffeine || c.extras?.caffeineIntake || c.extras?.caffeineShown)
+  const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside), key === 'caffeine' ? caffeineKnown : undefined) }))
   const best = carried.filter((c) => c.assoc.diff !== null).sort((a, b) => b.assoc.times - a.assoc.times)[0] ?? carried[0] ?? null
   const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times } : null
   // Steady is a conclusion: it needs the same six logged blocks the warning does, or it says nothing.

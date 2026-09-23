@@ -54,6 +54,7 @@ const RULES = `Rules, all checked by a validator that refuses the answer:
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle.
 - Speak of pickup, daycare, the office, church, a study night or people being around only when the shape of the day you are writing for holds them; the validator refuses the rest.
+- Caffeine is spoken of only as an association in the record, with its counts, never as a cause. A window where nothing was reported is "no caffeine reported", never caffeine-free or "no caffeine"; the validator refuses both.
 - Plain words, second person, no headings, no lists, no emoji.`
 
 const SYSTEM = `You write one line a day for one person's phone. You get the day's fact sheet (each fact has an id in brackets), a set of claim cards from an evidence library (each with an id and a grade), and what was said on recent days with how it landed.

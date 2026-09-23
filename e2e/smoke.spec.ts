@@ -879,6 +879,36 @@ test('caffeine is one optional item: a band per window, tapped again to clear, n
   expect((evening?.caffeineIntake as { since: string | null }).since).not.toBeNull()
 })
 
+test('caffeine on board sits beside the reading without moving it, and Evidence says what the record holds', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('give-back')).toBeVisible()
+  const reading = page.getByTestId('reading-100').first()
+  const number = await reading.locator('.hero-num').textContent()
+  await expect(page.getByTestId('caffeine-on-board')).toHaveCount(0)
+  await page.getByTestId('caffeine-3').click()
+  await expect(reading.getByTestId('caffeine-on-board')).toHaveText(' · caffeine on board')
+  await expect(reading.locator('.hero-num')).toHaveText(number ?? '')
+
+  // Now carries the same marker beside the same number.
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.getByTestId('reading-100').getByTestId('caffeine-on-board')).toBeVisible()
+  await expect(page.getByTestId('reading-100').locator('.hero-num')).toHaveText(number ?? '')
+
+  // Evidence: the habit in counts, and each comparison waiting for groups of five.
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  const card = page.getByTestId('caffeine-evidence')
+  await expect(card).toBeVisible()
+  await expect(page.getByTestId('caffeine-habit')).toHaveText('Reported on 1 of the last 28 days. Usual morning band: 200–299 mg. Shown and left untapped: 0 windows, which is none reported, never a confirmed none.')
+  await expect(page.getByTestId('caffeine-bands')).toContainText('Nothing reported yet.')
+  await expect(card).toContainText('capped at Promising')
+  await expect(card).not.toContainText(/caffeine-free|because of|\bcaus/i)
+})
+
 test('the line does what it says in one tap, shows why it said it, and the week is reviewed under the week ahead', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
   await page.goto('./')

@@ -1,5 +1,6 @@
 import { anchorSwapDue } from './audit'
 import { addDays } from './blocks'
+import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
 import { associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
 import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type Declaration, type Outcome, type TagBeliefRow } from './db'
@@ -141,8 +142,10 @@ export interface Evidence {
   privates: PrivateAssociation[]
   coolingOff: { association: Association; duration: { blocks: number; events: number } | null } | null
   bigSocial: Association | null
-  /** The morning's chip: the afternoons after mornings marked heavy caffeine, like for like. */
+  /** The morning's old yes/no chip, like for like: kept until the Caffeine item has 28 days of its own record. */
   heavyCaffeine: Association | null
+  /** Caffeine by reported band (Part 22): the habit, the comparisons, and how much record the item has. */
+  caffeine: CaffeineEvidence
   /** The other app's finished workouts: the evenings of workout days, like for like. */
   workouts: Association | null
   bringsYouBack: { moveId: string; n: number }[]
@@ -180,6 +183,7 @@ export async function evidence(today: string): Promise<Evidence> {
   const cooling = associationFor(checkins, today, (c) => Boolean(c.extras?.coolingOff))
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial))
   const caffeine = morningAssociation(checkins, today, (c) => Boolean(c.extras?.heavyCaffeine))
+  const cafe = caffeineEvidence(checkins, today)
   const outsideDays = new Set((await db.outside.toArray()).map((o) => o.day))
   const workouts = dayAssociation(checkins, today, (d) => outsideDays.has(d))
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
@@ -195,7 +199,8 @@ export async function evidence(today: string): Promise<Evidence> {
     privates: privateAssociations(settings.privateInSelection, items, checkins, today),
     coolingOff: cooling.times > 0 ? { association: cooling, duration: coolingOffDuration(checkins, today) } : null,
     bigSocial: social.times > 0 ? social : null,
-    heavyCaffeine: caffeine.times > 0 ? caffeine : null,
+    heavyCaffeine: caffeine.times > 0 && cafe.itemDays < HABIT_DAYS ? caffeine : null,
+    caffeine: cafe,
     workouts: workouts.times > 0 ? workouts : null,
     bringsYouBack: whatBringsYouBack(offers, outcomes),
     nothing,
