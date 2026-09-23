@@ -8300,14 +8300,14 @@
         {
           "n": 4,
           "name": "Dating",
-          "what": "Your own conduct on a date: there on time with the phone away, attention on them, something real of your own in turn, and a clear, kind ending.",
+          "what": "Your own conduct on a date: there on time with the phone away, attention on them, something real of your own in turn, and a clear, kind ending. From here on, a monthly private check on your own safety, conduct and doubts.",
           "notProgress": "Judging the date or the person; a date is not a result and is never counted.",
           "advance": "declared"
         },
         {
           "n": 5,
           "name": "Deciding",
-          "what": "Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, a monthly private check on your own safety, conduct and doubts, and a relationship course suggested before an engagement, yours to take or leave.",
+          "what": "Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, and a relationship course suggested before an engagement, yours to take or leave.",
           "notProgress": "Letting a step happen because it is easier than choosing it.",
           "advance": "declared"
         },
@@ -8426,7 +8426,7 @@
         },
         {
           "id": "monthly-check",
-          "stage": 5,
+          "stage": 4,
           "name": "A monthly private check",
           "what": "Once a month, three private questions about your own safety, your own conduct, and any doubt you keep setting aside. A yes to the safety or the conduct question shows the app’s own fixed help, inside this check and nowhere else; a doubt on its own does not. No model writes, softens or decides it, and it is not a general crisis screen.",
           "questions": [

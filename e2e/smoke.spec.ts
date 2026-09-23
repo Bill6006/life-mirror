@@ -1150,6 +1150,13 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await partnerCard.getByTestId('partner-date-2026-09-23').click()
   await expect(partnerCard.getByTestId('partner-date-2026-09-23')).toHaveAttribute('aria-pressed', 'true')
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 4 of 7 · Dating')
+  // From Dating on the monthly check is yours: the card says it is open, and Notes and checks holds it before the values note.
+  await expect(partnerCard.getByTestId('partner-check-open')).toBeVisible()
+  await partnerCard.getByRole('button', { name: /^Notes and checks/ }).click()
+  await expect(page.getByTestId('monthly-check')).toBeVisible()
+  await expect(page.getByTestId('partner-values')).toHaveCount(0)
+  await expect(page.getByTestId('partner-later')).toHaveText('From Deciding on, this screen also holds your values and a note before each step.')
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.locator('[data-kind="path"]')).toHaveCount(1)
   await expect(page.locator('[data-kind="path"]').getByTestId('path-stage')).toContainText('The Partner path · Stage 4 of 7 · Dating')
@@ -1159,7 +1166,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await page.getByTestId('path-choice-date-end-clearly').click()
   await expect(page.locator('[data-kind="path"]').getByTestId('path-guardrail')).toHaveText('Their answer is final. A second ask after a no is never offered.')
 
-  // The next stage declared in one tap, with nothing asked first; the card then says this month's check is open.
+  // The next stage declared in one tap, with nothing asked first; this month's check stays open.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await partnerCard.getByTestId('partner-declare').click()
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 5 of 7 · Deciding')

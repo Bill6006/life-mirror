@@ -12,7 +12,7 @@ import { copy } from './copy'
 import { db, ensureDayContext, getSettings, setDayContext, type Aim, type CheckIn, type Offer, type Outcome, type PathMark } from './db'
 import { buildExport, partnerOwn, type AimsData, type RecordsData } from './export'
 import type { FactSheet } from './factTypes'
-import { addMilestone, addPathAim, checkPromptShown, checkShowsHelp, declareDate, declareStage, deleteMark, monthlyChecks, pathMarks, reflections, resumePath, saveMonthlyCheck, saveReflection, setPathPick } from './pathFlow'
+import { actOpensAt, addMilestone, addPathAim, checkPromptShown, checkShowsHelp, declareDate, declareStage, deleteMark, monthlyChecks, pathMarks, reflections, resumePath, saveMonthlyCheck, saveReflection, setPathPick } from './pathFlow'
 import { countsByRep, declaredStage, HARD_POSITION, lightOnlyDay, partnerOnly, pathEntries, pathKey, pathToday, peopleRow, whyThisRep, type PathTodayInput } from './pathStage'
 import { DEFAULT_SETTINGS } from './settings'
 import { rankLines } from './situations'
@@ -204,12 +204,14 @@ describe('the Partner path on the phone', () => {
     expect(checkShowsHelp({ safety: null, conduct: true, doubt: false })).toBe(true)
     expect(checkShowsHelp({ safety: false, conduct: false, doubt: true })).toBe(false)
     expect(checkShowsHelp({ safety: null, conduct: null, doubt: null })).toBe(false)
-    // The card's prompt: from Deciding on, once a month, and never on a hard day.
+    // The card's prompt: from Dating on and through every later stage (owner, 2026-09-23), once a month, never on a hard day.
     const checks = await monthlyChecks()
     expect(checkPromptShown(5, false, checks, DAY)).toBe(false)
-    expect(checkPromptShown(5, false, checks, '2026-11-02')).toBe(true)
-    expect(checkPromptShown(5, true, checks, '2026-11-02')).toBe(false)
-    expect(checkPromptShown(4, false, checks, '2026-11-02')).toBe(false)
+    for (const stage of [4, 5, 6, 7]) expect(checkPromptShown(stage, false, checks, '2026-11-02'), String(stage)).toBe(true)
+    for (const stage of [1, 2, 3]) expect(checkPromptShown(stage, false, checks, '2026-11-02'), String(stage)).toBe(false)
+    expect(checkPromptShown(4, true, checks, '2026-11-02')).toBe(false)
+    expect(actOpensAt('monthly-check')).toBe(4)
+    expect(actOpensAt('values-note')).toBe(5)
   })
 
   it('stores its records in the synced set, each write queued for your own database', async () => {

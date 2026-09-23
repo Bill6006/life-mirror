@@ -5,15 +5,15 @@ import { copy } from './copy'
 import { db, getSettings, PARTNER_STEPS, updateSettings, type MonthlyCheck, type PartnerStep, type PathMark, type Reflection } from './db'
 import { fill, formatDayShort, formatDayTiny } from './format'
 import { useLive } from './live'
-import { addMilestone, CHECK_KEYS, checkPromptShown, checkShowsHelp, checkThisMonth, DECIDING, declareDate, declareStage, deleteMark, deleteReflection, monthlyChecks, pathMarks, reflections, saveMonthlyCheck, saveReflection } from './pathFlow'
+import { actOpensAt, addMilestone, CHECK_KEYS, checkPromptShown, checkShowsHelp, checkThisMonth, declareDate, declareStage, deleteMark, deleteReflection, monthlyChecks, pathMarks, reflections, saveMonthlyCheck, saveReflection } from './pathFlow'
 import { declaredStage, pathById, pathEntries, stageOf, stageWords, type PathToday } from './pathStage'
 
 // The Partner path's own controls (Part 27). On its card: a date declared with its day, the next
 // stage declared in one tap, the online channel's switch, and the door to its notes and checks.
-// On that screen: what you declared, milestones, reflections, and from Deciding on your values, a
-// note before each step and the monthly check, whose fixed help the app shows itself, inside the
-// check alone and only on a yes to its safety or its conduct question. Nothing here holds a name,
-// a place, a rating or anyone else's answer, and nothing gates a declaration.
+// On that screen: what you declared, milestones, reflections, the monthly check from Dating on,
+// whose fixed help the app shows itself, inside the check alone and only on a yes to its safety or
+// its conduct question, and your values and a note before each step from Deciding on. Nothing here
+// holds a name, a place, a rating or anyone else's answer, and nothing gates a declaration.
 
 const partner = () => pathById('partner')
 
@@ -152,7 +152,24 @@ function MonthlyCheckCard({ today }: { today: string }) {
   )
 }
 
-/** Notes and checks: what you declared, milestones, reflections, and from Deciding on the rest. */
+/** The notes and the check that open with a stage, in the order the screen shows them, each named for the line that says what opens later. */
+const STAGED = ['values-note', 'decide-dont-slide', 'monthly-check'] as const
+
+/** "From Dating on, this screen also holds the monthly check; from Deciding on, your values and a note before each step." */
+function laterLine(path: ReturnType<typeof partner>, stage: number): string | null {
+  const c = copy.partnerNotes
+  const groups = new Map<number, string[]>()
+  for (const id of STAGED) {
+    const at = actOpensAt(id)
+    if (at > stage) groups.set(at, [...(groups.get(at) ?? []), c.opensLater[id]])
+  }
+  const parts = [...groups.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([at, items], i) => fill(i === 0 ? c.laterFirst : c.laterNext, { stage: path.stages.find((s) => s.n === at)?.name ?? '', items: items.join(' and ') }))
+  return parts.length ? `${parts.join('; ')}.` : null
+}
+
+/** Notes and checks: what you declared, milestones, reflections, and the rest from the stage each opens at. */
 export function PartnerNotesScreen({ onClose }: { onClose: () => void }) {
   const today = dayKey(new Date())
   const marks = useLive(() => pathMarks('partner'), [])
@@ -173,6 +190,7 @@ export function PartnerNotesScreen({ onClose }: { onClose: () => void }) {
   const values = notes.find((r) => r.kind === 'values')
   const decide = (s: PartnerStep) => notes.find((r) => r.kind === 'decide' && r.step === s)
   const course = act('relationship-education')
+  const later = laterLine(path, stage)
   const markLine = (m: PathMark) => (m.kind === 'date' ? fill(c.dateLine, { day: formatDayShort(m.day) }) : fill(c.stageLine, { stage: stageWords(path, m.stage ?? 1), day: formatDayShort(m.day) }))
   return (
     <section class="screen" data-testid="partner-notes">
@@ -249,14 +267,18 @@ export function PartnerNotesScreen({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
-      {stage >= DECIDING ? (
+      {stage >= actOpensAt('values-note') && (
         <>
           <h2 class="section">{act('values-note')?.name}</h2>
           <div class="card pad" data-testid="partner-values">
             <p class="note faint">{act('values-note')?.what}</p>
             <NoteEditor saved={values} placeholder={c.valuesPlaceholder} testid="partner-values-input" onSave={(text) => saveReflection('partner', 'values', text)} />
           </div>
+        </>
+      )}
 
+      {stage >= actOpensAt('decide-dont-slide') && (
+        <>
           <h2 class="section">{act('decide-dont-slide')?.name}</h2>
           <div class="card pad" data-testid="partner-decide">
             <p class="note faint">{act('decide-dont-slide')?.what}</p>
@@ -272,13 +294,19 @@ export function PartnerNotesScreen({ onClose }: { onClose: () => void }) {
               </div>
             ))}
           </div>
+        </>
+      )}
 
+      {stage >= actOpensAt('monthly-check') && (
+        <>
           <h2 class="section">{act('monthly-check')?.name}</h2>
           <MonthlyCheckCard today={today} />
         </>
-      ) : (
-        <p class="note faint" data-testid="partner-from-deciding">
-          {c.fromDeciding}
+      )}
+
+      {later && (
+        <p class="note faint" data-testid="partner-later">
+          {later}
         </p>
       )}
 

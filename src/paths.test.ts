@@ -119,10 +119,20 @@ describe('what the paths say', () => {
     expect(partner.excluded.map((e) => e.what)).toEqual(expect.arrayContaining(['Approaching strangers in the street', 'Reading signals to decide who is interested', 'Asking again after a no']))
   })
 
-  it('keeps the Deciding stage’s notes and checks as app content, with the monthly check’s fixed help', () => {
+  it('keeps the Partner path’s notes and checks as app content: the monthly check from Dating (owner, 2026-09-23), the rest from Deciding, with the check’s fixed help', () => {
     const acts = partner.acts ?? []
     expect(acts.map((a) => a.id)).toEqual(['values-note', 'decide-dont-slide', 'monthly-check', 'relationship-education'])
-    for (const a of acts) expect(a.stage).toBe(5)
+    const dating = partner.stages.find((s) => s.name === 'Dating')?.n
+    const deciding = partner.stages.find((s) => s.name === 'Deciding')?.n
+    expect(acts.map((a) => [a.id, a.stage])).toEqual([
+      ['values-note', deciding],
+      ['decide-dont-slide', deciding],
+      ['monthly-check', dating],
+      ['relationship-education', deciding],
+    ])
+    // Its questions concern someone you are dating, and every later stage says it stays yours.
+    expect(partner.stages.find((s) => s.n === dating)?.what).toContain('monthly private check')
+    expect(partner.stages.find((s) => s.n === deciding)?.what).not.toContain('monthly')
     const check = acts.find((a) => a.id === 'monthly-check')
     expect(check?.help).toContain('1-800-799-7233')
     expect(check?.what).toContain('No model writes, softens or decides it')

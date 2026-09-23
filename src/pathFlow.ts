@@ -180,16 +180,22 @@ export function checkShowsHelp(answers: MonthlyCheck['answers']): boolean {
   return CHECK_KEYS.some((k, i) => answers[k] === true && questions[i]?.helpOnYes === true)
 }
 
-/** From this stage on the Deciding acts are yours: the values note, a note before each step, the monthly check. */
-export const DECIDING = 5
+/**
+ * The stage from which one of the Partner path's notes or checks is yours, as the catalogue places
+ * it: the monthly check from Dating (owner, 2026-09-23), the values and decide-don't-slide notes
+ * from Deciding. Each stays through every later stage.
+ */
+export function actOpensAt(id: string): number {
+  return pathById('partner').acts?.find((a) => a.id === id)?.stage ?? Number.POSITIVE_INFINITY
+}
 
 /**
- * Whether the Partner card says this month's check is open: from Deciding on, not yet answered this
+ * Whether the Partner card says this month's check is open: from Dating on, not yet answered this
  * month, and never on a day the record reads high stress or overwhelm, when no evaluative prompt is
  * shown. The check itself stays on its screen, with its help, whatever the day.
  */
 export function checkPromptShown(stage: number, lightOnly: boolean, checks: readonly MonthlyCheck[], today: string): boolean {
-  return stage >= DECIDING && !lightOnly && checkThisMonth(checks, today) === null
+  return stage >= actOpensAt('monthly-check') && !lightOnly && checkThisMonth(checks, today) === null
 }
 
 export function monthlyChecks(): Promise<MonthlyCheck[]> {

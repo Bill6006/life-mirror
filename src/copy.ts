@@ -734,7 +734,9 @@ export const copy = {
     yes: 'Yes',
     no: 'No',
     answered: 'This month’s answers, from {day}. Answer again whenever you like.',
-    fromDeciding: 'From Deciding on, this screen also holds your values, a note before each step and the monthly check.',
+    laterFirst: 'From {stage} on, this screen also holds {items}',
+    laterNext: 'from {stage} on, {items}',
+    opensLater: { 'monthly-check': 'the monthly check', 'values-note': 'your values', 'decide-dont-slide': 'a note before each step' },
   },
   path: {
     names: { social: 'The Social path', partner: 'The Partner path' },
@@ -793,7 +795,7 @@ export const copy = {
       online: 'The online channel',
       onlineNote: 'Off until you turn it on, and off again with one tap. At most two of its reps in a week; nothing about how anyone responds is kept.',
       notes: 'Notes and checks',
-      notesNote: 'Milestones and reflections; from Deciding on, your values, a note before each step and the monthly check.',
+      notesNote: 'Milestones and reflections; from Dating on, the monthly check; from Deciding on, your values and a note before each step.',
       checkOpen: 'This month’s private check is open, under Notes and checks.',
     },
     shape: {
