@@ -55,6 +55,10 @@
     {
       "id": "fatherhood",
       "name": "Fatherhood"
+    },
+    {
+      "id": "partner",
+      "name": "Partner"
     }
   ],
   "moves": [
@@ -2078,7 +2082,19 @@
       "prior": {
         "effect": 0.2,
         "note": "Sandstrom and Dunn 2014: even loose-tie contact lifts belonging; about a fifth of a step on loneliness"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "One real line, about them.",
+      "crutch": "A forward or a meme.",
+      "doneWhen": "Done when it is sent, whatever the reply."
     },
     {
       "id": "call-not-text",
@@ -2137,7 +2153,19 @@
       "prior": {
         "effect": 0.3,
         "note": "Kumar and Epley 2021: people expected calls to be awkward and found them warmer; about a third of a step"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "Something they told you last time.",
+      "crutch": "A text instead.",
+      "doneWhen": "Done when you have called, whether or not they picked up."
     },
     {
       "id": "thank-you-note",
@@ -2195,7 +2223,19 @@
       "prior": {
         "effect": 0.3,
         "note": "Kumar and Epley 2018: senders underestimated how much thanks landed; about a third of a step on mood"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "The specific thing they did.",
+      "crutch": "A general thanks.",
+      "doneWhen": "Done when it is sent."
     },
     {
       "id": "time-with-her",
@@ -2316,7 +2356,24 @@
       "prior": {
         "effect": 0.3,
         "note": "Epley and Schroeder 2014: commuters who talked to strangers enjoyed the ride more; about a third of a step"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 2,
+          "advances": true
+        },
+        "partner": {
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "errand",
+        "recurring"
+      ],
+      "cue": "Something about them or the moment, not about yourself.",
+      "crutch": "Hello, and done.",
+      "doneWhen": "Done when you have said the sentence, however they answer."
     },
     {
       "id": "invite-someone",
@@ -2381,7 +2438,20 @@
       "prior": {
         "effect": 0.2,
         "note": "Sandstrom and Boothby 2021: people avoid initiating and enjoy it when they do; about a fifth of a step over seven days; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 5,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "A day, a time, a place.",
+      "crutch": "We should get together sometime.",
+      "doneWhen": "Done when it is sent, whatever the answer.",
+      "guardrail": "One ask. Anything other than a yes is final."
     },
     {
       "id": "church-early",
@@ -2437,7 +2507,24 @@
       "prior": {
         "effect": 0.3,
         "note": "VanderWeele 2017 review: attendance predicts lower low mood; about a third of a step over seven days"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 2,
+          "advances": true
+        },
+        "partner": {
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "Who is standing on their own?",
+      "crutch": "Staying with the people you already know.",
+      "doneWhen": "Done when you have talked with one person, however it went."
     },
     {
       "id": "nap-ten",
@@ -3137,7 +3224,20 @@
       "prior": {
         "effect": 0.2,
         "note": "Mayo-Wilson 2014: exposure-based work is the strongest treatment for social anxiety; one rep, about a fifth of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "errand",
+        "recurring"
+      ],
+      "cue": "The colour of their eyes, then a nod.",
+      "crutch": "Looking at your phone as you pass.",
+      "doneWhen": "Done when you have held it for a beat, however they respond."
     },
     {
       "id": "ten-seconds-past",
@@ -3194,7 +3294,21 @@
       "prior": {
         "effect": 0.2,
         "note": "Abramowitz 2019: staying in discomfort teaches that it passes; about a fifth of a step; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "errand",
+        "recurring"
+      ],
+      "cue": "Their face, not the exit.",
+      "crutch": "The excuse to leave you had ready.",
+      "doneWhen": "Done when you stayed the ten seconds."
     },
     {
       "id": "say-the-thing",
@@ -3252,7 +3366,21 @@
       "prior": {
         "effect": 0.2,
         "note": "Speed 2018 review of assertiveness training; about a fifth of a step"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "group",
+        "recurring"
+      ],
+      "cue": "The sentence you notice yourself swallowing.",
+      "crutch": "Waiting for a better moment.",
+      "doneWhen": "Done when you have said it, however it lands."
     },
     {
       "id": "low-pressure-conversation",
@@ -3324,18 +3452,32 @@
       "prior": {
         "effect": 0.3,
         "note": "Sandstrom and Boothby 2021; about a third of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "partner": {
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "errand",
+        "recurring",
+        "oneToOne"
+      ],
+      "cue": "Something about the place or the moment.",
+      "crutch": "Treating it as an audition.",
+      "doneWhen": "Done when you have talked, however it went."
     },
     {
       "id": "ask-follow-up",
       "name": "Ask one follow-up question",
       "family": "charisma",
-      "what": "In any conversation today, ask about the thing the other person just said.",
+      "what": "In any conversation today, ask about the thing the other person just said: one follow-up, never a barrage, and something of your own in turn.",
       "source": {
         "who": "Huang, Yeomans, Brooks, Minson and Gino",
-        "what": "Speed-dating and lab data: people who asked more follow-up questions were liked more, and rarely knew it",
+        "what": "People who asked more follow-up questions were liked more; a re-analysis found question asking as much a matter of the pair as of the asker (Kluger and Malloy 2019), so it is held as thin evidence",
         "year": 2017,
-        "strength": "moderate"
+        "strength": "weak"
       },
       "minutes": 1,
       "effort": "low",
@@ -3389,9 +3531,27 @@
       },
       "costToAssign": "low",
       "prior": {
-        "effect": 0.3,
-        "note": "Huang 2017: follow-up questions raised liking; about a third of a step on social energy; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+        "effect": 0.2,
+        "note": "Huang 2017, contested by Kluger and Malloy 2019: lowered to a fifth of a step on social energy; mood is a target too, so the day’s draw can reach it, on thin evidence"
+      },
+      "path": {
+        "social": {
+          "stage": 2,
+          "advances": true
+        },
+        "partner": {
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring",
+        "errand"
+      ],
+      "cue": "The last thing they said, and one question about it.",
+      "crutch": "A new topic whenever there is a silence.",
+      "doneWhen": "Done when you have asked, however they answer."
     },
     {
       "id": "liking-gap-note",
@@ -3447,7 +3607,19 @@
       "prior": {
         "effect": 0.2,
         "note": "Boothby 2018: people underestimate how much they were liked; about a fifth of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": false
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "One honest line, then the liking gap.",
+      "crutch": "Replaying what you should have said.",
+      "doneWhen": "Done when it is written."
     },
     {
       "id": "one-verse",
@@ -4690,7 +4862,20 @@
       "ladder": {
         "id": "participation",
         "rung": 1
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 4,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "The thing you are actually curious about.",
+      "crutch": "Waiting until you have the perfect question.",
+      "doneWhen": "Done when you have asked it."
     },
     {
       "conflicts": [],
@@ -4752,7 +4937,20 @@
       "ladder": {
         "id": "participation",
         "rung": 2
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 4,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "Start, middle, end, then stop.",
+      "crutch": "Trailing off before the end.",
+      "doneWhen": "Done when you have said it through."
     },
     {
       "conflicts": [],
@@ -4820,7 +5018,21 @@
       "ladder": {
         "id": "participation",
         "rung": 3
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 4,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring",
+        "oneToOne"
+      ],
+      "cue": "Something they have lived too; familiar stories land better.",
+      "crutch": "Saving it for a bigger audience.",
+      "doneWhen": "Done when you have told it."
     },
     {
       "conflicts": [],
@@ -4887,7 +5099,20 @@
       "ladder": {
         "id": "participation",
         "rung": 4
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 4,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "Something the group shares.",
+      "crutch": "Waiting for someone else to fill the lull.",
+      "doneWhen": "Done when you have started it."
     },
     {
       "conflicts": [],
@@ -4941,7 +5166,19 @@
       "prior": {
         "effect": 0.2,
         "note": "A solo rehearsal; about a fifth of a step on confidence, thin; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "The story you would tell the group.",
+      "crutch": "Recording it again until it is perfect.",
+      "doneWhen": "Done when you have listened back once."
     },
     {
       "conflicts": [],
@@ -4996,7 +5233,19 @@
       "prior": {
         "effect": 0.1,
         "note": "A solo rep; about a tenth of a step, untested; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "The room you are speaking to.",
+      "crutch": "Mumbling it to get it over with.",
+      "doneWhen": "Done when the page is read."
     },
     {
       "conflicts": [],
@@ -5060,7 +5309,21 @@
       "prior": {
         "effect": 0.3,
         "note": "External focus is the tested ingredient; about a third of a step on confidence; mood is a target too, so the day’s draw can reach it, on thin evidence"
-      }
+      },
+      "path": {
+        "social": {
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "group",
+        "recurring"
+      ],
+      "cue": "What they said, how they said it, what they seem to want.",
+      "crutch": "Planning your next line while they talk.",
+      "doneWhen": "Done when you noticed the three things."
     },
     {
       "conflicts": [],
@@ -5551,6 +5814,1983 @@
         "effect": 0.25,
         "note": "Ramani and Siegler 2008 on her counting; on your own mood, about a quarter of a step this evening"
       }
+    },
+    {
+      "id": "greet-by-name",
+      "name": "Greet someone by name",
+      "family": "people",
+      "what": "At a place you go every week, greet one person by their name, and add one thing you noticed about their day.",
+      "source": {
+        "who": "Sandstrom and Dunn",
+        "what": "Days with more interactions with casual acquaintances, the people seen in passing, went with more belonging and better mood",
+        "year": 2014,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.2,
+        "note": "Sandstrom and Dunn 2014: more contact with casual acquaintances went with more belonging; a fifth of a step on social energy, thin"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 1,
+          "advances": true
+        },
+        "partner": {
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "errand"
+      ],
+      "cue": "Their name, and one thing you noticed about them today.",
+      "crutch": "A nod instead of the name.",
+      "doneWhen": "Done when you have said it, however they answer."
+    },
+    {
+      "id": "matched-disclosure",
+      "name": "Answer a disclosure with one of your own",
+      "family": "charisma",
+      "what": "When someone tells you something real about themselves, tell them something of about the same weight about you. Turn for turn, not a speech.",
+      "source": {
+        "who": "Sprecher, Treger and Wondra",
+        "what": "Taking turns disclosing in a first meeting raised liking and closeness more than one side disclosing alone",
+        "year": 2013,
+        "strength": "moderate"
+      },
+      "minutes": 3,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Sprecher 2013: reciprocal turns raised liking in first meetings; Collins and Miller 1994 meta-analysis agrees; a fifth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": true
+        },
+        "partner": {
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring"
+      ],
+      "cue": "What they just shared, and what you have of the same size.",
+      "crutch": "Asking question after question and answering none.",
+      "doneWhen": "Done when you have said it, however they take it."
+    },
+    {
+      "id": "return-to-last-time",
+      "name": "Return to something they said last time",
+      "family": "charisma",
+      "what": "With someone you see again, bring up one thing they told you the last time: how it went, or what came of it.",
+      "source": {
+        "who": "Laurenceau, Barrett and Pietromonaco",
+        "what": "In daily diaries, feeling understood and responded to carried the effect of disclosure on closeness",
+        "year": 1998,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.2,
+        "note": "Laurenceau 1998: responsiveness carried closeness; a fifth of a step on social energy"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 2,
+          "advances": true
+        },
+        "partner": {
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring"
+      ],
+      "cue": "The one thing they told you last time.",
+      "crutch": "Starting from nothing each time you meet.",
+      "doneWhen": "Done when you have asked, however they answer."
+    },
+    {
+      "id": "introduce-yourself",
+      "name": "Introduce yourself to someone new there",
+      "family": "people",
+      "what": "At a place you go every week, introduce yourself to one person you have not met, and ask their name.",
+      "source": {
+        "who": "Sandstrom, Boothby and Cooney",
+        "what": "A week of approaching and talking to strangers made people less pessimistic about rejection and surer of their conversational ability, lasting at least a week",
+        "year": 2022,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.3,
+        "note": "Sandstrom 2022: a week of approaching strangers lowered expected rejection; a third of a step on confidence"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 5,
+          "advances": true
+        },
+        "partner": {
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "Your name, then a question about them.",
+      "crutch": "Waiting for someone to introduce you.",
+      "doneWhen": "Done when you have introduced yourself, however they answer."
+    },
+    {
+      "id": "swap-numbers",
+      "name": "Offer your number to stay in touch",
+      "family": "people",
+      "what": "With someone you have enjoyed talking to, offer your number or ask for a way to stay in touch. Once, plainly.",
+      "source": {
+        "who": "Hall",
+        "what": "Hours spent together predicted how close new acquaintances became; a way to reach each other outside the shared place makes those hours possible (adjacent evidence)",
+        "year": 2019,
+        "strength": "weak"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Hall 2019: hours together predicted closeness; adjacent evidence, a fifth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 5,
+          "advances": true
+        },
+        "partner": {
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring"
+      ],
+      "cue": "One plain sentence: I have enjoyed this, can I give you my number?",
+      "crutch": "Hoping you will run into them again.",
+      "doneWhen": "Done when you have offered, whatever the answer.",
+      "guardrail": "One offer. Anything other than a yes is final."
+    },
+    {
+      "id": "invite-in-person",
+      "name": "Suggest one specific plan, face to face",
+      "family": "people",
+      "what": "To someone you see regularly, suggest one specific thing: a day, a time, a place. Short, easy to say no to.",
+      "source": {
+        "who": "Sandstrom and Boothby",
+        "what": "A mini meta-analysis: people overestimate how badly a conversation will go, and those fears predict avoiding it",
+        "year": 2021,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.3,
+        "note": "Sandstrom and Boothby 2021: fears of talking are overblown; a third of a step on confidence"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 5,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring"
+      ],
+      "cue": "A day, a time, a place.",
+      "crutch": "We should get coffee sometime.",
+      "doneWhen": "Done when you have asked, whatever the answer.",
+      "guardrail": "One ask. Anything other than a yes is final."
+    },
+    {
+      "id": "follow-up-after-meeting",
+      "name": "Follow up after meeting someone",
+      "family": "people",
+      "what": "Within two days of a good conversation with someone new, send one line that picks up something they said.",
+      "source": {
+        "who": "Boothby, Cooney, Sandstrom and Clark",
+        "what": "After a first conversation, people underestimated how much the other person liked them (adjacent evidence for reaching out again)",
+        "year": 2018,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "remote",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Boothby 2018: they probably liked you more than you think; adjacent evidence, a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 5,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "The one thing they said that you remember.",
+      "crutch": "Waiting for them to write first.",
+      "doneWhen": "Done when it is sent, whatever the reply."
+    },
+    {
+      "id": "introduce-two-people",
+      "name": "Introduce two people to each other",
+      "family": "people",
+      "what": "When two people you know are in the same place, introduce them with one thing they have in common.",
+      "source": {
+        "who": "Weber, Goodboy and Cayanus",
+        "what": "Of five ways of opening, a third-party introduction was rated the most appropriate and the most effective (adjacent evidence)",
+        "year": 2010,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Weber 2010: introductions by a third person rated best; adjacent evidence, a fifth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 6,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "Their names, and the one thing they share.",
+      "crutch": "Leaving each to find the other.",
+      "doneWhen": "Done when you have introduced them, however it goes."
+    },
+    {
+      "id": "host-something-small",
+      "name": "Host something small",
+      "family": "people",
+      "what": "Invite two or three people to something small you set up: a game, a meal, a walk. An hour, not an event.",
+      "source": {
+        "who": "Hall",
+        "what": "Hours together, and leisure time together especially, predicted closer friendships over nine weeks",
+        "year": 2019,
+        "strength": "moderate"
+      },
+      "minutes": 60,
+      "effort": "high",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "sevenDays"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection",
+          "mastery"
+        ],
+        "intensity": "high"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0.2,
+        "note": "Hall 2019: leisure hours together built closeness; a fifth of a step on loneliness over the week"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 6,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "Who has not been asked in a while?",
+      "crutch": "Waiting until it can be a proper party.",
+      "doneWhen": "Done when it has happened, whoever came."
+    },
+    {
+      "id": "take-a-recurring-role",
+      "name": "Take a small recurring role",
+      "family": "people",
+      "what": "Where you already go, take one small job that repeats: set up chairs, greet at the door, bring the coffee.",
+      "source": {
+        "who": "Back, Schmukle and Egloff",
+        "what": "Students seated side by side by chance at a first class were likelier to be friends a year later: repeated contact in one place builds ties",
+        "year": 2008,
+        "strength": "moderate"
+      },
+      "minutes": 20,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "sevenDays"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection",
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Back 2008: chance proximity predicted friendship a year on; a fifth of a step on loneliness over the week"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 6,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "Who you can help while you are there.",
+      "crutch": "Arriving just in time and leaving first.",
+      "doneWhen": "Done each time you do the role."
+    },
+    {
+      "id": "go-one-level-deeper",
+      "name": "Go one level deeper",
+      "family": "charisma",
+      "what": "With someone you already know, ask one question that goes past the usual: what they are looking forward to, what has been hard lately.",
+      "source": {
+        "who": "Kardas, Kumar and Epley",
+        "what": "In a dozen experiments, deeper conversations felt less awkward and more connecting than people expected",
+        "year": 2022,
+        "strength": "moderate"
+      },
+      "minutes": 10,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.3,
+        "note": "Kardas 2022: deep talk went better than expected and connected more; a third of a step on social energy"
+      },
+      "status": "proposed",
+      "path": {
+        "social": {
+          "stage": 6,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "One question you would like to be asked yourself.",
+      "crutch": "Keeping it to the weather because it is safe.",
+      "doneWhen": "Done when you have asked, however they answer."
+    },
+    {
+      "id": "re-engage-someone",
+      "name": "Say hello again to someone you liked talking to",
+      "family": "partner",
+      "what": "Someone you have met before and enjoyed talking with: greet them again where you both go, and add one sentence.",
+      "source": {
+        "who": "Reis, Maniaci, Caprariello, Eastwick and Finkel",
+        "what": "In live interaction, the more two strangers talked, the more they liked each other, carried by feeling responded to and more at ease",
+        "year": 2011,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Reis 2011: familiarity raised attraction in live interaction; a fifth of a step on social energy"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "The thing you talked about last time.",
+      "crutch": "Waiting for them to notice you first.",
+      "doneWhen": "Done when you have said hello and one more sentence, however they answer."
+    },
+    {
+      "id": "ask-for-an-introduction",
+      "name": "Ask a friend for an introduction",
+      "family": "partner",
+      "what": "Tell one friend you are open to meeting someone, and ask whether they know anyone they would like to introduce.",
+      "source": {
+        "who": "Weber, Goodboy and Cayanus",
+        "what": "Of five ways of opening, a third-party introduction was rated the most appropriate and the most effective",
+        "year": 2010,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "remote",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Weber 2010: introductions by a third person rated best; thin, a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 1,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote",
+        "oneToOne"
+      ],
+      "cue": "The kind of person you would enjoy meeting, in a sentence.",
+      "crutch": "Hoping friends will guess you are open to it.",
+      "doneWhen": "Done when you have asked, whatever they say."
+    },
+    {
+      "id": "say-interest-plainly",
+      "name": "Say your interest plainly",
+      "family": "partner",
+      "what": "To someone you have come to like, say it in one plain sentence: you have enjoyed talking and would like to do it again.",
+      "source": {
+        "who": "Vorauer, Cameron, Holmes and Pearce",
+        "what": "People who fear rejection believe their overtures show more interest than they do; a plain sentence closes that gap",
+        "year": 2003,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Vorauer 2003: overtures signal less than the sender thinks; a fifth of a step on confidence"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring"
+      ],
+      "cue": "One plain sentence, then let them answer.",
+      "crutch": "Hinting and waiting for them to guess.",
+      "doneWhen": "Done when you have said it, whatever the answer.",
+      "guardrail": "Say it once. Anything other than a yes is final: thank them and let it be."
+    },
+    {
+      "id": "partner-invite",
+      "name": "Make one specific, short, public invitation",
+      "family": "partner",
+      "what": "A coffee or a walk, somewhere public, an hour at most, with a day named. One ask; take the answer graciously, whatever it is.",
+      "source": {
+        "who": "Joel, Teper and MacDonald",
+        "what": "People are less willing to turn someone down in person than they predict, out of concern for the asker: a clear, easy-to-decline ask is the kind one",
+        "year": 2014,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Joel 2014: people find refusing harder than they expect; a plain ask with an easy way out; a fifth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring"
+      ],
+      "cue": "A day, an hour, a public place.",
+      "crutch": "We should hang out sometime.",
+      "doneWhen": "Done when you have asked, whatever the answer.",
+      "guardrail": "One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered."
+    },
+    {
+      "id": "online-honest-profile",
+      "name": "Write or update one profile, honestly",
+      "family": "partner",
+      "what": "On one site you chose, write or update your profile: recent photos, plain words about who you are and what you are looking for.",
+      "source": {
+        "who": "Finkel, Eastwick, Karney, Reis and Sprecher",
+        "what": "A review of online dating: its real benefit is access to people you would not otherwise meet",
+        "year": 2012,
+        "strength": "moderate"
+      },
+      "minutes": 20,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Finkel 2012: access is what online dating adds; thin, a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 1,
+          "advances": false
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "What a friend who knows you well would say you are like.",
+      "crutch": "Photos from years ago.",
+      "doneWhen": "Done when it is saved.",
+      "channel": "online"
+    },
+    {
+      "id": "online-timeboxed-browse",
+      "name": "Browse for fifteen minutes, then stop",
+      "family": "partner",
+      "what": "Set a timer for fifteen minutes, read profiles on the one site you chose, and stop when it rings, whatever you found.",
+      "source": {
+        "who": "Pronk and Denissen",
+        "what": "Across three studies, people grew more likely to reject each next profile the longer they browsed, a drop of about a quarter in acceptance from first to last",
+        "year": 2020,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "low",
+      "needs": [],
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Pronk and Denissen 2020: a rejection mind-set grows across a session, so the session is short; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 1,
+          "advances": false
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "The timer, not the feed.",
+      "crutch": "One more profile.",
+      "doneWhen": "Done when the timer rings.",
+      "channel": "online"
+    },
+    {
+      "id": "online-one-message",
+      "name": "Send one specific message",
+      "family": "partner",
+      "what": "Send one message to one person, about something specific in what they wrote. One message, not a batch.",
+      "source": {
+        "who": "Finkel, Eastwick, Karney, Reis and Sprecher",
+        "what": "A review of online dating: brief messaging that leads to meeting serves people better than long browsing",
+        "year": 2012,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "remote",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Finkel 2012: message, then meet; thin, a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 2,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "One thing in their words that you would like to hear more about.",
+      "crutch": "The same opener to everyone.",
+      "doneWhen": "Done when it is sent, whatever the reply.",
+      "channel": "online"
+    },
+    {
+      "id": "online-propose-meeting",
+      "name": "Propose a short meeting in person",
+      "family": "partner",
+      "what": "After a few days of messages, propose a short public meeting: a coffee or a walk, with a day named, within the next two or three weeks.",
+      "source": {
+        "who": "Ramirez, Sumner, Fleuriet and Cole",
+        "what": "Online daters rated a first face-to-face meeting best after a moderate amount of messaging, and worse after very little or a great deal",
+        "year": 2015,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "remote",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Ramirez 2015: moderate contact before meeting went best; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 3,
+          "advances": false
+        }
+      },
+      "settings": [
+        "remote"
+      ],
+      "cue": "A day, an hour, a public place.",
+      "crutch": "Another week of messages.",
+      "doneWhen": "Done when you have asked, whatever the answer.",
+      "guardrail": "One ask. Anything other than a yes is final.",
+      "channel": "online"
+    },
+    {
+      "id": "date-attention",
+      "name": "On time, phone away",
+      "family": "partner",
+      "what": "On a day you have a date: arrive on time, and keep the phone out of sight for the whole of it.",
+      "source": {
+        "who": "Laurenceau, Barrett and Pietromonaco",
+        "what": "Feeling responded to carried the effect of talk on closeness; attention on the other person is where responsiveness starts",
+        "year": 1998,
+        "strength": "moderate"
+      },
+      "minutes": 60,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0.1,
+        "note": "Laurenceau 1998: responsiveness carries closeness; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "Them, not the screen.",
+      "crutch": "A glance at the phone in a lull.",
+      "doneWhen": "Done when you did it, however the date went."
+    },
+    {
+      "id": "date-ask-and-listen",
+      "name": "Ask, then follow what they say",
+      "family": "partner",
+      "what": "On a date, ask about something that matters to them, and follow their answer with a second question about it.",
+      "source": {
+        "who": "Reis, Maniaci, Caprariello, Eastwick and Finkel",
+        "what": "Liking grew with interaction, carried by feeling responded to and understood",
+        "year": 2011,
+        "strength": "moderate"
+      },
+      "minutes": 10,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.1,
+        "note": "Reis 2011: responsiveness carried liking; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "The last thing they said.",
+      "crutch": "Waiting for your turn to talk.",
+      "doneWhen": "Done when you did it, however the date went."
+    },
+    {
+      "id": "date-share-something-real",
+      "name": "Share something real in turn",
+      "family": "partner",
+      "what": "On a date, when they share something that matters, share something of your own of the same weight.",
+      "source": {
+        "who": "Collins and Miller",
+        "what": "A meta-analysis: people who disclose more are liked more, and people come to like those they have disclosed to",
+        "year": 1994,
+        "strength": "strong"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.1,
+        "note": "Collins and Miller 1994: disclosure and liking run both ways; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "What they just shared, and what you have of the same size.",
+      "crutch": "Keeping it all light so nothing can go wrong.",
+      "doneWhen": "Done when you did it, however the date went."
+    },
+    {
+      "id": "date-end-clearly",
+      "name": "End the date clearly and kindly",
+      "family": "partner",
+      "what": "At the end, say plainly whether you would like to meet again, and make it easy for them to say no. Their answer is final.",
+      "source": {
+        "who": "Joel, Teper and MacDonald",
+        "what": "People turn others down less readily in person than they predict, out of concern for them: clarity from you spares both of you",
+        "year": 2014,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.1,
+        "note": "Joel 2014: refusing is harder than people expect; a plain ending with an easy no; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "One plain sentence about what you would like next.",
+      "crutch": "Leaving it vague so nobody has to answer.",
+      "doneWhen": "Done when you have said it, whatever the answer.",
+      "guardrail": "Their answer is final. A second ask after a no is never offered."
+    },
+    {
+      "id": "respond-to-good-news",
+      "name": "Meet their good news with real interest",
+      "family": "partner",
+      "what": "When your partner tells you something good, ask about it, let them tell it, and let it be theirs.",
+      "source": {
+        "who": "Gable, Reis, Impett and Asher",
+        "what": "Partners who typically answered good news with active, enthusiastic interest had closer, more satisfying relationships",
+        "year": 2004,
+        "strength": "moderate"
+      },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Gable 2004: active, constructive responses went with closer relationships; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 6,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "Their face when they tell it.",
+      "crutch": "Topping it with news of your own.",
+      "doneWhen": "Done when you did it."
+    },
+    {
+      "id": "thank-them-specifically",
+      "name": "Thank your partner for one specific thing",
+      "family": "partner",
+      "what": "Thank your partner for one specific thing they did, and say what it meant to you.",
+      "source": {
+        "who": "Algoe, Gable and Maisel",
+        "what": "In daily diaries, gratitude from small everyday kindnesses predicted more connection and satisfaction the next day, for both partners",
+        "year": 2010,
+        "strength": "moderate"
+      },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Algoe 2010: everyday gratitude lifted the next day for both; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 6,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "The thing they did, and what it saved or gave you.",
+      "crutch": "A general thanks for everything.",
+      "doneWhen": "Done when you have said it."
+    },
+    {
+      "id": "something-new-together",
+      "name": "Do one new thing together",
+      "family": "partner",
+      "what": "This week, do one thing together that neither of you has done before. Small is fine.",
+      "source": {
+        "who": "Aron, Norman, Aron, McKenna and Heyman",
+        "what": "Couples who did a novel, lively task together reported more relationship quality afterwards than couples given a routine one",
+        "year": 2000,
+        "strength": "moderate"
+      },
+      "minutes": 45,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "pleasure",
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.1,
+        "note": "Aron 2000; a randomised four-week programme agreed (Coulter and Malouff 2013); a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 6,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "Something neither of you would plan alone.",
+      "crutch": "The same evening as always.",
+      "doneWhen": "Done when you did it together."
+    },
+    {
+      "id": "reappraise-a-conflict",
+      "name": "Reappraise a disagreement",
+      "family": "partner",
+      "what": "After a disagreement, spend seven minutes writing it as a neutral friend who wants the best for you both would see it.",
+      "source": {
+        "who": "Finkel, Slotter, Luchies, Walton and Gross",
+        "what": "A 21-minute reappraisal exercise, spread across a year, stopped the usual decline in marital quality in a two-year randomised study",
+        "year": 2013,
+        "strength": "moderate"
+      },
+      "minutes": 7,
+      "effort": "medium",
+      "needs": [],
+      "targets": [
+        {
+          "reading": "stress",
+          "direction": "down",
+          "window": "nextMorning"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextMorning"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.1,
+        "note": "Finkel 2013: reappraisal preserved quality through less conflict distress; a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 6,
+          "advances": false
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "How a fair friend of you both would tell it.",
+      "crutch": "Replaying who was right.",
+      "doneWhen": "Done when you have written it."
+    },
+    {
+      "id": "talk-about-intimacy",
+      "name": "Talk openly about what you each want",
+      "family": "partner",
+      "what": "Once, kindly and without a deadline, talk with your partner about intimacy: what each of you likes and wants.",
+      "source": {
+        "who": "Mallory",
+        "what": "A meta-analysis of 93 studies: couples who talk about sex, and talk about it well, report more relationship and sexual satisfaction",
+        "year": 2022,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "high",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0.1,
+        "note": "Mallory 2022: quality of sexual communication went with satisfaction; correlational, a tenth of a step"
+      },
+      "status": "proposed",
+      "path": {
+        "partner": {
+          "stage": 7,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "What you each like, said kindly.",
+      "crutch": "Waiting for it to come up on its own.",
+      "doneWhen": "Done when you have talked."
     }
   ],
   "learnedTags": [
@@ -5883,5 +8123,409 @@
       ],
       "note": "Parked 2026-09-17 by the owner’s veto: shown here, never offered, kept in the catalogue so every past offer still reads."
     }
-  }
+  },
+  "paths": [
+    {
+      "id": "social",
+      "name": "Social",
+      "what": "From being present where people are to hosting and deepening: small reps in the places your week already holds, each your own act. What anyone else says or does is never the measure.",
+      "stages": [
+        {
+          "n": 1,
+          "name": "Presence",
+          "what": "Be where people are and be seen: eye contact, a greeting by name, attention on them rather than on yourself.",
+          "notProgress": "Rehearsing alone, watching others talk, or scrolling in the room: they fill a day and move nothing."
+        },
+        {
+          "n": 2,
+          "name": "One step past hello",
+          "what": "A sentence beyond hello, one follow-up question, or a return to something they told you last time. Short, light, and yours to start.",
+          "notProgress": "Waiting to be spoken to."
+        },
+        {
+          "n": 3,
+          "name": "Sustain and reciprocate",
+          "what": "Stay a little past the urge to leave, answer a disclosure with one of your own, say the thing you were about to swallow.",
+          "notProgress": "Interviewing someone with question after question and giving nothing back."
+        },
+        {
+          "n": 4,
+          "name": "Voice in a group",
+          "what": "In a group: ask one question, say one full thought, tell one short story, start a topic.",
+          "notProgress": "Being in the group without speaking. Recording yourself is a warm-up, never the rep."
+        },
+        {
+          "n": 5,
+          "name": "Initiate",
+          "what": "Make contact happen beyond the place you share: introduce yourself, offer your number, suggest one specific plan face to face.",
+          "notProgress": "Vague plans, and messages never sent. Messages and calls are offered on quiet days and move no stage."
+        },
+        {
+          "n": 6,
+          "name": "Host, lead, deepen",
+          "what": "Bring people together and take a small part: host something small, introduce two people, take a recurring role, go one level deeper with someone you know.",
+          "notProgress": "Big events planned and never held; depth pressed on someone who has not offered it."
+        }
+      ],
+      "rule": {
+        "reps": 6,
+        "distinctReps": 3,
+        "settingKinds": 2,
+        "withinWeeks": 6,
+        "smallerAfterRefusals": 2,
+        "reentryAfterQuietWeeks": 4,
+        "note": "Design judgment, not a research finding. A stage is yours once you have done six of its reps within six weeks, across at least three different reps and two kinds of setting. Two No or Not now answers in a row bring the smallest version of the same stage. After four quiet weeks, reps from one stage below come back for re-entry, while the stage you reached stands; nothing ever resets to the start, and a missed day changes nothing. Solo and remote reps fill days with nobody around and never move a stage. One people rep a day across the whole app.",
+        "sources": [
+          {
+            "who": "Craske, Treanor, Conway, Zbozinek and Vervliet",
+            "what": "Exposure works through new learning, helped by variety across settings, people and reps; the benefit of variety over a fixed order is supported only in part",
+            "year": 2014,
+            "strength": "moderate"
+          },
+          {
+            "who": "Kircanski and colleagues; Knowles, Jessup and Olatunji",
+            "what": "Exposure in a random or variable order did as well as a graded hierarchy, in small analogue samples",
+            "year": 2012,
+            "strength": "weak"
+          },
+          {
+            "who": "Rowe and Craske",
+            "what": "Exposure spread across a week held at follow-up where the same exposure massed into one day saw fear return",
+            "year": 1998,
+            "strength": "moderate"
+          },
+          {
+            "who": "Sandstrom, Boothby and Cooney",
+            "what": "One short conversation a day for a week made people less pessimistic about rejection, lasting at least a week",
+            "year": 2022,
+            "strength": "moderate"
+          },
+          {
+            "who": "Lally, van Jaarsveld, Potts and Wardle",
+            "what": "Missing one opportunity did not materially affect how a habit formed; the median time to automaticity was sixty-six days",
+            "year": 2010,
+            "strength": "moderate"
+          }
+        ]
+      },
+      "settingKinds": {
+        "recurring": "A place your week already holds: work, church, daycare, the gym. The home of the path.",
+        "errand": "A shop, a queue, a counter: variety, never the home.",
+        "group": "Three or more people talking together.",
+        "oneToOne": "Just the two of you.",
+        "remote": "A call or a message: fills a day with nobody around, and moves no stage.",
+        "solo": "On your own: a warm-up that moves no stage."
+      },
+      "counted": "Reps done, by rep and by setting, with their dates. A rep is done when you did your part, however the other person answered.",
+      "neverCounted": [
+        "yeses and noes",
+        "replies, or whether anyone wrote back",
+        "matches, likes and profile views",
+        "numbers exchanged",
+        "dates obtained, and second dates",
+        "how many people",
+        "any rating of a person, a conversation, a date or a rejection",
+        "streaks of approaches",
+        "time taken to reach a stage or a milestone",
+        "a second ask after a no"
+      ],
+      "excluded": [
+        {
+          "what": "Power posing",
+          "why": "Its effects on hormones and behaviour did not replicate; what remains is small and comes from not slumping (a disputed card)."
+        },
+        {
+          "what": "Positive self-statements",
+          "why": "Repeating them left people with low self-esteem feeling worse, and the finding stands unreplicated (a disputed card)."
+        },
+        {
+          "what": "Watching instead of doing",
+          "why": "Modelling changes knowledge more than behaviour, and people who only observed did not change: solo rehearsal is a warm-up and never moves a stage."
+        },
+        {
+          "what": "Waiting to feel calm",
+          "why": "How far fear falls during practice does not predict the result, so no stage waits for you to feel ready."
+        },
+        {
+          "what": "Scripts and memorised openers",
+          "why": "Plain, specific sentences about the moment or the other person; a line recited from memory is not a rep here."
+        }
+      ],
+      "cards": [
+        "social-anxiety-treatments",
+        "exposure-variety",
+        "safety-behaviours-attention",
+        "one-conversation-a-day",
+        "conversation-fears-overestimated",
+        "spaced-practice",
+        "disclosure-and-liking",
+        "liking-gap",
+        "deeper-talk",
+        "familiar-stories",
+        "acting-extraverted",
+        "practice-over-observation",
+        "familiarity-and-proximity",
+        "charisma-training",
+        "micro-randomised-decisions",
+        "power-posing-disputed",
+        "positive-self-statements-disputed"
+      ]
+    },
+    {
+      "id": "partner",
+      "name": "Partner",
+      "what": "From meeting someone to keeping a partner: your own acts, never another person’s answer. Each rep is done when you have done your part. It starts only when you start it, and pauses whenever you pause it.",
+      "stages": [
+        {
+          "n": 1,
+          "name": "Meeting",
+          "what": "Be where you might meet someone among the people your week already holds, say hello again to someone you liked talking to, and let friends know you are open to an introduction.",
+          "notProgress": "Approaching strangers in the street; waiting for someone to notice you.",
+          "advance": "counts"
+        },
+        {
+          "n": 2,
+          "name": "Initiating",
+          "what": "Start and carry a light conversation with someone you might like to know: past hello, a follow-up, a return to something they said, something of your own in turn.",
+          "notProgress": "Reading signals to decide who is interested; lines recited from memory.",
+          "advance": "counts"
+        },
+        {
+          "n": 3,
+          "name": "Expressing interest and inviting",
+          "what": "Say plainly that you would like to see them again, offer your number, and make one specific, short, public invitation. One ask; anything other than a yes is final, and you take it graciously.",
+          "notProgress": "Hints in place of a plain sentence; a second ask after a no, which is never offered.",
+          "advance": "counts or a date"
+        },
+        {
+          "n": 4,
+          "name": "Dating",
+          "what": "Your own conduct on a date: there on time with the phone away, attention on them, something real of your own in turn, and a clear, kind ending.",
+          "notProgress": "Judging the date or the person; a date is not a result and is never counted.",
+          "advance": "declared"
+        },
+        {
+          "n": 5,
+          "name": "Deciding",
+          "what": "Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, a monthly private check on your own safety, conduct and doubts, and education before any commitment.",
+          "notProgress": "Letting a step happen because it is easier than choosing it.",
+          "advance": "declared"
+        },
+        {
+          "n": 6,
+          "name": "Building",
+          "what": "The small acts that build a relationship: meet good news with interest, thank specifically, do something new together, reappraise a disagreement.",
+          "notProgress": "Keeping a tally of who did more; a compatibility quiz.",
+          "advance": "declared"
+        },
+        {
+          "n": 7,
+          "name": "Keeping",
+          "what": "The same acts over years, talking openly about what you each want, and the monthly check still yours.",
+          "notProgress": "Counting on love to keep itself.",
+          "advance": "declared"
+        }
+      ],
+      "rule": {
+        "reps": 6,
+        "distinctReps": 3,
+        "settingKinds": 2,
+        "withinWeeks": 6,
+        "smallerAfterRefusals": 2,
+        "reentryAfterQuietWeeks": 4,
+        "note": "The first three stages move by the same rule as Social: six reps within six weeks, across three different reps and two kinds of setting. Saying you have a date moves you to Dating at once. From Dating onwards a stage moves only when you declare it, in one tap, dated and reversible; milestones are dated notes, never counts. Online and remote reps move no stage.",
+        "sources": [
+          {
+            "who": "Craske, Treanor, Conway, Zbozinek and Vervliet",
+            "what": "Exposure works through new learning, helped by variety across settings, people and reps; the benefit of variety over a fixed order is supported only in part",
+            "year": 2014,
+            "strength": "moderate"
+          },
+          {
+            "who": "Kircanski and colleagues; Knowles, Jessup and Olatunji",
+            "what": "Exposure in a random or variable order did as well as a graded hierarchy, in small analogue samples",
+            "year": 2012,
+            "strength": "weak"
+          },
+          {
+            "who": "Rowe and Craske",
+            "what": "Exposure spread across a week held at follow-up where the same exposure massed into one day saw fear return",
+            "year": 1998,
+            "strength": "moderate"
+          },
+          {
+            "who": "Sandstrom, Boothby and Cooney",
+            "what": "One short conversation a day for a week made people less pessimistic about rejection, lasting at least a week",
+            "year": 2022,
+            "strength": "moderate"
+          },
+          {
+            "who": "Lally, van Jaarsveld, Potts and Wardle",
+            "what": "Missing one opportunity did not materially affect how a habit formed; the median time to automaticity was sixty-six days",
+            "year": 2010,
+            "strength": "moderate"
+          }
+        ]
+      },
+      "settingKinds": {
+        "recurring": "A place your week already holds: work, church, daycare, the gym. The home of the path.",
+        "errand": "A shop, a queue, a counter: variety, never the home.",
+        "group": "Three or more people talking together.",
+        "oneToOne": "Just the two of you.",
+        "remote": "A call or a message: fills a day with nobody around, and moves no stage.",
+        "solo": "On your own: a warm-up that moves no stage."
+      },
+      "counted": "Reps done, by rep and by setting, with their dates, and the stages and milestones you declare. A rep is done when you did your part, whatever the answer.",
+      "neverCounted": [
+        "yeses and noes",
+        "replies, or whether anyone wrote back",
+        "matches, likes and profile views",
+        "numbers exchanged",
+        "dates obtained, and second dates",
+        "how many people",
+        "any rating of a person, a conversation, a date or a rejection",
+        "streaks of approaches",
+        "time taken to reach a stage or a milestone",
+        "a second ask after a no"
+      ],
+      "channels": [
+        {
+          "id": "online",
+          "name": "Online",
+          "what": "An optional, bounded channel, at your word on 2026-09-23. Off until you turn it on, and one switch turns it fully off again: then none of its reps is offered and none is kept. It is never required for any stage and never the route a stage is met by: its reps are solo or remote, and those move no stage. It is bounded: a browse is fifteen minutes and stops, no more than two of its reps are offered in a week, and it points at meeting in person soon. Nothing about how anyone responds is kept or shown: the never-counted list applies to it in full.",
+          "defaultOn": false,
+          "requiredForProgress": false,
+          "maxRepsPerWeek": 2,
+          "browseMinutes": 15
+        }
+      ],
+      "acts": [
+        {
+          "id": "values-note",
+          "stage": 5,
+          "name": "Your values and non-negotiables, written down",
+          "what": "A short private note, typed by you, of what you value in a partner and the few things you will not accept, written before they are tested. Only you read it.",
+          "source": {
+            "who": "Jonason, Garcia, Webster, Li and Fisher",
+            "what": "People weigh dealbreakers more heavily than the qualities they want; knowing yours in advance is supported",
+            "year": 2015,
+            "strength": "moderate"
+          }
+        },
+        {
+          "id": "decide-dont-slide",
+          "stage": 5,
+          "name": "Decide, don’t slide",
+          "what": "Before each step (becoming exclusive, meeting each other’s families, moving in, an engagement), a private note: what you are choosing, and why now.",
+          "source": {
+            "who": "Owen, Rhoades and Stanley",
+            "what": "People who reported deciding their relationship steps thoughtfully reported more dedication and satisfaction than those who slid into them",
+            "year": 2013,
+            "strength": "moderate"
+          }
+        },
+        {
+          "id": "monthly-check",
+          "stage": 5,
+          "name": "A monthly private check",
+          "what": "Once a month, three private questions about your own safety, your own conduct, and any doubt you keep setting aside. The app shows fixed help itself whenever your answers call for it, and no model ever writes or softens it.",
+          "questions": [
+            "In the last month, has anyone you are dating made you afraid, or tried to control where you go, whom you see or what you spend?",
+            "Has anything you did toward them worried you afterwards: a raised voice, pressure, checking up on them?",
+            "Is there a doubt about this relationship you keep setting aside?"
+          ],
+          "help": "If someone’s behaviour frightens you, or your own worries you, you do not have to sort it out alone. The National Domestic Violence Hotline answers day and night: 1-800-799-7233, or text START to 88788, or thehotline.org. In danger now, call 911.",
+          "source": {
+            "who": "Charlot, Joel, Lamb and colleagues",
+            "what": "The number and frequency of early warning signs, such as reacting badly to a no, predicted abuse six months later",
+            "year": 2023,
+            "strength": "moderate"
+          }
+        },
+        {
+          "id": "relationship-education",
+          "stage": 5,
+          "name": "Education before a commitment",
+          "what": "Before an engagement: a relationship-education course together, nine to twenty hours rather than a single evening.",
+          "source": {
+            "who": "Hawkins, Stanley, Blanchard and Albright",
+            "what": "Across 148 evaluations, moderate courses of nine to twenty hours did better than short ones of one to eight",
+            "year": 2012,
+            "strength": "moderate"
+          }
+        }
+      ],
+      "parents": "For a parent, in general terms. One study found a mother’s dating after divorce had little direct effect on her children’s adjustment; several changes in who lives in a child’s home go with more behaviour problems, partly because of what came before, and a systematic review found that evidence mixed. When and how to introduce a partner to a child has no tested answer: the guidance is expert opinion. The path never schedules an introduction; that stays yours.",
+      "excluded": [
+        {
+          "what": "Approaching strangers in the street",
+          "why": "No study maps where such approaches are welcome, and unwanted attention from strangers is common and harmful."
+        },
+        {
+          "what": "Reading signals to decide who is interested",
+          "why": "Flirting is detected poorly, and people afraid of rejection think their own overtures say more than they do: say it plainly instead."
+        },
+        {
+          "what": "Lines, tactics and games",
+          "why": "Cute or flippant lines are rated worst, a plain or third-party introduction best, and endorsing pickup tactics tracks hostile sexism."
+        },
+        {
+          "what": "A type, a checklist or a compatibility score",
+          "why": "Ideals barely predict whom people come to desire, and what predicts a good relationship is how it works, not a match of traits."
+        },
+        {
+          "what": "Asking again after a no",
+          "why": "Persistence after a no is the core of harassment; one ask, and anything other than a yes is final."
+        },
+        {
+          "what": "Someone you supervise, or who supervises you",
+          "why": "Harm around workplace romance concentrates where one partner has power over the other (a framework, not a trial)."
+        },
+        {
+          "what": "Matching algorithms, love languages and divorce prediction",
+          "why": "None holds up on the evidence (disputed cards); the path never uses them."
+        },
+        {
+          "what": "Labelling a partner’s attachment style, or opposites attract",
+          "why": "Verdicts on another person are never made here, and actual similarity barely predicts satisfaction either way."
+        }
+      ],
+      "cards": [
+        "where-couples-meet",
+        "online-dating-access",
+        "meeting-after-some-contact",
+        "rejection-mindset-online",
+        "friends-first",
+        "ideals-and-desire",
+        "plain-openers",
+        "flirting-detection",
+        "turning-down-is-hard",
+        "rejection-and-self-definition",
+        "persistence-after-no",
+        "stranger-harassment",
+        "pickup-tactics-sexism",
+        "family-transitions",
+        "faith-and-couples",
+        "relationship-quality-predictors",
+        "similarity-in-couples",
+        "dealbreakers",
+        "own-side-can-change",
+        "sliding-versus-deciding",
+        "relationship-education",
+        "warning-signs",
+        "couple-communication",
+        "good-news-responses",
+        "gratitude-in-couples",
+        "novel-activities-together",
+        "conflict-reappraisal",
+        "sexual-communication",
+        "forgiveness-and-sacrifice",
+        "stress-spillover",
+        "diaries-can-react",
+        "divorce-prediction-disputed",
+        "love-languages-disputed",
+        "matching-algorithms-disputed"
+      ]
+    }
+  ]
 }

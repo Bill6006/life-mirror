@@ -1,4 +1,5 @@
-import { extensionPrompt, families, filterTags, isParked, isProposed, learnedTags, moves, movesInFamily, proposals, research, type Move, type Source } from './catalogue'
+import { extensionPrompt, families, filterTags, isParked, isProposed, learnedTags, moves, movesInFamily, pathReps, paths, proposals, research, type Move, type Path, type Source } from './catalogue'
+import { cardById, gradeWord } from './library'
 import { blockAt } from './blocks'
 import { copy } from './copy'
 import { updateSettings } from './db'
@@ -39,6 +40,10 @@ function statusLine(m: Move): string | null {
   const c = copy.catalogue
   const parts: string[] = []
   if (isProposed(m)) parts.push(`${c.proposed} · ${c.proposedNote}`)
+  for (const p of paths) {
+    const place = m.path?.[p.id]
+    if (place) parts.push(`${fill(c.paths.onPath, { path: p.name, n: String(place.stage) })}, ${place.advances ? c.paths.advances : c.paths.movesNothing}`)
+  }
   if (isParked(m)) parts.push(c.parked)
   if (m.ladder) parts.push(fill(c.ladderRung, { n: String(m.ladder.rung) }))
   if (m.setup) parts.push(m.setup.kind === 'necessity' && m.setup.necessity ? fill(c.setupKinds.necessity, { necessity: c.necessities[m.setup.necessity] }) : (c.setupKinds[m.setup.kind as keyof typeof c.setupKinds] ?? m.setup.kind))
@@ -99,6 +104,141 @@ function MoveCard({ m, names }: { m: Move; names: Map<string, string> }) {
   )
 }
 
+/** One rep as a path shows it: whether it moves the stage, where it happens, the cue, the crutch, when it is done, and any limit on it. */
+function PathRep({ m, path }: { m: Move; path: Path }) {
+  const c = copy.catalogue.paths
+  const place = m.path?.[path.id]
+  return (
+    <li class={isProposed(m) ? 'move is-proposed' : 'move'} data-testid="path-rep">
+      <h4 class="move-name">
+        <a href={`#move-${m.id}`}>{m.name}</a>
+      </h4>
+      <p class="move-meta">
+        {place?.advances ? c.advances : c.movesNothing}
+        {m.settings?.length ? ` · ${c.where}: ${m.settings.map((k) => c.settingNames[k]).join(', ')}` : ''}
+        {m.channel ? ` · ${c.channel}: ${path.channels?.find((ch) => ch.id === m.channel)?.name ?? m.channel}` : ''}
+        {isProposed(m) ? ` · ${copy.catalogue.proposed}` : ''}
+      </p>
+      {m.cue && (
+        <p class="move-meta">
+          {c.cue}: {m.cue}
+        </p>
+      )}
+      {m.crutch && (
+        <p class="move-meta">
+          {c.crutch}: {m.crutch}
+        </p>
+      )}
+      {m.doneWhen && <p class="move-meta">{m.doneWhen}</p>}
+      {m.guardrail && <p class="move-status">{m.guardrail}</p>}
+    </li>
+  )
+}
+
+/** A path in full (Parts 23 and 26): its stages and reps, the rule and its sources, what is counted and never counted, what is left out, and the evidence. */
+function PathSection({ path }: { path: Path }) {
+  const c = copy.catalogue.paths
+  return (
+    <div id={`path-${path.id}`} class="family" data-testid="path">
+      <h2 class="section">
+        {path.name} · {path.stages.length}
+      </h2>
+      <p class="note">{path.what}</p>
+      {path.stages.map((st) => {
+        const reps = pathReps(path.id, st.n)
+        const acts = (path.acts ?? []).filter((a) => a.stage === st.n)
+        return (
+          <div key={st.n} class="card pad" data-testid="path-stage">
+            <h3 class="move-name">{fill(c.stage, { n: String(st.n), name: st.name })}</h3>
+            <p class="move-what">{st.what}</p>
+            <p class="move-meta">
+              {c.notProgress}: {st.notProgress}
+            </p>
+            <p class="move-status">{c.moves[st.advance ?? 'counts']}</p>
+            {reps.length > 0 && (
+              <ul class="moves">
+                {reps.map((m) => (
+                  <PathRep key={m.id} m={m} path={path} />
+                ))}
+              </ul>
+            )}
+            {acts.map((a) => (
+              <div key={a.id} class="calc" data-testid="path-act">
+                <p class="calc-line ink">{a.name}</p>
+                <p class="calc-line">{a.what}</p>
+                {a.questions && (
+                  <p class="calc-line">
+                    {c.questions}: {a.questions.join(' ')}
+                  </p>
+                )}
+                {a.help && (
+                  <p class="calc-line">
+                    {c.help}: {a.help}
+                  </p>
+                )}
+                <SourceLine s={a.source} />
+              </div>
+            ))}
+          </div>
+        )
+      })}
+      <div class="card pad">
+        <p class="calc-line ink">{c.rule}</p>
+        <p class="calc-line">{path.rule.note}</p>
+        {path.rule.sources.map((s) => (
+          <SourceLine key={s.who + s.year} s={s} />
+        ))}
+        <p class="calc-line ink">{c.settingsTitle}</p>
+        {Object.entries(path.settingKinds).map(([k, v]) => (
+          <p key={k} class="calc-line">
+            {c.settingNames[k as keyof typeof c.settingNames]}: {v}
+          </p>
+        ))}
+        {(path.channels ?? []).map((ch) => (
+          <div key={ch.id} data-testid="path-channel">
+            <p class="calc-line ink">
+              {c.channel}: {ch.name}, {c.channelOff}
+            </p>
+            <p class="calc-line">{ch.what}</p>
+          </div>
+        ))}
+        <p class="calc-line ink">{c.counted}</p>
+        <p class="calc-line">{path.counted}</p>
+        <p class="calc-line ink">{c.neverCounted}</p>
+        <p class="calc-line" data-testid="never-counted">
+          {path.neverCounted.join('; ')}.
+        </p>
+        <p class="calc-line ink">{c.excluded}</p>
+        {path.excluded.map((e) => (
+          <p key={e.what} class="calc-line">
+            {e.what}: {e.why}
+          </p>
+        ))}
+        {path.parents && (
+          <>
+            <p class="calc-line ink">{c.parents}</p>
+            <p class="calc-line">{path.parents}</p>
+          </>
+        )}
+      </div>
+      <div class="card pad" data-testid="path-evidence">
+        <p class="calc-line ink">{c.evidence}</p>
+        <p class="note faint">{c.evidenceNote}</p>
+        {path.cards.map((id) => {
+          const card = cardById(id)
+          if (!card) return null
+          const status = card.status === 'disputed' ? c.disputed : card.status === 'draft' ? c.draft : c.admitted
+          return (
+            <p key={id} class="calc-line">
+              <span class="calc-key">{gradeWord(card.grade)}</span> · {card.claim} ({status}; {card.sources[0].cite})
+            </p>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function CatalogueScreen({ onClose }: { onClose: () => void }) {
   const c = copy.catalogue
   const names = new Map<string, string>()
@@ -115,6 +255,13 @@ export function CatalogueScreen({ onClose }: { onClose: () => void }) {
       <p class="note faint">{c.vetoNote}</p>
 
       <ul class="chips family-chips">
+        {paths.map((p) => (
+          <li key={p.id}>
+            <a class="chip" href={`#path-${p.id}`}>
+              {p.name}
+            </a>
+          </li>
+        ))}
         {families.map((f) => (
           <li key={f.id}>
             <a class="chip" href={`#family-${f.id}`}>
@@ -128,6 +275,14 @@ export function CatalogueScreen({ onClose }: { onClose: () => void }) {
           </a>
         </li>
       </ul>
+
+      <h2 class="section" id="paths">
+        {c.paths.title}
+      </h2>
+      <p class="note">{c.paths.note}</p>
+      {paths.map((p) => (
+        <PathSection key={p.id} path={p} />
+      ))}
 
       <h2 class="section" id="learned">
         {c.learnedTitle}

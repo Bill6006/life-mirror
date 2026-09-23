@@ -1662,19 +1662,23 @@
       "social",
       "loneliness"
     ],
-    "grade": "C",
-    "replication": "untested",
+    "grade": "D",
+    "replication": "mixed",
     "effect": "in get-to-know-you conversations and speed dates, high question-askers were liked more; follow-up questions carried the effect",
     "population": "adults in live and online conversations",
     "sources": [
       {
         "cite": "Huang et al. (2017). It doesn't hurt to ask: question-asking increases liking. Journal of Personality and Social Psychology, 113(3), 430–452.",
         "doi": "10.1037/pspi0000097"
+      },
+      {
+        "cite": "Kluger & Malloy (2019). Question asking as a dyadic behavior. Journal of Personality and Social Psychology, 117(6), 1127–1138.",
+        "doi": "10.1037/pspi0000156"
       }
     ],
-    "caveats": "One research group; effects on longer relationships not shown. A published correction exists (DOI 10.1037/pspi0000491).",
+    "caveats": "Contested and held as thin: a re-analysis found question asking as much a property of the pair as of the asker, and follow-up and switch questions largely the same (Kluger and Malloy 2019); one co-author has since had other papers retracted, not this one.",
     "app": "Ask one question is a move in the participation ladder; it is the smallest version of a conversation.",
-    "reviewed": "2026-09-18",
+    "reviewed": "2026-09-23",
     "status": "admitted",
     "moves": [
       "ask-one-question",
@@ -2212,5 +2216,1424 @@
     "app": "Her checklist and the moments with her are the counts; screens are not a chip and are not judged here.",
     "reviewed": "2026-09-18",
     "status": "admitted"
+  },
+  {
+    "id": "social-anxiety-treatments",
+    "claim": "For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "stress",
+      "conversation"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "network meta-analysis of 101 trials, 13,164 people: against a waiting list, individual CBT SMD −1.19, exposure and social skills −0.86, supported self-help −0.86; individual CBT was the psychological class to beat a psychological placebo",
+    "population": "adults with social anxiety disorder in randomised trials",
+    "sources": [
+      {
+        "cite": "Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.",
+        "doi": "10.1016/S2215-0366(14)70329-3",
+        "pmid": "26361000"
+      }
+    ],
+    "caveats": "Clinical samples; a curriculum of daily reps is not a treatment, and nothing here diagnoses anyone.",
+    "app": "The Social path borrows its structure from what works for social fear: graded practice with real people, supported, never observed from a distance.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "exposure-variety",
+    "claim": "Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part.",
+    "domain": "behaviour-change",
+    "tags": [
+      "social",
+      "habit",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "how far fear falls during practice did not predict outcome (Craske 2008); a meta-analysis found fear reduction within a session unrelated to outcome (Rupp 2017); a random or variable order did as well as a graded hierarchy in two small analogue trials; in a randomised trial the inhibitory-learning approach did no better on the primary outcome, with steeper self-reported gains on secondary ones (Treanor 2025)",
+    "population": "anxious adults and analogue samples in exposure studies",
+    "sources": [
+      {
+        "cite": "Craske et al. (2008). Optimizing inhibitory learning during exposure therapy. Behaviour Research and Therapy, 46(1), 5–27.",
+        "doi": "10.1016/j.brat.2007.10.003",
+        "pmid": "18005936"
+      },
+      {
+        "cite": "Craske et al. (2014). Maximizing exposure therapy: an inhibitory learning approach. Behaviour Research and Therapy, 58, 10–23.",
+        "doi": "10.1016/j.brat.2014.04.006",
+        "pmid": "24864005"
+      },
+      {
+        "cite": "Rupp et al. (2017). Emotional processing theory put to test: a meta-analysis on the association between process and outcome measures in exposure therapy. Clinical Psychology & Psychotherapy, 24(3), 697–711.",
+        "doi": "10.1002/cpp.2039"
+      },
+      {
+        "cite": "Kircanski et al. (2012). Challenges to the traditional exposure paradigm: variability in exposure therapy for contamination fears. Journal of Behavior Therapy and Experimental Psychiatry, 43(2), 745–751.",
+        "doi": "10.1016/j.jbtep.2011.10.010",
+        "pmid": "22104655"
+      },
+      {
+        "cite": "Knowles et al. (2023). Facing uncertainty: a comparison of hierarchical and variable exposure interventions for contamination-related concerns. Journal of Obsessive-Compulsive and Related Disorders, 36, 100777.",
+        "doi": "10.1016/j.jocrd.2022.100777",
+        "pmid": "36582425"
+      },
+      {
+        "cite": "Treanor et al. (2025). A randomized controlled trial comparing two processes of exposure therapy: extinction learning and habituation. Journal of Consulting and Clinical Psychology.",
+        "doi": "10.1037/ccp0000970",
+        "pmid": "41129370"
+      }
+    ],
+    "caveats": "Mostly contamination and spider fears in small samples; the case for variety is a mechanism with mixed trials, which is why the path treats it as design judgment.",
+    "app": "A stage holds several reps across kinds of setting, and no stage waits for you to feel calm.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "safety-behaviours-attention",
+    "claim": "Dropping the small habits used to feel safe in conversation, and turning attention outward, made people come across better and feel better in experiments on social anxiety.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "people told to drop their own safety behaviours in a second conversation drew more positive reactions from the partner than graduated exposure alone (Taylor and Alden 2011); a cross-disorder meta-analysis of safety behaviours in exposure was inconclusive (Meulders 2016: SMD 0.31, not significant)",
+    "population": "socially anxious adults in laboratory conversations",
+    "sources": [
+      {
+        "cite": "McManus, Sacadura & Clark (2008). Why social anxiety persists: an experimental investigation of the role of safety behaviours as a maintaining factor. Journal of Behavior Therapy and Experimental Psychiatry, 39(2), 147–161.",
+        "doi": "10.1016/j.jbtep.2006.12.002",
+        "pmid": "17433252"
+      },
+      {
+        "cite": "Taylor & Alden (2011). To see ourselves as others see us: an experimental integration of the intra and interpersonal consequences of self-protection in social anxiety disorder. Journal of Abnormal Psychology, 120(1), 129–141.",
+        "doi": "10.1037/a0022127"
+      },
+      {
+        "cite": "Meulders et al. (2016). The use of safety-seeking behavior in exposure-based treatments for fear and anxiety: benefit or burden? A meta-analytic review. Clinical Psychology Review, 45, 144–156.",
+        "doi": "10.1016/j.cpr.2016.02.002",
+        "pmid": "26905473"
+      }
+    ],
+    "caveats": "Single conversations in the laboratory; the meta-analysis across fears did not settle the question.",
+    "app": "Every Social rep names an outward cue and the crutch to drop; a rep done with the crutch is honestly Partly.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "one-conversation-a-day",
+    "claim": "A week of short conversations with strangers made people less pessimistic about rejection and surer of their conversational ability, and the change lasted at least a week.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation",
+      "loneliness"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "a week-long scavenger hunt of approaching and talking to strangers, against controls: expectations grew more positive and accurate day by day, and the benefit held at least a week after",
+    "population": "adults in a randomised field intervention",
+    "sources": [
+      {
+        "cite": "Sandstrom, Boothby & Cooney (2022). Talking to strangers: a week-long intervention reduces psychological barriers to social connection. Journal of Experimental Social Psychology, 102, 104356.",
+        "doi": "10.1016/j.jesp.2022.104356"
+      }
+    ],
+    "caveats": "One study; the conversations were with strangers, and the effect on friendships is not measured.",
+    "app": "The dose of the Social path: one rep a day at most, spread over days, never a streak.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "conversation-fears-overestimated",
+    "claim": "People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "a mini meta-analysis across studies: predicted fears about starting, sustaining and ending conversations were larger than experience, and related to how much people talked",
+    "population": "adults in several experiments and field studies",
+    "sources": [
+      {
+        "cite": "Sandstrom & Boothby (2021). Why do people avoid talking to strangers? A mini meta-analysis of predicted fears and actual experiences talking to a stranger. Self and Identity, 20(1), 47–71.",
+        "doi": "10.1080/15298868.2020.1816568"
+      }
+    ],
+    "caveats": "Conversations with strangers; how it generalises to people you know is less studied.",
+    "app": "The Social path counts reps done, never how they went, because the going is usually better than the fear.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "spaced-practice",
+    "claim": "Exposure spread over days held better at follow-up than the same exposure packed into one day, though packing sessions into weeks rather than months worked as well.",
+    "domain": "behaviour-change",
+    "tags": [
+      "habit",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "expanding-spaced exposure over a week showed no return of fear at one month where massed exposure in a day did (Rowe and Craske 1998, n = 31); a multicentre trial found two-week intensified exposure equivalent to standard weekly exposure (Pittig 2021)",
+    "population": "spider-fearful volunteers; adults with anxiety disorders in a multicentre trial",
+    "sources": [
+      {
+        "cite": "Rowe & Craske (1998). Effects of an expanding-spaced vs massed exposure schedule on fear reduction and return of fear. Behaviour Research and Therapy, 36(7–8), 701–717.",
+        "doi": "10.1016/S0005-7967(97)10016-X",
+        "pmid": "9682526"
+      },
+      {
+        "cite": "Tsao & Craske (2000). Timing of treatment and return of fear: effects of massed, uniform-, and expanding-spaced exposure schedules. Behavior Therapy, 31(3), 479–497.",
+        "doi": "10.1016/S0005-7894(00)80026-X"
+      },
+      {
+        "cite": "Pittig et al. (2021). Efficacy of temporally intensified exposure for anxiety disorders: a multicenter randomized clinical trial. Depression and Anxiety, 38(11), 1169–1181.",
+        "doi": "10.1002/da.23204"
+      }
+    ],
+    "caveats": "Small early trials; the multicentre trial compared weeks with months, not days with hours.",
+    "app": "One people rep a day across the whole app: spread, not packed.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "disclosure-and-liking",
+    "claim": "Disclosure and liking run both ways: people who share more are liked more, people share more with those they like, and taking turns in a first meeting builds closeness.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a meta-analysis found all three disclosure-liking links (Collins and Miller 1994); structured, escalating turn-taking produced more closeness than small talk (Aron 1997); feeling responded to carried disclosure into intimacy in daily diaries (Laurenceau 1998); reciprocal turns raised liking in first meetings (Sprecher 2013)",
+    "population": "adults and students in experiments, diaries and a meta-analysis",
+    "sources": [
+      {
+        "cite": "Collins & Miller (1994). Self-disclosure and liking: a meta-analytic review. Psychological Bulletin, 116(3), 457–475.",
+        "doi": "10.1037/0033-2909.116.3.457"
+      },
+      {
+        "cite": "Aron et al. (1997). The experimental generation of interpersonal closeness: a procedure and some preliminary findings. Personality and Social Psychology Bulletin, 23(4), 363–377.",
+        "doi": "10.1177/0146167297234003"
+      },
+      {
+        "cite": "Laurenceau, Barrett & Pietromonaco (1998). Intimacy as an interpersonal process: the importance of self-disclosure, partner disclosure, and perceived partner responsiveness in interpersonal exchanges. Journal of Personality and Social Psychology, 74(5), 1238–1251.",
+        "doi": "10.1037/0022-3514.74.5.1238",
+        "pmid": "9599440"
+      },
+      {
+        "cite": "Sprecher, Treger & Wondra (2013). Taking turns: reciprocal self-disclosure promotes liking in initial interactions. Journal of Experimental Social Psychology, 49(5), 860–866.",
+        "doi": "10.1016/j.jesp.2013.03.017"
+      }
+    ],
+    "caveats": "Matching weight matters: a disclosure far heavier than the other person’s is not what was studied.",
+    "app": "The matched-disclosure rep: answer something real with something of about the same weight, turn for turn.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "liking-gap",
+    "claim": "After a conversation, people underestimate how much the other person liked them and enjoyed their company.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation",
+      "loneliness"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "across studies from first meetings in the laboratory to real acquaintances, partners liked people more than those people believed",
+    "population": "students and adults in several studies",
+    "sources": [
+      {
+        "cite": "Boothby, Cooney, Sandstrom & Clark (2018). The liking gap in conversations: do people like us more than we think? Psychological Science, 29(11), 1742–1756.",
+        "doi": "10.1177/0956797618783714"
+      }
+    ],
+    "caveats": "An average; any one conversation can go either way, which is why the path never asks how one went.",
+    "app": "Behind the liking-gap note: one honest line about how it went, then the reminder beneath it.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "deeper-talk",
+    "claim": "Deeper conversations with strangers felt less awkward and more connecting than people expected, because they expected others to care less about what they shared.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation",
+      "loneliness"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "over a dozen experiments: people overestimated awkwardness, most for deep talk, and felt more connected to deep than shallow partners after having both",
+    "population": "adults and students in laboratory and online conversations",
+    "sources": [
+      {
+        "cite": "Kardas, Kumar & Epley (2022). Overly shallow? Miscalibrated expectations create a barrier to deeper conversation. Journal of Personality and Social Psychology, 122(3), 367–398.",
+        "doi": "10.1037/pspa0000281"
+      }
+    ],
+    "caveats": "Structured prompts with strangers; depth pressed on an unwilling person was not studied.",
+    "app": "The go-one-level-deeper rep at the Social path’s last stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "familiar-stories",
+    "claim": "Listeners enjoyed hearing stories about experiences they had shared more than novel ones, though both speakers and listeners predicted the opposite.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "in two studies listeners enjoyed familiar stories much more than novel ones, not because of content or delivery",
+    "population": "students in laboratory storytelling studies",
+    "sources": [
+      {
+        "cite": "Cooney, Gilbert & Wilson (2017). The novelty penalty: why do people like talking about new experiences but hearing about old ones? Psychological Science, 28(3), 380–394.",
+        "doi": "10.1177/0956797616685870"
+      }
+    ],
+    "caveats": "Laboratory stories; one paper.",
+    "app": "The cue on the short-story rep: tell something the group has lived too.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "acting-extraverted",
+    "claim": "Acting more extraverted for a while raises positive feeling, introverts included, though introverts gain less and feel more tired and less authentic.",
+    "domain": "mood",
+    "tags": [
+      "social",
+      "mood",
+      "energy"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "people were happier in moments they acted extraverted (Fleeson 2002); a week of acting extraverted raised well-being (Margolis and Lyubomirsky 2020); in a randomised trial the benefit was weaker for introverts, with more negative feeling and tiredness and less authenticity (Jacques-Hamilton 2019)",
+    "population": "students and adults in experience sampling and randomised trials",
+    "sources": [
+      {
+        "cite": "Fleeson, Malanos & Achille (2002). An intraindividual process approach to the relationship between extraversion and positive affect: is acting extraverted as “good” as being extraverted? Journal of Personality and Social Psychology, 83(6), 1409–1422.",
+        "doi": "10.1037/0022-3514.83.6.1409"
+      },
+      {
+        "cite": "Margolis & Lyubomirsky (2020). Experimental manipulation of extraverted and introverted behavior and its effects on well-being. Journal of Experimental Psychology: General, 149(4), 719–731.",
+        "doi": "10.1037/xge0000668"
+      },
+      {
+        "cite": "Jacques-Hamilton, Sun & Smillie (2019). Costs and benefits of acting extraverted: a randomized controlled trial. Journal of Experimental Psychology: General, 148(9), 1538–1556.",
+        "doi": "10.1037/xge0000516"
+      }
+    ],
+    "caveats": "Short manipulations; the cost for introverts is the reason reps are small and time-boxed.",
+    "app": "Reps are small and specific and placed early in the day; the recovery gap follows a group rep (see the existing card on the cost three hours later).",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "practice-over-observation",
+    "claim": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded.",
+    "domain": "learning",
+    "tags": [
+      "social",
+      "conversation",
+      "performance"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "social skills training with exposure gave better social skill and clinical status than exposure alone in a trial of 106 adults (Beidel 2014); a meta-analysis of behaviour modelling training found knowledge decayed while skills and behaviour held or grew (Taylor 2005)",
+    "population": "adults with social anxiety; trainees in organisations",
+    "sources": [
+      {
+        "cite": "Beidel et al. (2014). The impact of social skills training for social anxiety disorder: a randomized controlled trial. Journal of Anxiety Disorders, 28(8), 908–918.",
+        "doi": "10.1016/j.janxdis.2014.09.016",
+        "pmid": "25445081"
+      },
+      {
+        "cite": "Taylor, Russ-Eft & Chan (2005). A meta-analytic review of behavior modeling training. Journal of Applied Psychology, 90(4), 692–709.",
+        "doi": "10.1037/0021-9010.90.4.692"
+      }
+    ],
+    "caveats": "No direct evidence that recording yourself or reading aloud transfers to conversation.",
+    "app": "Solo rehearsal is a warm-up on the path and never moves a stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "familiarity-and-proximity",
+    "claim": "Repeated contact in the same place builds ties: chance seating predicted friendship a year later, and the more strangers interacted, the more they liked each other.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "loneliness"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "random seat assignment at a first class predicted friendship a year on (Back 2008); in live interaction, attraction rose with the amount of interaction, carried by responsiveness, comfort and knowledge (Reis 2011); a meta-analysis of repeated exposure found liking rises and then flattens (Montoya 2017)",
+    "population": "students in field and laboratory studies; a meta-analysis of 268 curves",
+    "sources": [
+      {
+        "cite": "Back, Schmukle & Egloff (2008). Becoming friends by chance. Psychological Science, 19(5), 439–440.",
+        "doi": "10.1111/j.1467-9280.2008.02106.x",
+        "pmid": "18466403"
+      },
+      {
+        "cite": "Reis, Maniaci, Caprariello, Eastwick & Finkel (2011). Familiarity does indeed promote attraction in live interaction. Journal of Personality and Social Psychology, 101(3), 557–570.",
+        "doi": "10.1037/a0022885"
+      },
+      {
+        "cite": "Montoya, Horton, Vevea, Citkowicz & Lauber (2017). A re-examination of the mere exposure effect: the influence of repeated exposure on recognition, familiarity, and liking. Psychological Bulletin, 143(5), 459–498.",
+        "doi": "10.1037/bul0000085"
+      }
+    ],
+    "caveats": "The exposure meta-analysis is mostly of images and sounds; the live-interaction work is short meetings.",
+    "app": "Recurring places the week already holds are the home of both paths; errands add variety only.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "charisma-training",
+    "claim": "Specific charismatic tactics can be taught: trained speakers were rated more charismatic, though the studies are of speeches, not conversation, and small.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "performance",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "training raised ratings of charisma, mean d = .62, in a field study of managers and a laboratory study of 41 MBA students (Antonakis 2011); everyday charisma splits into influence and affability, measurable and observable (Tskhay 2018)",
+    "population": "managers and MBA students; adults in scale validation",
+    "sources": [
+      {
+        "cite": "Antonakis, Fenley & Liechti (2011). Can charisma be taught? Tests of two interventions. Academy of Management Learning & Education, 10(3), 374–396.",
+        "doi": "10.5465/amle.2010.0012"
+      },
+      {
+        "cite": "Tskhay, Zhu, Zou & Rule (2018). Charisma in everyday life: conceptualization and validation of the General Charisma Inventory. Journal of Personality and Social Psychology, 114(1), 131–152.",
+        "doi": "10.1037/pspp0000159"
+      }
+    ],
+    "caveats": "Speeches and small samples; held as modest.",
+    "app": "Story, contrast and an animated voice belong to the group stage, marked as modest evidence.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "micro-randomised-decisions",
+    "claim": "Randomising between acceptable options at each decision point gives honest short-term estimates of what helps, and the probabilities should be kept away from zero and one and logged.",
+    "domain": "behaviour-change",
+    "tags": [
+      "choice",
+      "monitoring"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "micro-randomised trials estimate proximal effects and how they change over time (Klasnja 2015); in one, a suggestion raised the next half hour of steps by 14 percent on average and the effect faded (Klasnja 2019); adaptive designs clip and record their probabilities (Liao 2020)",
+    "population": "adults in mobile health studies",
+    "sources": [
+      {
+        "cite": "Nahum-Shani et al. (2018). Just-in-time adaptive interventions (JITAIs) in mobile health: key components and design principles for ongoing health behavior support. Annals of Behavioral Medicine, 52(6), 446–462.",
+        "doi": "10.1007/s12160-016-9830-8"
+      },
+      {
+        "cite": "Klasnja et al. (2015). Microrandomized trials: an experimental design for developing just-in-time adaptive interventions. Health Psychology, 34(Suppl), 1220–1228.",
+        "doi": "10.1037/hea0000305"
+      },
+      {
+        "cite": "Klasnja et al. (2019). Efficacy of contextually tailored suggestions for physical activity: a micro-randomized optimization trial of HeartSteps. Annals of Behavioral Medicine, 53(6), 573–582.",
+        "doi": "10.1093/abm/kay067"
+      },
+      {
+        "cite": "Liao, Greenewald, Klasnja & Murphy (2020). Personalized HeartSteps: a reinforcement learning algorithm for optimizing physical activity. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(1), 18.",
+        "doi": "10.1145/3381007"
+      }
+    ],
+    "caveats": "A design, not a finding about social skill; one person’s record is a small sample.",
+    "app": "Where two or more reps fit the day, the app draws between them with logged, bounded probabilities, and only drawn offers enter comparisons.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "power-posing-disputed",
+    "status": "disputed",
+    "claim": "The claim that expansive “power poses” change hormones and confident behaviour is disputed: the hormone effects did not replicate, and what remains is small and comes from not slumping.",
+    "domain": "mood",
+    "tags": [
+      "social",
+      "performance"
+    ],
+    "grade": "D",
+    "replication": "failed",
+    "effect": "a large replication found no effect on hormones or risk-taking (Ranehill 2015); a meta-analysis found effects driven by avoiding contractive postures (g = 0.45) rather than adopting expansive ones (g = 0.06) (Elkjær 2020); another meta-analysis of body positions reached a similar reading (Körner 2022)",
+    "population": "adults in laboratory posture experiments",
+    "sources": [
+      {
+        "cite": "Ranehill et al. (2015). Assessing the robustness of power posing: no effect on hormones and risk tolerance in a large sample of men and women. Psychological Science, 26(5), 653–656.",
+        "doi": "10.1177/0956797614553946",
+        "pmid": "25810452"
+      },
+      {
+        "cite": "Elkjær et al. (2020). Expansive and contractive postures and movement: a systematic review and meta-analysis of the effect of motor displays on affective and behavioral responses. Perspectives on Psychological Science, 17(1), 276–304.",
+        "doi": "10.1177/1745691620919358"
+      },
+      {
+        "cite": "Körner, Röseler & Schütz (2022). Dominance and prestige: meta-analytic review of experimentally induced body position effects on behavioral, self-report, and physiological dependent variables. Psychological Bulletin, 148(1–2), 67–85.",
+        "doi": "10.1037/bul0000356"
+      }
+    ],
+    "caveats": "Kept as disputed so the brain never cites power posing as established.",
+    "app": "Excluded from the Social path.",
+    "reviewed": "2026-09-23"
+  },
+  {
+    "id": "positive-self-statements-disputed",
+    "status": "disputed",
+    "claim": "The advice to repeat positive self-statements is disputed: in two experiments people with low self-esteem who repeated one felt worse, and the finding stands unreplicated.",
+    "domain": "mood",
+    "tags": [
+      "self-compassion",
+      "mood"
+    ],
+    "grade": "D",
+    "replication": "untested",
+    "effect": "repeating “I’m a lovable person” left low-self-esteem participants feeling worse, and helped high-self-esteem participants only a little",
+    "population": "students in two experiments",
+    "sources": [
+      {
+        "cite": "Wood, Perunovic & Lee (2009). Positive self-statements: power for some, peril for others. Psychological Science, 20(7), 860–866.",
+        "doi": "10.1111/j.1467-9280.2009.02370.x"
+      }
+    ],
+    "caveats": "Kept as disputed so affirmations are never offered as a rep.",
+    "app": "Excluded from the Social path.",
+    "reviewed": "2026-09-23"
+  },
+  {
+    "id": "where-couples-meet",
+    "claim": "Meeting online has become the most common way heterosexual couples in the United States meet, and people in thin markets, such as middle-aged heterosexuals, are especially likely to meet partners online.",
+    "domain": "social",
+    "tags": [
+      "social",
+      "dating"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "a nationally representative 2017 survey: online meeting eclipsed meeting through friends around 2013 (Rosenfeld 2019); Internet access at home went with higher chances of having a partner, net of other factors (Rosenfeld and Thomas 2012)",
+    "population": "nationally representative samples of US adults",
+    "sources": [
+      {
+        "cite": "Rosenfeld, Thomas & Hausen (2019). Disintermediating your friends: how online dating in the United States displaces other ways of meeting. Proceedings of the National Academy of Sciences, 116(36), 17753–17758.",
+        "doi": "10.1073/pnas.1908630116"
+      },
+      {
+        "cite": "Rosenfeld & Thomas (2012). Searching for a mate: the rise of the Internet as a social intermediary. American Sociological Review, 77(4), 523–547.",
+        "doi": "10.1177/0003122412448050"
+      }
+    ],
+    "caveats": "How couples meet describes the market, not what makes a relationship good.",
+    "app": "Why the Partner path has an online channel at all: optional, bounded, off until chosen, and never a route to a stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "online-dating-access",
+    "claim": "What online dating adds is access to people you would not otherwise meet; browsing many profiles side by side can turn people into a menu, and brief messaging that leads to meeting serves better than long browsing.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "a review of online dating’s three services, access, communication and matching: access is the clear benefit; the others are qualified",
+    "population": "a review of research on online dating",
+    "sources": [
+      {
+        "cite": "Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66.",
+        "doi": "10.1177/1529100612436522",
+        "pmid": "26173279"
+      }
+    ],
+    "caveats": "A review from before most of today’s apps; read from the authors’ summary.",
+    "app": "The online channel is short and points at meeting: one honest profile, a time-boxed browse, one message at a time, a short public meeting proposed soon.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "meeting-after-some-contact",
+    "claim": "Online daters rated a first face-to-face meeting best after a moderate amount of messaging, and worse after very little or a great deal.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "a national sample of online daters: the relation between the amount of online contact before meeting and how the meeting went was curvilinear",
+    "population": "a national sample of US online daters",
+    "sources": [
+      {
+        "cite": "Ramirez, Sumner, Fleuriet & Cole (2015). When online dating partners meet offline: the effect of modality switching on relational communication between online daters. Journal of Computer-Mediated Communication, 20(1), 99–114.",
+        "doi": "10.1111/jcc4.12101"
+      }
+    ],
+    "caveats": "Self-report of a first meeting; the turning point is the authors’ estimate.",
+    "app": "The online channel proposes a short public meeting within a few weeks of first contact, not after months of messages.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "rejection-mindset-online",
+    "claim": "The longer people browse dating profiles in a session, the more likely they are to reject each next one.",
+    "domain": "decision",
+    "tags": [
+      "dating",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "across three studies, acceptance fell by about 27 percent from the first profile to the last in a session",
+    "population": "adults viewing hypothetical and real dating profiles",
+    "sources": [
+      {
+        "cite": "Pronk & Denissen (2020). A rejection mind-set: choice overload in online dating. Social Psychological and Personality Science, 11(3), 388–396.",
+        "doi": "10.1177/1948550619866189"
+      }
+    ],
+    "caveats": "Session-level choices; what it means for relationships formed is not measured.",
+    "app": "A browse is fifteen minutes and stops, whatever was found.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "friends-first",
+    "claim": "About two-thirds of romantic relationships began as friendships, and the longer two people knew each other first, the less their pairing tracked consensus attractiveness and the more it rested on how they got on.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "social"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "a meta-analysis of seven samples (N = 1,897): two-thirds reported friends-first initiation (Stinson 2022); couples who knew each other longer before dating matched less on attractiveness (Hunt 2015); romantic evaluations were more unique to the pair than shared across raters (Eastwick and Hunt 2014)",
+    "population": "students and crowdsourced adults; couples",
+    "sources": [
+      {
+        "cite": "Stinson, Cameron & Hoplock (2022). The friends-to-lovers pathway to romance: prevalent, preferred, and overlooked by science. Social Psychological and Personality Science, 13(2), 562–571.",
+        "doi": "10.1177/19485506211026992"
+      },
+      {
+        "cite": "Hunt, Eastwick & Finkel (2015). Leveling the playing field: longer acquaintance predicts reduced assortative mating on attractiveness. Psychological Science, 26(7), 1046–1053.",
+        "doi": "10.1177/0956797615579273"
+      },
+      {
+        "cite": "Eastwick & Hunt (2014). Relational mate value: consensus and uniqueness in romantic evaluations. Journal of Personality and Social Psychology, 106(5), 728–751.",
+        "doi": "10.1037/a0035884"
+      }
+    ],
+    "caveats": "Mostly students; relationships that begin as friendships may differ in other ways too.",
+    "app": "The Partner path’s first stages share the Social path’s reps: the people your week already holds are where most of it starts.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "ideals-and-desire",
+    "claim": "The traits people say they want in an ideal partner barely predict whom they come to desire in person, and more than a hundred measured traits could not predict which particular pairs would click.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "choice"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "stated ideals failed to predict desire at a speed-dating event (Eastwick and Finkel 2008); machine learning on 100+ measures predicted none of the desire unique to a pair (Joel 2017); a worldwide registered report (N = 10,358) found matching on specific traits very small, average β = .04 (Eastwick 2025)",
+    "population": "speed daters; adults in 43 countries",
+    "sources": [
+      {
+        "cite": "Eastwick & Finkel (2008). Sex differences in mate preferences revisited: do people know what they initially desire in a romantic partner? Journal of Personality and Social Psychology, 94(2), 245–264.",
+        "doi": "10.1037/0022-3514.94.2.245"
+      },
+      {
+        "cite": "Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489.",
+        "doi": "10.1177/0956797617714580"
+      },
+      {
+        "cite": "Eastwick, Luchies, Finkel & Hunt (2014). The predictive validity of ideal partner preferences: a review and meta-analysis. Psychological Bulletin, 140(3), 623–665.",
+        "doi": "10.1037/a0032432"
+      },
+      {
+        "cite": "Eastwick et al. (2025). A worldwide test of the predictive validity of ideal partner preference matching. Journal of Personality and Social Psychology, 128(1), 123–146.",
+        "doi": "10.1037/pspp0000524"
+      }
+    ],
+    "caveats": "Physical attractiveness does predict initial evaluations moderately; ideals are not useless, only weak on specific traits.",
+    "app": "No type list and no compatibility score anywhere in the path.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "plain-openers",
+    "claim": "Plain openings do best: a direct self-introduction or an introduction by a third person was rated most appropriate, and cute or flippant lines were rated worst.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "women and men rated cute-flippant opening lines least favourably (Kleinke 1986); among 642 students, third-party and direct introductions were rated most appropriate and the third-party one most effective (Weber 2010)",
+    "population": "students rating opening lines",
+    "sources": [
+      {
+        "cite": "Kleinke, Meeker & Staneski (1986). Preference for opening lines: comparing ratings by men and women. Sex Roles, 15(11–12), 585–600.",
+        "doi": "10.1007/BF00288216"
+      },
+      {
+        "cite": "Weber, Goodboy & Cayanus (2010). Flirting competence: an experimental study on appropriate and effective opening lines. Communication Research Reports, 27(2), 184–191.",
+        "doi": "10.1080/08824091003738149"
+      }
+    ],
+    "caveats": "Old, small, rated not lived; enough to rule lines out, not to write any.",
+    "app": "The asking-a-friend and introduce-yourself reps; no lines anywhere in the path.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "flirting-detection",
+    "claim": "People detect flirting poorly, and those who fear rejection believe their own overtures show far more interest than they do.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "observers were more accurate about conversations without flirting than with it (Hall 2015); four studies found a signal amplification bias in people afraid of rejection (Vorauer 2003)",
+    "population": "students in laboratory and video studies",
+    "sources": [
+      {
+        "cite": "Hall, Xing, Ross & Silverman (2015). Accurately detecting flirting: error management theory, the traditional sexual script, and flirting base rate. Communication Research, 42(7), 939–958.",
+        "doi": "10.1177/0093650214534972"
+      },
+      {
+        "cite": "Vorauer, Cameron, Holmes & Pearce (2003). Invisible overtures: fears of rejection and the signal amplification bias. Journal of Personality and Social Psychology, 84(4), 793–812.",
+        "doi": "10.1037/0022-3514.84.4.793"
+      }
+    ],
+    "caveats": "Laboratory judgements of strangers.",
+    "app": "No rep reads signals; the say-your-interest-plainly rep says it in one sentence instead.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "turning-down-is-hard",
+    "claim": "People are less willing to turn down someone who asks them out in person than they predict, largely out of concern for the asker’s feelings.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "kindness"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "participants who believed the situation was real rejected unsuitable dates less than those imagining it, partly explained by not wanting to hurt the asker",
+    "population": "single adults in laboratory studies",
+    "sources": [
+      {
+        "cite": "Joel, Teper & MacDonald (2014). People overestimate their willingness to reject potential romantic partners by overlooking their concern for other people. Psychological Science, 25(12), 2233–2240.",
+        "doi": "10.1177/0956797614552828"
+      }
+    ],
+    "caveats": "A yes given to spare feelings is one more reason a yes is never counted.",
+    "app": "Every ask on the path is plain and easy to decline, and a date ends with a clear, kind word from you.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "rejection-and-self-definition",
+    "claim": "A rejection lingers when it changes how a person defines themselves, most for those who believe personality cannot change.",
+    "domain": "mood",
+    "tags": [
+      "dating",
+      "self-compassion",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "across five studies, people who saw personality as fixed tied past and imagined rejections to their self-definition and felt haunted by them for longer",
+    "population": "adults recalling or imagining rejection",
+    "sources": [
+      {
+        "cite": "Howe & Dweck (2016). Changes in self-definition impede recovery from rejection. Personality and Social Psychology Bulletin, 42(1), 54–71.",
+        "doi": "10.1177/0146167215612743"
+      }
+    ],
+    "caveats": "Recalled and imagined rejection.",
+    "app": "A rep is complete whatever the answer, so a no is never a verdict on you in the record.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "persistence-after-no",
+    "claim": "Persisting after a no is at the heart of stalking and harassment: much unwanted pursuit grows out of courtship that did not take no for an answer.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "kindness"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "a review of 175 studies of stalking: pursuit most often arises from prior or desired relationships",
+    "population": "a review of stalking research",
+    "sources": [
+      {
+        "cite": "Spitzberg & Cupach (2007). The state of the art of stalking: taking stock of the emerging literature. Aggression and Violent Behavior, 12(1), 64–86.",
+        "doi": "10.1016/j.avb.2006.05.001"
+      }
+    ],
+    "caveats": "A review of harm, read as a boundary rather than a statistic.",
+    "app": "One ask, and anything other than a yes is final; a second ask after a no is never offered.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "stranger-harassment",
+    "claim": "Unwanted attention from strangers in public is common for women and goes with feeling objectified.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "kindness"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "women reported frequent stranger harassment, which went with self-objectification and fear",
+    "population": "college women in survey studies",
+    "sources": [
+      {
+        "cite": "Fairchild & Rudman (2008). Everyday stranger harassment and women’s objectification. Social Justice Research, 21(3), 338–357.",
+        "doi": "10.1007/s11211-008-0073-0"
+      }
+    ],
+    "caveats": "Surveys of students.",
+    "app": "Approaching strangers in the street is excluded from the Partner path.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "pickup-tactics-sexism",
+    "claim": "Endorsing assertive pickup tactics tracks hostile sexism.",
+    "domain": "social",
+    "tags": [
+      "dating"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "hostile sexism predicted endorsing and using assertive courtship strategies",
+    "population": "adults in survey studies",
+    "sources": [
+      {
+        "cite": "Hall & Canterberry (2011). Sexism and assertive courtship strategies. Sex Roles, 65(11–12), 840–853.",
+        "doi": "10.1007/s11199-011-0045-y"
+      }
+    ],
+    "caveats": "Correlational surveys.",
+    "app": "Lines, tactics and games are excluded from the Partner path.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "family-transitions",
+    "claim": "Several changes in who lives in a child’s home go with more behaviour problems, partly because of what came before; one study found a mother’s dating after divorce had little direct effect; when to introduce a new partner has no tested answer.",
+    "domain": "parenting",
+    "tags": [
+      "parenting",
+      "dating"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "transitions related to behavioural outcomes, perhaps causally in part, while cognitive links were explained by prior characteristics (Fomby and Cherlin 2007); a systematic review found support mixed (Hadfield 2018); mothers’ dating transitions had little direct effect on children’s adjustment (Xiao 2022); few evidence-based guidelines exist for sharing dating with children (Kang and Nielson 2025)",
+    "population": "US children and families; a systematic review; post-divorce families",
+    "sources": [
+      {
+        "cite": "Fomby & Cherlin (2007). Family instability and child well-being. American Sociological Review, 72(2), 181–204.",
+        "doi": "10.1177/000312240707200203"
+      },
+      {
+        "cite": "Hadfield, Amos, Ungar, Gosselin & Ganong (2018). Do changes to family structure affect child and family outcomes? A systematic review of the instability hypothesis. Journal of Family Theory & Review, 10(1), 87–110.",
+        "doi": "10.1111/jftr.12243"
+      },
+      {
+        "cite": "Xiao, Langlais & Anderson (2022). Is it OK if mommy dates? The influence of mother’s post-divorce dating transitions on children’s well-being. Journal of Child and Family Studies, 31(2), 400–413.",
+        "doi": "10.1007/s10826-021-02111-1",
+        "pmid": "39640513"
+      },
+      {
+        "cite": "Kang & Nielson (2025). Helping postdivorce families enhance parent–child relationships: clinical applications for communicating postdivorce dating with children. Journal of Marital and Family Therapy, 51(1), e12764.",
+        "doi": "10.1111/jmft.12764"
+      }
+    ],
+    "caveats": "Mostly mothers; the timing of introductions is expert opinion.",
+    "app": "General guidance for a parent in the Partner path’s text; the path never schedules an introduction.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "faith-and-couples",
+    "claim": "Shared religious practice at home goes with better relationship quality, modestly, and part of it is who chooses to share it.",
+    "domain": "faith",
+    "tags": [
+      "faith",
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "couples’ in-home devotional activities and shared beliefs were positively linked with relationship quality (Ellison 2010); reviews of religion in families find mostly small, mixed associations (Mahoney 2001, 2010)",
+    "population": "US couples; reviews of family research",
+    "sources": [
+      {
+        "cite": "Ellison, Burdette & Wilcox (2010). The couple that prays together: race and ethnicity, religion, and relationship quality among working-age adults. Journal of Marriage and Family, 72(4), 963–975.",
+        "doi": "10.1111/j.1741-3737.2010.00742.x"
+      },
+      {
+        "cite": "Mahoney (2010). Religion in families, 1999–2009: a relational spirituality framework. Journal of Marriage and Family, 72(4), 805–827.",
+        "doi": "10.1111/j.1741-3737.2010.00732.x"
+      },
+      {
+        "cite": "Mahoney, Pargament, Tarakeshwar & Swank (2001). Religion in the home in the 1980s and 1990s: a meta-analytic review and conceptual analysis of links between religion, marriage, and parenting. Journal of Family Psychology, 15(4), 559–596.",
+        "doi": "10.1037/0893-3200.15.4.559",
+        "pmid": "11770466"
+      }
+    ],
+    "caveats": "Correlational; selection is likely.",
+    "app": "Context for the Partner path; never a requirement of anyone.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "relationship-quality-predictors",
+    "claim": "A relationship’s quality is predicted mostly by each person’s own view of the relationship, their sense of the partner’s commitment and appreciation, conflict and satisfaction, and hardly at all by the partner’s reported traits.",
+    "domain": "social",
+    "tags": [
+      "relationship"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "machine learning across 43 longitudinal datasets: relationship-specific variables predicted up to 45 percent of variance at baseline and 18 percent later; one’s own reports predicted two to four times more than the partner’s",
+    "population": "couples in 43 longitudinal datasets",
+    "sources": [
+      {
+        "cite": "Joel et al. (2020). Machine learning uncovers the most robust self-report predictors of relationship quality across 43 longitudinal couples studies. Proceedings of the National Academy of Sciences, 117(32), 19061–19071.",
+        "doi": "10.1073/pnas.1917036117"
+      }
+    ],
+    "caveats": "Self-report; prediction, not cause.",
+    "app": "Choosing well is attending to how the relationship works and to your own side, never a quiz of traits.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "similarity-in-couples",
+    "claim": "In existing relationships, actual similarity between partners barely predicts satisfaction; perceived similarity does.",
+    "domain": "social",
+    "tags": [
+      "relationship"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "couple similarity in personality explained under half a percent of satisfaction in three national samples (Dyrenforth 2010); a meta-analysis of 313 studies found actual similarity mattered in brief encounters and not in existing relationships, where perceived similarity still predicted attraction (Montoya 2008)",
+    "population": "national couple samples; a meta-analysis of 460 effects",
+    "sources": [
+      {
+        "cite": "Dyrenforth, Kashy, Donnellan & Lucas (2010). Predicting relationship and life satisfaction from personality in nationally representative samples from three countries: the relative importance of actor, partner, and similarity effects. Journal of Personality and Social Psychology, 99(4), 690–702.",
+        "doi": "10.1037/a0020385"
+      },
+      {
+        "cite": "Montoya, Horton & Kirchner (2008). Is actual similarity necessary for attraction? A meta-analysis of actual and perceived similarity. Journal of Social and Personal Relationships, 25(6), 889–922.",
+        "doi": "10.1177/0265407508096700"
+      }
+    ],
+    "caveats": "Personality similarity; shared values were measured less.",
+    "app": "No compatibility score and no opposites-attract either.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "dealbreakers",
+    "claim": "People weigh a partner’s dealbreakers more heavily than the qualities they hope for, so knowing your own few non-negotiables in advance is useful.",
+    "domain": "decision",
+    "tags": [
+      "relationship",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "across studies, dealbreakers counted more negatively than dealmakers counted positively, more so for women and for people in committed relationships",
+    "population": "adults in several survey studies",
+    "sources": [
+      {
+        "cite": "Jonason, Garcia, Webster, Li & Fisher (2015). Relationship dealbreakers: traits people avoid in potential mates. Personality and Social Psychology Bulletin, 41(12), 1697–1711.",
+        "doi": "10.1177/0146167215609064"
+      }
+    ],
+    "caveats": "Stated, not observed, choices.",
+    "app": "The private values-and-non-negotiables note at the Deciding stage, typed by you and read by you.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "own-side-can-change",
+    "claim": "A person’s own negative affectivity and insecure attachment weigh on relationship quality, and both can change with effort.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "self-compassion"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a review of longitudinal marriage research (Karney and Bradbury 1995); anxious and avoidant attachment both harmed relationship quality in a meta-analysis (Li and Chan 2012); interventions changed personality traits, d ≈ .37 over about 24 weeks (Roberts 2017); wanting to become less anxious or avoidant predicted that change (Hudson 2020)",
+    "population": "married couples; meta-analyses; adults in longitudinal studies",
+    "sources": [
+      {
+        "cite": "Karney & Bradbury (1995). The longitudinal course of marital quality and stability: a review of theory, methods, and research. Psychological Bulletin, 118(1), 3–34.",
+        "doi": "10.1037/0033-2909.118.1.3"
+      },
+      {
+        "cite": "Li & Chan (2012). How anxious and avoidant attachment affect romantic relationship quality differently: a meta-analytic review. European Journal of Social Psychology, 42(4), 406–419.",
+        "doi": "10.1002/ejsp.1842"
+      },
+      {
+        "cite": "Roberts et al. (2017). A systematic review of personality trait change through intervention. Psychological Bulletin, 143(2), 117–141.",
+        "doi": "10.1037/bul0000088"
+      },
+      {
+        "cite": "Hudson, Chopik & Briley (2020). Volitional change in adult attachment: can people who want to become less anxious and avoidant move closer towards realizing those goals? European Journal of Personality, 34(1), 93–114.",
+        "doi": "10.1002/per.2226"
+      }
+    ],
+    "caveats": "Change is modest and slow; the trait studies are mostly clinical interventions.",
+    "app": "The Partner path works on your own side, the part you can change, and never labels a partner’s attachment.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "sliding-versus-deciding",
+    "claim": "People who decide their relationship steps thoughtfully report more dedication and satisfaction than those who slide into them, and couples who moved in together before engagement reported somewhat poorer marriages.",
+    "domain": "decision",
+    "tags": [
+      "relationship",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "thoughtful decision-making went with more dedication and satisfaction across dating, cohabiting and married people, n = 252 (Owen 2013); cohabiting before engagement went with lower satisfaction and dedication, small differences (Rhoades 2009); the sliding argument (Stanley 2006)",
+    "population": "US adults in surveys",
+    "sources": [
+      {
+        "cite": "Stanley, Rhoades & Markman (2006). Sliding versus deciding: inertia and the premarital cohabitation effect. Family Relations, 55(4), 499–509.",
+        "doi": "10.1111/j.1741-3729.2006.00418.x"
+      },
+      {
+        "cite": "Rhoades, Stanley & Markman (2009). The pre-engagement cohabitation effect: a replication and extension of previous findings. Journal of Family Psychology, 23(1), 107–111.",
+        "doi": "10.1037/a0014358"
+      },
+      {
+        "cite": "Owen, Rhoades & Stanley (2013). Sliding versus deciding in relationships: associations with relationship quality, commitment, and infidelity. Journal of Couple & Relationship Therapy, 12(2), 135–149.",
+        "doi": "10.1080/15332691.2013.779097"
+      }
+    ],
+    "caveats": "The general cohabitation effect is contested; selection is part of it.",
+    "app": "The decide-don’t-slide note before each step at the Deciding stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "relationship-education",
+    "claim": "Relationship education improves couples’ communication, modestly; effects on quality are smaller and uncertain once unpublished studies count, and moderate courses of nine to twenty hours beat short ones.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "knowledge"
+    ],
+    "grade": "B",
+    "replication": "mixed",
+    "effect": "experimental studies: relationship quality d = .30 to .36, communication d = .43 to .45 (Hawkins 2008); premarital programmes did not improve quality with unpublished studies included but improved communication (Fawcett 2010); 9–20 contact hours beat 1–8 (Hawkins 2012); self-directed programmes alone: quality d = .03, not significant (McAllister 2012)",
+    "population": "couples in evaluation studies and meta-analyses",
+    "sources": [
+      {
+        "cite": "Hawkins, Blanchard, Baldwin & Fawcett (2008). Does marriage and relationship education work? A meta-analytic study. Journal of Consulting and Clinical Psychology, 76(5), 723–734.",
+        "doi": "10.1037/a0012584"
+      },
+      {
+        "cite": "Fawcett, Hawkins, Blanchard & Carroll (2010). Do premarital education programs really work? A meta-analytic study. Family Relations, 59(3), 232–239.",
+        "doi": "10.1111/j.1741-3729.2010.00598.x"
+      },
+      {
+        "cite": "Hawkins, Stanley, Blanchard & Albright (2012). Exploring programmatic moderators of the effectiveness of marriage and relationship education programs: a meta-analytic study. Behavior Therapy, 43(1), 77–87.",
+        "doi": "10.1016/j.beth.2010.12.006",
+        "pmid": "22304880"
+      },
+      {
+        "cite": "McAllister, Duncan & Hawkins (2012). Examining the early evidence for self-directed marriage and relationship education: a meta-analytic study. Family Relations, 61(5), 742–755.",
+        "doi": "10.1111/j.1741-3729.2012.00736.x"
+      }
+    ],
+    "caveats": "Modest effects; reading alone did little.",
+    "app": "Education before a commitment at the Deciding stage: a course together, not a book on your own.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "warning-signs",
+    "claim": "The number and frequency of early warning signs in a relationship, such as reacting badly to a no or resenting questions, predicted abuse six months later.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "warning signs and protective factors predicted overall, physical, psychological and sexual abuse cross-sectionally and prospectively over six months",
+    "population": "university and online samples of adults in relationships",
+    "sources": [
+      {
+        "cite": "Charlot et al. (2023). The predictive validity of intimate partner violence warning signs. Social Psychological and Personality Science.",
+        "doi": "10.1177/19485506231209076"
+      }
+    ],
+    "caveats": "Two studies; a sign is a reason to look closer, not a verdict on a person.",
+    "app": "The monthly private check asks about your own safety and conduct; its fixed help is the app’s, never a model’s.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "couple-communication",
+    "claim": "How couples talk predicts how they fare, modestly: negative communication goes with lower later quality and with breaking up, and hostility weighs most.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "conversation"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a meta-analysis of 64 dyadic studies: positive r ≈ .15 and negative r ≈ −.17 with later quality; negative communication d = −0.41 with dissolution (Kanter 2022); hostility robustly tied to lower satisfaction (Woodin 2011); demand-withdraw r ≈ .38 to .39 with poorer outcomes (Schrodt 2014)",
+    "population": "couples in dyadic studies and meta-analyses",
+    "sources": [
+      {
+        "cite": "Kanter et al. (2022). Does couple communication predict later relationship quality and dissolution? A meta-analysis. Journal of Marriage and Family, 84(2), 533–551.",
+        "doi": "10.1111/jomf.12804"
+      },
+      {
+        "cite": "Woodin (2011). A two-dimensional approach to relationship conflict: meta-analytic findings. Journal of Family Psychology, 25(3), 325–335.",
+        "doi": "10.1037/a0023791"
+      },
+      {
+        "cite": "Schrodt, Witt & Shimkowski (2014). A meta-analytical review of the demand/withdraw pattern of interaction and its associations with individual, relational, and communicative outcomes. Communication Monographs, 81(1), 28–58.",
+        "doi": "10.1080/03637751.2013.813632"
+      }
+    ],
+    "caveats": "Associations of modest size; they do not sort couples into futures.",
+    "app": "The reappraisal rep and the good-news rep work on the talk itself; nothing tallies conflicts.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "good-news-responses",
+    "claim": "How a partner responds to good news matters: active, enthusiastic responses go with closer, more satisfying relationships, more so than responses to bad news.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "kindness"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "sharing good news raised daily positive feeling, and enthusiastic partner responses went with more intimacy and satisfaction (Gable 2004); two months on, responses to good news predicted well-being and break-up better than responses to bad news (Gable 2006)",
+    "population": "couples in diary and observational studies",
+    "sources": [
+      {
+        "cite": "Gable, Reis, Impett & Asher (2004). What do you do when things go right? The intrapersonal and interpersonal benefits of sharing positive events. Journal of Personality and Social Psychology, 87(2), 228–245.",
+        "doi": "10.1037/0022-3514.87.2.228"
+      },
+      {
+        "cite": "Gable, Gonzaga & Strachman (2006). Will you be there for me when things go right? Supportive responses to positive event disclosures. Journal of Personality and Social Psychology, 91(5), 904–917.",
+        "doi": "10.1037/0022-3514.91.5.904"
+      }
+    ],
+    "caveats": "Correlational and observational.",
+    "app": "The respond-to-good-news rep at the Building stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "gratitude-in-couples",
+    "claim": "Everyday gratitude between partners predicts more connection and satisfaction the next day for both, and expressing it in a lab session helped when the partner responded well.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "gratitude"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "in daily diaries, gratitude from thoughtful benefits predicted next-day connection and satisfaction for recipient and benefactor (Algoe 2010); a randomised gratitude expression had modest effects overall (Algoe and Zhaoyang 2016)",
+    "population": "cohabiting couples in diary and experimental studies",
+    "sources": [
+      {
+        "cite": "Algoe, Gable & Maisel (2010). It’s the little things: everyday gratitude as a booster shot for romantic relationships. Personal Relationships, 17(2), 217–233.",
+        "doi": "10.1111/j.1475-6811.2010.01273.x"
+      },
+      {
+        "cite": "Algoe & Zhaoyang (2016). Positive psychology in context: effects of expressing gratitude in ongoing relationships depend on perceptions of enactor responsiveness. The Journal of Positive Psychology, 11(4), 399–415.",
+        "doi": "10.1080/17439760.2015.1117131"
+      }
+    ],
+    "caveats": "Modest effects in the experiment.",
+    "app": "The thank-them-specifically rep at the Building stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "novel-activities-together",
+    "claim": "Doing novel, lively things together raises couples’ experienced relationship quality.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "mood"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "three experiments: a seven-minute novel task raised relationship quality more than a mundane one (Aron 2000); a four-week online programme of exciting activities raised excitement, positive affect and satisfaction, held at four months (Coulter and Malouff 2013)",
+    "population": "couples in experiments and a randomised trial",
+    "sources": [
+      {
+        "cite": "Aron, Norman, Aron, McKenna & Heyman (2000). Couples’ shared participation in novel and arousing activities and experienced relationship quality. Journal of Personality and Social Psychology, 78(2), 273–284.",
+        "doi": "10.1037/0022-3514.78.2.273"
+      },
+      {
+        "cite": "Coulter & Malouff (2013). Effects of an intervention designed to enhance romantic relationship excitement: a randomized-control trial. Couple and Family Psychology: Research and Practice, 2(1), 34–44.",
+        "doi": "10.1037/a0031719"
+      }
+    ],
+    "caveats": "Short tasks and a self-selected online sample.",
+    "app": "The something-new-together rep at the Building stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "conflict-reappraisal",
+    "claim": "A brief exercise in seeing a disagreement as a neutral third party would, done three times across a year, stopped the usual decline in marital quality.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "writing",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "120 couples over two years: marital quality declined in year one for all and kept declining in controls, but not among couples given the 21-minute reappraisal intervention, through less conflict-related distress",
+    "population": "married couples in a two-year randomised study",
+    "sources": [
+      {
+        "cite": "Finkel, Slotter, Luchies, Walton & Gross (2013). A brief intervention to promote conflict reappraisal preserves marital quality over time. Psychological Science, 24(8), 1595–1601.",
+        "doi": "10.1177/0956797612474938"
+      }
+    ],
+    "caveats": "One study; replication attempts are worth watching.",
+    "app": "The reappraise-a-disagreement rep at the Building stage, a few times a year.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "sexual-communication",
+    "claim": "Couples who talk about sex, and talk about it well, report more relationship and sexual satisfaction.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "conversation"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a meta-analysis of 93 studies, 38,499 people: r = .37 with relationship satisfaction and .43 with sexual satisfaction; the quality of the communication mattered more than its frequency",
+    "population": "adults in current relationships",
+    "sources": [
+      {
+        "cite": "Mallory (2022). Dimensions of couples’ sexual communication, relationship satisfaction, and sexual satisfaction: a meta-analysis. Journal of Family Psychology, 36(3), 358–371.",
+        "doi": "10.1037/fam0000946"
+      }
+    ],
+    "caveats": "Correlational.",
+    "app": "The talk-openly rep at the Keeping stage.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "forgiveness-and-sacrifice",
+    "claim": "Forgiveness and sacrifice help a relationship in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly cost the one who made them.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "kindness"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "forgiveness interacted with the partner’s negative behaviour to predict marital outcomes longitudinally (McNulty 2008); a meta-analysis of 82 datasets: willingness to sacrifice went with better well-being, behavioural sacrifice with slightly lower personal well-being, r = −.07 (Righetti 2020)",
+    "population": "newlyweds; couples across 82 datasets",
+    "sources": [
+      {
+        "cite": "McNulty (2008). Forgiveness in marriage: putting the benefits into context. Journal of Family Psychology, 22(1), 171–175.",
+        "doi": "10.1037/0893-3200.22.1.171"
+      },
+      {
+        "cite": "Righetti et al. (2020). The link between sacrifice and relational and personal well-being: a meta-analysis. Psychological Bulletin, 146(10), 900–921.",
+        "doi": "10.1037/bul0000297"
+      }
+    ],
+    "caveats": "Context matters in both directions.",
+    "app": "No rep asks for unconditional forgiveness or sacrifice.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "stress-spillover",
+    "claim": "On days of higher outside stress, partners behave more negatively toward each other and judge the relationship less kindly.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "stress"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "external stress went with the trajectory of marital quality (Neff and Karney 2004); under greater stress, daily satisfaction tracked daily events more strongly (Neff and Karney 2009); on higher-stress days spouses reported more negative behaviour and fewer positive appraisals (Buck and Neff 2012)",
+    "population": "newlywed couples in diary studies",
+    "sources": [
+      {
+        "cite": "Neff & Karney (2004). How does context affect intimate relationships? Linking external stress and cognitive processes within marriage. Personality and Social Psychology Bulletin, 30(2), 134–148.",
+        "doi": "10.1177/0146167203255984"
+      },
+      {
+        "cite": "Neff & Karney (2009). Stress and reactivity to daily relationship experiences: how stress hinders adaptive processes in marriage. Journal of Personality and Social Psychology, 97(3), 435–450.",
+        "doi": "10.1037/a0015663"
+      },
+      {
+        "cite": "Buck & Neff (2012). Stress spillover in early marriage: the role of self-regulatory depletion. Journal of Family Psychology, 26(5), 698–708.",
+        "doi": "10.1037/a0029260"
+      }
+    ],
+    "caveats": "Newlyweds; stress is self-reported.",
+    "app": "On a day the record reads high stress or overwhelm, only light reps are offered and no evaluative prompt is shown.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "diaries-can-react",
+    "claim": "Keeping a detailed diary about relationship conflict can itself shift how people rate their relationship, even when their behaviour does not change.",
+    "domain": "behaviour-change",
+    "tags": [
+      "relationship",
+      "monitoring",
+      "writing"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "fifteen days of conflict diaries left observed behaviour unchanged, while husbands’ self-reports of marital quality fell over the recording period",
+    "population": "married couples, a diary group and a non-randomised control",
+    "sources": [
+      {
+        "cite": "Merrilees, Goeke-Morey & Cummings (2008). Do event-contingent diaries about marital conflict change marital interactions? Behaviour Research and Therapy, 46(2), 253–262.",
+        "doi": "10.1016/j.brat.2007.11.007",
+        "pmid": "18177629"
+      }
+    ],
+    "caveats": "Non-randomised control; small reactivity signals.",
+    "app": "The Partner path asks about one moment and your own part in it, never a daily verdict on the relationship.",
+    "reviewed": "2026-09-23",
+    "status": "draft"
+  },
+  {
+    "id": "divorce-prediction-disputed",
+    "status": "disputed",
+    "claim": "Claims that divorce can be predicted with high accuracy from a few observed behaviours are disputed: they collapse without cross-validation, and a major model failed to replicate.",
+    "domain": "social",
+    "tags": [
+      "relationship"
+    ],
+    "grade": "D",
+    "replication": "failed",
+    "effect": "prediction equations without cross-validation and base rates overstate accuracy (Heyman and Slep 2001); Gottman and colleagues’ affective process models failed to replicate (Kim 2007)",
+    "population": "couples in prediction studies",
+    "sources": [
+      {
+        "cite": "Heyman & Slep (2001). The hazards of predicting divorce without crossvalidation. Journal of Marriage and Family, 63(2), 473–479.",
+        "doi": "10.1111/j.1741-3737.2001.00473.x"
+      },
+      {
+        "cite": "Kim, Capaldi & Crosby (2007). Generalizability of Gottman and colleagues’ affective process models of couples’ relationship outcomes. Journal of Marriage and Family, 69(1), 55–72.",
+        "doi": "10.1111/j.1741-3737.2006.00343.x"
+      }
+    ],
+    "caveats": "Kept as disputed so the brain never cites divorce prediction or its tallies.",
+    "app": "Excluded from the Partner path.",
+    "reviewed": "2026-09-23"
+  },
+  {
+    "id": "love-languages-disputed",
+    "status": "disputed",
+    "claim": "The popular claims about love languages are disputed: the evidence does not support that each person has one preferred language, that there are five, or that matching them makes couples happier.",
+    "domain": "social",
+    "tags": [
+      "relationship"
+    ],
+    "grade": "D",
+    "replication": "failed",
+    "effect": "a review found little empirical support for the three central assumptions",
+    "population": "a review of the empirical literature",
+    "sources": [
+      {
+        "cite": "Impett, Park & Muise (2024). Popular psychology through a scientific lens: evaluating love languages from a relationship science perspective. Current Directions in Psychological Science, 33(2), 87–92.",
+        "doi": "10.1177/09637214231217663"
+      }
+    ],
+    "caveats": "Kept as disputed so the brain never cites love languages.",
+    "app": "Excluded from the Partner path.",
+    "reviewed": "2026-09-23"
+  },
+  {
+    "id": "matching-algorithms-disputed",
+    "status": "disputed",
+    "claim": "The claim that dating sites’ matching algorithms find compatible partners is disputed: no compelling evidence supports it, and traits measured in advance cannot predict which pairs will click.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "choice"
+    ],
+    "grade": "D",
+    "replication": "failed",
+    "effect": "a review found no compelling evidence for matching algorithms (Finkel 2012); 100+ pre-date measures predicted none of the desire unique to a pair (Joel 2017)",
+    "population": "a review; speed daters",
+    "sources": [
+      {
+        "cite": "Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66.",
+        "doi": "10.1177/1529100612436522",
+        "pmid": "26173279"
+      },
+      {
+        "cite": "Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489.",
+        "doi": "10.1177/0956797617714580"
+      }
+    ],
+    "caveats": "Kept as disputed so the brain never cites a compatibility match.",
+    "app": "Excluded from the Partner path.",
+    "reviewed": "2026-09-23"
   }
 ]

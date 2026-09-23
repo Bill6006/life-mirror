@@ -16,6 +16,17 @@ export type Reward = 'pleasure' | 'mastery' | 'connection'
 export type Intensity = 'low' | 'medium' | 'high'
 export type Necessity = 'food' | 'teeth' | 'shower'
 
+/** The kinds of setting a path rep happens in (Part 23). */
+export type SettingKind = 'recurring' | 'errand' | 'group' | 'oneToOne' | 'remote' | 'solo'
+export const SETTING_KINDS: readonly SettingKind[] = ['recurring', 'errand', 'group', 'oneToOne', 'remote', 'solo']
+export type PathId = 'social' | 'partner'
+
+/** Where a rep sits on a path: its stage, and whether doing it moves that stage. */
+export interface PathPlace {
+  stage: number
+  advances: boolean
+}
+
 export interface Source {
   who: string
   what: string
@@ -69,8 +80,22 @@ export interface Move {
   /** A filter tag: what being given this move costs you. */
   costToAssign: Effort
   prior: Prior
-  /** Proposed and not yet wired: read and veto. None remain since the Phase 9 Green. */
+  /** Proposed and not yet wired: read and veto. Since the Phase 9 Green, only the path reps of Parts 23 and 26, until their Green. */
   status?: 'proposed'
+  /** Its place on each path it belongs to (Parts 23 and 26). */
+  path?: Partial<Record<PathId, PathPlace>>
+  /** The kinds of setting it happens in. */
+  settings?: readonly SettingKind[]
+  /** Where attention goes during the rep: outward. */
+  cue?: string
+  /** The safety habit to drop; a rep done with it is honestly Partly. */
+  crutch?: string
+  /** When it is done: your own act, whatever anyone answers. */
+  doneWhen?: string
+  /** A limit written on the rep, such as one ask. */
+  guardrail?: string
+  /** The optional channel it belongs to, off until you turn it on. */
+  channel?: 'online'
   /** Parked at the Phase 9 Green: shown in the catalogue, never offered. */
   parked?: boolean
   ladder?: { id: string; rung: number }
@@ -116,6 +141,66 @@ export interface Proposals {
   parkedLater: { ids: readonly string[]; note: string }
 }
 
+export interface PathStage {
+  n: number
+  name: string
+  what: string
+  notProgress: string
+  /** How the stage moves on: by the rule, by the rule or a declared date, or only by your declaration. Absent means by the rule. */
+  advance?: 'counts' | 'counts or a date' | 'declared'
+}
+
+/** The one rule shape a stage is reached by; its numbers are design judgment, and say so. */
+export interface PathRule {
+  reps: number
+  distinctReps: number
+  settingKinds: number
+  withinWeeks: number
+  smallerAfterRefusals: number
+  reentryAfterQuietWeeks: number
+  note: string
+  sources: readonly Source[]
+}
+
+export interface PathChannel {
+  id: 'online'
+  name: string
+  what: string
+  defaultOn: boolean
+  requiredForProgress: boolean
+  maxRepsPerWeek: number
+  browseMinutes: number
+}
+
+/** A private note or check a stage holds, app content read and typed by you alone. */
+export interface PathAct {
+  id: string
+  stage: number
+  name: string
+  what: string
+  source: Source
+  questions?: readonly string[]
+  help?: string
+}
+
+/** A staged curriculum the app owns (Parts 23 and 26): content to read and veto; nothing is wired until Green. */
+export interface Path {
+  id: PathId
+  name: string
+  what: string
+  stages: readonly PathStage[]
+  rule: PathRule
+  settingKinds: Readonly<Record<SettingKind, string>>
+  counted: string
+  neverCounted: readonly string[]
+  excluded: readonly { what: string; why: string }[]
+  /** The library cards behind it, drafts until Green and disputed ones never cited. */
+  cards: readonly string[]
+  channels?: readonly PathChannel[]
+  acts?: readonly PathAct[]
+  parents?: string
+}
+
 interface CatalogueData {
   families: Family[]
   moves: Move[]
@@ -124,6 +209,7 @@ interface CatalogueData {
   research: Research[]
   extensionPrompt: ExtensionPrompt
   proposals: Proposals
+  paths: Path[]
 }
 
 const catalogue = data as unknown as CatalogueData
@@ -133,6 +219,15 @@ export const families: readonly Family[] = catalogue.families
 export const moves: readonly Move[] = catalogue.moves
 export const learnedTags: readonly LearnedTag[] = catalogue.learnedTags
 export const filterTags: readonly FilterTag[] = catalogue.filterTags
+/** The two paths, Social and Partner, as content (Parts 23 and 26). */
+export const paths: readonly Path[] = catalogue.paths
+
+/** The reps a path holds, in stage order, optionally one stage's alone. */
+export function pathReps(id: PathId, stage?: number): Move[] {
+  return catalogue.moves
+    .filter((m) => m.path?.[id] && (stage === undefined || m.path[id]?.stage === stage))
+    .sort((a, b) => (a.path?.[id]?.stage ?? 0) - (b.path?.[id]?.stage ?? 0))
+}
 export const research: readonly Research[] = catalogue.research
 export const extensionPrompt: ExtensionPrompt = catalogue.extensionPrompt
 export const proposals: Proposals = catalogue.proposals

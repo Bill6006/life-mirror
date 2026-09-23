@@ -279,7 +279,8 @@ export function recentSituations(offers: readonly Offer[], today: string): Situa
 export function catalogueHealth(offers: readonly Offer[], outcomes: readonly Outcome[], situations: readonly Situation[], hidden: ReadonlySet<string> = new Set()): FamilyHealth[] {
   const done = new Set(outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
   const state: TodayState = { ...QUIET, hiddenFamilies: hidden }
-  return families.map((f) => {
+  // A family with nothing live yet (the Partner path's reps before their Green) has nothing to report.
+  return families.filter((f) => liveMoves.some((m) => m.family === f.id)).map((f) => {
     const entries = liveMoves.filter((m) => m.family === f.id)
     const offered = offers.filter((o) => hasMove(o.moveId) && moveById(o.moveId).family === f.id)
     const reasons = new Map<string, number>()

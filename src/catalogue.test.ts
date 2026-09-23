@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCKS } from './blocks'
-import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isParked, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, PASSIVE, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
+import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isParked, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, PASSIVE, paths, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
 import { CHARISMA_REPS } from './catalogue'
 import { readings } from './readings'
 
@@ -12,10 +12,10 @@ const ids = new Set(moves.map((m) => m.id))
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
 
 describe('the catalogue of moves', () => {
-  it('has between sixty and a hundred moves across the fourteen families of the plan', () => {
-    expect(moves.length).toBeGreaterThanOrEqual(60)
-    expect(moves.length).toBeLessThanOrEqual(100)
-    expect(families.map((f) => f.id)).toEqual(['ending', 'movement', 'steadying', 'food', 'study', 'house', 'people', 'rest', 'money', 'charisma', 'faith', 'finishing', 'setup', 'fatherhood'])
+  it('offers between sixty and a hundred live moves, across the fourteen families of the plan and the Partner family awaiting Green', () => {
+    expect(liveMoves.length).toBeGreaterThanOrEqual(60)
+    expect(liveMoves.length).toBeLessThanOrEqual(100)
+    expect(families.map((f) => f.id)).toEqual(['ending', 'movement', 'steadying', 'food', 'study', 'house', 'people', 'rest', 'money', 'charisma', 'faith', 'finishing', 'setup', 'fatherhood', 'partner'])
     for (const f of families) expect(moves.some((m) => m.family === f.id), f.id).toBe(true)
   })
 
@@ -66,12 +66,13 @@ describe('the catalogue of moves', () => {
     expect(filterTags.map((t) => t.id)).toEqual(['costToAssign', 'startingEffort', 'needs', 'effectWindow'])
   })
 
-  it('carries the Phase 9 proposals as wired at Green: nothing proposed, the parked entries never offered, the trade made', () => {
-    expect(moves.filter(isProposed).length).toBe(0)
+  it('carries the Phase 9 proposals as wired at Green: nothing proposed but the path reps awaiting Green, the parked entries never offered, the trade made', () => {
+    const proposed = moves.filter(isProposed)
+    for (const m of proposed) expect(m.path, `${m.id} is proposed outside a path`).toBeDefined()
     const parked = moves.filter(isParked).map((m) => m.id).sort()
     expect(parked).toEqual([...proposals.money.park, ...proposals.parkedLater.ids].sort())
     for (const id of parked) expect(liveMoves.some((m) => m.id === id), id).toBe(false)
-    expect(liveMoves.length + parked.length).toBe(moves.length)
+    expect(liveMoves.length + parked.length + proposed.length).toBe(moves.length)
     for (const id of [...proposals.money.keep, ...proposals.money.park, ...proposals.charisma.ladder, ...proposals.passive]) expect(ids.has(id), id).toBe(true)
     expect(moves.find((m) => m.id === 'cancel-one-thing')?.family).toBe('setup')
     expect(proposals.charisma.ladder.map((id) => moves.find((m) => m.id === id)?.ladder?.rung)).toEqual([1, 2, 3, 4])
@@ -145,6 +146,14 @@ describe('the catalogue of moves', () => {
     for (const t of filterTags) texts.push(t.name, t.what)
     for (const r of research) texts.push(r.name, r.chips, ...r.contributes, ...r.sources.map((s) => s.what))
     texts.push(extensionPrompt.intro, extensionPrompt.template, proposals.money.note, proposals.charisma.note, proposals.wiring)
+    for (const m of moves) texts.push(...[m.cue, m.crutch, m.doneWhen, m.guardrail].filter((x): x is string => typeof x === 'string'))
+    for (const p of paths) {
+      texts.push(p.what, p.counted, p.rule.note, ...p.neverCounted, ...Object.values(p.settingKinds), ...(p.parents ? [p.parents] : []))
+      for (const st of p.stages) texts.push(st.name, st.what, st.notProgress)
+      for (const e of p.excluded) texts.push(e.what, e.why)
+      for (const ch of p.channels ?? []) texts.push(ch.what)
+      for (const a of p.acts ?? []) texts.push(a.name, a.what, ...(a.questions ?? []), ...(a.help ? [a.help] : []))
+    }
     for (const s of texts) {
       for (const w of banned) expect(s.toLowerCase(), `"${s}" uses "${w}"`).not.toMatch(new RegExp(`\\b${w}\\b`))
     }

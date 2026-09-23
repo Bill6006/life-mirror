@@ -5,6 +5,11 @@ import { readFileSync, writeFileSync } from 'node:fs'
 const data = JSON.parse(readFileSync(new URL('../src/catalogue.json', import.meta.url), 'utf8'))
 const readings = JSON.parse(readFileSync(new URL('../src/readings.json', import.meta.url), 'utf8'))
 const readingName = (id) => readings.readings.find((r) => r.id === id)?.name ?? id
+const library = JSON.parse(readFileSync(new URL('../src/library.json', import.meta.url), 'utf8'))
+const cardOf = new Map(library.map((c) => [c.id, c]))
+const GRADE = { A: 'strong evidence', B: 'good evidence', C: 'some evidence', D: 'thin evidence' }
+const SETTING = { recurring: 'a recurring place', errand: 'an errand', group: 'a group', oneToOne: 'one to one', remote: 'a call or a message', solo: 'on your own' }
+const ADVANCE = { counts: 'moves by the rule', 'counts or a date': 'moves by the rule, or when you say you have a date', declared: 'moves only when you declare it' }
 
 const WINDOW = { nextBlock: 'next block', laterToday: 'later that day', evening: 'this evening', nextMorning: 'next morning', sevenDays: 'seven days' }
 const NEED = { outdoors: 'outdoors', kit: 'kit', anotherPerson: 'another person', freeHour: 'a free hour', daylight: 'daylight', quiet: 'quiet' }
@@ -27,11 +32,52 @@ const source = (s) => `${s.who} (${s.year}). ${s.what}. Evidence: ${STRENGTH[s.s
 const arrow = (d) => (d === 'up' ? '↑' : '↓')
 
 let md = '# Life Mirror — the catalogue of moves\n\n'
-md += `${data.moves.length} moves across ${data.families.length} families, ${proposed.length} of them proposed in Phase 9 and not yet wired. Every entry carries its source and how strong that evidence is, `
+md += `${data.moves.length} moves across ${data.families.length} families, ${proposed.length} of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, `
 md += 'how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, '
 md += 'what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.\n\n'
 md += 'Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).\n\n'
 md += 'Proposed entries, tags, beliefs and trades are content to read and veto. Yellow names what to cut or reword; Green wires it. Until then nothing here changes what is offered.\n\n'
+
+// The paths (Parts 23 and 26): each stage with its reps, the rule, what is counted and never counted, what is left out, and the evidence.
+md += '## Paths\n\n'
+md += 'Two paths, each a staged curriculum of reps, for you to read and veto. Nothing here is wired or offered until Green; the reps marked proposed join the candidates only then.\n\n'
+for (const p of data.paths) {
+  md += `### ${p.name}\n\n${p.what}\n\n`
+  for (const st of p.stages) {
+    md += `#### Stage ${st.n} · ${st.name}\n\n${st.what}\n\n- Not progress: ${st.notProgress}\n- How it moves: ${ADVANCE[st.advance ?? 'counts']}\n`
+    const reps = data.moves.filter((m) => m.path?.[p.id]?.stage === st.n)
+    for (const m of reps) {
+      const place = m.path[p.id]
+      const bits = [place.advances ? 'moves the stage' : 'moves no stage']
+      if (m.settings?.length) bits.push(`where: ${m.settings.map((k) => SETTING[k]).join(', ')}`)
+      if (m.channel) bits.push(`channel: ${m.channel}`)
+      if (m.status === 'proposed') bits.push('proposed')
+      md += `- **${m.name}** (${bits.join(' · ')}). Attention on: ${m.cue} Drop: ${m.crutch} ${m.doneWhen}${m.guardrail ? ` ${m.guardrail}` : ''}\n`
+    }
+    for (const a of (p.acts ?? []).filter((x) => x.stage === st.n)) {
+      md += `- **${a.name}.** ${a.what}${a.questions ? ` The questions: ${a.questions.join(' ')}` : ''}${a.help ? ` The help the app shows itself: ${a.help}` : ''} Source: ${source(a.source)}\n`
+    }
+    md += '\n'
+  }
+  md += `#### How a stage is reached\n\n${p.rule.note}\n\n`
+  for (const src of p.rule.sources) md += `- Source: ${source(src)}\n`
+  md += '\nKinds of setting:\n\n'
+  for (const [k, v] of Object.entries(p.settingKinds)) md += `- ${SETTING[k]}: ${v}\n`
+  md += '\n'
+  for (const ch of p.channels ?? []) md += `#### Channel: ${ch.name}\n\n${ch.what}\n\n`
+  md += `#### Counted, and never counted\n\n${p.counted}\n\nNever counted, stored or asked: ${p.neverCounted.join('; ')}.\n\n`
+  md += '#### Left out, and why\n\n'
+  for (const e of p.excluded) md += `- ${e.what}: ${e.why}\n`
+  md += '\n'
+  if (p.parents) md += `#### For a parent\n\n${p.parents}\n\n`
+  md += '#### The evidence\n\nClaim cards, each source verified at Crossref: drafts until Green, and the disputed ones are never cited.\n\n'
+  for (const id of p.cards) {
+    const c = cardOf.get(id)
+    if (!c) continue
+    md += `- **${GRADE[c.grade]}** (${c.status === 'disputed' ? 'disputed, never cited' : c.status === 'draft' ? 'draft, admitted at Green' : 'admitted'}). ${c.claim} ${c.sources.map((x) => x.cite).join(' ')}\n`
+  }
+  md += '\n'
+}
 
 md += '## Learned tags and their starting beliefs\n\n'
 md += 'From Phase 10 the app estimates each tag’s effect from your record, starting from these. No more learned tags than these.\n\n'
@@ -56,6 +102,7 @@ for (const f of data.families) {
     if (m.ladder) status.push(`rung ${m.ladder.rung} of the participation ladder`)
     if (m.setup) status.push(m.setup.kind === 'necessity' ? `a setup whose target is a necessity: ${NECESSITY[m.setup.necessity]}` : SETUP[m.setup.kind])
     if (m.passive) status.push('proposed as a passive item')
+    for (const p of data.paths) if (m.path?.[p.id]) status.push(`${p.name} path, stage ${m.path[p.id].stage}, ${m.path[p.id].advances ? 'moves the stage' : 'moves no stage'}`)
     if (status.length) md += `_${status.join(' · ')}_\n\n`
     md += `${m.what}\n\n`
     md += `- Source: ${source(m.source)}\n`
