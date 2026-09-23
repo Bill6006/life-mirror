@@ -62,7 +62,7 @@ describe('the permission check', () => {
     expect(COACH_CORE_KEYS).toEqual(['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep'])
     for (const k of COACH_CORE_KEYS) expect(k).not.toMatch(/tier|carried|context|seen|history/i)
     expect(PROFILES.coach.claude).not.toContain('tier2')
-    expect(WRITER_MODELS).toEqual(['best', 'opus', 'sonnet', 'haiku'])
+    expect(WRITER_MODELS).toEqual(['opus', 'fable', 'sonnet', 'haiku'])
   })
 })
 
@@ -84,6 +84,8 @@ describe('the line briefing', () => {
     const blind = { ...sheet, facts: sheet.facts.filter((f) => f.id !== 'week.tomorrow') }
     expect(lineBriefing({ task: 'line', writer: 'free', sheet: blind, forDay: '2026-09-19', cards: [], said: [] })).toEqual({ ok: false, reason: 'the sheet for 2026-09-18 does not say what 2026-09-19 holds' })
     expect(lineBriefing({ task: 'line', writer: 'claude', sheet, forDay: '2026-09-18', cards: [], said: [], writerModel: 'gpt-5' as never }).ok).toBe(false)
-    expect(lineBriefing({ task: 'line', writer: 'claude', sheet, forDay: '2026-09-18', cards: [], said: [], writerModel: 'opus' })).toMatchObject({ ok: true, briefing: { writerModel: 'opus' } })
+    // `best` is not a value a subagent can take (the bridge proof), so it is refused like any other stranger.
+    expect(lineBriefing({ task: 'line', writer: 'claude', sheet, forDay: '2026-09-18', cards: [], said: [], writerModel: 'best' as never }).ok).toBe(false)
+    for (const writerModel of ['opus', 'fable', 'sonnet', 'haiku'] as const) expect(lineBriefing({ task: 'line', writer: 'claude', sheet, forDay: '2026-09-18', cards: [], said: [], writerModel })).toMatchObject({ ok: true, briefing: { writerModel } })
   })
 })

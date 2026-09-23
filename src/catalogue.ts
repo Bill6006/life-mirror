@@ -172,6 +172,12 @@ export interface PathChannel {
   browseMinutes: number
 }
 
+/** One question of a private check, and whether a yes to it shows the check's fixed help. */
+export interface PathQuestion {
+  text: string
+  helpOnYes: boolean
+}
+
 /** A private note or check a stage holds, app content read and typed by you alone. */
 export interface PathAct {
   id: string
@@ -179,7 +185,8 @@ export interface PathAct {
   name: string
   what: string
   source: Source
-  questions?: readonly string[]
+  questions?: readonly PathQuestion[]
+  /** Fixed help the app shows itself, never model-written: inside this act only, on a yes to a question marked `helpOnYes`. */
   help?: string
 }
 

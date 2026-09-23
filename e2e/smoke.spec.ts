@@ -404,6 +404,11 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await expect(page.getByTestId('path-channel')).toContainText('off until you turn it on')
   await expect(page.getByTestId('never-counted').first()).toContainText('a second ask after a no')
   await expect(page.getByTestId('path-act')).toHaveCount(4)
+  // The monthly check's help: a yes to the safety or the conduct question shows it, a doubt alone does not (owner, 2026-09-23).
+  const check = page.getByTestId('path-act').filter({ hasText: 'A monthly private check' })
+  await expect(check).toContainText('inside this check and nowhere else')
+  expect(((await check.innerText()).match(/A yes shows the help\./g) ?? []).length).toBe(2)
+  await expect(page.getByTestId('path-act').filter({ hasText: 'A yes shows the help.' })).toHaveCount(1)
   await expect(page.getByTestId('path-evidence').first()).toContainText('draft, admitted at Green')
   await expect(page.locator('#move-greet-by-name .move-status')).toContainText('Proposed')
   await expect(page.locator('#move-no-spend-day .move-status')).toContainText('Parked')

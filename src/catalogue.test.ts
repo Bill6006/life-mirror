@@ -152,7 +152,7 @@ describe('the catalogue of moves', () => {
       for (const st of p.stages) texts.push(st.name, st.what, st.notProgress)
       for (const e of p.excluded) texts.push(e.what, e.why)
       for (const ch of p.channels ?? []) texts.push(ch.what)
-      for (const a of p.acts ?? []) texts.push(a.name, a.what, ...(a.questions ?? []), ...(a.help ? [a.help] : []))
+      for (const a of p.acts ?? []) texts.push(a.name, a.what, ...(a.questions ?? []).map((q) => q.text), ...(a.help ? [a.help] : []))
     }
     for (const s of texts) {
       for (const w of banned) expect(s.toLowerCase(), `"${s}" uses "${w}"`).not.toMatch(new RegExp(`\\b${w}\\b`))

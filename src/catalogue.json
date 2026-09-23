@@ -8428,11 +8428,20 @@
           "id": "monthly-check",
           "stage": 5,
           "name": "A monthly private check",
-          "what": "Once a month, three private questions about your own safety, your own conduct, and any doubt you keep setting aside. The app shows fixed help itself whenever your answers call for it, and no model ever writes or softens it.",
+          "what": "Once a month, three private questions about your own safety, your own conduct, and any doubt you keep setting aside. A yes to the safety or the conduct question shows the app’s own fixed help, inside this check and nowhere else; a doubt on its own does not. No model writes, softens or decides it, and it is not a general crisis screen.",
           "questions": [
-            "In the last month, has anyone you are dating made you afraid, or tried to control where you go, whom you see or what you spend?",
-            "Has anything you did toward them worried you afterwards: a raised voice, pressure, checking up on them?",
-            "Is there a doubt about this relationship you keep setting aside?"
+            {
+              "text": "In the last month, has anyone you are dating made you afraid, or tried to control where you go, whom you see or what you spend?",
+              "helpOnYes": true
+            },
+            {
+              "text": "Has anything you did toward them worried you afterwards: a raised voice, pressure, checking up on them?",
+              "helpOnYes": true
+            },
+            {
+              "text": "Is there a doubt about this relationship you keep setting aside?",
+              "helpOnYes": false
+            }
           ],
           "help": "If someone’s behaviour frightens you, or your own worries you, you do not have to sort it out alone. The National Domestic Violence Hotline answers day and night: 1-800-799-7233, or text START to 88788, or thehotline.org. In danger now, call 911.",
           "source": {

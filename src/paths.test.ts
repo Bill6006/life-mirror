@@ -16,7 +16,7 @@ function pathTexts(p: Path): string[] {
   const out = [p.what, p.counted, ...(p.parents ? [p.parents] : [])]
   for (const st of p.stages) out.push(st.what, st.notProgress)
   for (const ch of p.channels ?? []) out.push(ch.what)
-  for (const a of p.acts ?? []) out.push(a.name, a.what, ...(a.questions ?? []))
+  for (const a of p.acts ?? []) out.push(a.name, a.what, ...(a.questions ?? []).map((q) => q.text))
   for (const m of pathReps(p.id)) out.push(m.name, m.what, m.cue ?? '', m.crutch ?? '', m.doneWhen ?? '', m.guardrail ?? '')
   return out
 }
@@ -125,10 +125,23 @@ describe('what the paths say', () => {
     expect(acts.map((a) => a.id)).toEqual(['values-note', 'decide-dont-slide', 'monthly-check', 'relationship-education'])
     for (const a of acts) expect(a.stage).toBe(5)
     const check = acts.find((a) => a.id === 'monthly-check')
-    expect(check?.questions).toHaveLength(3)
     expect(check?.help).toContain('1-800-799-7233')
-    expect(check?.what).toContain('no model ever writes or softens it')
+    expect(check?.what).toContain('No model writes, softens or decides it')
     expect(partner.parents).toContain('never schedules an introduction')
+  })
+
+  it('shows the monthly check’s help only on a yes to its safety or conduct question, and nowhere else (owner, 2026-09-23)', () => {
+    const acts = partner.acts ?? []
+    const check = acts.find((a) => a.id === 'monthly-check')
+    expect(check?.questions?.map((q) => q.helpOnYes)).toEqual([true, true, false])
+    expect(check?.questions?.[0].text).toContain('made you afraid')
+    expect(check?.questions?.[1].text).toContain('worried you afterwards')
+    expect(check?.questions?.[2].text).toContain('a doubt')
+    expect(check?.what).toContain('inside this check and nowhere else; a doubt on its own does not')
+    expect(check?.what).toContain('not a general crisis screen')
+    // Help belongs to a check that has a question showing it, and to no other act or path.
+    for (const p of paths) for (const a of p.acts ?? []) expect(Boolean(a.help), a.id).toBe(Boolean(a.questions?.some((q) => q.helpOnYes)))
+    expect(acts.filter((a) => a.help).map((a) => a.id)).toEqual(['monthly-check'])
   })
 })
 

@@ -168,7 +168,7 @@ function PathSection({ path }: { path: Path }) {
                 <p class="calc-line">{a.what}</p>
                 {a.questions && (
                   <p class="calc-line">
-                    {c.questions}: {a.questions.join(' ')}
+                    {c.questions}: {a.questions.map((q) => (q.helpOnYes ? `${q.text} ${c.helpOnYes}` : q.text)).join(' ')}
                   </p>
                 )}
                 {a.help && (

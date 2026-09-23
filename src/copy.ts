@@ -280,6 +280,7 @@ export const copy = {
       channelOff: 'off until you turn it on',
       acts: 'Private notes and checks',
       questions: 'The questions',
+      helpOnYes: 'A yes shows the help.',
       help: 'The help the app shows itself',
       parents: 'For a parent',
       evidence: 'The evidence',

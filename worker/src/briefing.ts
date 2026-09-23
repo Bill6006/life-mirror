@@ -14,8 +14,12 @@ import { addDays } from './time'
 export type Task = 'line' | 'review' | 'coach'
 export type Writer = 'free' | 'claude'
 
-/** Claude Code's model aliases, the only values the writer-model setting may take (Part 30). */
-export const WRITER_MODELS = ['best', 'opus', 'sonnet', 'haiku'] as const
+/**
+ * The only values the writer-model setting may take (Part 30), in the order of its chips, starting
+ * on Opus: the four the Agent tool's `model` parameter accepts, read from its own refusal in the
+ * bridge proof (Part 29). `best` is not one.
+ */
+export const WRITER_MODELS = ['opus', 'fable', 'sonnet', 'haiku'] as const
 export type WriterModel = (typeof WRITER_MODELS)[number]
 
 export function isWriterModel(v: unknown): v is WriterModel {

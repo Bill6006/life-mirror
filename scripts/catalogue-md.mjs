@@ -55,7 +55,8 @@ for (const p of data.paths) {
       md += `- **${m.name}** (${bits.join(' · ')}). Attention on: ${m.cue} Drop: ${m.crutch} ${m.doneWhen}${m.guardrail ? ` ${m.guardrail}` : ''}\n`
     }
     for (const a of (p.acts ?? []).filter((x) => x.stage === st.n)) {
-      md += `- **${a.name}.** ${a.what}${a.questions ? ` The questions: ${a.questions.join(' ')}` : ''}${a.help ? ` The help the app shows itself: ${a.help}` : ''} Source: ${source(a.source)}\n`
+      const questions = a.questions ? ` The questions: ${a.questions.map((q, i) => `(${i + 1}) ${q.text}${q.helpOnYes ? ' A yes shows the help.' : ''}`).join(' ')}` : ''
+      md += `- **${a.name}.** ${a.what}${questions}${a.help ? ` The help the app shows itself: ${a.help}` : ''} Source: ${source(a.source)}\n`
     }
     md += '\n'
   }
