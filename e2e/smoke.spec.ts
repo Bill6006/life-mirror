@@ -67,6 +67,24 @@ async function seedRecord(page: Page, days: number): Promise<void> {
   }, days)
 }
 
+/** Writes a line into the phone's store as the Worker's sync would; the caller reloads to read it. */
+async function putBrief(page: Page, row: Record<string, unknown>): Promise<void> {
+  await page.evaluate(async (r) => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const q = indexedDB.open('life-mirror')
+      q.onsuccess = () => res(q.result)
+      q.onerror = () => rej(q.error)
+    })
+    const tx = dbx.transaction(['brainBriefs'], 'readwrite')
+    tx.objectStore('brainBriefs').put(r)
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  }, row)
+}
+
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
 async function tapThrough(page: Page, nth = 2): Promise<number> {
   const card = page.getByTestId('give-back')
@@ -182,7 +200,7 @@ test('a past day is named by its day, never "Today so far", and the null offer i
   await expect(page.getByTestId('day-glance')).not.toContainText('Today so far')
 })
 
-test('the brief card: the line, its action and the taps by default; the readings, the grounds and the writer behind Why; no error on a seeded open', async ({ page }) => {
+test('the brief card: the line, its action and the taps by default; the readings, the grounds and the writer behind Why; no error on a seeded open; a title that says when to act on the line', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 18, 8, 5))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
@@ -202,25 +220,41 @@ test('the brief card: the line, its action and the taps by default; the readings
   await expect(why.getByTestId('brief-last-night')).toBeVisible()
   await expect(why.getByTestId('brief-writer')).toHaveText('Chosen on this phone from your record, by the situation engine.')
   // A line the Worker wrote carries a one-word tag in the title row, and Why names the model.
-  await page.evaluate(async () => {
-    const dbx = await new Promise<IDBDatabase>((res, rej) => {
-      const r = indexedDB.open('life-mirror')
-      r.onsuccess = () => res(r.result)
-      r.onerror = () => rej(r.error)
-    })
-    const tx = dbx.transaction(['brainBriefs'], 'readwrite')
-    tx.objectStore('brainBriefs').put({ id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'A line the Worker wrote for this test.', mode: 'observation', factIds: ['record'], cardIds: [], model: '@cf/test/model', at: '2026-09-18T09:15:00.000Z', factsDay: '2026-09-17' })
-    await new Promise<void>((res, rej) => {
-      tx.oncomplete = () => res()
-      tx.onerror = () => rej(tx.error)
-    })
-    dbx.close()
-  })
+  const workerLine = { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'A line the Worker wrote for this test.', mode: 'observation', factIds: ['record'], cardIds: [], model: '@cf/test/model', at: '2026-09-18T09:15:00.000Z', factsDay: '2026-09-17' }
+  await putBrief(page, workerLine)
   await page.reload()
   await expect(card.getByTestId('brief-line')).toHaveText('A line the Worker wrote for this test.')
   await expect(card.getByTestId('brief-writer-tag')).toHaveText('Brain')
   await card.getByTestId('brief-why').click()
   await expect(card.getByTestId('brief-writer')).toContainText('@cf/test/model')
+
+  // The title says when the line is meant to be acted on, from its action alone (owner, 2026-09-23). With no action: for today.
+  await expect(card.getByTestId('brief-when')).toHaveText('For today')
+  // A tap that does it on the spot is now, and for today once taken.
+  await putBrief(page, { ...workerLine, action: { kind: 'depth', value: 'short' } })
+  await page.reload()
+  await expect(card.getByTestId('brief-when')).toHaveText('Now')
+  await card.getByTestId('brief-action').click()
+  await expect(card.getByTestId('brief-acted')).toBeVisible()
+  await expect(card.getByTestId('brief-when')).toHaveText('For today')
+  // A step pinned to her bedtime is later today, before the plan is made and after it, and for today once the moment passes.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-name-input').fill('Networking')
+  await page.getByTestId('aim-name-add').click()
+  await expect(page.getByTestId('aim-card')).toHaveCount(1)
+  await putBrief(page, { ...workerLine, action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(card.getByTestId('brief-when')).toHaveText('Later today')
+  await expect(card.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 20:00')
+  await card.getByTestId('brief-action').click()
+  await expect(card.getByTestId('brief-acted')).toHaveText('Planned for today.')
+  await expect(card.getByTestId('brief-when')).toHaveText('Later today')
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 20, 5))
+  await page.reload()
+  await expect(card.getByTestId('brief-when')).toHaveText('For today')
 })
 
 test('an incomplete block reads Incomplete and no number', async ({ page }) => {

@@ -1048,6 +1048,7 @@ export const copy = {
     actionDepth: 'Switch to short depth',
     actionTest: 'Set the test: {move}',
     acted: { plan: 'Planned for today.', depth: 'Short depth is on; Settings changes it back.', test: 'The test is set; its card is under Evidence.' },
+    when: { now: 'Now', laterToday: 'Later today', forToday: 'For today' },
     why: 'Why',
     whyLine: 'Why this line',
     whyAlso: 'Also from your record',

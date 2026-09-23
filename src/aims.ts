@@ -172,6 +172,11 @@ export interface CueOffer {
   time: string
 }
 
+/** Whether a clock time is still ahead of now today; never in the small hours, when the day being logged is yesterday's. */
+export function aheadToday(time: string | null | undefined, now: Date): time is string {
+  return typeof time === 'string' && blockAt(now).day === dayKey(now) && minutesOf(time) > now.getHours() * 60 + now.getMinutes()
+}
+
 /**
  * One tap says when. The cues on offer at this moment, each with the time it names today: after
  * pickup on a daycare day, after her bedtime, at the next check-in. A cue whose moment has passed
@@ -179,14 +184,12 @@ export interface CueOffer {
  */
 export function cuesFor(ctx: Pick<DayContext, 'pickupTime' | 'soloUntil'> | null, now: Date): CueOffer[] {
   if (blockAt(now).day !== dayKey(now)) return []
-  const minute = now.getHours() * 60 + now.getMinutes()
-  const ahead = (time: string | null | undefined): time is string => typeof time === 'string' && minutesOf(time) > minute
   const out: CueOffer[] = []
-  if (ctx && ahead(ctx.pickupTime)) out.push({ cue: 'afterPickup', time: ctx.pickupTime })
-  if (ctx && ahead(ctx.soloUntil)) out.push({ cue: 'afterBedtime', time: ctx.soloUntil })
+  if (ctx && aheadToday(ctx.pickupTime, now)) out.push({ cue: 'afterPickup', time: ctx.pickupTime })
+  if (ctx && aheadToday(ctx.soloUntil, now)) out.push({ cue: 'afterBedtime', time: ctx.soloUntil })
   const block = blockAt(now).block
   const next = block === 'morning' ? 'afternoon' : block === 'afternoon' ? 'evening' : null
-  if (next && ahead(blockStart[next])) out.push({ cue: 'nextCheckIn', time: blockStart[next] })
+  if (next && aheadToday(blockStart[next], now)) out.push({ cue: 'nextCheckIn', time: blockStart[next] })
   return out
 }
 

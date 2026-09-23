@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addAim, addSkill, planAim, studyAims } from './aimFlow'
 import { weekBuckets } from './facts'
-import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
+import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, lineTiming, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
+import type { LineAction } from './brainShared'
 import { db, ensureDayContext, getSettings } from './db'
 import { factById } from './facts'
 
@@ -220,6 +221,37 @@ describe('the line, acted on', () => {
     expect(await applyLineAction(DAY, { kind: 'depth', value: 'short' }, NOW)).toBe(true)
     expect((await getSettings()).depth).toBe('short')
     expect((await lineActionState(DAY, { kind: 'depth', value: 'short' }, NOW))?.state).toBe('done')
+  })
+
+  it('titles the line by when it is meant to be acted on, from its action alone (owner, 2026-09-23)', async () => {
+    await addAim('certification', null, 'French', 'language')
+    const at = (h: number, m = 0) => new Date(2026, 8, 18, h, m)
+    const timing = async (action: LineAction | null, now: Date) => lineTiming(action, await lineActionState(DAY, action, now), now)
+    const plan: LineAction = { kind: 'plan', aimId: 1, cue: 'afterBedtime' }
+    const test: LineAction = { kind: 'test', moveId: 'walk-ten' }
+    const depth: LineAction = { kind: 'depth', value: 'short' }
+    // A line with no action has no time of its own.
+    expect(await timing(null, NOW)).toBe('forToday')
+    // A step pinned to her bedtime is later today, before the plan is made and after it, until its moment.
+    expect(await timing(plan, NOW)).toBe('laterToday')
+    expect(await applyLineAction(DAY, plan, NOW)).toBe(true)
+    expect(await lineActionState(DAY, plan, NOW)).toEqual({ state: 'done', time: '20:00' })
+    expect(await timing(plan, at(19, 59))).toBe('laterToday')
+    expect(await timing(plan, at(20, 0))).toBe('forToday')
+    // In the small hours the day being logged is yesterday's, so nothing is later today.
+    expect(lineTiming(plan, { state: 'done', time: '20:00' }, new Date(2026, 8, 19, 1, 0))).toBe('forToday')
+    // A cue whose moment passed before any plan, and a commitment no longer there, are for today.
+    await db.intentions.clear()
+    expect(await timing(plan, at(21))).toBe('forToday')
+    expect(await timing({ kind: 'plan', aimId: 9, cue: 'afterBedtime' }, NOW)).toBe('forToday')
+    // A tap that does it on the spot is now while it is open, and for today once taken or gone.
+    expect(await timing(test, NOW)).toBe('now')
+    expect(await applyLineAction(DAY, test, NOW)).toBe(true)
+    expect(await timing(test, NOW)).toBe('forToday')
+    expect(await timing({ kind: 'test', moveId: 'no-such-move' }, NOW)).toBe('forToday')
+    expect(await timing(depth, NOW)).toBe('now')
+    expect(await applyLineAction(DAY, depth, NOW)).toBe(true)
+    expect(await timing(depth, NOW)).toBe('forToday')
   })
 
   it('keeps a line that was answered for the day, and the next morning closes the loop on it', async () => {

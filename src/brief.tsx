@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, recordFeedback, todaysLine, whyFor, type ActionState, type BriefLine } from './brainFlow'
+import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, recordFeedback, todaysLine, whyFor, type ActionState, type BriefLine } from './brainFlow'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
 import { fill } from './format'
@@ -15,7 +15,9 @@ import { readingById } from './readings'
 // taken), the taps, a one-word writer tag when a model wrote it, and the stretch warning unless
 // the line is itself the stretch line. Everything else sits behind Why, in three labelled
 // sections: why this line, also from your record, written by. With no line the card shows its
-// readings as it always has, so it is never empty. Counts and ranges, not claims.
+// readings as it always has, so it is never empty. Counts and ranges, not claims. The title says
+// when the line is meant to be acted on, from its action alone, never its words: now, later today
+// or for today; with no line it names the window the readings cover (owner, 2026-09-23).
 
 const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
@@ -157,9 +159,8 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
 }
 
 /** The line, its one action, and the taps. Kept while its situation holds; looked at again whenever the screen opens or the record changes. */
-function BrainLine({ day, line, version, open, onToggle }: { day: string; line: BriefLine; version: number; open: boolean; onToggle: () => void }) {
+function BrainLine({ day, line, act, open, onToggle }: { day: string; line: BriefLine; act: ActionState | null | undefined; open: boolean; onToggle: () => void }) {
   const fb = useLive(() => feedbackFor(line.key), [line.key])
-  const act = useLive(() => lineActionState(day, line.action ?? null), [day, line.key, version])
   const c = copy.brain
   return (
     <div class="brain-line">
@@ -208,6 +209,7 @@ function BrainLine({ day, line, version, open, onToggle }: { day: string; line: 
 export function Brief({ day, version = 0 }: { day: string; version?: number }) {
   const b = useLive(() => briefData(day), [day])
   const line = useLive(() => todaysLine(day), [day])
+  const act = useLive(() => (line ? lineActionState(day, line.action ?? null) : Promise.resolve(null)), [day, line?.key, JSON.stringify(line?.action ?? null), version])
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -217,10 +219,14 @@ export function Brief({ day, version = 0 }: { day: string; version?: number }) {
   }, [version, day])
   const c = copy.brief
   if (!b || line === undefined) return null
+  // While the action's state is still being read the title is blank, rather than a time the line has not established.
+  const when = line === null ? c.title : line.action && act === undefined ? '' : copy.brain.when[lineTiming(line.action, act)]
   return (
     <div class="card pad brief" data-testid="brief">
       <div class="brief-head">
-        <p class="eyebrow small">{c.title}</p>
+        <p class="eyebrow small" data-testid="brief-when">
+          {when}
+        </p>
         {line?.source === 'worker' && (
           <span class="writer-tag" data-testid="brief-writer-tag">
             {copy.brain.writerTag}
@@ -229,7 +235,7 @@ export function Brief({ day, version = 0 }: { day: string; version?: number }) {
       </div>
       {line ? (
         <>
-          <BrainLine day={day} line={line} version={version} open={open} onToggle={() => setOpen((v) => !v)} />
+          <BrainLine day={day} line={line} act={act} open={open} onToggle={() => setOpen((v) => !v)} />
           {b.ready && !isStretchLine(line) && <Warning b={b} />}
           {open && <WhyPanel day={day} line={line} b={b} />}
         </>

@@ -1,5 +1,5 @@
 import { activeAims, aimRecords, allIntentions, isOpenAimOffer, liveSkills, planAim, rungMarks } from './aimFlow'
-import { cuesFor, planFor, stepFor } from './aims'
+import { aheadToday, cuesFor, planFor, stepFor } from './aims'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import type { CoachBlock } from './factTypes'
 import { pathOn, peopleRowOf } from './pathFlow'
@@ -244,6 +244,7 @@ export interface ActionState {
   /** Open: the tap is there. Done: it was taken, or the record already shows what it would do. Gone: no longer possible today. */
   state: 'open' | 'done' | 'gone'
   cue?: LineCue
+  /** The clock time a plan names today: its cue's while open, the plan's once made. */
   time?: string
 }
 
@@ -253,7 +254,8 @@ export async function lineActionState(day: string, action: LineAction | null, no
   if (action.kind === 'plan') {
     const aim = (await activeAims()).find((a) => a.id === action.aimId)
     if (!aim) return { state: 'gone' }
-    if (planFor(await allIntentions(), action.aimId, day)) return { state: 'done' }
+    const plan = planFor(await allIntentions(), action.aimId, day)
+    if (plan) return { state: 'done', time: plan.time }
     const cue = cuesFor(await getDayContext(day), now).find((c) => c.cue === action.cue)
     return cue ? { state: 'open', cue: cue.cue, time: cue.time } : { state: 'gone' }
   }
@@ -285,6 +287,21 @@ export async function applyLineAction(day: string, action: LineAction, now: Date
   if (!h) return false
   await db.cards.add(cardFromHypothesis(h, now.toISOString()))
   return true
+}
+
+/** When a line is meant to be acted on (owner, 2026-09-23). */
+export type LineTiming = 'now' | 'laterToday' | 'forToday'
+
+/**
+ * When the line is meant to be acted on, as its action establishes it and nothing else; its words
+ * are never read for a time. Now: a tap that does what it says on the spot, while it is open. Later
+ * today: a step pinned to a cue whose time is still ahead today, before the plan is made and after.
+ * For today: a line with no action, and any action taken, gone or past its time.
+ */
+export function lineTiming(action: LineAction | null, state: ActionState | null | undefined, now: Date = new Date()): LineTiming {
+  if (!action || !state) return 'forToday'
+  if (action.kind === 'plan') return state.state !== 'gone' && aheadToday(state.time, now) ? 'laterToday' : 'forToday'
+  return state.state === 'open' ? 'now' : 'forToday'
 }
 
 export interface Why {
