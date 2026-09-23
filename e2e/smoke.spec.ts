@@ -1075,6 +1075,14 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await page.locator('[data-kind="path"]').getByTestId('aim-done').click()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(page.getByTestId('path-rep-count')).toHaveText(`${rep} · done 1 · partly 0 · no 0`)
+  // Part 25: the card says in one line which rule chose today's rep.
+  await expect(page.getByTestId('path-why')).toContainText('Why this rep')
+  // Evidence counts the rep; a difference waits for five a side.
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('path-rep-evidence').first()).toContainText(`${rep} · drawn 1 · done 1 · partly 0 · no 0`)
+  await expect(page.getByTestId('path-rep-compare')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
 
   // The evening at home: nobody around by today's shape, so no in-person rep is the day's rep.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))

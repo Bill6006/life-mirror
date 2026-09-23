@@ -8,7 +8,7 @@ import { fill } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { setPathPick } from './pathFlow'
-import { countsByRep, pathName, pathToday, stageWords, type PathToday } from './pathStage'
+import { countsByRep, pathName, pathToday, stageWords, whyThisRep, type PathToday } from './pathStage'
 import { carriedByContext, carriedLine, dayKindOf, inPerson, orderByEvidence } from './people'
 
 // A path on the screen (Part 24). On Now, one People row: the rep, its one line, its minutes and
@@ -187,6 +187,11 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               {!rep.path?.[path.id]?.advances && (
                 <p class="calc-line" data-testid="path-warmup">
                   {c.warmUp}
+                </p>
+              )}
+              {!p.open && p.pt.pick && (
+                <p class="calc-line" data-testid="path-why">
+                  <span class="calc-key">{c.why.title}</span> · {whyThisRep(p.pt.pick)}
                 </p>
               )}
             </>

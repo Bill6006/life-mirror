@@ -60,7 +60,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, compact = false 
         ctx,
         plan: planFor(intentions, aim.id as number, today),
         carried: pt.pick ? null : carriedFor(offers, outcomes, contexts, today, block, ctx),
-        onResume: () => pt.pick && void resumePath(aim, pt.pick, pt.state.stage),
+        onResume: () => pt.pick && void resumePath(aim, pt.pick, pt.elig.stage),
         onChange: () => onChangeRep?.(aim),
         onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), pt.pick ? moveById(pt.pick.moveId).name : pathName(pt.path)),
       }

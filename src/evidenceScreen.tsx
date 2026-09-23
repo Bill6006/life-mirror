@@ -1,4 +1,5 @@
 import { blockAt } from './blocks'
+import { PathEvidence } from './pathEvidence'
 import { CaffeineEvidenceCard } from './caffeineEvidence'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
@@ -113,6 +114,8 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
           </ul>
         </div>
       )}
+
+      <PathEvidence />
 
       <h2 class="section">{c.nothingTitle}</h2>
       <div class="card pad">

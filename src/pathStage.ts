@@ -19,8 +19,12 @@ export function pathKey(path: PathId): string {
 /** The kinds of setting another adult is there in person for. */
 export const IN_PERSON_KINDS: readonly SettingKind[] = ['recurring', 'errand', 'group', 'oneToOne']
 
-/** Which rule chose a rep: the smallest after refusals, the least recently done, a drawn tie, or you through Change. */
-export type PickRule = 'smaller' | 'rotate' | 'draw' | 'you'
+/**
+ * Which rule chose a rep: the smallest after refusals, the one rep that fits, a draw among two or
+ * more with each chance kept, or you through Change. 'rotate' (the least recently done) is kept
+ * only for steps offered before Part 25 made the pick a draw.
+ */
+export type PickRule = 'smaller' | 'only' | 'draw' | 'you' | 'rotate'
 export type RepAnswer = 'done' | 'partly' | 'no'
 
 /** One rep in a path's record: offered through the path, with what he answered. */
@@ -33,6 +37,12 @@ export interface PathEntry {
   chosenBy: 'app' | 'you'
   rule: PickRule | null
   outcome: RepAnswer | null
+  /** The stage the step was offered at, when the offer says. */
+  stage: number | null
+  /** The block it was offered in. */
+  block: Block
+  /** Every candidate's chance in its draw, when it was drawn; null for a rule's pick or yours. */
+  chances: Record<string, number> | null
 }
 
 export function pathById(id: PathId): Path {
@@ -62,7 +72,7 @@ export function pathEntries(path: PathId, offers: readonly Offer[], outcomes: re
     if (o.kind !== 'step' || o.skippedAt !== null || o.id === undefined || !hasMove(o.moveId)) continue
     const own = o.paths ? o.paths.includes(path) : convertedFromPerson && path === 'social' && o.situationKey === 'aim:person'
     if (!own) continue
-    out.push({ offerId: o.id, moveId: o.moveId, day: o.day, at: o.at, setting: o.setting ?? defaultSetting(moveById(o.moveId)), chosenBy: o.chosenBy ?? 'you', rule: o.rule ?? null, outcome: answer.get(o.id) ?? null })
+    out.push({ offerId: o.id, moveId: o.moveId, day: o.day, at: o.at, setting: o.setting ?? defaultSetting(moveById(o.moveId)), chosenBy: o.chosenBy ?? 'you', rule: o.rule ?? null, outcome: answer.get(o.id) ?? null, stage: o.stage ?? null, block: o.block, chances: o.rule === 'draw' && o.propensities ? o.propensities : null })
   }
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
 }
@@ -195,32 +205,110 @@ export interface RepPick {
   chosenBy: 'app' | 'you'
   /** The reps it was picked among. */
   candidates: string[]
-  /** Each rep's chance of being the pick: equal over a drawn tie, one for the rep a rule or you chose. */
+  /** Each rep's chance of being the pick, summing to one: a draw's chances, or one for the rep a rule or you chose. */
   propensities: Record<string, number>
+  /** A draw that leaned toward the reps he completes, after enough draws in the stage. */
+  leaning: boolean
 }
 
 const EFFORT_ORDER: Record<Effort, number> = { low: 0, medium: 1, high: 2 }
 
+/** Draws in a stage before its chances may lean toward the reps he completes (Part 25). */
+export const LEAN_AFTER_DRAWS = 10
+/** No rep's chance in a leaning draw goes below or above these, so every rep keeps being drawn and none takes over. */
+export const CHANCE_FLOOR = 0.1
+export const CHANCE_CEILING = 0.8
+
 /**
- * The app's pick. After the rule's refusals in a row, the smallest version of the stage. Otherwise
- * the rep least recently done; a tie is drawn with equal chances, kept with the offer. Then where
- * it is meant to happen: the kind of setting used least lately.
+ * Chances from weights, summing to one, each within the bounds: every weight is scaled by one
+ * factor and held to the floor and the ceiling, the factor found so the chances sum to one. The
+ * chances inside the bounds keep the weights' proportions. Holding one side first and sharing the
+ * rest can leave a sum the other side makes impossible (five reps, one heavy: 0.8 and four at
+ * 0.1 is 1.2); one factor for all never can. The bounds give way only when the number of reps
+ * makes them impossible.
  */
-export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number): RepPick | null {
+export function clipChances(weights: Readonly<Record<string, number>>, floor = CHANCE_FLOOR, ceiling = CHANCE_CEILING): Record<string, number> {
+  const ids = Object.keys(weights)
+  if (!ids.length) return {}
+  const lo = Math.min(floor, 1 / ids.length)
+  const hi = Math.max(ceiling, 1 / ids.length)
+  const w = ids.map((id) => Math.max(1e-9, weights[id]))
+  const held = (scale: number) => w.map((x) => Math.min(hi, Math.max(lo, scale * x)))
+  const sum = (ps: readonly number[]) => ps.reduce((a, b) => a + b, 0)
+  // The held sum only grows with the factor, from the floor's total (at most one) to the ceiling's (at least one).
+  let under = 0
+  let over = 1
+  while (sum(held(over)) < 1) over *= 2
+  for (let k = 0; k < 60; k++) {
+    const mid = (under + over) / 2
+    if (sum(held(mid)) < 1) under = mid
+    else over = mid
+  }
+  const ps = held(over)
+  const total = sum(ps)
+  return Object.fromEntries(ids.map((id, k) => [id, ps[k] / total]))
+}
+
+/**
+ * A draw's chances among the reps that fit (Part 25): equal until the stage has had enough draws,
+ * then leaning toward the reps he completes, by each rep's done over its draws in the stage with
+ * one of each added so a rep never drawn is not ruled out, and clipped.
+ */
+export function drawChances(eligible: readonly Move[], entries: readonly PathEntry[], stage: number): { chances: Record<string, number>; leaning: boolean } {
+  const ids = eligible.map((m) => m.id)
+  const draws = entries.filter((e) => e.rule === 'draw' && e.stage === stage)
+  if (ids.length < 2 || draws.length < LEAN_AFTER_DRAWS) return { chances: Object.fromEntries(ids.map((id) => [id, 1 / ids.length])), leaning: false }
+  const weights: Record<string, number> = {}
+  for (const id of ids) {
+    const mine = draws.filter((e) => e.moveId === id)
+    weights[id] = (mine.filter((e) => e.outcome === 'done').length + 1) / (mine.length + 2)
+  }
+  return { chances: clipChances(weights), leaning: true }
+}
+
+/**
+ * The app's pick (Parts 24 and 25). After the rule's refusals in a row, the smallest version of the
+ * stage. One rep that fits is that rep. Two or more are drawn, each chance kept with the offer, so
+ * the comparisons read only what chance decided. Then where it is meant to happen: the kind of
+ * setting used least lately.
+ */
+export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number, stage = 1): RepPick | null {
   if (!eligible.length) return null
   const candidates = eligible.map((m) => m.id)
-  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 } })
+  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 }, leaning: false })
   if (refusalsInARow(entries) >= path.rule.smallerAfterRefusals) {
     const order = new Map(candidates.map((id, k) => [id, k]))
     return one([...eligible].sort((a, b) => EFFORT_ORDER[a.effort] - EFFORT_ORDER[b.effort] || a.minutes - b.minutes || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))[0], 'smaller')
   }
-  const lastDone = new Map<string, string>()
-  for (const e of entries) if ((e.outcome === 'done' || e.outcome === 'partly') && (lastDone.get(e.moveId) ?? '') < e.day) lastDone.set(e.moveId, e.day)
-  const oldest = eligible.map((m) => lastDone.get(m.id) ?? '').sort()[0]
-  const tied = eligible.filter((m) => (lastDone.get(m.id) ?? '') === oldest)
-  if (tied.length === 1) return one(tied[0], 'rotate')
-  const m = tied[Math.min(tied.length - 1, Math.floor(draw * tied.length))]
-  return { moveId: m.id, setting: settingFor(m, path, entries, today), rule: 'draw', chosenBy: 'app', candidates, propensities: Object.fromEntries(tied.map((t) => [t.id, 1 / tied.length])) }
+  if (eligible.length === 1) return one(eligible[0], 'only')
+  const { chances, leaning } = drawChances(eligible, entries, stage)
+  let at = 0
+  let m = eligible[eligible.length - 1]
+  for (const rep of eligible) {
+    at += chances[rep.id]
+    if (draw < at) {
+      m = rep
+      break
+    }
+  }
+  return { moveId: m.id, setting: settingFor(m, path, entries, today), rule: 'draw', chosenBy: 'app', candidates, propensities: chances, leaning }
+}
+
+/** Why this rep, in one line: the rule that chose it, and where, when the rep can happen in more than one kind of setting. */
+export function whyThisRep(pick: RepPick): string {
+  const c = copy.path.why
+  const rule =
+    pick.rule === 'smaller'
+      ? c.smaller
+      : pick.rule === 'only'
+        ? c.only
+        : pick.rule === 'you'
+          ? c.you
+          : pick.rule === 'rotate'
+            ? c.rotate
+            : fill(pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
+  const kinds = hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
+  return pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
 }
 
 /** A number in [0, 1) fixed by its text: the same commitment, day and block draw the same tie until the record changes. */
@@ -315,8 +403,8 @@ export function pathToday(i: PathTodayInput): PathToday {
   const elig = eligibility({ path, state, around, yesterday, doneToday })
   const mine = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
   const pick: RepPick | null = mine
-    ? { moveId: mine.id, setting: settingFor(mine, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [mine.id], propensities: { [mine.id]: 1 } }
-    : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`))
+    ? { moveId: mine.id, setting: settingFor(mine, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [mine.id], propensities: { [mine.id]: 1 }, leaning: false }
+    : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage)
   return { path, entries, state, elig, pick, around }
 }
 
