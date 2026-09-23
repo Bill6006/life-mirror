@@ -9,6 +9,7 @@ import { useLive } from './live'
 import {
   actOpensAt,
   addMilestone,
+  byPart,
   CHECK_KEYS,
   checkPromptShown,
   checkShowsHelp,
@@ -221,6 +222,7 @@ function MonthlyReflectionCard({ notes, today }: { notes: readonly Reflection[];
               <p class="calc-line ink">{monthName(m)}</p>
               {monthly
                 .filter((r) => r.day.slice(0, 7) === m)
+                .sort(byPart(MONTHLY_PARTS))
                 .map((r) => (
                   <p key={r.id} class="calc-line pre">
                     <span class="calc-key">{partName(r.part)}</span> · {r.text}

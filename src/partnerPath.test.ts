@@ -285,6 +285,16 @@ describe('the Partner path on the phone', () => {
     expect(record.decided.map((r) => r.text)).toEqual(['Exclusive, chosen'])
   })
 
+  it('reads a month’s reflection in the order it asks its parts, whatever order they were written in, the newest month first', async () => {
+    await saveReflection('partner', 'monthly', 'Own part', { part: 'ownPart' }, new Date(2026, 8, 20, 9))
+    await saveReflection('partner', 'monthly', 'Understood', { part: 'understood' }, new Date(2026, 8, 21, 9))
+    await saveReflection('partner', 'monthly', 'Disagreement', { part: 'disagreement' }, new Date(2026, 8, 22, 9))
+    await saveReflection('partner', 'monthly', 'August, own part', { part: 'ownPart' }, new Date(2026, 7, 10))
+    await saveReflection('partner', 'monthly', 'August, understood', { part: 'understood' }, new Date(2026, 7, 12))
+    const record = recordBeforeDeciding(await reflections('partner'), 'child', DAY)
+    expect(record.monthly.map((r) => r.text)).toEqual(['Understood', 'Disagreement', 'Own part', 'August, understood', 'August, own part'])
+  })
+
   it('answers the monthly check once a month, again in place, and shows its help only on a yes to safety or conduct', async () => {
     await saveMonthlyCheck({ safety: false, conduct: false, doubt: true }, new Date(2026, 8, 3))
     await saveMonthlyCheck({ safety: false, conduct: true, doubt: true }, MORNING)

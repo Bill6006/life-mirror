@@ -1,6 +1,6 @@
 import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { moveById, type PathId } from './catalogue'
-import { db, type Aim, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
+import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
 import { keysOf, planFor } from './aims'
 import { pathById, pathKey, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
 
@@ -176,7 +176,7 @@ export function saveReflection(path: PathId, kind: ReflectionKind, text: string,
 export interface DecideRecord {
   /** Your values note, part by part, and a note written before the parts, if there is one. */
   values: Reflection[]
-  /** Your monthly reflections of the last three months, newest first. */
+  /** Your monthly reflections of the last three months, the newest month first, each month's parts in the order they are asked. */
   monthly: Reflection[]
   /** Your reflections of the last three months, newest first, the latest ten. */
   notes: Reflection[]
@@ -187,14 +187,19 @@ export interface DecideRecord {
 /** How far back the record before a decision reaches, in days. */
 export const RECORD_DAYS = 92
 
+/** Notes in the order their act asks its parts; a note written before there were parts comes first. */
+export function byPart(parts: readonly string[]): (a: Reflection, b: Reflection) => number {
+  return (a, b) => parts.indexOf(a.part ?? '') - parts.indexOf(b.part ?? '')
+}
+
 /** The record shown before the note for a step: chosen by kind and date alone, never by what it says. */
 export function recordBeforeDeciding(all: readonly Reflection[], step: PartnerStep, today: string): DecideRecord {
   const since = addDays(today, -RECORD_DAYS)
   const newest = (a: Reflection, b: Reflection) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.updatedAt < b.updatedAt ? 1 : -1)
-  const order: readonly string[] = ['nonNegotiables', 'preferences', 'partnerIWantToBe']
+  const monthThenPart = (a: Reflection, b: Reflection) => (a.day.slice(0, 7) === b.day.slice(0, 7) ? byPart(MONTHLY_PARTS)(a, b) : a.day < b.day ? 1 : -1)
   return {
-    values: all.filter((r) => r.kind === 'values').sort((a, b) => order.indexOf(a.part ?? '') - order.indexOf(b.part ?? '')),
-    monthly: all.filter((r) => r.kind === 'monthly' && r.day >= since).sort(newest),
+    values: all.filter((r) => r.kind === 'values').sort(byPart(VALUES_PARTS)),
+    monthly: all.filter((r) => r.kind === 'monthly' && r.day >= since).sort(monthThenPart),
     notes: all.filter((r) => r.kind === 'reflection' && r.day >= since).sort(newest).slice(0, 10),
     decided: all.filter((r) => r.kind === 'decide' && r.step !== step).sort(newest),
   }
