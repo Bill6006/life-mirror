@@ -1,5 +1,8 @@
 import type { LineAction } from './brainShared'
+import type { PathId, SettingKind } from './catalogue'
+import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
+import type { PickRule } from './pathStage'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
 import { blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
@@ -151,6 +154,12 @@ export interface Offer {
   /** Phase 12: the probability this move had of being offered, and every candidate's, at the draw. */
   propensity?: number
   propensities?: Record<string, number>
+  /** A path's step (Part 24): who chose the rep, the paths it counts for, where it was meant to happen, the rule that picked it and the stage it was offered at. */
+  chosenBy?: 'app' | 'you'
+  paths?: PathId[]
+  setting?: SettingKind
+  rule?: PickRule
+  stage?: number
   skippedAt: string | null
   /** Set once the outcome has been asked, answered or not. */
   closedAt: string | null
@@ -297,18 +306,27 @@ export interface Outcome {
   passiveOutcome: 'done' | 'no' | null
 }
 
-export type AimKind = 'certification' | 'person' | 'practice'
+export type AimKind = 'certification' | 'person' | 'practice' | 'path'
 
 /** A commitment you chose, with nothing to type: its kind, and for a person or a practice the catalogue move that is its step. */
 export interface Aim {
   id?: number
   kind: AimKind
-  /** Null for a study commitment, whose step comes from its ladder. */
+  /** Null for a study commitment, whose step comes from its ladder, and for a path, whose step is picked each block. */
   stepMoveId: string | null
   /** A study commitment's subject, typed once: the certification, the language, the instrument. Its skills carry the same name. */
   name?: string
   /** A study commitment's six proofs, chosen once. */
   ladder?: LadderKind
+  /** A path commitment (Part 24): which path. */
+  path?: PathId
+  /** A path paused by you: no row on Now and no step, its record kept. */
+  pausedAt?: string | null
+  /** A Social path converted from A person, which keeps that commitment's whole record. */
+  convertedFrom?: 'person'
+  convertedAt?: string
+  /** Today's rep, picked by you through Change: offered whatever the day's shape says. */
+  pick?: { day: string; moveId: string }
   createdAt: string
   archivedAt: string | null
 }
@@ -362,6 +380,11 @@ export interface FactsRow {
   builtAt: string
   updatedAt: string
   sheet: FactSheet
+  /**
+   * The paths' decision core for the coach (Parts 24 and 32), beside the sheet and never inside
+   * it, so no line briefing can read it. Absent while no path is on.
+   */
+  coach?: CoachBlock
 }
 
 /** The phone's own line for a day, chosen once by the situation engine; a null situation means it had nothing to say. */

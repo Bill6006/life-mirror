@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isProposed, liveMoves, moves, pathReps, paths, SETTING_KINDS, type Move, type Path } from './catalogue'
+import { isPathOnly, isProposed, liveMoves, moves, pathReps, paths, SETTING_KINDS, type Move, type Path } from './catalogue'
 import { cardById } from './library'
 import { candidatesFor, NOTHING, type Situation, type TodayState } from './offers'
 
@@ -158,9 +158,13 @@ describe('what the paths say', () => {
 })
 
 describe('nothing offered differently, and the evidence held back until each path is wired', () => {
-  it('keeps every new rep proposed and out of every picker', () => {
-    const fresh = moves.filter((m) => m.path && isProposed(m))
-    expect(fresh.length).toBe(28)
+  it('keeps every new rep out of the day’s draw: the Social path’s offered through its row alone since Part 24, the Partner path’s proposed until Part 27', () => {
+    const wired = moves.filter((m) => m.path && isPathOnly(m))
+    const proposed = moves.filter((m) => m.path && isProposed(m))
+    expect(wired.length + proposed.length).toBe(28)
+    for (const m of wired) expect(m.path?.social, m.id).toBeDefined()
+    for (const m of proposed) expect(m.path?.social, m.id).toBeUndefined()
+    const fresh = [...wired, ...proposed]
     const live = new Set(liveMoves.map((m) => m.id))
     for (const m of fresh) expect(live.has(m.id), m.id).toBe(false)
     const open: TodayState = { doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs: new Map(), studyNight: true, withHer: true, churchDay: true, noTimeCeiling: null }
@@ -170,15 +174,17 @@ describe('nothing offered differently, and the evidence held back until each pat
         for (const c of candidatesFor(s, open).candidates) if (c.id !== NOTHING) expect(live.has(c.id), c.id).toBe(true)
       }
     }
-    expect(moves.filter((m) => !isProposed(m)).length).toBe(99)
+    expect(moves.filter((m) => !isProposed(m) && !isPathOnly(m)).length).toBe(99)
   })
 
   it('backs each path with verified cards that stay drafts until the path is wired, and disputed ones never cited', () => {
     for (const p of paths) {
+      // Part 24 wired the Social path, so its cards are admitted; the Partner path's wait for Part 27.
+      const wired = p.id === 'social'
       for (const id of p.cards) {
         const c = cardById(id)
         expect(c, id).toBeDefined()
-        expect(['draft', 'disputed'], id).toContain(c?.status)
+        expect(wired ? ['admitted', 'disputed'] : ['draft', 'disputed'], id).toContain(c?.status)
         for (const s of c?.sources ?? []) expect(s.doi, `${id}: ${s.cite}`).toMatch(/^10\./)
       }
     }

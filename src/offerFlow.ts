@@ -23,6 +23,7 @@ import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupC
 import type { ReadingId } from './readings'
 import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type RungMove, type Sitting } from './ladder'
 import { noTimeCeiling, WINDOW_PENALTY } from './learning'
+import { pathOn } from './pathFlow'
 import { beliefsFor, recoveryGapDue } from './learningFlow'
 import { inDaylight, minutesOf, type Settings, type Weekday } from './settings'
 import { studyVersions, type ReasonCheck } from './studyNight'
@@ -187,7 +188,9 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
   const ctx = await ensureDayContext(day, settings)
   // A one-time setup already made stays out; the office and the daylight hours decide the two needs the app can know.
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime, asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx) }
+  // Part 24: with a path on, its row is the day's one people rep.
+  const pathIsOn = (await db.aims.filter(pathOn).count()) > 0
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime, asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */
@@ -214,7 +217,7 @@ async function mostRecentlyDoneIn(situationKey: string): Promise<string | null> 
  * then the offer. Returns the live offer, or null when nothing fits or moves are hidden.
  */
 export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs], async () => {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const existing = await offerForSlot(day, block)
@@ -301,7 +304,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
 
 /** Inside the ninety minutes before pickup, on a day she is with you: one short move whose job is arriving with something left. */
 export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs], async () => {
+  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const day = dayKey(now)

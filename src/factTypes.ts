@@ -1,5 +1,5 @@
-// The fact sheet's shape alone, with no imports, so the Worker and the validator can share it
-// without pulling the app in.
+// The fact sheet's shape alone, and the coach block's, with no imports, so the Worker and the
+// validator can share them without pulling the app in.
 
 export interface Fact {
   id: string
@@ -29,6 +29,31 @@ export interface RankedLine {
   cardIds: string[]
   score: number
 }
+
+/**
+ * The paths' decision core (Parts 24, 27 and 32): the phone's own computation of what is possible
+ * now, written on the facts row beside the sheet. Exactly the keys the Worker's coach contract
+ * names (COACH_CORE_KEYS) and nothing else: no tier-2 count, no reading, no note.
+ */
+export interface CoachBlock {
+  /** Per path on, the reps that fit this block by tier 1 alone. */
+  eligible: { path: string; ids: string[] }[]
+  /** Why in-person reps are out of this block, when tier 1 keeps them out; else null. */
+  ineligibleReason: string | null
+  day: string
+  block: 'morning' | 'afternoon' | 'evening'
+  /** Today's shape for this block, in words: who the record says is around. */
+  shape: string
+  /** Per path on, the stage it stands on, and whether reps from the stage below are back for re-entry. */
+  stages: { path: string; stage: number; name: string; reentry: boolean }[]
+  /** A declared date day (Part 27). */
+  dateDay: boolean
+  /** Per rep of each path's current stage: drawn, done, partly and no, its last two answers, and the settings its recent reps used. */
+  perRep: { path: string; id: string; drawn: number; done: number; partly: number; no: number; last: (string | null)[]; settings: string[] }[]
+}
+
+/** The coach block's keys, in the contract's order: the Worker's COACH_CORE_KEYS must equal these. */
+export const COACH_BLOCK_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep'] as const
 
 export interface FactSheet {
   version: 1

@@ -1,5 +1,5 @@
 import { BLOCKS, blockStart, type Block } from './blocks'
-import { hasMove, isParked, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, isParked, isPathOnly, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import { inPerson } from './people'
 import type { Position, ReadingId } from './readings'
@@ -81,9 +81,11 @@ export interface TodayState {
   asleep?: boolean
   /** Part 20's tier 1: whether today's shape puts other adults around in each block. Absent means the draw is not told, as in the permissive states. */
   peopleAround?: Readonly<Record<Block, boolean>>
+  /** Part 24: a path is on, so its row is the day's one people rep and the draw offers no in-person people or charisma rep. Absent means none is. */
+  pathOn?: boolean
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare' | 'asleep' | 'people'
+export type Exclusion = 'proposed' | 'parked' | 'pathOnly' | 'path' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare' | 'asleep' | 'people'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -105,6 +107,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   // Phase 9 proposals are read and vetoed; nothing proposed is offered until Green wires it.
   if (isProposed(move)) return 'proposed'
   if (isParked(move)) return 'parked'
+  // A path's own reps are offered through its row alone (Part 24).
+  if (isPathOnly(move)) return 'pathOnly'
   if (OBSERVED_ONLY.has(move.id)) return 'observed'
   if (PASSIVE.has(move.id)) return 'passive'
   // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
@@ -125,6 +129,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if (move.needs.includes('quiet') && t.atOffice === true && s.block !== 'evening') return 'quiet'
   // The third: an adult there in person, from today's shape alone (Part 20's tier 1). Past reps elsewhere never enter here.
   if (inPerson(move) && t.peopleAround && !t.peopleAround[s.block]) return 'people'
+  // One people rep a day across the app: while a path is on, its row is it.
+  if (t.pathOn && inPerson(move) && (move.family === 'people' || move.family === 'charisma')) return 'path'
   if (t.hiddenFamilies.has(move.family)) return 'hidden'
   if (!move.targets.some((x) => x.reading === s.target && x.direction === INGREDIENTS[s.target])) return 'target'
   if (s.band === 'empty' && !(EMPTY_FAMILIES.has(move.family) && move.effort === 'low')) return 'band'

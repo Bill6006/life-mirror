@@ -5875,7 +5875,7 @@
         "effect": 0.2,
         "note": "Sandstrom and Dunn 2014: more contact with casual acquaintances went with more belonging; a fifth of a step on social energy, thin"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 1,
@@ -5953,7 +5953,7 @@
         "effect": 0.2,
         "note": "Sprecher 2013: reciprocal turns raised liking in first meetings; Collins and Miller 1994 meta-analysis agrees; a fifth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 3,
@@ -6032,7 +6032,7 @@
         "effect": 0.2,
         "note": "Laurenceau 1998: responsiveness carried closeness; a fifth of a step on social energy"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 2,
@@ -6109,7 +6109,7 @@
         "effect": 0.3,
         "note": "Sandstrom 2022: a week of approaching strangers lowered expected rejection; a third of a step on confidence"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 5,
@@ -6187,7 +6187,7 @@
         "effect": 0.2,
         "note": "Hall 2019: hours together predicted closeness; adjacent evidence, a fifth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 5,
@@ -6266,7 +6266,7 @@
         "effect": 0.3,
         "note": "Sandstrom and Boothby 2021: fears of talking are overblown; a third of a step on confidence"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 5,
@@ -6342,7 +6342,7 @@
         "effect": 0.1,
         "note": "Boothby 2018: they probably liked you more than you think; adjacent evidence, a tenth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 5,
@@ -6415,7 +6415,7 @@
         "effect": 0.2,
         "note": "Weber 2010: introductions by a third person rated best; adjacent evidence, a fifth of a step"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 6,
@@ -6488,7 +6488,7 @@
         "effect": 0.2,
         "note": "Hall 2019: leisure hours together built closeness; a fifth of a step on loneliness over the week"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 6,
@@ -6562,7 +6562,7 @@
         "effect": 0.2,
         "note": "Back 2008: chance proximity predicted friendship a year on; a fifth of a step on loneliness over the week"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 6,
@@ -6635,7 +6635,7 @@
         "effect": 0.3,
         "note": "Kardas 2022: deep talk went better than expected and connected more; a third of a step on social energy"
       },
-      "status": "proposed",
+      "status": "path",
       "path": {
         "social": {
           "stage": 6,

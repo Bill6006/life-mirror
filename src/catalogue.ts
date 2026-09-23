@@ -80,8 +80,11 @@ export interface Move {
   /** A filter tag: what being given this move costs you. */
   costToAssign: Effort
   prior: Prior
-  /** Proposed and not yet wired: read and veto. Since the Phase 9 Green, only the path reps of Parts 23 and 26, until their Green. */
-  status?: 'proposed'
+  /**
+   * Proposed: read and veto, offered nowhere. Path: Green and wired, offered only through its path's
+   * own pick (Parts 24 and 27), never by the day's draw.
+   */
+  status?: 'proposed' | 'path'
   /** Its place on each path it belongs to (Parts 23 and 26). */
   path?: Partial<Record<PathId, PathPlace>>
   /** The kinds of setting it happens in. */
@@ -247,8 +250,13 @@ export function isParked(m: Move): boolean {
   return m.parked === true
 }
 
-/** The entries the app may offer: everything neither proposed nor parked. Selection reads only this. */
-export const liveMoves: readonly Move[] = moves.filter((m) => !isProposed(m) && !isParked(m))
+/** A path rep wired at its path's Green: offered through that path alone, never by the day's draw. */
+export function isPathOnly(m: Move): boolean {
+  return m.status === 'path'
+}
+
+/** The entries the day's draw may offer: everything neither proposed, parked nor kept for a path. Selection reads only this. */
+export const liveMoves: readonly Move[] = moves.filter((m) => !isProposed(m) && !isParked(m) && !isPathOnly(m))
 
 const byId = new Map(moves.map((m) => [m.id, m]))
 

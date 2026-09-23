@@ -40,7 +40,7 @@ md += 'Proposed entries, tags, beliefs and trades are content to read and veto. 
 
 // The paths (Parts 23 and 26): each stage with its reps, the rule, what is counted and never counted, what is left out, and the evidence.
 md += '## Paths\n\n'
-md += 'Two paths, each a staged curriculum of reps, with your Green. Nothing here is wired or offered until each path is wired; the reps marked proposed join the candidates only then.\n\n'
+md += 'Two paths, each a staged curriculum of reps, with your Green. The Social path is wired: add it under Aims, and its own reps are offered through its row alone. The Partner path is not wired yet; its reps marked proposed are offered nowhere until it is.\n\n'
 for (const p of data.paths) {
   md += `### ${p.name}\n\n${p.what}\n\n`
   for (const st of p.stages) {
@@ -99,6 +99,7 @@ for (const f of data.families) {
     md += `### ${m.name}\n\n`
     const status = []
     if (m.status === 'proposed') status.push(m.path ? 'Proposed: Green given; joins the candidates when its path is wired' : 'Proposed: read and veto; joins the candidates at Green')
+    if (m.status === 'path') status.push('Offered through its path’s row alone, never by the day’s draw')
     if (m.parked) status.push('Parked: shown here, never offered')
     if (m.ladder) status.push(`rung ${m.ladder.rung} of the participation ladder`)
     if (m.setup) status.push(m.setup.kind === 'necessity' ? `a setup whose target is a necessity: ${NECESSITY[m.setup.necessity]}` : SETUP[m.setup.kind])

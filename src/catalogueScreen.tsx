@@ -1,4 +1,4 @@
-import { extensionPrompt, families, filterTags, isParked, isProposed, learnedTags, moves, movesInFamily, pathReps, paths, proposals, research, type Move, type Path, type Source } from './catalogue'
+import { extensionPrompt, families, filterTags, isParked, isPathOnly, isProposed, learnedTags, moves, movesInFamily, pathReps, paths, proposals, research, type Move, type Path, type Source } from './catalogue'
 import { cardById, gradeWord } from './library'
 import { blockAt } from './blocks'
 import { copy } from './copy'
@@ -40,6 +40,7 @@ function statusLine(m: Move): string | null {
   const c = copy.catalogue
   const parts: string[] = []
   if (isProposed(m)) parts.push(`${c.proposed} · ${m.path ? c.pathProposedNote : c.proposedNote}`)
+  if (isPathOnly(m)) parts.push(c.pathOnly)
   for (const p of paths) {
     const place = m.path?.[p.id]
     if (place) parts.push(`${fill(c.paths.onPath, { path: p.name, n: String(place.stage) })}, ${place.advances ? c.paths.advances : c.paths.movesNothing}`)

@@ -41,7 +41,7 @@ function useMoved(): [RungMove | null, (m: RungMove | null) => void] {
 }
 
 /** The Done tap opens on the ladder's clock; the row looks again every quarter minute. */
-function useQuarterMinute(): void {
+export function useQuarterMinute(): void {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 15_000)
@@ -67,7 +67,7 @@ export function LadderChips({ value, onPick, prefix = 'aim-ladder' }: { value: L
  * with a tap to change it. Nothing once the step is started, and nothing when no cue is ahead:
  * then the step is for now.
  */
-function When({ plan, ctx, onPlan }: Pick<Shared, 'plan' | 'ctx' | 'onPlan'>) {
+export function When({ plan, ctx, onPlan }: Pick<Shared, 'plan' | 'ctx' | 'onPlan'>) {
   const c = copy.aims
   const [changing, setChanging] = useState(false)
   const cues = cuesFor(ctx, new Date())
@@ -134,11 +134,14 @@ export function AimCard({
   onAddSkill,
   onName,
   onLadder,
+  onConvert,
 }: Shared & {
   /** Per cue, plans made and steps started, counts only. */
   counts?: readonly CueCount[]
   onRemove?: () => void
   onChangeStep?: () => void
+  /** A person, the one action left to it (Part 24): become the Social path, keeping its record. */
+  onConvert?: () => void
   /** A study commitment: how many skills it climbs. */
   skillCount?: number
   /** A study commitment: a skill typed here goes under its name. */
@@ -273,6 +276,14 @@ export function AimCard({
           >
             {c.addSkillHere}
           </button>
+        </div>
+      )}
+      {onConvert && (
+        <div class="calc" data-testid="aim-convert">
+          <button type="button" class="pill-quiet" data-testid="aim-convert-social" onClick={onConvert}>
+            {copy.path.convert}
+          </button>
+          <p class="note faint no-gap">{copy.path.convertNote}</p>
         </div>
       )}
       {(onRemove || onChangeStep) && (

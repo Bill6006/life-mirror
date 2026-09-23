@@ -1,0 +1,355 @@
+import { addDays, daysBetween, type Block } from './blocks'
+import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE, pathReps, paths, type Effort, type Move, type Path, type PathId, type PathPlace, type SettingKind } from './catalogue'
+import { copy } from './copy'
+import type { CoachBlock } from './factTypes'
+import type { Aim, DayContext, Offer, Outcome } from './db'
+import { fill } from './format'
+import { inPerson, peopleAround } from './people'
+
+// The path commitment (Part 24), the pure part: the stage a path stands on, derived from the
+// record and never stored; the reps that fit this block by Part 20's tier 1 alone; the app's pick
+// among them and where it is meant to happen; the counts a card shows; and the coach block. A rep
+// is done when he did his part: no answer anyone else gives is read, counted or kept here.
+
+/** The key a path's step offers carry. */
+export function pathKey(path: PathId): string {
+  return `aim:path:${path}`
+}
+
+/** The kinds of setting another adult is there in person for. */
+export const IN_PERSON_KINDS: readonly SettingKind[] = ['recurring', 'errand', 'group', 'oneToOne']
+
+/** Which rule chose a rep: the smallest after refusals, the least recently done, a drawn tie, or you through Change. */
+export type PickRule = 'smaller' | 'rotate' | 'draw' | 'you'
+export type RepAnswer = 'done' | 'partly' | 'no'
+
+/** One rep in a path's record: offered through the path, with what he answered. */
+export interface PathEntry {
+  offerId: number
+  moveId: string
+  day: string
+  at: string
+  setting: SettingKind
+  chosenBy: 'app' | 'you'
+  rule: PickRule | null
+  outcome: RepAnswer | null
+}
+
+export function pathById(id: PathId): Path {
+  const p = paths.find((x) => x.id === id)
+  if (!p) throw new Error(`unknown path: ${id}`)
+  return p
+}
+
+/** Where a rep sits on a path, or undefined when it is not one of the path's reps. */
+export function placeOn(path: PathId, moveId: string): PathPlace | undefined {
+  return hasMove(moveId) ? moveById(moveId).path?.[path] : undefined
+}
+
+/** Where a rep is meant to happen when its offer did not say: its first kind of setting. */
+export function defaultSetting(m: Move): SettingKind {
+  return m.settings?.[0] ?? (inPerson(m) ? 'recurring' : 'solo')
+}
+
+/**
+ * A path's record: every step offered through it, oldest first, with his answer. A rep both paths
+ * hold counts once for each. A Social path converted from A person keeps that commitment's steps.
+ */
+export function pathEntries(path: PathId, offers: readonly Offer[], outcomes: readonly Outcome[], convertedFromPerson = false): PathEntry[] {
+  const answer = new Map(outcomes.map((x) => [x.offerId, x.outcome]))
+  const out: PathEntry[] = []
+  for (const o of offers) {
+    if (o.kind !== 'step' || o.skippedAt !== null || o.id === undefined || !hasMove(o.moveId)) continue
+    const own = o.paths ? o.paths.includes(path) : convertedFromPerson && path === 'social' && o.situationKey === 'aim:person'
+    if (!own) continue
+    out.push({ offerId: o.id, moveId: o.moveId, day: o.day, at: o.at, setting: o.setting ?? defaultSetting(moveById(o.moveId)), chosenBy: o.chosenBy ?? 'you', rule: o.rule ?? null, outcome: answer.get(o.id) ?? null })
+  }
+  return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
+}
+
+export interface StageState {
+  /** The stage the path stands on. */
+  stage: number
+  /** Each stage reached past the first: the day, and whether the rule or your word moved it. A quiet stretch never lowers one. */
+  reached: readonly { stage: number; day: string; by: 'rule' | 'declared' }[]
+  /** Quiet for the re-entry span: reps from one stage below come back while the stage stands. */
+  reentry: boolean
+  /** The last day a rep of this path was marked done, or null. */
+  lastDone: string | null
+}
+
+/** Whether done reps meet the rule: enough of them, enough different ones, in enough kinds of setting. */
+export function meetsRule(done: readonly Pick<PathEntry, 'moveId' | 'setting'>[], rule: Pick<Path['rule'], 'reps' | 'distinctReps' | 'settingKinds'>): boolean {
+  return done.length >= rule.reps && new Set(done.map((d) => d.moveId)).size >= rule.distinctReps && new Set(done.map((d) => d.setting)).size >= rule.settingKinds
+}
+
+/**
+ * The stage, from the record alone, so a deleted answer recomputes it (Rule 13). A stage the rule
+ * moves is met the first time that, within the rule's weeks, enough of its own stage-moving reps
+ * were marked done after it was reached, across enough different reps and kinds of setting. A
+ * stage reached stands; a declaration (Part 27) moves the stages the rule does not.
+ */
+export function stageOf(path: Path, entries: readonly PathEntry[], today: string, declared: { stage: number; day: string } | null = null): StageState {
+  const rule = path.rule
+  const reached: { stage: number; day: string; by: 'rule' | 'declared' }[] = []
+  let stage = 1
+  let since: string | null = null
+  for (;;) {
+    const st = path.stages.find((s) => s.n === stage)
+    if (!st || (st.advance ?? 'counts') === 'declared' || stage >= path.stages.length) break
+    const done = entries.filter((e) => {
+      const place = placeOn(path.id, e.moveId)
+      return e.outcome === 'done' && place?.stage === stage && place.advances && e.day <= today && (since === null || e.day >= since)
+    })
+    let metOn: string | null = null
+    for (const end of done) {
+      const from = addDays(end.day, -(rule.withinWeeks * 7 - 1))
+      if (meetsRule(done.filter((e) => e.day >= from && e.day <= end.day), rule)) {
+        metOn = end.day
+        break
+      }
+    }
+    if (metOn === null) break
+    stage += 1
+    since = metOn
+    reached.push({ stage, day: metOn, by: 'rule' })
+  }
+  if (declared && declared.stage > stage) {
+    stage = declared.stage
+    reached.push({ stage, day: declared.day, by: 'declared' })
+  }
+  const lastDone = entries.filter((e) => e.outcome === 'done' && e.day <= today).reduce<string | null>((d, e) => (d === null || e.day > d ? e.day : d), null)
+  const reentry = stage > 1 && lastDone !== null && daysBetween(lastDone, today) >= rule.reentryAfterQuietWeeks * 7
+  return { stage, reached, reentry, lastDone }
+}
+
+/** A rep a path can offer: wired, not parked, not a passive or observed item. */
+export function offerable(m: Move): boolean {
+  return !isProposed(m) && !isParked(m) && !OBSERVED_ONLY.has(m.id) && !PASSIVE.has(m.id)
+}
+
+export interface EligibilityInput {
+  path: Path
+  state: StageState
+  /** Part 20's tier 1: whether today's shape puts other adults around in this block. */
+  around: boolean
+  /** The path's rep yesterday, if any. */
+  yesterday: string | null
+  /** Reps done or partly done today, from any offer. */
+  doneToday: ReadonlySet<string>
+}
+
+export interface Eligibility {
+  /** The stage the reps come from: the path's own, or the one below while re-entering. */
+  stage: number
+  /** Every rep of that stage, which Change lists whatever the shape says. */
+  stageReps: Move[]
+  /** The reps that fit this block. */
+  eligible: Move[]
+  /** Tier 1 kept at least one in-person rep out of this block. */
+  nobodyAround: boolean
+}
+
+/** The reps that fit now: the stage's (or the re-entry set's), in person only when tier 1 says someone is around, not yesterday's rep, not done today. */
+export function eligibility(i: EligibilityInput): Eligibility {
+  const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
+  const stageReps = pathReps(i.path.id, stage).filter(offerable)
+  let nobodyAround = false
+  const eligible = stageReps.filter((m) => {
+    if (inPerson(m) && !i.around) {
+      nobodyAround = true
+      return false
+    }
+    return m.id !== i.yesterday && !i.doneToday.has(m.id)
+  })
+  return { stage, stageReps, eligible, nobodyAround }
+}
+
+/** Answers of No in a row, the latest first; a rep passed over without an answer neither counts nor breaks the run. */
+export function refusalsInARow(entries: readonly PathEntry[]): number {
+  let n = 0
+  for (let k = entries.length - 1; k >= 0; k--) {
+    const o = entries[k].outcome
+    if (o === null) continue
+    if (o !== 'no') break
+    n++
+  }
+  return n
+}
+
+/** Where a rep is meant to happen: among its own kinds of setting that fit, the one the path's done reps used least within the rule's weeks. */
+export function settingFor(m: Move, path: Path, entries: readonly PathEntry[], today: string): SettingKind {
+  const own = m.settings?.length ? m.settings : [defaultSetting(m)]
+  const fits = inPerson(m) ? own.filter((k) => IN_PERSON_KINDS.includes(k)) : own
+  const kinds = fits.length ? fits : own
+  const from = addDays(today, -(path.rule.withinWeeks * 7 - 1))
+  const used = new Map<SettingKind, number>()
+  for (const e of entries) if (e.outcome === 'done' && e.day >= from && e.day <= today) used.set(e.setting, (used.get(e.setting) ?? 0) + 1)
+  return [...kinds].sort((a, b) => (used.get(a) ?? 0) - (used.get(b) ?? 0))[0]
+}
+
+export interface RepPick {
+  moveId: string
+  setting: SettingKind
+  rule: PickRule
+  chosenBy: 'app' | 'you'
+  /** The reps it was picked among. */
+  candidates: string[]
+  /** Each rep's chance of being the pick: equal over a drawn tie, one for the rep a rule or you chose. */
+  propensities: Record<string, number>
+}
+
+const EFFORT_ORDER: Record<Effort, number> = { low: 0, medium: 1, high: 2 }
+
+/**
+ * The app's pick. After the rule's refusals in a row, the smallest version of the stage. Otherwise
+ * the rep least recently done; a tie is drawn with equal chances, kept with the offer. Then where
+ * it is meant to happen: the kind of setting used least lately.
+ */
+export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number): RepPick | null {
+  if (!eligible.length) return null
+  const candidates = eligible.map((m) => m.id)
+  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 } })
+  if (refusalsInARow(entries) >= path.rule.smallerAfterRefusals) {
+    const order = new Map(candidates.map((id, k) => [id, k]))
+    return one([...eligible].sort((a, b) => EFFORT_ORDER[a.effort] - EFFORT_ORDER[b.effort] || a.minutes - b.minutes || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))[0], 'smaller')
+  }
+  const lastDone = new Map<string, string>()
+  for (const e of entries) if ((e.outcome === 'done' || e.outcome === 'partly') && (lastDone.get(e.moveId) ?? '') < e.day) lastDone.set(e.moveId, e.day)
+  const oldest = eligible.map((m) => lastDone.get(m.id) ?? '').sort()[0]
+  const tied = eligible.filter((m) => (lastDone.get(m.id) ?? '') === oldest)
+  if (tied.length === 1) return one(tied[0], 'rotate')
+  const m = tied[Math.min(tied.length - 1, Math.floor(draw * tied.length))]
+  return { moveId: m.id, setting: settingFor(m, path, entries, today), rule: 'draw', chosenBy: 'app', candidates, propensities: Object.fromEntries(tied.map((t) => [t.id, 1 / tied.length])) }
+}
+
+/** A number in [0, 1) fixed by its text: the same commitment, day and block draw the same tie until the record changes. */
+export function seeded(text: string): number {
+  let h = 2166136261
+  for (let k = 0; k < text.length; k++) {
+    h ^= text.charCodeAt(k)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0) / 4294967296
+}
+
+export interface RepCount {
+  moveId: string
+  offered: number
+  /** Offers the app drew between two or more reps, with the chances kept. */
+  drawn: number
+  done: number
+  partly: number
+  no: number
+  /** The last two answers, the latest first. */
+  last: RepAnswer[]
+  /** The kinds of setting its recent done reps used, the latest first. */
+  settings: SettingKind[]
+}
+
+/** Counts by rep: offered, drawn, done, partly, no. His own acts only; nothing anyone else answered. */
+export function countsByRep(entries: readonly PathEntry[]): RepCount[] {
+  const by = new Map<string, RepCount>()
+  for (const e of entries) {
+    const c = by.get(e.moveId) ?? { moveId: e.moveId, offered: 0, drawn: 0, done: 0, partly: 0, no: 0, last: [], settings: [] }
+    c.offered++
+    if (e.rule === 'draw') c.drawn++
+    if (e.outcome === 'done') c.done++
+    else if (e.outcome === 'partly') c.partly++
+    else if (e.outcome === 'no') c.no++
+    by.set(e.moveId, c)
+  }
+  for (const c of by.values()) {
+    const latest = entries.filter((e) => e.moveId === c.moveId).reverse()
+    c.last = latest.map((e) => e.outcome).filter((o): o is RepAnswer => o !== null).slice(0, 2)
+    c.settings = [...new Set(latest.filter((e) => e.outcome === 'done').map((e) => e.setting))].slice(0, 3)
+  }
+  return [...by.values()]
+}
+
+/** Reps marked done within the rule's weeks, by kind of setting. */
+export function doneBySetting(path: Path, entries: readonly PathEntry[], today: string): Partial<Record<SettingKind, number>> {
+  const from = addDays(today, -(path.rule.withinWeeks * 7 - 1))
+  const out: Partial<Record<SettingKind, number>> = {}
+  for (const e of entries) if (e.outcome === 'done' && e.day >= from && e.day <= today) out[e.setting] = (out[e.setting] ?? 0) + 1
+  return out
+}
+
+/** A path as it is named to you: "The Social path". */
+export function pathName(path: Pick<Path, 'id'>): string {
+  return copy.path.names[path.id]
+}
+
+/** "Stage 2 of 6 · One step past hello". */
+export function stageWords(path: Path, stage: number): string {
+  return fill(copy.path.stage, { n: String(stage), of: String(path.stages.length), name: path.stages.find((s) => s.n === stage)?.name ?? '' })
+}
+
+export interface PathToday {
+  path: Path
+  entries: PathEntry[]
+  state: StageState
+  elig: Eligibility
+  /** Today's rep: yours through Change, else the app's pick; null when no rep of the stage fits this block. */
+  pick: RepPick | null
+  around: boolean
+}
+
+export interface PathTodayInput {
+  aim: Aim
+  offers: readonly Offer[]
+  outcomes: readonly Outcome[]
+  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'> | null
+  day: string
+  block: Block
+}
+
+/** Everything a path's row, card, fact and coach block show for this block, computed one way. */
+export function pathToday(i: PathTodayInput): PathToday {
+  const path = pathById(i.aim.path as PathId)
+  const entries = pathEntries(path.id, i.offers, i.outcomes, i.aim.convertedFrom === 'person')
+  const state = stageOf(path, entries, i.day)
+  const around = peopleAround(i.ctx, i.block)
+  const yesterday = entries.filter((e) => e.day === addDays(i.day, -1)).pop()?.moveId ?? null
+  const doneToday = new Set(i.outcomes.filter((x) => x.day === i.day && (x.outcome === 'done' || x.outcome === 'partly')).map((x) => x.moveId))
+  const elig = eligibility({ path, state, around, yesterday, doneToday })
+  const mine = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
+  const pick: RepPick | null = mine
+    ? { moveId: mine.id, setting: settingFor(mine, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [mine.id], propensities: { [mine.id]: 1 } }
+    : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`))
+  return { path, entries, state, elig, pick, around }
+}
+
+/** Today's shape for a block, in words, from the day record alone (tier 1). */
+export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'> | null, block: Block): string {
+  const c = copy.path.shape
+  if (!ctx) return c.unknown
+  const why = ctx.atOffice && block !== 'evening' ? c.office : ctx.churchDay && block === 'morning' ? c.church : ctx.pickupTime && peopleAround(ctx, block) ? c.daycare : null
+  return why ? fill(c.around, { why }) : c.nobody
+}
+
+/**
+ * The coach block (Parts 24 and 32): per path on, the stage, the reps that fit this block with
+ * tier 1's reason when in-person reps are out, and per-rep evidence. Built by allowlist from the
+ * same computation the row shows; tier 2 is never read here.
+ */
+export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx'], day: string, block: Block, dateDay = false): CoachBlock | null {
+  if (!views.length) return null
+  const out = views.some((v) => v.elig.nobodyAround)
+  return {
+    eligible: views.map((v) => ({ path: v.path.id, ids: v.elig.eligible.map((m) => m.id) })),
+    ineligibleReason: out ? copy.path.shape.outReason : null,
+    day,
+    block,
+    shape: shapeWords(ctx, block),
+    stages: views.map((v) => ({ path: v.path.id, stage: v.state.stage, name: v.path.stages.find((s) => s.n === v.state.stage)?.name ?? '', reentry: v.state.reentry })),
+    dateDay,
+    perRep: views.flatMap((v) => {
+      const counts = new Map(countsByRep(v.entries).map((c) => [c.moveId, c]))
+      return v.elig.stageReps.map((m) => {
+        const c = counts.get(m.id)
+        return { path: v.path.id, id: m.id, drawn: c?.drawn ?? 0, done: c?.done ?? 0, partly: c?.partly ?? 0, no: c?.no ?? 0, last: c?.last ?? [], settings: c?.settings ?? [] }
+      })
+    }),
+  }
+}

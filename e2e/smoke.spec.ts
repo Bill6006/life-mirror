@@ -409,8 +409,11 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await expect(check).toContainText('inside this check and nowhere else')
   expect(((await check.innerText()).match(/A yes shows the help\./g) ?? []).length).toBe(2)
   await expect(page.getByTestId('path-act').filter({ hasText: 'A yes shows the help.' })).toHaveCount(1)
-  await expect(page.getByTestId('path-evidence').first()).toContainText('draft, admitted when its path is wired')
-  await expect(page.locator('#move-greet-by-name .move-status')).toContainText('Proposed · Green given; joins the candidates when its path is wired')
+  // Part 24 wired the Social path, so its cards are admitted; the Partner path's stay drafts until Part 27.
+  await expect(page.getByTestId('path-evidence').first()).toContainText('(admitted;')
+  await expect(page.getByTestId('path-evidence').nth(1)).toContainText('draft, admitted when its path is wired')
+  await expect(page.locator('#move-greet-by-name .move-status')).toContainText('Offered through its path’s row alone, never by the day’s draw')
+  await expect(page.locator('#move-re-engage-someone .move-status')).toContainText('Proposed · Green given; joins the candidates when its path is wired')
   await expect(page.getByTestId('path-act').filter({ hasText: 'A relationship course, if you want one' })).toContainText('never needed to move on')
   await expect(page.locator('#move-no-spend-day .move-status')).toContainText('Parked')
   await expect(page.getByRole('heading', { name: 'Set the alarm for leaving, not arriving' })).toBeVisible()
@@ -1029,4 +1032,57 @@ test('study named by you: a language and an instrument sit beside each other, ea
   await expect(page.getByTestId('aim-last').first()).toContainText('moved today')
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(page.getByTestId('aim-cue-count').first()).toContainText('After her bedtime · started 1 of 1 planned')
+})
+
+test('the Social path: added under Aims, one People row on Now with its stage in words, Done counted; at home in the evening no in-person rep is the day’s, and Change still reaches one', async ({ page }) => {
+  // A Monday morning marked at the office on its summary: people are around by today's shape (Part 20's tier 1).
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByTestId('chip-office').click()
+  await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Aims: A person is no longer offered; the Social path is added in one tap.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await expect(page.getByTestId('aim-kind-person')).toHaveCount(0)
+  await page.getByTestId('aim-kind-path-social').click()
+  await expect(page.locator('[data-kind="path"]')).toHaveCount(1)
+  await expect(page.locator('[data-kind="path"]').getByTestId('path-stage')).toContainText('Stage 1 of 6 · Presence')
+
+  // Now: one People row with its stage in words, and an in-person rep of the stage while people are around.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const row = page.locator('[data-kind="path"]')
+  await expect(row).toHaveCount(1)
+  await expect(row.getByTestId('path-stage')).toContainText('The Social path · Stage 1 of 6 · Presence')
+  const ids: Record<string, string> = { 'Eye contact with a stranger': 'eye-contact-stranger', 'Three things about the other person': 'attention-outward', 'Greet someone by name': 'greet-by-name' }
+  const rep = ((await row.getByTestId('aim-step').textContent()) ?? '').trim()
+  expect(Object.keys(ids)).toContain(rep)
+
+  // Resume, then Done once its minute has passed; the card counts it.
+  await row.getByTestId('aim-resume').click()
+  await expect(row.getByTestId('aim-started')).toBeVisible()
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 20))
+  await page.reload()
+  await page.locator('[data-kind="path"]').getByTestId('aim-done').click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(page.getByTestId('path-rep-count')).toHaveText(`${rep} · done 1 · partly 0 · no 0`)
+
+  // The evening at home: nobody around by today's shape, so no in-person rep is the day's rep.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  const evening = page.locator('[data-kind="path"]')
+  await expect(evening.getByTestId('path-none')).toHaveText('No people rep fits tonight.')
+  await expect(evening.getByTestId('aim-resume')).toHaveCount(0)
+  // Change still lists every rep of the stage, and one you pick is today's, whatever the shape says.
+  await evening.getByTestId('path-change').click()
+  await expect(page.getByTestId('path-change-screen')).toContainText('Nobody around by today’s shape')
+  const other = Object.entries(ids).find(([name]) => name !== rep)?.[1] as string
+  await page.getByTestId(`path-choice-${other}`).click()
+  const picked = page.locator('[data-kind="path"]')
+  await expect(picked.getByTestId('aim-step')).toHaveText(Object.entries(ids).find(([, id]) => id === other)?.[0] as string)
+  await expect(picked).toContainText('Your pick')
+  await expect(picked.getByTestId('aim-resume')).toBeVisible()
 })

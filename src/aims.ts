@@ -1,4 +1,5 @@
-import { hasMove, isParked, isProposed, moveById, movesInFamily, OBSERVED_ONLY, PASSIVE, type Counter, type Move } from './catalogue'
+import { hasMove, isParked, isPathOnly, isProposed, moveById, movesInFamily, OBSERVED_ONLY, PASSIVE, type Counter, type Move, type PathId } from './catalogue'
+import { pathById, pathKey, pathName } from './pathStage'
 import { blockAt, blockStart, dayKey, daysBetween } from './blocks'
 import { copy } from './copy'
 import type { Aim, AimKind, Cue, DayContext, Intention, Offer, Outcome, OutcomeWhy, RungMark, Skill, StudyNight, StudyReason, Win } from './db'
@@ -11,12 +12,13 @@ import { minutesOf } from './settings'
 // follow-through as counts, and the dated counts under your direction sentence. Nothing here
 // grades, ranks or streaks.
 
-export const AIM_KINDS: readonly AimKind[] = ['certification', 'person', 'practice']
+export const AIM_KINDS: readonly AimKind[] = ['certification', 'person', 'path', 'practice']
 
-/** Where a person's or a practice's step is picked from. The certification's comes from the ladder. */
+/** Where a person's or a practice's step is picked from. The certification's comes from the ladder, a path's from its stage (Part 24). */
 export const STEP_FAMILIES: Record<AimKind, readonly string[]> = {
   certification: ['study'],
   person: ['people'],
+  path: [],
   practice: ['faith', 'movement', 'steadying'],
 }
 
@@ -31,19 +33,22 @@ export function unblockKey(kind: AimKind): string {
   return `aim:${kind}:unblock`
 }
 
-/** The key a commitment's step offers carry: study by its id, so several subjects stay apart; a person and a practice by kind. */
+/** The key a commitment's step offers carry: study by its id, so several subjects stay apart; a path by its path; a person and a practice by kind. */
 export function keyFor(aim: Aim): string {
+  if (aim.kind === 'path') return pathKey(aim.path as PathId)
   return aim.kind === 'certification' ? `aim:certification:${aim.id}` : aimKey(aim.kind)
 }
 
 export function unblockKeyFor(aim: Aim): string {
+  if (aim.kind === 'path') return `${pathKey(aim.path as PathId)}:unblock`
   return aim.kind === 'certification' ? `aim:certification:${aim.id}:unblock` : unblockKey(aim.kind)
 }
 
-/** Every key that names this commitment's offers; the first study commitment also answers to the older keys by kind alone. */
+/** Every key that names this commitment's offers; the first study commitment also answers to the older keys by kind alone, and a Social path converted from A person to that commitment's. */
 export function keysOf(aim: Aim, studyAims: readonly Aim[]): string[] {
   const keys = [keyFor(aim), unblockKeyFor(aim)]
   if (aim.kind === 'certification' && (aim.id === undefined || aim.id === firstStudyId(studyAims))) keys.push(aimKey('certification'), unblockKey('certification'))
+  if (aim.kind === 'path' && aim.convertedFrom === 'person') keys.push(aimKey('person'), unblockKey('person'))
   return keys
 }
 
@@ -65,11 +70,16 @@ export function studyOfferBelongs(offer: Offer, aim: Aim, skills: readonly Skill
 
 /** The moves a person or a practice can take as its step: the family's active moves, never bedtime, never a passive item. */
 export function stepChoices(kind: AimKind): Move[] {
-  return STEP_FAMILIES[kind].flatMap((f) => movesInFamily(f)).filter((m) => !isProposed(m) && !isParked(m) && !OBSERVED_ONLY.has(m.id) && !PASSIVE.has(m.id))
+  return STEP_FAMILIES[kind].flatMap((f) => movesInFamily(f)).filter((m) => !isProposed(m) && !isParked(m) && !isPathOnly(m) && !OBSERVED_ONLY.has(m.id) && !PASSIVE.has(m.id))
 }
 
 /** The protected next step of a commitment, one line sized to one sitting. */
 export function stepFor(aim: Aim, skills: readonly Skill[], marks: readonly RungMark[], studyAims: readonly Aim[] = [aim]): Sitting {
+  // A path's rep is picked each block for who is around (pathStage.pathToday); by name alone, the step is the path.
+  if (aim.kind === 'path') {
+    const path = pathById(aim.path as PathId)
+    return { id: pathKey(path.id), name: pathName(path), title: pathName(path), what: path.what, minutes: 0, effort: 'low', kind: 'move' }
+  }
   if (aim.kind === 'certification') {
     const next = nextStep(skillsOf(aim, skills, studyAims), marks)
     return next ? rungStep(next.skill, next.rung) : sittingOf(moveById(EMPTY_LADDER_STEP))
@@ -85,6 +95,8 @@ export type BlockReason = OutcomeWhy | StudyReason | 'unsaid'
  * later start clears it. Unblock offers themselves are not steps and do not count here.
  */
 export function blockedBy(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], nights: readonly StudyNight[], skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): BlockReason | null {
+  // A path answers refusals itself, with the smallest version of its stage (Part 24), never an unblock offer.
+  if (aim.kind === 'path') return null
   const keys = stepKeysOf(aim, studyAims)
   const own = offers.filter((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, skills, studyAims))
   if (!own.length) return null

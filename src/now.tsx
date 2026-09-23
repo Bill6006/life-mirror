@@ -60,7 +60,7 @@ function DirectionAsk() {
   )
 }
 
-export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void }) {
+export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
   const [tick, setTick] = useState(0)
@@ -168,7 +168,7 @@ export function NowScreen({ onCheckIn, onOpen }: { onCheckIn: (day: string, bloc
         </p>
       )}
 
-      <AimsOnNow />
+      <AimsOnNow onChangeRep={onChangeRep} />
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />}

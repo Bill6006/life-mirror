@@ -1,7 +1,10 @@
 import { useState } from 'preact/hooks'
 import { AimCard, AimRow } from './aimCard'
 import { activeAims, addAim, addSkill, aimRecords, allIntentions, liveSkills, moveSkill, nameAim, openAimOffers, planAim, removeAim, removeSkill, resumeAim, rungMarks, setAimStep, setLadder } from './aimFlow'
-import { AIM_KINDS, BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { addPathAim, convertToSocial, pausePath, resumePath } from './pathFlow'
+import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
+import { pathName, pathToday } from './pathStage'
 import { blockAt } from './blocks'
 import { families } from './catalogue'
 import { NavRow } from './controls'
@@ -17,7 +20,7 @@ import { useLive } from './live'
 // proof ladder, follow-through and who you are becoming. Nothing here grades, ranks or streaks.
 
 function useAims() {
-  const today = blockAt(new Date()).day
+  const { day: today, block } = blockAt(new Date())
   const aims = useLive(activeAims, [])
   const skills = useLive(liveSkills, [])
   const marks = useLive(rungMarks, [])
@@ -25,18 +28,48 @@ function useAims() {
   const records = useLive(aimRecords, [])
   const intentions = useLive(allIntentions, [])
   const ctx = useLive(() => getDayContext(today), [today])
-  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined) return null
-  return { aims, skills, marks, open, records, intentions, ctx, today }
+  // A path reads its whole record, today's answers from any offer, and tier 2's counts (Part 24).
+  const offers = useLive(() => db.offers.toArray(), [])
+  const outcomes = useLive(() => db.outcomes.toArray(), [])
+  const contexts = useLive(() => db.days.toArray(), [])
+  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts) return null
+  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts }
 }
 
 /** The cards of every commitment, with Resume and the unblock offer; shared by Now and the Aims tab. */
-/** Every commitment with its protected step: full cards on Aims, or one row each on Now so several fit without a scroll. */
-export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; compact?: boolean }) {
+/** Every commitment with its protected step: full cards on Aims, or one row each on Now so several fit without a scroll. A paused path has no row on Now. */
+export function AimCards({ onRemove, onChangeStep, onChangeRep, compact = false }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; compact?: boolean }) {
   const data = useAims()
-  if (!data || data.aims.length === 0) return null
-  const { aims, skills, marks, open, records, intentions, ctx, today } = data
+  if (!data) return null
+  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts } = data
+  const aims = compact ? data.aims.filter((a) => !(a.kind === 'path' && a.pausedAt)) : data.aims
+  if (aims.length === 0) return null
   const studyAims = aims.filter((a) => a.kind === 'certification')
+  const socialOn = aims.some((a) => a.kind === 'path' && a.path === 'social')
   const items = aims.map((aim) => {
+    if (aim.kind === 'path') {
+      const pt = pathToday({ aim, offers, outcomes, ctx, day: today, block })
+      const keys = keysOf(aim, studyAims)
+      const openOffer = open.find((o) => keys.includes(o.situationKey)) ?? null
+      const shared: PathShared = {
+        aim,
+        pt,
+        block,
+        open: openOffer !== null,
+        openOffer,
+        ctx,
+        plan: planFor(intentions, aim.id as number, today),
+        carried: pt.pick ? null : carriedFor(offers, outcomes, contexts, today, block, ctx),
+        onResume: () => pt.pick && void resumePath(aim, pt.pick, pt.state.stage),
+        onChange: () => onChangeRep?.(aim),
+        onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), pt.pick ? moveById(pt.pick.moveId).name : pathName(pt.path)),
+      }
+      return compact ? (
+        <PathRow key={aim.id} {...shared} />
+      ) : (
+        <PathCard key={aim.id} {...shared} today={today} counts={cueCounts(intentions, aim.id as number)} onPause={(paused) => void pausePath(aim.id as number, paused)} onRemove={() => onRemove?.(aim)} />
+      )
+    }
     const step = stepFor(aim, skills, marks, studyAims)
     const keys = keysOf(aim, studyAims)
     const openOffer = open.find((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, skills, studyAims)) ?? null
@@ -71,7 +104,8 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
         {...shared}
         counts={cueCounts(intentions, aim.id as number)}
         onRemove={onRemove ? () => onRemove(aim) : undefined}
-        onChangeStep={onChangeStep && !study ? () => onChangeStep(aim) : undefined}
+        onChangeStep={onChangeStep && !study && aim.kind !== 'person' ? () => onChangeStep(aim) : undefined}
+        onConvert={aim.kind === 'person' && !socialOn ? () => void convertToSocial(aim.id as number) : undefined}
         skillCount={study ? skillsOf(aim, skills, studyAims).length : undefined}
         onAddSkill={study && aim.name ? (n) => void addSkill(n, aim.name ?? '') : undefined}
         onName={study && !aim.name ? (n, k) => void nameAim(aim.id as number, n, k) : undefined}
@@ -92,6 +126,7 @@ export function AimCards({ onRemove, onChangeStep, compact = false }: { onRemove
 export function AimsScreen({
   onAdd,
   onChangeStep,
+  onChangeRep,
   onLadder,
   onFollow,
   onBecoming,
@@ -99,6 +134,7 @@ export function AimsScreen({
 }: {
   onAdd: () => void
   onChangeStep: (aimId: number) => void
+  onChangeRep: (aimId: number) => void
   onLadder: () => void
   onFollow: () => void
   onBecoming: () => void
@@ -118,7 +154,7 @@ export function AimsScreen({
 
       <h2 class="section">{c.commitments}</h2>
       {aims.length === 0 && <p class="note">{c.none}</p>}
-      <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} />
+      <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} onChangeRep={(aim) => onChangeRep(aim.id as number)} />
 
       <div class="card">
         <ul class="rows">
@@ -196,14 +232,23 @@ function StudyForm({ onAdd }: { onAdd: (name: string, ladder: LadderKind) => voi
   )
 }
 
-/** Two taps deeper than Now: pick a kind; study is named by you and chooses its six proofs; a person or a practice picks its step from the catalogue. */
+/**
+ * Two taps deeper than Now: pick a kind; study is named by you and chooses its six proofs; a
+ * practice picks its step from the catalogue; the Social path is added in one tap (Part 24). A
+ * person can no longer be added: one already on the list converts to the Social path from its card.
+ */
 export function AddAimScreen({ onClose }: { onClose: () => void }) {
   const aims = useLive(activeAims, [])
   const [kind, setKind] = useState<AimKind | null>(null)
   if (!aims) return <section class="screen" />
   const c = copy.aims
-  // Study is always open to add, one per subject; a person and a practice once each.
-  const kinds = AIM_KINDS.filter((k) => k === 'certification' || !aims.some((a) => a.kind === k))
+  // Study is always open to add, one per subject; a practice and each path once; the Social path not beside a person, which converts instead.
+  const socialOpen = !aims.some((a) => a.kind === 'person' || (a.kind === 'path' && a.path === 'social'))
+  const options: { id: string; label: string; note: string; onPick: () => void }[] = [
+    { id: 'certification', label: c.kinds.certification, note: c.kindNotes.certification, onPick: () => setKind('certification') },
+    ...(socialOpen ? [{ id: 'path-social', label: copy.path.social, note: copy.path.socialNote, onPick: () => void addPathAim('social').then(onClose) }] : []),
+    ...(aims.some((a) => a.kind === 'practice') ? [] : [{ id: 'practice', label: c.kinds.practice, note: c.kindNotes.practice, onPick: () => setKind('practice') }]),
+  ]
 
   return (
     <section class="screen" data-testid="add-aim">
@@ -215,12 +260,12 @@ export function AddAimScreen({ onClose }: { onClose: () => void }) {
           <p class="note">{c.addNote}</p>
           <div class="card">
             <ul class="rows">
-              {kinds.map((k) => (
-                <li key={k}>
-                  <button type="button" class="row" data-testid={`aim-kind-${k}`} onClick={() => setKind(k)}>
+              {options.map((o) => (
+                <li key={o.id}>
+                  <button type="button" class="row" data-testid={`aim-kind-${o.id}`} onClick={o.onPick}>
                     <span class="row-main">
-                      {c.kinds[k]}
-                      <span class="sub">{c.kindNotes[k]}</span>
+                      {o.label}
+                      <span class="sub">{o.note}</span>
                     </span>
                     <span class="chev" aria-hidden="true">
                       ›
@@ -488,18 +533,18 @@ export function BecomingScreen({ onClose }: { onClose: () => void }) {
 
 /**
  * On Now: every commitment's protected step under its own heading, above the move under its own.
- * Never blended (Rule 8); the two headings are what says so.
+ * Never blended (Rule 8); the two headings are what says so. A paused path has no row.
  */
-export function AimsOnNow() {
+export function AimsOnNow({ onChangeRep }: { onChangeRep?: (aimId: number) => void }) {
   const data = useAims()
-  if (!data || data.aims.length === 0) return null
+  if (!data || !data.aims.some((a) => !(a.kind === 'path' && a.pausedAt))) return null
   const c = copy.aims
   return (
     <>
       <h2 class="section" data-testid="your-aims">
         {c.yourAims}
       </h2>
-      <AimCards compact />
+      <AimCards compact onChangeRep={onChangeRep ? (aim) => onChangeRep(aim.id as number) : undefined} />
     </>
   )
 }

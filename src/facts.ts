@@ -1,7 +1,8 @@
-import { addDays, BLOCKS, blockIndex, dayKey, daysBetween, type Block } from './blocks'
+import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block } from './blocks'
+import { doneBySetting, pathName, pathToday, stageWords } from './pathStage'
 import { associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
 import { becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastMovedDay, planFor, stepFor, studyOfferBelongs } from './aims'
-import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
+import { hasMove, isParked, isPathOnly, isProposed, moveById, OBSERVED_ONLY, PASSIVE, type SettingKind } from './catalogue'
 import { library } from './library'
 import { copy } from './copy'
 import { carriedByContext, contextWords, type DayKind } from './people'
@@ -9,7 +10,7 @@ import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel,
 import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
-import { currentRung, ladderOf, rungName, skillsOf, TOP_RUNG } from './ladder'
+import { currentRung, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from './ladder'
 import type { Evidence } from './learningFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
@@ -359,7 +360,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
     for (const m of card.moves ?? []) {
       if (!hasMove(m) || tested.has(m) || backed.includes(m)) continue
       const move = moveById(m)
-      if (isParked(move) || isProposed(move) || PASSIVE.has(m) || OBSERVED_ONLY.has(m)) continue
+      // A path's own reps are offered through its row alone, so no test is proposed for them (Part 24).
+      if (isParked(move) || isProposed(move) || isPathOnly(move) || PASSIVE.has(m) || OBSERVED_ONLY.has(m)) continue
       backed.push(m)
     }
   }
@@ -371,11 +373,15 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const records = { offers: i.offers.filter((o) => o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study'), outcomes: i.outcomes, nights: i.nights }
   const doneIds = new Set(i.outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
   const perAim = new Map<number, { name: string; sittings: Offer[]; skillIds: Set<number> }>()
+  const block = blockAt(i.now).block
   for (const aim of i.aims) {
+    // A paused path says nothing; it has no row and no step (Part 24).
+    if (aim.kind === 'path' && aim.pausedAt) continue
     const id = aim.id as number
     const study = aim.kind === 'certification'
-    const name = aim.name ?? copy.aims.kinds[aim.kind]
-    const step = stepFor(aim, i.skills, i.marks, studyAims)
+    const pt = aim.kind === 'path' ? pathToday({ aim, offers: i.offers, outcomes: i.outcomes, ctx, day: today, block }) : null
+    const name = pt ? pathName(pt.path) : (aim.name ?? copy.aims.kinds[aim.kind])
+    const step = pt?.pick ? sittingOf(moveById(pt.pick.moveId)) : stepFor(aim, i.skills, i.marks, studyAims)
     const own = study ? skillsOf(aim, i.skills, studyAims) : []
     const lastDay = study ? (own.length ? lastMovedDay(aim, i.skills, i.marks, studyAims) : null) : lastDoneDay(aim, records.offers, records.outcomes, studyAims)
     const gap = lastDay ? daysBetween(lastDay, today) : null
@@ -411,7 +417,26 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const ladderText = study && own.length ? `; ${own.length} ${own.length === 1 ? 'skill' : 'skills'}: ${rungs.map((n, r) => (n ? `${n} at ${rungName(r, kind)}` : null)).filter(Boolean).join(', ')}` : ''
     const planText = plan ? `; planned today ${copy.aims.cues[plan.cue].toLowerCase()} at ${plan.time}${plan.offerId !== null ? ', started' : ', not started'}` : '; no plan today'
     const cueText = counts.length ? `; cues: ${counts.map((c) => `${copy.aims.cues[c.cue].toLowerCase()} started ${c.started} of ${c.n}`).join(', ')}` : ''
-    facts.push(fact(`aim.${id}`, study ? ['study', 'ladder', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' ? 'social' : 'faith'], `${name} (${study ? 'study' : aim.kind}): the step is “${step.title}”, ${step.minutes} min; ${gapText}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}${ladderText}.`, values))
+    const stepText = pt && !pt.pick ? `no rep of its stage fits this ${block} by today’s shape` : `the step is “${step.title}”, ${step.minutes} min`
+    facts.push(fact(`aim.${id}`, study ? ['study', 'ladder', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'study' : aim.kind}): ${stepText}; ${gapText}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}${ladderText}.`, values))
+
+    // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by tier 1 alone.
+    if (pt) {
+      const bySetting = doneBySetting(pt.path, pt.entries, today)
+      const done = Object.values(bySetting).reduce<number>((a, b) => a + (b ?? 0), 0)
+      const settingsText = (Object.entries(bySetting) as [SettingKind, number][]).map(([k, n]) => `${copy.catalogue.paths.settingNames[k].toLowerCase()} ${n}`).join(', ')
+      const fitting = pt.elig.eligible.map((m) => m.name)
+      const stageName = pt.path.stages.find((s) => s.n === pt.state.stage)?.name ?? ''
+      facts.push(
+        fact(
+          `path.${id}`,
+          ['social', 'people'],
+          `${pathName(pt.path)}: ${stageWords(pt.path, pt.state.stage)}${pt.state.reentry ? ', with reps from the stage below after a quiet stretch' : ''}; reps done in the last ${pt.path.rule.withinWeeks} weeks by setting: ${settingsText || 'none yet'}; fitting this ${block}: ${fitting.length ? fitting.join(', ') : pt.elig.nobodyAround ? 'none, nobody around by today’s shape' : 'none'}.`,
+          { path: pt.path.id, stage: pt.state.stage, stages: pt.path.stages.length, stageName, reentry: pt.state.reentry ? 1 : 0, done, ...Object.fromEntries(Object.entries(bySetting)), eligible: pt.elig.eligible.map((m) => m.id).join(','), nobodyAround: pt.elig.nobodyAround ? 1 : 0 },
+          { n: done },
+        ),
+      )
+    }
 
     // The trajectory: steps started and marked done per week over four weeks. A commitment fading shows here before anywhere else.
     const sittings = records.offers.filter((o) => (o.kind === 'step' || o.kind === 'study') && o.skippedAt === null && (keys.includes(o.situationKey) || studyOfferBelongs(o, aim, i.skills, studyAims)))

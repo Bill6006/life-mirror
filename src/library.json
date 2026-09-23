@@ -2240,7 +2240,7 @@
     "caveats": "Clinical samples; a curriculum of daily reps is not a treatment, and nothing here diagnoses anyone.",
     "app": "The Social path borrows its structure from what works for social fear: graded practice with real people, supported, never observed from a distance.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "exposure-variety",
@@ -2289,7 +2289,7 @@
     "caveats": "Mostly contamination and spider fears in small samples; the case for variety is a mechanism with mixed trials, which is why the path treats it as design judgment.",
     "app": "A stage holds several reps across kinds of setting, and no stage waits for you to feel calm.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "safety-behaviours-attention",
@@ -2323,7 +2323,7 @@
     "caveats": "Single conversations in the laboratory; the meta-analysis across fears did not settle the question.",
     "app": "Every Social rep names an outward cue and the crutch to drop; a rep done with the crutch is honestly Partly.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "one-conversation-a-day",
@@ -2347,7 +2347,7 @@
     "caveats": "One study; the conversations were with strangers, and the effect on friendships is not measured.",
     "app": "The dose of the Social path: one rep a day at most, spread over days, never a streak.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "conversation-fears-overestimated",
@@ -2370,7 +2370,7 @@
     "caveats": "Conversations with strangers; how it generalises to people you know is less studied.",
     "app": "The Social path counts reps done, never how they went, because the going is usually better than the fear.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "spaced-practice",
@@ -2402,7 +2402,7 @@
     "caveats": "Small early trials; the multicentre trial compared weeks with months, not days with hours.",
     "app": "One people rep a day across the whole app: spread, not packed.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "disclosure-and-liking",
@@ -2438,7 +2438,7 @@
     "caveats": "Matching weight matters: a disclosure far heavier than the other person’s is not what was studied.",
     "app": "The matched-disclosure rep: answer something real with something of about the same weight, turn for turn.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "liking-gap",
@@ -2462,7 +2462,7 @@
     "caveats": "An average; any one conversation can go either way, which is why the path never asks how one went.",
     "app": "Behind the liking-gap note: one honest line about how it went, then the reminder beneath it.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "deeper-talk",
@@ -2486,7 +2486,7 @@
     "caveats": "Structured prompts with strangers; depth pressed on an unwilling person was not studied.",
     "app": "The go-one-level-deeper rep at the Social path’s last stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "familiar-stories",
@@ -2509,7 +2509,7 @@
     "caveats": "Laboratory stories; one paper.",
     "app": "The cue on the short-story rep: tell something the group has lived too.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "acting-extraverted",
@@ -2541,7 +2541,7 @@
     "caveats": "Short manipulations; the cost for introverts is the reason reps are small and time-boxed.",
     "app": "Reps are small and specific and placed early in the day; the recovery gap follows a group rep (see the existing card on the cost three hours later).",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "practice-over-observation",
@@ -2570,7 +2570,7 @@
     "caveats": "No direct evidence that recording yourself or reading aloud transfers to conversation.",
     "app": "Solo rehearsal is a warm-up on the path and never moves a stage.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "familiarity-and-proximity",
@@ -2602,7 +2602,7 @@
     "caveats": "The exposure meta-analysis is mostly of images and sounds; the live-interaction work is short meetings.",
     "app": "Recurring places the week already holds are the home of both paths; errands add variety only.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "charisma-training",
@@ -2630,7 +2630,7 @@
     "caveats": "Speeches and small samples; held as modest.",
     "app": "Story, contrast and an animated voice belong to the group stage, marked as modest evidence.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "micro-randomised-decisions",
@@ -2665,7 +2665,7 @@
     "caveats": "A design, not a finding about social skill; one person’s record is a small sample.",
     "app": "Where two or more reps fit the day, the app draws between them with logged, bounded probabilities, and only drawn offers enter comparisons.",
     "reviewed": "2026-09-23",
-    "status": "draft"
+    "status": "admitted"
   },
   {
     "id": "power-posing-disputed",

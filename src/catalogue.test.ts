@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLOCKS } from './blocks'
-import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isParked, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, PASSIVE, paths, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
+import { CHARISMA_LADDER, COUNTERS, EFFORTS, extensionPrompt, families, filterTags, INGREDIENT_TAGS, INTENSITIES, isParked, isPathOnly, isProposed, LEARNED_TAG_IDS, learnedTags, liveMoves, moves, NEEDS, PASSIVE, paths, proposals, research, REWARD_TAGS, STRENGTHS, WINDOWS } from './catalogue'
 import { CHARISMA_REPS } from './catalogue'
 import { readings } from './readings'
 
@@ -66,13 +66,17 @@ describe('the catalogue of moves', () => {
     expect(filterTags.map((t) => t.id)).toEqual(['costToAssign', 'startingEffort', 'needs', 'effectWindow'])
   })
 
-  it('carries the Phase 9 proposals as wired at Green: nothing proposed but the path reps awaiting Green, the parked entries never offered, the trade made', () => {
+  it('carries the Phase 9 proposals as wired at Green: nothing proposed but the path reps awaiting their wiring, the parked entries never offered, the trade made', () => {
     const proposed = moves.filter(isProposed)
     for (const m of proposed) expect(m.path, `${m.id} is proposed outside a path`).toBeDefined()
+    // Part 24: a wired path's own reps are offered through its row alone, never by the day's draw.
+    const pathOnly = moves.filter(isPathOnly)
+    for (const m of pathOnly) expect(m.path, `${m.id} is kept for a path it is not on`).toBeDefined()
+    for (const m of pathOnly) expect(liveMoves.some((x) => x.id === m.id), m.id).toBe(false)
     const parked = moves.filter(isParked).map((m) => m.id).sort()
     expect(parked).toEqual([...proposals.money.park, ...proposals.parkedLater.ids].sort())
     for (const id of parked) expect(liveMoves.some((m) => m.id === id), id).toBe(false)
-    expect(liveMoves.length + parked.length + proposed.length).toBe(moves.length)
+    expect(liveMoves.length + parked.length + proposed.length + pathOnly.length).toBe(moves.length)
     for (const id of [...proposals.money.keep, ...proposals.money.park, ...proposals.charisma.ladder, ...proposals.passive]) expect(ids.has(id), id).toBe(true)
     expect(moves.find((m) => m.id === 'cancel-one-thing')?.family).toBe('setup')
     expect(proposals.charisma.ladder.map((id) => moves.find((m) => m.id === id)?.ladder?.rung)).toEqual([1, 2, 3, 4])

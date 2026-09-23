@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-127 moves across 15 families, 28 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+127 moves across 15 families, 17 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -8,7 +8,7 @@ Proposed entries, tags, beliefs and trades are content to read and veto. Yellow 
 
 ## Paths
 
-Two paths, each a staged curriculum of reps, with your Green. Nothing here is wired or offered until each path is wired; the reps marked proposed join the candidates only then.
+Two paths, each a staged curriculum of reps, with your Green. The Social path is wired: add it under Aims, and its own reps are offered through its row alone. The Partner path is not wired yet; its reps marked proposed are offered nowhere until it is.
 
 ### Social
 
@@ -22,7 +22,7 @@ Be where people are and be seen: eye contact, a greeting by name, attention on t
 - How it moves: moves by the rule
 - **Eye contact with a stranger** (moves the stage · where: an errand, a recurring place). Attention on: The colour of their eyes, then a nod. Drop: Looking at your phone as you pass. Done when you have held it for a beat, however they respond.
 - **Three things about the other person** (moves the stage · where: one to one, a group, a recurring place). Attention on: What they said, how they said it, what they seem to want. Drop: Planning your next line while they talk. Done when you noticed the three things.
-- **Greet someone by name** (moves the stage · where: a recurring place, an errand · proposed). Attention on: Their name, and one thing you noticed about them today. Drop: A nod instead of the name. Done when you have said it, however they answer.
+- **Greet someone by name** (moves the stage · where: a recurring place, an errand). Attention on: Their name, and one thing you noticed about them today. Drop: A nod instead of the name. Done when you have said it, however they answer.
 
 #### Stage 2 · One step past hello
 
@@ -33,7 +33,7 @@ A sentence beyond hello, one follow-up question, or a return to something they t
 - **One sentence past hello** (moves the stage · where: an errand, a recurring place). Attention on: Something about them or the moment, not about yourself. Drop: Hello, and done. Done when you have said the sentence, however they answer.
 - **Arrive ten minutes early on Saturday and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
 - **Ask one follow-up question** (moves the stage · where: one to one, a recurring place, an errand). Attention on: The last thing they said, and one question about it. Drop: A new topic whenever there is a silence. Done when you have asked, however they answer.
-- **Return to something they said last time** (moves the stage · where: a recurring place · proposed). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
+- **Return to something they said last time** (moves the stage · where: a recurring place). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
 
 #### Stage 3 · Sustain and reciprocate
 
@@ -47,7 +47,7 @@ Stay a little past the urge to leave, answer a disclosure with one of your own, 
 - **Ten seconds past comfortable** (moves the stage · where: one to one, an errand, a recurring place). Attention on: Their face, not the exit. Drop: The excuse to leave you had ready. Done when you stayed the ten seconds.
 - **Say the thing** (moves the stage · where: one to one, a group, a recurring place). Attention on: The sentence you notice yourself swallowing. Drop: Waiting for a better moment. Done when you have said it, however it lands.
 - **Write one line on how the last conversation went, then the liking gap** (moves no stage · where: on your own). Attention on: One honest line, then the liking gap. Drop: Replaying what you should have said. Done when it is written.
-- **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place · proposed). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
+- **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
 
 #### Stage 4 · Voice in a group
 
@@ -69,10 +69,10 @@ Make contact happen beyond the place you share: introduce yourself, offer your n
 - Not progress: Vague plans, and messages never sent. Messages and calls are offered on quiet days and move no stage.
 - How it moves: moves by the rule
 - **Invite someone to something this week** (moves no stage · where: a call or a message). Attention on: A day, a time, a place. Drop: We should get together sometime. Done when it is sent, whatever the answer. One ask. Anything other than a yes is final.
-- **Introduce yourself to someone new there** (moves the stage · where: a recurring place, a group · proposed). Attention on: Your name, then a question about them. Drop: Waiting for someone to introduce you. Done when you have introduced yourself, however they answer.
-- **Offer your number to stay in touch** (moves the stage · where: one to one, a recurring place · proposed). Attention on: One plain sentence: I have enjoyed this, can I give you my number? Drop: Hoping you will run into them again. Done when you have offered, whatever the answer. One offer. Anything other than a yes is final.
-- **Suggest one specific plan, face to face** (moves the stage · where: one to one, a recurring place · proposed). Attention on: A day, a time, a place. Drop: We should get coffee sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final.
-- **Follow up after meeting someone** (moves no stage · where: a call or a message · proposed). Attention on: The one thing they said that you remember. Drop: Waiting for them to write first. Done when it is sent, whatever the reply.
+- **Introduce yourself to someone new there** (moves the stage · where: a recurring place, a group). Attention on: Your name, then a question about them. Drop: Waiting for someone to introduce you. Done when you have introduced yourself, however they answer.
+- **Offer your number to stay in touch** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence: I have enjoyed this, can I give you my number? Drop: Hoping you will run into them again. Done when you have offered, whatever the answer. One offer. Anything other than a yes is final.
+- **Suggest one specific plan, face to face** (moves the stage · where: one to one, a recurring place). Attention on: A day, a time, a place. Drop: We should get coffee sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final.
+- **Follow up after meeting someone** (moves no stage · where: a call or a message). Attention on: The one thing they said that you remember. Drop: Waiting for them to write first. Done when it is sent, whatever the reply.
 
 #### Stage 6 · Host, lead, deepen
 
@@ -80,10 +80,10 @@ Bring people together and take a small part: host something small, introduce two
 
 - Not progress: Big events planned and never held; depth pressed on someone who has not offered it.
 - How it moves: moves by the rule
-- **Introduce two people to each other** (moves the stage · where: a group, a recurring place · proposed). Attention on: Their names, and the one thing they share. Drop: Leaving each to find the other. Done when you have introduced them, however it goes.
-- **Host something small** (moves the stage · where: a group, a recurring place · proposed). Attention on: Who has not been asked in a while? Drop: Waiting until it can be a proper party. Done when it has happened, whoever came.
-- **Take a small recurring role** (moves the stage · where: a recurring place, a group · proposed). Attention on: Who you can help while you are there. Drop: Arriving just in time and leaving first. Done each time you do the role.
-- **Go one level deeper** (moves the stage · where: one to one · proposed). Attention on: One question you would like to be asked yourself. Drop: Keeping it to the weather because it is safe. Done when you have asked, however they answer.
+- **Introduce two people to each other** (moves the stage · where: a group, a recurring place). Attention on: Their names, and the one thing they share. Drop: Leaving each to find the other. Done when you have introduced them, however it goes.
+- **Host something small** (moves the stage · where: a group, a recurring place). Attention on: Who has not been asked in a while? Drop: Waiting until it can be a proper party. Done when it has happened, whoever came.
+- **Take a small recurring role** (moves the stage · where: a recurring place, a group). Attention on: Who you can help while you are there. Drop: Arriving just in time and leaving first. Done each time you do the role.
+- **Go one level deeper** (moves the stage · where: one to one). Attention on: One question you would like to be asked yourself. Drop: Keeping it to the weather because it is safe. Done when you have asked, however they answer.
 
 #### How a stage is reached
 
@@ -122,21 +122,21 @@ Never counted, stored or asked: yeses and noes; replies, or whether anyone wrote
 
 Claim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.
 
-- **good evidence** (draft, admitted when its path is wired). For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting. Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.
-- **some evidence** (draft, admitted when its path is wired). Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part. Craske et al. (2008). Optimizing inhibitory learning during exposure therapy. Behaviour Research and Therapy, 46(1), 5–27. Craske et al. (2014). Maximizing exposure therapy: an inhibitory learning approach. Behaviour Research and Therapy, 58, 10–23. Rupp et al. (2017). Emotional processing theory put to test: a meta-analysis on the association between process and outcome measures in exposure therapy. Clinical Psychology & Psychotherapy, 24(3), 697–711. Kircanski et al. (2012). Challenges to the traditional exposure paradigm: variability in exposure therapy for contamination fears. Journal of Behavior Therapy and Experimental Psychiatry, 43(2), 745–751. Knowles et al. (2023). Facing uncertainty: a comparison of hierarchical and variable exposure interventions for contamination-related concerns. Journal of Obsessive-Compulsive and Related Disorders, 36, 100777. Treanor et al. (2025). A randomized controlled trial comparing two processes of exposure therapy: extinction learning and habituation. Journal of Consulting and Clinical Psychology.
-- **some evidence** (draft, admitted when its path is wired). Dropping the small habits used to feel safe in conversation, and turning attention outward, made people come across better and feel better in experiments on social anxiety. McManus, Sacadura & Clark (2008). Why social anxiety persists: an experimental investigation of the role of safety behaviours as a maintaining factor. Journal of Behavior Therapy and Experimental Psychiatry, 39(2), 147–161. Taylor & Alden (2011). To see ourselves as others see us: an experimental integration of the intra and interpersonal consequences of self-protection in social anxiety disorder. Journal of Abnormal Psychology, 120(1), 129–141. Meulders et al. (2016). The use of safety-seeking behavior in exposure-based treatments for fear and anxiety: benefit or burden? A meta-analytic review. Clinical Psychology Review, 45, 144–156.
-- **some evidence** (draft, admitted when its path is wired). A week of short conversations with strangers made people less pessimistic about rejection and surer of their conversational ability, and the change lasted at least a week. Sandstrom, Boothby & Cooney (2022). Talking to strangers: a week-long intervention reduces psychological barriers to social connection. Journal of Experimental Social Psychology, 102, 104356.
-- **some evidence** (draft, admitted when its path is wired). People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it. Sandstrom & Boothby (2021). Why do people avoid talking to strangers? A mini meta-analysis of predicted fears and actual experiences talking to a stranger. Self and Identity, 20(1), 47–71.
-- **some evidence** (draft, admitted when its path is wired). Exposure spread over days held better at follow-up than the same exposure packed into one day, though packing sessions into weeks rather than months worked as well. Rowe & Craske (1998). Effects of an expanding-spaced vs massed exposure schedule on fear reduction and return of fear. Behaviour Research and Therapy, 36(7–8), 701–717. Tsao & Craske (2000). Timing of treatment and return of fear: effects of massed, uniform-, and expanding-spaced exposure schedules. Behavior Therapy, 31(3), 479–497. Pittig et al. (2021). Efficacy of temporally intensified exposure for anxiety disorders: a multicenter randomized clinical trial. Depression and Anxiety, 38(11), 1169–1181.
-- **good evidence** (draft, admitted when its path is wired). Disclosure and liking run both ways: people who share more are liked more, people share more with those they like, and taking turns in a first meeting builds closeness. Collins & Miller (1994). Self-disclosure and liking: a meta-analytic review. Psychological Bulletin, 116(3), 457–475. Aron et al. (1997). The experimental generation of interpersonal closeness: a procedure and some preliminary findings. Personality and Social Psychology Bulletin, 23(4), 363–377. Laurenceau, Barrett & Pietromonaco (1998). Intimacy as an interpersonal process: the importance of self-disclosure, partner disclosure, and perceived partner responsiveness in interpersonal exchanges. Journal of Personality and Social Psychology, 74(5), 1238–1251. Sprecher, Treger & Wondra (2013). Taking turns: reciprocal self-disclosure promotes liking in initial interactions. Journal of Experimental Social Psychology, 49(5), 860–866.
-- **some evidence** (draft, admitted when its path is wired). After a conversation, people underestimate how much the other person liked them and enjoyed their company. Boothby, Cooney, Sandstrom & Clark (2018). The liking gap in conversations: do people like us more than we think? Psychological Science, 29(11), 1742–1756.
-- **good evidence** (draft, admitted when its path is wired). Deeper conversations with strangers felt less awkward and more connecting than people expected, because they expected others to care less about what they shared. Kardas, Kumar & Epley (2022). Overly shallow? Miscalibrated expectations create a barrier to deeper conversation. Journal of Personality and Social Psychology, 122(3), 367–398.
-- **some evidence** (draft, admitted when its path is wired). Listeners enjoyed hearing stories about experiences they had shared more than novel ones, though both speakers and listeners predicted the opposite. Cooney, Gilbert & Wilson (2017). The novelty penalty: why do people like talking about new experiences but hearing about old ones? Psychological Science, 28(3), 380–394.
-- **good evidence** (draft, admitted when its path is wired). Acting more extraverted for a while raises positive feeling, introverts included, though introverts gain less and feel more tired and less authentic. Fleeson, Malanos & Achille (2002). An intraindividual process approach to the relationship between extraversion and positive affect: is acting extraverted as “good” as being extraverted? Journal of Personality and Social Psychology, 83(6), 1409–1422. Margolis & Lyubomirsky (2020). Experimental manipulation of extraverted and introverted behavior and its effects on well-being. Journal of Experimental Psychology: General, 149(4), 719–731. Jacques-Hamilton, Sun & Smillie (2019). Costs and benefits of acting extraverted: a randomized controlled trial. Journal of Experimental Psychology: General, 148(9), 1538–1556.
-- **good evidence** (draft, admitted when its path is wired). Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded. Beidel et al. (2014). The impact of social skills training for social anxiety disorder: a randomized controlled trial. Journal of Anxiety Disorders, 28(8), 908–918. Taylor, Russ-Eft & Chan (2005). A meta-analytic review of behavior modeling training. Journal of Applied Psychology, 90(4), 692–709.
-- **good evidence** (draft, admitted when its path is wired). Repeated contact in the same place builds ties: chance seating predicted friendship a year later, and the more strangers interacted, the more they liked each other. Back, Schmukle & Egloff (2008). Becoming friends by chance. Psychological Science, 19(5), 439–440. Reis, Maniaci, Caprariello, Eastwick & Finkel (2011). Familiarity does indeed promote attraction in live interaction. Journal of Personality and Social Psychology, 101(3), 557–570. Montoya, Horton, Vevea, Citkowicz & Lauber (2017). A re-examination of the mere exposure effect: the influence of repeated exposure on recognition, familiarity, and liking. Psychological Bulletin, 143(5), 459–498.
-- **some evidence** (draft, admitted when its path is wired). Specific charismatic tactics can be taught: trained speakers were rated more charismatic, though the studies are of speeches, not conversation, and small. Antonakis, Fenley & Liechti (2011). Can charisma be taught? Tests of two interventions. Academy of Management Learning & Education, 10(3), 374–396. Tskhay, Zhu, Zou & Rule (2018). Charisma in everyday life: conceptualization and validation of the General Charisma Inventory. Journal of Personality and Social Psychology, 114(1), 131–152.
-- **good evidence** (draft, admitted when its path is wired). Randomising between acceptable options at each decision point gives honest short-term estimates of what helps, and the probabilities should be kept away from zero and one and logged. Nahum-Shani et al. (2018). Just-in-time adaptive interventions (JITAIs) in mobile health: key components and design principles for ongoing health behavior support. Annals of Behavioral Medicine, 52(6), 446–462. Klasnja et al. (2015). Microrandomized trials: an experimental design for developing just-in-time adaptive interventions. Health Psychology, 34(Suppl), 1220–1228. Klasnja et al. (2019). Efficacy of contextually tailored suggestions for physical activity: a micro-randomized optimization trial of HeartSteps. Annals of Behavioral Medicine, 53(6), 573–582. Liao, Greenewald, Klasnja & Murphy (2020). Personalized HeartSteps: a reinforcement learning algorithm for optimizing physical activity. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(1), 18.
+- **good evidence** (admitted). For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting. Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.
+- **some evidence** (admitted). Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part. Craske et al. (2008). Optimizing inhibitory learning during exposure therapy. Behaviour Research and Therapy, 46(1), 5–27. Craske et al. (2014). Maximizing exposure therapy: an inhibitory learning approach. Behaviour Research and Therapy, 58, 10–23. Rupp et al. (2017). Emotional processing theory put to test: a meta-analysis on the association between process and outcome measures in exposure therapy. Clinical Psychology & Psychotherapy, 24(3), 697–711. Kircanski et al. (2012). Challenges to the traditional exposure paradigm: variability in exposure therapy for contamination fears. Journal of Behavior Therapy and Experimental Psychiatry, 43(2), 745–751. Knowles et al. (2023). Facing uncertainty: a comparison of hierarchical and variable exposure interventions for contamination-related concerns. Journal of Obsessive-Compulsive and Related Disorders, 36, 100777. Treanor et al. (2025). A randomized controlled trial comparing two processes of exposure therapy: extinction learning and habituation. Journal of Consulting and Clinical Psychology.
+- **some evidence** (admitted). Dropping the small habits used to feel safe in conversation, and turning attention outward, made people come across better and feel better in experiments on social anxiety. McManus, Sacadura & Clark (2008). Why social anxiety persists: an experimental investigation of the role of safety behaviours as a maintaining factor. Journal of Behavior Therapy and Experimental Psychiatry, 39(2), 147–161. Taylor & Alden (2011). To see ourselves as others see us: an experimental integration of the intra and interpersonal consequences of self-protection in social anxiety disorder. Journal of Abnormal Psychology, 120(1), 129–141. Meulders et al. (2016). The use of safety-seeking behavior in exposure-based treatments for fear and anxiety: benefit or burden? A meta-analytic review. Clinical Psychology Review, 45, 144–156.
+- **some evidence** (admitted). A week of short conversations with strangers made people less pessimistic about rejection and surer of their conversational ability, and the change lasted at least a week. Sandstrom, Boothby & Cooney (2022). Talking to strangers: a week-long intervention reduces psychological barriers to social connection. Journal of Experimental Social Psychology, 102, 104356.
+- **some evidence** (admitted). People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it. Sandstrom & Boothby (2021). Why do people avoid talking to strangers? A mini meta-analysis of predicted fears and actual experiences talking to a stranger. Self and Identity, 20(1), 47–71.
+- **some evidence** (admitted). Exposure spread over days held better at follow-up than the same exposure packed into one day, though packing sessions into weeks rather than months worked as well. Rowe & Craske (1998). Effects of an expanding-spaced vs massed exposure schedule on fear reduction and return of fear. Behaviour Research and Therapy, 36(7–8), 701–717. Tsao & Craske (2000). Timing of treatment and return of fear: effects of massed, uniform-, and expanding-spaced exposure schedules. Behavior Therapy, 31(3), 479–497. Pittig et al. (2021). Efficacy of temporally intensified exposure for anxiety disorders: a multicenter randomized clinical trial. Depression and Anxiety, 38(11), 1169–1181.
+- **good evidence** (admitted). Disclosure and liking run both ways: people who share more are liked more, people share more with those they like, and taking turns in a first meeting builds closeness. Collins & Miller (1994). Self-disclosure and liking: a meta-analytic review. Psychological Bulletin, 116(3), 457–475. Aron et al. (1997). The experimental generation of interpersonal closeness: a procedure and some preliminary findings. Personality and Social Psychology Bulletin, 23(4), 363–377. Laurenceau, Barrett & Pietromonaco (1998). Intimacy as an interpersonal process: the importance of self-disclosure, partner disclosure, and perceived partner responsiveness in interpersonal exchanges. Journal of Personality and Social Psychology, 74(5), 1238–1251. Sprecher, Treger & Wondra (2013). Taking turns: reciprocal self-disclosure promotes liking in initial interactions. Journal of Experimental Social Psychology, 49(5), 860–866.
+- **some evidence** (admitted). After a conversation, people underestimate how much the other person liked them and enjoyed their company. Boothby, Cooney, Sandstrom & Clark (2018). The liking gap in conversations: do people like us more than we think? Psychological Science, 29(11), 1742–1756.
+- **good evidence** (admitted). Deeper conversations with strangers felt less awkward and more connecting than people expected, because they expected others to care less about what they shared. Kardas, Kumar & Epley (2022). Overly shallow? Miscalibrated expectations create a barrier to deeper conversation. Journal of Personality and Social Psychology, 122(3), 367–398.
+- **some evidence** (admitted). Listeners enjoyed hearing stories about experiences they had shared more than novel ones, though both speakers and listeners predicted the opposite. Cooney, Gilbert & Wilson (2017). The novelty penalty: why do people like talking about new experiences but hearing about old ones? Psychological Science, 28(3), 380–394.
+- **good evidence** (admitted). Acting more extraverted for a while raises positive feeling, introverts included, though introverts gain less and feel more tired and less authentic. Fleeson, Malanos & Achille (2002). An intraindividual process approach to the relationship between extraversion and positive affect: is acting extraverted as “good” as being extraverted? Journal of Personality and Social Psychology, 83(6), 1409–1422. Margolis & Lyubomirsky (2020). Experimental manipulation of extraverted and introverted behavior and its effects on well-being. Journal of Experimental Psychology: General, 149(4), 719–731. Jacques-Hamilton, Sun & Smillie (2019). Costs and benefits of acting extraverted: a randomized controlled trial. Journal of Experimental Psychology: General, 148(9), 1538–1556.
+- **good evidence** (admitted). Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded. Beidel et al. (2014). The impact of social skills training for social anxiety disorder: a randomized controlled trial. Journal of Anxiety Disorders, 28(8), 908–918. Taylor, Russ-Eft & Chan (2005). A meta-analytic review of behavior modeling training. Journal of Applied Psychology, 90(4), 692–709.
+- **good evidence** (admitted). Repeated contact in the same place builds ties: chance seating predicted friendship a year later, and the more strangers interacted, the more they liked each other. Back, Schmukle & Egloff (2008). Becoming friends by chance. Psychological Science, 19(5), 439–440. Reis, Maniaci, Caprariello, Eastwick & Finkel (2011). Familiarity does indeed promote attraction in live interaction. Journal of Personality and Social Psychology, 101(3), 557–570. Montoya, Horton, Vevea, Citkowicz & Lauber (2017). A re-examination of the mere exposure effect: the influence of repeated exposure on recognition, familiarity, and liking. Psychological Bulletin, 143(5), 459–498.
+- **some evidence** (admitted). Specific charismatic tactics can be taught: trained speakers were rated more charismatic, though the studies are of speeches, not conversation, and small. Antonakis, Fenley & Liechti (2011). Can charisma be taught? Tests of two interventions. Academy of Management Learning & Education, 10(3), 374–396. Tskhay, Zhu, Zou & Rule (2018). Charisma in everyday life: conceptualization and validation of the General Charisma Inventory. Journal of Personality and Social Psychology, 114(1), 131–152.
+- **good evidence** (admitted). Randomising between acceptable options at each decision point gives honest short-term estimates of what helps, and the probabilities should be kept away from zero and one and logged. Nahum-Shani et al. (2018). Just-in-time adaptive interventions (JITAIs) in mobile health: key components and design principles for ongoing health behavior support. Annals of Behavioral Medicine, 52(6), 446–462. Klasnja et al. (2015). Microrandomized trials: an experimental design for developing just-in-time adaptive interventions. Health Psychology, 34(Suppl), 1220–1228. Klasnja et al. (2019). Efficacy of contextually tailored suggestions for physical activity: a micro-randomized optimization trial of HeartSteps. Annals of Behavioral Medicine, 53(6), 573–582. Liao, Greenewald, Klasnja & Murphy (2020). Personalized HeartSteps: a reinforcement learning algorithm for optimizing physical activity. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(1), 18.
 - **thin evidence** (disputed, never cited). The claim that expansive “power poses” change hormones and confident behaviour is disputed: the hormone effects did not replicate, and what remains is small and comes from not slumping. Ranehill et al. (2015). Assessing the robustness of power posing: no effect on hormones and risk tolerance in a large sample of men and women. Psychological Science, 26(5), 653–656. Elkjær et al. (2020). Expansive and contractive postures and movement: a systematic review and meta-analysis of the effect of motor displays on affective and behavioral responses. Perspectives on Psychological Science, 17(1), 276–304. Körner, Röseler & Schütz (2022). Dominance and prestige: meta-analytic review of experimentally induced body position effects on behavioral, self-report, and physiological dependent variables. Psychological Bulletin, 148(1–2), 67–85.
 - **thin evidence** (disputed, never cited). The advice to repeat positive self-statements is disputed: in two experiments people with low self-esteem who repeated one felt worse, and the finding stands unreplicated. Wood, Perunovic & Lee (2009). Positive self-statements: power for some, peril for others. Psychological Science, 20(7), 860–866.
 
@@ -151,8 +151,8 @@ Be where you might meet someone among the people your week already holds, say he
 - Not progress: Approaching strangers in the street; waiting for someone to notice you.
 - How it moves: moves by the rule
 - **Arrive ten minutes early on Saturday and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
-- **Greet someone by name** (moves the stage · where: a recurring place, an errand · proposed). Attention on: Their name, and one thing you noticed about them today. Drop: A nod instead of the name. Done when you have said it, however they answer.
-- **Introduce yourself to someone new there** (moves the stage · where: a recurring place, a group · proposed). Attention on: Your name, then a question about them. Drop: Waiting for someone to introduce you. Done when you have introduced yourself, however they answer.
+- **Greet someone by name** (moves the stage · where: a recurring place, an errand). Attention on: Their name, and one thing you noticed about them today. Drop: A nod instead of the name. Done when you have said it, however they answer.
+- **Introduce yourself to someone new there** (moves the stage · where: a recurring place, a group). Attention on: Your name, then a question about them. Drop: Waiting for someone to introduce you. Done when you have introduced yourself, however they answer.
 - **Say hello again to someone you liked talking to** (moves the stage · where: a recurring place, a group · proposed). Attention on: The thing you talked about last time. Drop: Waiting for them to notice you first. Done when you have said hello and one more sentence, however they answer.
 - **Ask a friend for an introduction** (moves no stage · where: a call or a message, one to one · proposed). Attention on: The kind of person you would enjoy meeting, in a sentence. Drop: Hoping friends will guess you are open to it. Done when you have asked, whatever they say.
 - **Write or update one profile, honestly** (moves no stage · where: on your own · channel: online · proposed). Attention on: What a friend who knows you well would say you are like. Drop: Photos from years ago. Done when it is saved.
@@ -167,8 +167,8 @@ Start and carry a light conversation with someone you might like to know: past h
 - **One sentence past hello** (moves the stage · where: an errand, a recurring place). Attention on: Something about them or the moment, not about yourself. Drop: Hello, and done. Done when you have said the sentence, however they answer.
 - **One low-pressure conversation with a woman** (moves the stage · where: an errand, a recurring place, one to one). Attention on: Something about the place or the moment. Drop: Treating it as an audition. Done when you have talked, however it went.
 - **Ask one follow-up question** (moves the stage · where: one to one, a recurring place, an errand). Attention on: The last thing they said, and one question about it. Drop: A new topic whenever there is a silence. Done when you have asked, however they answer.
-- **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place · proposed). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
-- **Return to something they said last time** (moves the stage · where: a recurring place · proposed). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
+- **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
+- **Return to something they said last time** (moves the stage · where: a recurring place). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
 - **Send one specific message** (moves no stage · where: a call or a message · channel: online · proposed). Attention on: One thing in their words that you would like to hear more about. Drop: The same opener to everyone. Done when it is sent, whatever the reply.
 
 #### Stage 3 · Expressing interest and inviting
@@ -177,7 +177,7 @@ Say plainly that you would like to see them again, offer your number, and make o
 
 - Not progress: Hints in place of a plain sentence; a second ask after a no, which is never offered.
 - How it moves: moves by the rule, or when you say you have a date
-- **Offer your number to stay in touch** (moves the stage · where: one to one, a recurring place · proposed). Attention on: One plain sentence: I have enjoyed this, can I give you my number? Drop: Hoping you will run into them again. Done when you have offered, whatever the answer. One offer. Anything other than a yes is final.
+- **Offer your number to stay in touch** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence: I have enjoyed this, can I give you my number? Drop: Hoping you will run into them again. Done when you have offered, whatever the answer. One offer. Anything other than a yes is final.
 - **Say your interest plainly** (moves the stage · where: one to one, a recurring place · proposed). Attention on: One plain sentence, then let them answer. Drop: Hinting and waiting for them to guess. Done when you have said it, whatever the answer. Say it once. Anything other than a yes is final: thank them and let it be.
 - **Make one specific, short, public invitation** (moves the stage · where: one to one, a recurring place · proposed). Attention on: A day, an hour, a public place. Drop: We should hang out sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered.
 - **Propose a short meeting in person** (moves no stage · where: a call or a message · channel: online · proposed). Attention on: A day, an hour, a public place. Drop: Another week of messages. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final.
@@ -988,7 +988,7 @@ Before the service, one conversation with someone you do not usually talk to.
 
 ### Greet someone by name
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 1, moves the stage · Partner path, stage 1, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 1, moves the stage · Partner path, stage 1, moves the stage_
 
 At a place you go every week, greet one person by their name, and add one thing you noticed about their day.
 
@@ -1002,7 +1002,7 @@ At a place you go every week, greet one person by their name, and add one thing 
 
 ### Introduce yourself to someone new there
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves the stage · Partner path, stage 1, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 5, moves the stage · Partner path, stage 1, moves the stage_
 
 At a place you go every week, introduce yourself to one person you have not met, and ask their name.
 
@@ -1016,7 +1016,7 @@ At a place you go every week, introduce yourself to one person you have not met,
 
 ### Offer your number to stay in touch
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves the stage · Partner path, stage 3, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 5, moves the stage · Partner path, stage 3, moves the stage_
 
 With someone you have enjoyed talking to, offer your number or ask for a way to stay in touch. Once, plainly.
 
@@ -1030,7 +1030,7 @@ With someone you have enjoyed talking to, offer your number or ask for a way to 
 
 ### Suggest one specific plan, face to face
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 5, moves the stage_
 
 To someone you see regularly, suggest one specific thing: a day, a time, a place. Short, easy to say no to.
 
@@ -1044,7 +1044,7 @@ To someone you see regularly, suggest one specific thing: a day, a time, a place
 
 ### Follow up after meeting someone
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 5, moves no stage_
 
 Within two days of a good conversation with someone new, send one line that picks up something they said.
 
@@ -1058,7 +1058,7 @@ Within two days of a good conversation with someone new, send one line that pick
 
 ### Introduce two people to each other
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 6, moves the stage_
 
 When two people you know are in the same place, introduce them with one thing they have in common.
 
@@ -1072,7 +1072,7 @@ When two people you know are in the same place, introduce them with one thing th
 
 ### Host something small
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 6, moves the stage_
 
 Invite two or three people to something small you set up: a game, a meal, a walk. An hour, not an event.
 
@@ -1086,7 +1086,7 @@ Invite two or three people to something small you set up: a game, a meal, a walk
 
 ### Take a small recurring role
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 6, moves the stage_
 
 Where you already go, take one small job that repeats: set up chairs, greet at the door, bring the coffee.
 
@@ -1505,7 +1505,7 @@ In the next conversation, notice three things about them: what they said, how th
 
 ### Answer a disclosure with one of your own
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage_
 
 When someone tells you something real about themselves, tell them something of about the same weight about you. Turn for turn, not a speech.
 
@@ -1519,7 +1519,7 @@ When someone tells you something real about themselves, tell them something of a
 
 ### Return to something they said last time
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
 
 With someone you see again, bring up one thing they told you the last time: how it went, or what came of it.
 
@@ -1533,7 +1533,7 @@ With someone you see again, bring up one thing they told you the last time: how 
 
 ### Go one level deeper
 
-_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 6, moves the stage_
 
 With someone you already know, ask one question that goes past the usual: what they are looking forward to, what has been hard lately.
 

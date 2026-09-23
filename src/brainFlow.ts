@@ -1,6 +1,9 @@
 import { activeAims, aimRecords, allIntentions, liveSkills, planAim, rungMarks } from './aimFlow'
 import { cuesFor, planFor, stepFor } from './aims'
-import { addDays, BLOCKS, type Block } from './blocks'
+import { addDays, blockAt, BLOCKS, type Block } from './blocks'
+import type { CoachBlock } from './factTypes'
+import { pathOn } from './pathFlow'
+import { coachBlock, pathToday } from './pathStage'
 import type { LineAction, LineCue } from './brainShared'
 import { hasMove, moveById } from './catalogue'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type BriefFeedback, type BriefLog } from './db'
@@ -53,14 +56,27 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
 /** How many of the engine's true situations the sheet carries, best first. */
 const SHORTLIST = 5
 
-/** The day's sheet as a record of its own, for the Worker to read; written only when its facts changed. */
+/**
+ * The paths' coach block for this block (Parts 24 and 32): the same computation their rows show,
+ * by allowlist, for the coach briefing alone. Null while no path is on.
+ */
+export async function coachFor(day: string, now: Date = new Date()): Promise<CoachBlock | null> {
+  const [aims, offers, outcomes, ctx] = await Promise.all([activeAims(), db.offers.toArray(), db.outcomes.toArray(), getDayContext(day)])
+  const { block } = blockAt(now)
+  const views = aims.filter(pathOn).map((aim) => pathToday({ aim, offers, outcomes, ctx, day, block }))
+  return coachBlock(views, ctx, day, block)
+}
+
+/** The day's sheet as a record of its own, for the Worker to read, with the coach block beside it; written only when either changed. */
 export async function writeFactsRow(day: string, now: Date = new Date()): Promise<boolean> {
   await ensureDayContext(day, await getSettings())
   const sheet = await factSheet(day, now)
+  const coach = await coachFor(day, now)
   const existing = await db.facts.get(day)
   const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
-  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && existing.sheet.showPrivate === sheet.showPrivate) return false
-  await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet })
+  const sameCoach = JSON.stringify(existing?.coach ?? null) === JSON.stringify(coach)
+  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
+  await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet, ...(coach ? { coach } : {}) })
   return true
 }
 
