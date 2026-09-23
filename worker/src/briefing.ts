@@ -1,3 +1,4 @@
+import { isWriterModel, WRITER_MODELS, type WriterModel } from '../../src/brainShared'
 import type { FactSheet, RankedLine } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import { addDays } from './time'
@@ -19,12 +20,7 @@ export type Writer = 'free' | 'claude'
  * on Opus: the four the Agent tool's `model` parameter accepts, read from its own refusal in the
  * bridge proof (Part 29). `best` is not one.
  */
-export const WRITER_MODELS = ['opus', 'fable', 'sonnet', 'haiku'] as const
-export type WriterModel = (typeof WRITER_MODELS)[number]
-
-export function isWriterModel(v: unknown): v is WriterModel {
-  return typeof v === 'string' && (WRITER_MODELS as readonly string[]).includes(v)
-}
+export { isWriterModel, WRITER_MODELS, type WriterModel }
 
 /** The record's categories a task may read. Closed: a name outside this list is never read. */
 export const CATEGORIES = [
@@ -148,6 +144,8 @@ export interface LineBriefing {
   said: Said[]
   /** The routing field outside the facts (Part 30): an alias, never free text; null for the free chain. */
   writerModel: WriterModel | null
+  /** Claude's private context from the retrieval layer (Part 30), as dated lines; empty for the free chain, which reads the fact sheet alone. */
+  context: string
 }
 
 export interface LineBriefingInput {
@@ -159,6 +157,8 @@ export interface LineBriefingInput {
   said: Said[]
   writerModel?: WriterModel | null
   gates?: Gates
+  /** Claude's private context, read through the retrieval layer; refused for the free chain. */
+  context?: string
 }
 
 /**
@@ -178,6 +178,7 @@ export function lineBriefing(i: LineBriefingInput): { ok: true; briefing: LineBr
     shape = tomorrow ? relabel(tomorrow, i.sheet, i.forDay) : undefined
   } else return { ok: false, reason: `the sheet is for ${sheetDay}, not ${i.forDay} or the day before it` }
   if (!shape) return { ok: false, reason: `the sheet for ${sheetDay} does not say what ${i.forDay} holds` }
+  if (i.writer === 'free' && i.context) return { ok: false, reason: 'the free chain reads the fact sheet alone' }
   return {
     ok: true,
     briefing: {
@@ -192,6 +193,7 @@ export function lineBriefing(i: LineBriefingInput): { ok: true; briefing: LineBr
       cards: i.cards,
       said: i.said,
       writerModel: model,
+      context: i.context ?? '',
     },
   }
 }

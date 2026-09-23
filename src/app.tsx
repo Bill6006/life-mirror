@@ -6,6 +6,7 @@ import { HerPickScreen, HerScreen } from './herScreen'
 import { blockAt, type Block } from './blocks'
 import { CatalogueScreen } from './catalogueScreen'
 import { CheckInScreen, SummaryScreen } from './checkin'
+import { BrainScreen } from './brainScreen'
 import { CloudScreen } from './cloudScreen'
 import { EvidenceScreen } from './evidenceScreen'
 import { runForecasting } from './forecastFlow'
@@ -59,6 +60,7 @@ type View =
   | { kind: 'her' }
   | { kind: 'herPick' }
   | { kind: 'cloud' }
+  | { kind: 'brain' }
   | { kind: 'evidence' }
   | { kind: 'weekly' }
   | { kind: 'readings' }
@@ -202,6 +204,8 @@ export function App() {
         return <HerPickScreen onClose={() => setView({ kind: 'her' })} />
       case 'cloud':
         return <CloudScreen onClose={closeAll} />
+      case 'brain':
+        return <BrainScreen onClose={closeAll} />
       case 'evidence':
         return <EvidenceScreen onClose={closeAll} />
       case 'weekly':
@@ -248,6 +252,7 @@ export function App() {
             onPrivate={() => open({ kind: 'private' })}
             onData={() => open({ kind: 'data' })}
             onCloud={() => open({ kind: 'cloud' })}
+            onBrain={() => open({ kind: 'brain' })}
             onReadings={() => open({ kind: 'readings' })}
           />
         )

@@ -27,9 +27,15 @@ PING_TIMES = "07:30,13:00,19:30"
 # The database address is a constant shown in Settings, not a secret; the token is.
 TURSO_URL = "https://life-record-bill6006.aws-us-east-1.turso.io"
 LIBRARY_URL = "https://raw.githubusercontent.com/Bill6006/life-mirror/main/src/library.json"
-# The bridge proof's routine (Part 29). Its fire URL is an address, not a secret; the routine's
+CATALOGUE_URL = "https://raw.githubusercontent.com/Bill6006/life-mirror/main/src/catalogue.json"
+# The bridge's routine (Parts 29 and 30). Its fire URL is an address, not a secret; the routine's
 # token is, and nothing fires without it.
 CLAUDE_FIRE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_01RQ3fd2bQh64dA2hx963dh3/fire"
+# Claude writes the day's line and the Sunday review (Part 30, the owner's word 2026-09-23); "off"
+# returns the writing to the free model chain alone. Every fallback stays either way.
+CLAUDE_WRITER = "on"
+# No valid line from Claude within this many minutes, and the free chain writes at the next tick.
+CLAUDE_TIMEOUT_MINUTES = "20"
 VAPID_PUBLIC_KEY = "BCaIRco378dsKVVBh0-wIIWYUqrTgY2aZuJA_uxEXnyojXNoZrYlsszUH3QzecsMBdvMCzXEw9ihMnf219GCNOA"
 VAPID_SUBJECT = "https://github.com/Bill6006/life-mirror"
 # In order; every failure falls to the next. All four answer on the free plan (DeepSeek does not;

@@ -53,7 +53,7 @@ function DirectionField({ value, onSave }: { value: string; onSave: (v: string) 
   )
 }
 
-export function SettingsScreen({ onWording, onLegend, onPrivate, onData, onCloud, onReadings }: { onWording: () => void; onLegend: () => void; onPrivate: () => void; onData: () => void; onCloud: () => void; onReadings: () => void }) {
+export function SettingsScreen({ onWording, onLegend, onPrivate, onData, onCloud, onBrain, onReadings }: { onWording: () => void; onLegend: () => void; onPrivate: () => void; onData: () => void; onCloud: () => void; onBrain: () => void; onReadings: () => void }) {
   const settings = useLive(getSettings, [])
   const [perm, setPerm] = useState<Permission>(currentPermission)
   const [copied, setCopied] = useState(false)
@@ -249,6 +249,7 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData, onCloud
       <div class="card">
         <ul class="rows">
           <NavRow label={copy.settings.dataRow} note={copy.settings.dataRowNote} onClick={onData} />
+          <NavRow label={copy.settings.brainRow} note={copy.settings.brainRowNote} onClick={onBrain} />
           <NavRow label={copy.settings.cloudRow} note={copy.settings.cloudRowNote} onClick={onCloud} />
           <NavRow label={copy.settings.private} note={copy.settings.privateNote} onClick={onPrivate} />
           <NavRow label={copy.settings.readingsRow} note={copy.settings.readingsRowNote} onClick={onReadings} />

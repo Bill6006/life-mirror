@@ -67,22 +67,30 @@ async function seedRecord(page: Page, days: number): Promise<void> {
   }, days)
 }
 
+/** Writes a row into one of the phone's stores as the sync from the brain's rows would; the caller reloads to read it. */
+async function putInto(page: Page, store: string, row: Record<string, unknown>): Promise<void> {
+  await page.evaluate(
+    async ({ store, r }) => {
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const q = indexedDB.open('life-mirror')
+        q.onsuccess = () => res(q.result)
+        q.onerror = () => rej(q.error)
+      })
+      const tx = dbx.transaction([store], 'readwrite')
+      tx.objectStore(store).put(r)
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+      })
+      dbx.close()
+    },
+    { store, r: row },
+  )
+}
+
 /** Writes a line into the phone's store as the Worker's sync would; the caller reloads to read it. */
 async function putBrief(page: Page, row: Record<string, unknown>): Promise<void> {
-  await page.evaluate(async (r) => {
-    const dbx = await new Promise<IDBDatabase>((res, rej) => {
-      const q = indexedDB.open('life-mirror')
-      q.onsuccess = () => res(q.result)
-      q.onerror = () => rej(q.error)
-    })
-    const tx = dbx.transaction(['brainBriefs'], 'readwrite')
-    tx.objectStore('brainBriefs').put(r)
-    await new Promise<void>((res, rej) => {
-      tx.oncomplete = () => res()
-      tx.onerror = () => rej(tx.error)
-    })
-    dbx.close()
-  }, row)
+  await putInto(page, 'brainBriefs', row)
 }
 
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
@@ -182,6 +190,51 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await page.getByRole('button', { name: 'Delete this check-in' }).click()
   await page.getByRole('button', { name: 'Tap again to delete it' }).click()
   await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
+})
+
+test('the Brain screen: who writes the line, what Claude may read, who wrote recent lines and what Claude read; a line Claude wrote says so under Why', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 8, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await putBrief(page, { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'A line Claude wrote for this test.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:48:00.000Z', factsDay: '2026-09-18', writer: 'claude', askedModel: 'opus' })
+  await putInto(page, 'brainReads', { id: 'read:1', day: '2026-09-18', at: '2026-09-18T11:47:00.000Z', task: 'line', category: 'notes', count: 3, bytes: 240, via: 'briefing' })
+  await putInto(page, 'brainReads', { id: 'read:2', day: '2026-09-18', at: '2026-09-18T11:47:01.000Z', task: 'line', category: 'reflections', count: 2, bytes: 2048, via: 'briefing' })
+  await page.reload()
+
+  // The card: the one-word tag in the title row, and under Why, Claude with the model asked for and the one that wrote.
+  const card = page.getByTestId('brief')
+  await expect(card.getByTestId('brief-line')).toHaveText('A line Claude wrote for this test.')
+  await expect(card.getByTestId('brief-writer-tag')).toHaveText('Brain')
+  await card.getByTestId('brief-why').click()
+  await expect(card.getByTestId('brief-writer')).toHaveText('Written by Claude through your claude.ai routine: asked for Opus, written by claude-opus-5-5, from your record as Settings → Brain allows.')
+
+  // Settings → Brain.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Brain/ }).click()
+  const screen = page.getByTestId('brain-screen')
+  await expect(screen.getByTestId('brain-intro')).toContainText('under your own claude.ai account with model training off')
+  await expect(screen.getByTestId('brain-intro')).toContainText('what you write about other people included')
+  await expect(screen.getByTestId('brain-intro')).toContainText('Anthropic’s handling and retention follow your Claude account’s current terms and privacy settings')
+  await expect(screen.getByTestId('brain-model-opus')).toHaveAttribute('aria-pressed', 'true')
+  await screen.getByTestId('brain-model-sonnet').click()
+  await expect(screen.getByTestId('brain-model-sonnet')).toHaveAttribute('aria-pressed', 'true')
+  await expect(screen.getByTestId('brain-model-opus')).toHaveAttribute('aria-pressed', 'false')
+  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(11)
+  await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'true')
+  await screen.getByTestId('brain-switch-notes').click()
+  await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'false')
+  await expect(screen.getByTestId('brain-recent-line')).toHaveText(/Claude, asked for Opus, written by claude-opus-5-5$/)
+  await expect(screen.getByTestId('brain-read-group')).toContainText('the day’s line')
+  await expect(screen.getByTestId('brain-read-group')).toContainText('Check-in notes 3, 240 B')
+  await expect(screen.getByTestId('brain-read-group')).toContainText('Reflections 2, 2.0 KB')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+
+  // Reopened, the screen shows the choices as they were left: they are kept in the synced row.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Brain/ }).click()
+  await expect(page.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('brain-model-sonnet')).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('a past day is named by its day, never "Today so far", and the null offer is not a move with a name', async ({ page }) => {
@@ -355,7 +408,7 @@ test('the evening chips answer from the record and the text line is kept', async
   await expect(page.getByTestId('chip-study')).toHaveAttribute('aria-pressed', 'true')
 
   // The note field says who reads it (Part 17).
-  await expect(page.getByTestId('note-input')).toHaveAttribute('placeholder', 'One line. The brain reads your last few notes.')
+  await expect(page.getByTestId('note-input')).toHaveAttribute('placeholder', 'One line. Claude may read it, as Settings → Brain allows.')
   await page.getByTestId('note-input').fill('A line the app had no question for')
   await page.getByTestId('note-input').blur()
   await page.getByRole('button', { name: 'Done', exact: true }).click()

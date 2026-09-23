@@ -185,6 +185,12 @@ describe('the Partner revision: learning fit and choosing deliberately (owner, 2
   const PLANNING = ['plan-money-together', 'plan-a-week-together', 'plan-parenting-roles', 'plan-faith-at-home']
   const rep = (id: string) => moves.find((m) => m.id === id) as Move
 
+  it('says who may read the values note, now that Claude may (Part 30, the owner’s wording of 2026-09-23)', () => {
+    const values = partner.acts?.find((a) => a.id === 'values-note')
+    expect(values?.what).toContain('It stays private in Life Mirror; Claude may use it when your Brain settings allow the Partner path and reflections.')
+    expect(values?.what).not.toContain('Only you read it')
+  })
+
   it('offers the lighter direction talks at Dating first, and the weightier ones once those are done', () => {
     for (const id of [...LIGHTER, ...WEIGHTIER]) expect(rep(id).path?.partner?.stage, id).toBe(4)
     for (const id of LIGHTER) expect(rep(id).path?.partner?.after, id).toBeUndefined()

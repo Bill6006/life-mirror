@@ -1,23 +1,34 @@
+import { isWriterModel, readBrainPrefs, validateReview, type BrainOutput, type ReviewOutput } from '../../src/brainShared'
+import { lineBriefing, type LineBriefing, type Said } from './briefing'
+import { lineCheck, saidLately } from './checks'
 import type { Env } from './env'
-import type { BridgeRow, Store } from './turso'
+import { loadLibrary, retrieve } from './library'
+import { claudeBriefingText, claudeInstructions, parseOutput } from './prompt'
+import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
+import { addDays } from './time'
+import type { BriefRow, Store, TaskRow } from './turso'
 
-// The bridge proof (Part 29): test data only, nothing personal crosses. A routine on the owner's
-// claude.ai account is fired from here with the routine's own token; the run asks this Worker
-// for a nonce and hands it back, through Anthropic's agent proxy, which adds the bridge key to
-// requests for this host after they leave the session's VM, so the key never reaches Claude.
-// Every fire and every ping is a row of its own, so the proof is read off, not remembered.
+// Claude writes the line; the Worker stays in charge (Parts 30 and 31). When a line or the Sunday
+// review is due, the Worker marks the day's task and then fires the owner's routine, with no
+// personal text: the task, the day and the writer model alias. The run fetches its briefing from
+// here, writes, and posts the result back, through Anthropic's agent proxy, which adds the bridge
+// key to its requests for this host, so the key never reaches Claude. The Worker checks what comes
+// back with the same validator, day guard and repeat check as any line, plus the surface rules for
+// what Claude may have read, allows one corrected retry, and stores it with who wrote it. A failed
+// fire, two refusals, or no valid line within the time, and the free model chain writes; failing
+// that, the phone's own line stands. Claude never holds a database credential and never writes
+// the record.
 
 export const FIRE_BETA = 'experimental-cc-routine-2026-04-01'
-export const FIRE_TEXT = 'Bridge proof: test data only. Follow the instructions in this repository.'
-/**
- * The models a proof run may ask its subagent to write with: the four values the Agent tool's
- * `model` parameter accepts (read from its own refusal on 2026-09-23; `best` is not one), and one
- * retired id on purpose, to record what an unavailable model does.
- */
-export const TEST_MODELS = ['opus', 'sonnet', 'haiku', 'fable', 'claude-3-opus-20240229'] as const
-export type TestModel = (typeof TEST_MODELS)[number]
-/** How long a nonce may wait for its answer. */
-export const NONCE_MINUTES = 30
+export type ClaudeTask = 'line' | 'review'
+/** A line may be posted twice: the first, and one corrected retry after a refusal. */
+export const MAX_POSTS = 2
+/** No valid line within this many minutes, and the free chain writes (the plan's twenty). */
+export const TIMEOUT_MINUTES = 20
+const MAX_FACTS_AGE_MS = 48 * 3_600_000
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
+
+export type ClaudeEnv = Pick<Env, 'CLAUDE_WRITER' | 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN' | 'CLAUDE_TIMEOUT_MINUTES' | 'LIBRARY_URL' | 'CATALOGUE_URL'>
 
 const enc = new TextEncoder()
 
@@ -32,78 +43,259 @@ export function bearerOk(header: string | null, key: string | undefined): boolea
   return diff === 0
 }
 
-const clip = (v: unknown, n: number): string | null => (typeof v === 'string' ? v.slice(0, n) : null)
-
-export interface FireResult {
-  fired: boolean
-  status?: number
-  reason?: string
-  id?: string
-  sessionUrl?: string | null
-  retryAfter?: string | null
+/** Claude writes only when switched on here and the routine can be fired; otherwise the free chain writes, as before Part 30. */
+export function claudeOn(env: Pick<Env, 'CLAUDE_WRITER' | 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN'>): boolean {
+  return env.CLAUDE_WRITER === 'on' && Boolean(env.CLAUDE_FIRE_URL && env.CLAUDE_FIRE_TOKEN)
 }
 
-type FireEnv = Pick<Env, 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN'>
+export function timeoutMinutes(env: Pick<Env, 'CLAUDE_TIMEOUT_MINUTES'>): number {
+  const n = Number(env.CLAUDE_TIMEOUT_MINUTES)
+  return Number.isFinite(n) && n > 0 ? n : TIMEOUT_MINUTES
+}
 
-/** Fires the routine once, with test text only, and records what came back. There is no idempotency key: a second call is a second run. */
-export async function fireRoutine(env: FireEnv, store: Store, now: Date, model: TestModel, fetcher: typeof fetch = fetch): Promise<FireResult> {
-  if (!env.CLAUDE_FIRE_URL || !env.CLAUDE_FIRE_TOKEN) return { fired: false, reason: 'no fire URL or token' }
-  const at = now.toISOString()
-  const id = `fire:${at}`
-  let status = 0
-  let body: Record<string, unknown> = {}
-  let retryAfter: string | null = null
-  let error: string | null = null
+export const taskIdOf = (task: ClaudeTask, day: string): string => `task:${day}:${task}`
+export const rowIdOf = (task: ClaudeTask, day: string): string => `${day}:${task === 'line' ? 'brief' : 'review'}`
+
+/** The fire's only text: the task, the day and the model alias. Nothing personal. */
+export function fireText(task: ClaudeTask, day: string, model: string): string {
+  return `Life Mirror bridge: task=${task} day=${day} model=${model}. Read CLAUDE.md in this repository and do exactly what it says, then stop.`
+}
+
+export interface FireOutcome {
+  ok: boolean
+  status: number
+  sessionUrl: string | null
+  retryAfter: string | null
+  error: string | null
+}
+
+const clip = (v: unknown, n: number): string | null => (typeof v === 'string' ? v.slice(0, n) : null)
+
+/** Fires the routine once. There is no idempotency key: a second call is a second run. */
+export async function fire(env: Pick<Env, 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN'>, text: string, fetcher: typeof fetch = fetch): Promise<FireOutcome> {
+  if (!env.CLAUDE_FIRE_URL || !env.CLAUDE_FIRE_TOKEN) return { ok: false, status: 0, sessionUrl: null, retryAfter: null, error: 'no fire URL or token' }
   try {
     const r = await fetcher(env.CLAUDE_FIRE_URL, {
       method: 'POST',
       headers: { authorization: `Bearer ${env.CLAUDE_FIRE_TOKEN}`, 'anthropic-beta': FIRE_BETA, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ text: FIRE_TEXT }),
+      body: JSON.stringify({ text }),
     })
-    status = r.status
-    retryAfter = r.headers.get('retry-after')
-    body = ((await r.json().catch(() => ({}))) ?? {}) as Record<string, unknown>
+    const body = ((await r.json().catch(() => ({}))) ?? {}) as Record<string, unknown>
+    const ok = r.status >= 200 && r.status < 300
+    return { ok, status: r.status, sessionUrl: clip(body.claude_code_session_url, 200), retryAfter: r.headers.get('retry-after'), error: ok ? null : (clip((body.error as { message?: unknown } | undefined)?.message, 300) ?? clip(body.message, 300) ?? `status ${r.status}`) }
   } catch (e) {
-    error = e instanceof Error ? e.message : String(e)
+    return { ok: false, status: 0, sessionUrl: null, retryAfter: null, error: (e instanceof Error ? e.message : String(e)).slice(0, 300) }
   }
-  const fired = status >= 200 && status < 300
-  const errorText = fired ? null : (error ?? clip((body.error as { message?: unknown } | undefined)?.message, 300) ?? clip(body.message, 300))
-  const row: BridgeRow = { id, kind: 'fire', at, model, status, sessionId: clip(body.claude_code_session_id, 120), sessionUrl: clip(body.claude_code_session_url, 200), retryAfter, error: errorText }
-  await store.writeBridge(row)
-  return { fired, status, id, sessionUrl: row.sessionUrl ?? null, retryAfter, ...(fired ? {} : { reason: errorText ?? `status ${status}` }) }
 }
 
-/** A run asks for its nonce: issued once, tied to the newest fire, with the model that fire asked for. */
-export async function issueNonce(store: Store, now: Date): Promise<{ nonce: string; model: TestModel; at: string }> {
-  const fire = (await store.readBridge(50)).find((r) => r.kind === 'fire')
-  const model = fire && (TEST_MODELS as readonly string[]).includes(fire.model ?? '') ? (fire.model as TestModel) : 'opus'
-  const nonce = crypto.randomUUID()
+/** Why a failed fire sends the task to the free chain at once, in words for the bridge row. */
+export function fireFailure(f: FireOutcome): string {
+  if (f.status === 429) return `the routine is limited (429${f.retryAfter ? `, retry after ${f.retryAfter}` : ''})`
+  if (f.status === 400) return `the routine refused the fire (400: ${f.error ?? 'no reason'})`
+  if (f.status >= 500) return `the routine's server erred (${f.status})`
+  if (f.status === 0) return `the fire did not reach the routine (${f.error ?? 'no answer'})`
+  return `the fire failed (${f.status}: ${f.error ?? 'no reason'})`
+}
+
+/** Marks the day's task, then fires. The mark comes first because the fire call has no idempotency key: a crash after it can never fire twice. */
+export async function startTask(env: ClaudeEnv, store: Store, now: Date, task: ClaudeTask, day: string, trigger: TaskRow['trigger'], factsDay: string, forced: boolean, fetcher?: typeof fetch): Promise<TaskRow> {
+  const prefs = readBrainPrefs(await store.readRecord('brainPrefs', 'prefs'))
   const at = now.toISOString()
-  await store.writeBridge({ id: `ping:${nonce}`, kind: 'ping', at, nonce, model, fireId: fire?.id ?? null, fireAt: fire?.at ?? null })
-  return { nonce, model, at }
+  const row: TaskRow = { id: taskIdOf(task, day), kind: 'task', task, day, at, status: 'firing', trigger, factsDay, askedModel: prefs.writerModel, ...(forced ? { forced: true } : {}), contextCalls: 0, contextBytes: 0, posts: 0, refusals: [] }
+  await store.writeTask(row)
+  const f = await fire(env, fireText(task, day, prefs.writerModel), fetcher)
+  const next: TaskRow = f.ok ? { ...row, status: 'fired', firedAt: at, fireStatus: f.status, sessionUrl: f.sessionUrl } : { ...row, status: 'fallback', fireStatus: f.status, retryAfter: f.retryAfter, error: f.error, fallbackReason: fireFailure(f) }
+  await store.writeTask(next)
+  return next
 }
 
-/** The run hands the nonce back with what its subagent wrote and which models ran; refused for a nonce unknown, already answered, or too old. */
-export async function acceptNonce(store: Store, now: Date, raw: unknown): Promise<{ ok: true; roundTripMs: number | null } | { ok: false; reason: string }> {
-  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
-  const o = raw as Record<string, unknown>
-  const nonce = clip(o.nonce, 64)
-  if (!nonce) return { ok: false, reason: 'no nonce' }
-  const row = await store.readBridgeRow(`ping:${nonce}`)
-  if (!row) return { ok: false, reason: 'unknown nonce' }
-  if (row.answeredAt) return { ok: false, reason: 'already answered' }
-  if (now.getTime() - Date.parse(row.at) > NONCE_MINUTES * 60_000) return { ok: false, reason: 'nonce expired' }
-  const answeredAt = now.toISOString()
-  const roundTripMs = row.fireAt ? now.getTime() - Date.parse(row.fireAt) : null
-  await store.writeBridge({
-    ...row,
-    answeredAt,
-    roundTripMs,
-    reply: clip(o.reply, 500),
-    askedModel: clip(o.askedModel, 100),
-    subagentModel: clip(o.subagentModel, 100),
-    runnerModel: clip(o.runnerModel, 100),
-    subagentError: clip(o.subagentError, 500),
+/** Why the free chain writes now for a task, or null while Claude may still write. */
+export function fallbackReason(t: TaskRow, now: Date, minutes: number): string | null {
+  if (t.status === 'written') return null
+  if (t.status === 'fallback') return t.fallbackReason ?? 'the fire failed'
+  if (t.status === 'refused') return 'Claude’s line was refused twice'
+  return now.getTime() - Date.parse(t.firedAt ?? t.at) >= minutes * 60_000 ? `no valid line from Claude within ${minutes} minutes` : null
+}
+
+// The surface rules for what Claude may have read (Parts 27 and 31; Rule 21: reading is not
+// showing). Lexical, so they catch the words, not every paraphrase; a refusal goes back to the
+// run with its reason for the one retry.
+
+/** Words that speak of dating or a partner. */
+export const DATING_WORDS = /\b(dating|girlfriend|boyfriend|your partner|on a date|a date with|your date|first date|next date|the partner path)\b/i
+/** A sentence built on dating that did not happen: never said, on any surface. */
+export const DATING_ABSENCE = /\b(no|not|never|without|haven'?t|hasn'?t|didn'?t|isn'?t|wasn'?t|weren'?t|aren'?t|missed|skipped|lack(?:ed|ing)?)\b[^.!?]{0,40}\b(dates?|dating)\b/i
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+export interface Surface {
+  /** The private items' names, when their names may not be shown; empty when they may. */
+  names: readonly string[]
+  /** Whether the Partner path bears on the day (the line) or the week (the review). */
+  bears: boolean
+}
+
+/** Why a text Claude wrote breaks a surface rule, or null. */
+export function surfaceGuard(text: string, s: Surface): string | null {
+  for (const name of s.names) if (name && new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(name)}($|[^\\p{L}\\p{N}])`, 'iu').test(text)) return 'names a private item while "Show private items by name outside this screen" is off'
+  if (DATING_ABSENCE.test(text)) return 'speaks of dating from what did not happen'
+  if (DATING_WORDS.test(text) && !s.bears) return 'speaks of dating or a partner when nothing on the Partner path bears on it'
+  return null
+}
+
+export interface Deps {
+  env: ClaudeEnv
+  store: Store
+  now: Date
+  fetcher?: typeof fetch
+}
+
+export interface Reply {
+  status: number
+  body: unknown
+}
+
+const reply = (status: number, body: unknown): Reply => ({ status, body })
+
+/** The task a request is for: the day's own, still open, its line not yet stored (unless started by hand), with a post left. */
+async function openTask(deps: Deps, task: unknown, day: unknown): Promise<{ ok: true; t: TaskRow } | { ok: false; reply: Reply }> {
+  if (task !== 'line' && task !== 'review') return { ok: false, reply: reply(400, { error: 'task must be line or review' }) }
+  if (typeof day !== 'string' || !DAY_RE.test(day)) return { ok: false, reply: reply(400, { error: 'day must be YYYY-MM-DD' }) }
+  const t = await deps.store.readTask(taskIdOf(task, day))
+  if (!t || (t.status !== 'fired' && t.status !== 'firing')) return { ok: false, reply: reply(409, { error: `no ${task} task is open for ${day}` }) }
+  if (!t.forced && (await deps.store.hasBrief(rowIdOf(task, day)))) return { ok: false, reply: reply(409, { error: `the ${task} for ${day} is written already` }) }
+  if (t.posts >= MAX_POSTS) return { ok: false, reply: reply(409, { error: 'no attempts left' }) }
+  return { ok: true, t }
+}
+
+interface Run {
+  t: TaskRow
+  b: LineBriefing
+  access: Access
+  catalogue: Catalogue
+  /** Everything said lately, for the repeat check, whatever Claude may read. */
+  said: Said[]
+}
+
+/** The briefing for a task, built the same way for its GET and its POST, so a line is checked against exactly what was served. */
+async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } | { ok: false; reply: Reply }> {
+  const facts = await deps.store.readFacts(t.factsDay)
+  if (!facts) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is missing` }) }
+  if (deps.now.getTime() - Date.parse(facts.updatedAt) > MAX_FACTS_AGE_MS) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is stale (${facts.updatedAt})` }) }
+  const [settings, prefs, catalogue, library] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher), loadLibrary(deps.env.LIBRARY_URL, deps.fetcher)])
+  const access = accessFor(t.task, gatesFrom(settings), readBrainPrefs(prefs))
+  const sheet = sheetForClaude(facts.sheet, access)
+  const said = await saidLately(deps.store, facts.sheet)
+  const built = lineBriefing({ task: t.task, writer: 'claude', sheet, forDay: t.day, cards: retrieve(library, sheet, t.task === 'review' ? 16 : 12), said: access.allowed('brainHistory') ? said : [], writerModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', gates: access.gates })
+  if (!built.ok) return { ok: false, reply: reply(409, { error: built.reason }) }
+  return { ok: true, run: { t, b: built.briefing, access, catalogue, said } }
+}
+
+/** GET /claude/briefing?task=&day= : the day's briefing, its rules and the shape of the answer, served only to the keyed run. */
+export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
+  const open = await openTask(deps, url.searchParams.get('task'), url.searchParams.get('day'))
+  if (!open.ok) return open.reply
+  const built = await buildRun(deps, open.t)
+  if (!built.ok) return built.reply
+  const { t, b, access, catalogue } = built.run
+  const onSheet = new Set(b.sheet.facts.filter((f) => f.id.startsWith('note.')).map((f) => f.id))
+  const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, onSheet)
+  const text = claudeBriefingText({ ...b, context: ctx.text })
+  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
+  const answer =
+    t.task === 'line'
+      ? { mode: 'one of the modes named in the instructions', text: 'the line', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null }
+      : { held: 'what held', didNot: 'what did not', change: 'one change', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'] }
+  return reply(200, {
+    task: t.task,
+    day: t.day,
+    askedModel: t.askedModel,
+    instructions: claudeInstructions(t.task),
+    briefing: text,
+    answer,
+    post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
+    context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, q, limit', categories: READABLE.filter((c) => access.allowed(c)), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: t.contextCalls, bytes: t.contextBytes } },
+    attemptsLeft: MAX_POSTS - t.posts,
   })
-  return { ok: true, roundTripMs }
+}
+
+/** GET /claude/context : one filtered, capped read of the record for the open task, after the one check; logged, never its content. */
+export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
+  const open = await openTask(deps, url.searchParams.get('task'), url.searchParams.get('day'))
+  if (!open.ok) return open.reply
+  const t = open.t
+  const q = parseContextQuery(url, t.day)
+  if (!q.ok) return reply(400, { error: q.reason })
+  const [settings, prefs] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs')])
+  const access = accessFor(t.task, gatesFrom(settings), readBrainPrefs(prefs))
+  if (!access.allowed(q.category)) return reply(403, { error: `the ${t.task} task may not read ${q.category}` })
+  if (!READABLE.includes(q.category)) return reply(403, { error: `${q.category} is not served here` })
+  if (t.contextCalls >= CONTEXT_CALLS) return reply(429, { error: `at most ${CONTEXT_CALLS} reads a run` })
+  if (t.contextBytes >= CONTEXT_BYTES) return reply(429, { error: `at most ${CONTEXT_BYTES / 1024} KB a run` })
+  const catalogue = await loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)
+  const r = await readOnDemand(deps.store, catalogue, access, q.category, q.q, t.day, t.id, 100 + t.contextCalls, deps.now, CONTEXT_BYTES - t.contextBytes)
+  if (!r) return reply(403, { error: `${q.category} is not served here` })
+  await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text) })
+  return reply(200, { category: q.category, items: r.items, truncated: r.truncated })
+}
+
+type Verdict<T> = { ok: true; value: T } | { ok: false; reason: string }
+
+/** A line Claude wrote: the checks every line passes, then the surface rules. */
+export function checkClaudeLine(b: LineBriefing, said: readonly Said[], raw: unknown, s: Surface): Verdict<BrainOutput> {
+  const v = lineCheck(b, said)(raw)
+  if (!v.ok) return v
+  const g = surfaceGuard(v.value.text, s)
+  return g ? { ok: false, reason: g } : v
+}
+
+/** A review Claude wrote: the review validator and the day guard, then the surface rules on each part. */
+export function checkClaudeReview(b: LineBriefing, raw: unknown, s: Surface): Verdict<ReviewOutput> {
+  const v = validateReview(raw, b.sheet, b.cards, b.forDay)
+  if (!v.ok) return v
+  for (const part of [v.value.held, v.value.didNot, v.value.change]) {
+    const g = surfaceGuard(part, s)
+    if (g) return { ok: false, reason: g }
+  }
+  return v
+}
+
+/** POST /claude/line : the run's answer, checked like any line; stored with who wrote it, or refused with its reason and whether one retry is left. */
+export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const open = await openTask(deps, o.task, o.day)
+  if (!open.ok) return open.reply
+  const built = await buildRun(deps, open.t)
+  if (!built.ok) return built.reply
+  const { t, b, access, catalogue, said } = built.run
+  const answer = typeof o.answer === 'string' ? parseOutput(o.answer) : o.answer
+  const names = b.sheet.showPrivate === true ? [] : await privateNames(deps.store)
+  const bears =
+    t.task === 'line'
+      ? await partnerBearsOn(deps.store, t.day, access)
+      : access.allowed('partnerPath') && ((await readCategory({ store: deps.store, catalogue, a: access }, 'partnerPath', { from: addDays(t.day, -7), to: t.day, limit: 1, doneOnly: true })) ?? []).length > 0
+  const surface = { names, bears }
+  const verdict = t.task === 'line' ? checkClaudeLine(b, said, answer, surface) : checkClaudeReview(b, answer, surface)
+  const posts = t.posts + 1
+  if (!verdict.ok) {
+    const refusals = [...t.refusals, verdict.reason].slice(-10)
+    await deps.store.writeTask({ ...t, posts, refusals, ...(posts >= MAX_POSTS ? { status: 'refused' as const } : {}) })
+    return reply(422, { ok: false, reason: verdict.reason, retry: posts < MAX_POSTS })
+  }
+  const at = deps.now.toISOString()
+  const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'
+  const runnerModel = clip(o.runnerModel, 100)
+  const latencyMs = deps.now.getTime() - Date.parse(t.firedAt ?? t.at)
+  const common = { day: t.day, model: writtenModel, at, factsDay: b.factsDay, forDay: t.day, trigger: t.trigger, shape: b.shape, refusals: t.refusals, calls: posts, latencyMs, writer: 'claude' as const, askedModel: t.askedModel, runnerModel }
+  let row: BriefRow
+  if (t.task === 'line') {
+    const v = verdict.value as BrainOutput
+    row = { id: rowIdOf('line', t.day), kind: 'brief', text: v.text, mode: v.mode, factIds: v.factIds, cardIds: v.cardIds, action: v.action, candidates: 1, ...common }
+  } else {
+    const v = verdict.value as ReviewOutput
+    row = { id: rowIdOf('review', t.day), kind: 'review', text: `${v.held} ${v.didNot} ${v.change}`, mode: 'strategy', factIds: v.factIds, cardIds: v.cardIds, action: null, parts: { held: v.held, didNot: v.didNot, change: v.change }, ...common }
+  }
+  await deps.store.writeBrief(row, at)
+  await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs })
+  return reply(200, { ok: true })
 }

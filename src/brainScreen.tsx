@@ -1,0 +1,118 @@
+import { BRAIN_SWITCHES, WRITER_MODELS, type WriterModel } from './brainShared'
+import { getBrainPrefs, setBrainSwitch, setWriterModel } from './brainPrefs'
+import { SwitchRow } from './controls'
+import { copy } from './copy'
+import { db, getSettings, type BrainBrief, type BrainRead } from './db'
+import { fill, formatDayShort } from './format'
+import { useLive } from './live'
+
+/**
+ * Settings → Brain (Part 30): who writes the day's line, one row of chips starting on Opus; what
+ * Claude may read, one switch per category, every one on until turned off (Rule 21 as amended);
+ * who wrote the recent lines, with the model asked for and the one that wrote; and what Claude
+ * read, by count and size, never content.
+ */
+
+const size = (bytes: number): string => (bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`)
+
+/** Who wrote a line, as the list says it. */
+function writerOf(b: BrainBrief): string {
+  const c = copy.brainScreen
+  if (b.writer === 'claude') return fill(c.recentClaude, { asked: c.models[b.askedModel as WriterModel] ?? b.askedModel ?? '', model: b.model })
+  return fill(b.fallback ? c.recentFallback : c.recentFree, { model: b.model })
+}
+
+/** The reads of one day and task, summed per category, in the order they were first read. */
+function readGroups(reads: readonly BrainRead[]): { day: string; task: BrainRead['task']; items: { category: string; count: number; bytes: number }[] }[] {
+  const groups = new Map<string, { day: string; task: BrainRead['task']; items: Map<string, { category: string; count: number; bytes: number }> }>()
+  for (const r of [...reads].sort((a, b) => (a.at < b.at ? 1 : -1))) {
+    const key = `${r.day}|${r.task}`
+    const g = groups.get(key) ?? { day: r.day, task: r.task, items: new Map() }
+    const item = g.items.get(r.category) ?? { category: r.category, count: 0, bytes: 0 }
+    item.count += r.count
+    item.bytes += r.bytes
+    g.items.set(r.category, item)
+    groups.set(key, g)
+  }
+  return [...groups.values()].slice(0, 14).map((g) => ({ day: g.day, task: g.task, items: [...g.items.values()] }))
+}
+
+export function BrainScreen({ onClose }: { onClose: () => void }) {
+  const prefs = useLive(getBrainPrefs, [])
+  const settings = useLive(getSettings, [])
+  const lines = useLive(() => db.brainBriefs.orderBy('day').reverse().filter((b) => b.kind === 'brief').limit(7).toArray(), [])
+  const reads = useLive(() => db.brainReads.orderBy('day').reverse().limit(400).toArray(), [])
+  if (!prefs || !settings || !lines || !reads) return <section class="screen" />
+  const c = copy.brainScreen
+  const labelOf = (category: string) => (c.switches as Record<string, { label: string }>)[category]?.label ?? category
+
+  return (
+    <section class="screen" data-testid="brain-screen">
+      <header class="screen-head">
+        <p class="eyebrow">{c.title}</p>
+      </header>
+      <p class="note" data-testid="brain-intro">
+        {c.intro}
+      </p>
+
+      <h2 class="section">{c.writer}</h2>
+      <div class="card pad">
+        <div class="chips" role="group" aria-label={c.writer}>
+          {WRITER_MODELS.map((m) => (
+            <button key={m} type="button" class={prefs.writerModel === m ? 'when-chip is-on' : 'when-chip'} aria-pressed={prefs.writerModel === m} data-testid={`brain-model-${m}`} onClick={() => void setWriterModel(m)}>
+              {c.models[m]}
+            </button>
+          ))}
+        </div>
+        <p class="note faint no-gap">{c.writerNote}</p>
+      </div>
+
+      <h2 class="section">{c.reads}</h2>
+      <p class="note faint">{c.readsNote}</p>
+      <div class="card">
+        {BRAIN_SWITCHES.map((k) =>
+          k === 'faith' && settings.hideFaith ? (
+            <div class="switch-row" key={k} data-testid="brain-switch-faith-hidden">
+              <span class="row-main">
+                {c.switches.faith.label}
+                <span class="sub">{c.faithHidden}</span>
+              </span>
+            </div>
+          ) : (
+            <SwitchRow key={k} label={c.switches[k].label} note={c.switches[k].note} on={prefs.switches[k] !== false} onChange={(on) => void setBrainSwitch(k, on)} testid={`brain-switch-${k}`} />
+          ),
+        )}
+      </div>
+
+      <h2 class="section">{c.recent}</h2>
+      <div class="card pad" data-testid="brain-recent">
+        {lines.length === 0 && <p class="note faint no-gap">{c.recentNone}</p>}
+        {lines.map((b) => (
+          <p key={b.id} class="calc-line" data-testid="brain-recent-line">
+            <span class="calc-key">{formatDayShort(b.day)}</span> · {writerOf(b)}
+          </p>
+        ))}
+      </div>
+
+      <h2 class="section">{c.read}</h2>
+      <p class="note faint">{c.readNote}</p>
+      <div class="card pad" data-testid="brain-reads">
+        {reads.length === 0 && <p class="note faint no-gap">{c.readNone}</p>}
+        {readGroups(reads).map((g) => (
+          <p key={`${g.day}|${g.task}`} class="calc-line" data-testid="brain-read-group">
+            <span class="calc-key">
+              {formatDayShort(g.day)} · {c.tasks[g.task]}
+            </span>{' '}
+            {g.items.map((i) => fill(c.readItem, { category: labelOf(i.category), count: String(i.count), size: size(i.bytes) })).join('; ')}
+          </p>
+        ))}
+      </div>
+
+      <div class="actions">
+        <button type="button" class="textbtn" onClick={onClose}>
+          {c.done}
+        </button>
+      </div>
+    </section>
+  )
+}

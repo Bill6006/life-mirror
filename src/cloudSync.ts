@@ -1,5 +1,5 @@
 import { dayKey } from './blocks'
-import type { BrainBrief, OutsideDay } from './db'
+import type { BrainBrief, BrainRead, OutsideDay } from './db'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
@@ -84,6 +84,8 @@ export async function getOutsideMeta(): Promise<CloudMeta> {
 /** The brain under your own account: the Worker that writes the day's line to the same database. This app reads its rows and writes none. */
 export const BRAIN_APP = 'life-mirror-brain'
 const BRAIN_STORE = 'briefs'
+/** What Claude read (Part 30): the brain's log of reads, never their content. */
+const READS_STORE = 'reads'
 const DEFAULT_BRAIN: CloudMeta = { key: 'brain', watermark: '', lastSyncAt: null, lastError: null }
 
 export async function getBrainMeta(): Promise<CloudMeta> {
@@ -96,7 +98,19 @@ export function brainBriefOf(id: string, body: string): BrainBrief | null {
     const r = JSON.parse(body) as Partial<BrainBrief>
     if (typeof r.day !== 'string' || typeof r.text !== 'string' || !r.text) return null
     const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
-    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '', ...(r.action && typeof r.action === 'object' ? { action: r.action } : {}), ...(typeof r.factsDay === 'string' ? { factsDay: r.factsDay } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}), ...(r.parts && typeof r.parts === 'object' ? { parts: r.parts } : {}) }
+    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '', ...(r.action && typeof r.action === 'object' ? { action: r.action } : {}), ...(typeof r.factsDay === 'string' ? { factsDay: r.factsDay } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}), ...(r.parts && typeof r.parts === 'object' ? { parts: r.parts } : {}), ...(r.writer === 'claude' || r.writer === 'free' ? { writer: r.writer } : {}), ...(typeof r.askedModel === 'string' ? { askedModel: r.askedModel } : {}), ...(typeof r.fallback === 'string' ? { fallback: r.fallback } : {}) }
+  } catch {
+    return null
+  }
+}
+
+/** What a read row says, or null for one that is not a read. Counts and sizes only; a row carrying anything else keeps only these. */
+export function brainReadOf(id: string, body: string): BrainRead | null {
+  try {
+    const r = JSON.parse(body) as Partial<BrainRead>
+    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review')) return null
+    const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+    return { id, day: r.day, at: r.at, task: r.task, category: r.category, count: n(r.count), bytes: n(r.bytes), via: r.via === 'context' ? 'context' : 'briefing' }
   } catch {
     return null
   }
@@ -344,8 +358,14 @@ async function pullBrain(store: CloudStore): Promise<number> {
     const meta = await getBrainMeta()
     const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
     if (!rows.length) break
-    await db.transaction('rw', [db.brainBriefs, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.cloudMeta], async () => {
       for (const row of rows) {
+        if (row.store === READS_STORE) {
+          const read = row.deleted || !row.body ? null : brainReadOf(row.id, row.body)
+          if (read) await db.brainReads.put(read)
+          else await db.brainReads.delete(row.id)
+          continue
+        }
         if (row.store !== BRAIN_STORE) continue
         const line = row.deleted || !row.body ? null : brainBriefOf(row.id, row.body)
         if (line) await db.brainBriefs.put(line)

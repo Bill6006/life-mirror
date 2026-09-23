@@ -71,6 +71,43 @@ export type LineCue = 'afterPickup' | 'afterBedtime' | 'nextCheckIn'
 export const LINE_CUES: readonly LineCue[] = ['afterPickup', 'afterBedtime', 'nextCheckIn']
 
 /**
+ * The writer model (Part 30): the four values the Agent tool's `model` parameter accepts, read
+ * from its own refusal in the bridge proof (Part 29), in the order of the Brain screen's chips,
+ * starting on Opus. The phone, the Worker and the routine's instruction file each check a value
+ * against this list before using it; `best` is not one.
+ */
+export const WRITER_MODELS = ['opus', 'fable', 'sonnet', 'haiku'] as const
+export type WriterModel = (typeof WRITER_MODELS)[number]
+
+export function isWriterModel(v: unknown): v is WriterModel {
+  return typeof v === 'string' && (WRITER_MODELS as readonly string[]).includes(v)
+}
+
+/**
+ * What Claude may read (Part 30, Rule 21 as amended 2026-09-23), one switch each on the Brain
+ * screen, every one on by default and each the owner's to turn off. The retrieval layer's other
+ * categories are not switches: the fact sheet's frame, the coach's decision core, and tier 2.
+ */
+export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory'] as const
+export type BrainSwitch = (typeof BRAIN_SWITCHES)[number]
+
+/** The Brain settings, as the phone syncs them in the one row `brainPrefs`. */
+export interface BrainPrefsBody {
+  writerModel: WriterModel
+  /** Only switches turned off are kept; a switch not named is on. */
+  switches: Partial<Record<BrainSwitch, false>>
+}
+
+/** The Brain settings read the same way on the phone and in the Worker: an unknown or missing model is Opus, a switch is off only when it says so, anything else is dropped. */
+export function readBrainPrefs(raw: unknown): BrainPrefsBody {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const s = o.switches && typeof o.switches === 'object' ? (o.switches as Record<string, unknown>) : {}
+  const switches: Partial<Record<BrainSwitch, false>> = {}
+  for (const k of BRAIN_SWITCHES) if (s[k] === false) switches[k] = false
+  return { writerModel: isWriterModel(o.writerModel) ? o.writerModel : 'opus', switches }
+}
+
+/**
  * The one tap a line may offer, so advice can be acted on where it is read: pin a commitment's
  * step to a cue today, make the check-in lighter, or set a test the record has never run.
  * Nothing else; the phone checks again at the tap that it is still possible.

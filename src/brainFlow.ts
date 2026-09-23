@@ -4,7 +4,9 @@ import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import type { CoachBlock } from './factTypes'
 import { pathOn, peopleRowOf } from './pathFlow'
 import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
-import type { LineAction, LineCue } from './brainShared'
+import type { LineAction, LineCue, WriterModel } from './brainShared'
+import { copy } from './copy'
+import { fill } from './format'
 import { hasMove, moveById } from './catalogue'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
@@ -156,6 +158,18 @@ export interface BriefLine {
   action: LineAction | null
   /** The day whose facts the line was written from: today for the phone, usually yesterday for the Worker. */
   factsDay: string
+  /** Who wrote a Worker's line (Part 30): Claude, with the model asked for; or the free chain, and why it stood in. */
+  writer?: 'claude' | 'free'
+  askedModel?: string
+  fallback?: string
+}
+
+/** Who wrote a line or a review, in the words its screen uses (Part 30): Claude with the model asked for and the one that wrote, the free chain and why it stood in for Claude, or the phone. */
+export function writtenBy(w: { source: 'phone' | 'worker'; model: string | null; writer?: 'claude' | 'free'; askedModel?: string; fallback?: string }, words: { fromPhone: string; fromWorker: string; fromClaude: string; fromFallback: string }): string {
+  if (w.source !== 'worker') return words.fromPhone
+  if (w.writer === 'claude') return fill(words.fromClaude, { asked: copy.brainScreen.models[w.askedModel as WriterModel] ?? w.askedModel ?? '', model: w.model ?? '' })
+  if (w.fallback) return fill(words.fromFallback, { model: w.model ?? '', why: w.fallback })
+  return fill(words.fromWorker, { model: w.model ?? '' })
 }
 
 /**
@@ -167,7 +181,7 @@ export async function todaysLine(day: string, now: Date = new Date()): Promise<B
   const [briefs, log, record] = await Promise.all([db.brainBriefs.where('day').equals(day).toArray(), db.briefLog.where('day').equals(day).toArray(), pathRecord(day)])
   const off = offOf(record, day, now)
   const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1) }
+  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
   const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
   if (!own) return null
   return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day }
@@ -331,13 +345,16 @@ export interface WeekReview extends ReviewParts {
   source: 'phone' | 'worker'
   model: string | null
   day: string
+  writer?: 'claude' | 'free'
+  askedModel?: string
+  fallback?: string
 }
 
 /** The week reviewed: the Worker's three parts when it wrote them in the last week, else the record's own. */
 export async function weekReview(day: string, now: Date = new Date()): Promise<WeekReview> {
   const since = addDays(day, -6)
   const worker = (await db.brainBriefs.toArray()).filter((b) => b.kind === 'review' && b.parts && b.day >= since && b.day <= day).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker?.parts) return { source: 'worker', model: worker.model, day: worker.day, ...worker.parts }
+  if (worker?.parts) return { source: 'worker', model: worker.model, day: worker.day, ...worker.parts, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
   const feedback = (await db.briefFeedback.toArray()).map((f) => ({ situationId: f.situationId, answer: f.answer }))
   return { source: 'phone', model: null, day, ...phoneReview(await factSheet(day, now), feedback) }
 }

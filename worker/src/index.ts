@@ -4,12 +4,14 @@ import { runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
-import { acceptNonce, bearerOk, fireRoutine, issueNonce, TEST_MODELS, type TestModel } from './claude'
+import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 
 // The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
-// ping whose moment has come; writes the day's line once the morning check-in is on a sheet (or
-// from the fallback hour); and on Sunday at the brief hour writes the week reviewed. By hand,
-// with the run key, any job now, and the report of the last lines written.
+// ping whose moment has come; starts the day's line once the morning check-in is on a sheet (or
+// from the fallback hour), through Claude when it is switched on, else the free model chain; and
+// on Sunday at the brief hour the week reviewed. The routine's run reaches the three /claude/
+// endpoints with the bridge key the agent proxy adds. By hand, with the run key, any job now, and
+// the reports: the lines written, and the bridge's tasks.
 
 function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
@@ -34,7 +36,7 @@ function sender(env: Env): Sender | null {
 
 type Job = 'brief' | 'review' | 'cues'
 
-async function dispatch(job: Job, env: Env, now: Date, force = false): Promise<unknown> {
+async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free'): Promise<unknown> {
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
   if (job === 'cues') {
@@ -43,7 +45,8 @@ async function dispatch(job: Job, env: Env, now: Date, force = false): Promise<u
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
-  const result = job === 'review' ? await runReview(env, store, aiRunner(env.AI), now, { force }) : await runBrief(env, store, aiRunner(env.AI), now, { force })
+  const opts = { force, ...(writer ? { writer } : {}) }
+  const result = job === 'review' ? await runReview(env, store, aiRunner(env.AI), now, opts) : await runBrief(env, store, aiRunner(env.AI), now, opts)
   console.log(JSON.stringify({ job, ...result }))
   return { job, ...result }
 }
@@ -70,29 +73,43 @@ const handler: ExportedHandler<Env> = {
     if (url.pathname === '/health') return json({ ok: true, app: BRAIN_APP })
     const m = /^\/run\/(brief|review|cues)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
-      return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1'))
+      const w = url.searchParams.get('writer')
+      if (w !== null && w !== 'claude' && w !== 'free') return json({ reason: 'writer must be claude or free' }, 400)
+      return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1', w ?? undefined))
     }
-    // The bridge proof (Part 29): the run asks for a nonce and hands it back, with the key the agent proxy adds; without it, nothing.
-    if (url.pathname === '/claude/ping') {
+    // The bridge (Part 30): the routine's run, with the key the agent proxy adds; without it, nothing. The key never reaches Claude.
+    if (url.pathname.startsWith('/claude/')) {
       if (!bearerOk(request.headers.get('authorization'), env.CLAUDE_BRIDGE_KEY)) return json({ error: 'unauthorized' }, 401)
       if (!env.TURSO_TOKEN) return json({ error: 'no database token' }, 503)
-      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
-      if (request.method === 'GET') return json(await issueNonce(store, new Date()))
-      if (request.method === 'POST') {
-        const body = await request.json().catch(() => null)
-        const r = await acceptNonce(store, new Date(), body)
-        return json(r, r.ok ? 200 : 400)
+      const deps = { env, store: tursoStore(env.TURSO_URL, env.TURSO_TOKEN), now: new Date() }
+      try {
+        if (url.pathname === '/claude/briefing' && request.method === 'GET') {
+          const r = await handleBriefing(deps, url)
+          return json(r.body, r.status)
+        }
+        if (url.pathname === '/claude/context' && request.method === 'GET') {
+          const r = await handleContext(deps, url)
+          return json(r.body, r.status)
+        }
+        if (url.pathname === '/claude/line' && request.method === 'POST') {
+          const text = await request.text()
+          if (text.length > 20_000) return json({ error: 'at most 20,000 characters' }, 413)
+          let body: unknown
+          try {
+            body = JSON.parse(text)
+          } catch {
+            return json({ error: 'the body is not JSON' }, 400)
+          }
+          const r = await handleLine(deps, body)
+          return json(r.body, r.status)
+        }
+        return json({ error: 'not found' }, 404)
+      } catch (e) {
+        console.log(JSON.stringify({ bridge: url.pathname, error: e instanceof Error ? e.message : String(e) }))
+        return json({ error: 'the Worker could not serve this now' }, 503)
       }
-      return json({ error: 'method' }, 405)
     }
-    // With the run key: fire the routine once, asking its subagent for one of the test models.
-    if (url.pathname === '/run/claude-fire' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
-      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
-      const asked = url.searchParams.get('model') ?? 'opus'
-      if (!(TEST_MODELS as readonly string[]).includes(asked)) return json({ reason: `model must be one of ${TEST_MODELS.join(', ')}` }, 400)
-      return json(await fireRoutine(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), asked as TestModel))
-    }
-    // With the run key: the bridge rows, newest first.
+    // With the run key: the bridge's rows, newest first: each day's task with how it ended, never its words.
     if (url.pathname === '/run/bridge-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
       return json({ rows: await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readBridge(30) })
@@ -101,7 +118,7 @@ const handler: ExportedHandler<Env> = {
     if (url.pathname === '/run/brief-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
       const rows = await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readBriefs(30)
-      return json({ rows: rows.map((r) => ({ id: r.id, kind: r.kind, day: r.day, forDay: r.forDay ?? null, factsDay: r.factsDay, trigger: r.trigger ?? null, model: r.model, at: r.at, candidates: r.candidates ?? null, refusals: r.refusals ?? [], neurons: r.neurons ?? null, calls: r.calls ?? null, latencyMs: r.latencyMs ?? null, shape: r.shape ?? null })) })
+      return json({ rows: rows.map((r) => ({ id: r.id, kind: r.kind, day: r.day, forDay: r.forDay ?? null, factsDay: r.factsDay, trigger: r.trigger ?? null, writer: r.writer ?? null, model: r.model, askedModel: r.askedModel ?? null, runnerModel: r.runnerModel ?? null, fallback: r.fallback ?? null, at: r.at, candidates: r.candidates ?? null, refusals: r.refusals ?? [], neurons: r.neurons ?? null, calls: r.calls ?? null, latencyMs: r.latencyMs ?? null, shape: r.shape ?? null })) })
     }
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {

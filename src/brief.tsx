@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, recordFeedback, todaysLine, whyFor, type ActionState, type BriefLine } from './brainFlow'
+import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
 import { fill } from './format'
@@ -152,7 +152,7 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
         <span class="calc-key">{c.whyWriter}</span>
       </p>
       <p class="calc-line" data-testid="brief-writer">
-        {line.source === 'worker' ? fill(c.fromWorker, { model: line.model ?? '' }) : c.fromPhone}
+        {writtenBy(line, c)}
       </p>
     </div>
   )

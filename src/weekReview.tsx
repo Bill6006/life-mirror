@@ -1,6 +1,5 @@
-import { weekReview } from './brainFlow'
+import { weekReview, writtenBy } from './brainFlow'
 import { copy } from './copy'
-import { fill } from './format'
 import { useLive } from './live'
 
 /**
@@ -27,7 +26,9 @@ export function WeekReviewCard({ day }: { day: string }) {
             <span class="calc-key">{c.change}</span> · <span data-testid="week-review-change">{r.change}</span>
           </p>
         </div>
-        <p class="note faint no-gap">{r.source === 'worker' ? fill(c.fromWorker, { model: r.model ?? '' }) : c.fromPhone}</p>
+        <p class="note faint no-gap" data-testid="week-review-writer">
+          {writtenBy(r, c)}
+        </p>
       </div>
     </>
   )

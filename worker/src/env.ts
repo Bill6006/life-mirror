@@ -18,6 +18,12 @@ export interface Env {
   CLAUDE_FIRE_TOKEN?: string
   /** The routine's fire URL: not a secret. */
   CLAUDE_FIRE_URL?: string
+  /** "on": Claude writes the line and the review through the routine (Part 30); anything else, the free model chain, as before. */
+  CLAUDE_WRITER?: string
+  /** Minutes without a valid line from Claude before the free chain writes (the plan's twenty). */
+  CLAUDE_TIMEOUT_MINUTES?: string
+  /** The catalogue as the app ships it, for naming reps and knowing faith's in the retrieval layer. */
+  CATALOGUE_URL: string
   TIMEZONE: string
   /** The check-in pings' local times, HH:MM, comma-separated. */
   PING_TIMES?: string

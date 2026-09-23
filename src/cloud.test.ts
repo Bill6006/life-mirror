@@ -5,6 +5,7 @@ import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
 import { BRAIN_APP, brainBriefOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
+import { setBrainSwitch, setWriterModel } from './brainPrefs'
 import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
 import { blockReadings } from './readings'
 
@@ -458,5 +459,32 @@ describe('the brain’s lines, read from the same database', () => {
     expect(await db.brainBriefs.count()).toBe(0)
     expect(brainBriefOf('y', 'not json')).toBeNull()
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', kind: 'review' }))?.kind).toBe('review')
+  })
+})
+
+describe('the Brain settings and what Claude read (Part 30)', () => {
+  const brainRow = (store: string, id: string, body: Record<string, unknown>, synced_at: string): CloudRow => ({ app: BRAIN_APP, store, id, day: null, body: JSON.stringify(body), updated_at: synced_at, deleted: 0, device_id: 'worker', synced_at })
+
+  it('syncs the Brain settings as the one row the Worker reads', async () => {
+    const store = memoryStore()
+    await withToken(store)
+    await setWriterModel('sonnet')
+    await setBrainSwitch('notes', false)
+    await syncNow()
+    const row = store.rows.get(`${APP}|brainPrefs|prefs`)
+    expect(JSON.parse(row?.body ?? '{}')).toMatchObject({ id: 'prefs', writerModel: 'sonnet', switches: { notes: false } })
+  })
+
+  it('reads who wrote a line, and each read by its counts alone, whatever else a row carries', async () => {
+    const store = memoryStore()
+    await store.upsert([
+      brainRow('briefs', '2026-09-18:brief', { day: '2026-09-18', kind: 'brief', text: 'One line.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:48:00.000Z', writer: 'claude', askedModel: 'opus' }, '2026-09-18T11:48:01.000Z'),
+      brainRow('reads', 'read:1', { day: '2026-09-18', at: '2026-09-18T11:47:00.000Z', task: 'line', category: 'notes', count: 3, bytes: 240, via: 'briefing', text: 'never kept' }, '2026-09-18T11:47:01.000Z'),
+      brainRow('reads', 'read:2', { day: '2026-09-18', task: 'nothing' }, '2026-09-18T11:47:02.000Z'),
+    ])
+    await withToken(store)
+    await syncNow()
+    expect(await db.brainBriefs.get('2026-09-18:brief')).toMatchObject({ writer: 'claude', askedModel: 'opus', model: 'claude-opus-5-5' })
+    expect(await db.brainReads.toArray()).toEqual([{ id: 'read:1', day: '2026-09-18', at: '2026-09-18T11:47:00.000Z', task: 'line', category: 'notes', count: 3, bytes: 240, via: 'briefing' }])
   })
 })

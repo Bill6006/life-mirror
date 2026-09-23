@@ -1,4 +1,4 @@
-import type { LineAction } from './brainShared'
+import type { BrainPrefsBody, LineAction } from './brainShared'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
@@ -432,6 +432,30 @@ export interface BrainBrief {
   forDay?: string
   /** The weekly review's three parts, on a row of kind review. */
   parts?: { held: string; didNot: string; change: string }
+  /** Who wrote it (Part 30): Claude through your routine, or the free model chain. Absent on lines written before Part 30. */
+  writer?: 'claude' | 'free'
+  /** For Claude's line: the model alias asked for; `model` is the id that actually wrote it. */
+  askedModel?: string
+  /** For the free chain standing in for Claude: why it did. */
+  fallback?: string
+}
+
+/** The Brain settings (Part 30): which model writes, and what Claude may read. One row, synced, so the Worker reads it at every request. */
+export interface BrainPrefs extends BrainPrefsBody {
+  id: 'prefs'
+  updatedAt: string
+}
+
+/** One read by Claude through the retrieval layer, pulled from the brain's rows: its task, category, count and size, never content. */
+export interface BrainRead {
+  id: string
+  day: string
+  at: string
+  task: 'line' | 'review'
+  category: string
+  count: number
+  bytes: number
+  via: 'briefing' | 'context'
 }
 
 /**
@@ -544,6 +568,8 @@ class LifeMirrorDB extends Dexie {
   briefLog!: Table<BriefLog, number>
   briefFeedback!: Table<BriefFeedback, number>
   brainBriefs!: Table<BrainBrief, string>
+  brainPrefs!: Table<BrainPrefs, string>
+  brainReads!: Table<BrainRead, string>
   pathMarks!: Table<PathMark, number>
   reflections!: Table<Reflection, number>
   monthlyChecks!: Table<MonthlyCheck, number>
@@ -720,6 +746,11 @@ class LifeMirrorDB extends Dexie {
       pathMarks: '++id, path, kind, day',
       reflections: '++id, path, kind, day',
       monthlyChecks: '++id, &month',
+    })
+    // Part 30: the Brain settings, synced; and what Claude read, pulled from the brain's own rows and never synced from here.
+    this.version(14).stores({
+      brainPrefs: 'id',
+      brainReads: 'id, day',
     })
     installOutbox(this)
   }
@@ -997,7 +1028,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -1034,6 +1065,8 @@ export function wipeEverything(): Promise<void> {
       db.pathMarks.clear(),
       db.reflections.clear(),
       db.monthlyChecks.clear(),
+      db.brainPrefs.clear(),
+      db.brainReads.clear(),
     ])
   })
 }

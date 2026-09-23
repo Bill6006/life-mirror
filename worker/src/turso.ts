@@ -3,8 +3,10 @@ import type { LineAction } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 
 // The same database the phone syncs to, through the same generic `records` table. The Worker
-// reads the phone's rows (facts, plans, feedback) and writes only rows of its own app: a line
-// per day, and a mark per reminder sent. It never touches the phone's rows.
+// reads the phone's rows (facts, plans, feedback, and through the retrieval layer the rest of the
+// record Claude may read) and writes only rows of its own app: a line per day, a mark per
+// reminder sent, a task per Claude run and a log of what Claude read. It never touches the
+// phone's rows.
 
 export const APP = 'life-mirror'
 export const BRAIN_APP = 'life-mirror-brain'
@@ -52,6 +54,73 @@ export interface BriefRow {
   calls?: number
   /** From the trigger to the stored row. */
   latencyMs?: number
+  /** Who wrote it (Part 30): Claude through the routine, or the free model chain. Absent on rows written before Part 30. */
+  writer?: 'claude' | 'free'
+  /** For Claude's line: the alias asked for, and the routine's own model; `model` is the id that wrote it, as the run reported it. */
+  askedModel?: string
+  runnerModel?: string | null
+  /** For the free chain standing in for Claude: why it did. */
+  fallback?: string
+}
+
+/**
+ * One day's Claude task (Part 30): marked before the fire, since the fire call has no idempotency
+ * key, then updated with how it ended. Its words are never here: counts, reasons and ids only.
+ */
+export interface TaskRow {
+  id: string
+  kind: 'task'
+  task: 'line' | 'review'
+  day: string
+  at: string
+  status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
+  trigger: NonNullable<BriefRow['trigger']>
+  /** The day of the sheet the task is written from. */
+  factsDay: string
+  /** The writer model asked for, from the Brain settings at the fire. */
+  askedModel: string
+  /** Started by hand with the run key: it may replace the day's row. */
+  forced?: boolean
+  firedAt?: string
+  fireStatus?: number
+  sessionUrl?: string | null
+  retryAfter?: string | null
+  error?: string | null
+  briefingAt?: string
+  briefingBytes?: number
+  /** On-demand reads through /claude/context, against the per-run cap. */
+  contextCalls: number
+  contextBytes: number
+  /** Lines posted, and each refusal's reason. */
+  posts: number
+  refusals: string[]
+  writer?: 'claude' | 'free'
+  writtenModel?: string | null
+  runnerModel?: string | null
+  subagentError?: string | null
+  writtenAt?: string
+  fallbackReason?: string
+  /** From the fire to the stored line. */
+  latencyMs?: number
+}
+
+/** One read by Claude through the retrieval layer (Part 30): its task, category, count and size, never content. The phone pulls these and shows them as What Claude read. */
+export interface ReadRow {
+  id: string
+  day: string
+  at: string
+  task: 'line' | 'review'
+  category: string
+  count: number
+  bytes: number
+  via: 'briefing' | 'context'
+}
+
+/** One of the phone's own rows, as the retrieval layer reads it. */
+export interface RecordRow {
+  id: string
+  day: string | null
+  body: unknown
 }
 
 /** One record of the bridge proof (Part 29): a fire of the routine, or a nonce issued and answered. Test data only. */
@@ -104,6 +173,15 @@ export interface Store {
   readBridge(limit: number): Promise<BridgeRow[]>
   isPushed(id: string): Promise<boolean>
   markPushed(id: string, now: string): Promise<void>
+  /** Claude's task for a day, and its update. */
+  readTask(id: string): Promise<TaskRow | null>
+  writeTask(row: TaskRow): Promise<void>
+  /** A read logged, never its content. */
+  writeRead(row: ReadRow): Promise<void>
+  /** The phone's own rows of one store, newest day first, within a day range when one is given: the retrieval layer's only read. */
+  readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
+  /** One of the phone's own rows by id, or null. */
+  readRecord(store: string, id: string): Promise<unknown | null>
 }
 
 function parse<T>(body: unknown): T | null {
@@ -167,6 +245,38 @@ export function tursoStore(url: string, token: string): Store {
     },
     async markPushed(id, now) {
       await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'pushes', id, now.slice(0, 10), JSON.stringify({ at: now }), now, DEVICE, now] })
+    },
+    async readTask(id) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
+      const t = r[0] ? parse<TaskRow>(r[0].body) : null
+      return t && t.kind === 'task' ? t : null
+    },
+    async writeTask(row) {
+      const now = new Date().toISOString()
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async writeRead(row) {
+      const now = new Date().toISOString()
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'reads', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async readRecords(store, range = {}, limit = 500) {
+      const where = ['app = ?', 'store = ?', 'deleted = 0']
+      const args: (string | number)[] = [APP, store]
+      if (range.from) {
+        where.push('day >= ?')
+        args.push(range.from)
+      }
+      if (range.to) {
+        where.push('day <= ?')
+        args.push(range.to)
+      }
+      args.push(limit)
+      const r = await rows(`SELECT id, day, body FROM records WHERE ${where.join(' AND ')} ORDER BY day DESC LIMIT ?`, args)
+      return r.map((row) => ({ id: String(row.id), day: row.day === null || row.day === undefined ? null : String(row.day), body: parse<unknown>(row.body) }))
+    },
+    async readRecord(store, id) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = ? AND id = ? AND deleted = 0`, [APP, store, id])
+      return r[0] ? parse<unknown>(r[0].body) : null
     },
   }
 }
@@ -249,6 +359,29 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async markPushed(id, now) {
       rows.set(key(BRAIN_APP, 'pushes', id), { app: BRAIN_APP, store: 'pushes', id, day: now.slice(0, 10), body: JSON.stringify({ at: now }), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async readTask(id) {
+      const r = rows.get(key(BRAIN_APP, 'bridge', id))
+      const t = r && !r.deleted ? parse<TaskRow>(r.body) : null
+      return t && t.kind === 'task' ? t : null
+    },
+    async writeTask(row) {
+      const now = new Date(Date.now() + rows.size).toISOString()
+      rows.set(key(BRAIN_APP, 'bridge', row.id), { app: BRAIN_APP, store: 'bridge', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async writeRead(row) {
+      rows.set(key(BRAIN_APP, 'reads', row.id), { app: BRAIN_APP, store: 'reads', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
+    },
+    async readRecords(store, range = {}, limit = 500) {
+      return live(APP, store)
+        .filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)))
+        .sort((a, b) => ((a.day ?? '') < (b.day ?? '') ? 1 : (a.day ?? '') > (b.day ?? '') ? -1 : 0))
+        .slice(0, limit)
+        .map((r) => ({ id: r.id, day: r.day, body: parse<unknown>(r.body) }))
+    },
+    async readRecord(store, id) {
+      const r = rows.get(key(APP, store, id))
+      return r && !r.deleted ? parse<unknown>(r.body) : null
     },
   }
 }
