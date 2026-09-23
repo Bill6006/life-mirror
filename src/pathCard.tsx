@@ -10,7 +10,7 @@ import { fill } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { setPathPick } from './pathFlow'
-import { countsByRep, dateStageOf, pathById, pathName, pathToday, stageWords, whyThisRep, type PathToday } from './pathStage'
+import { countsByRep, opensNow, pathById, pathName, pathToday, stageWords, whyThisRep, type PathToday } from './pathStage'
 import { carriedByContext, carriedLine, dayKindOf, inPerson, orderByEvidence } from './people'
 
 // A path on the screen (Part 24). On Now, one People row: the rep, its one line, its minutes and
@@ -167,8 +167,10 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
   const canDone = p.openOffer !== null && doneOpen(p.openOffer)
   const setting = p.open ? (p.openOffer?.setting ?? null) : (p.pt.pick?.setting ?? null)
   const paused = Boolean(p.aim.pausedAt)
-  const reps = countsByRep(p.pt.entries).filter((r) => r.offered > 0)
-  const last = p.pt.entries.filter((e) => e.outcome === 'done').pop()
+  // A faith talk is not counted on screen while the faith family is hidden (Rule 10).
+  const shown = (moveId: string) => !(p.pt.faithHidden && moveById(moveId).hiddenWith === 'faith')
+  const reps = countsByRep(p.pt.entries).filter((r) => r.offered > 0 && shown(r.moveId))
+  const last = p.pt.entries.filter((e) => e.outcome === 'done' && shown(e.moveId)).pop()
   return (
     <div class="card pad move-card aim-card" data-testid="aim-card" data-kind="path" data-path={path.id}>
       <p class="eyebrow small">{pathName(path)}</p>
@@ -342,8 +344,7 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
     return <section class="screen" />
   }
   const c = copy.path
-  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, marks, online: settings.partnerOnline })
-  const dating = dateStageOf(pt.path)
+  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, marks, online: settings.partnerOnline, faithHidden: settings.hideFaith })
   // A rep with a partner, in the stages you declare, is not placed by who else is around (Part 27).
   const declared = new Set(pt.path.stages.filter((s) => s.advance === 'declared').map((s) => s.n))
   const carried = carriedByContext(offers, outcomes, contexts, day)
@@ -382,7 +383,8 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
                   {m.name}
                   <span class="sub">
                     {fill(copy.catalogue.minutes, { n: String(m.minutes) })} · {m.path?.[pt.path.id]?.advances ? c.movesStage : copy.catalogue.paths.movesNothing}
-                    {m.path?.[pt.path.id]?.stage === dating && !pt.dateDay ? ` · ${c.notDateDay}` : inPerson(m) && !pt.around && !declared.has(m.path?.[pt.path.id]?.stage ?? 0) ? ` · ${c.notAround}` : ''}
+                    {m.path?.[pt.path.id]?.onDate && !pt.dateDay ? ` · ${c.notDateDay}` : inPerson(m) && !pt.around && !declared.has(m.path?.[pt.path.id]?.stage ?? 0) ? ` · ${c.notAround}` : ''}
+                    {!opensNow(m, pt.path.id, pt.doneEver) ? ` · ${c.opensAfter}` : ''}
                   </span>
                 </span>
                 <span class="chev" aria-hidden="true">

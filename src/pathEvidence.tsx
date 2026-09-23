@@ -1,6 +1,6 @@
 import { moveById, type PathId } from './catalogue'
 import { copy } from './copy'
-import { allCheckIns, db } from './db'
+import { allCheckIns, db, getSettings } from './db'
 import { fill } from './format'
 import { useLive } from './live'
 import { repComparisons } from './pathLearning'
@@ -19,7 +19,10 @@ export function PathEvidence() {
   const offers = useLive(() => db.offers.toArray(), [])
   const outcomes = useLive(() => db.outcomes.toArray(), [])
   const checkins = useLive(allCheckIns, [])
-  if (!aims || !offers || !outcomes || !checkins) return null
+  const settings = useLive(getSettings, [])
+  if (!aims || !offers || !outcomes || !checkins || !settings) return null
+  // A faith talk is not counted on screen while the faith family is hidden (Rule 10).
+  const shown = (moveId: string) => !(settings.hideFaith && moveById(moveId).hiddenWith === 'faith')
   const pathAims = aims.filter((a) => a.kind === 'path' && a.path)
   const ids = [...new Set(pathAims.map((a) => a.path as PathId))]
   if (!ids.length) return null
@@ -31,7 +34,7 @@ export function PathEvidence() {
         const path = pathById(id)
         const converted = pathAims.some((a) => a.path === id && a.convertedFrom === 'person')
         const entries = pathEntries(id, offers, outcomes, converted)
-        const counts = countsByRep(entries)
+        const counts = countsByRep(entries).filter((r) => shown(r.moveId))
         const compared = new Map(repComparisons(entries, checkins).map((r) => [r.moveId, r]))
         return (
           <div key={id} class="card pad" data-testid="path-evidence-reps">

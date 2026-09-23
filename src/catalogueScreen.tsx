@@ -1,4 +1,4 @@
-import { extensionPrompt, families, filterTags, isParked, isPathOnly, isProposed, learnedTags, moves, movesInFamily, pathReps, paths, proposals, research, type Move, type Path, type Source } from './catalogue'
+import { extensionPrompt, families, filterTags, isParked, isPathOnly, isProposed, learnedTags, type Move, moves, movesInFamily, type Path, paths, proposals, repsIntroducedAt, research, type Source } from './catalogue'
 import { cardById, gradeWord } from './library'
 import { blockAt } from './blocks'
 import { copy } from './copy'
@@ -105,7 +105,12 @@ function MoveCard({ m, names }: { m: Move; names: Map<string, string> }) {
   )
 }
 
-/** One rep as a path shows it: whether it moves the stage, where it happens, the cue, the crutch, when it is done, and any limit on it. */
+/** A stage's name on a path. */
+function stageName(path: Path, n: number): string {
+  return path.stages.find((s) => s.n === n)?.name ?? String(n)
+}
+
+/** One rep as a path shows it: whether it moves the stage, where it happens, the stages it spans, whether it waits for others, the cue, the crutch, when it is done, and any limit on it. */
 function PathRep({ m, path }: { m: Move; path: Path }) {
   const c = copy.catalogue.paths
   const place = m.path?.[path.id]
@@ -118,8 +123,16 @@ function PathRep({ m, path }: { m: Move; path: Path }) {
         {place?.advances ? c.advances : c.movesNothing}
         {m.settings?.length ? ` · ${c.where}: ${m.settings.map((k) => c.settingNames[k]).join(', ')}` : ''}
         {m.channel ? ` · ${c.channel}: ${path.channels?.find((ch) => ch.id === m.channel)?.name ?? m.channel}` : ''}
+        {place?.through ? ` · ${fill(c.spans, { first: stageName(path, place.stage), last: stageName(path, place.through) })}` : ''}
+        {place?.onDate ? ` · ${c.onDate}` : ''}
+        {m.hiddenWith === 'faith' ? ` · ${c.faithHidden}` : ''}
         {isProposed(m) ? ` · ${copy.catalogue.proposed}` : ''}
       </p>
+      {place?.after && (
+        <p class="move-meta" data-testid="path-rep-after">
+          {fill(c.opensAfter, { reps: place.after.map((id) => moves.find((x) => x.id === id)?.name ?? id).join(', ') })}
+        </p>
+      )}
       {m.cue && (
         <p class="move-meta">
           {c.cue}: {m.cue}
@@ -146,7 +159,7 @@ function PathSection({ path }: { path: Path }) {
       </h2>
       <p class="note">{path.what}</p>
       {path.stages.map((st) => {
-        const reps = pathReps(path.id, st.n)
+        const reps = repsIntroducedAt(path.id, st.n)
         const acts = (path.acts ?? []).filter((a) => a.stage === st.n)
         return (
           <div key={st.n} class="card pad" data-testid="path-stage">
@@ -175,6 +188,16 @@ function PathSection({ path }: { path: Path }) {
                 {a.help && (
                   <p class="calc-line">
                     {c.help}: {a.help}
+                  </p>
+                )}
+                {a.parts && (
+                  <p class="calc-line" data-testid="path-act-parts">
+                    {c.parts}: {a.parts.map((pt) => `${pt.name}. ${pt.prompt}`).join(' ')}
+                  </p>
+                )}
+                {a.considerations && (
+                  <p class="calc-line" data-testid="path-act-considerations">
+                    {c.considerations}: {a.considerations.map((x) => `${x.text} (${c.basis[x.basis]}: ${x.source})`).join(' ')}
                   </p>
                 )}
                 <SourceLine s={a.source} />

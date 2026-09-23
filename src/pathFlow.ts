@@ -1,6 +1,6 @@
-import { blockAt, dayKey, type Block } from './blocks'
+import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { moveById, type PathId } from './catalogue'
-import { db, type Aim, type MonthlyCheck, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind } from './db'
+import { db, type Aim, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
 import { keysOf, planFor } from './aims'
 import { pathById, pathKey, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
 
@@ -140,23 +140,64 @@ export function reflections(path?: PathId): Promise<Reflection[]> {
   return path ? db.reflections.where('path').equals(path).toArray() : db.reflections.toArray()
 }
 
+/** Where a note belongs: the step a decide-don't-slide note is written before, or the part of the values note or the monthly reflection. */
+export interface NotePlace {
+  step?: PartnerStep
+  part?: ValuesPart | MonthlyPart
+}
+
 /**
- * A private note, kept whole. Your values and non-negotiables are one note, rewritten in place; a
- * decide-don't-slide note is one per step; a reflection is a new dated note each time. An empty
- * note removes the values or step note.
+ * A private note, kept whole. Each part of your values note is one note, rewritten in place; a
+ * decide-don't-slide note is one per step; each part of the monthly reflection is one note a month,
+ * rewritten in place within its month; a reflection is a new dated note each time. An empty note
+ * removes the one it would have replaced.
  */
-export function saveReflection(path: PathId, kind: ReflectionKind, text: string, step?: PartnerStep, now: Date = new Date()): Promise<void> {
+export function saveReflection(path: PathId, kind: ReflectionKind, text: string, place: NotePlace = {}, now: Date = new Date()): Promise<void> {
   return db.transaction('rw', db.reflections, async () => {
     const at = now.toISOString()
+    const day = dayKey(now)
     const body = text.trim()
-    const existing = kind === 'reflection' ? undefined : (await db.reflections.where('path').equals(path).filter((r) => r.kind === kind && (kind !== 'decide' || r.step === step)).first())
+    const same = (r: Reflection) =>
+      r.kind === kind &&
+      (kind !== 'decide' || r.step === place.step) &&
+      ((kind !== 'values' && kind !== 'monthly') || r.part === place.part) &&
+      (kind !== 'monthly' || r.day.slice(0, 7) === day.slice(0, 7))
+    const existing = kind === 'reflection' ? undefined : await db.reflections.where('path').equals(path).filter(same).first()
     if (!body) {
       if (existing?.id !== undefined) await db.reflections.delete(existing.id)
       return
     }
-    if (existing?.id !== undefined) await db.reflections.update(existing.id, { text: body, updatedAt: at, day: dayKey(now) })
-    else await db.reflections.add({ path, kind, ...(step ? { step } : {}), day: dayKey(now), text: body, createdAt: at, updatedAt: at })
+    if (existing?.id !== undefined) await db.reflections.update(existing.id, { text: body, updatedAt: at, day })
+    else await db.reflections.add({ path, kind, ...(place.step ? { step: place.step } : {}), ...(place.part ? { part: place.part } : {}), day, text: body, createdAt: at, updatedAt: at })
   })
+}
+
+/** Your own record before a decide-don't-slide note: shown read-only, as you wrote it, never summarised or counted. */
+export interface DecideRecord {
+  /** Your values note, part by part, and a note written before the parts, if there is one. */
+  values: Reflection[]
+  /** Your monthly reflections of the last three months, newest first. */
+  monthly: Reflection[]
+  /** Your reflections of the last three months, newest first, the latest ten. */
+  notes: Reflection[]
+  /** Your notes before the other steps, newest first. */
+  decided: Reflection[]
+}
+
+/** How far back the record before a decision reaches, in days. */
+export const RECORD_DAYS = 92
+
+/** The record shown before the note for a step: chosen by kind and date alone, never by what it says. */
+export function recordBeforeDeciding(all: readonly Reflection[], step: PartnerStep, today: string): DecideRecord {
+  const since = addDays(today, -RECORD_DAYS)
+  const newest = (a: Reflection, b: Reflection) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.updatedAt < b.updatedAt ? 1 : -1)
+  const order: readonly string[] = ['nonNegotiables', 'preferences', 'partnerIWantToBe']
+  return {
+    values: all.filter((r) => r.kind === 'values').sort((a, b) => order.indexOf(a.part ?? '') - order.indexOf(b.part ?? '')),
+    monthly: all.filter((r) => r.kind === 'monthly' && r.day >= since).sort(newest),
+    notes: all.filter((r) => r.kind === 'reflection' && r.day >= since).sort(newest).slice(0, 10),
+    decided: all.filter((r) => r.kind === 'decide' && r.step !== step).sort(newest),
+  }
 }
 
 export async function deleteReflection(id: number): Promise<void> {
@@ -182,8 +223,8 @@ export function checkShowsHelp(answers: MonthlyCheck['answers']): boolean {
 
 /**
  * The stage from which one of the Partner path's notes or checks is yours, as the catalogue places
- * it: the monthly check from Dating (owner, 2026-09-23), the values and decide-don't-slide notes
- * from Deciding. Each stays through every later stage.
+ * it: the values note from the start; a note before each step, the monthly reflection and the
+ * monthly check from Dating (owner, 2026-09-23). Each stays through every later stage.
  */
 export function actOpensAt(id: string): number {
   return pathById('partner').acts?.find((a) => a.id === id)?.stage ?? Number.POSITIVE_INFINITY
@@ -196,6 +237,14 @@ export function actOpensAt(id: string): number {
  */
 export function checkPromptShown(stage: number, lightOnly: boolean, checks: readonly MonthlyCheck[], today: string): boolean {
   return stage >= actOpensAt('monthly-check') && !lightOnly && checkThisMonth(checks, today) === null
+}
+
+/**
+ * Whether the Partner card says this month's reflection is open: from the stage it opens at, none
+ * of it written this month, and never on a hard day, when no evaluative prompt is shown.
+ */
+export function reflectionPromptShown(stage: number, lightOnly: boolean, notes: readonly Reflection[], today: string): boolean {
+  return stage >= actOpensAt('monthly-reflection') && !lightOnly && !notes.some((r) => r.kind === 'monthly' && r.day.slice(0, 7) === today.slice(0, 7))
 }
 
 export function monthlyChecks(): Promise<MonthlyCheck[]> {

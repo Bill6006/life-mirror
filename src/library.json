@@ -3086,7 +3086,7 @@
       }
     ],
     "caveats": "Mostly mothers; the timing of introductions is expert opinion.",
-    "app": "General guidance for a parent in the Partner path’s text; the path never schedules an introduction.",
+    "app": "General guidance for a parent in the Partner path’s text, and the considerations before introducing a partner to your child; the path never schedules an introduction.",
     "reviewed": "2026-09-23",
     "status": "admitted"
   },
@@ -3189,7 +3189,7 @@
       }
     ],
     "caveats": "Stated, not observed, choices.",
-    "app": "The private values-and-non-negotiables note at the Deciding stage, typed by you and read by you.",
+    "app": "The values note in three parts, from the start of the Partner path: a few true non-negotiables, preferences held loosely, and the partner you want to be.",
     "reviewed": "2026-09-23",
     "status": "admitted"
   },
@@ -3255,7 +3255,7 @@
       }
     ],
     "caveats": "The general cohabitation effect is contested; selection is part of it.",
-    "app": "The decide-don’t-slide note before each step at the Deciding stage.",
+    "app": "The decide-don’t-slide notes, from the Dating stage on, each written with your own record in front of you.",
     "reviewed": "2026-09-23",
     "status": "admitted"
   },
@@ -3399,7 +3399,7 @@
       }
     ],
     "caveats": "Modest effects in the experiment.",
-    "app": "The thank-them-specifically rep at the Building stage.",
+    "app": "Thanking them for one specific thing, from the Dating stage on.",
     "reviewed": "2026-09-23",
     "status": "admitted"
   },
@@ -3449,8 +3449,8 @@
         "doi": "10.1177/0956797612474938"
       }
     ],
-    "caveats": "One study; replication attempts are worth watching.",
-    "app": "The reappraise-a-disagreement rep at the Building stage, a few times a year.",
+    "caveats": "One trial, in 120 married couples: never replicated and never tested in dating couples. Reading a partner kindly helped healthy marriages and harmed troubled ones, so it is not for something serious or recurring.",
+    "app": "The reappraise-a-disagreement rep, from the Dating stage on, labelled as one trial in married couples and guarded against explaining away what keeps happening.",
     "reviewed": "2026-09-23",
     "status": "admitted"
   },
@@ -3556,7 +3556,463 @@
       }
     ],
     "caveats": "Non-randomised control; small reactivity signals.",
-    "app": "The Partner path asks about one moment and your own part in it, never a daily verdict on the relationship.",
+    "app": "The monthly reflection asks about one moment at a time and your own part in it, once a month, and never a daily verdict.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "goal-mutuality",
+    "claim": "Partners whose goals fit report more satisfaction, and among people who were dating, seeing their relationship goals as shared went with a better relationship.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "a meta-analysis of 49 samples: goal congruence r = .43 with satisfaction, goal support .28, goal conflict −.29 (Toma 2022); in 245 dating people and 78 diary couples, perceived mutuality of relationship goals predicted quality through a sense of progress (Avivi 2009); newly dating partners who gave up clashing goals grew more committed, but women were less satisfied when the partner was the one giving ground (Gere and Impett 2017)",
+    "population": "couples of all kinds; dating samples in two studies",
+    "sources": [
+      {
+        "cite": "Toma et al. (2022). The role of goal interdependence in couples’ relationship satisfaction: A meta-analysis. Journal of Social and Personal Relationships, 40(6), 1740–1769.",
+        "doi": "10.1177/02654075221128994"
+      },
+      {
+        "cite": "Avivi et al. (2009). Linking Relationship Quality to Perceived Mutuality of Relationship Goals and Perceived Goal Progress. Journal of Social and Clinical Psychology, 28(2), 137–164.",
+        "doi": "10.1521/jscp.2009.28.2.137"
+      },
+      {
+        "cite": "Gere and Impett (2017). Shifting priorities. Journal of Social and Personal Relationships, 35(6), 793–810.",
+        "doi": "10.1177/0265407517698851"
+      }
+    ],
+    "caveats": "Correlational; goals range from daily plans to life goals; no study tests whether talking about them changes what follows.",
+    "app": "The direction talks at the Dating stage: learning where your lives point, never a test either of you passes.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "relationship-talk-avoided",
+    "claim": "Avoiding talk about where a relationship stands comes with more uncertainty, and weeks later with less dedication and satisfaction.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "244 emerging adults: avoiding relationship talk followed uncertainty seven weeks earlier and predicted lower dedication and satisfaction seven weeks later (Clifford 2017); in courting couples, avoiding the talk raised the next week’s uncertainty (Knobloch and Theiss 2011); the state of the relationship was the most common taboo topic (Baxter and Wilmot 1985)",
+    "population": "dating couples and emerging adults",
+    "sources": [
+      {
+        "cite": "Clifford et al. (2017). Testing the impact of sliding versus deciding in cyclical and noncyclical relationships. Personal Relationships, 24(1), 223–238.",
+        "doi": "10.1111/pere.12179"
+      },
+      {
+        "cite": "Knobloch and Theiss (2011). Relational Uncertainty and Relationship Talk within Courtship: A Longitudinal Actor–Partner Interdependence Model. Communication Monographs, 78(1), 3–26.",
+        "doi": "10.1080/03637751.2010.542471"
+      },
+      {
+        "cite": "Baxter and Wilmot (1985). Taboo Topics in Close Relationships. Journal of Social and Personal Relationships, 2(3), 253–269.",
+        "doi": "10.1177/0265407585023002"
+      }
+    ],
+    "caveats": "Self-report over weeks; sliding was measured as avoiding the talk.",
+    "app": "Why the path offers the direction talks during Dating instead of leaving them to chance.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "disclosure-pacing",
+    "claim": "Closeness grows through disclosure that deepens step by step and goes both ways; in one study a very personal disclosure early in a first conversation was liked less than the same one made later.",
+    "domain": "social",
+    "tags": [
+      "conversation",
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "turn-taking reciprocal disclosure brought more liking and closeness than one-sided disclosure (Sprecher and Treger 2015); an intimate disclosure early in a ten-minute conversation was liked less than one made late (Wortman 1976); gradually escalating questions built closeness between strangers (Aron 1997)",
+    "population": "strangers and new acquaintances in laboratory conversations",
+    "sources": [
+      {
+        "cite": "Sprecher and Treger (2015). The benefits of turn‐taking reciprocal self‐disclosure in get‐acquainted interactions. Personal Relationships, 22(3), 460–475.",
+        "doi": "10.1111/pere.12090"
+      },
+      {
+        "cite": "Wortman et al. (1976). Self-disclosure: An attributional perspective. Journal of Personality and Social Psychology, 33(2), 184–191.",
+        "doi": "10.1037/0022-3514.33.2.184"
+      },
+      {
+        "cite": "Aron et al. (1997). The Experimental Generation of Interpersonal Closeness: A Procedure and Some Preliminary Findings. Personality and Social Psychology Bulletin, 23(4), 363–377.",
+        "doi": "10.1177/0146167297234003"
+      }
+    ],
+    "caveats": "Laboratory conversations between strangers; no study says when a couple should raise a given topic.",
+    "app": "The lighter direction talks come first, and the weightier ones join the app’s picks once they are done.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "children-agreement",
+    "claim": "When partners disagree about having a child, fewer children follow, and births one partner did not intend go with more separation and divorce.",
+    "domain": "parenting",
+    "tags": [
+      "relationship",
+      "parenting"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "couple-level panels: disagreement pushed both partners toward no child (Thomson 1997); half the couples who disagreed about a first child had one, and a disagreement about another child usually meant none (Testa and Bolano 2021); first births the father did not intend raised the risk of divorce (Stykes and Guzzo 2020)",
+    "population": "married and cohabiting couples in the United States and Australia",
+    "sources": [
+      {
+        "cite": "Testa and Bolano (2021). When partners’ disagreement prevents childbearing: A couple-level analysis in Australia. Demographic Research, 44, 811–838.",
+        "doi": "10.4054/demres.2021.44.33"
+      },
+      {
+        "cite": "Thomson (1997). Couple childbearing desires, intentions, and births. Demography, 34(3), 343–354.",
+        "doi": "10.2307/3038288"
+      },
+      {
+        "cite": "Stykes and Guzzo (2020). Unintended Childbearing and Marital Instability: An Emphasis on Couples’ Intentions. Journal of Divorce & Remarriage, 61(7), 504–524.",
+        "doi": "10.1080/10502556.2020.1768494"
+      }
+    ],
+    "caveats": "The outcome is mostly births, not the relationship; no study follows dating couples’ agreement about children to a later breakup.",
+    "app": "The children-and-family talk at the Dating stage, and parenting roles before moving in.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "money-talk",
+    "claim": "An earlier first talk about money went with better money communication and relationship quality, and in married and cohabiting couples money disagreements predicted divorce and breakup more than other disagreements.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "1,950 US emerging adults: an earlier first talk about money went with better money communication and, through it, higher relationship quality, and with slightly more money conflict (Saxey 2022); 4,574 married couples: money disagreements predicted divorce more than other disagreements, through how conflicts were handled (Dew, Britt and Huston 2012); cohabiting partners’ money disagreements predicted breakup (Dew 2011)",
+    "population": "emerging adults in relationships; married and cohabiting couples",
+    "sources": [
+      {
+        "cite": "Saxey et al. (2022). The Sooner, the Better? Couples' First Financial Discussion, Relationship Quality, and Financial Conflict in Emerging Adulthood. Journal of Financial Therapy, 13(1).",
+        "doi": "10.4148/1944-9771.1299"
+      },
+      {
+        "cite": "Dew et al. (2012). Examining the Relationship Between Financial Issues and Divorce. Family Relations, 61(4), 615–628.",
+        "doi": "10.1111/j.1741-3729.2012.00715.x"
+      },
+      {
+        "cite": "Dew (2011). Financial Issues and Relationship Outcomes Among Cohabiting Individuals. Family Relations, 60(2), 178–190.",
+        "doi": "10.1111/j.1741-3729.2010.00641.x"
+      }
+    ],
+    "caveats": "The talk-timing study is one survey at one time; the rest are married or cohabiting couples.",
+    "app": "The work, money and home talk at Dating, and money together before moving in.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "faith-fit",
+    "claim": "Among dating and cohabiting adults, shared beliefs and practice go with more satisfaction; in marriages, gaps in practice go with more conflict and divorce, and how faith is talked about matters.",
+    "domain": "faith",
+    "tags": [
+      "faith",
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "468 unmarried adults: shared beliefs, joint attendance and seeing the relationship as sacred went with higher satisfaction (Henderson, Ellison and Glenn 2017); 4,587 married couples: divorce risk was lowest when both attended and higher when attendance differed (Call and Heaton 1997); sharing spiritual views predicted less conflict, and using faith to claim the upper hand predicted stalemate (Mahoney, Pargament and DeMaris 2021)",
+    "population": "unmarried adults; married couples",
+    "sources": [
+      {
+        "cite": "Henderson et al. (2017). Religion and Relationship Quality Among Cohabiting and Dating Couples. Journal of Family Issues, 39(7), 1904–1932.",
+        "doi": "10.1177/0192513x17728982"
+      },
+      {
+        "cite": "Call and Heaton (1997). Religious Influence on Marital Stability. Journal for the Scientific Study of Religion, 36(3), 382.",
+        "doi": "10.2307/1387856"
+      },
+      {
+        "cite": "Mahoney et al. (2021). Spiritual intimacy, spiritual one-upmanship, and marital conflict across the transition to parenthood. Journal of Family Psychology, 35(4), 552–558.",
+        "doi": "10.1037/fam0000795"
+      }
+    ],
+    "caveats": "Correlational and shaped by who chooses whom; whether denomination or practice matters more is contested.",
+    "app": "The faith talks, shown only while the faith family is shown; never a requirement of anyone.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "feeling-appreciated",
+    "claim": "Feeling appreciated by a partner goes with appreciating them in turn, being more responsive and committed, and staying together; your own gratitude predicts rising commitment whatever your partner’s.",
+    "domain": "social",
+    "tags": [
+      "gratitude",
+      "relationship"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a multimethod series: people who felt appreciated appreciated their partners more, were more responsive and committed, and more likely to remain together over time (Gordon 2012); seeing a partner invest brought gratitude and then commitment (Joel 2013); in six longitudinal couple datasets (562 couples), a person’s own gratitude predicted rising commitment regardless of the partner’s (Park 2023)",
+    "population": "romantic couples, dating and married",
+    "sources": [
+      {
+        "cite": "Gordon et al. (2012). To have and to hold: Gratitude promotes relationship maintenance in intimate bonds. Journal of Personality and Social Psychology, 103(2), 257–274.",
+        "doi": "10.1037/a0028723"
+      },
+      {
+        "cite": "Joel et al. (2013). The Things You Do for Me. Personality and Social Psychology Bulletin, 39(10), 1333–1345.",
+        "doi": "10.1177/0146167213497801"
+      },
+      {
+        "cite": "Park et al. (2023). Differing Levels of Gratitude Between Romantic Partners: Concurrent and Longitudinal Links With Satisfaction and Commitment in Six Dyadic Datasets. Personality Science, 4(1).",
+        "doi": "10.5964/ps.10537"
+      }
+    ],
+    "caveats": "Mostly correlational; the chain from appreciation to staying together is not an experiment.",
+    "app": "Thanking them for one specific thing, from the Dating stage on.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "relationship-over-time",
+    "claim": "Whether a dating relationship lasts is predicted by how it works, commitment, love and closeness, far more than by personality, and swings in satisfaction or in how committed the partner seems predict breakup beyond their average.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "monitoring"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a meta-analysis of 137 studies (37,761 people): commitment, love, inclusion of the other in the self and dependence predicted breakup most, personality little (Le 2010); fluctuation in satisfaction predicted breakup beyond its level (Arriaga 2001); fluctuation in perceived partner commitment did too (Arriaga 2006)",
+    "population": "people in dating relationships",
+    "sources": [
+      {
+        "cite": "Le et al. (2010). Predicting nonmarital romantic relationship dissolution: A meta-analytic synthesis. Personal Relationships, 17(3), 377–390.",
+        "doi": "10.1111/j.1475-6811.2010.01285.x"
+      },
+      {
+        "cite": "Arriaga (2001). The ups and downs of dating: Fluctuations in satisfaction in newly formed romantic relationships. Journal of Personality and Social Psychology, 80(5), 754–765.",
+        "doi": "10.1037/0022-3514.80.5.754"
+      },
+      {
+        "cite": "Arriaga et al. (2006). Relationship perceptions and persistence: Do fluctuations in perceived partner commitment undermine dating relationships?. Journal of Personality and Social Psychology, 91(6), 1045–1065.",
+        "doi": "10.1037/0022-3514.91.6.1045"
+      }
+    ],
+    "caveats": "Prediction, not cause; one moment’s rating says little on its own, and the app computes nothing from yours.",
+    "app": "The monthly reflection keeps your own record of how it works, month by month, in words.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "memory-drifts",
+    "claim": "People remember their relationship’s past to fit how they feel now, and their own ratings at the time predicted its future better than their forecasts did.",
+    "domain": "decision",
+    "tags": [
+      "relationship",
+      "monitoring"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "dating partners’ recall of earlier ratings drifted toward their current impressions (McFarland and Ross 1987); students’ forecasts about their dating relationships were overly optimistic, while their own quality ratings predicted stability a year on best (MacDonald and Ross 1999); newlyweds recalled a decline and a recent improvement where their ratings showed a steady decline (Karney and Frye 2002)",
+    "population": "dating partners and newlyweds",
+    "sources": [
+      {
+        "cite": "McFarland and Ross (1987). The Relation between Current Impressions and Memories of Self and Dating Partners. Personality and Social Psychology Bulletin, 13(2), 228–238.",
+        "doi": "10.1177/0146167287132008"
+      },
+      {
+        "cite": "MacDonald and Ross (1999). Assessing the Accuracy of Predictions about Dating Relationships: How and Why Do Lovers’ Predictions Differ from those Made by Observers?. Personality and Social Psychology Bulletin, 25(11), 1417–1429.",
+        "doi": "10.1177/0146167299259007"
+      },
+      {
+        "cite": "Karney and Frye (2002). \"But we've been getting better lately\": Comparing prospective and retrospective views of relationship development. Journal of Personality and Social Psychology, 82(2), 222–238.",
+        "doi": "10.1037/0022-3514.82.2.222"
+      }
+    ],
+    "caveats": "No study compares deciding from a written record with deciding from memory.",
+    "app": "Before each decide-don’t-slide note, your own record is shown read-only, as you wrote it.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "reflection-light",
+    "claim": "A little reflection on a relationship helped in two trials, writing about a dating relationship and one session discussing films about couples, while a daily prompt did nothing.",
+    "domain": "social",
+    "tags": [
+      "writing",
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "86 dating couples: the partner who wrote about the relationship for three days made staying together at three months likelier (Slatcher and Pennebaker 2006); 174 engaged or newly married couples: one guided session of discussing relationship films matched two skills courses on breakup at three years among completers (Rogge 2013); 461 students: a daily text for 28 days brought no gains (Hatch 2019)",
+    "population": "dating, engaged and newly married couples; college students",
+    "sources": [
+      {
+        "cite": "Slatcher and Pennebaker (2006). How Do I Love Thee? Let Me Count the Words. Psychological Science, 17(8), 660–664.",
+        "doi": "10.1111/j.1467-9280.2006.01762.x"
+      },
+      {
+        "cite": "Rogge et al. (2013). Is skills training necessary for the primary prevention of marital distress and dissolution? A 3-year experimental study of three interventions. Journal of Consulting and Clinical Psychology, 81(6), 949–961.",
+        "doi": "10.1037/a0034209"
+      },
+      {
+        "cite": "Hatch et al. (2019). Texts 4 Romantic Relationships – A Randomized Controlled Trial. Journal of Couple & Relationship Therapy, 19(2), 115–135.",
+        "doi": "10.1080/15332691.2019.1667936"
+      }
+    ],
+    "caveats": "Single trials, not replicated; one compared completers; no trial varies how often to reflect.",
+    "app": "The monthly reflection: once a month, optional, a few lines, never a score.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "momentum-and-doubts",
+    "claim": "People lean toward letting relationships go on, staying partly for the partner’s sake and settling more when they fear being single, while doubts before marrying and commitment that runs unequal both predict trouble.",
+    "domain": "decision",
+    "tags": [
+      "relationship",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "1,348 people and a preregistered replication: those who believed their partner depended on them were less likely to start a breakup (Joel 2018); fear of being single predicted settling for less (Spielmann 2013); women’s premarital doubts predicted divorce four years on (Lavner, Karney and Bradbury 2012); in 315 unmarried couples, lopsided commitment went with more breakups (Stanley 2016)",
+    "population": "single, dating and newly married people",
+    "sources": [
+      {
+        "cite": "Joel et al. (2018). How interdependent are stay/leave decisions? On staying in the relationship for the sake of the romantic partner. Journal of Personality and Social Psychology, 115(5), 805–824.",
+        "doi": "10.1037/pspi0000139"
+      },
+      {
+        "cite": "Spielmann et al. (2013). Settling for less out of fear of being single. Journal of Personality and Social Psychology, 105(6), 1049–1073.",
+        "doi": "10.1037/a0034628"
+      },
+      {
+        "cite": "Lavner et al. (2012). Do cold feet warn of trouble ahead? Premarital uncertainty and four-year marital outcomes. Journal of Family Psychology, 26(6), 1012–1017.",
+        "doi": "10.1037/a0029912"
+      },
+      {
+        "cite": "Stanley et al. (2016). Asymmetrically committed relationships. Journal of Social and Personal Relationships, 34(8), 1241–1259.",
+        "doi": "10.1177/0265407516672013"
+      }
+    ],
+    "caveats": "Mostly correlational; doubts were recalled after the wedding; one of the settling studies carries a 2018 correction to its scale.",
+    "app": "The decide-don’t-slide notes, written with your own record in front of you.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "child-introduction",
+    "claim": "Little is known about when to introduce a partner to a child; children who had grown close to a parent’s dating partner struggled more when it ended, and a close bond between parent and child softened a parent’s dating.",
+    "domain": "parenting",
+    "tags": [
+      "parenting",
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "270 divorced mothers and 170 children: breakups had no effect overall, but children close to the mother’s partner showed more anxiety and withdrawal when it ended (Langlais 2018); stepfathers’ friendship-building went with better step-relationships and marriages (Ganong 2019); a review of 37 studies tied close parent–child bonds and support for the step-relationship to better child outcomes (Sanner 2022)",
+    "population": "divorced mothers and their children; stepfamilies",
+    "sources": [
+      {
+        "cite": "Langlais et al. (2018). The Impact of Mothers’ Post-Divorce Dating Breakups on Children’s Problem Behaviors. Journal of Child and Family Studies, 27(8), 2643–2655.",
+        "doi": "10.1007/s10826-018-1095-3"
+      },
+      {
+        "cite": "Ganong et al. (2019). Stepfathers’ affinity-seeking with stepchildren, stepfather-stepchild relationship quality, marital quality, and stepfamily cohesion among stepfathers and mothers. Journal of Family Psychology, 33(5), 521–531.",
+        "doi": "10.1037/fam0000518"
+      },
+      {
+        "cite": "Sanner et al. (2022). Effective parenting in stepfamilies: Empirical evidence of what works. Family Relations, 71(3), 884–899.",
+        "doi": "10.1111/fare.12703"
+      }
+    ],
+    "caveats": "Almost all from mothers after divorce, nothing on fathers raising a child; when to introduce is expert opinion.",
+    "app": "Introducing them to your child: a deliberate decision point, never scheduled or recommended by the app.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "kind-reading-limits",
+    "claim": "Reading a partner’s behaviour kindly helped healthy marriages and was followed by steeper declines in troubled ones.",
+    "domain": "social",
+    "tags": [
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "251 newlywed couples: kind interpretations of a partner’s behaviour predicted better outcomes where problems were mild, and steeper declines where they were frequent or severe",
+    "population": "newlywed couples",
+    "sources": [
+      {
+        "cite": "McNulty et al. (2008). Benevolent cognitions as a strategy of relationship maintenance: \"Don't sweat the small stuff\"....But it is not all small stuff. Journal of Personality and Social Psychology, 94(4), 631–646.",
+        "doi": "10.1037/0022-3514.94.4.631"
+      }
+    ],
+    "caveats": "One sample of newlyweds.",
+    "app": "The reappraisal rep’s guard: for ordinary disagreements, never for explaining away something serious or recurring.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "money-together",
+    "claim": "Couples assigned to pool their money kept their relationship quality over two years while other couples’ declined, and pooling goes with satisfaction across many studies.",
+    "domain": "decision",
+    "tags": [
+      "relationship",
+      "choice"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "effect": "a randomised trial of engaged and newly married couples: those assigned a joint account kept their relationship quality over two years (Olson 2023); six studies (N = 38,534): pooling finances went with satisfaction (Gladstone 2022)",
+    "population": "engaged and newly married couples; adults in relationships",
+    "sources": [
+      {
+        "cite": "Olson et al. (2023). Common Cents: Bank Account Structure and Couples’ Relationship Dynamics. Journal of Consumer Research, 50(4), 704–721.",
+        "doi": "10.1093/jcr/ucad020"
+      },
+      {
+        "cite": "Gladstone et al. (2022). Pooling finances and relationship satisfaction. Journal of Personality and Social Psychology, 123(6), 1293–1314.",
+        "doi": "10.1037/pspi0000388"
+      }
+    ],
+    "caveats": "One trial; the app never prescribes how a couple organises money.",
+    "app": "Evidence beside talking money through before moving in.",
+    "reviewed": "2026-09-23",
+    "status": "admitted"
+  },
+  {
+    "id": "fairness-and-appreciation",
+    "claim": "Seeing the split of housework as unfair lowers both partners’ happiness, feeling appreciated removes much of that, and unmet expectations about sharing childcare lower satisfaction after a birth.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "gratitude"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "couples where both worked: perceived unfairness lowered happiness for both and raised divorce odds for wives (Frisco and Williams 2003); 2,193 cohabiting people: the harm of an unequal division disappeared when people felt appreciated (Gordon 2022); violated expectations about childcare predicted new parents’ satisfaction better than the actual division did (Biehle and Mickelson 2012)",
+    "population": "married, cohabiting and new-parent couples",
+    "sources": [
+      {
+        "cite": "Frisco and Williams (2003). Perceived Housework Equity, Marital Happiness, and Divorce in Dual-Earner Households. Journal of Family Issues, 24(1), 51–73.",
+        "doi": "10.1177/0192513X02238520"
+      },
+      {
+        "cite": "Gordon et al. (2022). Feeling Appreciated Buffers Against the Negative Effects of Unequal Division of Household Labor on Relationship Satisfaction. Psychological Science, 33(8), 1313–1327.",
+        "doi": "10.1177/09567976221081872"
+      },
+      {
+        "cite": "Biehle and Mickelson (2012). First-time parents' expectations about the division of childcare and play. Journal of Family Psychology, 26(1), 36–45.",
+        "doi": "10.1037/a0026608"
+      }
+    ],
+    "caveats": "Married and cohabiting couples; correlational.",
+    "app": "Talking through a normal week living together, before moving in.",
     "reviewed": "2026-09-23",
     "status": "admitted"
   },

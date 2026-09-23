@@ -75,6 +75,8 @@ interface PathRecord {
   ctx: DayContext | null
   marks: PathMark[]
   online: boolean
+  /** The faith family is hidden: a path's faith talk is neither offered nor listed (Rule 10). */
+  faithHidden: boolean
   checkins: CheckIn[]
 }
 
@@ -92,14 +94,15 @@ async function pathRecord(day: string): Promise<PathRecord> {
     db.settings.get(1),
     db.checkins.where('day').equals(day).toArray(),
   ])
-  return { aims, offers, outcomes, ctx: ctx ?? null, marks, online: withDefaults(settings).partnerOnline, checkins }
+  const s = withDefaults(settings)
+  return { aims, offers, outcomes, ctx: ctx ?? null, marks, online: s.partnerOnline, faithHidden: s.hideFaith, checkins }
 }
 
 /** The paths on in this block, computed the one way their rows are: with their declarations, the online switch, and whether today reads hard. */
 function pathViews(r: PathRecord, day: string, now: Date): PathToday[] {
   const { block } = blockAt(now)
   const lightOnly = lightOnlyDay(r.checkins, day)
-  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, marks: r.marks, online: r.online, lightOnly }))
+  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, marks: r.marks, online: r.online, lightOnly, faithHidden: r.faithHidden }))
 }
 
 /**

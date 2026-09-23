@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isPathOnly, isProposed, liveMoves, moves, pathReps, paths, SETTING_KINDS, type Move, type Path } from './catalogue'
+import { isPathOnly, isProposed, liveMoves, moves, onStage, pathReps, paths, SETTING_KINDS, type Move, type Path } from './catalogue'
+import { MONTHLY_PARTS, VALUES_PARTS } from './db'
 import { NEGATED_OUTCOME, OUTCOME_WORDS } from './brainShared'
 import { cardById } from './library'
 import { candidatesFor, NOTHING, type Situation, type TodayState } from './offers'
@@ -17,7 +18,7 @@ function pathTexts(p: Path): string[] {
   const out = [p.what, p.counted, ...(p.parents ? [p.parents] : [])]
   for (const st of p.stages) out.push(st.what, st.notProgress)
   for (const ch of p.channels ?? []) out.push(ch.what)
-  for (const a of p.acts ?? []) out.push(a.name, a.what, ...(a.questions ?? []).map((q) => q.text))
+  for (const a of p.acts ?? []) out.push(a.name, a.what, ...(a.questions ?? []).map((q) => q.text), ...(a.parts ?? []).flatMap((x) => [x.name, x.prompt]), ...(a.considerations ?? []).map((x) => x.text))
   for (const m of pathReps(p.id)) out.push(m.name, m.what, m.cue ?? '', m.crutch ?? '', m.doneWhen ?? '', m.guardrail ?? '')
   return out
 }
@@ -45,6 +46,12 @@ describe('the two paths, as the plan names them', () => {
       for (const m of reps) {
         const place = m.path?.[p.id]
         expect(p.stages.some((s) => s.n === place?.stage), m.id).toBe(true)
+        // A rep spans stages only among those you declare, never among those the rule counts.
+        if (place?.through !== undefined) {
+          expect(place.through, m.id).toBeGreaterThan(place.stage)
+          expect(p.stages.some((s) => s.n === place.through), m.id).toBe(true)
+          for (let n = place.stage; n <= place.through; n++) expect(p.stages.find((s) => s.n === n)?.advance, `${m.id} at ${n}`).toBe('declared')
+        }
         expect(['people', 'charisma', 'partner'], m.id).toContain(m.family)
         expect(m.settings?.length, m.id).toBeGreaterThan(0)
         for (const k of m.settings ?? []) expect(SETTING_KINDS, m.id).toContain(k)
@@ -101,7 +108,7 @@ describe('what the paths say', () => {
       for (const m of pathReps(p.id)) {
         expect(m.doneWhen, m.id).toMatch(/^Done /)
         expect(m.doneWhen, m.id).not.toMatch(ANSWER)
-        if (m.guardrail) expect(m.doneWhen, m.id).toMatch(/whatever the answer|whatever they say/)
+        if (m.guardrail && /final/.test(m.guardrail)) expect(m.doneWhen, m.id).toMatch(/whatever the answer|whatever they say/)
       }
     }
     for (const id of ['partner-invite', 'say-interest-plainly', 'swap-numbers', 'online-propose-meeting', 'date-end-clearly']) {
@@ -119,17 +126,23 @@ describe('what the paths say', () => {
     expect(partner.excluded.map((e) => e.what)).toEqual(expect.arrayContaining(['Approaching strangers in the street', 'Reading signals to decide who is interested', 'Asking again after a no']))
   })
 
-  it('keeps the Partner path’s notes and checks as app content: the monthly check from Dating (owner, 2026-09-23), the rest from Deciding, with the check’s fixed help', () => {
+  it('keeps the Partner path’s notes and checks as app content: values from the start, the rest from Dating, the course at Deciding, with the check’s fixed help (owner, 2026-09-23)', () => {
     const acts = partner.acts ?? []
-    expect(acts.map((a) => a.id)).toEqual(['values-note', 'decide-dont-slide', 'monthly-check', 'relationship-education'])
+    expect(acts.map((a) => a.id)).toEqual(['values-note', 'decide-dont-slide', 'introducing-a-child', 'monthly-reflection', 'monthly-check', 'relationship-education'])
     const dating = partner.stages.find((s) => s.name === 'Dating')?.n
     const deciding = partner.stages.find((s) => s.name === 'Deciding')?.n
     expect(acts.map((a) => [a.id, a.stage])).toEqual([
-      ['values-note', deciding],
-      ['decide-dont-slide', deciding],
+      ['values-note', 1],
+      ['decide-dont-slide', dating],
+      ['introducing-a-child', dating],
+      ['monthly-reflection', dating],
       ['monthly-check', dating],
       ['relationship-education', deciding],
     ])
+    // The values note in three parts, and the monthly reflection in three, the parts the store keeps.
+    expect(acts.find((a) => a.id === 'values-note')?.parts?.map((x) => x.id)).toEqual([...VALUES_PARTS])
+    expect(acts.find((a) => a.id === 'monthly-reflection')?.parts?.map((x) => x.id)).toEqual([...MONTHLY_PARTS])
+    expect(acts.find((a) => a.id === 'values-note')?.what).toContain('about direction and conduct rather than traits')
     // Its questions concern someone you are dating, and every later stage says it stays yours.
     expect(partner.stages.find((s) => s.n === dating)?.what).toContain('monthly private check')
     expect(partner.stages.find((s) => s.n === deciding)?.what).not.toContain('monthly')
@@ -166,13 +179,80 @@ describe('what the paths say', () => {
   })
 })
 
+describe('the Partner revision: learning fit and choosing deliberately (owner, 2026-09-23)', () => {
+  const LIGHTER = ['talk-ordinary-week', 'talk-working-toward', 'talk-your-people']
+  const WEIGHTIER = ['talk-children-family', 'talk-faith', 'talk-work-money-home']
+  const PLANNING = ['plan-money-together', 'plan-a-week-together', 'plan-parenting-roles', 'plan-faith-at-home']
+  const rep = (id: string) => moves.find((m) => m.id === id) as Move
+
+  it('offers the lighter direction talks at Dating first, and the weightier ones once those are done', () => {
+    for (const id of [...LIGHTER, ...WEIGHTIER]) expect(rep(id).path?.partner?.stage, id).toBe(4)
+    for (const id of LIGHTER) expect(rep(id).path?.partner?.after, id).toBeUndefined()
+    for (const id of WEIGHTIER) expect(rep(id).path?.partner?.after, id).toEqual(LIGHTER)
+    for (const id of PLANNING) expect(rep(id).path?.partner?.stage, id).toBe(5)
+    // Every talk is your own act: ask, listen and say your own, whatever was said; none moves a stage.
+    for (const id of [...LIGHTER, ...WEIGHTIER, ...PLANNING]) {
+      expect(rep(id).path?.partner?.advances, id).toBe(false)
+      expect(rep(id).doneWhen, id).toMatch(/whatever (was said|you decided)/)
+      expect(rep(id).status, id).toBe('path')
+    }
+  })
+
+  it('keeps a faith talk with the faith family, and every other text free of faith', () => {
+    expect(moves.filter((m) => m.hiddenWith === 'faith').map((m) => m.id).sort()).toEqual(['plan-faith-at-home', 'talk-faith'])
+    for (const st of partner.stages) expect(st.what, st.name).not.toMatch(/faith/i)
+  })
+
+  it('offers a rep about a date on a declared date day, and the rest of Dating on any day', () => {
+    expect(pathReps('partner', 4).filter((m) => m.path?.partner?.onDate).map((m) => m.id).sort()).toEqual(['date-ask-and-listen', 'date-attention', 'date-end-clearly', 'date-share-something-real'])
+    for (const id of [...LIGHTER, ...WEIGHTIER, 'thank-them-specifically', 'reappraise-a-conflict']) expect(rep(id).path?.partner?.onDate, id).toBeUndefined()
+  })
+
+  it('offers thanks and reappraisal from Dating through Keeping, reappraisal labelled for what it rests on and guarded', () => {
+    for (const id of ['thank-them-specifically', 'reappraise-a-conflict']) for (const n of [4, 5, 6, 7]) expect(onStage(rep(id), 'partner', n), `${id} at ${n}`).toBe(true)
+    const reap = rep('reappraise-a-conflict')
+    expect(reap.source.strength).toBe('weak')
+    expect(reap.source.what).toContain('married couples')
+    expect(reap.source.what).toContain('never tested in dating couples')
+    expect(reap.guardrail).toMatch(/ordinary disagreement.*Never for explaining away something serious, or something that keeps happening/)
+    expect(cardById('conflict-reappraisal')?.caveats).toContain('never tested in dating couples')
+  })
+
+  it('lays out what a parent may weigh before an introduction, each tagged by its evidence, and never schedules or recommends one', () => {
+    const child = partner.acts?.find((a) => a.id === 'introducing-a-child')
+    expect(child?.what).toContain('never schedules an introduction and never recommends one')
+    expect(child?.considerations?.length).toBeGreaterThanOrEqual(5)
+    for (const x of child?.considerations ?? []) {
+      expect(['evidence', 'adjacent', 'opinion'], x.text).toContain(x.basis)
+      expect(x.source.length, x.text).toBeGreaterThan(5)
+    }
+    expect(child?.considerations?.some((x) => x.basis === 'opinion')).toBe(true)
+    const texts = [child?.what ?? '', ...(child?.considerations ?? []).map((x) => x.text)]
+    const SCHEDULE = /\b(\d+\s*(days?|weeks?|months?)|should (introduce|wait)|wait until|ready to introduce|time to introduce|recommend(s|ed)? (an|the) introduction)\b/i
+    for (const t of texts) expect(t, t).not.toMatch(SCHEDULE)
+  })
+
+  it('backs the revision with verified cards that no line on the free models can reach', () => {
+    const fresh = ['goal-mutuality', 'relationship-talk-avoided', 'disclosure-pacing', 'children-agreement', 'money-talk', 'faith-fit', 'feeling-appreciated', 'relationship-over-time', 'memory-drifts', 'reflection-light', 'momentum-and-doubts', 'child-introduction', 'kind-reading-limits', 'money-together', 'fairness-and-appreciation']
+    for (const id of fresh) {
+      const c = cardById(id)
+      expect(c, id).toBeDefined()
+      expect(c?.status, id).toBe('admitted')
+      expect(partner.cards, id).toContain(id)
+      // The Worker's guard admits a card tagged relationship only when a sheet fact carries that tag, which none does.
+      expect(c?.tags, id).toContain('relationship')
+      for (const s of c?.sources ?? []) expect(s.doi, id).toMatch(/^10\./)
+    }
+  })
+})
+
 describe('the day’s draw unchanged, and the evidence admitted once each path is wired', () => {
   it('keeps every new rep out of the day’s draw: each path’s own reps offered through its row alone, the Social path’s since Part 24 and the Partner path’s since Part 27', () => {
     const wired = moves.filter((m) => m.path && isPathOnly(m))
     const proposed = moves.filter((m) => m.path && isProposed(m))
-    expect(wired.length).toBe(28)
+    expect(wired.length).toBe(38)
     expect(proposed.map((m) => m.id)).toEqual([])
-    expect(wired.filter((m) => !m.path?.social).length).toBe(17)
+    expect(wired.filter((m) => !m.path?.social).length).toBe(27)
     for (const m of wired) expect(m.path?.social ?? m.path?.partner, m.id).toBeDefined()
     const fresh = wired
     const live = new Set(liveMoves.map((m) => m.id))

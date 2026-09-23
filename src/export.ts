@@ -156,7 +156,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
               ? {
                   partnerPath: {
                     declarations: (records.pathMarks ?? []).filter((m) => m.path === 'partner').map((m) => ({ kind: m.kind, day: m.day, stage: m.stage ?? null, note: m.note ?? null, at: m.at })),
-                    reflections: (records.reflections ?? []).filter((r) => r.path === 'partner').map((r) => ({ kind: r.kind, step: r.step ?? null, day: r.day, text: r.text, createdAt: r.createdAt, updatedAt: r.updatedAt })),
+                    reflections: (records.reflections ?? []).filter((r) => r.path === 'partner').map((r) => ({ kind: r.kind, step: r.step ?? null, part: r.part ?? null, day: r.day, text: r.text, createdAt: r.createdAt, updatedAt: r.updatedAt })),
                     monthlyChecks: (records.monthlyChecks ?? []).map((m) => ({ month: m.month, day: m.day, answers: m.answers, at: m.at })),
                   },
                 }

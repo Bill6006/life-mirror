@@ -12,7 +12,7 @@ import { copy } from './copy'
 import { db, ensureDayContext, getSettings, setDayContext, type Aim, type CheckIn, type Offer, type Outcome, type PathMark } from './db'
 import { buildExport, partnerOwn, type AimsData, type RecordsData } from './export'
 import type { FactSheet } from './factTypes'
-import { actOpensAt, addMilestone, addPathAim, checkPromptShown, checkShowsHelp, declareDate, declareStage, deleteMark, monthlyChecks, pathMarks, reflections, resumePath, saveMonthlyCheck, saveReflection, setPathPick } from './pathFlow'
+import { actOpensAt, addMilestone, addPathAim, checkPromptShown, checkShowsHelp, recordBeforeDeciding, reflectionPromptShown, declareDate, declareStage, deleteMark, monthlyChecks, pathMarks, reflections, resumePath, saveMonthlyCheck, saveReflection, setPathPick } from './pathFlow'
 import { countsByRep, declaredStage, HARD_POSITION, lightOnlyDay, partnerOnly, pathEntries, pathKey, pathToday, peopleRow, whyThisRep, type PathTodayInput } from './pathStage'
 import { DEFAULT_SETTINGS } from './settings'
 import { rankLines } from './situations'
@@ -107,16 +107,70 @@ describe('what fits on the Partner path', () => {
     expect(declaredStage(partnerPath, [mark('stage', DAY, { stage: 6, at: '2026-09-25T12:00:00.000Z' })], DAY)).toBeNull()
   })
 
-  it('offers a rep about your conduct on a date on a declared date day, and on no other', () => {
+  it('offers a rep about your conduct on a date on a declared date day, and on no other; the rest of Dating fits any day', () => {
+    const DATE_REPS = ['date-ask-and-listen', 'date-attention', 'date-end-clearly', 'date-share-something-real']
+    const ANY_DAY = ['reappraise-a-conflict', 'talk-ordinary-week', 'talk-working-toward', 'talk-your-people', 'thank-them-specifically']
     const dated = [mark('date', addDays(DAY, -3))]
     const off = view(partnerAim, [], { marks: dated, ctx: null, block: 'evening' })
     expect(off.state.stage).toBe(4)
     expect(off.dateDay).toBe(false)
     expect(off.elig.stageReps.map((m) => m.id)).toContain('date-attention')
-    expect(off.elig.eligible).toEqual([])
+    expect(off.elig.eligible.map((m) => m.id).sort()).toEqual(ANY_DAY)
     const on = view(partnerAim, [], { marks: [...dated, mark('date', DAY)], ctx: null, block: 'evening' })
     expect(on.dateDay).toBe(true)
-    expect(on.elig.eligible.map((m) => m.id).sort()).toEqual(['date-ask-and-listen', 'date-attention', 'date-end-clearly', 'date-share-something-real'])
+    expect(on.elig.eligible.map((m) => m.id).sort()).toEqual([...DATE_REPS, ...ANY_DAY].sort())
+  })
+
+  it('keeps the weightier talks out of the app’s picks until the lighter ones are done, while Change lists them all', () => {
+    const dated = [mark('date', addDays(DAY, -3))]
+    const LIGHTER = ['talk-ordinary-week', 'talk-working-toward', 'talk-your-people']
+    const WEIGHTIER = ['talk-children-family', 'talk-faith', 'talk-work-money-home']
+    const fresh = view(partnerAim, [], { marks: dated })
+    for (const id of WEIGHTIER) {
+      expect(fresh.elig.stageReps.map((m) => m.id), id).toContain(id)
+      expect(fresh.elig.eligible.map((m) => m.id), id).not.toContain(id)
+    }
+    // Two of three lighter talks done, one partly: the weightier ones join; with one missing, they wait.
+    const talked = (ids: string[], outcome: Outcome['outcome'] = 'done') => {
+      const offers = ids.map((id, k) => stepOffer(id, addDays(DAY, -10 + k), ['partner'], { stage: 4 }))
+      const outcomes: Outcome[] = offers.map((o) => ({ offerId: o.id as number, moveId: o.moveId, day: o.day, block: 'morning', at: `${o.day}T16:00:00.000Z`, outcome, why: null, passiveOutcome: null }))
+      return { offers, outcomes }
+    }
+    const two = talked(LIGHTER.slice(0, 2))
+    const waiting = pathToday({ aim: partnerAim, offers: two.offers, outcomes: two.outcomes, ctx: office, day: DAY, block: 'morning', marks: dated })
+    expect(waiting.elig.eligible.some((m) => WEIGHTIER.includes(m.id))).toBe(false)
+    const all = talked(LIGHTER)
+    const partly = talked([LIGHTER[2]], 'partly')
+    const open = pathToday({ aim: partnerAim, offers: [...two.offers, ...partly.offers], outcomes: [...two.outcomes, ...partly.outcomes], ctx: office, day: DAY, block: 'morning', marks: dated })
+    expect(open.elig.eligible.map((m) => m.id)).toEqual(expect.arrayContaining(WEIGHTIER))
+    expect(pathToday({ aim: partnerAim, offers: all.offers, outcomes: all.outcomes, ctx: office, day: DAY, block: 'morning', marks: dated }).elig.eligible.map((m) => m.id)).toEqual(expect.arrayContaining(WEIGHTIER))
+    // Your pick through Change reaches a weightier talk at once.
+    const picked = view({ ...partnerAim, pick: { day: DAY, moveId: 'talk-children-family', at: `${DAY}T10:00:00.000Z` } }, [], { marks: dated })
+    expect(picked.pick).toMatchObject({ moveId: 'talk-children-family', rule: 'you' })
+  })
+
+  it('hides a faith talk everywhere while the faith family is hidden, your own pick included (Rule 10)', () => {
+    const dated = [mark('date', addDays(DAY, -3))]
+    const shown = view(partnerAim, [], { marks: dated })
+    expect(shown.elig.stageReps.map((m) => m.id)).toContain('talk-faith')
+    const hidden = view(partnerAim, [], { marks: dated, faithHidden: true })
+    expect(hidden.elig.stageReps.map((m) => m.id)).not.toContain('talk-faith')
+    expect(hidden.faithHidden).toBe(true)
+    const deciding = [mark('stage', '2026-09-20', { stage: 5 })]
+    expect(view(partnerAim, [], { marks: deciding }).elig.stageReps.map((m) => m.id)).toContain('plan-faith-at-home')
+    expect(view(partnerAim, [], { marks: deciding, faithHidden: true }).elig.stageReps.map((m) => m.id)).not.toContain('plan-faith-at-home')
+    const pickedFaith = { ...partnerAim, pick: { day: DAY, moveId: 'talk-faith', at: `${DAY}T10:00:00.000Z` } }
+    expect(view(pickedFaith, [], { marks: dated }).pick?.moveId).toBe('talk-faith')
+    expect(view(pickedFaith, [], { marks: dated, faithHidden: true }).pick?.moveId).not.toBe('talk-faith')
+  })
+
+  it('offers thanks and reappraisal from Dating through Keeping, and planning talks at Deciding', () => {
+    for (const stage of [4, 5, 6, 7]) {
+      const at = view(partnerAim, [], { marks: [mark('stage', '2026-09-20', { stage })], ctx: null, block: 'evening' })
+      expect(at.elig.stageReps.map((m) => m.id), String(stage)).toEqual(expect.arrayContaining(['thank-them-specifically', 'reappraise-a-conflict']))
+    }
+    const deciding = view(partnerAim, [], { marks: [mark('stage', '2026-09-20', { stage: 5 })], ctx: null, block: 'evening' })
+    expect(deciding.elig.eligible.map((m) => m.id)).toEqual(expect.arrayContaining(['plan-money-together', 'plan-a-week-together', 'plan-parenting-roles']))
   })
 
   it('does not place the reps you do with a partner by who else is around', () => {
@@ -177,19 +231,58 @@ describe('the Partner path on the phone', () => {
     expect((await pathMarks('partner')).map((m) => m.kind)).toEqual(['date', 'milestone'])
   })
 
-  it('keeps notes whole: values and each step’s note rewritten in place, a reflection new each time, an empty note removed', async () => {
-    await saveReflection('partner', 'values', 'Kindness first', undefined, MORNING)
-    await saveReflection('partner', 'values', 'Kindness and honesty', undefined, MORNING)
-    await saveReflection('partner', 'decide', 'Why now', 'exclusive', MORNING)
-    await saveReflection('partner', 'decide', 'Not yet', 'movingIn', MORNING)
-    await saveReflection('partner', 'reflection', 'A good walk', undefined, MORNING)
-    await saveReflection('partner', 'reflection', 'A good walk', undefined, MORNING)
+  it('keeps notes whole: each values part and each step’s note rewritten in place, a reflection new each time, an empty note removed', async () => {
+    await saveReflection('partner', 'values', 'Kindness first', { part: 'nonNegotiables' }, MORNING)
+    await saveReflection('partner', 'values', 'Kindness and honesty', { part: 'nonNegotiables' }, MORNING)
+    await saveReflection('partner', 'values', 'Someone who laughs easily', { part: 'preferences' }, MORNING)
+    await saveReflection('partner', 'values', 'Patient, and on time', { part: 'partnerIWantToBe' }, MORNING)
+    await saveReflection('partner', 'decide', 'Why now', { step: 'exclusive' }, MORNING)
+    await saveReflection('partner', 'decide', 'Not yet', { step: 'movingIn' }, MORNING)
+    await saveReflection('partner', 'decide', 'Not until it is steady', { step: 'child' }, MORNING)
+    await saveReflection('partner', 'reflection', 'A good walk', {}, MORNING)
+    await saveReflection('partner', 'reflection', 'A good walk', {}, MORNING)
     const all = await reflections('partner')
-    expect(all.filter((r) => r.kind === 'values').map((r) => r.text)).toEqual(['Kindness and honesty'])
-    expect(all.filter((r) => r.kind === 'decide').map((r) => [r.step, r.text])).toEqual([['exclusive', 'Why now'], ['movingIn', 'Not yet']])
+    expect(all.filter((r) => r.kind === 'values').map((r) => [r.part, r.text])).toEqual([
+      ['nonNegotiables', 'Kindness and honesty'],
+      ['preferences', 'Someone who laughs easily'],
+      ['partnerIWantToBe', 'Patient, and on time'],
+    ])
+    expect(all.filter((r) => r.kind === 'decide').map((r) => [r.step, r.text])).toEqual([['exclusive', 'Why now'], ['movingIn', 'Not yet'], ['child', 'Not until it is steady']])
     expect(all.filter((r) => r.kind === 'reflection')).toHaveLength(2)
-    await saveReflection('partner', 'values', '  ', undefined, MORNING)
-    expect((await reflections('partner')).some((r) => r.kind === 'values')).toBe(false)
+    await saveReflection('partner', 'values', '  ', { part: 'preferences' }, MORNING)
+    expect((await reflections('partner')).filter((r) => r.kind === 'values').map((r) => r.part)).toEqual(['nonNegotiables', 'partnerIWantToBe'])
+  })
+
+  it('keeps the monthly reflection a note a month for each part, rewritten in place within the month', async () => {
+    await saveReflection('partner', 'monthly', 'They asked about my week and listened', { part: 'understood' }, new Date(2026, 7, 20))
+    await saveReflection('partner', 'monthly', 'We talked it through the next morning', { part: 'disagreement' }, MORNING)
+    await saveReflection('partner', 'monthly', 'We talked it through that evening', { part: 'disagreement' }, MORNING)
+    await saveReflection('partner', 'monthly', 'I listened more', { part: 'ownPart' }, MORNING)
+    const monthly = (await reflections('partner')).filter((r) => r.kind === 'monthly')
+    expect(monthly.map((r) => [r.day.slice(0, 7), r.part, r.text])).toEqual([
+      ['2026-08', 'understood', 'They asked about my week and listened'],
+      ['2026-09', 'disagreement', 'We talked it through that evening'],
+      ['2026-09', 'ownPart', 'I listened more'],
+    ])
+    // The card's line: open until something is written this month, and never on a hard day.
+    expect(reflectionPromptShown(4, false, monthly, DAY)).toBe(false)
+    expect(reflectionPromptShown(4, false, monthly, '2026-10-02')).toBe(true)
+    expect(reflectionPromptShown(4, true, monthly, '2026-10-02')).toBe(false)
+    expect(reflectionPromptShown(3, false, monthly, '2026-10-02')).toBe(false)
+  })
+
+  it('puts your own record in front of a decision: values, three months of reflections, and the notes before other steps, chosen by date alone', async () => {
+    await saveReflection('partner', 'values', 'Honesty', { part: 'nonNegotiables' }, new Date(2026, 5, 1))
+    await saveReflection('partner', 'monthly', 'Old month', { part: 'understood' }, new Date(2026, 4, 1))
+    await saveReflection('partner', 'monthly', 'This month', { part: 'understood' }, MORNING)
+    await saveReflection('partner', 'reflection', 'A walk last week', {}, new Date(2026, 8, 16))
+    await saveReflection('partner', 'decide', 'Exclusive, chosen', { step: 'exclusive' }, new Date(2026, 8, 1))
+    await saveReflection('partner', 'decide', 'Moving in, draft', { step: 'movingIn' }, MORNING)
+    const record = recordBeforeDeciding(await reflections('partner'), 'movingIn', DAY)
+    expect(record.values.map((r) => r.text)).toEqual(['Honesty'])
+    expect(record.monthly.map((r) => r.text)).toEqual(['This month'])
+    expect(record.notes.map((r) => r.text)).toEqual(['A walk last week'])
+    expect(record.decided.map((r) => r.text)).toEqual(['Exclusive, chosen'])
   })
 
   it('answers the monthly check once a month, again in place, and shows its help only on a yes to safety or conduct', async () => {
@@ -211,7 +304,9 @@ describe('the Partner path on the phone', () => {
     for (const stage of [1, 2, 3]) expect(checkPromptShown(stage, false, checks, '2026-11-02'), String(stage)).toBe(false)
     expect(checkPromptShown(4, true, checks, '2026-11-02')).toBe(false)
     expect(actOpensAt('monthly-check')).toBe(4)
-    expect(actOpensAt('values-note')).toBe(5)
+    expect(actOpensAt('values-note')).toBe(1)
+    expect(actOpensAt('decide-dont-slide')).toBe(4)
+    expect(actOpensAt('monthly-reflection')).toBe(4)
   })
 
   it('stores its records in the synced set, each write queued for your own database', async () => {
@@ -410,7 +505,7 @@ describe('the rules around the Partner path', () => {
     expect(ticked.settings.partnerOnline).toBe(false)
     expect(ticked.partnerPath).toEqual({
       declarations: [{ kind: 'milestone', day: DAY, stage: null, note: 'We got engaged', at: `${DAY}T15:00:00.000Z` }],
-      reflections: [{ kind: 'reflection', step: null, day: DAY, text: 'A good walk', createdAt: `${DAY}T15:00:00.000Z`, updatedAt: `${DAY}T15:00:00.000Z` }],
+      reflections: [{ kind: 'reflection', step: null, part: null, day: DAY, text: 'A good walk', createdAt: `${DAY}T15:00:00.000Z`, updatedAt: `${DAY}T15:00:00.000Z` }],
       monthlyChecks: [{ month: '2026-09', day: DAY, answers: { safety: false, conduct: false, doubt: true }, at: `${DAY}T15:00:00.000Z` }],
     })
   })

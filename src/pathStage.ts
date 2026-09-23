@@ -155,6 +155,16 @@ export interface EligibilityInput {
   onlineThisWeek?: number
   /** Part 27: the record reads high stress or overwhelm today, so only light reps fit. */
   lightOnly?: boolean
+  /** The path's reps you have done or partly done, ever: a rep that waits for others joins the app's picks once they are done. */
+  doneEver?: ReadonlySet<string>
+  /** The faith family is hidden: a faith talk is neither offered nor listed (Rule 10). */
+  faithHidden?: boolean
+}
+
+/** Whether a rep that waits for others may join the app's picks: each of them done or partly done. */
+export function opensNow(m: Pick<Move, 'path'>, path: PathId, doneEver: ReadonlySet<string> | undefined): boolean {
+  const after = m.path?.[path]?.after
+  return !after || after.every((id) => doneEver?.has(id) === true)
 }
 
 export interface Eligibility {
@@ -175,22 +185,22 @@ export function dateStageOf(path: Path): number | null {
 
 /**
  * The reps that fit now: the stage's (or the re-entry set's), not yesterday's rep, not done today.
- * In person only when tier 1 says someone is around; a date rep only on a declared date day, which
- * is the Partner path's tier 1; a rep with a partner in the stages after it is not placed by who
- * else is around (the day record does not place a partner). The online channel's reps only while
- * it is on and under its weekly bound, and on a day the record reads high stress or overwhelm,
- * light reps alone (Part 27).
+ * In person only when tier 1 says someone is around; a rep about your conduct on a date only on a
+ * declared date day, which is the Partner path's tier 1; a rep with a partner in the declared
+ * stages is not placed by who else is around (the day record does not place a partner). The
+ * online channel's reps only while it is on and under its weekly bound; on a day the record reads
+ * high stress or overwhelm, light reps alone (Part 27). A rep that waits for others joins the
+ * app's picks once they are done, and a faith talk is hidden with the faith family (2026-09-23).
  */
 export function eligibility(i: EligibilityInput): Eligibility {
   const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
   const channel = i.path.channels?.find((c) => c.id === 'online')
-  const stageReps = pathReps(i.path.id, stage).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true))
-  const dating = dateStageOf(i.path)
+  const stageReps = pathReps(i.path.id, stage).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
   const declared = new Set(i.path.stages.filter((st) => st.advance === 'declared').map((st) => st.n))
   let nobodyAround = false
   const eligible = stageReps.filter((m) => {
     const place = m.path?.[i.path.id]
-    if (place && place.stage === dating) {
+    if (place?.onDate) {
       if (!i.dateDay) return false
     } else if (!(place && declared.has(place.stage)) && inPerson(m) && !i.around) {
       nobodyAround = true
@@ -198,6 +208,7 @@ export function eligibility(i: EligibilityInput): Eligibility {
     }
     if (m.channel === 'online' && (i.onlineThisWeek ?? 0) >= (channel?.maxRepsPerWeek ?? 0)) return false
     if (i.lightOnly && m.effort !== 'low') return false
+    if (!opensNow(m, i.path.id, i.doneEver)) return false
     return m.id !== i.yesterday && !i.doneToday.has(m.id)
   })
   return { stage, stageReps, eligible, nobodyAround }
@@ -448,6 +459,10 @@ export interface PathToday {
   around: boolean
   /** Part 27: today is a declared date day on this path. */
   dateDay: boolean
+  /** The path's reps you have done or partly done, ever. */
+  doneEver: ReadonlySet<string>
+  /** The faith family is hidden (Rule 10). */
+  faithHidden: boolean
 }
 
 export interface PathTodayInput {
@@ -463,6 +478,8 @@ export interface PathTodayInput {
   online?: boolean
   /** Part 27: the record reads high stress or overwhelm today. */
   lightOnly?: boolean
+  /** The faith family is hidden in Settings (Rule 10). */
+  faithHidden?: boolean
 }
 
 /** Everything a path's row, card, fact and coach block show for this block, computed one way. */
@@ -477,13 +494,17 @@ export function pathToday(i: PathTodayInput): PathToday {
   const dateDay = isDateDay(path, marks, i.day)
   const weekAgo = addDays(i.day, -6)
   const onlineThisWeek = entries.filter((e) => e.day >= weekAgo && e.day <= i.day && hasMove(e.moveId) && moveById(e.moveId).channel === 'online').length
+  const doneEver = new Set(entries.filter((e) => e.outcome === 'done' || e.outcome === 'partly').map((e) => e.moveId))
+  const faithHidden = i.faithHidden === true
   // Light reps only on a hard day is the Partner path's rule (Part 27).
-  const elig = eligibility({ path, state, around, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true })
-  const mine = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
+  const elig = eligibility({ path, state, around, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true, doneEver, faithHidden })
+  const picked = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
+  // Your pick stands whatever the shape says, but never a faith talk while the faith family is hidden.
+  const mine = picked && !(faithHidden && picked.hiddenWith === 'faith') ? picked : null
   const pick: RepPick | null = mine
     ? { moveId: mine.id, setting: settingFor(mine, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [mine.id], propensities: { [mine.id]: 1 }, leaning: false }
     : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage)
-  return { aim: i.aim, path, entries, state, elig, pick, around, dateDay }
+  return { aim: i.aim, path, entries, state, elig, pick, around, dateDay, doneEver, faithHidden }
 }
 
 /** A rep the Partner path holds and the Social path does not. */

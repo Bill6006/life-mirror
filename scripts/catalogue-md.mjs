@@ -51,12 +51,18 @@ for (const p of data.paths) {
       const bits = [place.advances ? 'moves the stage' : 'moves no stage']
       if (m.settings?.length) bits.push(`where: ${m.settings.map((k) => SETTING[k]).join(', ')}`)
       if (m.channel) bits.push(`channel: ${m.channel}`)
+      if (place.through) bits.push(`from ${p.stages.find((s) => s.n === place.stage)?.name} through ${p.stages.find((s) => s.n === place.through)?.name}`)
+      if (place.onDate) bits.push('on a declared date day')
+      if (place.after) bits.push(`offered by the app once these are done: ${place.after.map((id) => data.moves.find((x) => x.id === id)?.name ?? id).join(', ')}`)
+      if (m.hiddenWith === 'faith') bits.push('hidden while the faith family is hidden')
       if (m.status === 'proposed') bits.push('proposed')
       md += `- **${m.name}** (${bits.join(' · ')}). Attention on: ${m.cue} Drop: ${m.crutch} ${m.doneWhen}${m.guardrail ? ` ${m.guardrail}` : ''}\n`
     }
     for (const a of (p.acts ?? []).filter((x) => x.stage === st.n)) {
       const questions = a.questions ? ` The questions: ${a.questions.map((q, i) => `(${i + 1}) ${q.text}${q.helpOnYes ? ' A yes shows the help.' : ''}`).join(' ')}` : ''
-      md += `- **${a.name}.** ${a.what}${questions}${a.help ? ` The help the app shows itself: ${a.help}` : ''} Source: ${source(a.source)}\n`
+      const parts = a.parts ? ` In parts: ${a.parts.map((pt) => `(${pt.name}) ${pt.prompt}`).join(' ')}` : ''
+      const weigh = a.considerations ? ` To weigh: ${a.considerations.map((x) => `${x.text} (${{ evidence: 'evidence', adjacent: 'related evidence', opinion: 'expert opinion' }[x.basis]}: ${x.source})`).join(' ')}` : ''
+      md += `- **${a.name}.** ${a.what}${questions}${a.help ? ` The help the app shows itself: ${a.help}` : ''}${parts}${weigh} Source: ${source(a.source)}\n`
     }
     md += '\n'
   }

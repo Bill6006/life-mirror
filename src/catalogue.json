@@ -7266,7 +7266,8 @@
       "path": {
         "partner": {
           "stage": 4,
-          "advances": false
+          "advances": false,
+          "onDate": true
         }
       },
       "settings": [
@@ -7331,7 +7332,8 @@
       "path": {
         "partner": {
           "stage": 4,
-          "advances": false
+          "advances": false,
+          "onDate": true
         }
       },
       "settings": [
@@ -7396,7 +7398,8 @@
       "path": {
         "partner": {
           "stage": 4,
-          "advances": false
+          "advances": false,
+          "onDate": true
         }
       },
       "settings": [
@@ -7461,7 +7464,8 @@
       "path": {
         "partner": {
           "stage": 4,
-          "advances": false
+          "advances": false,
+          "onDate": true
         }
       },
       "settings": [
@@ -7471,6 +7475,673 @@
       "crutch": "Leaving it vague so nobody has to answer.",
       "doneWhen": "Done when you have said it, whatever the answer.",
       "guardrail": "Their answer is final. A second ask after a no is never offered."
+    },
+    {
+      "id": "talk-ordinary-week",
+      "name": "Talk about a good ordinary week",
+      "family": "partner",
+      "what": "Ask what a good ordinary week looks like for them: work, rest, people, time alone. Listen, then describe yours. A lighter talk, for learning each other, never a test.",
+      "source": {
+        "who": "Crawford, Houts, Huston and George",
+        "what": "In marriages followed for over ten years, leisure one partner liked and the other disliked went with lower satisfaction: the shape of an ordinary week matters (married couples, related evidence)",
+        "year": 2002,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.05,
+        "note": "Crawford and colleagues 2002: an association in marriages, not a test of talking; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "What makes a week good for them, in their words.",
+      "crutch": "Turning it into an interview, or talking only about yourself.",
+      "doneWhen": "Done when you have asked, listened and said your own, whatever was said."
+    },
+    {
+      "id": "talk-working-toward",
+      "name": "Talk about what you are each working toward",
+      "family": "partner",
+      "what": "Ask what they are working toward over the next few years, listen, and say plainly what you are working toward.",
+      "source": {
+        "who": "Avivi, Laurenceau and Carver",
+        "what": "Among people who were dating, seeing their relationship goals as shared went with a better relationship, through a sense of progress toward them",
+        "year": 2009,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.05,
+        "note": "Avivi and colleagues 2009: a correlation among dating people, not a test of talking; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "Their plans, and where yours meet or pull apart.",
+      "crutch": "Keeping your own plans vague so nothing clashes.",
+      "doneWhen": "Done when you have asked, listened and said your own, whatever was said."
+    },
+    {
+      "id": "talk-your-people",
+      "name": "Talk about the people in your lives",
+      "family": "partner",
+      "what": "Ask about the people who matter to them, family and friends, and tell them about yours.",
+      "source": {
+        "who": "Le, Dove, Agnew, Korn and Mutso",
+        "what": "A meta-analysis of 137 studies of dating relationships: support from friends and family was one of the steadier predictors of staying together",
+        "year": 2010,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.05,
+        "note": "Le and colleagues 2010: network support predicted staying together; talking about it is untested; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "Who they are close to, and how those people fit into their week.",
+      "crutch": "Staying on safe small talk.",
+      "doneWhen": "Done when you have asked, listened and said your own, whatever was said."
+    },
+    {
+      "id": "talk-children-family",
+      "name": "Talk about children and family",
+      "family": "partner",
+      "what": "Ask whether they want children and how they picture family life, listen, and say what you want; if you are a parent, how your child is part of your life.",
+      "source": {
+        "who": "Testa and Bolano",
+        "what": "When partners disagreed about having a child, fewer children followed: a difference worth knowing before a life is built around it (couples, births as the outcome)",
+        "year": 2021,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Testa and Bolano 2021: disagreement shapes whether children come; talking is untested; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false,
+          "after": [
+            "talk-ordinary-week",
+            "talk-working-toward",
+            "talk-your-people"
+          ]
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "What they hope for, and where it meets or differs from what you hope for.",
+      "crutch": "Waiting for it to come up on its own.",
+      "doneWhen": "Done when you have asked, listened and said your own, whatever was said."
+    },
+    {
+      "id": "talk-faith",
+      "name": "Talk about faith and how you live it",
+      "family": "partner",
+      "what": "Ask what faith means to them and how they live it from day to day, listen, and share your own.",
+      "source": {
+        "who": "Henderson, Ellison and Glenn",
+        "what": "Among dating and cohabiting adults, shared beliefs and shared practice went with higher satisfaction; one survey at one time",
+        "year": 2017,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Henderson and colleagues 2017: an association in one survey; talking is untested; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false,
+          "after": [
+            "talk-ordinary-week",
+            "talk-working-toward",
+            "talk-your-people"
+          ]
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "How it shapes their week, not only what they believe.",
+      "crutch": "Assuming you already know.",
+      "doneWhen": "Done when you have asked, listened and said your own, whatever was said.",
+      "hiddenWith": "faith"
+    },
+    {
+      "id": "talk-work-money-home",
+      "name": "Talk about work, money and where you would live",
+      "family": "partner",
+      "what": "Ask how they think about work, money and where they want to live, listen, and share your own: habits and hopes, not figures.",
+      "source": {
+        "who": "Saxey, LeBaron-Black and Curran",
+        "what": "Among young adults in relationships, an earlier first talk about money went with better money communication and relationship quality, and a little more money conflict; one survey at one time",
+        "year": 2022,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Saxey and colleagues 2022: an association in one survey; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false,
+          "after": [
+            "talk-ordinary-week",
+            "talk-working-toward",
+            "talk-your-people"
+          ]
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "How they like to handle money and work, not how much.",
+      "crutch": "Treating money as too awkward to mention.",
+      "doneWhen": "Done when you have asked, listened and said your own, whatever was said."
+    },
+    {
+      "id": "plan-money-together",
+      "name": "Talk through how you would handle money together",
+      "family": "partner",
+      "what": "Before sharing a home: how you would share costs, save and decide on big spending, and what each of you finds hard about money.",
+      "source": {
+        "who": "Dew, Britt and Huston",
+        "what": "In married couples, disagreements about money predicted divorce more than other disagreements, through how conflicts were handled (married couples, related evidence)",
+        "year": 2012,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Dew and colleagues 2012: an association in marriages; talking it through first is untested; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 5,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "How decisions would be made, not who is right.",
+      "crutch": "Leaving it until a bill forces it.",
+      "doneWhen": "Done when you have talked it through, whatever you decided."
+    },
+    {
+      "id": "plan-a-week-together",
+      "name": "Talk through a normal week living together",
+      "family": "partner",
+      "what": "Before moving in: work, cooking, cleaning, time together and apart. Who does what, and what would feel fair to each of you.",
+      "source": {
+        "who": "Frisco and Williams",
+        "what": "In couples where both worked, seeing the housework split as unfair went with lower happiness for both; later work found feeling appreciated softens it (married couples, related evidence)",
+        "year": 2003,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Frisco and Williams 2003: an association in marriages; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 5,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "What would feel fair to each of you.",
+      "crutch": "Assuming it will sort itself out.",
+      "doneWhen": "Done when you have talked it through, whatever you decided."
+    },
+    {
+      "id": "plan-parenting-roles",
+      "name": "Talk through parenting roles",
+      "family": "partner",
+      "what": "If you are a parent, or plan to be: how they would be with your child, a friend first while the parenting decisions stay yours, and how you would raise any children together.",
+      "source": {
+        "who": "Ganong, Coleman and Jamison",
+        "what": "Step-relationships grew best when the new partner built a friendship with the child first; in stepfamily studies, the parent keeping discipline goes with fewer difficulties (mostly interviews, related evidence)",
+        "year": 2011,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Ganong and colleagues 2011: patterns from interviews; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 5,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "What they imagine, and what your child needs.",
+      "crutch": "Hoping it will work itself out once you live together.",
+      "doneWhen": "Done when you have talked it through, whatever you decided."
+    },
+    {
+      "id": "plan-faith-at-home",
+      "name": "Talk through faith at home",
+      "family": "partner",
+      "what": "How faith would be part of your home: practice, community, and, if there are children, what you would each want for them.",
+      "source": {
+        "who": "Mahoney, Pargament and DeMaris",
+        "what": "In married couples, sharing spiritual views went with less conflict over time, while using faith to claim the upper hand went with stalemate (married couples, related evidence)",
+        "year": 2021,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.05,
+        "note": "Mahoney and colleagues 2021: an association in marriages; a twentieth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 5,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "What each of you would want it to look like, day to day.",
+      "crutch": "Keeping faith out of it to avoid disagreement.",
+      "doneWhen": "Done when you have talked it through, whatever you decided.",
+      "hiddenWith": "faith"
     },
     {
       "id": "respond-to-good-news",
@@ -7540,13 +8211,13 @@
     },
     {
       "id": "thank-them-specifically",
-      "name": "Thank your partner for one specific thing",
+      "name": "Thank them for one specific thing",
       "family": "partner",
-      "what": "Thank your partner for one specific thing they did, and say what it meant to you.",
+      "what": "Thank them for one specific thing they did, and say what it meant to you.",
       "source": {
-        "who": "Algoe, Gable and Maisel",
-        "what": "In daily diaries, gratitude from small everyday kindnesses predicted more connection and satisfaction the next day, for both partners",
-        "year": 2010,
+        "who": "Gordon, Impett, Kogan, Oveis and Keltner",
+        "what": "People who felt appreciated by their partners appreciated them in turn, were more responsive and committed, and were more likely to stay together",
+        "year": 2012,
         "strength": "moderate"
       },
       "minutes": 2,
@@ -7588,13 +8259,14 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.1,
-        "note": "Algoe 2010: everyday gratitude lifted the next day for both; a tenth of a step"
+        "note": "Gordon and colleagues 2012 and Algoe and colleagues 2010: appreciation and connection move together; a tenth of a step"
       },
       "status": "path",
       "path": {
         "partner": {
-          "stage": 6,
-          "advances": false
+          "stage": 4,
+          "advances": false,
+          "through": 7
         }
       },
       "settings": [
@@ -7676,9 +8348,9 @@
       "what": "After a disagreement, spend seven minutes writing it as a neutral friend who wants the best for you both would see it.",
       "source": {
         "who": "Finkel, Slotter, Luchies, Walton and Gross",
-        "what": "A 21-minute reappraisal exercise, spread across a year, stopped the usual decline in marital quality in a two-year randomised study",
+        "what": "One randomised trial of 120 married couples: a 21-minute reappraisal exercise, spread across a year, stopped the usual decline in marital quality. Never replicated, and never tested in dating couples",
         "year": 2013,
-        "strength": "moderate"
+        "strength": "weak"
       },
       "minutes": 7,
       "effort": "medium",
@@ -7718,8 +8390,9 @@
       "status": "path",
       "path": {
         "partner": {
-          "stage": 6,
-          "advances": false
+          "stage": 4,
+          "advances": false,
+          "through": 7
         }
       },
       "settings": [
@@ -7727,7 +8400,8 @@
       ],
       "cue": "How a fair friend of you both would tell it.",
       "crutch": "Replaying who was right.",
-      "doneWhen": "Done when you have written it."
+      "doneWhen": "Done when you have written it.",
+      "guardrail": "For an ordinary disagreement. Never for explaining away something serious, or something that keeps happening."
     },
     {
       "id": "talk-about-intimacy",
@@ -8300,14 +8974,14 @@
         {
           "n": 4,
           "name": "Dating",
-          "what": "Your own conduct on a date: there on time with the phone away, attention on them, something real of your own in turn, and a clear, kind ending. From here on, a monthly private check on your own safety, conduct and doubts.",
+          "what": "Your own conduct on a date, and learning whether your lives fit: there on time with the phone away, attention on them, something real of your own in turn, a clear, kind ending, and thanks for something specific. Lighter talks first, about an ordinary week, what you are each working toward and the people in your lives; then weightier ones, about children and family, work, money and where you would live. From here on, a note before each step, a monthly reflection, and a monthly private check on your own safety, conduct and doubts.",
           "notProgress": "Judging the date or the person; a date is not a result and is never counted.",
           "advance": "declared"
         },
         {
           "n": 5,
           "name": "Deciding",
-          "what": "Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, and a relationship course suggested before an engagement, yours to take or leave.",
+          "what": "Decide rather than slide: a note before each step, written with your own record in front of you; planning talks about money, a normal week living together and parenting; and a relationship course suggested before an engagement, yours to take or leave.",
           "notProgress": "Letting a step happen because it is easier than choosing it.",
           "advance": "declared"
         },
@@ -8402,27 +9076,117 @@
       "acts": [
         {
           "id": "values-note",
-          "stage": 5,
+          "stage": 1,
           "name": "Your values and non-negotiables, written down",
-          "what": "A short private note, typed by you, of what you value in a partner and the few things you will not accept, written before they are tested. Only you read it.",
+          "what": "A short private note in three parts, typed by you and rewritten whenever you like: the few true non-negotiables, about direction and conduct rather than traits; the preferences you hold loosely; and the partner you want to be. Written before they are tested. Only you read it.",
           "source": {
             "who": "Jonason, Garcia, Webster, Li and Fisher",
             "what": "People weigh dealbreakers more heavily than the qualities they want; knowing yours in advance is supported",
             "year": 2015,
             "strength": "moderate"
-          }
+          },
+          "parts": [
+            {
+              "id": "nonNegotiables",
+              "name": "A few true non-negotiables",
+              "prompt": "About direction and conduct, not traits. For each one: would you end an otherwise good relationship over it?"
+            },
+            {
+              "id": "preferences",
+              "name": "Preferences, held loosely",
+              "prompt": "What you would like. Held loosely: what people say they want in a partner barely predicts whom they come to want."
+            },
+            {
+              "id": "partnerIWantToBe",
+              "name": "The partner you want to be",
+              "prompt": "How you want to treat them, and what you want to bring."
+            }
+          ]
         },
         {
           "id": "decide-dont-slide",
-          "stage": 5,
+          "stage": 4,
           "name": "Decide, don’t slide",
-          "what": "Before each step (becoming exclusive, meeting each other’s families, moving in, an engagement), a private note: what you are choosing, and why now.",
+          "what": "Before each step (becoming exclusive, meeting each other’s families, introducing them to your child, moving in, an engagement), a private note: what you are choosing, and why now, written with your own record in front of you: your values, your recent reflections and your earlier notes.",
           "source": {
             "who": "Owen, Rhoades and Stanley",
             "what": "People who reported deciding their relationship steps thoughtfully reported more dedication and satisfaction than those who slid into them",
             "year": 2013,
             "strength": "moderate"
           }
+        },
+        {
+          "id": "introducing-a-child",
+          "stage": 4,
+          "name": "Introducing them to your child",
+          "what": "If you are a parent: a decision that is yours alone, made deliberately, with a note before it. The app never schedules an introduction and never recommends one. Almost all of what is known comes from mothers after divorce; little is known about fathers raising a child.",
+          "source": {
+            "who": "Kang and Nielson",
+            "what": "A clinical review: few evidence-based guidelines exist for when and how a parent shares dating with a child or introduces a partner",
+            "year": 2025,
+            "strength": "weak"
+          },
+          "considerations": [
+            {
+              "text": "How steady the relationship is before your child grows close: children who had grown close to a parent’s partner showed more anxiety and withdrawal when it ended, though breakups had no effect overall.",
+              "basis": "evidence",
+              "source": "Langlais, Anderson and Greene 2018"
+            },
+            {
+              "text": "Keeping your own time with your child: a close bond between parent and child softened the effects of a parent’s dating.",
+              "basis": "evidence",
+              "source": "Xiao and colleagues 2022; Anderson and Greene 2011"
+            },
+            {
+              "text": "Whether they want a life that includes a child who is already yours: people who said they would marry someone with children were more likely to.",
+              "basis": "adjacent",
+              "source": "Goldscheider, Kaufman and Sassler 2009"
+            },
+            {
+              "text": "A friend to your child first, while the parenting decisions stay yours: this went with warmer step-relationships in stepfamily studies.",
+              "basis": "adjacent",
+              "source": "Ganong and colleagues 1999 and 2019; Sanner and colleagues 2022"
+            },
+            {
+              "text": "Fewer changes in who is part of a young child’s life: changes in early childhood weigh most, though how much is debated.",
+              "basis": "adjacent",
+              "source": "Cavanagh and Huston 2008; Lee and McLanahan 2015"
+            },
+            {
+              "text": "When, where and what to tell your child: no study answers these; the guidance is expert opinion.",
+              "basis": "opinion",
+              "source": "Kang and Nielson 2025"
+            }
+          ]
+        },
+        {
+          "id": "monthly-reflection",
+          "stage": 4,
+          "name": "A monthly reflection",
+          "what": "Once a month, if you want: a few lines on a moment you felt understood or appreciated, or didn’t; on how your last disagreement ended; and on your own part, and whether it feels chosen by both of you. Words only, never scored: describe the moment rather than analyse it. Never prompted on a hard day.",
+          "source": {
+            "who": "Rogge, Cobb, Lawrence, Johnson and Bradbury",
+            "what": "In a randomised trial of 174 engaged and newly married couples, one guided session of reflecting on the relationship matched two skills courses on breakups three years on, among couples who completed them",
+            "year": 2013,
+            "strength": "moderate"
+          },
+          "parts": [
+            {
+              "id": "understood",
+              "name": "A moment you felt understood or appreciated, or didn’t",
+              "prompt": "Describe the moment as it happened."
+            },
+            {
+              "id": "disagreement",
+              "name": "Your last disagreement, and how it ended",
+              "prompt": "How it ended, not who was right."
+            },
+            {
+              "id": "ownPart",
+              "name": "Your own part, and whether it feels chosen by both of you",
+              "prompt": "What you brought, and whether you both seem to be choosing this."
+            }
+          ]
         },
         {
           "id": "monthly-check",
@@ -8497,6 +9261,10 @@
         {
           "what": "Labelling a partner’s attachment style, or opposites attract",
           "why": "Verdicts on another person are never made here, and actual similarity barely predicts satisfaction either way."
+        },
+        {
+          "what": "A list of answers to look for, or a tally of warning signs",
+          "why": "No study shows that ticking topics or counting signs predicts a good match; the talks are for learning each other’s lives, and no answer is a pass or a fail."
         }
       ],
       "cards": [
@@ -8533,7 +9301,22 @@
         "diaries-can-react",
         "divorce-prediction-disputed",
         "love-languages-disputed",
-        "matching-algorithms-disputed"
+        "matching-algorithms-disputed",
+        "goal-mutuality",
+        "relationship-talk-avoided",
+        "disclosure-pacing",
+        "children-agreement",
+        "money-talk",
+        "faith-fit",
+        "feeling-appreciated",
+        "relationship-over-time",
+        "memory-drifts",
+        "reflection-light",
+        "momentum-and-doubts",
+        "child-introduction",
+        "kind-reading-limits",
+        "money-together",
+        "fairness-and-appreciation"
       ]
     }
   ]

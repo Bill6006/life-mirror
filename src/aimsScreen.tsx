@@ -59,7 +59,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
   const studyAims = aims.filter((a) => a.kind === 'certification')
   const socialOn = aims.some((a) => a.kind === 'path' && a.path === 'social')
   // The paths computed once for this block: their cards, and the one People row between them (Part 27).
-  const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, marks: pathMarks, online: settings.partnerOnline, lightOnly })
+  const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, marks: pathMarks, online: settings.partnerOnline, lightOnly, faithHidden: settings.hideFaith })
   const views = aims.filter(pathOn).map(todayFor)
   const people = peopleRowOf(views, open, today, block)
   // One plan and one reminder for the People row, whichever path holds it.

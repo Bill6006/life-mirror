@@ -452,15 +452,20 @@ export interface PathMark {
   at: string
 }
 
-export type ReflectionKind = 'values' | 'decide' | 'reflection'
-/** The steps a decide-don't-slide note is written before. */
-export type PartnerStep = 'exclusive' | 'families' | 'movingIn' | 'engagement'
-export const PARTNER_STEPS: readonly PartnerStep[] = ['exclusive', 'families', 'movingIn', 'engagement']
+export type ReflectionKind = 'values' | 'decide' | 'reflection' | 'monthly'
+/** The steps a decide-don't-slide note is written before; introducing a partner to your child is one (2026-09-23). */
+export type PartnerStep = 'exclusive' | 'families' | 'child' | 'movingIn' | 'engagement'
+export const PARTNER_STEPS: readonly PartnerStep[] = ['exclusive', 'families', 'child', 'movingIn', 'engagement']
+/** The values note's three parts, and the monthly reflection's three (2026-09-23); the catalogue names and prompts each. */
+export type ValuesPart = 'nonNegotiables' | 'preferences' | 'partnerIWantToBe'
+export type MonthlyPart = 'understood' | 'disagreement' | 'ownPart'
+export const VALUES_PARTS: readonly ValuesPart[] = ['nonNegotiables', 'preferences', 'partnerIWantToBe']
+export const MONTHLY_PARTS: readonly MonthlyPart[] = ['understood', 'disagreement', 'ownPart']
 
 /**
- * A private note on a path (Part 27), typed and read by you: your values and non-negotiables, a
- * decide-don't-slide note before a step, or a reflection on a date, an experience or a person.
- * Kept whole in the record; exported only when ticked.
+ * A private note on a path (Part 27), typed and read by you: your values in three parts, a
+ * decide-don't-slide note before a step, a reflection on a date, an experience or a person, or a
+ * part of the monthly reflection. Kept whole in the record; exported only when ticked.
  */
 export interface Reflection {
   id?: number
@@ -468,6 +473,8 @@ export interface Reflection {
   kind: ReflectionKind
   /** For a decide-don't-slide note: the step it is written before. */
   step?: PartnerStep
+  /** For the values note or the monthly reflection: which of its parts. A values note written before the parts has none. */
+  part?: ValuesPart | MonthlyPart
   day: string
   text: string
   createdAt: string

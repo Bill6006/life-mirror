@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-127 moves across 15 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+137 moves across 15 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -157,6 +157,7 @@ Be where you might meet someone among the people your week already holds, say he
 - **Ask a friend for an introduction** (moves no stage · where: a call or a message, one to one). Attention on: The kind of person you would enjoy meeting, in a sentence. Drop: Hoping friends will guess you are open to it. Done when you have asked, whatever they say.
 - **Write or update one profile, honestly** (moves no stage · where: on your own · channel: online). Attention on: What a friend who knows you well would say you are like. Drop: Photos from years ago. Done when it is saved.
 - **Browse for fifteen minutes, then stop** (moves no stage · where: on your own · channel: online). Attention on: The timer, not the feed. Drop: One more profile. Done when the timer rings.
+- **Your values and non-negotiables, written down.** A short private note in three parts, typed by you and rewritten whenever you like: the few true non-negotiables, about direction and conduct rather than traits; the preferences you hold loosely; and the partner you want to be. Written before they are tested. Only you read it. In parts: (A few true non-negotiables) About direction and conduct, not traits. For each one: would you end an otherwise good relationship over it? (Preferences, held loosely) What you would like. Held loosely: what people say they want in a partner barely predicts whom they come to want. (The partner you want to be) How you want to treat them, and what you want to bring. Source: Jonason, Garcia, Webster, Li and Fisher (2015). People weigh dealbreakers more heavily than the qualities they want; knowing yours in advance is supported. Evidence: moderate.
 
 #### Stage 2 · Initiating
 
@@ -184,24 +185,37 @@ Say plainly that you would like to see them again, offer your number, and make o
 
 #### Stage 4 · Dating
 
-Your own conduct on a date: there on time with the phone away, attention on them, something real of your own in turn, and a clear, kind ending. From here on, a monthly private check on your own safety, conduct and doubts.
+Your own conduct on a date, and learning whether your lives fit: there on time with the phone away, attention on them, something real of your own in turn, a clear, kind ending, and thanks for something specific. Lighter talks first, about an ordinary week, what you are each working toward and the people in your lives; then weightier ones, about children and family, work, money and where you would live. From here on, a note before each step, a monthly reflection, and a monthly private check on your own safety, conduct and doubts.
 
 - Not progress: Judging the date or the person; a date is not a result and is never counted.
 - How it moves: moves only when you declare it
-- **On time, phone away** (moves no stage · where: one to one). Attention on: Them, not the screen. Drop: A glance at the phone in a lull. Done when you did it, however the date went.
-- **Ask, then follow what they say** (moves no stage · where: one to one). Attention on: The last thing they said. Drop: Waiting for your turn to talk. Done when you did it, however the date went.
-- **Share something real in turn** (moves no stage · where: one to one). Attention on: What they just shared, and what you have of the same size. Drop: Keeping it all light so nothing can go wrong. Done when you did it, however the date went.
-- **End the date clearly and kindly** (moves no stage · where: one to one). Attention on: One plain sentence about what you would like next. Drop: Leaving it vague so nobody has to answer. Done when you have said it, whatever the answer. Their answer is final. A second ask after a no is never offered.
+- **On time, phone away** (moves no stage · where: one to one · on a declared date day). Attention on: Them, not the screen. Drop: A glance at the phone in a lull. Done when you did it, however the date went.
+- **Ask, then follow what they say** (moves no stage · where: one to one · on a declared date day). Attention on: The last thing they said. Drop: Waiting for your turn to talk. Done when you did it, however the date went.
+- **Share something real in turn** (moves no stage · where: one to one · on a declared date day). Attention on: What they just shared, and what you have of the same size. Drop: Keeping it all light so nothing can go wrong. Done when you did it, however the date went.
+- **End the date clearly and kindly** (moves no stage · where: one to one · on a declared date day). Attention on: One plain sentence about what you would like next. Drop: Leaving it vague so nobody has to answer. Done when you have said it, whatever the answer. Their answer is final. A second ask after a no is never offered.
+- **Talk about a good ordinary week** (moves no stage · where: one to one, a call or a message). Attention on: What makes a week good for them, in their words. Drop: Turning it into an interview, or talking only about yourself. Done when you have asked, listened and said your own, whatever was said.
+- **Talk about what you are each working toward** (moves no stage · where: one to one, a call or a message). Attention on: Their plans, and where yours meet or pull apart. Drop: Keeping your own plans vague so nothing clashes. Done when you have asked, listened and said your own, whatever was said.
+- **Talk about the people in your lives** (moves no stage · where: one to one, a call or a message). Attention on: Who they are close to, and how those people fit into their week. Drop: Staying on safe small talk. Done when you have asked, listened and said your own, whatever was said.
+- **Talk about children and family** (moves no stage · where: one to one, a call or a message · offered by the app once these are done: Talk about a good ordinary week, Talk about what you are each working toward, Talk about the people in your lives). Attention on: What they hope for, and where it meets or differs from what you hope for. Drop: Waiting for it to come up on its own. Done when you have asked, listened and said your own, whatever was said.
+- **Talk about faith and how you live it** (moves no stage · where: one to one, a call or a message · offered by the app once these are done: Talk about a good ordinary week, Talk about what you are each working toward, Talk about the people in your lives · hidden while the faith family is hidden). Attention on: How it shapes their week, not only what they believe. Drop: Assuming you already know. Done when you have asked, listened and said your own, whatever was said.
+- **Talk about work, money and where you would live** (moves no stage · where: one to one, a call or a message · offered by the app once these are done: Talk about a good ordinary week, Talk about what you are each working toward, Talk about the people in your lives). Attention on: How they like to handle money and work, not how much. Drop: Treating money as too awkward to mention. Done when you have asked, listened and said your own, whatever was said.
+- **Thank them for one specific thing** (moves no stage · where: one to one · from Dating through Keeping). Attention on: The thing they did, and what it saved or gave you. Drop: A general thanks for everything. Done when you have said it.
+- **Reappraise a disagreement** (moves no stage · where: on your own · from Dating through Keeping). Attention on: How a fair friend of you both would tell it. Drop: Replaying who was right. Done when you have written it. For an ordinary disagreement. Never for explaining away something serious, or something that keeps happening.
+- **Decide, don’t slide.** Before each step (becoming exclusive, meeting each other’s families, introducing them to your child, moving in, an engagement), a private note: what you are choosing, and why now, written with your own record in front of you: your values, your recent reflections and your earlier notes. Source: Owen, Rhoades and Stanley (2013). People who reported deciding their relationship steps thoughtfully reported more dedication and satisfaction than those who slid into them. Evidence: moderate.
+- **Introducing them to your child.** If you are a parent: a decision that is yours alone, made deliberately, with a note before it. The app never schedules an introduction and never recommends one. Almost all of what is known comes from mothers after divorce; little is known about fathers raising a child. To weigh: How steady the relationship is before your child grows close: children who had grown close to a parent’s partner showed more anxiety and withdrawal when it ended, though breakups had no effect overall. (evidence: Langlais, Anderson and Greene 2018) Keeping your own time with your child: a close bond between parent and child softened the effects of a parent’s dating. (evidence: Xiao and colleagues 2022; Anderson and Greene 2011) Whether they want a life that includes a child who is already yours: people who said they would marry someone with children were more likely to. (related evidence: Goldscheider, Kaufman and Sassler 2009) A friend to your child first, while the parenting decisions stay yours: this went with warmer step-relationships in stepfamily studies. (related evidence: Ganong and colleagues 1999 and 2019; Sanner and colleagues 2022) Fewer changes in who is part of a young child’s life: changes in early childhood weigh most, though how much is debated. (related evidence: Cavanagh and Huston 2008; Lee and McLanahan 2015) When, where and what to tell your child: no study answers these; the guidance is expert opinion. (expert opinion: Kang and Nielson 2025) Source: Kang and Nielson (2025). A clinical review: few evidence-based guidelines exist for when and how a parent shares dating with a child or introduces a partner. Evidence: thin.
+- **A monthly reflection.** Once a month, if you want: a few lines on a moment you felt understood or appreciated, or didn’t; on how your last disagreement ended; and on your own part, and whether it feels chosen by both of you. Words only, never scored: describe the moment rather than analyse it. Never prompted on a hard day. In parts: (A moment you felt understood or appreciated, or didn’t) Describe the moment as it happened. (Your last disagreement, and how it ended) How it ended, not who was right. (Your own part, and whether it feels chosen by both of you) What you brought, and whether you both seem to be choosing this. Source: Rogge, Cobb, Lawrence, Johnson and Bradbury (2013). In a randomised trial of 174 engaged and newly married couples, one guided session of reflecting on the relationship matched two skills courses on breakups three years on, among couples who completed them. Evidence: moderate.
 - **A monthly private check.** Once a month, three private questions about your own safety, your own conduct, and any doubt you keep setting aside. A yes to the safety or the conduct question shows the app’s own fixed help, inside this check and nowhere else; a doubt on its own does not. No model writes, softens or decides it, and it is not a general crisis screen. The questions: (1) In the last month, has anyone you are dating made you afraid, or tried to control where you go, whom you see or what you spend? A yes shows the help. (2) Has anything you did toward them worried you afterwards: a raised voice, pressure, checking up on them? A yes shows the help. (3) Is there a doubt about this relationship you keep setting aside? The help the app shows itself: If someone’s behaviour frightens you, or your own worries you, you do not have to sort it out alone. The National Domestic Violence Hotline answers day and night: 1-800-799-7233, or text START to 88788, or thehotline.org. In danger now, call 911. Source: Charlot, Joel, Lamb and colleagues (2023). The number and frequency of early warning signs, such as reacting badly to a no, predicted abuse six months later. Evidence: moderate.
 
 #### Stage 5 · Deciding
 
-Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, and a relationship course suggested before an engagement, yours to take or leave.
+Decide rather than slide: a note before each step, written with your own record in front of you; planning talks about money, a normal week living together and parenting; and a relationship course suggested before an engagement, yours to take or leave.
 
 - Not progress: Letting a step happen because it is easier than choosing it.
 - How it moves: moves only when you declare it
-- **Your values and non-negotiables, written down.** A short private note, typed by you, of what you value in a partner and the few things you will not accept, written before they are tested. Only you read it. Source: Jonason, Garcia, Webster, Li and Fisher (2015). People weigh dealbreakers more heavily than the qualities they want; knowing yours in advance is supported. Evidence: moderate.
-- **Decide, don’t slide.** Before each step (becoming exclusive, meeting each other’s families, moving in, an engagement), a private note: what you are choosing, and why now. Source: Owen, Rhoades and Stanley (2013). People who reported deciding their relationship steps thoughtfully reported more dedication and satisfaction than those who slid into them. Evidence: moderate.
+- **Talk through how you would handle money together** (moves no stage · where: one to one, a call or a message). Attention on: How decisions would be made, not who is right. Drop: Leaving it until a bill forces it. Done when you have talked it through, whatever you decided.
+- **Talk through a normal week living together** (moves no stage · where: one to one, a call or a message). Attention on: What would feel fair to each of you. Drop: Assuming it will sort itself out. Done when you have talked it through, whatever you decided.
+- **Talk through parenting roles** (moves no stage · where: one to one, a call or a message). Attention on: What they imagine, and what your child needs. Drop: Hoping it will work itself out once you live together. Done when you have talked it through, whatever you decided.
+- **Talk through faith at home** (moves no stage · where: one to one, a call or a message · hidden while the faith family is hidden). Attention on: What each of you would want it to look like, day to day. Drop: Keeping faith out of it to avoid disagreement. Done when you have talked it through, whatever you decided.
 - **A relationship course, if you want one.** A suggestion, never a requirement: before an engagement, a relationship-education course together, nine to twenty hours rather than a single evening. Taking one is never needed to move on or to declare a step; not taking one blocks nothing and is never counted, flagged or shown as missing. Source: Hawkins, Stanley, Blanchard and Albright (2012). Across 148 evaluations, moderate courses of nine to twenty hours did better than short ones of one to eight. Evidence: moderate.
 
 #### Stage 6 · Building
@@ -211,9 +225,7 @@ The small acts that build a relationship: meet good news with interest, thank sp
 - Not progress: Keeping a tally of who did more; a compatibility quiz.
 - How it moves: moves only when you declare it
 - **Meet their good news with real interest** (moves no stage · where: one to one). Attention on: Their face when they tell it. Drop: Topping it with news of your own. Done when you did it.
-- **Thank your partner for one specific thing** (moves no stage · where: one to one). Attention on: The thing they did, and what it saved or gave you. Drop: A general thanks for everything. Done when you have said it.
 - **Do one new thing together** (moves no stage · where: one to one). Attention on: Something neither of you would plan alone. Drop: The same evening as always. Done when you did it together.
-- **Reappraise a disagreement** (moves no stage · where: on your own). Attention on: How a fair friend of you both would tell it. Drop: Replaying who was right. Done when you have written it.
 
 #### Stage 7 · Keeping
 
@@ -262,6 +274,7 @@ Never counted, stored or asked: yeses and noes; replies, or whether anyone wrote
 - Someone you supervise, or who supervises you: Harm around workplace romance concentrates where one partner has power over the other (a framework, not a trial).
 - Matching algorithms, love languages and divorce prediction: None holds up on the evidence (disputed cards); the path never uses them.
 - Labelling a partner’s attachment style, or opposites attract: Verdicts on another person are never made here, and actual similarity barely predicts satisfaction either way.
+- A list of answers to look for, or a tally of warning signs: No study shows that ticking topics or counting signs predicts a good match; the talks are for learning each other’s lives, and no answer is a pass or a fail.
 
 #### For a parent
 
@@ -305,6 +318,21 @@ Claim cards, each source verified at Crossref, admitted once their path was wire
 - **thin evidence** (disputed, never cited). Claims that divorce can be predicted with high accuracy from a few observed behaviours are disputed: they collapse without cross-validation, and a major model failed to replicate. Heyman & Slep (2001). The hazards of predicting divorce without crossvalidation. Journal of Marriage and Family, 63(2), 473–479. Kim, Capaldi & Crosby (2007). Generalizability of Gottman and colleagues’ affective process models of couples’ relationship outcomes. Journal of Marriage and Family, 69(1), 55–72.
 - **thin evidence** (disputed, never cited). The popular claims about love languages are disputed: the evidence does not support that each person has one preferred language, that there are five, or that matching them makes couples happier. Impett, Park & Muise (2024). Popular psychology through a scientific lens: evaluating love languages from a relationship science perspective. Current Directions in Psychological Science, 33(2), 87–92.
 - **thin evidence** (disputed, never cited). The claim that dating sites’ matching algorithms find compatible partners is disputed: no compelling evidence supports it, and traits measured in advance cannot predict which pairs will click. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489.
+- **some evidence** (admitted). Partners whose goals fit report more satisfaction, and among people who were dating, seeing their relationship goals as shared went with a better relationship. Toma et al. (2022). The role of goal interdependence in couples’ relationship satisfaction: A meta-analysis. Journal of Social and Personal Relationships, 40(6), 1740–1769. Avivi et al. (2009). Linking Relationship Quality to Perceived Mutuality of Relationship Goals and Perceived Goal Progress. Journal of Social and Clinical Psychology, 28(2), 137–164. Gere and Impett (2017). Shifting priorities. Journal of Social and Personal Relationships, 35(6), 793–810.
+- **some evidence** (admitted). Avoiding talk about where a relationship stands comes with more uncertainty, and weeks later with less dedication and satisfaction. Clifford et al. (2017). Testing the impact of sliding versus deciding in cyclical and noncyclical relationships. Personal Relationships, 24(1), 223–238. Knobloch and Theiss (2011). Relational Uncertainty and Relationship Talk within Courtship: A Longitudinal Actor–Partner Interdependence Model. Communication Monographs, 78(1), 3–26. Baxter and Wilmot (1985). Taboo Topics in Close Relationships. Journal of Social and Personal Relationships, 2(3), 253–269.
+- **some evidence** (admitted). Closeness grows through disclosure that deepens step by step and goes both ways; in one study a very personal disclosure early in a first conversation was liked less than the same one made later. Sprecher and Treger (2015). The benefits of turn‐taking reciprocal self‐disclosure in get‐acquainted interactions. Personal Relationships, 22(3), 460–475. Wortman et al. (1976). Self-disclosure: An attributional perspective. Journal of Personality and Social Psychology, 33(2), 184–191. Aron et al. (1997). The Experimental Generation of Interpersonal Closeness: A Procedure and Some Preliminary Findings. Personality and Social Psychology Bulletin, 23(4), 363–377.
+- **some evidence** (admitted). When partners disagree about having a child, fewer children follow, and births one partner did not intend go with more separation and divorce. Testa and Bolano (2021). When partners’ disagreement prevents childbearing: A couple-level analysis in Australia. Demographic Research, 44, 811–838. Thomson (1997). Couple childbearing desires, intentions, and births. Demography, 34(3), 343–354. Stykes and Guzzo (2020). Unintended Childbearing and Marital Instability: An Emphasis on Couples’ Intentions. Journal of Divorce & Remarriage, 61(7), 504–524.
+- **some evidence** (admitted). An earlier first talk about money went with better money communication and relationship quality, and in married and cohabiting couples money disagreements predicted divorce and breakup more than other disagreements. Saxey et al. (2022). The Sooner, the Better? Couples' First Financial Discussion, Relationship Quality, and Financial Conflict in Emerging Adulthood. Journal of Financial Therapy, 13(1). Dew et al. (2012). Examining the Relationship Between Financial Issues and Divorce. Family Relations, 61(4), 615–628. Dew (2011). Financial Issues and Relationship Outcomes Among Cohabiting Individuals. Family Relations, 60(2), 178–190.
+- **some evidence** (admitted). Among dating and cohabiting adults, shared beliefs and practice go with more satisfaction; in marriages, gaps in practice go with more conflict and divorce, and how faith is talked about matters. Henderson et al. (2017). Religion and Relationship Quality Among Cohabiting and Dating Couples. Journal of Family Issues, 39(7), 1904–1932. Call and Heaton (1997). Religious Influence on Marital Stability. Journal for the Scientific Study of Religion, 36(3), 382. Mahoney et al. (2021). Spiritual intimacy, spiritual one-upmanship, and marital conflict across the transition to parenthood. Journal of Family Psychology, 35(4), 552–558.
+- **good evidence** (admitted). Feeling appreciated by a partner goes with appreciating them in turn, being more responsive and committed, and staying together; your own gratitude predicts rising commitment whatever your partner’s. Gordon et al. (2012). To have and to hold: Gratitude promotes relationship maintenance in intimate bonds. Journal of Personality and Social Psychology, 103(2), 257–274. Joel et al. (2013). The Things You Do for Me. Personality and Social Psychology Bulletin, 39(10), 1333–1345. Park et al. (2023). Differing Levels of Gratitude Between Romantic Partners: Concurrent and Longitudinal Links With Satisfaction and Commitment in Six Dyadic Datasets. Personality Science, 4(1).
+- **good evidence** (admitted). Whether a dating relationship lasts is predicted by how it works, commitment, love and closeness, far more than by personality, and swings in satisfaction or in how committed the partner seems predict breakup beyond their average. Le et al. (2010). Predicting nonmarital romantic relationship dissolution: A meta-analytic synthesis. Personal Relationships, 17(3), 377–390. Arriaga (2001). The ups and downs of dating: Fluctuations in satisfaction in newly formed romantic relationships. Journal of Personality and Social Psychology, 80(5), 754–765. Arriaga et al. (2006). Relationship perceptions and persistence: Do fluctuations in perceived partner commitment undermine dating relationships?. Journal of Personality and Social Psychology, 91(6), 1045–1065.
+- **some evidence** (admitted). People remember their relationship’s past to fit how they feel now, and their own ratings at the time predicted its future better than their forecasts did. McFarland and Ross (1987). The Relation between Current Impressions and Memories of Self and Dating Partners. Personality and Social Psychology Bulletin, 13(2), 228–238. MacDonald and Ross (1999). Assessing the Accuracy of Predictions about Dating Relationships: How and Why Do Lovers’ Predictions Differ from those Made by Observers?. Personality and Social Psychology Bulletin, 25(11), 1417–1429. Karney and Frye (2002). "But we've been getting better lately": Comparing prospective and retrospective views of relationship development. Journal of Personality and Social Psychology, 82(2), 222–238.
+- **some evidence** (admitted). A little reflection on a relationship helped in two trials, writing about a dating relationship and one session discussing films about couples, while a daily prompt did nothing. Slatcher and Pennebaker (2006). How Do I Love Thee? Let Me Count the Words. Psychological Science, 17(8), 660–664. Rogge et al. (2013). Is skills training necessary for the primary prevention of marital distress and dissolution? A 3-year experimental study of three interventions. Journal of Consulting and Clinical Psychology, 81(6), 949–961. Hatch et al. (2019). Texts 4 Romantic Relationships – A Randomized Controlled Trial. Journal of Couple & Relationship Therapy, 19(2), 115–135.
+- **some evidence** (admitted). People lean toward letting relationships go on, staying partly for the partner’s sake and settling more when they fear being single, while doubts before marrying and commitment that runs unequal both predict trouble. Joel et al. (2018). How interdependent are stay/leave decisions? On staying in the relationship for the sake of the romantic partner. Journal of Personality and Social Psychology, 115(5), 805–824. Spielmann et al. (2013). Settling for less out of fear of being single. Journal of Personality and Social Psychology, 105(6), 1049–1073. Lavner et al. (2012). Do cold feet warn of trouble ahead? Premarital uncertainty and four-year marital outcomes. Journal of Family Psychology, 26(6), 1012–1017. Stanley et al. (2016). Asymmetrically committed relationships. Journal of Social and Personal Relationships, 34(8), 1241–1259.
+- **some evidence** (admitted). Little is known about when to introduce a partner to a child; children who had grown close to a parent’s dating partner struggled more when it ended, and a close bond between parent and child softened a parent’s dating. Langlais et al. (2018). The Impact of Mothers’ Post-Divorce Dating Breakups on Children’s Problem Behaviors. Journal of Child and Family Studies, 27(8), 2643–2655. Ganong et al. (2019). Stepfathers’ affinity-seeking with stepchildren, stepfather-stepchild relationship quality, marital quality, and stepfamily cohesion among stepfathers and mothers. Journal of Family Psychology, 33(5), 521–531. Sanner et al. (2022). Effective parenting in stepfamilies: Empirical evidence of what works. Family Relations, 71(3), 884–899.
+- **some evidence** (admitted). Reading a partner’s behaviour kindly helped healthy marriages and was followed by steeper declines in troubled ones. McNulty et al. (2008). Benevolent cognitions as a strategy of relationship maintenance: "Don't sweat the small stuff"....But it is not all small stuff. Journal of Personality and Social Psychology, 94(4), 631–646.
+- **some evidence** (admitted). Couples assigned to pool their money kept their relationship quality over two years while other couples’ declined, and pooling goes with satisfaction across many studies. Olson et al. (2023). Common Cents: Bank Account Structure and Couples’ Relationship Dynamics. Journal of Consumer Research, 50(4), 704–721. Gladstone et al. (2022). Pooling finances and relationship satisfaction. Journal of Personality and Social Psychology, 123(6), 1293–1314.
+- **some evidence** (admitted). Seeing the split of housework as unfair lowers both partners’ happiness, feeling appreciated removes much of that, and unmet expectations about sharing childcare lower satisfaction after a birth. Frisco and Williams (2003). Perceived Housework Equity, Marital Happiness, and Divorce in Dual-Earner Households. Journal of Family Issues, 24(1), 51–73. Gordon et al. (2022). Feeling Appreciated Buffers Against the Negative Effects of Unequal Division of Household Labor on Relationship Satisfaction. Psychological Science, 33(8), 1313–1327. Biehle and Mickelson (2012). First-time parents' expectations about the division of childcare and play. Journal of Family Psychology, 26(1), 36–45.
 
 ## Learned tags and their starting beliefs
 
@@ -2078,6 +2106,136 @@ At the end, say plainly whether you would like to meet again, and make it easy f
 - Starting belief: Mood ↑ by about a tenth of a step over the this evening · Joel 2014: refusing is harder than people expect; a plain ending with an easy no; a tenth of a step.
 - When: afternoon, evening
 
+### Talk about a good ordinary week
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+Ask what a good ordinary week looks like for them: work, rest, people, time alone. Listen, then describe yours. A lighter talk, for learning each other, never a test.
+
+- Source: Crawford, Houts, Huston and George (2002). In marriages followed for over ten years, leisure one partner liked and the other disliked went with lower satisfaction: the shape of an ordinary week matters (married couples, related evidence). Evidence: thin.
+- Takes: 15 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, connection · intensity low
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Crawford and colleagues 2002: an association in marriages, not a test of talking; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk about what you are each working toward
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+Ask what they are working toward over the next few years, listen, and say plainly what you are working toward.
+
+- Source: Avivi, Laurenceau and Carver (2009). Among people who were dating, seeing their relationship goals as shared went with a better relationship, through a sense of progress toward them. Evidence: thin.
+- Takes: 15 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, connection · intensity low
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Avivi and colleagues 2009: a correlation among dating people, not a test of talking; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk about the people in your lives
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+Ask about the people who matter to them, family and friends, and tell them about yours.
+
+- Source: Le, Dove, Agnew, Korn and Mutso (2010). A meta-analysis of 137 studies of dating relationships: support from friends and family was one of the steadier predictors of staying together. Evidence: moderate.
+- Takes: 15 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, connection · intensity low
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Le and colleagues 2010: network support predicted staying together; talking about it is untested; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk about children and family
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+Ask whether they want children and how they picture family life, listen, and say what you want; if you are a parent, how your child is part of your life.
+
+- Source: Testa and Bolano (2021). When partners disagreed about having a child, fewer children followed: a difference worth knowing before a life is built around it (couples, births as the outcome). Evidence: moderate.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Testa and Bolano 2021: disagreement shapes whether children come; talking is untested; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk about faith and how you live it
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+Ask what faith means to them and how they live it from day to day, listen, and share your own.
+
+- Source: Henderson, Ellison and Glenn (2017). Among dating and cohabiting adults, shared beliefs and shared practice went with higher satisfaction; one survey at one time. Evidence: thin.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Henderson and colleagues 2017: an association in one survey; talking is untested; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk about work, money and where you would live
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+Ask how they think about work, money and where they want to live, listen, and share your own: habits and hopes, not figures.
+
+- Source: Saxey, LeBaron-Black and Curran (2022). Among young adults in relationships, an earlier first talk about money went with better money communication and relationship quality, and a little more money conflict; one survey at one time. Evidence: thin.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Saxey and colleagues 2022: an association in one survey; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk through how you would handle money together
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 5, moves no stage_
+
+Before sharing a home: how you would share costs, save and decide on big spending, and what each of you finds hard about money.
+
+- Source: Dew, Britt and Huston (2012). In married couples, disagreements about money predicted divorce more than other disagreements, through how conflicts were handled (married couples, related evidence). Evidence: moderate.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Dew and colleagues 2012: an association in marriages; talking it through first is untested; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk through a normal week living together
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 5, moves no stage_
+
+Before moving in: work, cooking, cleaning, time together and apart. Who does what, and what would feel fair to each of you.
+
+- Source: Frisco and Williams (2003). In couples where both worked, seeing the housework split as unfair went with lower happiness for both; later work found feeling appreciated softens it (married couples, related evidence). Evidence: moderate.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Frisco and Williams 2003: an association in marriages; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk through parenting roles
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 5, moves no stage_
+
+If you are a parent, or plan to be: how they would be with your child, a friend first while the parenting decisions stay yours, and how you would raise any children together.
+
+- Source: Ganong, Coleman and Jamison (2011). Step-relationships grew best when the new partner built a friendship with the child first; in stepfamily studies, the parent keeping discipline goes with fewer difficulties (mostly interviews, related evidence). Evidence: thin.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Ganong and colleagues 2011: patterns from interviews; a twentieth of a step.
+- When: afternoon, evening
+
+### Talk through faith at home
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 5, moves no stage_
+
+How faith would be part of your home: practice, community, and, if there are children, what you would each want for them.
+
+- Source: Mahoney, Pargament and DeMaris (2021). In married couples, sharing spiritual views went with less conflict over time, while using faith to claim the upper hand went with stalemate (married couples, related evidence). Evidence: thin.
+- Takes: 15 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, connection · intensity medium
+- Should move: Loneliness ↓ (this evening), Mood ↑ (this evening)
+- Starting belief: Loneliness ↓ by about 0.05 of a step over the this evening · Mahoney and colleagues 2021: an association in marriages; a twentieth of a step.
+- When: afternoon, evening
+
 ### Meet their good news with real interest
 
 _Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
@@ -2091,17 +2249,17 @@ When your partner tells you something good, ask about it, let them tell it, and 
 - Starting belief: Mood ↑ by about a tenth of a step over the this evening · Gable 2004: active, constructive responses went with closer relationships; a tenth of a step.
 - When: afternoon, evening
 
-### Thank your partner for one specific thing
+### Thank them for one specific thing
 
-_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
 
-Thank your partner for one specific thing they did, and say what it meant to you.
+Thank them for one specific thing they did, and say what it meant to you.
 
-- Source: Algoe, Gable and Maisel (2010). In daily diaries, gratitude from small everyday kindnesses predicted more connection and satisfaction the next day, for both partners. Evidence: moderate.
+- Source: Gordon, Impett, Kogan, Oveis and Keltner (2012). People who felt appreciated by their partners appreciated them in turn, were more responsive and committed, and were more likely to stay together. Evidence: moderate.
 - Takes: 2 min · effort to start: low · cost to assign: low · needs: another person
 - Tags: with people, short, low effort, connection · intensity low
 - Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
-- Starting belief: Mood ↑ by about a tenth of a step over the this evening · Algoe 2010: everyday gratitude lifted the next day for both; a tenth of a step.
+- Starting belief: Mood ↑ by about a tenth of a step over the this evening · Gordon and colleagues 2012 and Algoe and colleagues 2010: appreciation and connection move together; a tenth of a step.
 - When: afternoon, evening
 
 ### Do one new thing together
@@ -2119,11 +2277,11 @@ This week, do one thing together that neither of you has done before. Small is f
 
 ### Reappraise a disagreement
 
-_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
 
 After a disagreement, spend seven minutes writing it as a neutral friend who wants the best for you both would see it.
 
-- Source: Finkel, Slotter, Luchies, Walton and Gross (2013). A 21-minute reappraisal exercise, spread across a year, stopped the usual decline in marital quality in a two-year randomised study. Evidence: moderate.
+- Source: Finkel, Slotter, Luchies, Walton and Gross (2013). One randomised trial of 120 married couples: a 21-minute reappraisal exercise, spread across a year, stopped the usual decline in marital quality. Never replicated, and never tested in dating couples. Evidence: thin.
 - Takes: 7 min · effort to start: medium · cost to assign: medium · needs: nothing
 - Tags: short, mastery · intensity low
 - Should move: Stress ↓ (next morning), Mood ↑ (next morning)

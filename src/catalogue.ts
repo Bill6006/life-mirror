@@ -25,6 +25,12 @@ export type PathId = 'social' | 'partner'
 export interface PathPlace {
   stage: number
   advances: boolean
+  /** The last stage it is offered at, when it spans stages from its own on (a declared stage's rep only). */
+  through?: number
+  /** A rep about your own conduct on a date: offered only on a date day you declared (Part 27). */
+  onDate?: boolean
+  /** Reps done first: until each is done, the app does not pick this one, though Change still reaches it. */
+  after?: readonly string[]
 }
 
 export interface Source {
@@ -99,6 +105,8 @@ export interface Move {
   guardrail?: string
   /** The optional channel it belongs to, off until you turn it on. */
   channel?: 'online'
+  /** Hidden everywhere while this family is hidden: a path's faith talk goes with the faith family (Rule 10). */
+  hiddenWith?: 'faith'
   /** Parked at the Phase 9 Green: shown in the catalogue, never offered. */
   parked?: boolean
   ladder?: { id: string; rung: number }
@@ -181,7 +189,21 @@ export interface PathQuestion {
   helpOnYes: boolean
 }
 
-/** A private note or check a stage holds, app content read and typed by you alone. */
+/** One part of a note written in parts: its name and the prompt beside it. */
+export interface PathActPart {
+  id: string
+  name: string
+  prompt: string
+}
+
+/** A consideration a decision point lays out, tagged by what stands behind it; never a checklist and never a gate. */
+export interface PathConsideration {
+  text: string
+  basis: 'evidence' | 'adjacent' | 'opinion'
+  source: string
+}
+
+/** A private note or check a stage holds, app content read and typed by you alone. It stays yours through every later stage. */
 export interface PathAct {
   id: string
   stage: number
@@ -191,6 +213,10 @@ export interface PathAct {
   questions?: readonly PathQuestion[]
   /** Fixed help the app shows itself, never model-written: inside this act only, on a yes to a question marked `helpOnYes`. */
   help?: string
+  /** A note written in parts, each with its own prompt. */
+  parts?: readonly PathActPart[]
+  /** What a decision point lays out before you write, each tagged by its evidence. */
+  considerations?: readonly PathConsideration[]
 }
 
 /** A staged curriculum the app owns (Parts 23 and 26): content to read and veto; nothing is wired until Green. */
@@ -232,11 +258,22 @@ export const filterTags: readonly FilterTag[] = catalogue.filterTags
 /** The two paths, Social and Partner, as content (Parts 23 and 26). */
 export const paths: readonly Path[] = catalogue.paths
 
-/** The reps a path holds, in stage order, optionally one stage's alone. */
+/** Whether a rep is offered at a stage of a path: from its own stage through the last one it names. */
+export function onStage(m: Pick<Move, 'path'>, id: PathId, stage: number): boolean {
+  const place = m.path?.[id]
+  return place !== undefined && stage >= place.stage && stage <= (place.through ?? place.stage)
+}
+
+/** The reps a path holds, in stage order, optionally those offered at one stage, a spanning rep at each stage it spans. */
 export function pathReps(id: PathId, stage?: number): Move[] {
   return catalogue.moves
-    .filter((m) => m.path?.[id] && (stage === undefined || m.path[id]?.stage === stage))
+    .filter((m) => m.path?.[id] && (stage === undefined || onStage(m, id, stage)))
     .sort((a, b) => (a.path?.[id]?.stage ?? 0) - (b.path?.[id]?.stage ?? 0))
+}
+
+/** The reps a stage introduces: those whose place begins there, for reading a path in full, each once. */
+export function repsIntroducedAt(id: PathId, stage: number): Move[] {
+  return catalogue.moves.filter((m) => m.path?.[id]?.stage === stage)
 }
 export const research: readonly Research[] = catalogue.research
 export const extensionPrompt: ExtensionPrompt = catalogue.extensionPrompt
