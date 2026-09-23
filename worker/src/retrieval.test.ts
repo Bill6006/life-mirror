@@ -4,14 +4,14 @@ import type { Fact, FactSheet } from '../../src/factTypes'
 import catalogueJson from '../../src/catalogue.json'
 import { CATEGORIES, lineBriefing, permitted } from './briefing'
 import { buildMessages } from './prompt'
-import { accessFor, contextFor, FAITH_WORDS, gatesFrom, readCategory, sheetForClaude, type Catalogue } from './retrieval'
+import { accessFor, contextFor, FAITH_WORDS, gatesFrom, parseContextQuery, readCategory, sheetForClaude, tagsOf, type Catalogue } from './retrieval'
 import { APP, BRAIN_APP, memoryStore } from './turso'
 
 // The private retrieval layer (Part 30): what Claude may read, closed by default, and every read
 // logged without its content. The acceptance list of the plan, item by item.
 
 const DAY = '2026-09-18'
-const catalogue: Catalogue = new Map((catalogueJson as { moves: { id: string; name: string; family: string; hiddenWith?: string }[] }).moves.map((m) => [m.id, { name: m.name, family: m.family, ...(m.hiddenWith ? { hiddenWith: m.hiddenWith } : {}) }]))
+const catalogue: Catalogue = new Map((catalogueJson as unknown as { moves: { id: string; name: string; family: string; hiddenWith?: string; tags?: Record<string, unknown> }[] }).moves.map((m) => [m.id, { name: m.name, family: m.family, ...(m.hiddenWith ? { hiddenWith: m.hiddenWith } : {}), tags: tagsOf(m.tags) }]))
 const f = (id: string, tags: string[] = [], text = id, values: Fact['values'] = {}): Fact => ({ id, tags, text, values })
 
 const sheet: FactSheet = {
@@ -150,6 +150,19 @@ describe('the readers', () => {
     expect(await texts(hidden, 'dayRecord')).toContain('caffeine 100 to 199 mg')
     expect(await texts(hidden, 'notes')).not.toContain('church')
     expect(await texts(shown, 'notes')).toContain('church ran long')
+  })
+
+  it('filter the reps by the tags their moves carry, and refuse a tag on a category whose lines carry none', async () => {
+    const store = record()
+    const a = accessFor('line', OPEN, readBrainPrefs({}))
+    const names = async (tag: string) => ((await readCategory({ store, catalogue, a }, 'partnerPath', { ...week, tag })) ?? []).map((i) => i.text)
+    expect(catalogue.get('talk-ordinary-week')?.tags).toContain('withPeople')
+    expect(await names('withPeople')).toEqual(expect.arrayContaining(['Talk about a good ordinary week, done']))
+    expect(await names('outdoors')).toEqual([])
+    const url = (q: string) => new URL(`https://w.test/claude/context?task=line&day=${DAY}&${q}`)
+    expect(parseContextQuery(url('category=partnerPath&tag=withPeople'), DAY)).toMatchObject({ ok: true, q: { tag: 'withPeople' } })
+    expect(parseContextQuery(url('category=notes&tag=withPeople'), DAY)).toEqual({ ok: false, reason: 'tag filters the paths’ reps and faith’s practices, whose moves carry tags' })
+    expect(parseContextQuery(url('category=faith&tag=a%20b'), DAY)).toEqual({ ok: false, reason: 'tag is one word of letters' })
   })
 
   it('read a path’s reflections only while its path may be read', async () => {

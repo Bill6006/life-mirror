@@ -114,6 +114,11 @@ const handler: ExportedHandler<Env> = {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
       return json({ rows: await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readBridge(30) })
     }
+    // With the run key: what Claude read, newest first, by task, category, count and size, never content.
+    if (url.pathname === '/run/reads-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      return json({ rows: await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readReads(60) })
+    }
     // With the run key: the last thirty lines and reviews as their log reads, never their words (Part 28's window is read off this).
     if (url.pathname === '/run/brief-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })

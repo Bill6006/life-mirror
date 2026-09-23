@@ -373,5 +373,7 @@ describe('the keyed door', () => {
     expect(r.status).toBe(401)
     expect((await handler.fetch!(new Request('https://w.test/claude/ping') as never, bare, {} as never)).status).toBe(401)
     expect((await handler.fetch!(new Request('https://w.test/run/claude-fire?key=x') as never, bare, {} as never)).status).toBe(404)
+    // The reports answer only the run key.
+    for (const path of ['/run/reads-report', '/run/bridge-report', '/run/brief-report']) expect((await handler.fetch!(new Request(`https://w.test${path}?key=nope`) as never, { ...bare, RUN_KEY: 'run-key' } as never, {} as never)).status, path).toBe(404)
   })
 })

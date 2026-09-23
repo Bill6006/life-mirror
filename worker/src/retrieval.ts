@@ -25,6 +25,8 @@ export interface MoveInfo {
   name: string
   family: string
   hiddenWith?: string
+  /** The move's own tags in the catalogue: its ingredients, its reward and its intensity. */
+  tags: string[]
 }
 export type Catalogue = ReadonlyMap<string, MoveInfo>
 
@@ -32,8 +34,15 @@ export type Catalogue = ReadonlyMap<string, MoveInfo>
 export async function loadCatalogue(url: string, fetcher: typeof fetch = fetch): Promise<Catalogue> {
   const r = await fetcher(url, { headers: { accept: 'application/json' } })
   if (!r.ok) throw new Error(`catalogue: ${r.status}`)
-  const data = (await r.json()) as { moves?: { id: string; name: string; family: string; hiddenWith?: string }[] }
-  return new Map((data.moves ?? []).map((m) => [m.id, { name: m.name, family: m.family, ...(m.hiddenWith ? { hiddenWith: m.hiddenWith } : {}) }]))
+  const data = (await r.json()) as { moves?: { id: string; name: string; family: string; hiddenWith?: string; tags?: Record<string, unknown> }[] }
+  return new Map((data.moves ?? []).map((m) => [m.id, { name: m.name, family: m.family, ...(m.hiddenWith ? { hiddenWith: m.hiddenWith } : {}), tags: tagsOf(m.tags) }]))
+}
+
+/** A move's catalogue tags as one list: its ingredients, its reward and its intensity. */
+export function tagsOf(tags: Record<string, unknown> | undefined): string[] {
+  return Object.values(tags ?? {})
+    .flat()
+    .filter((t): t is string => typeof t === 'string')
 }
 
 /**
@@ -122,6 +131,8 @@ export interface Query {
   path?: 'social' | 'partner'
   stage?: number
   q?: string
+  /** A tag of the move behind a rep or a practice, from the catalogue: its ingredients, its reward, its intensity. */
+  tag?: string
   limit: number
   /** Only acts done or partly done: how the review reads the Partner path (Part 31), never a shortfall. */
   doneOnly?: boolean
@@ -173,6 +184,7 @@ async function pathReps(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<I
     if (!paths.includes(path)) continue
     const moveId = str(b.moveId)
     if (isFaithMove(x.catalogue, moveId) && !x.a.allowed('faith')) continue
+    if (q.tag && !(x.catalogue.get(moveId)?.tags ?? []).includes(q.tag)) continue
     if (q.stage !== undefined && b.stage !== q.stage) continue
     const said = typeof b.id === 'number' ? answer.get(b.id) : undefined
     if (q.doneOnly && said !== 'done' && said !== 'partly') continue
@@ -279,7 +291,8 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       const path = category === 'partnerPath' ? 'partner' : 'social'
       if (q.path && q.path !== path) return []
       const [reps, marks] = await Promise.all([pathReps(x, q, path), pathMarks(x, q, path)])
-      items = [...marks, ...reps]
+      // A declaration is not a move and carries no tag: a tag asks for reps alone.
+      items = q.tag ? reps : [...marks, ...reps]
       break
     }
     case 'reflections': {
@@ -315,7 +328,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       }
       items = offers
         .map((o) => ({ o, b: obj(o.body) }))
-        .filter(({ b }) => isFaithMove(x.catalogue, str(b.moveId)) && !b.skippedAt)
+        .filter(({ b }) => isFaithMove(x.catalogue, str(b.moveId)) && !b.skippedAt && (!q.tag || (x.catalogue.get(str(b.moveId))?.tags ?? []).includes(q.tag)))
         .map(({ o, b }) => {
           const said = typeof b.id === 'number' ? answer.get(b.id) : undefined
           return { day: o.day, text: `${nameOf(x.catalogue, str(b.moveId))}${said ? `, ${OUTCOMES[said] ?? said}` : ''}` }
@@ -449,7 +462,9 @@ export async function privateNames(store: Store): Promise<string[]> {
 }
 
 /** The query parameters /claude/context accepts; any other is refused, so no request can ask for anything the layer does not name. */
-export const CONTEXT_PARAMS = ['task', 'day', 'category', 'from', 'to', 'path', 'stage', 'q', 'limit'] as const
+export const CONTEXT_PARAMS = ['task', 'day', 'category', 'from', 'to', 'path', 'stage', 'tag', 'q', 'limit'] as const
+/** The categories whose lines are moves the catalogue tags: a tag filters these alone. */
+const TAGGED: readonly Category[] = ['socialPath', 'partnerPath', 'faith']
 /** The per-run cap on on-demand reads (engineering judgment). */
 export const CONTEXT_CALLS = 20
 export const CONTEXT_BYTES = 64 * 1024
@@ -472,10 +487,13 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
   if (stage !== undefined && (!Number.isInteger(stage) || stage < 1 || stage > 9)) return { ok: false, reason: 'stage must be a whole number from 1 to 9' }
   const q = url.searchParams.get('q') ?? undefined
   if (q !== undefined && q.length > 60) return { ok: false, reason: 'q is at most 60 characters' }
+  const tag = url.searchParams.get('tag') ?? undefined
+  if (tag !== undefined && !/^[A-Za-z][A-Za-z-]{0,39}$/.test(tag)) return { ok: false, reason: 'tag is one word of letters' }
+  if (tag !== undefined && !TAGGED.includes(category as Category)) return { ok: false, reason: 'tag filters the paths’ reps and faith’s practices, whose moves carry tags' }
   const limitRaw = url.searchParams.get('limit')
   const limit = limitRaw === null ? 20 : Number(limitRaw)
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) return { ok: false, reason: 'limit must be from 1 to 50' }
-  return { ok: true, category: category as Category, q: { from, to, ...(path ? { path } : {}), ...(stage !== undefined ? { stage } : {}), ...(q ? { q } : {}), limit } }
+  return { ok: true, category: category as Category, q: { from, to, ...(path ? { path } : {}), ...(stage !== undefined ? { stage } : {}), ...(q ? { q } : {}), ...(tag ? { tag } : {}), limit } }
 }
 
 /**

@@ -214,7 +214,7 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
     briefing: text,
     answer,
     post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
-    context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, q, limit', categories: READABLE.filter((c) => access.allowed(c)), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: t.contextCalls, bytes: t.contextBytes } },
+    context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, tag, q, limit', categories: READABLE.filter((c) => access.allowed(c)), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: t.contextCalls, bytes: t.contextBytes } },
     attemptsLeft: MAX_POSTS - t.posts,
   })
 }

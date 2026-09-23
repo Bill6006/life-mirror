@@ -178,6 +178,8 @@ export interface Store {
   writeTask(row: TaskRow): Promise<void>
   /** A read logged, never its content. */
   writeRead(row: ReadRow): Promise<void>
+  /** The newest reads logged, newest first. */
+  readReads(limit: number): Promise<ReadRow[]>
   /** The phone's own rows of one store, newest day first, within a day range when one is given: the retrieval layer's only read. */
   readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
   /** One of the phone's own rows by id, or null. */
@@ -258,6 +260,10 @@ export function tursoStore(url: string, token: string): Store {
     async writeRead(row) {
       const now = new Date().toISOString()
       await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'reads', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async readReads(limit) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'reads' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
+      return r.map((row) => parse<ReadRow>(row.body)).filter((x): x is ReadRow => x !== null)
     },
     async readRecords(store, range = {}, limit = 500) {
       const where = ['app = ?', 'store = ?', 'deleted = 0']
@@ -371,6 +377,13 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async writeRead(row) {
       rows.set(key(BRAIN_APP, 'reads', row.id), { app: BRAIN_APP, store: 'reads', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
+    },
+    async readReads(limit) {
+      return live(BRAIN_APP, 'reads')
+        .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
+        .slice(0, limit)
+        .map((r) => parse<ReadRow>(r.body))
+        .filter((x): x is ReadRow => x !== null)
     },
     async readRecords(store, range = {}, limit = 500) {
       return live(APP, store)
