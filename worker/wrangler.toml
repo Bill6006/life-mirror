@@ -1,7 +1,8 @@
 # The brain: a Worker under your own Cloudflare account, on the free tier. Deployed by you with
 # `npm run worker:deploy` after `npx wrangler login`. Its secrets are pasted by you with
 # `npx wrangler secret put NAME --config worker/wrangler.toml` and never appear here, in source,
-# in tests, in the pipeline or in logs: TURSO_TOKEN, PUSH_SUBSCRIPTION, VAPID_PRIVATE_KEY, RUN_KEY.
+# in tests, in the pipeline or in logs: TURSO_TOKEN, PUSH_SUBSCRIPTION, VAPID_PRIVATE_KEY, RUN_KEY,
+# CLAUDE_BRIDGE_KEY, CLAUDE_FIRE_TOKEN.
 name = "life-mirror-brain"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
@@ -26,6 +27,9 @@ PING_TIMES = "07:30,13:00,19:30"
 # The database address is a constant shown in Settings, not a secret; the token is.
 TURSO_URL = "https://life-record-bill6006.aws-us-east-1.turso.io"
 LIBRARY_URL = "https://raw.githubusercontent.com/Bill6006/life-mirror/main/src/library.json"
+# The bridge proof's routine (Part 29). Its fire URL is an address, not a secret; the routine's
+# token is, and nothing fires without it.
+CLAUDE_FIRE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_01RQ3fd2bQh64dA2hx963dh3/fire"
 VAPID_PUBLIC_KEY = "BCaIRco378dsKVVBh0-wIIWYUqrTgY2aZuJA_uxEXnyojXNoZrYlsszUH3QzecsMBdvMCzXEw9ihMnf219GCNOA"
 VAPID_SUBJECT = "https://github.com/Bill6006/life-mirror"
 # In order; every failure falls to the next. All four answer on the free plan (DeepSeek does not;

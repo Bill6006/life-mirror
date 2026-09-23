@@ -10,10 +10,11 @@ import type { BridgeRow, Store } from './turso'
 export const FIRE_BETA = 'experimental-cc-routine-2026-04-01'
 export const FIRE_TEXT = 'Bridge proof: test data only. Follow the instructions in this repository.'
 /**
- * The models a proof run may ask its subagent to write with: Claude Code's four aliases, and one
+ * The models a proof run may ask its subagent to write with: the four values the Agent tool's
+ * `model` parameter accepts (read from its own refusal on 2026-09-23; `best` is not one), and one
  * retired id on purpose, to record what an unavailable model does.
  */
-export const TEST_MODELS = ['best', 'opus', 'sonnet', 'haiku', 'claude-3-opus-20240229'] as const
+export const TEST_MODELS = ['opus', 'sonnet', 'haiku', 'fable', 'claude-3-opus-20240229'] as const
 export type TestModel = (typeof TEST_MODELS)[number]
 /** How long a nonce may wait for its answer. */
 export const NONCE_MINUTES = 30
