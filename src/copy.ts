@@ -2,6 +2,7 @@
 // live in readings.json, moves in catalogue.json), so one test can check all of them against
 // the plan's rule: a reading, never a verdict.
 export const copy = {
+  when: { today: 'today', yesterday: 'yesterday', daysAgo: '{n} days ago' },
   appName: 'Life Mirror',
   tabs: {
     now: 'Now',
@@ -77,6 +78,7 @@ export const copy = {
     scaleEmpty: 'The scale from 0 to 100, no reading yet',
     context: 'Context',
     today: 'Today so far',
+    pastDay: '{day}',
   },
   direction: {
     title: 'Your direction',
@@ -181,7 +183,7 @@ export const copy = {
     recoveryNote: 'The recovery gap rides alongside tomorrow evening’s move, as it does after your church day.',
     chipDirection: 'Your direction: {line}',
     noteLabel: 'Anything the app has no question for',
-    notePlaceholder: 'One line, kept for the export',
+    notePlaceholder: 'One line. The brain reads your last few notes.',
   },
   mirror: {
     today: 'Today',
@@ -240,7 +242,7 @@ export const copy = {
     necessities: { food: 'food', teeth: 'teeth', shower: 'the shower' },
     passiveProposed: 'a passive item, riding alongside a move',
     learnedTitle: 'Learned tags and their starting beliefs',
-    learnedNote: 'From Phase 10 the app estimates each tag’s effect from your record, starting from these. No more learned tags than these.',
+    learnedNote: 'The app estimates each tag’s effect from your record, starting from these. No more learned tags than these.',
     filterTitle: 'Filter tags',
     filterNote: 'These only select. They are never learned.',
     researchTitle: 'The research the layer rests on',
@@ -390,6 +392,7 @@ export const copy = {
     yesterdayNone: 'Last night carried nothing the record can set this morning against.',
     steady: 'Steady: {inside} of the last {of} blocks read inside their usual range.',
     move: 'Yesterday, {name}: {arm}. {target} read {steps} of a step {dir} your usual this morning. One reading, not a finding.',
+    moveNothing: 'Yesterday you kept to nothing extra, on purpose. {target} read {steps} of a step {dir} your usual this morning. One reading, not a finding.',
     above: 'above',
     under: 'under',
     models: { sameBlock: 'this time of day over the last four weeks', weekdayBlock: 'this weekday at this time of day', lastValue: 'the last time you logged this time of day', blend: 'this time of day and this weekday, blended' },
@@ -430,10 +433,12 @@ export const copy = {
     bestNote: 'Your top tenth of days, {k} of {days}, and what was different.',
     control: 'What you control',
     notControl: 'What you don’t',
+    controlNone: 'Nothing you control differs between your best days and the others yet.',
+    notControlNone: 'Nothing outside your control differs between your best days and the others yet.',
     diffLine: '{label}: {onBest} of {ofBest} best days, {onOthers} of {ofOthers} others',
     gapTitle: 'The gap',
     gapLine: 'Typical {typical} · good {good} · best {best}',
-    gapOften: 'Good days {often} percent of {days}; the last one {ago} days ago.',
+    gapOften: 'Good days {often} percent of {days}; the last one {ago}.',
     gapAim: 'The app aims at the gap between typical and good.',
     gapNone: 'The gap appears after seven days with two logged blocks.',
     moved: 'What moved this week',
@@ -491,7 +496,7 @@ export const copy = {
     weights: 'Weight cards',
     equalWeights: 'equal weights',
     weightLine: 'Equal weights carried forward miss the next block by {equal} points; the proposed weights by {weighted}; difference {diff} ({lo} to {hi}) over {n} pairs.',
-    weightNote: 'Weights stay equal until a weight card holds up. Phase 12 declares them.',
+    weightNote: 'Weights stay equal until a weight card, declared after four weeks of full days, holds up on fourteen more.',
     weightsNone: 'A weight card is written after four weeks of full days.',
     eventsTitle: 'Evenings that carried an event',
     coolingTitle: 'Cooling off',
@@ -795,10 +800,9 @@ export const copy = {
     testsMany: '{n} unit tests passed before this build.',
     testsUnknown: 'Test count not recorded for this build.',
     data: 'Data',
-    dataNote: 'The phone is the source of truth. A copy syncs to a database you control once you paste its token under Cloud copy; no other party ever receives it. Nothing else leaves the phone but the ping address, if you set one up, and whatever you choose to export.',
+    dataNote: 'The phone is the source of truth. A copy syncs to your own database once you paste its token under Cloud copy. The brain, a Worker under your own Cloudflare account, reads a sheet derived from your record, your recent notes and private items included, and asks a model there that does not train on it. No other party receives any of it. Nothing else leaves the phone but the ping address, if you set one up, and whatever you choose to export.',
     cloudRow: 'Cloud copy',
     cloudRowNote: 'Paste the token once; the copy syncs on its own.',
-    phase: 'Phase F of the build plan: fatherhood.',
   },
   private: {
     title: 'Private',
@@ -887,7 +891,7 @@ export const copy = {
   },
   cloud: {
     title: 'Cloud copy',
-    intro: 'The phone is the source of truth. A copy of everything you record syncs to a database you control. No other party ever receives it.',
+    intro: 'The phone is the source of truth. A copy of everything you record syncs to your own database. The brain, a Worker under your own Cloudflare account, reads a sheet derived from that record, your recent notes and private items included, and asks a model there that does not train on it. No other party receives any of it.',
     url: 'Database',
     urlNote: 'A constant, not a secret. Shown so you can match it against your Turso dashboard.',
     token: 'Token',
@@ -937,7 +941,7 @@ export const copy = {
     conclusionsNote: 'What the app claims to have learned. Set off by a double rule on the left, and always with its evidence tier: Little evidence, Unclear, Promising, Holds up, Unhelpful here.',
     recipe: 'The reading out of 100',
     recipeNote:
-      'Six readings have a clear better direction: mood, energy and focus up; stress, overwhelm and irritation down. Each phrase maps to 0, 25, 50, 75 or 100, reversed where lower is better. The reading is their equal-weight mean; every block asks all six, and a block missing any of them reads Incomplete, never a number. Weights stay equal until a learned weighting clears the bar in Phase 10.',
+      'Six readings have a clear better direction: mood, energy and focus up; stress, overwhelm and irritation down. Each phrase maps to 0, 25, 50, 75 or 100, reversed where lower is better. The reading is the equal-weight mean of the ones asked. At full depth every block asks all six, and a block missing any of them reads Incomplete, never a number. At Short depth a block asks three (mood, energy and stress), and its reading is the mean of those three, printed as 3 of 6; it compares only loosely with a full one. Weights stay equal until a weight card holds up on your record.',
     stances: 'The five bands',
     stancesNote: '0 to 19 Empty · 20 to 39 Worn down · 40 to 59 Getting by · 60 to 79 Solid · 80 to 100 Firing. Descriptions of a state, never a verdict. From 80 the band’s name turns the accent; the number stays white.',
     context: 'Context',
@@ -948,7 +952,7 @@ export const copy = {
   wording: {
     intro: 'Five phrases per reading, least to most. You pick a phrase, never a number.',
     sets: 'Morning asks all 13. Afternoon asks seven: mood, irritation, energy, hunger, stress, focus, overwhelm. Evening asks those and loneliness. Every block feeds all six ingredients of the reading.',
-    alternatesNote: 'Under each phrase but the middle, one pre-written alternate for your veto. A swap happens only in Phase 12, once per reading, never the middle, logged and dated.',
+    alternatesNote: 'Under each phrase but the middle, one pre-written alternate for your veto. A swap happens only after forty-five days in which a phrase was never tapped across thirty answers, once per reading, never the middle, logged and dated.',
     alternate: 'or: {phrase}',
     swapped: 'swapped in on {date}; was “{from}”',
   },

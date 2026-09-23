@@ -93,11 +93,11 @@ export function ReadingOfCheckIn({ checkin }: { checkin: CheckIn }) {
 }
 
 /** Today's blocks and their readings, one line. */
-export function Glance({ all, day, blocks }: { all: CheckIn[]; day: string; blocks: readonly Block[] }) {
+export function Glance({ all, day, blocks, today }: { all: CheckIn[]; day: string; blocks: readonly Block[]; today: string }) {
   const items = todayGlance(all, day, blocks)
   return (
-    <p class="calc-line">
-      {copy.reading.today}:{' '}
+    <p class="calc-line" data-testid="day-glance">
+      {day === today ? copy.reading.today : fill(copy.reading.pastDay, { day: formatDayShort(day) })}:{' '}
       {items.map((g, i) => (
         <span key={g.block}>
           {i > 0 && ' · '}

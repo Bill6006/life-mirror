@@ -3,7 +3,7 @@ import { blockAt } from './blocks'
 import { WeekAhead } from './charts'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
-import { fill, formatDayShort } from './format'
+import { daysAgoWords, fill, formatDayShort } from './format'
 import { weeklyData } from './forecastFlow'
 import { useLive } from './live'
 import { WeekReviewCard } from './weekReview'
@@ -87,6 +87,11 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             <p class="note">{fill(c.bestNote, { k: String(w.best.top.length), days: String(w.best.days) })}</p>
             <p class="move-meta">{c.control}</p>
             <div class="calc">
+              {w.best.controlled.length === 0 && (
+                <p class="calc-line" data-testid="best-control-none">
+                  {c.controlNone}
+                </p>
+              )}
               {w.best.controlled.map((d) => (
                 <p key={d.label} class="calc-line">
                   {fill(c.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
@@ -95,6 +100,11 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             </div>
             <p class="move-meta">{c.notControl}</p>
             <div class="calc">
+              {w.best.uncontrolled.length === 0 && (
+                <p class="calc-line" data-testid="best-not-control-none">
+                  {c.notControlNone}
+                </p>
+              )}
               {w.best.uncontrolled.map((d) => (
                 <p key={d.label} class="calc-line">
                   {fill(c.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
@@ -112,7 +122,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
         ) : (
           <div class="calc">
             <p class="calc-line ink">{fill(c.gapLine, { typical: num(w.gap.typical), good: num(w.gap.good), best: num(w.gap.best) })}</p>
-            <p class="calc-line">{fill(c.gapOften, { often: pct(w.gap.howOften), days: String(w.gap.days), ago: num(w.gap.lastGoodDaysAgo) })}</p>
+            <p class="calc-line">{fill(c.gapOften, { often: pct(w.gap.howOften), days: String(w.gap.days), ago: w.gap.lastGoodDaysAgo === null ? '—' : daysAgoWords(w.gap.lastGoodDaysAgo, copy.when) })}</p>
             <p class="calc-line">{c.gapAim}</p>
           </div>
         )}

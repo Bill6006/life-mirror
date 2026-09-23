@@ -5824,7 +5824,7 @@
     }
   ],
   "extensionPrompt": {
-    "intro": "From Phase 11 the app writes this prompt for itself from what you never take and which situations run short, private items excluded. The format, so you can veto it before the app ever writes one:",
+    "intro": "The app writes this prompt for itself from what you never take and which situations run short, private items excluded. The format, so you can veto it before the app ever writes one:",
     "template": "You are extending the catalogue of moves for Life Mirror, a phone app for one person. Read the record below and write {n} new entries.\n\nTHE RECORD\nSituations that run short of candidates: {situations: block, lowest reading, band, candidates left}\nMoves offered and never done: {moves: name, offered, done}\nFamilies the filters make unreachable: {families: name, the filter that blocks them}\nMoves that held up, and where: {moves: name, situation, tier}\n\nTHE RULES\nNo entry says the same or the opposite thing as an existing one; the conflict and replaces fields are enforced in code.\nEvery entry carries a source (who, what, year) and its strength: strong, moderate, thin or practice.\nLearned tags only from: outdoors, with people, short, low effort; pleasure, mastery, connection; intensity. Filter tags: cost to assign, starting effort, needs, effect window.\nOne line sized to one sitting; minutes and effort to start; which readings it should move, in which direction, over which window.\nA reading, never a verdict: none of the six words the build bans; no streaks, no grades.\nNothing personal, no names, and no private item named or implied.\n\nTHE OUTPUT\nJSON entries matching the catalogue schema, ready to paste into the catalogue for reading and veto."
   },
   "proposals": {
@@ -5843,7 +5843,7 @@
           "to": "setup"
         }
       ],
-      "note": "Applied at the Phase 9 Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves."
+      "note": "Applied at your Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves."
     },
     "charisma": {
       "ladder": [
@@ -5852,12 +5852,12 @@
         "tell-one-short-story",
         "start-a-topic"
       ],
-      "note": "Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps."
+      "note": "Applied at your Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps."
     },
     "passive": [
       "recovery-gap"
     ],
-    "wiring": "Applied at the Phase 9 Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made.",
+    "wiring": "Applied at your Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made.",
     "parkedLater": {
       "ids": [
         "no-alcohol-tonight"

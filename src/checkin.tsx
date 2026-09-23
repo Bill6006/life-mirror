@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { movedLine } from './aims'
 import { OutcomeAsk, type Answer } from './ask'
-import { addDays, BLOCKS, type Block } from './blocks'
+import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import { changesInWords } from './change'
 import { copy } from './copy'
 import {
@@ -259,7 +259,7 @@ export function SummaryScreen({
       {complete && <UsualLine day={day} block={block} />}
 
       <div class="calc">
-        <Glance all={all} day={day} blocks={glanceBlocks} />
+        <Glance all={all} day={day} blocks={glanceBlocks} today={blockAt(new Date()).day} />
         {change ? (
           <>
             {change.since && <h2 class="title-sm">{fill(copy.since.heading, { when: change.since })}</h2>}

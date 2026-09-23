@@ -288,7 +288,6 @@ export function SettingsScreen({ onWording, onLegend, onPrivate, onData, onCloud
       <h2 class="section">{copy.settings.data}</h2>
       <div class="card pad">
         <p class="note">{copy.settings.dataNote}</p>
-        <p class="note faint no-gap">{copy.settings.phase}</p>
       </div>
     </section>
   )

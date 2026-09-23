@@ -5,6 +5,13 @@ export function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => vars[key] ?? '')
 }
 
+/** "today", "yesterday", "3 days ago": never "1 days ago". */
+export function daysAgoWords(n: number, words: { today: string; yesterday: string; daysAgo: string }): string {
+  if (n <= 0) return words.today
+  if (n === 1) return words.yesterday
+  return words.daysAgo.replace('{n}', String(n))
+}
+
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }

@@ -821,7 +821,7 @@ The evening after a big social event, plan nothing and see no one. A gap on purp
 
 ## Money
 
-Applied at the Phase 9 Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves.
+Applied at your Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves.
 
 ### Look at every balance, once
 
@@ -883,7 +883,7 @@ Rent, food, fuel, her things, anything due: one line each, one total.
 
 ## Charisma and presence
 
-Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps.
+Applied at your Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps.
 
 ### Eye contact with a stranger
 
@@ -1432,10 +1432,10 @@ A short board or card game with one rule and turns, ten minutes. Counting the sp
 
 ## Proposed trades
 
-- Applied at the Phase 9 Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves.
-- Applied at the Phase 9 Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps.
+- Applied at your Green on 2026-09-11: the balance check and the week ahead stay; the bill and the no-spend day are parked, shown here and never offered; cancelling a subscription moved to Setup moves.
+- Applied at your Green on 2026-09-11: the participation ladder, audience to participant, is the charisma ladder; the four earlier reps stay as reps.
 - Proposed as passive items: Keep the evening after a big social day empty.
-- What Green wires: Applied at the Phase 9 Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning of Phase 10, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made.
+- What Green wires: Applied at your Green on 2026-09-11: every proposed entry joined the candidate set, the tags and priors feed the learning, the participation ladder replaced the charisma ladder, the recovery gap joined the passive items, and the money trade was made.
 
 ## The research the layer rests on
 
@@ -1504,7 +1504,7 @@ The two chips: "Hard to see the point today" is a report about the day, never a 
 
 ## The extension prompt, as the app will write it
 
-From Phase 11 the app writes this prompt for itself from what you never take and which situations run short, private items excluded. The format, so you can veto it before the app ever writes one:
+The app writes this prompt for itself from what you never take and which situations run short, private items excluded. The format, so you can veto it before the app ever writes one:
 
 ```
 You are extending the catalogue of moves for Life Mirror, a phone app for one person. Read the record below and write {n} new entries.

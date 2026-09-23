@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, recordFeedback, todaysLine, whyFor, type ActionState, type BriefLine } from './brainFlow'
-import { hasMove, moveById } from './catalogue'
+import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
 import { fill } from './format'
 import { briefData, type LastNight, type YesterdayMove } from './forecastFlow'
@@ -35,7 +35,10 @@ export function moveLine(m: YesterdayMove | null): string | null {
   if (!m) return null
   const c = copy.brief
   const steps = String(Math.round(Math.abs(m.effect) * 10) / 10)
-  return fill(c.move, { name: nameOf(m.moveId, copy.move.nothing), arm: m.arm === 'done' ? copy.move.done : copy.extras.winOutcome.partly, target: readingById(m.target).name, steps, dir: m.effect >= 0 ? c.above : c.under })
+  const base = { target: readingById(m.target).name, steps, dir: m.effect >= 0 ? c.above : c.under }
+  // "Nothing today" is a choice, not a move with a name: it gets a sentence of its own.
+  if (m.moveId === NOTHING) return fill(c.moveNothing, base)
+  return fill(c.move, { ...base, name: nameOf(m.moveId, copy.move.nothing), arm: m.arm === 'done' ? copy.move.done : copy.extras.winOutcome.partly })
 }
 
 /** What the one tap says it will do, in the line's own terms. */

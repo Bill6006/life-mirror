@@ -115,6 +115,22 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
 })
 
+test('a past day is named by its day, never "Today so far", and the null offer is not a move with a name', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 8, 0))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('day-glance')).toContainText('Today so far')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // The next morning, yesterday's summary is headed with yesterday.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 8, 30))
+  await page.reload()
+  await page.getByRole('button', { name: /Sep 7 · Morning/ }).click()
+  await expect(page.getByTestId('summary')).toBeVisible()
+  await expect(page.getByTestId('day-glance')).toContainText('Sep 7')
+  await expect(page.getByTestId('day-glance')).not.toContainText('Today so far')
+})
+
 test('an incomplete block reads Incomplete and no number', async ({ page }) => {
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
@@ -212,6 +228,8 @@ test('the evening chips answer from the record and the text line is kept', async
   await page.getByTestId('chip-study').click()
   await expect(page.getByTestId('chip-study')).toHaveAttribute('aria-pressed', 'true')
 
+  // The note field says who reads it (Part 17).
+  await expect(page.getByTestId('note-input')).toHaveAttribute('placeholder', 'One line. The brain reads your last few notes.')
   await page.getByTestId('note-input').fill('A line the app had no question for')
   await page.getByTestId('note-input').blur()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
