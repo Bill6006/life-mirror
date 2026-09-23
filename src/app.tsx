@@ -84,10 +84,12 @@ export function App() {
       .catch(() => undefined)
   }, [])
   // Phase 11: a forecast for a block is written before that block is logged; after each completed check-in the next slots may be due.
+  // Part 28: the facts row is written again once a check-in completes, so the Worker sees the morning's before it writes the day's line.
+  const completed = all?.filter((c) => c.completedAt).length
   useEffect(() => {
     const day = blockAt(new Date()).day
     void runForecasting(day).then(() => writeFactsRow(day))
-  }, [all?.length])
+  }, [all?.length, completed])
 
   useEffect(() => {
     // The phone's back gesture returns to the tabs; ask the browser to keep our storage.

@@ -3,8 +3,9 @@ import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import cards from '../../src/library.json'
 import { cardLines, retrieve } from './library'
-import { buildMessages, buildReviewMessages, parseOutput, sheetLines } from './prompt'
+import { buildMessages, buildReviewMessages, parseOutput, rankedLines } from './prompt'
 import { textOf } from './ai'
+import { lineBriefing, sheetLines, type LineBriefing, type Said } from './briefing'
 
 const library = (cards as ClaimCard[]).filter((c) => c.status === 'admitted')
 const sheet: FactSheet = {
@@ -22,20 +23,30 @@ const sheet: FactSheet = {
   ],
 }
 
+/** The sheet with its day's shape, as the phone writes it; a prompt is built only from a briefing. */
+const withDay: FactSheet = { ...sheet, facts: [{ id: 'week.today', tags: ['cue'], text: 'Today is Thursday; not a daycare day; at home; not a study night; her bedtime 20:00; the hour is 23.', values: { weekday: 'Thursday', daycare: 0 } }, ...sheet.facts] }
+function brief(s: FactSheet, cardList: ClaimCard[], said: Said[], forDay = s.day, task: 'line' | 'review' = 'line'): LineBriefing {
+  const r = lineBriefing({ task, writer: 'free', sheet: s, forDay, cards: cardList, said })
+  if (!r.ok) throw new Error(r.reason)
+  return r.briefing
+}
+
 describe('what the model is asked', () => {
   it('lists the facts by id and the cards by id, names the day, and asks for JSON alone', () => {
     const lines = sheetLines(sheet)
     expect(lines).toContain('[aim.1] French: planned after her bedtime at 20:00. (n=5)')
     expect(lines).toContain('Direction, in the person\'s own words: One line, mine')
-    const messages = buildMessages(sheet, retrieve(library, sheet), [{ day: '2026-09-16', text: 'Said before.', feedback: 'useful' }])
+    const messages = buildMessages(brief(withDay, retrieve(library, withDay), [{ day: '2026-09-16', text: 'Said before.', feedback: 'useful' }]))
     expect(messages[0].role).toBe('system')
     expect(messages[0].content).toContain('JSON only')
     expect(messages[0].content).toContain('failed, bad, lazy, behind, weak, slipped again')
     expect(messages[0].content).toContain('A window where nothing was reported is "no caffeine reported", never caffeine-free')
     expect(messages[1].content).toContain('[implementation-intentions] grade A')
     expect(messages[1].content).toContain('2026-09-16 (useful): Said before.')
-    expect(buildReviewMessages(sheet, [], [])[1].content).toContain('weekly review')
-    expect(buildReviewMessages(sheet, [], [])[0].content).toContain('"held"')
+    expect(buildReviewMessages(brief(withDay, [], [], withDay.day, 'review'))[1].content).toContain('weekly review')
+    expect(buildReviewMessages(brief(withDay, [], [], withDay.day, 'review'))[0].content).toContain('"held"')
+    expect(messages[1].content).toContain('THE DAY YOU ARE WRITING FOR, 2026-09-17\nToday is Thursday')
+    expect(rankedLines([])).toBe('nothing ranked')
   })
 
   it('names both days when the sheet was built the day before, and relabels what "today" meant', () => {
@@ -55,7 +66,7 @@ describe('what the model is asked', () => {
     expect(lines).toContain('[week.tomorrow] The day you are writing for, 2026-09-19, is Saturday; not a daycare day')
     expect(lines).toContain('[today.shortSleep] On 2026-09-18: Sleep hours read')
     expect(sheetLines(friday)).toContain('[week.today] Today is Friday')
-    expect(buildMessages(friday, [], [], '2026-09-19')[1].content).toContain('One line for 2026-09-19')
+    expect(buildMessages(brief(friday, [], [], '2026-09-19'))[1].content).toContain('One line for 2026-09-19')
   })
 
   it('retrieves the cards the facts touch, weighted by what stands behind them, strongest grade first', () => {

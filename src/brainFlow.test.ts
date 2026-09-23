@@ -138,6 +138,21 @@ describe('what the sheet learned to carry', () => {
     expect(sheet.showPrivate).toBe(false)
   })
 
+  it('carries the engine’s ranked shortlist and the time of each check-in completed today (Part 28)', async () => {
+    await addAim('certification', null, 'French', 'language')
+    const before = await factSheet(DAY, NOW)
+    expect(before.checkedIn).toEqual({})
+    expect(before.shortlist?.length).toBeGreaterThan(0)
+    expect(before.shortlist?.[0]).toMatchObject({ situationId: expect.any(String), mode: expect.any(String), factIds: expect.any(Array) })
+    const done = '2026-09-18T11:40:00.000Z'
+    await db.checkins.add({ day: DAY, block: 'morning', asked: ['mood'], answers: { mood: 3 }, startedAt: done, completedAt: done, updatedAt: done, activeMs: 30_000 })
+    const after = await factSheet(DAY, NOW)
+    expect(after.checkedIn).toEqual({ morning: done })
+    // A new completion is a change of the sheet, so the row is written again for the Worker.
+    expect(await writeFactsRow(DAY, NOW)).toBe(true)
+    expect((await db.facts.get(DAY))?.sheet.checkedIn).toEqual({ morning: done })
+  })
+
   it('counts days into the last four rolling weeks, oldest first, and nothing outside them', () => {
     expect(weekBuckets(['2026-09-18', '2026-09-12', '2026-09-11', '2026-08-25', '2026-08-21', '2026-08-01', '2026-09-19'], DAY)).toEqual([1, 0, 1, 2])
   })

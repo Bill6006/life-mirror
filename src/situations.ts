@@ -584,7 +584,6 @@ export function usefulness(id: string, feedback: readonly FeedbackBefore[]): num
   return Math.max(0.3, Math.min(1.3, v))
 }
 
-/** The one line for the day: the true situation with the highest score, or null when none is true or all are resting. */
 /** Whether a situation may supply the week's "One change": a pattern over days, never a fact of one day. */
 export function isWeekScoped(sit: Situation): boolean {
   return sit.weekly === true
@@ -598,8 +597,13 @@ export function lineFor(sheet: FactSheet, situationId: string): Omit<Choice, 'sc
   return { situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: m.cardIds ?? [...sit.cards], action: m.action ?? null }
 }
 
-export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice | null {
-  let best: Choice | null = null
+/**
+ * Every true situation that is not resting, scored and ranked best first (Part 28): the strength
+ * of its facts, the grade of its evidence, novelty, and how it was received before. The phone's
+ * line is the first; the sheet carries the first few for a writer to read before the pile.
+ */
+export function rankLines(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice[] {
+  const out: Choice[] = []
   for (const sit of SITUATIONS) {
     if (only && !only(sit)) continue
     const m = sit.test(sheet)
@@ -614,9 +618,15 @@ export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedba
     const novelty = since !== null && since < 30 ? 0.8 : 1
     const cards = m.cardIds ?? [...sit.cards]
     const score = m.strength * gradeWeight(bestGrade(cards)) * novelty * usefulness(sit.id, feedback)
-    if (!best || score > best.score) best = { situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: cards, score, action: m.action ?? null }
+    out.push({ situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: cards, score, action: m.action ?? null })
   }
-  return best
+  // Stable: among equal scores the situation listed first wins, as it always has.
+  return out.map((c, i) => ({ c, i })).sort((a, b) => b.c.score - a.c.score || a.i - b.i).map((x) => x.c)
+}
+
+/** The one line for the day: the true situation with the highest score, or null when none is true or all are resting. */
+export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice | null {
+  return rankLines(sheet, said, feedback, only)[0] ?? null
 }
 
 export interface ReviewParts {

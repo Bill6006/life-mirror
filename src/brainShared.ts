@@ -14,6 +14,38 @@ export const MODES: readonly Mode[] = ['observation', 'challenge', 'perspective'
 export const BANNED_WORDS: readonly string[] = ['failed', 'bad', 'lazy', 'behind', 'weak', 'slipped again']
 
 export const MAX_WORDS = 60
+
+/**
+ * The repeat check (Part 28), deterministic: a line sharing at least this share of its content
+ * words with a line said on one of the last seven days is a near-repeat. Engineering judgment:
+ * an echo with a few words changed is caught; the same subject from a new angle is not.
+ */
+export const REPEAT_OVERLAP = 0.6
+const REPEAT_STOP = new Set(['the', 'and', 'for', 'you', 'your', 'that', 'this', 'with', 'was', 'are', 'but', 'not', 'have', 'has', 'had', 'from', 'its', 'one', 'can', 'will', 'into', 'than', 'then', 'what', 'when', 'where', 'which', 'who', 'about', 'there', 'their', 'they', 'them', 'been', 'were', 'more', 'just', 'still', 'today', 'yesterday', 'tonight', 'now'])
+
+function contentWords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[’']/g, '')
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 2 && !REPEAT_STOP.has(w)),
+  )
+}
+
+/** The day of the line this one nearly repeats, or null. The caller passes the lines of the days to check against. */
+export function nearRepeat(text: string, recent: readonly { day: string; text: string }[]): string | null {
+  const a = contentWords(text)
+  if (!a.size) return null
+  for (const r of recent) {
+    const b = contentWords(r.text)
+    if (!b.size) continue
+    let shared = 0
+    for (const w of a) if (b.has(w)) shared++
+    if (shared / (a.size + b.size - shared) >= REPEAT_OVERLAP) return r.day
+  }
+  return null
+}
 export const REVIEW_PART_WORDS = 45
 
 export type LineCue = 'afterPickup' | 'afterBedtime' | 'nextCheckIn'

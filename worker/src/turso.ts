@@ -39,6 +39,19 @@ export interface BriefRow {
   action?: LineAction | null
   /** The review's three parts, on a row of kind review. */
   parts?: { held: string; didNot: string; change: string }
+  /** What set it off (Part 28): the morning check-in, the fallback hour, Sunday's hour, or a run by hand. */
+  trigger?: 'checkin' | 'fallback' | 'sunday' | 'forced'
+  /** The target day's shape as the briefing named it. */
+  shape?: string
+  /** Every refusal on the way, by model and reason, in order: the validator's, the day guard's and the repeat check's. */
+  refusals?: string[]
+  /** How many candidates passed every check. */
+  candidates?: number
+  /** Neurons spent, as Workers AI reported them, and the calls made. */
+  neurons?: number
+  calls?: number
+  /** From the trigger to the stored row. */
+  latencyMs?: number
 }
 
 export interface SaidRow {
@@ -58,6 +71,8 @@ export interface Store {
   hasBrief(id: string): Promise<boolean>
   writeBrief(row: BriefRow, now: string): Promise<void>
   readSaid(limit: number): Promise<SaidRow[]>
+  /** The newest rows of lines and reviews, whole, for the report. */
+  readBriefs(limit: number): Promise<BriefRow[]>
   readFeedback(): Promise<FeedbackRow[]>
   isPushed(id: string): Promise<boolean>
   markPushed(id: string, now: string): Promise<void>
@@ -97,6 +112,10 @@ export function tursoStore(url: string, token: string): Store {
     async readSaid(limit) {
       const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = 'briefs' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
       return r.map((row) => ({ id: String(row.id), ...(parse<{ day: string; text: string }>(row.body) ?? { day: '', text: '' }) })).filter((s) => s.text)
+    },
+    async readBriefs(limit) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'briefs' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
+      return r.map((row) => parse<BriefRow>(row.body)).filter((b): b is BriefRow => b !== null && typeof b.id === 'string')
     },
     async readFeedback() {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'briefFeedback' AND deleted = 0`, [APP])
@@ -156,6 +175,13 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
         .slice(0, limit)
         .map((r) => ({ id: r.id, ...(parse<{ day: string; text: string }>(r.body) ?? { day: '', text: '' }) }))
+    },
+    async readBriefs(limit) {
+      return live(BRAIN_APP, 'briefs')
+        .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
+        .slice(0, limit)
+        .map((r) => parse<BriefRow>(r.body))
+        .filter((b): b is BriefRow => b !== null && typeof b.id === 'string')
     },
     async readFeedback() {
       return live(APP, 'briefFeedback')

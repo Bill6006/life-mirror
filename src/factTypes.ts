@@ -19,6 +19,17 @@ export interface SaidEntry {
   feedback: 'useful' | 'knew' | 'not' | null
 }
 
+/** One situation the phone's engine found true today, as it ranked them (Part 28): what a writer reads first. */
+export interface RankedLine {
+  situationId: string
+  mode: string
+  /** How the phone's engine would say it; a writer may say it better, from the same facts. */
+  text: string
+  factIds: string[]
+  cardIds: string[]
+  score: number
+}
+
 export interface FactSheet {
   version: 1
   day: string
@@ -33,4 +44,8 @@ export interface FactSheet {
   said: SaidEntry[]
   /** "Show private items by name outside this screen" (Rule 11): off, no writer may print a private item's name on Now. */
   showPrivate?: boolean
+  /** The phone engine's true situations, best first (Part 28): a ranked shortlist, not a pile. */
+  shortlist?: RankedLine[]
+  /** When today's check-ins were completed, by block (Part 28): the Worker writes the day's line once the morning's is in. */
+  checkedIn?: Partial<Record<'morning' | 'afternoon' | 'evening', string>>
 }

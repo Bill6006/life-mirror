@@ -5,10 +5,10 @@ import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
 
-// The brain, as deployed: three crons and two routes. The morning line at the brief hour, the
-// cue reminder every fifteen minutes, and by hand, with the run key, either job now.
-
-const CUE_CRON = '*/15 * * * *'
+// The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
+// ping whose moment has come; writes the day's line once the morning check-in is on a sheet (or
+// from the fallback hour); and on Sunday at the brief hour writes the week reviewed. By hand,
+// with the run key, any job now, and the report of the last lines written.
 
 function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
@@ -50,9 +50,18 @@ async function dispatch(job: Job, env: Env, now: Date, force = false): Promise<u
 const handler: ExportedHandler<Env> = {
   async scheduled(event, env, ctx) {
     const now = new Date(event.scheduledTime)
-    if (event.cron === CUE_CRON) ctx.waitUntil(dispatch('cues', env, now))
-    // The morning line every day; beside it on Sunday, the week reviewed. Each decides for itself whether it is its hour.
-    else ctx.waitUntil(dispatch('brief', env, now).then(() => dispatch('review', env, now)))
+    // In turn, and each on its own: a failure in one never stops the next. Each decides for itself whether its moment has come.
+    ctx.waitUntil(
+      (async () => {
+        for (const job of ['cues', 'brief', 'review'] as const) {
+          try {
+            await dispatch(job, env, now)
+          } catch (e) {
+            console.log(JSON.stringify({ job, error: e instanceof Error ? e.message : String(e) }))
+          }
+        }
+      })(),
+    )
   },
 
   async fetch(request, env) {
@@ -61,6 +70,12 @@ const handler: ExportedHandler<Env> = {
     const m = /^\/run\/(brief|review|cues)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1'))
+    }
+    // With the run key: the last thirty lines and reviews as their log reads, never their words (Part 28's window is read off this).
+    if (url.pathname === '/run/brief-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const rows = await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readBriefs(30)
+      return json({ rows: rows.map((r) => ({ id: r.id, kind: r.kind, day: r.day, forDay: r.forDay ?? null, factsDay: r.factsDay, trigger: r.trigger ?? null, model: r.model, at: r.at, candidates: r.candidates ?? null, refusals: r.refusals ?? [], neurons: r.neurons ?? null, calls: r.calls ?? null, latencyMs: r.latencyMs ?? null, shape: r.shape ?? null })) })
     }
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {

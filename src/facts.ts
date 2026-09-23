@@ -524,7 +524,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
     }
   }
 
-  return { version: 1, day: today, builtAt: i.now.toISOString(), hour, weeks, days, direction: i.direction, facts, said: said.slice(0, 14), showPrivate: i.showPrivate === true }
+  // When today's check-ins were completed (Part 28): the Worker writes once the morning's is on a sheet built after it.
+  const checkedIn: NonNullable<FactSheet['checkedIn']> = {}
+  for (const c of i.checkins) if (c.day === today && c.completedAt) checkedIn[c.block] = c.completedAt
+  return { version: 1, day: today, builtAt: i.now.toISOString(), hour, weeks, days, direction: i.direction, facts, said: said.slice(0, 14), showPrivate: i.showPrivate === true, checkedIn }
 }
 
 export function factById(sheet: FactSheet, id: string): Fact | undefined {

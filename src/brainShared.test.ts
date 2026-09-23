@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayGuard, numberGrounded, numbersIn, shapeFor, validateAction, validateOutput, validateReview } from './brainShared'
+import { dayGuard, nearRepeat, numberGrounded, numbersIn, shapeFor, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -21,6 +21,20 @@ const sheet: FactSheet = {
     { id: 'assoc.napped', tags: ['nap'], text: 'Mornings after a nap read +7, 5 naps.', values: { diff: 7, times: 5 }, n: 5, tier: 'unclear' },
   ],
 }
+
+describe('the repeat check (Part 28)', () => {
+  const said = [{ day: '2026-09-17', text: 'After her bedtime held 1 of 4 plans. Try the next check-in as the cue this week.' }]
+  it('catches an echo with a few words changed, and names the day it repeats', () => {
+    expect(nearRepeat('After her bedtime held only 1 of 4 plans. Try the next check-in as your cue this week.', said)).toBe('2026-09-17')
+    expect(nearRepeat('After her bedtime held 1 of 4 plans. Try the next check-in as the cue this week.', said)).toBe('2026-09-17')
+  })
+  it('lets the same subject through from a new angle, and says nothing of an empty line', () => {
+    expect(nearRepeat('French went from 3 sittings to 0; one short sitting after her bedtime restarts it.', said)).toBeNull()
+    expect(nearRepeat('The next check-in held 3 of 3 plans; after her bedtime held 1 of 4. Keep the one that works.', said)).toBeNull()
+    expect(nearRepeat('', said)).toBeNull()
+    expect(nearRepeat('Anything at all.', [])).toBeNull()
+  })
+})
 
 describe('what the brain may say', () => {
   it('accepts a grounded line', () => {

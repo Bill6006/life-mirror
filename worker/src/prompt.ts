@@ -1,43 +1,17 @@
 import { GRADE_PHRASES, LINE_CUES, MAX_WORDS, MODES, REVIEW_PART_WORDS } from '../../src/brainShared'
-import type { FactSheet } from '../../src/factTypes'
-import type { ClaimCard } from '../../src/libraryTypes'
+import type { RankedLine } from '../../src/factTypes'
+import type { LineBriefing, Said } from './briefing'
 import { cardLines } from './library'
+export type { Said } from './briefing'
 
-// What the model is asked, and how its answer is read. The facts go in with their ids, the
-// cards with theirs; the answer is JSON alone, and the validator on the way back refuses
-// anything that is not grounded in them.
+// What the model is asked, and how its answer is read. Every prompt is built from a briefing
+// (Part 28), never from a raw sheet: the day's shape first, the phone's ranking, then the facts
+// with their ids and the cards with theirs; the answer is JSON alone, and the validator on the
+// way back refuses anything that is not grounded in them.
 
 export interface Message {
   role: 'system' | 'user' | 'assistant'
   content: string
-}
-
-export interface Said {
-  day: string
-  text: string
-  feedback: string | null
-}
-
-/** A fact as the writer should read it when the sheet was built on another day than the one written for (Part 19). */
-function relabel(f: FactSheet['facts'][number], sheet: FactSheet, forDay: string): string {
-  if (forDay === sheet.day) return f.text
-  if (f.id === 'week.today') return f.text.replace(/^Today is /, `The facts' own day, ${sheet.day}, was `)
-  if (f.id === 'week.tomorrow') return f.text.replace(/^Tomorrow is /, `The day you are writing for, ${forDay}, is `)
-  if (f.id.startsWith('today.')) return `On ${sheet.day}: ${f.text}`
-  return f.text
-}
-
-export function sheetLines(sheet: FactSheet, forDay: string = sheet.day): string {
-  const head =
-    forDay === sheet.day
-      ? [`Day ${sheet.day}; ${sheet.days} days of record; local hour ${sheet.hour}.`]
-      : [
-          `These facts were built on ${sheet.day} at local hour ${sheet.hour}; ${sheet.days} days of record.`,
-          `You are writing for ${forDay}, the day after. Facts named week.today and today.* describe ${sheet.day}, not ${forDay}; the shape of ${forDay} is the fact week.tomorrow, and it alone says what that day holds.`,
-        ]
-  if (sheet.direction) head.push(`Direction, in the person's own words: ${sheet.direction}`)
-  const lines = sheet.facts.map((f) => `[${f.id}] ${relabel(f, sheet, forDay)}${f.n !== undefined ? ` (n=${f.n})` : ''}`)
-  return [...head, ...lines].join('\n')
 }
 
 const GRADES = Object.entries(GRADE_PHRASES)
@@ -52,20 +26,22 @@ const RULES = `Rules, all checked by a validator that refuses the answer:
 - The facts trajectory.* and cadence are the earliest signs of a commitment, or the whole record, being let go. When one of them shows it, speak to that before anything smaller.
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
-- Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle.
+- Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle. A line that nearly repeats one said on the last seven days is refused.
 - Speak of pickup, daycare, the office, church, a study night or people being around only when the shape of the day you are writing for holds them; the validator refuses the rest.
 - Caffeine is spoken of only as an association in the record, with its counts, never as a cause. A window where nothing was reported is "no caffeine reported", never caffeine-free or "no caffeine"; the validator refuses both.
 - Plain words, second person, no headings, no lists, no emoji.`
 
-const SYSTEM = `You write one line a day for one person's phone. You get the day's fact sheet (each fact has an id in brackets), a set of claim cards from an evidence library (each with an id and a grade), and what was said on recent days with how it landed.
+const SYSTEM = `You write one line a day for one person's phone. You get the shape of the day you are writing for, the phone's own ranking of what is true today (best first), the day's fact sheet (each fact has an id in brackets), a set of claim cards from an evidence library (each with an id and a grade), and what was said on recent days with how it landed.
 
-Decide the single most useful thing for this person to hear, understand, reconsider or do right now, and choose one mode: ${MODES.join(', ')}. Sometimes that is an observation, a challenge, a change of strategy, a warning, a recommendation, a perspective, or encouragement. Never comfort by default and never push by default; the facts and the evidence decide.
+Offer three candidate lines. Each is the single most useful thing for this person to hear, understand, reconsider or do on the day you are writing for, and each takes a different angle or a different thing; the phone's ranking is a strong guide, not a rule. For each choose one mode: ${MODES.join(', ')}. Sometimes that is an observation, a challenge, a change of strategy, a warning, a recommendation, a perspective, or encouragement. Never comfort by default and never push by default; the facts and the evidence decide.
 
 ${RULES}
-- Under ${MAX_WORDS} words.
+- Each line under ${MAX_WORDS} words.
 - When the line asks the person to do one of three things, offer it as "action" so one tap does it; otherwise "action" is null. Only these: {"kind":"plan","aimId":N,"cue":"${LINE_CUES.join('|')}"} to pin the step of the commitment in fact aim.N to a moment today; {"kind":"depth","value":"short"} to make the check-in lighter, only when the cadence fact says the depth is full; {"kind":"test","moveId":"<an id given in parentheses in the untested fact>"} to set a test the record has never run. Never offer an action the text does not itself recommend.
 
-Answer with JSON only, nothing before or after: {"mode": "...", "text": "...", "factIds": ["..."], "cardIds": ["..."], "action": null}`
+Answer with JSON only, nothing before or after: {"candidates": [{"mode": "...", "text": "...", "factIds": ["..."], "cardIds": ["..."], "action": null}, {...}, {...}]}`
+
+const CHOOSE_SYSTEM = `You choose one line for one person's phone from candidate lines that have each passed every check. Choose the one most useful for the day you are writing for: the shape of that day, the phone's ranking and what was said recently decide it. Answer with JSON only, nothing before or after: {"choice": <the candidate's number>}`
 
 const REVIEW_SYSTEM = `You write the weekly review for one person's phone, on Sunday, from the week as the fact sheet shows it: the trajectories of their commitments over four weeks, the cadence of their check-ins, the record of each cue, the cards being tested, study nights, chips, their own notes, and what was said this week with how it landed.
 
@@ -76,22 +52,41 @@ ${RULES}
 
 Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...", "change": "...", "factIds": ["..."], "cardIds": ["..."]}`
 
-function userContent(task: string, sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[], forDay: string = sheet.day): string {
-  const recent = said.length ? said.map((s) => `${s.day}${s.feedback ? ` (${s.feedback})` : ''}: ${s.text}`).join('\n') : 'nothing yet'
-  return `${task}\n\nFACTS (the ids in brackets are what factIds may hold)\n${sheetLines(sheet, forDay)}\n\nCARDS (the ids in brackets are what cardIds may hold)\n${cardLines(cards)}\n\nSAID RECENTLY (useful / knew / not is how it landed)\n${recent}\n\nJSON only.`
+function saidLines(said: readonly Said[]): string {
+  return said.length ? said.map((s) => `${s.day}${s.feedback ? ` (${s.feedback})` : ''}: ${s.text}`).join('\n') : 'nothing yet'
 }
 
-export function buildMessages(sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[], forDay: string = sheet.day): Message[] {
+/** The phone's ranking, best first, with the fact and card ids each rests on. */
+export function rankedLines(shortlist: readonly RankedLine[]): string {
+  if (!shortlist.length) return 'nothing ranked'
+  return shortlist.map((r, i) => `${i + 1}. ${r.situationId} (${r.mode}): ${r.text} [facts: ${r.factIds.join(', ') || 'none'}; cards: ${r.cardIds.join(', ') || 'none'}]`).join('\n')
+}
+
+function userContent(task: string, b: LineBriefing): string {
+  return `${task}\n\nTHE DAY YOU ARE WRITING FOR, ${b.forDay}\n${b.shape}\n\nRANKED BY THE PHONE (true today, best first)\n${rankedLines(b.shortlist)}\n\nFACTS (the ids in brackets are what factIds may hold)\n${b.facts}\n\nCARDS (the ids in brackets are what cardIds may hold)\n${cardLines(b.cards)}\n\nSAID RECENTLY (useful / knew / not is how it landed)\n${saidLines(b.said)}\n\nJSON only.`
+}
+
+/** The first call: three candidate lines for the day, from the briefing alone. */
+export function buildMessages(b: LineBriefing): Message[] {
   return [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: userContent(`One line for ${forDay}, the day ahead.`, sheet, cards, said, forDay) },
+    { role: 'user', content: userContent(`One line for ${b.forDay}, the day ahead: three candidates.`, b) },
   ]
 }
 
-export function buildReviewMessages(sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[], forDay: string = sheet.day): Message[] {
+/** The second call: one of the candidates that passed every check, chosen for the day. */
+export function buildChoiceMessages(b: LineBriefing, candidates: readonly { mode: string; text: string }[]): Message[] {
+  const list = candidates.map((c, i) => `${i + 1}. (${c.mode}) ${c.text}`).join('\n')
+  return [
+    { role: 'system', content: CHOOSE_SYSTEM },
+    { role: 'user', content: `The day you are writing for, ${b.forDay}: ${b.shape}\n\nRANKED BY THE PHONE (true today, best first)\n${rankedLines(b.shortlist)}\n\nSAID RECENTLY\n${saidLines(b.said)}\n\nCANDIDATES\n${list}\n\nJSON only.` },
+  ]
+}
+
+export function buildReviewMessages(b: LineBriefing): Message[] {
   return [
     { role: 'system', content: REVIEW_SYSTEM },
-    { role: 'user', content: userContent(`The weekly review, written on ${forDay}: three parts, for the week that ended and the one that begins.`, sheet, cards, said, forDay) },
+    { role: 'user', content: userContent(`The weekly review, written on ${b.forDay}: three parts, for the week that ended and the one that begins.`, b) },
   ]
 }
 

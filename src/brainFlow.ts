@@ -10,7 +10,7 @@ import { cardFromHypothesis, type Hypothesis } from './hypothesis'
 import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
 import { INGREDIENTS } from './score'
-import { chooseLine, lineFor, phoneReview, type ReviewParts } from './situations'
+import { chooseLine, lineFor, phoneReview, rankLines, type ReviewParts } from './situations'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
@@ -40,15 +40,26 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  return buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate })
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate })
+  // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
+  const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
+  const answers = feedback.map((f) => ({ situationId: f.situationId, answer: f.answer }))
+  sheet.shortlist = rankLines(sheet, said, answers)
+    .slice(0, SHORTLIST)
+    .map((c) => ({ situationId: c.situationId, mode: c.mode, text: c.text, factIds: c.factIds, cardIds: c.cardIds, score: Math.round(c.score * 100) / 100 }))
+  return sheet
 }
+
+/** How many of the engine's true situations the sheet carries, best first. */
+const SHORTLIST = 5
 
 /** The day's sheet as a record of its own, for the Worker to read; written only when its facts changed. */
 export async function writeFactsRow(day: string, now: Date = new Date()): Promise<boolean> {
   await ensureDayContext(day, await getSettings())
   const sheet = await factSheet(day, now)
   const existing = await db.facts.get(day)
-  if (existing && JSON.stringify(existing.sheet.facts) === JSON.stringify(sheet.facts) && JSON.stringify(existing.sheet.said) === JSON.stringify(sheet.said) && existing.sheet.showPrivate === sheet.showPrivate) return false
+  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
+  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && existing.sheet.showPrivate === sheet.showPrivate) return false
   await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet })
   return true
 }

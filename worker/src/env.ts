@@ -16,6 +16,8 @@ export interface Env {
   /** The check-in pings' local times, HH:MM, comma-separated. */
   PING_TIMES?: string
   BRIEF_HOUR: string
+  /** Local HH:MM after which, with no morning check-in on a sheet, the day's line is written from the newest sheet (Part 28). */
+  FALLBACK_TIME?: string
   LIBRARY_URL: string
   MODELS: string
 }

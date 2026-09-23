@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Fact, FactSheet } from './facts'
 import { copy } from './copy'
-import { chooseLine, isWeekScoped, phoneReview, SITUATIONS, usefulness } from './situations'
+import { chooseLine, isWeekScoped, phoneReview, rankLines, SITUATIONS, usefulness } from './situations'
 
 // The judgment engine: the true situation with the most behind it is said, a situation rests
 // after it was said, and how a line was received lifts or lowers it next time.
@@ -11,6 +11,19 @@ function sheetOf(facts: Fact[], hour = 8): FactSheet {
 }
 const today: Fact = { id: 'week.today', tags: [], text: 'Today is Friday.', values: { weekday: 'Friday', bedtime: '20:00', hour: 8 } }
 const aim = (id: number, values: Record<string, number | string | null>): Fact => ({ id: `aim.${id}`, tags: ['study'], text: '', values: { kind: 'certification', name: 'French', step: 'Ten words · say it', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, skills: 1, lowRungs: 1, highRungs: 0, top: 0, ...values } })
+
+describe('the ranking the sheet carries (Part 28)', () => {
+  it('ranks every true situation best first, the phone’s own line at the head, a resting one left out', () => {
+    const facts = [today, aim(1, { skills: 0 }), { id: 'necessities.3d', tags: [], text: '', values: { misses: 2 }, n: 3 }, { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }] as Fact[]
+    const ranked = rankLines(sheetOf(facts), [], [])
+    expect(ranked.length).toBeGreaterThan(1)
+    expect(ranked[0]).toEqual(chooseLine(sheetOf(facts), [], []))
+    for (let i = 1; i < ranked.length; i++) expect(ranked[i - 1].score).toBeGreaterThanOrEqual(ranked[i].score)
+    const resting = rankLines(sheetOf(facts), [{ day: '2026-09-17', situationId: ranked[0].situationId }], [])
+    expect(resting.map((r) => r.situationId)).not.toContain(ranked[0].situationId)
+    expect(rankLines(sheetOf([]), [], [])).toEqual([])
+  })
+})
 
 describe('the judgment engine', () => {
   it('lists distinct situations, each with a line, a mode and a cooldown', () => {
