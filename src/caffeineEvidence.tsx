@@ -34,20 +34,30 @@ function SleepLines<K>({ title, cmp, label, testid }: { title: string; cmp: Slee
       })}
       {cmp.groups.length === 1 && <p class="calc-line">{c.tooFew}</p>}
       {cmp.groups.length >= 2 &&
-        (cmp.none ? (
+        (cmp.unmatched ? (
+          <p class="calc-line" data-testid={`${testid}-unmatched`}>
+            {c.unmatchedSleep}
+          </p>
+        ) : cmp.none ? (
           <p class="calc-line" data-testid={`${testid}-none`}>
             {c.none}
           </p>
         ) : (
           <p class="calc-line" data-testid={`${testid}-diff`}>
-            {fill(c.sleepDiff, { minutes: cmp.hoursDiff === null ? '—' : signed(cmp.hoursDiff * 60), quality: cmp.qualityDiff === null ? '—' : signed(cmp.qualityDiff, 1), standing: copy.evidence.tiers[cmp.standing] })}
+            {fill(c.sleepDiff, { parts: sleepParts(cmp.hoursDiff, cmp.qualityDiff), standing: copy.evidence.tiers[cmp.standing] })}
           </p>
         ))}
     </div>
   )
 }
 
-function ReadingLines<K>({ title, cmp, label, units, testid }: { title: string; cmp: ReadingComparison<K>; label: (keys: K[]) => string; units: [string, string]; testid: string }) {
+/** The parts of a sleep difference that exist, never a dash for one that does not. */
+function sleepParts(hours: number | null, quality: number | null): string {
+  const c = copy.caffeine.ev
+  return [hours === null ? null : fill(c.sleepMinutes, { minutes: signed(hours * 60) }), quality === null ? null : fill(c.sleepQuality, { quality: signed(quality, 1) })].filter((x): x is string => x !== null).join(c.and)
+}
+
+function ReadingLines<K>({ title, cmp, label, units, unmatched, testid }: { title: string; cmp: ReadingComparison<K>; label: (keys: K[]) => string; units: [string, string]; unmatched: string; testid: string }) {
   const c = copy.caffeine.ev
   return (
     <div class="caffeine-cmp" data-testid={testid}>
@@ -63,7 +73,11 @@ function ReadingLines<K>({ title, cmp, label, units, testid }: { title: string; 
       })}
       {cmp.groups.length === 1 && <p class="calc-line">{c.tooFew}</p>}
       {cmp.groups.length >= 2 &&
-        (cmp.none ? (
+        (cmp.unmatched ? (
+          <p class="calc-line" data-testid={`${testid}-unmatched`}>
+            {unmatched}
+          </p>
+        ) : cmp.none ? (
           <p class="calc-line" data-testid={`${testid}-none`}>
             {c.noneReading}
           </p>
@@ -86,7 +100,7 @@ function ReportedLines({ cmp }: { cmp: ReportedComparison }) {
   const c = copy.caffeine.ev
   return (
     <>
-      <ReadingLines title={c.reported} cmp={cmp} label={reportedLabel} units={[c.units.checkIn, c.units.checkIns]} testid="caffeine-reported" />
+      <ReadingLines title={c.reported} cmp={cmp} label={reportedLabel} units={[c.units.checkIn, c.units.checkIns]} unmatched={c.unmatchedTime} testid="caffeine-reported" />
       {cmp.droppedMornings > 0 && (
         <p class="calc-line" data-testid="caffeine-dropped">
           {fill(c.droppedMornings, { n: String(cmp.droppedMornings) })}
@@ -114,7 +128,7 @@ export function CaffeineEvidenceCard({ ev }: { ev: CaffeineEvidence }) {
           </p>
           <SleepLines title={c.byDayBand} cmp={ev.byDayBand} label={bandsLabel} testid="caffeine-bands" />
           <SleepLines title={c.byLatestWindow} cmp={ev.byLatestWindow} label={windowsLabel} testid="caffeine-latest" />
-          <ReadingLines title={c.byMorningBand} cmp={ev.byMorningBand} label={bandsLabel} units={[c.units.morning, c.units.mornings]} testid="caffeine-morning" />
+          <ReadingLines title={c.byMorningBand} cmp={ev.byMorningBand} label={bandsLabel} units={[c.units.morning, c.units.mornings]} unmatched={c.unmatchedMorning} testid="caffeine-morning" />
           <ReportedLines cmp={ev.reported} />
         </div>
         <p class="note faint no-gap">{c.note}</p>

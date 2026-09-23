@@ -237,6 +237,8 @@ export interface SleepComparison<K> {
   standing: Standing
   /** Two groups or more and no worthwhile difference: the fixed null wording applies. */
   none: boolean
+  /** Two groups or more that share no starting sleep: nothing is compared like for like yet. */
+  unmatched: boolean
 }
 
 interface SleepPoint<K> {
@@ -267,7 +269,7 @@ function sleepComparison<K>(points: readonly SleepPoint<K>[], order: readonly K[
   }
   const st = standing(groups, [hoursDiff, qualityDiff], SLEEP_WORTHWHILE, weeks)
   const none = groups.length >= 2 && [hoursDiff, qualityDiff].every((d) => d === null || Math.abs(d) < SLEEP_WORTHWHILE) && [hoursDiff, qualityDiff].some((d) => d !== null)
-  return { groups, hoursDiff, qualityDiff, standing: st, none }
+  return { groups, hoursDiff, qualityDiff, standing: st, none, unmatched: groups.length >= 2 && hoursDiff === null && qualityDiff === null }
 }
 
 /** The next morning's sleep answers, and the stratum of the sleep the day began with; null when either is missing. */
@@ -317,6 +319,8 @@ export interface ReadingComparison<K> {
   diff: number | null
   standing: Standing
   none: boolean
+  /** Two groups or more that share no stratum: nothing is compared like for like yet. */
+  unmatched: boolean
 }
 
 function readingComparison<K>(points: readonly { key: K; stratum: string; value: number }[], order: readonly K[], side: (k: K) => number, weeks: number): ReadingComparison<K> {
@@ -327,7 +331,7 @@ function readingComparison<K>(points: readonly { key: K; stratum: string; value:
   const groups: ReadingGroup<K>[] = cells.map((cell) => ({ ...cell, value: cell.n >= CELL_MIN ? mean(points.filter((p) => cell.keys.includes(p.key)).map((p) => p.value)) : null }))
   const diff = groups.length >= 2 ? matched(points.filter((p) => groups[0].keys.includes(p.key)), points.filter((p) => groups[groups.length - 1].keys.includes(p.key))) : null
   const st = standing(groups, [diff], READING_WORTHWHILE, weeks)
-  return { groups, diff, standing: st, none: groups.length >= 2 && diff !== null && Math.abs(diff) < READING_WORTHWHILE }
+  return { groups, diff, standing: st, none: groups.length >= 2 && diff !== null && Math.abs(diff) < READING_WORTHWHILE, unmatched: groups.length >= 2 && diff === null }
 }
 
 /** Mornings before today that reported a band, grouped by it, against that afternoon's reading, among mornings that began on the same sleep. */

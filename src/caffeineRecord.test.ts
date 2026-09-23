@@ -186,6 +186,29 @@ describe('groups of five, merged like for like, and the cap', () => {
     expect(byDayBand(fourteen, TODAY, 12).standing).toBe('unclear')
   })
 
+  it('compares nothing, and says so, when the groups share no starting sleep or no time of day', () => {
+    // Every lighter day began on a long night and every heavier one on a middling night: no stratum in common.
+    const apart: CheckIn[] = []
+    for (let k = 0; k < 6; k++) {
+      const a = addDays('2026-07-01', 2 * k)
+      apart.push(ci(a, 'morning', { band: 1, hours: 4 }), ci(a, 'afternoon', { shown: true }), ci(addDays(a, 1), 'morning', { hours: 4, quality: 4 }))
+      const b = addDays('2026-08-01', 2 * k)
+      apart.push(ci(b, 'morning', { band: 3, hours: 3 }), ci(b, 'afternoon', { shown: true }), ci(addDays(b, 1), 'morning', { hours: 2, quality: 2 }))
+    }
+    const ev = caffeineEvidence(apart, TODAY)
+    expect(ev.byDayBand.groups.length).toBe(2)
+    expect(ev.byDayBand).toMatchObject({ hoursDiff: null, qualityDiff: null, unmatched: true, none: false, standing: 'little' })
+    expect(ev.byMorningBand).toMatchObject({ diff: null, unmatched: true })
+    // Reported only in the mornings, left only in the afternoons: no time of day in common.
+    expect(ev.reported).toMatchObject({ diff: null, unmatched: true })
+    const facts = caffeineFacts(apart, ev, TODAY)
+    for (const f of facts) {
+      expect(f.text, f.id).not.toMatch(/read {2}against|read [+-]?0 against|\+0\b/)
+    }
+    expect(facts.find((f) => f.id === 'assoc.caffeine.bands')?.text).toContain('nothing is compared like for like yet')
+    expect(facts.find((f) => f.id === 'assoc.caffeine.reported')?.text).toContain('the two groups share no time of day')
+  })
+
   it('says no difference in its fixed words when the groups read alike', () => {
     const alike = pairs('2026-07-01', [...repeat<CaffeineBand>(1, 6), ...repeat<CaffeineBand>(3, 6)], () => ({ hours: 4, quality: 4 }))
     const c = byDayBand(alike, TODAY, 10)

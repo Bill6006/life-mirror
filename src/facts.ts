@@ -141,7 +141,14 @@ export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence
     const minutes = c.hoursDiff === null ? null : Math.round(c.hoursDiff * 60)
     const quality = c.qualityDiff === null ? null : Math.round(c.qualityDiff * 10) / 10
     const read = [minutes === null ? null : `sleep ${signed(minutes)} minutes`, quality === null ? null : `quality ${signed(quality)} of a step`].filter(Boolean).join(' and ')
-    const body = c.groups.length < 2 ? 'one group so far, and comparing needs two groups of five' : c.none ? 'no difference is showing, and self-reported sleep is known to miss caffeine’s effect' : `after ${high} ${unit[1]} the next night read ${read} against ${low} ${unit[1]}`
+    const body =
+      c.groups.length < 2
+        ? 'one group so far, and comparing needs two groups of five'
+        : c.unmatched
+          ? 'no day in one group began on the same sleep as a day in the other, so nothing is compared like for like yet'
+          : c.none
+            ? 'no difference is showing, and self-reported sleep is known to miss caffeine’s effect'
+            : `after ${high} ${unit[1]} the next night read ${read} against ${low} ${unit[1]}`
     out.push(fact(id, ['caffeine', 'sleep'], `The next night's sleep ${by}, like for like on the sleep the day began with: ${groups}; ${body} (${c.standing}). Untapped windows (${h.untapped}) and days with nothing known are in no group.`, { low, high, n: c.groups[0].n, m: c.groups[c.groups.length - 1].n, groups: c.groups.length, minutes, quality, none: c.none ? 1 : 0, untapped: h.untapped }, { n: c.groups.reduce((t, g) => t + g.n, 0), tier: c.standing }))
   }
   sleep('assoc.caffeine.bands', 'by the day’s reported caffeine', ev.byDayBand, bandsLabel, ['day', 'days'])
@@ -152,14 +159,28 @@ export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence
     const high = lower(bandsLabel(m.groups[m.groups.length - 1].keys))
     const groups = m.groups.map((g) => `${lower(bandsLabel(g.keys))} ${g.n} ${g.n === 1 ? 'morning' : 'mornings'}`).join(', ')
     const diff = m.diff === null ? null : Math.round(m.diff)
-    const body = m.groups.length < 2 ? 'one group so far, and comparing needs two groups of five' : m.none ? 'no difference is showing' : `after ${high} mornings the afternoon read ${signed(diff ?? 0)} against ${low} mornings`
+    const body =
+      m.groups.length < 2
+        ? 'one group so far, and comparing needs two groups of five'
+        : diff === null
+          ? 'no morning in one group began on the same sleep as one in the other, so nothing is compared like for like yet'
+          : m.none
+            ? 'no difference is showing'
+            : `after ${high} mornings the afternoon read ${signed(diff)} against ${low} mornings`
     out.push(fact('assoc.caffeine.morning', ['caffeine', 'afternoon'], `That afternoon's reading by the morning's reported caffeine, like for like on the sleep the morning began with: ${groups}; ${body} (${m.standing}).`, { low, high, n: m.groups[0].n, m: m.groups[m.groups.length - 1].n, groups: m.groups.length, diff, none: m.none ? 1 : 0 }, { n: m.groups.reduce((t, g) => t + g.n, 0), tier: m.standing }))
   }
   const r = ev.reported
   if (r.groups.length) {
     const count = (k: 'reported' | 'untapped') => r.groups.filter((g) => g.keys.includes(k)).reduce((t, g) => t + g.n, 0)
     const diff = r.diff === null ? null : Math.round(r.diff)
-    const body = r.groups.length < 2 ? 'one group so far, and comparing needs two groups of five' : r.none ? 'no difference is showing' : `where it was reported the check-in read ${signed(diff ?? 0)}`
+    const body =
+      r.groups.length < 2
+        ? 'one group so far, and comparing needs two groups of five'
+        : diff === null
+          ? 'the two groups share no time of day, so nothing is compared like for like yet'
+          : r.none
+            ? 'no difference is showing'
+            : `where it was reported the check-in read ${signed(diff)}`
     const dropped = r.droppedMornings ? ` Untapped mornings left out: ${r.droppedMornings}, because caffeine was reported on most of the last ${HABIT_DAYS} days.` : ''
     const withdrawal = r.habitual ? ' Reported on most days, part of a same-check-in difference may be withdrawal on the check-ins without it, not a lift on the ones with it.' : ''
     out.push(fact('assoc.caffeine.reported', ['caffeine', 'energy'], `The same check-in's reading where caffeine was reported, against where the item was shown and none reported, like for like by time of day: reported ${count('reported')}, none reported ${count('untapped')}; ${body} (${r.standing}).${dropped}${withdrawal}`, { reported: count('reported'), untapped: count('untapped'), groups: r.groups.length, diff, none: r.none ? 1 : 0, dropped: r.droppedMornings, habitual: r.habitual ? 1 : 0 }, { n: count('reported') + count('untapped'), tier: r.standing }))
