@@ -2,6 +2,14 @@
 // live in readings.json, moves in catalogue.json), so one test can check all of them against
 // the plan's rule: a reading, never a verdict.
 export const copy = {
+  caffeine: {
+    title: 'Caffeine since your last check-in',
+    titleMorning: 'Caffeine so far today',
+    factLabel: 'Caffeine',
+    bands: { 1: 'Under 100 mg', 2: '100–199 mg', 3: '200–299 mg', 4: '300+ mg' },
+    legacy: 'Recorded before amounts: caffeine, amount unknown.',
+    help: 'Only if you had some; with none, leave it. Pick the closest band: the same coffee can land in either of two. Under 100: tea, a cola, one espresso, a small energy drink (8.4 oz). 100–199: a regular coffee (8 to 12 oz), two espressos, a 16 oz Monster. 200–299: a large coffee (16 oz), cold brew, a Celsius, most pre-workouts. 300 or more: a Bang or a Reign, two large coffees.',
+  },
   people: {
     contexts: { weekday: 'Weekday {blocks} at home', office: 'Office-day {blocks}', weekend: 'Weekend {blocks}' },
     blocks: { morning: 'mornings', afternoon: 'afternoons', evening: 'evenings' },
@@ -164,7 +172,7 @@ export const copy = {
     tomorrowWin: "Tomorrow's minimum win",
     winPlaceholder: 'One line, sized to one sitting',
     winSet: 'Set for tomorrow.',
-    caffeine: 'Caffeine after midday',
+    caffeine: 'Caffeine',
     dinner: 'Late or heavy dinner',
     faith: 'Felt close to God today?',
     faithOff: 'Turn this question off',
@@ -373,7 +381,7 @@ export const copy = {
       teeth: 'Teeth not brushed',
       food: 'No proper meal today',
       away: 'She’s away today',
-      heavyCaffeine: 'Heavy caffeine this morning',
+      caffeine: 'Caffeine',
     },
     swaps: 'Anchor swaps',
     swapsNote: 'An alternate swaps in only after forty-five days in which a phrase was never tapped across thirty answers, once per reading, never the middle. Logged here and in the export key.',
@@ -785,7 +793,7 @@ export const copy = {
     privateInSelectionNote: 'Off on a fresh install. On, an evening card says what the record associates with an item, like for like, and names an alternative. Never "don’t".',
     extras: 'Evening extras',
     extraWin: "Tomorrow's minimum win",
-    extraCaffeine: 'Caffeine after midday',
+    extraCaffeine: 'Caffeine',
     extraDinner: 'Late or heavy dinner',
     extraPrivate: 'Private log',
     extraFaith: 'Felt close to God today?',

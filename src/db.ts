@@ -2,7 +2,7 @@ import type { LineAction } from './brainShared'
 import type { FactSheet } from './facts'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
-import { compareSlots, parseDay, type Block, type Slot } from './blocks'
+import { blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, withDefaults, type Settings, type Weekday } from './settings'
@@ -14,8 +14,20 @@ export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 
 export type NecessityKey = 'shower' | 'teeth' | 'food'
 export type Necessities = Partial<Record<NecessityKey, true>>
 
+/** Caffeine for one check-in window (Part 21): 1 under 100 mg, 2 100–199, 3 200–299, 4 300 or more. */
+export type CaffeineBand = 1 | 2 | 3 | 4
+export const CAFFEINE_BANDS: readonly CaffeineBand[] = [1, 2, 3, 4]
+
 export interface Extras {
+  /** Before 2026-09-23: "Caffeine after midday", a yes on the evening. Read now as some caffeine, amount unknown. */
   caffeine?: true
+  /**
+   * Caffeine reported for this check-in's window: its band, when it was tapped, and when the window
+   * began (the previous check-in's completion that day, or null for the day's first: since waking).
+   */
+  caffeineIntake?: { band: CaffeineBand; at: string; since: string | null }
+  /** The Caffeine item was on screen for this window on its own day. Untapped, that means none reported, never a confirmed zero. */
+  caffeineShown?: true
   dinner?: true
   closeToGod?: true
   /** The two evening chips, answered at once from the record. */
@@ -24,7 +36,7 @@ export interface Extras {
   /** Phase 10: a cooling-off event, whose duration the readings say; and an unplanned big social event. */
   coolingOff?: true
   bigSocial?: true
-  /** The morning's one statement chip, on the morning check-in: heavy caffeine this morning. Dose and timing stay out. */
+  /** Before 2026-09-23: "Heavy caffeine this morning" on the morning check-in. Read now as some caffeine, amount unknown. */
   heavyCaffeine?: true
   /** Napped today: the one daytime sleep the record cannot otherwise see, on the evening check-in. */
   napped?: true
@@ -695,6 +707,40 @@ export function setExtra(slot: Slot, asked: readonly ReadingId[], key: ExtraKey,
     rec.extras = extras
     rec.updatedAt = now
     rec.id = await db.checkins.put(rec)
+  })
+}
+
+/**
+ * Caffeine for a check-in's window (Part 21): the band, when it was tapped, and when the window
+ * began. Tapping the same band again clears it (Rule 13). Nothing is ever written as zero.
+ */
+export function setCaffeine(slot: Slot, asked: readonly ReadingId[], band: CaffeineBand | null, now: Date = new Date()): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const at = now.toISOString()
+    const rec = (await getCheckIn(slot.day, slot.block)) ?? newCheckIn(slot, asked, at)
+    const extras: Extras = { ...(rec.extras ?? {}) }
+    if (band === null) delete extras.caffeineIntake
+    else {
+      const earlier = (await db.checkins.where('day').equals(slot.day).toArray())
+        .filter((c) => c.completedAt && blockIndex(c.block) < blockIndex(slot.block))
+        .sort((a, b) => blockIndex(b.block) - blockIndex(a.block))[0]
+      extras.caffeineIntake = { band, at, since: earlier?.completedAt ?? null }
+    }
+    extras.caffeineShown = true
+    rec.extras = extras
+    rec.updatedAt = at
+    rec.id = await db.checkins.put(rec)
+  })
+}
+
+/** The Caffeine item was on screen for this check-in: written once, on the check-in's own day, and only to a check-in that exists. */
+export function markCaffeineShown(slot: Slot): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const rec = await getCheckIn(slot.day, slot.block)
+    if (!rec || rec.extras?.caffeineShown) return
+    rec.extras = { ...(rec.extras ?? {}), caffeineShown: true }
+    rec.updatedAt = new Date().toISOString()
+    await db.checkins.put(rec)
   })
 }
 

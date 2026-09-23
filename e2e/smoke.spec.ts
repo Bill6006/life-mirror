@@ -789,10 +789,9 @@ test('the exception chips sit on a morning summary too, and change today alone',
   await page.getByRole('button', { name: /Check in/ }).click()
   await tapThrough(page)
   await expect(page.getByTestId('give-back')).toBeVisible()
-  // The morning's own chip, answered from the record.
-  await page.getByTestId('chip-heavyCaffeine').click()
-  await expect(page.getByTestId('chip-heavyCaffeine')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByTestId('chip-answer').first()).toContainText('First time recorded')
+  // The morning's yes/no caffeine chip is gone; the Caffeine item stands in its place (Part 21).
+  await expect(page.getByTestId('chip-heavyCaffeine')).toHaveCount(0)
+  await expect(page.getByTestId('caffeine')).toBeVisible()
   await expect(page.getByTestId('chip-away')).toBeVisible()
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'false')
   await page.getByTestId('chip-office').click()
@@ -800,6 +799,84 @@ test('the exception chips sit on a morning summary too, and change today alone',
   await page.reload()
   await page.getByTestId('block-row').first().click()
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
+})
+
+/** Reads one check-in's extras straight from the phone's store. */
+async function extrasOf(page: Page, day: string, block: string): Promise<Record<string, unknown> | null> {
+  return page.evaluate(
+    async ([d, b]) => {
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const rows = await new Promise<Array<{ day: string; block: string; extras?: Record<string, unknown> }>>((res, rej) => {
+        const q = dbx.transaction(['checkins'], 'readonly').objectStore('checkins').getAll()
+        q.onsuccess = () => res(q.result)
+        q.onerror = () => rej(q.error)
+      })
+      dbx.close()
+      return rows.find((r) => r.day === d && r.block === b)?.extras ?? null
+    },
+    [day, block],
+  )
+}
+
+test('caffeine is one optional item: a band per window, tapped again to clear, no None to tap', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('give-back')).toBeVisible()
+
+  // On the morning summary: four bands, the helper text, and nothing to tap for none.
+  const card = page.getByTestId('caffeine')
+  await expect(page.getByRole('heading', { name: 'Caffeine so far today' })).toBeVisible()
+  await expect(card.getByRole('button')).toHaveText(['Under 100 mg', '100–199 mg', '200–299 mg', '300+ mg'])
+  await expect(page.getByTestId('caffeine-help')).toContainText('Only if you had some; with none, leave it.')
+  await expect(page.getByTestId('chip-heavyCaffeine')).toHaveCount(0)
+  // Seen and left alone: shown is written once it is on screen, no band, and never a zero.
+  await card.scrollIntoViewIfNeeded()
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'morning'))?.caffeineShown ?? null).toBe(true)
+  expect((await extrasOf(page, '2026-09-07', 'morning'))?.caffeineIntake).toBeUndefined()
+
+  // One tap sets a band; the band survives a relaunch; the same tap again clears it.
+  await page.getByTestId('caffeine-2').click()
+  await expect(page.getByTestId('caffeine-2')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('caffeine-3')).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'morning'))?.caffeineIntake ?? null).toMatchObject({ band: 2, since: null })
+  await page.reload()
+  await page.getByTestId('block-row').first().click()
+  await expect(page.getByTestId('caffeine-2')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByTestId('caffeine-2').click()
+  await expect(page.getByTestId('caffeine-2')).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'morning'))?.caffeineIntake ?? null).toBeNull()
+
+  // In the evening it sits among the extras, for the window since the last check-in.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  const ask = page.getByTestId('outcome-ask')
+  for (let i = 0; i < 14; i++) {
+    await expect(extras.or(anchor).or(ask).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    if (await ask.isVisible()) {
+      await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      await expect(ask).toBeHidden()
+      continue
+    }
+    await tapAnchor(page)
+  }
+  await expect(extras).toBeVisible()
+  await expect(extras.getByRole('heading', { name: 'Caffeine since your last check-in' })).toBeVisible()
+  await expect(page.getByText('Caffeine after midday')).toHaveCount(0)
+  await page.getByTestId('caffeine-1').click()
+  await expect(page.getByTestId('caffeine-1')).toHaveAttribute('aria-pressed', 'true')
+  const evening = await extrasOf(page, '2026-09-07', 'evening')
+  expect(evening?.caffeineIntake).toMatchObject({ band: 1 })
+  expect((evening?.caffeineIntake as { since: string | null }).since).not.toBeNull()
 })
 
 test('the line does what it says in one tap, shows why it said it, and the week is reviewed under the week ahead', async ({ page }) => {

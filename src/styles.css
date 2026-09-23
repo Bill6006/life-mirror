@@ -1437,6 +1437,14 @@ button.chip {
   font-size: inherit;
 }
 
+/* The Caffeine item: four bands, one tap, and its helper text under them. */
+.caffeine-bands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
 /* The brief's title row: the title, and on the right a one-word tag when a model wrote the line. */
 .brief-head {
   display: flex;

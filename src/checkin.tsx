@@ -21,7 +21,8 @@ import {
 import { fill, formatTime } from './format'
 import type { RungMove } from './ladder'
 import { useLive } from './live'
-import { MorningChips, TodayChips } from './extras'
+import { CaffeineCard, caffeineWords } from './caffeine'
+import { TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
@@ -294,7 +295,7 @@ export function SummaryScreen({
         </ul>
       </div>
 
-      {block === 'morning' && <MorningChips day={day} />}
+      {block !== 'evening' && <CaffeineCard day={day} block={block} />}
       {block !== 'evening' && <TodayChips day={day} />}
 
       {block === 'evening' && (
@@ -302,7 +303,7 @@ export function SummaryScreen({
           <h2 class="section">{copy.summary.extras}</h2>
           <div class="card">
             <ul class="rows">
-              {settings.extras.caffeine && <Fact label={copy.extras.caffeine} value={ex.caffeine ? copy.extras.yes : null} />}
+              {(settings.extras.caffeine || caffeineWords(record)) && <Fact label={copy.caffeine.factLabel} value={caffeineWords(record)} />}
               {settings.extras.dinner && <Fact label={copy.extras.dinner} value={ex.dinner ? copy.extras.yes : null} />}
               {(settings.extras.faith || ex.closeToGod) && <Fact label={copy.extras.faith} value={ex.closeToGod ? copy.extras.yes : null} />}
               {(settings.extras.privateLog || privateLogged.length > 0) && items.length > 0 && (

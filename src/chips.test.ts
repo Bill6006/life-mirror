@@ -51,11 +51,15 @@ describe('the evening chips, answered from the record like for like', () => {
   })
 })
 
-describe('the morning’s chip retires by mornings', () => {
-  it('counts mornings, not evenings, for the heavy-caffeine chip', () => {
-    const mornings = Array.from({ length: 31 }, (_, i) => mk('2026-08-' + String(i + 1).padStart(2, '0'), 'morning', 3))
-    const states = chipStates(mornings, [], {}, '2026-09-01')
-    expect(states.find((s) => s.id === 'heavyCaffeine')).toMatchObject({ evenings: 31, retired: true })
-    expect(states.find((s) => s.id === 'nothingLanded')).toMatchObject({ evenings: 0, retired: false })
+describe('the Caffeine item retires by the check-ins it was shown in', () => {
+  it('counts only windows where it was on screen, any block, and a single band keeps it', () => {
+    const shown = Array.from({ length: 31 }, (_, i) => mk('2026-08-' + String(i + 1).padStart(2, '0'), i % 2 ? 'morning' : 'afternoon', 3, { caffeineShown: true }))
+    const states = chipStates(shown, [], {}, '2026-09-01')
+    expect(states.find((s) => s.id === 'caffeine')).toMatchObject({ evenings: 31, retired: true })
+    // Windows it was never shown in count for nothing: silence is not evidence.
+    const unseen = Array.from({ length: 31 }, (_, i) => mk('2026-08-' + String(i + 1).padStart(2, '0'), 'morning', 3))
+    expect(chipStates(unseen, [], {}, '2026-09-01').find((s) => s.id === 'caffeine')).toMatchObject({ evenings: 0, retired: false })
+    const once = shown.map((c, i) => (i === 29 ? { ...c, extras: { ...c.extras, caffeineIntake: { band: 2 as const, at: '2026-08-30T08:00:00.000Z', since: null } } } : c))
+    expect(chipStates(once, [], {}, '2026-09-01').find((s) => s.id === 'caffeine')?.retired).toBe(false)
   })
 })

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { addDays, parseDay, type Block } from './blocks'
 import { coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
-import { chipAnswer, morningChipAnswer, type ChipKey } from './chips'
+import { CaffeineCard } from './caffeine'
+import { chipAnswer, type ChipKey } from './chips'
 import { copy } from './copy'
 import {
   allCheckIns,
@@ -90,9 +91,10 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         </>
       )}
 
+      <CaffeineCard day={day} block={block} />
+
       <div class="card">
         <ul class="rows">
-          {settings.extras.caffeine && <ExtraRow label={copy.extras.caffeine} on={Boolean(ex.caffeine)} onLabel={copy.extras.yes} onClick={() => toggle('caffeine')} />}
           {settings.extras.dinner && <ExtraRow label={copy.extras.dinner} on={Boolean(ex.dinner)} onLabel={copy.extras.yes} onClick={() => toggle('dinner')} />}
           {settings.extras.faith && <ExtraRow label={copy.extras.faith} on={Boolean(ex.closeToGod)} onLabel={copy.extras.yes} onClick={() => toggle('closeToGod')} />}
           {settings.extras.privateLog && items.length > 0 && (
@@ -192,55 +194,6 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         {copy.extras.done}
       </button>
     </section>
-  )
-}
-
-/**
- * This morning: one statement chip, heavy caffeine, on the morning's summary. Answered at once
- * from the record like the evening chips (the afternoons after mornings that carried it, against
- * the afternoons after mornings that started the same) and retiring like them. Dose and timing
- * stay out: one tap.
- */
-export function MorningChips({ day }: { day: string }) {
-  const record = useLive(() => getCheckIn(day, 'morning'), [day])
-  const settings = useLive(getSettings, [])
-  const all = useLive(allCheckIns, [])
-  const contexts = useLive(() => db.days.toArray(), [])
-  if (record === undefined || !settings || !all || !contexts) return null
-  const states = chipStates(all, contexts, settings.chipsBack, day)
-  if (chipRetired('heavyCaffeine', states)) return null
-  const asked = record ? askedOf(record) : askedReadings('morning', settings.depth, settings.retiredReadings)
-  const on = Boolean(record?.extras?.heavyCaffeine)
-  const a = morningChipAnswer(all, day)
-  const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
-  const answer =
-    a.times === 0
-      ? copy.extras.chipFirst
-      : a.withEvent.mean === null
-        ? fill(copy.extras.morningTimesNoNext, { n: String(a.times) })
-        : a.without.mean === null
-          ? fill(copy.extras.morningUnmatched, { n: String(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
-          : fill(copy.extras.morningTimes, { n: String(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
-  return (
-    <>
-      <h2 class="section">{copy.extras.morningChips}</h2>
-      <div class="card">
-        <ul class="rows">
-          <li>
-            <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid="chip-heavyCaffeine" onClick={() => void setExtra({ day, block: 'morning' }, asked, 'heavyCaffeine', !on)}>
-              <span class="anchor-mark" aria-hidden="true" />
-              <span class="row-main">{copy.extras.heavyCaffeine}</span>
-            </button>
-            {on && (
-              <div class="calc chip-answer" data-testid="chip-answer">
-                <p class="calc-line">{answer}</p>
-              </div>
-            )}
-          </li>
-        </ul>
-      </div>
-      <p class="note faint">{copy.extras.morningNote}</p>
-    </>
   )
 }
 
