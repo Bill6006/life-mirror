@@ -12,6 +12,12 @@ export interface Env {
   VAPID_SUBJECT: string
   /** Optional: lets you run a job by hand at /run/brief?key=… ; without it those routes are off. */
   RUN_KEY?: string
+  /** The bridge key (Part 29), set by the builder from a local file without printing it; Anthropic's agent proxy sends it with the run's requests. */
+  CLAUDE_BRIDGE_KEY?: string
+  /** The routine's own fire token, pasted by you into the Cloudflare form. */
+  CLAUDE_FIRE_TOKEN?: string
+  /** The routine's fire URL: not a secret. */
+  CLAUDE_FIRE_URL?: string
   TIMEZONE: string
   /** The check-in pings' local times, HH:MM, comma-separated. */
   PING_TIMES?: string

@@ -54,6 +54,30 @@ export interface BriefRow {
   latencyMs?: number
 }
 
+/** One record of the bridge proof (Part 29): a fire of the routine, or a nonce issued and answered. Test data only. */
+export interface BridgeRow {
+  id: string
+  kind: 'fire' | 'ping'
+  at: string
+  /** The model the fire asked the run's subagent to write with. */
+  model?: string | null
+  status?: number
+  sessionId?: string | null
+  sessionUrl?: string | null
+  retryAfter?: string | null
+  error?: string | null
+  nonce?: string
+  fireId?: string | null
+  fireAt?: string | null
+  answeredAt?: string
+  roundTripMs?: number | null
+  reply?: string | null
+  askedModel?: string | null
+  subagentModel?: string | null
+  runnerModel?: string | null
+  subagentError?: string | null
+}
+
 export interface SaidRow {
   id: string
   day: string
@@ -74,6 +98,10 @@ export interface Store {
   /** The newest rows of lines and reviews, whole, for the report. */
   readBriefs(limit: number): Promise<BriefRow[]>
   readFeedback(): Promise<FeedbackRow[]>
+  writeBridge(row: BridgeRow): Promise<void>
+  readBridgeRow(id: string): Promise<BridgeRow | null>
+  /** The newest bridge rows, newest first. */
+  readBridge(limit: number): Promise<BridgeRow[]>
   isPushed(id: string): Promise<boolean>
   markPushed(id: string, now: string): Promise<void>
 }
@@ -120,6 +148,18 @@ export function tursoStore(url: string, token: string): Store {
     async readFeedback() {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'briefFeedback' AND deleted = 0`, [APP])
       return r.map((row) => parse<FeedbackRow>(row.body)).filter((f): f is FeedbackRow => f !== null && typeof f.briefKey === 'string')
+    },
+    async writeBridge(row) {
+      const now = new Date().toISOString()
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.at.slice(0, 10), JSON.stringify(row), now, DEVICE, now] })
+    },
+    async readBridgeRow(id) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
+      return r[0] ? parse<BridgeRow>(r[0].body) : null
+    },
+    async readBridge(limit) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
+      return r.map((row) => parse<BridgeRow>(row.body)).filter((b): b is BridgeRow => b !== null)
     },
     async isPushed(id) {
       const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'pushes' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
@@ -187,6 +227,21 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
       return live(APP, 'briefFeedback')
         .map((r) => parse<FeedbackRow>(r.body))
         .filter((f): f is FeedbackRow => f !== null)
+    },
+    async writeBridge(row) {
+      const now = new Date(Date.parse(row.answeredAt ?? row.at) + rows.size).toISOString()
+      rows.set(key(BRAIN_APP, 'bridge', row.id), { app: BRAIN_APP, store: 'bridge', id: row.id, day: row.at.slice(0, 10), body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async readBridgeRow(id) {
+      const r = rows.get(key(BRAIN_APP, 'bridge', id))
+      return r && !r.deleted ? parse<BridgeRow>(r.body) : null
+    },
+    async readBridge(limit) {
+      return live(BRAIN_APP, 'bridge')
+        .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
+        .slice(0, limit)
+        .map((r) => parse<BridgeRow>(r.body))
+        .filter((b): b is BridgeRow => b !== null)
     },
     async isPushed(id) {
       const r = rows.get(key(BRAIN_APP, 'pushes', id))

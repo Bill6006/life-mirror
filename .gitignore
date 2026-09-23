@@ -16,3 +16,5 @@ playwright-report/
 .wrangler/
 worker/.dev.vars
 
+# The bridge key (Part 29): the owner pastes it once into the environment credential form; never committed.
+worker/.bridge-key

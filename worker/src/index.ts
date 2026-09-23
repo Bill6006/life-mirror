@@ -4,6 +4,7 @@ import { runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
+import { acceptNonce, bearerOk, fireRoutine, issueNonce, TEST_MODELS, type TestModel } from './claude'
 
 // The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
 // ping whose moment has come; writes the day's line once the morning check-in is on a sheet (or
@@ -70,6 +71,31 @@ const handler: ExportedHandler<Env> = {
     const m = /^\/run\/(brief|review|cues)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1'))
+    }
+    // The bridge proof (Part 29): the run asks for a nonce and hands it back, with the key the agent proxy adds; without it, nothing.
+    if (url.pathname === '/claude/ping') {
+      if (!bearerOk(request.headers.get('authorization'), env.CLAUDE_BRIDGE_KEY)) return json({ error: 'unauthorized' }, 401)
+      if (!env.TURSO_TOKEN) return json({ error: 'no database token' }, 503)
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      if (request.method === 'GET') return json(await issueNonce(store, new Date()))
+      if (request.method === 'POST') {
+        const body = await request.json().catch(() => null)
+        const r = await acceptNonce(store, new Date(), body)
+        return json(r, r.ok ? 200 : 400)
+      }
+      return json({ error: 'method' }, 405)
+    }
+    // With the run key: fire the routine once, asking its subagent for one of the test models.
+    if (url.pathname === '/run/claude-fire' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const asked = url.searchParams.get('model') ?? 'opus'
+      if (!(TEST_MODELS as readonly string[]).includes(asked)) return json({ reason: `model must be one of ${TEST_MODELS.join(', ')}` }, 400)
+      return json(await fireRoutine(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), asked as TestModel))
+    }
+    // With the run key: the bridge rows, newest first.
+    if (url.pathname === '/run/bridge-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      return json({ rows: await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readBridge(30) })
     }
     // With the run key: the last thirty lines and reviews as their log reads, never their words (Part 28's window is read off this).
     if (url.pathname === '/run/brief-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
