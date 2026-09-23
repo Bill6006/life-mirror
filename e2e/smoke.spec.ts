@@ -228,6 +228,8 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await expect(screen.getByTestId('brain-read-group')).toContainText('the day’s line')
   await expect(screen.getByTestId('brain-read-group')).toContainText('Check-in notes 3, 240 B')
   await expect(screen.getByTestId('brain-read-group')).toContainText('Reflections 2, 2.0 KB')
+  await expect(screen.getByTestId('brain-coach')).toContainText('Once its reliability gate is met')
+  await expect(screen.getByTestId('brain-coach-last')).toHaveText('It has not chosen yet.')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
   // Reopened, the screen shows the choices as they were left: they are kept in the synced row.
@@ -1190,6 +1192,40 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await expect(picked.getByTestId('aim-step')).toHaveText(Object.entries(ids).find(([, id]) => id === other)?.[0] as string)
   await expect(picked).toContainText('Your pick')
   await expect(picked.getByTestId('aim-resume')).toBeVisible()
+})
+
+test('the coach: a pick stubbed for today shows its version under the rep and says why; one for another day is ignored', async ({ page }) => {
+  // A Monday morning marked at the office: the Social path's stage-1 reps all fit (Part 20's tier 1).
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByTestId('chip-office').click()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-path-social').click()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const row = page.locator('[data-kind="path"]')
+  const ids: Record<string, string> = { 'Eye contact with a stranger': 'eye-contact-stranger', 'Three things about the other person': 'attention-outward', 'Greet someone by name': 'greet-by-name' }
+  const shown = ids[((await row.getByTestId('aim-step').textContent()) ?? '').trim()]
+  const other = Object.values(ids).find((id) => id !== shown) as string
+  const pick = (day: string, named: string[], version: string) => ({ id: `${day}:coach`, day, block: 'morning', path: 'social', ids: named, version, model: 'claude-opus-5-5', at: `${day}T13:00:00.000Z` })
+
+  // Yesterday's pick is stale: the app's own pick stands, with no version.
+  await putInto(page, 'coachPicks', pick('2026-09-06', [other], 'Yesterday’s version.'))
+  await page.reload()
+  await expect(row.getByTestId('aim-step')).toBeVisible()
+  await expect(row.getByTestId('path-coach-version')).toHaveCount(0)
+
+  // Today's names two reps the row may offer: one of them is drawn, with the coach's line under it.
+  const version = 'At the office, greet one colleague by name as you pass; notice what they carry.'
+  await putInto(page, 'coachPicks', pick('2026-09-07', [shown, other], version))
+  await page.reload()
+  await expect(row.getByTestId('path-coach-version')).toHaveText(version)
+  expect([shown, other]).toContain(ids[((await row.getByTestId('aim-step').textContent()) ?? '').trim()])
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(page.locator('[data-path="social"]')).toContainText('The coach named two of the reps that fit now; drawn between them, even chances, kept with the step.')
 })
 
 test('the Partner path: added by its own tap beside the Social path, one People row on Now, a shared rep counted for both, a date day, and the monthly check’s help only on a yes', async ({ page }) => {

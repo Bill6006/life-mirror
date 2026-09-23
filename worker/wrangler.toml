@@ -36,6 +36,11 @@ CLAUDE_FIRE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_01RQ3f
 CLAUDE_WRITER = "on"
 # No valid line from Claude within this many minutes, and the free chain writes at the next tick.
 CLAUDE_TIMEOUT_MINUTES = "20"
+# The coach (Part 32): on, it runs once a day, but only while its reliability gate is met, read
+# every day from the bridge's own rows: ten consecutive scheduled days, every failure handled,
+# Claude's own line on at least seven, and a clean spot-check of the run logs since the count began.
+# "off" keeps Part 24's pick alone.
+COACH_WRITER = "on"
 VAPID_PUBLIC_KEY = "BCaIRco378dsKVVBh0-wIIWYUqrTgY2aZuJA_uxEXnyojXNoZrYlsszUH3QzecsMBdvMCzXEw9ihMnf219GCNOA"
 VAPID_SUBJECT = "https://github.com/Bill6006/life-mirror"
 # In order; every failure falls to the next. All four answer on the free plan (DeepSeek does not;

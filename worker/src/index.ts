@@ -5,6 +5,8 @@ import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
+import { gateNow, recordSpot, runCoach } from './coach'
+import { localTime } from './time'
 
 // The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
 // ping whose moment has come; starts the day's line once the morning check-in is on a sheet (or
@@ -34,14 +36,19 @@ function sender(env: Env): Sender | null {
   }
 }
 
-type Job = 'brief' | 'review' | 'cues'
+type Job = 'brief' | 'review' | 'cues' | 'coach'
 
-async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free'): Promise<unknown> {
+async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free', dry = false): Promise<unknown> {
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
   if (job === 'cues') {
     const send = sender(env)
     const result = { ping: await runPings(env, store, now, send), cues: await runCues(env, store, now, send) }
+    console.log(JSON.stringify({ job, ...result }))
+    return { job, ...result }
+  }
+  if (job === 'coach') {
+    const result = await runCoach(env, store, now, { force, dry })
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
@@ -57,7 +64,7 @@ const handler: ExportedHandler<Env> = {
     // In turn, and each on its own: a failure in one never stops the next. Each decides for itself whether its moment has come.
     ctx.waitUntil(
       (async () => {
-        for (const job of ['cues', 'brief', 'review'] as const) {
+        for (const job of ['cues', 'brief', 'review', 'coach'] as const) {
           try {
             await dispatch(job, env, now)
           } catch (e) {
@@ -71,11 +78,24 @@ const handler: ExportedHandler<Env> = {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/health') return json({ ok: true, app: BRAIN_APP })
-    const m = /^\/run\/(brief|review|cues)$/.exec(url.pathname)
+    const m = /^\/run\/(brief|review|cues|coach)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       const w = url.searchParams.get('writer')
       if (w !== null && w !== 'claude' && w !== 'free') return json({ reason: 'writer must be claude or free' }, 400)
-      return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1', w ?? undefined))
+      return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1', w ?? undefined, url.searchParams.get('dry') === '1'))
+    }
+    // With the run key: the coach's reliability gate as the bridge's rows read today (Part 32), and a spot-check of the run logs recorded.
+    if (url.pathname === '/run/coach-gate' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const now = new Date()
+      return json(await gateNow(tursoStore(env.TURSO_URL, env.TURSO_TOKEN), localTime(now, env.TIMEZONE).day, env.TIMEZONE))
+    }
+    if (url.pathname === '/run/coach-spotcheck' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const runs = Number(url.searchParams.get('runs'))
+      const clean = url.searchParams.get('clean')
+      if (!Number.isInteger(runs) || runs < 1 || (clean !== '1' && clean !== '0')) return json({ reason: 'runs must be a whole number of runs read, and clean 1 or 0' }, 400)
+      return json(await recordSpot(tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), env.TIMEZONE, runs, clean === '1'))
     }
     // The bridge (Part 30): the routine's run, with the key the agent proxy adds; without it, nothing. The key never reaches Claude.
     if (url.pathname.startsWith('/claude/')) {

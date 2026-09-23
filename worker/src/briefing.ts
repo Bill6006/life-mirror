@@ -199,13 +199,20 @@ export function lineBriefing(i: LineBriefingInput): { ok: true; briefing: LineBr
 }
 
 /**
- * The coach's decision core (Part 32), stated now as a contract so nothing is written against a
- * guess. It is built by allowlist from the facts row's coach block, which the path module writes
- * (Parts 24 and 27): exactly these keys and nothing else, so tier 2 and anything unnamed can
- * never reach it. Nothing builds it before Part 32.
+ * The coach's decision core (Part 32), built by allowlist from the facts row's coach block, which
+ * the path module writes (Parts 24 and 27): exactly these keys and nothing else, so tier 2 and
+ * anything unnamed can never reach it. `row` is the People row's own path and candidates.
  */
-export const COACH_CORE_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep'] as const
+export const COACH_CORE_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row'] as const
 export type CoachCoreKey = (typeof COACH_CORE_KEYS)[number]
+
+/** The decision core, as the coach may read it: the coach block's named keys and nothing else. */
+export function coachCore(block: unknown): Partial<Record<CoachCoreKey, unknown>> {
+  const b = block && typeof block === 'object' ? (block as Record<string, unknown>) : {}
+  const core: Partial<Record<CoachCoreKey, unknown>> = {}
+  for (const k of COACH_CORE_KEYS) if (k in b) core[k] = b[k]
+  return core
+}
 
 export interface CoachBriefing {
   task: 'coach'

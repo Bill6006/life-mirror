@@ -2,7 +2,7 @@ import { activeAims, aimRecords, allIntentions, isOpenAimOffer, liveSkills, plan
 import { aheadToday, cuesFor, planFor, stepFor } from './aims'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import type { CoachBlock } from './factTypes'
-import { pathOn, peopleRowOf } from './pathFlow'
+import { coachRow, pathOn, peopleRowOf } from './pathFlow'
 import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
 import type { LineAction, LineCue, WriterModel } from './brainShared'
 import { copy } from './copy'
@@ -66,7 +66,8 @@ const SHORTLIST = 5
 export async function coachFor(day: string, now: Date = new Date()): Promise<CoachBlock | null> {
   const record = await pathRecord(day)
   const views = pathViews(record, day, now)
-  return coachBlock(views, record.ctx, day, blockAt(now).block, views.some((v) => v.dateDay))
+  const { block } = blockAt(now)
+  return coachBlock(views, record.ctx, day, block, views.some((v) => v.dateDay), coachRow(views, record.offers.filter(isOpenAimOffer), day, block))
 }
 
 /** What the paths are computed from. */

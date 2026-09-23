@@ -44,12 +44,14 @@ export function PathEvidence() {
             ) : (
               counts.map((r) => {
                 const yours = entries.filter((e) => e.moveId === r.moveId && e.chosenBy === 'you').length
+                const coached = entries.filter((e) => e.moveId === r.moveId && e.chosenBy === 'coach').length
                 const cmp = compared.get(r.moveId)
                 return (
                   <div key={r.moveId} class="calc" data-testid="path-rep-evidence">
                     <p class="calc-line">
                       {fill(c.pathRepLine, { rep: moveById(r.moveId).name, drawn: String(r.drawn), done: String(r.done), partly: String(r.partly), no: String(r.no) })}
                       {yours > 0 && ` · ${fill(c.pathYours, { n: String(yours) })}`}
+                      {coached > 0 && ` · ${fill(c.pathCoach, { n: String(coached) })}`}
                     </p>
                     {cmp && cmp.diff !== null && (
                       <p class="calc-line" data-testid="path-rep-compare">

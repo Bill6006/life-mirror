@@ -37,8 +37,10 @@ function useAims() {
   const pathMarks = useLive(() => db.pathMarks.toArray(), [])
   const settings = useLive(getSettings, [])
   const todays = useLive(() => db.checkins.where('day').equals(today).toArray(), [today])
-  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays) return null
-  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today) }
+  // The coach's pick for today, when the brain wrote one (Part 32); the row uses it only while it holds.
+  const coach = useLive(() => db.coachPicks.where('day').equals(today).toArray(), [today])
+  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach) return null
+  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: [...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null }
 }
 
 /** What a plan says when its reminder shows: the rep's name, except a rep the Partner path holds alone, which the lock screen shows only as a people rep. */
@@ -53,7 +55,7 @@ function planLabel(pt: PathToday): string {
 export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, compact = false }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; onPartnerNotes?: () => void; compact?: boolean }) {
   const data = useAims()
   if (!data) return null
-  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly } = data
+  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, coach } = data
   const aims = compact ? data.aims.filter((a) => !(a.kind === 'path' && a.pausedAt)) : data.aims
   if (aims.length === 0) return null
   const studyAims = aims.filter((a) => a.kind === 'certification')
@@ -61,7 +63,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
   // The paths computed once for this block: their cards, and the one People row between them (Part 27).
   const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, marks: pathMarks, online: settings.partnerOnline, lightOnly, faithHidden: settings.hideFaith })
   const views = aims.filter(pathOn).map(todayFor)
-  const people = peopleRowOf(views, open, today, block)
+  const people = peopleRowOf(views, open, today, block, coach)
   // One plan and one reminder for the People row, whichever path holds it.
   const pathPlan =
     views

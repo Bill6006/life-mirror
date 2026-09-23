@@ -1,5 +1,6 @@
 import { BRAIN_SWITCHES, WRITER_MODELS, type WriterModel } from './brainShared'
 import { getBrainPrefs, setBrainSwitch, setWriterModel } from './brainPrefs'
+import { hasMove, moveById } from './catalogue'
 import { SwitchRow } from './controls'
 import { copy } from './copy'
 import { db, getSettings, type BrainBrief, type BrainRead } from './db'
@@ -42,7 +43,8 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
   const settings = useLive(getSettings, [])
   const lines = useLive(() => db.brainBriefs.orderBy('day').reverse().filter((b) => b.kind === 'brief').limit(7).toArray(), [])
   const reads = useLive(() => db.brainReads.orderBy('day').reverse().limit(400).toArray(), [])
-  if (!prefs || !settings || !lines || !reads) return <section class="screen" />
+  const coached = useLive(() => db.coachPicks.orderBy('day').reverse().limit(1).toArray(), [])
+  if (!prefs || !settings || !lines || !reads || !coached) return <section class="screen" />
   const c = copy.brainScreen
   const labelOf = (category: string) => (c.switches as Record<string, { label: string }>)[category]?.label ?? category
 
@@ -92,6 +94,14 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
             <span class="calc-key">{formatDayShort(b.day)}</span> · {writerOf(b)}
           </p>
         ))}
+      </div>
+
+      <h2 class="section">{c.coach}</h2>
+      <div class="card pad" data-testid="brain-coach">
+        <p class="note faint">{c.coachNote}</p>
+        <p class="calc-line no-gap" data-testid="brain-coach-last">
+          {coached[0] ? fill(c.coachLast, { day: formatDayShort(coached[0].day), reps: coached[0].ids.map((id) => (hasMove(id) ? moveById(id).name : id)).join(', ') }) : c.coachNone}
+        </p>
       </div>
 
       <h2 class="section">{c.read}</h2>

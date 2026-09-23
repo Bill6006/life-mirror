@@ -2,7 +2,7 @@ import { addDays, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE, pathReps, paths, type Effort, type Move, type Path, type PathId, type PathPlace, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import type { CoachBlock } from './factTypes'
-import type { Aim, CheckIn, DayContext, Offer, Outcome, PathMark } from './db'
+import type { Aim, CheckIn, CoachPick, DayContext, Offer, Outcome, PathMark } from './db'
 import { fill } from './format'
 import { inPerson, peopleAround } from './people'
 
@@ -22,9 +22,11 @@ export const IN_PERSON_KINDS: readonly SettingKind[] = ['recurring', 'errand', '
 /**
  * Which rule chose a rep: the smallest after refusals, the one rep that fits, a draw among two or
  * more with each chance kept, or you through Change. 'rotate' (the least recently done) is kept
- * only for steps offered before Part 25 made the pick a draw.
+ * only for steps offered before Part 25 made the pick a draw. The coach (Part 32): one rep it
+ * named, or a draw between the two it named, even chances kept; neither is one of Part 25's
+ * comparisons, which read the app's own draws alone.
  */
-export type PickRule = 'smaller' | 'only' | 'draw' | 'you' | 'rotate'
+export type PickRule = 'smaller' | 'only' | 'draw' | 'you' | 'rotate' | 'coach' | 'coach+draw'
 export type RepAnswer = 'done' | 'partly' | 'no'
 
 /** One rep in a path's record: offered through the path, with what he answered. */
@@ -34,7 +36,7 @@ export interface PathEntry {
   day: string
   at: string
   setting: SettingKind
-  chosenBy: 'app' | 'you'
+  chosenBy: 'app' | 'you' | 'coach'
   rule: PickRule | null
   outcome: RepAnswer | null
   /** The stage the step was offered at, when the offer says. */
@@ -274,7 +276,7 @@ export interface RepPick {
   moveId: string
   setting: SettingKind
   rule: PickRule
-  chosenBy: 'app' | 'you'
+  chosenBy: 'app' | 'you' | 'coach'
   /** The reps it was picked among. */
   candidates: string[]
   /** Each rep's chance of being the pick, summing to one: a draw's chances, or one for the rep a rule or you chose. */
@@ -283,6 +285,8 @@ export interface RepPick {
   leaning: boolean
   /** Part 27: which of the Partner path's reps the People row's slot rule drew among: its own, or those it shares with Social. */
   turn?: 'own' | 'shared'
+  /** Part 32: the coach's one line of today's version, shown under the rep. */
+  version?: string
 }
 
 const EFFORT_ORDER: Record<Effort, number> = { low: 0, medium: 1, high: 2 }
@@ -380,7 +384,11 @@ export function whyThisRep(pick: RepPick): string {
           ? c.you
           : pick.rule === 'rotate'
             ? c.rotate
-            : fill(pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
+            : pick.rule === 'coach'
+              ? c.coach
+              : pick.rule === 'coach+draw'
+                ? c.coachDraw
+                : fill(pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
   const kinds = hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
   const said = pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
   return pick.turn ? `${c.turn[pick.turn]} ${said}` : said
@@ -568,7 +576,7 @@ export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pic
  * tier 1's reason when in-person reps are out, and per-rep evidence. Built by allowlist from the
  * same computation the row shows; tier 2 is never read here.
  */
-export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx'], day: string, block: Block, dateDay = false): CoachBlock | null {
+export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx'], day: string, block: Block, dateDay = false, row: CoachBlock['row'] = null): CoachBlock | null {
   if (!views.length) return null
   const out = views.some((v) => v.elig.nobodyAround)
   return {
@@ -586,5 +594,31 @@ export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx
         return { path: v.path.id, id: m.id, drawn: c?.drawn ?? 0, done: c?.done ?? 0, partly: c?.partly ?? 0, no: c?.no ?? 0, last: c?.last ?? [], settings: c?.settings ?? [] }
       })
     }),
+    row,
+  }
+}
+
+/**
+ * The coach's pick for the People row (Part 32), while it still holds: today's, for the row's own
+ * path, never over your own pick, and every rep it names one the row may offer now. Two are drawn
+ * between with even chances, kept with the step; one is the coach's. Otherwise null, and the app's
+ * pick stands. The row is computed again whenever it is shown or tapped, so this check is too.
+ */
+export function coachPickFor(row: PeopleRow, coach: CoachPick | null, today: string): RepPick | null {
+  const base = row.pick
+  if (!coach || coach.day !== today || !base || base.chosenBy === 'you' || coach.path !== row.view.path.id) return null
+  const ids = [...new Set(coach.ids)]
+  if (ids.length < 1 || ids.length > 2 || !ids.every((id) => base.candidates.includes(id) && hasMove(id))) return null
+  const chosen = ids.length === 2 ? (seeded(`coach|${today}|${coach.id}`) < 0.5 ? ids[0] : ids[1]) : ids[0]
+  return {
+    moveId: chosen,
+    setting: settingFor(moveById(chosen), row.view.path, row.view.entries, today),
+    rule: ids.length === 2 ? 'coach+draw' : 'coach',
+    chosenBy: 'coach',
+    candidates: ids,
+    propensities: Object.fromEntries(ids.map((id) => [id, 1 / ids.length])),
+    leaning: false,
+    ...(base.turn ? { turn: base.turn } : {}),
+    ...(coach.version ? { version: coach.version } : {}),
   }
 }

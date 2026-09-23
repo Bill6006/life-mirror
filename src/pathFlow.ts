@@ -1,8 +1,9 @@
 import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { moveById, type PathId } from './catalogue'
-import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
+import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type CoachPick, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
 import { keysOf, planFor } from './aims'
-import { pathById, pathKey, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
+import { coachPickFor, pathById, pathKey, pathsHolding, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
+import type { CoachBlock } from './factTypes'
 
 // The path commitment on the phone (Part 24): added once per path, converted from A person with
 // its record kept, paused and resumed, a rep picked by you through Change, and Resume, which
@@ -50,13 +51,27 @@ export function pathOn(a: Aim): boolean {
  * The one People row across the paths on (Part 27), the same on Now, on Aims and in the brain: a
  * step already started holds it until it is answered; otherwise the slot rule decides.
  */
-export function peopleRowOf(views: readonly PathToday[], open: readonly Offer[], today: string, block: Block): PeopleRow | null {
+export function peopleRowOf(views: readonly PathToday[], open: readonly Offer[], today: string, block: Block, coach: CoachPick | null = null): PeopleRow | null {
   for (const v of views) {
     const keys = keysOf(v.aim, [])
     const started = open.find((o) => keys.includes(o.situationKey))
     if (started) return { view: v, pick: v.pick, paths: [...(started.paths ?? [v.path.id])] }
   }
-  return peopleRow(views.find((v) => v.path.id === 'social') ?? null, views.find((v) => v.path.id === 'partner') ?? null, today, seeded(`people|${today}|${block}`))
+  const row = peopleRow(views.find((v) => v.path.id === 'social') ?? null, views.find((v) => v.path.id === 'partner') ?? null, today, seeded(`people|${today}|${block}`))
+  // The coach chooses within the row's own candidates, never around them (Part 32).
+  const pick = row ? coachPickFor(row, coach, today) : null
+  return row && pick ? { ...row, pick, paths: pathsHolding(pick.moveId, views.map((v) => v.path.id)) } : row
+}
+
+/**
+ * The People row as the coach may choose for it (Part 32): the path its slot rule gave the row and
+ * the reps it may offer this block; no candidates while a step is started or the pick is yours.
+ */
+export function coachRow(views: readonly PathToday[], open: readonly Offer[], today: string, block: Block): CoachBlock['row'] {
+  const started = views.some((v) => open.some((o) => keysOf(v.aim, []).includes(o.situationKey)))
+  const row = peopleRowOf(views, open, today, block)
+  if (!row) return null
+  return { path: row.view.path.id, candidates: started || !row.pick || row.pick.chosenBy === 'you' ? [] : [...row.pick.candidates] }
 }
 
 /**

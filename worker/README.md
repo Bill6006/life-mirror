@@ -43,6 +43,19 @@ instructions live in its own private repository, `life-mirror-bridge`. `CLAUDE_B
 `CLAUDE_FIRE_TOKEN` are secrets like the rest. No model is ever paid for: Claude runs within your
 plan's included allowance, with usage credits off.
 
+## The coach (Part 32)
+
+With `COACH_WRITER = "on"` the coach runs once a day, after the day's line, but only while its
+reliability gate is met. The gate is read every day from the bridge's own rows: ten consecutive
+scheduled days back from yesterday with every safety condition held (fired once, a line stored by
+13:00, no wrong-day refusal left unresolved, Sunday's review stored), Claude's own line on at least
+seven of them, and a clean spot-check of the routine's run logs made since the count began. The
+coach names one or two of the People row's own candidates and one line of today's version; the
+Worker refuses anything outside the set, any rating, verdict or reply-as-success, and anyone in
+person when nobody is around. With two, the phone draws between them; the phone checks again at
+the tap and falls back to its own pick. On the Partner path the coach defers to the monthly
+check's help. Until the gate is met, the phone's own pick stands.
+
 ## Once
 
 1. `npx wrangler login` (opens the browser to your Cloudflare account).
@@ -62,6 +75,7 @@ Wrangler asks you to confirm the free plan's Workers AI usage the first time.
 
 - `https://life-mirror-brain.<your-subdomain>.workers.dev/health` answers `{"ok":true}`.
 - With a run key: `/run/push?key=…&kind=test` shows a test notification on the phone; `/run/brief?key=…&force=1` writes today's line now (the phone shows it after its next sync, within fifteen minutes or at open), and `&writer=claude` or `&writer=free` picks the writer; `/run/review?key=…&force=1` writes the week's review now; `/run/cues?key=…` sends a reminder for any plan whose moment has come.
+- `/run/coach-gate?key=…` shows the coach's gate as the rows read today; `/run/coach-spotcheck?key=…&runs=N&clean=1` records a spot-check of N run logs; `/run/coach?key=…&force=1&dry=1` runs the coach's whole path by hand without storing its pick where the phone reads it.
 - `/run/brief-report?key=…` lists the last thirty lines by their days, trigger, writer and refusals, never their words; `/run/bridge-report?key=…` lists each day's Claude task and how it ended.
 - The Cloud screen on the phone says when the brain last wrote and with which model.
 

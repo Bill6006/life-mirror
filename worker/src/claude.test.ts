@@ -235,7 +235,8 @@ describe('the briefing', () => {
 
   it('refuses a task or day it does not know the shape of', async () => {
     const store = withSheet()
-    expect((await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'coach', day: DAY }))).status).toBe(400)
+    expect((await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'everything', day: DAY }))).status).toBe(400)
+    expect((await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'coach', day: DAY }))).status).toBe(409)
     expect((await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'line', day: '18-09-2026' }))).status).toBe(400)
   })
 })

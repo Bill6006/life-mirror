@@ -117,6 +117,11 @@ export function PathRow(p: PathShared) {
               {rep.name}
             </span>
             <RepLines path={p.pt.path} rep={rep} setting={setting} yours={!p.open && p.pt.pick?.chosenBy === 'you'} both={(p.paths?.length ?? 0) > 1} onChange={p.open ? null : p.onChange} />
+            {!p.open && p.pt.pick?.chosenBy === 'coach' && p.pt.pick.version && (
+              <span class="sub" data-testid="path-coach-version">
+                {p.pt.pick.version}
+              </span>
+            )}
           </>
         ) : (
           <>

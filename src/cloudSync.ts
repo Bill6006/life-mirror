@@ -1,5 +1,5 @@
 import { dayKey } from './blocks'
-import type { BrainBrief, BrainRead, OutsideDay } from './db'
+import type { BrainBrief, BrainRead, CoachPick, OutsideDay } from './db'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
@@ -86,6 +86,20 @@ export const BRAIN_APP = 'life-mirror-brain'
 const BRAIN_STORE = 'briefs'
 /** What Claude read (Part 30): the brain's log of reads, never their content. */
 const READS_STORE = 'reads'
+/** The coach's pick for the day (Part 32). */
+const COACH_STORE = 'coach'
+
+/** What a coach row says, or null for one that is not a whole pick: up to two reps, a path, a block and one line. */
+export function coachPickOf(id: string, body: string): CoachPick | null {
+  try {
+    const r = JSON.parse(body) as Partial<CoachPick>
+    const ids = Array.isArray(r.ids) ? r.ids.filter((x): x is string => typeof x === 'string') : []
+    if (typeof r.day !== 'string' || (r.block !== 'morning' && r.block !== 'afternoon' && r.block !== 'evening') || (r.path !== 'social' && r.path !== 'partner') || ids.length < 1 || ids.length > 2) return null
+    return { id, day: r.day, block: r.block, path: r.path, ids, version: typeof r.version === 'string' ? r.version.slice(0, 400) : '', model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '' }
+  } catch {
+    return null
+  }
+}
 const DEFAULT_BRAIN: CloudMeta = { key: 'brain', watermark: '', lastSyncAt: null, lastError: null }
 
 export async function getBrainMeta(): Promise<CloudMeta> {
@@ -108,7 +122,7 @@ export function brainBriefOf(id: string, body: string): BrainBrief | null {
 export function brainReadOf(id: string, body: string): BrainRead | null {
   try {
     const r = JSON.parse(body) as Partial<BrainRead>
-    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review')) return null
+    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review' && r.task !== 'coach')) return null
     const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
     return { id, day: r.day, at: r.at, task: r.task, category: r.category, count: n(r.count), bytes: n(r.bytes), via: r.via === 'context' ? 'context' : 'briefing' }
   } catch {
@@ -358,8 +372,14 @@ async function pullBrain(store: CloudStore): Promise<number> {
     const meta = await getBrainMeta()
     const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
     if (!rows.length) break
-    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.cloudMeta], async () => {
       for (const row of rows) {
+        if (row.store === COACH_STORE) {
+          const pick = row.deleted || !row.body ? null : coachPickOf(row.id, row.body)
+          if (pick) await db.coachPicks.put(pick)
+          else await db.coachPicks.delete(row.id)
+          continue
+        }
         if (row.store === READS_STORE) {
           const read = row.deleted || !row.body ? null : brainReadOf(row.id, row.body)
           if (read) await db.brainReads.put(read)

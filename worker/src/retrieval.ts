@@ -12,7 +12,7 @@ import type { ReadRow, RecordRow, Store } from './turso'
 // count and size, never content. There is no person to query by, so no request can gather
 // several people.
 
-export type ReadTask = 'line' | 'review'
+export type ReadTask = 'line' | 'review' | 'coach'
 
 /** A line of the record as Claude reads it: its day, and the words. */
 export interface Item {
@@ -209,7 +209,7 @@ async function pathMarks(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<
 }
 
 /** Every category that has a reader. The others (the fact sheet, which the briefing carries, the monthly check, the coach's core, tier 2) are never served here. */
-export const READABLE: readonly Category[] = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory']
+export const READABLE: readonly Category[] = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory']
 
 /** One category's lines for a query, newest first, or null when it has no reader. The caller has already passed the check. */
 export async function readCategory(x: Ctx, category: Category, q: Query): Promise<Item[] | null> {
@@ -312,6 +312,15 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       }
       break
     }
+    case 'monthlyCheck': {
+      const answer = (v: unknown) => (v === true ? 'yes' : v === false ? 'no' : 'not answered')
+      items = (await x.store.readRecords('monthlyChecks', { from: q.from, to: q.to })).map((r) => {
+        const b = obj(r.body)
+        const a = obj(b.answers)
+        return { day: r.day, text: `the monthly check for ${str(b.month)}: safety ${answer(a.safety)}, conduct ${answer(a.conduct)}, a doubt set aside ${answer(a.doubt)}` }
+      })
+      break
+    }
     case 'her': {
       const rows = await x.store.readRecords('moments', { from: q.from, to: q.to })
       const perDay = new Map<string, number>()
@@ -377,7 +386,7 @@ async function logRead(store: Store, run: string, seq: number, task: ReadTask, d
 }
 
 /** How much private context each task's briefing may carry (engineering judgment). */
-export const CONTEXT_BUDGET: Record<ReadTask, number> = { line: 12 * 1024, review: 24 * 1024 }
+export const CONTEXT_BUDGET: Record<ReadTask, number> = { line: 12 * 1024, review: 24 * 1024, coach: 12 * 1024 }
 
 interface Section {
   category: Category
@@ -393,10 +402,22 @@ interface Section {
  * gets the week, the Partner path as acts done and experiences written, never a shortfall; the
  * monthly check is in neither. Every category read is logged.
  */
-export async function contextFor(store: Store, catalogue: Catalogue, a: Access, forDay: string, run: string, now: Date, noteIdsOnSheet: ReadonlySet<string> = new Set()): Promise<{ text: string; bytes: number }> {
+export async function contextFor(store: Store, catalogue: Catalogue, a: Access, forDay: string, run: string, now: Date, noteIdsOnSheet: ReadonlySet<string> = new Set(), rowPath: 'social' | 'partner' = 'social'): Promise<{ text: string; bytes: number }> {
   const week = { from: addDays(forDay, -7), to: forDay }
+  const rowCategory: Category = rowPath === 'partner' ? 'partnerPath' : 'socialPath'
   const sections: Section[] =
-    a.task === 'line'
+    a.task === 'coach'
+      ? [
+          // The coach knows him (Part 32): today's readings for tone, his notes, the row's path and what he wrote on it, and on the Partner path the monthly check while its switch is on.
+          { category: 'dayRecord', title: 'Today, for tone (what is possible is already decided)', q: { from: forDay, to: forDay, limit: 4 } },
+          { category: 'notes', title: 'Check-in notes of the last seven days', q: { ...week, limit: 8 } },
+          { category: rowCategory, title: `The ${rowPath === 'partner' ? 'Partner' : 'Social'} path over four weeks`, q: { from: addDays(forDay, -28), to: forDay, limit: 14 } },
+          { category: 'reflections', title: 'What you wrote on this path', q: { from: addDays(forDay, -60), to: forDay, path: rowPath, limit: 10 } },
+          ...(rowPath === 'partner' ? [{ category: 'monthlyCheck' as Category, title: 'The monthly check, this month and last', q: { from: addDays(forDay, -62), to: forDay, limit: 2 } }] : []),
+          { category: 'privateItems', title: 'Private items', q: { from: forDay, to: forDay, limit: 10 } },
+          { category: 'faith', title: 'Faith this week', q: { ...week, limit: 5 } },
+        ]
+      : a.task === 'line'
       ? [
           { category: 'notes', title: 'Check-in notes of the last seven days', q: { ...week, limit: 10 } },
           { category: 'reflections', title: 'Notes and reflections you kept, the last fourteen days', q: { from: addDays(forDay, -14), to: forDay, limit: 8 } },

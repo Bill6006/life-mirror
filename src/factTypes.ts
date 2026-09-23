@@ -50,10 +50,15 @@ export interface CoachBlock {
   dateDay: boolean
   /** Per rep of each path's current stage: drawn, done, partly and no, its last two answers, and the settings its recent reps used. */
   perRep: { path: string; id: string; drawn: number; done: number; partly: number; no: number; last: (string | null)[]; settings: string[] }[]
+  /**
+   * The People row's own choice this block (Part 32): the path its slot rule gave the row, and the
+   * reps it may offer. Empty while a step is started or the pick is yours. The coach names only these.
+   */
+  row: { path: string; candidates: string[] } | null
 }
 
 /** The coach block's keys, in the contract's order: the Worker's COACH_CORE_KEYS must equal these. */
-export const COACH_BLOCK_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep'] as const
+export const COACH_BLOCK_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row'] as const
 
 export interface FactSheet {
   version: 1

@@ -1,6 +1,6 @@
 import { createClient } from '@libsql/client/web'
 import type { LineAction } from '../../src/brainShared'
-import type { FactSheet } from '../../src/factTypes'
+import type { CoachBlock, FactSheet } from '../../src/factTypes'
 
 // The same database the phone syncs to, through the same generic `records` table. The Worker
 // reads the phone's rows (facts, plans, feedback, and through the retrieval layer the rest of the
@@ -70,7 +70,7 @@ export interface BriefRow {
 export interface TaskRow {
   id: string
   kind: 'task'
-  task: 'line' | 'review'
+  task: 'line' | 'review' | 'coach'
   day: string
   at: string
   status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
@@ -81,6 +81,10 @@ export interface TaskRow {
   askedModel: string
   /** Started by hand with the run key: it may replace the day's row. */
   forced?: boolean
+  /** How many times this day's task was fired; the gate needs one (Part 32). Absent on rows before it counted: one. */
+  fires?: number
+  /** A coach task run by hand to test the path end to end: checked like any, and never stored where the phone reads it. */
+  dry?: boolean
   firedAt?: string
   fireStatus?: number
   sessionUrl?: string | null
@@ -104,12 +108,36 @@ export interface TaskRow {
   latencyMs?: number
 }
 
+/** The coach's pick for a day (Part 32): up to two of the People row's candidates and one line of today's version. The phone reads it and uses it only while it holds. */
+export interface CoachRow {
+  id: string
+  day: string
+  block: string
+  path: string
+  ids: string[]
+  version: string
+  model: string
+  askedModel: string
+  runnerModel: string | null
+  at: string
+}
+
+/** A spot-check of the routine's run logs for the bridge key (Part 32's gate): who read how many runs, and whether every one was clean. */
+export interface SpotRow {
+  id: string
+  kind: 'spotcheck'
+  day: string
+  at: string
+  runs: number
+  clean: boolean
+}
+
 /** One read by Claude through the retrieval layer (Part 30): its task, category, count and size, never content. The phone pulls these and shows them as What Claude read. */
 export interface ReadRow {
   id: string
   day: string
   at: string
-  task: 'line' | 'review'
+  task: 'line' | 'review' | 'coach'
   category: string
   count: number
   bytes: number
@@ -159,7 +187,7 @@ export interface FeedbackRow {
 }
 
 export interface Store {
-  readFacts(day: string): Promise<{ sheet: FactSheet; updatedAt: string } | null>
+  readFacts(day: string): Promise<{ sheet: FactSheet; updatedAt: string; coach?: CoachBlock } | null>
   readIntentions(day: string): Promise<PlanRow[]>
   hasBrief(id: string): Promise<boolean>
   writeBrief(row: BriefRow, now: string): Promise<void>
@@ -180,6 +208,12 @@ export interface Store {
   writeRead(row: ReadRow): Promise<void>
   /** The newest reads logged, newest first. */
   readReads(limit: number): Promise<ReadRow[]>
+  /** The coach's pick for a day, and whether one is stored. */
+  writeCoach(row: CoachRow, now: string): Promise<void>
+  hasCoach(id: string): Promise<boolean>
+  /** A spot-check recorded, and the tasks and spot-checks of the bridge, newest first, for the gate. */
+  writeSpot(row: SpotRow): Promise<void>
+  readTasks(limit: number): Promise<(TaskRow | SpotRow)[]>
   /** The phone's own rows of one store, newest day first, within a day range when one is given: the retrieval layer's only read. */
   readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
   /** One of the phone's own rows by id, or null. */
@@ -203,8 +237,8 @@ export function tursoStore(url: string, token: string): Store {
   return {
     async readFacts(day) {
       const r = await rows(`SELECT body, updated_at FROM records WHERE app = ? AND store = 'facts' AND id = ? AND deleted = 0`, [APP, day])
-      const body = r[0] ? parse<{ sheet: FactSheet; updatedAt?: string }>(r[0].body) : null
-      return body?.sheet ? { sheet: body.sheet, updatedAt: body.updatedAt ?? String(r[0].updated_at) } : null
+      const body = r[0] ? parse<{ sheet: FactSheet; updatedAt?: string; coach?: CoachBlock }>(r[0].body) : null
+      return body?.sheet ? { sheet: body.sheet, updatedAt: body.updatedAt ?? String(r[0].updated_at), ...(body.coach ? { coach: body.coach } : {}) } : null
     },
     async readIntentions(day) {
       const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = 'intentions' AND day = ? AND deleted = 0`, [APP, day])
@@ -265,6 +299,21 @@ export function tursoStore(url: string, token: string): Store {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'reads' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
       return r.map((row) => parse<ReadRow>(row.body)).filter((x): x is ReadRow => x !== null)
     },
+    async writeCoach(row, now) {
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'coach', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async hasCoach(id) {
+      const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'coach' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
+      return r.length > 0
+    },
+    async writeSpot(row) {
+      const now = new Date().toISOString()
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async readTasks(limit) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
+      return r.map((row) => parse<TaskRow | SpotRow>(row.body)).filter((x): x is TaskRow | SpotRow => x !== null && (x.kind === 'task' || x.kind === 'spotcheck'))
+    },
     async readRecords(store, range = {}, limit = 500) {
       const where = ['app = ?', 'store = ?', 'deleted = 0']
       const args: (string | number)[] = [APP, store]
@@ -310,8 +359,8 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async readFacts(day) {
       const r = rows.get(key(APP, 'facts', day))
-      const body = r && !r.deleted ? parse<{ sheet: FactSheet; updatedAt?: string }>(r.body) : null
-      return body?.sheet ? { sheet: body.sheet, updatedAt: body.updatedAt ?? (r as MemoryRow).updated_at } : null
+      const body = r && !r.deleted ? parse<{ sheet: FactSheet; updatedAt?: string; coach?: CoachBlock }>(r.body) : null
+      return body?.sheet ? { sheet: body.sheet, updatedAt: body.updatedAt ?? (r as MemoryRow).updated_at, ...(body.coach ? { coach: body.coach } : {}) } : null
     },
     async readIntentions(day) {
       return live(APP, 'intentions')
@@ -384,6 +433,23 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         .slice(0, limit)
         .map((r) => parse<ReadRow>(r.body))
         .filter((x): x is ReadRow => x !== null)
+    },
+    async writeCoach(row, now) {
+      rows.set(key(BRAIN_APP, 'coach', row.id), { app: BRAIN_APP, store: 'coach', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async hasCoach(id) {
+      const r = rows.get(key(BRAIN_APP, 'coach', id))
+      return Boolean(r && !r.deleted)
+    },
+    async writeSpot(row) {
+      rows.set(key(BRAIN_APP, 'bridge', row.id), { app: BRAIN_APP, store: 'bridge', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
+    },
+    async readTasks(limit) {
+      return live(BRAIN_APP, 'bridge')
+        .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
+        .map((r) => parse<TaskRow | SpotRow>(r.body))
+        .filter((x): x is TaskRow | SpotRow => x !== null && (x.kind === 'task' || x.kind === 'spotcheck'))
+        .slice(0, limit)
     },
     async readRecords(store, range = {}, limit = 500) {
       return live(APP, store)

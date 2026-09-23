@@ -22,6 +22,8 @@ export interface Env {
   CLAUDE_WRITER?: string
   /** Minutes without a valid line from Claude before the free chain writes (the plan's twenty). */
   CLAUDE_TIMEOUT_MINUTES?: string
+  /** "on": the coach runs once a day while its reliability gate is met (Part 32); anything else, never. */
+  COACH_WRITER?: string
   /** The catalogue as the app ships it, for naming reps and knowing faith's in the retrieval layer. */
   CATALOGUE_URL: string
   TIMEZONE: string

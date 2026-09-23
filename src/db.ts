@@ -155,7 +155,7 @@ export interface Offer {
   propensity?: number
   propensities?: Record<string, number>
   /** A path's step (Part 24): who chose the rep, the paths it counts for, where it was meant to happen, the rule that picked it and the stage it was offered at. */
-  chosenBy?: 'app' | 'you'
+  chosenBy?: 'app' | 'you' | 'coach'
   paths?: PathId[]
   setting?: SettingKind
   rule?: PickRule
@@ -446,12 +446,28 @@ export interface BrainPrefs extends BrainPrefsBody {
   updatedAt: string
 }
 
+/**
+ * The coach's pick for a day (Part 32), read from the brain's rows and never written from here: up
+ * to two of the People row's own candidates, and one line of today's version. Used only while every
+ * rep it names is still one the row may offer.
+ */
+export interface CoachPick {
+  id: string
+  day: string
+  block: Block
+  path: PathId
+  ids: string[]
+  version: string
+  model: string
+  at: string
+}
+
 /** One read by Claude through the retrieval layer, pulled from the brain's rows: its task, category, count and size, never content. */
 export interface BrainRead {
   id: string
   day: string
   at: string
-  task: 'line' | 'review'
+  task: 'line' | 'review' | 'coach'
   category: string
   count: number
   bytes: number
@@ -570,6 +586,7 @@ class LifeMirrorDB extends Dexie {
   brainBriefs!: Table<BrainBrief, string>
   brainPrefs!: Table<BrainPrefs, string>
   brainReads!: Table<BrainRead, string>
+  coachPicks!: Table<CoachPick, string>
   pathMarks!: Table<PathMark, number>
   reflections!: Table<Reflection, number>
   monthlyChecks!: Table<MonthlyCheck, number>
@@ -751,6 +768,10 @@ class LifeMirrorDB extends Dexie {
     this.version(14).stores({
       brainPrefs: 'id',
       brainReads: 'id, day',
+    })
+    // Part 32: the coach's pick for the day, pulled from the brain's own rows and never synced from here.
+    this.version(15).stores({
+      coachPicks: 'id, day',
     })
     installOutbox(this)
   }
@@ -1028,7 +1049,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -1067,6 +1088,7 @@ export function wipeEverything(): Promise<void> {
       db.monthlyChecks.clear(),
       db.brainPrefs.clear(),
       db.brainReads.clear(),
+      db.coachPicks.clear(),
     ])
   })
 }

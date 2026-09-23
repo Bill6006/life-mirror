@@ -246,12 +246,15 @@ export function peopleAroundThatDay(shape: DayShape): boolean {
   return shape.office || shape.church || shape.daycare
 }
 
+/** Words that put another adult in the same place as him: the day guard's people-around class, and the coach's in-person guard (Part 32). */
+export const PEOPLE_AROUND_WORDS = /\b(?:in person|face to face|people around|someone nearby|talk to someone|say hello to someone|strike up a conversation|a stranger|other parents?)\b/i
+
 const SCHEDULE_WORDS: readonly { what: string; re: RegExp; holds: (s: DayShape) => boolean }[] = [
   { what: 'pickup or daycare', re: /\b(?:pickup|pick-up|daycare|drop-?off)\b|\bpick(?:ing|ed)?\s+up\s+(?:your|her|the)\s+(?:child|daughter|kid|little one)\b|\bafter\s+pick(?:ing)?\s*up\b/i, holds: (s) => s.daycare },
   { what: 'the office', re: /\b(?:office|at work|colleagues?|co-?workers?)\b/i, holds: (s) => s.office },
   { what: 'church', re: /\b(?:church|congregation)\b/i, holds: (s) => s.church },
   { what: 'a study night', re: /\bstudy night\b/i, holds: (s) => s.studyNight },
-  { what: 'people around', re: /\b(?:in person|face to face|people around|someone nearby|talk to someone|say hello to someone|strike up a conversation|a stranger|other parents?)\b/i, holds: peopleAroundThatDay },
+  { what: 'people around', re: PEOPLE_AROUND_WORDS, holds: peopleAroundThatDay },
 ]
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
