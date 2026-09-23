@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { numberGrounded, numbersIn, validateAction, validateOutput, validateReview } from './brainShared'
+import { dayGuard, numberGrounded, numbersIn, shapeFor, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -79,5 +79,44 @@ describe('the one tap a line may offer, and the week in three parts', () => {
     expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: '', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: 'change: no text' })
     expect(validateReview({ held: 'Read 99.', didNot: 'Fine.', change: 'Fine.', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('99') })
     expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Fine.', factIds: [], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: 'no fact cited' })
+  })
+})
+
+describe('the guard every writer inherits: the day a line is for, and names kept private', () => {
+  const day = (id: string, v: Record<string, string | number | null>) => ({ id, tags: [], text: '', values: v })
+  const friday = day('week.today', { weekday: 'Friday', daycare: 1, pickup: '17:30', office: 0, church: 0, studyNight: 0 })
+  const saturday = day('week.tomorrow', { day: '2026-09-19', weekday: 'Saturday', daycare: 0, pickup: null, office: 0, church: 0, studyNight: 0 })
+  const base: FactSheet = { version: 1, day: '2026-09-18', builtAt: '', hour: 22, weeks: 3, days: 22, direction: null, said: [], facts: [friday, saturday] }
+
+  it('reads the shape of the day written for: its own day, or tomorrow when the sheet is the day before', () => {
+    expect(shapeFor(base, '2026-09-18')).toMatchObject({ weekday: 'Friday', daycare: true, pickup: '17:30' })
+    expect(shapeFor(base, '2026-09-19')).toMatchObject({ weekday: 'Saturday', daycare: false })
+    expect(shapeFor(base, '2026-09-20')).toBeNull()
+  })
+
+  it('refuses pickup on a day without one, allows it on a day with one, and refuses it when the day is unknown', () => {
+    expect(dayGuard('After picking up your child, do a short pleasant task.', base, '2026-09-19')).toBe('speaks of pickup or daycare, which Saturday 2026-09-19 does not hold')
+    expect(dayGuard('After pickup, one short sitting.', base, '2026-09-18')).toBeNull()
+    expect(dayGuard('After pickup, one short sitting.', base, '2026-09-20')).toMatch(/does not know the shape of 2026-09-20/)
+    expect(dayGuard('Pick up the thread with one short sitting after her bedtime.', base, '2026-09-19')).toBeNull()
+  })
+
+  it('refuses a claim that people are around on a day whose shape puts nobody there', () => {
+    expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-19')).toBe('speaks of people around, which Saturday 2026-09-19 does not hold')
+    expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-18')).toBeNull()
+    expect(dayGuard('Ask a colleague one question.', base, '2026-09-18')).toBe('speaks of the office, which Friday 2026-09-18 does not hold')
+    expect(dayGuard('Message one friend now.', base, '2026-09-19')).toBeNull()
+  })
+
+  it('refuses a private item by name while its names stay on the Private screen, and lets it stand when shown', () => {
+    const withItem: FactSheet = { ...base, facts: [...base.facts, { id: 'private.3', tags: [], text: '', values: { name: 'Late screens' } }] }
+    expect(dayGuard('Late screens kept the mornings lower.', withItem, '2026-09-18')).toBe('names a private item while "Show private items by name outside this screen" is off')
+    expect(dayGuard('Late screens kept the mornings lower.', { ...withItem, showPrivate: true }, '2026-09-18')).toBeNull()
+  })
+
+  it('holds the line and each part of the review to it, and says why for the retry', () => {
+    expect(validateOutput({ mode: 'recommendation', text: 'After pickup, one short sitting.', factIds: ['week.today'], cardIds: [] }, base, library, 60, '2026-09-19')).toMatchObject({ ok: false, reason: 'speaks of pickup or daycare, which Saturday 2026-09-19 does not hold' })
+    expect(validateOutput({ mode: 'recommendation', text: 'After pickup, one short sitting.', factIds: ['week.today'], cardIds: [] }, base, library, 60, '2026-09-18').ok).toBe(true)
+    expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Talk to someone in person on Saturday.', factIds: ['week.today'], cardIds: [] }, base, library, '2026-09-19')).toMatchObject({ ok: false, reason: 'change: speaks of people around, which Saturday 2026-09-19 does not hold' })
   })
 })

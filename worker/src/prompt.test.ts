@@ -37,6 +37,26 @@ describe('what the model is asked', () => {
     expect(buildReviewMessages(sheet, [], [])[0].content).toContain('"held"')
   })
 
+  it('names both days when the sheet was built the day before, and relabels what "today" meant', () => {
+    const friday: FactSheet = {
+      ...sheet,
+      day: '2026-09-18',
+      facts: [
+        { id: 'week.today', tags: ['cue'], text: 'Today is Friday; a daycare day with pickup at 17:30; at home; not a study night; her bedtime 20:00; the hour is 22.', values: { weekday: 'Friday', daycare: 1, pickup: '17:30' } },
+        { id: 'week.tomorrow', tags: ['cue'], text: 'Tomorrow is Saturday; not a daycare day; at home; a church day; not a study night; her bedtime 20:00.', values: { day: '2026-09-19', weekday: 'Saturday', daycare: 0 } },
+        { id: 'today.shortSleep', tags: ['sleep'], text: 'Sleep hours read “Under 5 hours” this morning.', values: {} },
+      ],
+    }
+    const lines = sheetLines(friday, '2026-09-19')
+    expect(lines).toContain('These facts were built on 2026-09-18')
+    expect(lines).toContain('You are writing for 2026-09-19, the day after')
+    expect(lines).toContain("[week.today] The facts' own day, 2026-09-18, was Friday; a daycare day with pickup at 17:30")
+    expect(lines).toContain('[week.tomorrow] The day you are writing for, 2026-09-19, is Saturday; not a daycare day')
+    expect(lines).toContain('[today.shortSleep] On 2026-09-18: Sleep hours read')
+    expect(sheetLines(friday)).toContain('[week.today] Today is Friday')
+    expect(buildMessages(friday, [], [], '2026-09-19')[1].content).toContain('One line for 2026-09-19')
+  })
+
   it('retrieves the cards the facts touch, weighted by what stands behind them, strongest grade first', () => {
     const picked = retrieve(library, sheet)
     expect(picked[0].id).toBe('implementation-intentions')

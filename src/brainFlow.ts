@@ -3,7 +3,7 @@ import { cuesFor, planFor, stepFor } from './aims'
 import { addDays, BLOCKS, type Block } from './blocks'
 import type { LineAction, LineCue } from './brainShared'
 import { hasMove, moveById } from './catalogue'
-import { allCheckIns, allWins, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type BriefFeedback, type BriefLog } from './db'
+import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type BriefFeedback, type BriefLog } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
 import { briefData, usualFor } from './forecastFlow'
 import { cardFromHypothesis, type Hypothesis } from './hypothesis'
@@ -38,7 +38,9 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
   ])
   const [offers, outcomes] = await Promise.all([db.offers.toArray(), db.outcomes.toArray()])
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
-  return buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand })
+  const tomorrow = addDays(day, 1)
+  const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
+  return buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate })
 }
 
 /** The day's sheet as a record of its own, for the Worker to read; written only when its facts changed. */
@@ -46,7 +48,7 @@ export async function writeFactsRow(day: string, now: Date = new Date()): Promis
   await ensureDayContext(day, await getSettings())
   const sheet = await factSheet(day, now)
   const existing = await db.facts.get(day)
-  if (existing && JSON.stringify(existing.sheet.facts) === JSON.stringify(sheet.facts) && JSON.stringify(existing.sheet.said) === JSON.stringify(sheet.said)) return false
+  if (existing && JSON.stringify(existing.sheet.facts) === JSON.stringify(sheet.facts) && JSON.stringify(existing.sheet.said) === JSON.stringify(sheet.said) && existing.sheet.showPrivate === sheet.showPrivate) return false
   await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet })
   return true
 }

@@ -128,7 +128,64 @@ export function validateAction(raw: unknown, sheet: FactSheet): ActionValidation
   return { ok: false, reason: 'action kind must be plan, depth or test' }
 }
 
-export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS): Validation {
+/** The shape of the day a line is written for, as the sheet knows it: its own day's, or tomorrow's when the sheet was built the day before. Null when the sheet does not know that day. */
+export interface DayShape {
+  day: string
+  weekday: string
+  daycare: boolean
+  pickup: string | null
+  office: boolean
+  church: boolean
+  studyNight: boolean
+}
+
+export function shapeFor(sheet: FactSheet, forDay: string): DayShape | null {
+  const f = forDay === sheet.day ? sheet.facts.find((x) => x.id === 'week.today') : sheet.facts.find((x) => x.id === 'week.tomorrow' && x.values.day === forDay)
+  if (!f) return null
+  const v = f.values
+  return { day: forDay, weekday: typeof v.weekday === 'string' ? v.weekday : forDay, daycare: Number(v.daycare) === 1, pickup: typeof v.pickup === 'string' ? v.pickup : null, office: Number(v.office) === 1, church: Number(v.church) === 1, studyNight: Number(v.studyNight) === 1 }
+}
+
+/** Whether the day's shape puts other adults around in some block of it: the office, the church morning, a daycare day's drop-off and pickup (Part 20's tier 1, at the scale of a day). */
+export function peopleAroundThatDay(shape: DayShape): boolean {
+  return shape.office || shape.church || shape.daycare
+}
+
+const SCHEDULE_WORDS: readonly { what: string; re: RegExp; holds: (s: DayShape) => boolean }[] = [
+  { what: 'pickup or daycare', re: /\b(?:pickup|pick-up|daycare|drop-?off)\b|\bpick(?:ing|ed)?\s+up\s+(?:your|her|the)\s+(?:child|daughter|kid|little one)\b|\bafter\s+pick(?:ing)?\s*up\b/i, holds: (s) => s.daycare },
+  { what: 'the office', re: /\b(?:office|at work|colleagues?|co-?workers?)\b/i, holds: (s) => s.office },
+  { what: 'church', re: /\b(?:church|congregation)\b/i, holds: (s) => s.church },
+  { what: 'a study night', re: /\bstudy night\b/i, holds: (s) => s.studyNight },
+  { what: 'people around', re: /\b(?:in person|face to face|people around|someone nearby|talk to someone|say hello to someone|strike up a conversation|a stranger|other parents?)\b/i, holds: peopleAroundThatDay },
+]
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * The guard every writer inherits (Part 19): a line may not speak of pickup, daycare, the office,
+ * church, a study night or people around on a day whose shape does not hold them, nor, when the
+ * sheet does not know that day's shape, speak of them at all; and it may not name a private item
+ * while "Show private items by name outside this screen" is off (Rule 11). Lexical, so it catches
+ * the words, not every paraphrase; the reason goes back to the writer for its retry.
+ */
+export function dayGuard(text: string, sheet: FactSheet, forDay: string): string | null {
+  const shape = shapeFor(sheet, forDay)
+  for (const w of SCHEDULE_WORDS) {
+    if (!w.re.test(text)) continue
+    if (!shape) return `speaks of ${w.what}, and the sheet does not know the shape of ${forDay}`
+    if (!w.holds(shape)) return `speaks of ${w.what}, which ${shape.weekday} ${forDay} does not hold`
+  }
+  if (sheet.showPrivate !== true) {
+    for (const f of sheet.facts) {
+      if (!f.id.startsWith('private.')) continue
+      const name = typeof f.values.name === 'string' ? f.values.name.trim() : ''
+      if (name && new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(name)}($|[^\\p{L}\\p{N}])`, 'iu').test(text)) return 'names a private item while "Show private items by name outside this screen" is off'
+    }
+  }
+  return null
+}
+
+export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS, forDay?: string): Validation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const mode = o.mode
@@ -140,13 +197,15 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   if (typeof cited === 'string') return { ok: false, reason: cited }
   const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords)
   if (why) return { ok: false, reason: why }
+  const guarded = forDay ? dayGuard(text, sheet, forDay) : null
+  if (guarded) return { ok: false, reason: guarded }
   const action = validateAction(o.action, sheet)
   if (!action.ok) return { ok: false, reason: action.reason }
   return { ok: true, value: { mode: mode as Mode, text, factIds: cited.factIds, cardIds: cited.cardIds, action: action.value } }
 }
 
 /** The weekly review: what held, what did not, one change; each part held to the rules of a line. */
-export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[]): ReviewValidation {
+export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string): ReviewValidation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const cited = citations(o, sheet, cards)
@@ -154,7 +213,7 @@ export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly C
   const parts: Record<'held' | 'didNot' | 'change', string> = { held: '', didNot: '', change: '' }
   for (const key of ['held', 'didNot', 'change'] as const) {
     const text = typeof o[key] === 'string' ? (o[key] as string).trim() : ''
-    const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, REVIEW_PART_WORDS)
+    const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, REVIEW_PART_WORDS) ?? (forDay ? dayGuard(text, sheet, forDay) : null)
     if (why) return { ok: false, reason: `${key}: ${why}` }
     parts[key] = text
   }

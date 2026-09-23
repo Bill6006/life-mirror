@@ -1,4 +1,4 @@
-import { validateOutput, validateReview } from '../../src/brainShared'
+import { MAX_WORDS, validateOutput, validateReview } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import { generateValid, type Runner } from './ai'
 import type { Env } from './env'
@@ -17,6 +17,9 @@ export interface BriefResult {
   wrote: boolean
   reason: string
   day?: string
+  /** The day the line was written for, and the day its facts described. */
+  forDay?: string
+  factsDay?: string
   model?: string
   attempts?: string[]
   text?: string
@@ -62,14 +65,15 @@ export async function runBrief(env: JobEnv, store: Store, run: Runner, now: Date
 
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), facts.sheet)
   const attempts: string[] = []
-  const generated = await generateValid(modelsOf(env), run, buildMessages(facts.sheet, cards, await saidLately(store, facts.sheet)), (raw) => validateOutput(raw, facts.sheet, cards), 4000, attempts)
+  // Written for today, from whichever sheet is newest; when that sheet is yesterday's, the prompt says both days and the guard holds the line to today's shape.
+  const generated = await generateValid(modelsOf(env), run, buildMessages(facts.sheet, cards, await saidLately(store, facts.sheet), day), (raw) => validateOutput(raw, facts.sheet, cards, MAX_WORDS, day), 4000, attempts)
   if (!generated) return { wrote: false, reason: 'no model produced a line that passed', day, attempts }
 
   const at = now.toISOString()
   const out = generated.output
-  const row: BriefRow = { id, day, kind: 'brief', text: out.text, mode: out.mode, factIds: out.factIds, cardIds: out.cardIds, action: out.action, model: generated.model, at, factsDay: facts.sheet.day }
+  const row: BriefRow = { id, day, kind: 'brief', text: out.text, mode: out.mode, factIds: out.factIds, cardIds: out.cardIds, action: out.action, model: generated.model, at, factsDay: facts.sheet.day, forDay: day }
   await store.writeBrief(row, at)
-  return { wrote: true, reason: 'brief', day, model: generated.model, attempts, text: row.text, mode: row.mode, cardIds: row.cardIds, action: row.action }
+  return { wrote: true, reason: 'brief', day, forDay: day, factsDay: facts.sheet.day, model: generated.model, attempts, text: row.text, mode: row.mode, cardIds: row.cardIds, action: row.action }
 }
 
 /** Sunday, at the brief hour: the week in three parts, each held to the rules of a line, written once beside the day's line. */
@@ -84,12 +88,12 @@ export async function runReview(env: JobEnv, store: Store, run: Runner, now: Dat
 
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), facts.sheet, 16)
   const attempts: string[] = []
-  const generated = await generateValid(modelsOf(env), run, buildReviewMessages(facts.sheet, cards, await saidLately(store, facts.sheet)), (raw) => validateReview(raw, facts.sheet, cards), 4000, attempts)
+  const generated = await generateValid(modelsOf(env), run, buildReviewMessages(facts.sheet, cards, await saidLately(store, facts.sheet), day), (raw) => validateReview(raw, facts.sheet, cards, day), 4000, attempts)
   if (!generated) return { wrote: false, reason: 'no model produced a review that passed', day, attempts }
 
   const at = now.toISOString()
   const { held, didNot, change, factIds, cardIds } = generated.output
-  const row: BriefRow = { id, day, kind: 'review', text: `${held} ${didNot} ${change}`, mode: 'strategy', factIds, cardIds, action: null, parts: { held, didNot, change }, model: generated.model, at, factsDay: facts.sheet.day }
+  const row: BriefRow = { id, day, kind: 'review', text: `${held} ${didNot} ${change}`, mode: 'strategy', factIds, cardIds, action: null, parts: { held, didNot, change }, model: generated.model, at, factsDay: facts.sheet.day, forDay: day }
   await store.writeBrief(row, at)
-  return { wrote: true, reason: 'review', day, model: generated.model, attempts, text: row.text, mode: row.mode, cardIds }
+  return { wrote: true, reason: 'review', day, forDay: day, factsDay: facts.sheet.day, model: generated.model, attempts, text: row.text, mode: row.mode, cardIds }
 }

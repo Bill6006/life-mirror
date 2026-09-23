@@ -18,9 +18,25 @@ export interface Said {
   feedback: string | null
 }
 
-export function sheetLines(sheet: FactSheet): string {
-  const head = [`Day ${sheet.day}; ${sheet.days} days of record; local hour ${sheet.hour}.`, sheet.direction ? `Direction, in the person's own words: ${sheet.direction}` : null].filter(Boolean)
-  const lines = sheet.facts.map((f) => `[${f.id}] ${f.text}${f.n !== undefined ? ` (n=${f.n})` : ''}`)
+/** A fact as the writer should read it when the sheet was built on another day than the one written for (Part 19). */
+function relabel(f: FactSheet['facts'][number], sheet: FactSheet, forDay: string): string {
+  if (forDay === sheet.day) return f.text
+  if (f.id === 'week.today') return f.text.replace(/^Today is /, `The facts' own day, ${sheet.day}, was `)
+  if (f.id === 'week.tomorrow') return f.text.replace(/^Tomorrow is /, `The day you are writing for, ${forDay}, is `)
+  if (f.id.startsWith('today.')) return `On ${sheet.day}: ${f.text}`
+  return f.text
+}
+
+export function sheetLines(sheet: FactSheet, forDay: string = sheet.day): string {
+  const head =
+    forDay === sheet.day
+      ? [`Day ${sheet.day}; ${sheet.days} days of record; local hour ${sheet.hour}.`]
+      : [
+          `These facts were built on ${sheet.day} at local hour ${sheet.hour}; ${sheet.days} days of record.`,
+          `You are writing for ${forDay}, the day after. Facts named week.today and today.* describe ${sheet.day}, not ${forDay}; the shape of ${forDay} is the fact week.tomorrow, and it alone says what that day holds.`,
+        ]
+  if (sheet.direction) head.push(`Direction, in the person's own words: ${sheet.direction}`)
+  const lines = sheet.facts.map((f) => `[${f.id}] ${relabel(f, sheet, forDay)}${f.n !== undefined ? ` (n=${f.n})` : ''}`)
   return [...head, ...lines].join('\n')
 }
 
@@ -37,6 +53,7 @@ const RULES = `Rules, all checked by a validator that refuses the answer:
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle.
+- Speak of pickup, daycare, the office, church, a study night or people being around only when the shape of the day you are writing for holds them; the validator refuses the rest.
 - Plain words, second person, no headings, no lists, no emoji.`
 
 const SYSTEM = `You write one line a day for one person's phone. You get the day's fact sheet (each fact has an id in brackets), a set of claim cards from an evidence library (each with an id and a grade), and what was said on recent days with how it landed.
@@ -58,22 +75,22 @@ ${RULES}
 
 Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...", "change": "...", "factIds": ["..."], "cardIds": ["..."]}`
 
-function userContent(task: string, sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[]): string {
+function userContent(task: string, sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[], forDay: string = sheet.day): string {
   const recent = said.length ? said.map((s) => `${s.day}${s.feedback ? ` (${s.feedback})` : ''}: ${s.text}`).join('\n') : 'nothing yet'
-  return `${task}\n\nFACTS (the ids in brackets are what factIds may hold)\n${sheetLines(sheet)}\n\nCARDS (the ids in brackets are what cardIds may hold)\n${cardLines(cards)}\n\nSAID RECENTLY (useful / knew / not is how it landed)\n${recent}\n\nJSON only.`
+  return `${task}\n\nFACTS (the ids in brackets are what factIds may hold)\n${sheetLines(sheet, forDay)}\n\nCARDS (the ids in brackets are what cardIds may hold)\n${cardLines(cards)}\n\nSAID RECENTLY (useful / knew / not is how it landed)\n${recent}\n\nJSON only.`
 }
 
-export function buildMessages(sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[]): Message[] {
+export function buildMessages(sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[], forDay: string = sheet.day): Message[] {
   return [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: userContent('Today is an ordinary morning: one line for the day ahead.', sheet, cards, said) },
+    { role: 'user', content: userContent(`One line for ${forDay}, the day ahead.`, sheet, cards, said, forDay) },
   ]
 }
 
-export function buildReviewMessages(sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[]): Message[] {
+export function buildReviewMessages(sheet: FactSheet, cards: readonly ClaimCard[], said: readonly Said[], forDay: string = sheet.day): Message[] {
   return [
     { role: 'system', content: REVIEW_SYSTEM },
-    { role: 'user', content: userContent('Today is the weekly review: three parts, for the week that ended and the one that begins.', sheet, cards, said) },
+    { role: 'user', content: userContent(`The weekly review, written on ${forDay}: three parts, for the week that ended and the one that begins.`, sheet, cards, said, forDay) },
   ]
 }
 

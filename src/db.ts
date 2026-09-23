@@ -393,6 +393,8 @@ export interface BrainBrief {
   action?: LineAction | null
   /** The day whose facts the line was written from, for showing why it said what it said. */
   factsDay?: string
+  /** The day the Worker wrote the line for. */
+  forDay?: string
   /** The weekly review's three parts, on a row of kind review. */
   parts?: { held: string; didNot: string; change: string }
 }
@@ -765,26 +767,31 @@ export async function getDayContext(day: string): Promise<DayContext | null> {
   return (await db.days.get(day)) ?? null
 }
 
+/** A day's context from the week's shape in Settings: pure, written nowhere. The one function that shapes a day. */
+export function contextFromWeek(day: string, settings: Settings, createdAt: string = new Date().toISOString()): DayContext {
+  const weekday = parseDay(day).getDay() as Weekday
+  const w = settings.week
+  return {
+    day,
+    weekday,
+    withHer: w.livesWithMe,
+    studyNight: w.studyNights[weekday],
+    churchDay: w.churchDay === weekday,
+    atOffice: w.officeDays[weekday],
+    // The pickup, and the daycare day it implies, hold on the daycare days you set.
+    pickupTime: w.daycareDays[weekday] ? w.pickupTime : null,
+    soloUntil: w.soloUntil,
+    changed: false,
+    createdAt,
+  }
+}
+
 /** Writes today's context from the week's shape the first time the day is seen; later shape edits never touch it. */
 export function ensureDayContext(day: string, settings: Settings): Promise<DayContext> {
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
     if (existing) return existing
-    const weekday = parseDay(day).getDay() as Weekday
-    const w = settings.week
-    const ctx: DayContext = {
-      day,
-      weekday,
-      withHer: w.livesWithMe,
-      studyNight: w.studyNights[weekday],
-      churchDay: w.churchDay === weekday,
-      atOffice: w.officeDays[weekday],
-      // The pickup, and the daycare day it implies, hold on the daycare days you set.
-      pickupTime: w.daycareDays[weekday] ? w.pickupTime : null,
-      soloUntil: w.soloUntil,
-      changed: false,
-      createdAt: new Date().toISOString(),
-    }
+    const ctx = contextFromWeek(day, settings)
     await db.days.put(ctx)
     return ctx
   })

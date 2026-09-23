@@ -129,6 +129,15 @@ describe('what the sheet learned to carry', () => {
     await ensureDayContext(DAY, await getSettings())
   })
 
+  it('carries tomorrow’s shape from the week in Settings, writes no day record for it, and carries the private-names setting', async () => {
+    const sheet = await factSheet(DAY, NOW)
+    const tomorrow = factById(sheet, 'week.tomorrow')
+    expect(tomorrow?.values).toMatchObject({ day: '2026-09-19', weekday: 'Saturday' })
+    expect(tomorrow?.text).toMatch(/^Tomorrow is Saturday; /)
+    expect(await db.days.get('2026-09-19')).toBeUndefined()
+    expect(sheet.showPrivate).toBe(false)
+  })
+
   it('counts days into the last four rolling weeks, oldest first, and nothing outside them', () => {
     expect(weekBuckets(['2026-09-18', '2026-09-12', '2026-09-11', '2026-08-25', '2026-08-21', '2026-08-01', '2026-09-19'], DAY)).toEqual([1, 0, 1, 2])
   })

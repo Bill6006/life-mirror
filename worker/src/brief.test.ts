@@ -87,6 +87,32 @@ describe('the morning line', () => {
     expect(calls).toBe(2)
   })
 
+  it('writes Saturday’s line from Friday’s facts for Saturday: both days named, a pickup refused, the day stored', async () => {
+    const friday: FactSheet = {
+      ...sheet,
+      day: '2026-09-18',
+      facts: [
+        ...sheet.facts,
+        { id: 'week.today', tags: ['cue'], text: 'Today is Friday; a daycare day with pickup at 17:30.', values: { weekday: 'Friday', daycare: 1, pickup: '17:30', office: 0, church: 0, studyNight: 0 } },
+        { id: 'week.tomorrow', tags: ['cue'], text: 'Tomorrow is Saturday; not a daycare day.', values: { day: '2026-09-19', weekday: 'Saturday', daycare: 0, pickup: null, office: 0, church: 0, studyNight: 0 } },
+      ],
+    }
+    const store = memoryStore()
+    store.put({ app: APP, store: 'facts', id: '2026-09-18', day: '2026-09-18', body: JSON.stringify({ day: '2026-09-18', updatedAt: '2026-09-18T23:10:00.000Z', sheet: friday }), updated_at: '2026-09-18T23:10:00.000Z', deleted: 0, synced_at: '2026-09-18T23:10:00.000Z' })
+    let prompt = ''
+    const run = async (_model: string, messages: Message[]) => {
+      prompt = messages[1].content
+      if (messages.length === 2) return { response: JSON.stringify({ mode: 'recommendation', text: 'After picking up your child, do a short pleasant task.', factIds: ['aim.1'], cardIds: [] }) }
+      expect(messages[messages.length - 1].content).toContain('speaks of pickup or daycare, which Saturday 2026-09-19 does not hold')
+      return { response: JSON.stringify({ mode: 'recommendation', text: 'One short sitting after her bedtime keeps the thread.', factIds: ['aim.1'], cardIds: [] }) }
+    }
+    const r = await runBrief(env, store, run, new Date('2026-09-19T09:15:00Z'), { fetcher })
+    expect(r).toMatchObject({ wrote: true, day: '2026-09-19', forDay: '2026-09-19', factsDay: '2026-09-18' })
+    expect(r.attempts).toEqual(['model-a: speaks of pickup or daycare, which Saturday 2026-09-19 does not hold'])
+    expect(prompt).toContain('You are writing for 2026-09-19')
+    expect(JSON.parse(store.rows.get(`${BRAIN_APP}|briefs|2026-09-19:brief`)?.body ?? '{}')).toMatchObject({ forDay: '2026-09-19', factsDay: '2026-09-18' })
+  })
+
   it('does nothing outside the hour, without facts, or with facts too old', async () => {
     const run = async () => ({ response: good })
     expect(await runBrief(env, withFacts('2026-09-17', '2026-09-17T23:10:00.000Z'), run, new Date('2026-09-18T12:15:00Z'), { fetcher })).toMatchObject({ wrote: false, reason: 'not the hour (8)' })

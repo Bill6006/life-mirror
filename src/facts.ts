@@ -23,6 +23,10 @@ import type { Fact, FactSheet, SaidEntry } from './factTypes'
 export type { Fact, FactSheet, SaidEntry } from './factTypes'
 
 export interface FactInput {
+  /** Tomorrow's shape from the week in Settings (or the day's own record if one exists), for a line written overnight. */
+  tomorrow?: DayContext | null
+  /** "Show private items by name outside this screen" (Rule 11), carried on the sheet's header. */
+  showPrivate?: boolean
   day: string
   now: Date
   checkins: CheckIn[]
@@ -134,6 +138,25 @@ export function buildFactSheet(i: FactInput): FactSheet {
         studyNight: ctx.studyNight ? 1 : 0,
         bedtime: ctx.soloUntil,
         hour,
+      }),
+    )
+  }
+  // Tomorrow's shape, so a line written overnight for tomorrow is written for the right day (Part 19). No record is written for it.
+  const tctx = i.tomorrow ?? null
+  if (tctx) {
+    const tday = addDays(today, 1)
+    const tweekday = formatDayLong(tday).split(',')[0]
+    const tparts = [`Tomorrow is ${tweekday}`, tctx.pickupTime ? `a daycare day with pickup at ${tctx.pickupTime}` : 'not a daycare day', tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a study night' : 'not a study night', `her bedtime ${tctx.soloUntil}`]
+    facts.push(
+      fact('week.tomorrow', ['cue'], tparts.filter(Boolean).join('; ') + '.', {
+        day: tday,
+        weekday: tweekday,
+        daycare: tctx.pickupTime ? 1 : 0,
+        pickup: tctx.pickupTime,
+        office: tctx.atOffice ? 1 : 0,
+        church: tctx.churchDay ? 1 : 0,
+        studyNight: tctx.studyNight ? 1 : 0,
+        bedtime: tctx.soloUntil,
       }),
     )
   }
@@ -404,7 +427,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     }
   }
 
-  return { version: 1, day: today, builtAt: i.now.toISOString(), hour, weeks, days, direction: i.direction, facts, said: said.slice(0, 14) }
+  return { version: 1, day: today, builtAt: i.now.toISOString(), hour, weeks, days, direction: i.direction, facts, said: said.slice(0, 14), showPrivate: i.showPrivate === true }
 }
 
 export function factById(sheet: FactSheet, id: string): Fact | undefined {

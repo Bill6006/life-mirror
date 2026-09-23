@@ -31,8 +31,10 @@ export interface BriefRow {
   cardIds: string[]
   model: string
   at: string
-  /** The day the facts described; the line is for the morning after. */
+  /** The day the facts described. */
   factsDay: string
+  /** The day the line was written for; when it differs from factsDay the prompt named both and the guard held the line to this day's shape. */
+  forDay?: string
   /** The one tap the line offers, checked against the sheet before it was written; the phone checks again at the tap. */
   action?: LineAction | null
   /** The review's three parts, on a row of kind review. */

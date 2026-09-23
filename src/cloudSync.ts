@@ -96,7 +96,7 @@ export function brainBriefOf(id: string, body: string): BrainBrief | null {
     const r = JSON.parse(body) as Partial<BrainBrief>
     if (typeof r.day !== 'string' || typeof r.text !== 'string' || !r.text) return null
     const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
-    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '', ...(r.action && typeof r.action === 'object' ? { action: r.action } : {}), ...(typeof r.factsDay === 'string' ? { factsDay: r.factsDay } : {}), ...(r.parts && typeof r.parts === 'object' ? { parts: r.parts } : {}) }
+    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '', ...(r.action && typeof r.action === 'object' ? { action: r.action } : {}), ...(typeof r.factsDay === 'string' ? { factsDay: r.factsDay } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}), ...(r.parts && typeof r.parts === 'object' ? { parts: r.parts } : {}) }
   } catch {
     return null
   }

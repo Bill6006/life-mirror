@@ -31,4 +31,6 @@ export interface FactSheet {
   facts: Fact[]
   /** What the brief said on recent days, and how it was received: for novelty and for learning what lands. */
   said: SaidEntry[]
+  /** "Show private items by name outside this screen" (Rule 11): off, no writer may print a private item's name on Now. */
+  showPrivate?: boolean
 }
