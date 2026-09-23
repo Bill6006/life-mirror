@@ -262,7 +262,7 @@ export const copy = {
   catalogue: {
     paths: {
       title: 'Paths',
-      note: 'Two paths, each a staged curriculum of reps, for you to read and veto. Nothing here is wired or offered until Green; the reps marked proposed join the candidates only then.',
+      note: 'Two paths, each a staged curriculum of reps, with your Green. Nothing here is wired or offered until each path is wired; the reps marked proposed join the candidates only then.',
       stage: 'Stage {n} · {name}',
       notProgress: 'Not progress',
       moves: { counts: 'Moves by the rule', 'counts or a date': 'Moves by the rule, or when you say you have a date', declared: 'Moves only when you declare it' },
@@ -284,8 +284,8 @@ export const copy = {
       help: 'The help the app shows itself',
       parents: 'For a parent',
       evidence: 'The evidence',
-      evidenceNote: 'Claim cards, each source verified at Crossref: drafts until Green, and the disputed ones are never cited.',
-      draft: 'draft, admitted at Green',
+      evidenceNote: 'Claim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.',
+      draft: 'draft, admitted when its path is wired',
       disputed: 'disputed, never cited',
       admitted: 'admitted',
       onPath: '{path} path, stage {n}',
@@ -316,6 +316,7 @@ export const copy = {
     effectWords: { '0': 'no change, until your record says', '0.1': 'a tenth', '0.2': 'a fifth', '0.3': 'a third', '0.4': 'four tenths', '0.5': 'half' },
     proposed: 'Proposed',
     proposedNote: 'read and veto; joins the candidates at Green',
+    pathProposedNote: 'Green given; joins the candidates when its path is wired',
     parkProposed: 'Proposed to park',
     parked: 'Parked · shown here, never offered',
     standingSince: 'Set up on {date}',

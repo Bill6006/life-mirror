@@ -8,7 +8,7 @@ Proposed entries, tags, beliefs and trades are content to read and veto. Yellow 
 
 ## Paths
 
-Two paths, each a staged curriculum of reps, for you to read and veto. Nothing here is wired or offered until Green; the reps marked proposed join the candidates only then.
+Two paths, each a staged curriculum of reps, with your Green. Nothing here is wired or offered until each path is wired; the reps marked proposed join the candidates only then.
 
 ### Social
 
@@ -120,23 +120,23 @@ Never counted, stored or asked: yeses and noes; replies, or whether anyone wrote
 
 #### The evidence
 
-Claim cards, each source verified at Crossref: drafts until Green, and the disputed ones are never cited.
+Claim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.
 
-- **good evidence** (draft, admitted at Green). For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting. Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.
-- **some evidence** (draft, admitted at Green). Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part. Craske et al. (2008). Optimizing inhibitory learning during exposure therapy. Behaviour Research and Therapy, 46(1), 5–27. Craske et al. (2014). Maximizing exposure therapy: an inhibitory learning approach. Behaviour Research and Therapy, 58, 10–23. Rupp et al. (2017). Emotional processing theory put to test: a meta-analysis on the association between process and outcome measures in exposure therapy. Clinical Psychology & Psychotherapy, 24(3), 697–711. Kircanski et al. (2012). Challenges to the traditional exposure paradigm: variability in exposure therapy for contamination fears. Journal of Behavior Therapy and Experimental Psychiatry, 43(2), 745–751. Knowles et al. (2023). Facing uncertainty: a comparison of hierarchical and variable exposure interventions for contamination-related concerns. Journal of Obsessive-Compulsive and Related Disorders, 36, 100777. Treanor et al. (2025). A randomized controlled trial comparing two processes of exposure therapy: extinction learning and habituation. Journal of Consulting and Clinical Psychology.
-- **some evidence** (draft, admitted at Green). Dropping the small habits used to feel safe in conversation, and turning attention outward, made people come across better and feel better in experiments on social anxiety. McManus, Sacadura & Clark (2008). Why social anxiety persists: an experimental investigation of the role of safety behaviours as a maintaining factor. Journal of Behavior Therapy and Experimental Psychiatry, 39(2), 147–161. Taylor & Alden (2011). To see ourselves as others see us: an experimental integration of the intra and interpersonal consequences of self-protection in social anxiety disorder. Journal of Abnormal Psychology, 120(1), 129–141. Meulders et al. (2016). The use of safety-seeking behavior in exposure-based treatments for fear and anxiety: benefit or burden? A meta-analytic review. Clinical Psychology Review, 45, 144–156.
-- **some evidence** (draft, admitted at Green). A week of short conversations with strangers made people less pessimistic about rejection and surer of their conversational ability, and the change lasted at least a week. Sandstrom, Boothby & Cooney (2022). Talking to strangers: a week-long intervention reduces psychological barriers to social connection. Journal of Experimental Social Psychology, 102, 104356.
-- **some evidence** (draft, admitted at Green). People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it. Sandstrom & Boothby (2021). Why do people avoid talking to strangers? A mini meta-analysis of predicted fears and actual experiences talking to a stranger. Self and Identity, 20(1), 47–71.
-- **some evidence** (draft, admitted at Green). Exposure spread over days held better at follow-up than the same exposure packed into one day, though packing sessions into weeks rather than months worked as well. Rowe & Craske (1998). Effects of an expanding-spaced vs massed exposure schedule on fear reduction and return of fear. Behaviour Research and Therapy, 36(7–8), 701–717. Tsao & Craske (2000). Timing of treatment and return of fear: effects of massed, uniform-, and expanding-spaced exposure schedules. Behavior Therapy, 31(3), 479–497. Pittig et al. (2021). Efficacy of temporally intensified exposure for anxiety disorders: a multicenter randomized clinical trial. Depression and Anxiety, 38(11), 1169–1181.
-- **good evidence** (draft, admitted at Green). Disclosure and liking run both ways: people who share more are liked more, people share more with those they like, and taking turns in a first meeting builds closeness. Collins & Miller (1994). Self-disclosure and liking: a meta-analytic review. Psychological Bulletin, 116(3), 457–475. Aron et al. (1997). The experimental generation of interpersonal closeness: a procedure and some preliminary findings. Personality and Social Psychology Bulletin, 23(4), 363–377. Laurenceau, Barrett & Pietromonaco (1998). Intimacy as an interpersonal process: the importance of self-disclosure, partner disclosure, and perceived partner responsiveness in interpersonal exchanges. Journal of Personality and Social Psychology, 74(5), 1238–1251. Sprecher, Treger & Wondra (2013). Taking turns: reciprocal self-disclosure promotes liking in initial interactions. Journal of Experimental Social Psychology, 49(5), 860–866.
-- **some evidence** (draft, admitted at Green). After a conversation, people underestimate how much the other person liked them and enjoyed their company. Boothby, Cooney, Sandstrom & Clark (2018). The liking gap in conversations: do people like us more than we think? Psychological Science, 29(11), 1742–1756.
-- **good evidence** (draft, admitted at Green). Deeper conversations with strangers felt less awkward and more connecting than people expected, because they expected others to care less about what they shared. Kardas, Kumar & Epley (2022). Overly shallow? Miscalibrated expectations create a barrier to deeper conversation. Journal of Personality and Social Psychology, 122(3), 367–398.
-- **some evidence** (draft, admitted at Green). Listeners enjoyed hearing stories about experiences they had shared more than novel ones, though both speakers and listeners predicted the opposite. Cooney, Gilbert & Wilson (2017). The novelty penalty: why do people like talking about new experiences but hearing about old ones? Psychological Science, 28(3), 380–394.
-- **good evidence** (draft, admitted at Green). Acting more extraverted for a while raises positive feeling, introverts included, though introverts gain less and feel more tired and less authentic. Fleeson, Malanos & Achille (2002). An intraindividual process approach to the relationship between extraversion and positive affect: is acting extraverted as “good” as being extraverted? Journal of Personality and Social Psychology, 83(6), 1409–1422. Margolis & Lyubomirsky (2020). Experimental manipulation of extraverted and introverted behavior and its effects on well-being. Journal of Experimental Psychology: General, 149(4), 719–731. Jacques-Hamilton, Sun & Smillie (2019). Costs and benefits of acting extraverted: a randomized controlled trial. Journal of Experimental Psychology: General, 148(9), 1538–1556.
-- **good evidence** (draft, admitted at Green). Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded. Beidel et al. (2014). The impact of social skills training for social anxiety disorder: a randomized controlled trial. Journal of Anxiety Disorders, 28(8), 908–918. Taylor, Russ-Eft & Chan (2005). A meta-analytic review of behavior modeling training. Journal of Applied Psychology, 90(4), 692–709.
-- **good evidence** (draft, admitted at Green). Repeated contact in the same place builds ties: chance seating predicted friendship a year later, and the more strangers interacted, the more they liked each other. Back, Schmukle & Egloff (2008). Becoming friends by chance. Psychological Science, 19(5), 439–440. Reis, Maniaci, Caprariello, Eastwick & Finkel (2011). Familiarity does indeed promote attraction in live interaction. Journal of Personality and Social Psychology, 101(3), 557–570. Montoya, Horton, Vevea, Citkowicz & Lauber (2017). A re-examination of the mere exposure effect: the influence of repeated exposure on recognition, familiarity, and liking. Psychological Bulletin, 143(5), 459–498.
-- **some evidence** (draft, admitted at Green). Specific charismatic tactics can be taught: trained speakers were rated more charismatic, though the studies are of speeches, not conversation, and small. Antonakis, Fenley & Liechti (2011). Can charisma be taught? Tests of two interventions. Academy of Management Learning & Education, 10(3), 374–396. Tskhay, Zhu, Zou & Rule (2018). Charisma in everyday life: conceptualization and validation of the General Charisma Inventory. Journal of Personality and Social Psychology, 114(1), 131–152.
-- **good evidence** (draft, admitted at Green). Randomising between acceptable options at each decision point gives honest short-term estimates of what helps, and the probabilities should be kept away from zero and one and logged. Nahum-Shani et al. (2018). Just-in-time adaptive interventions (JITAIs) in mobile health: key components and design principles for ongoing health behavior support. Annals of Behavioral Medicine, 52(6), 446–462. Klasnja et al. (2015). Microrandomized trials: an experimental design for developing just-in-time adaptive interventions. Health Psychology, 34(Suppl), 1220–1228. Klasnja et al. (2019). Efficacy of contextually tailored suggestions for physical activity: a micro-randomized optimization trial of HeartSteps. Annals of Behavioral Medicine, 53(6), 573–582. Liao, Greenewald, Klasnja & Murphy (2020). Personalized HeartSteps: a reinforcement learning algorithm for optimizing physical activity. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(1), 18.
+- **good evidence** (draft, admitted when its path is wired). For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting. Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.
+- **some evidence** (draft, admitted when its path is wired). Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part. Craske et al. (2008). Optimizing inhibitory learning during exposure therapy. Behaviour Research and Therapy, 46(1), 5–27. Craske et al. (2014). Maximizing exposure therapy: an inhibitory learning approach. Behaviour Research and Therapy, 58, 10–23. Rupp et al. (2017). Emotional processing theory put to test: a meta-analysis on the association between process and outcome measures in exposure therapy. Clinical Psychology & Psychotherapy, 24(3), 697–711. Kircanski et al. (2012). Challenges to the traditional exposure paradigm: variability in exposure therapy for contamination fears. Journal of Behavior Therapy and Experimental Psychiatry, 43(2), 745–751. Knowles et al. (2023). Facing uncertainty: a comparison of hierarchical and variable exposure interventions for contamination-related concerns. Journal of Obsessive-Compulsive and Related Disorders, 36, 100777. Treanor et al. (2025). A randomized controlled trial comparing two processes of exposure therapy: extinction learning and habituation. Journal of Consulting and Clinical Psychology.
+- **some evidence** (draft, admitted when its path is wired). Dropping the small habits used to feel safe in conversation, and turning attention outward, made people come across better and feel better in experiments on social anxiety. McManus, Sacadura & Clark (2008). Why social anxiety persists: an experimental investigation of the role of safety behaviours as a maintaining factor. Journal of Behavior Therapy and Experimental Psychiatry, 39(2), 147–161. Taylor & Alden (2011). To see ourselves as others see us: an experimental integration of the intra and interpersonal consequences of self-protection in social anxiety disorder. Journal of Abnormal Psychology, 120(1), 129–141. Meulders et al. (2016). The use of safety-seeking behavior in exposure-based treatments for fear and anxiety: benefit or burden? A meta-analytic review. Clinical Psychology Review, 45, 144–156.
+- **some evidence** (draft, admitted when its path is wired). A week of short conversations with strangers made people less pessimistic about rejection and surer of their conversational ability, and the change lasted at least a week. Sandstrom, Boothby & Cooney (2022). Talking to strangers: a week-long intervention reduces psychological barriers to social connection. Journal of Experimental Social Psychology, 102, 104356.
+- **some evidence** (draft, admitted when its path is wired). People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it. Sandstrom & Boothby (2021). Why do people avoid talking to strangers? A mini meta-analysis of predicted fears and actual experiences talking to a stranger. Self and Identity, 20(1), 47–71.
+- **some evidence** (draft, admitted when its path is wired). Exposure spread over days held better at follow-up than the same exposure packed into one day, though packing sessions into weeks rather than months worked as well. Rowe & Craske (1998). Effects of an expanding-spaced vs massed exposure schedule on fear reduction and return of fear. Behaviour Research and Therapy, 36(7–8), 701–717. Tsao & Craske (2000). Timing of treatment and return of fear: effects of massed, uniform-, and expanding-spaced exposure schedules. Behavior Therapy, 31(3), 479–497. Pittig et al. (2021). Efficacy of temporally intensified exposure for anxiety disorders: a multicenter randomized clinical trial. Depression and Anxiety, 38(11), 1169–1181.
+- **good evidence** (draft, admitted when its path is wired). Disclosure and liking run both ways: people who share more are liked more, people share more with those they like, and taking turns in a first meeting builds closeness. Collins & Miller (1994). Self-disclosure and liking: a meta-analytic review. Psychological Bulletin, 116(3), 457–475. Aron et al. (1997). The experimental generation of interpersonal closeness: a procedure and some preliminary findings. Personality and Social Psychology Bulletin, 23(4), 363–377. Laurenceau, Barrett & Pietromonaco (1998). Intimacy as an interpersonal process: the importance of self-disclosure, partner disclosure, and perceived partner responsiveness in interpersonal exchanges. Journal of Personality and Social Psychology, 74(5), 1238–1251. Sprecher, Treger & Wondra (2013). Taking turns: reciprocal self-disclosure promotes liking in initial interactions. Journal of Experimental Social Psychology, 49(5), 860–866.
+- **some evidence** (draft, admitted when its path is wired). After a conversation, people underestimate how much the other person liked them and enjoyed their company. Boothby, Cooney, Sandstrom & Clark (2018). The liking gap in conversations: do people like us more than we think? Psychological Science, 29(11), 1742–1756.
+- **good evidence** (draft, admitted when its path is wired). Deeper conversations with strangers felt less awkward and more connecting than people expected, because they expected others to care less about what they shared. Kardas, Kumar & Epley (2022). Overly shallow? Miscalibrated expectations create a barrier to deeper conversation. Journal of Personality and Social Psychology, 122(3), 367–398.
+- **some evidence** (draft, admitted when its path is wired). Listeners enjoyed hearing stories about experiences they had shared more than novel ones, though both speakers and listeners predicted the opposite. Cooney, Gilbert & Wilson (2017). The novelty penalty: why do people like talking about new experiences but hearing about old ones? Psychological Science, 28(3), 380–394.
+- **good evidence** (draft, admitted when its path is wired). Acting more extraverted for a while raises positive feeling, introverts included, though introverts gain less and feel more tired and less authentic. Fleeson, Malanos & Achille (2002). An intraindividual process approach to the relationship between extraversion and positive affect: is acting extraverted as “good” as being extraverted? Journal of Personality and Social Psychology, 83(6), 1409–1422. Margolis & Lyubomirsky (2020). Experimental manipulation of extraverted and introverted behavior and its effects on well-being. Journal of Experimental Psychology: General, 149(4), 719–731. Jacques-Hamilton, Sun & Smillie (2019). Costs and benefits of acting extraverted: a randomized controlled trial. Journal of Experimental Psychology: General, 148(9), 1538–1556.
+- **good evidence** (draft, admitted when its path is wired). Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded. Beidel et al. (2014). The impact of social skills training for social anxiety disorder: a randomized controlled trial. Journal of Anxiety Disorders, 28(8), 908–918. Taylor, Russ-Eft & Chan (2005). A meta-analytic review of behavior modeling training. Journal of Applied Psychology, 90(4), 692–709.
+- **good evidence** (draft, admitted when its path is wired). Repeated contact in the same place builds ties: chance seating predicted friendship a year later, and the more strangers interacted, the more they liked each other. Back, Schmukle & Egloff (2008). Becoming friends by chance. Psychological Science, 19(5), 439–440. Reis, Maniaci, Caprariello, Eastwick & Finkel (2011). Familiarity does indeed promote attraction in live interaction. Journal of Personality and Social Psychology, 101(3), 557–570. Montoya, Horton, Vevea, Citkowicz & Lauber (2017). A re-examination of the mere exposure effect: the influence of repeated exposure on recognition, familiarity, and liking. Psychological Bulletin, 143(5), 459–498.
+- **some evidence** (draft, admitted when its path is wired). Specific charismatic tactics can be taught: trained speakers were rated more charismatic, though the studies are of speeches, not conversation, and small. Antonakis, Fenley & Liechti (2011). Can charisma be taught? Tests of two interventions. Academy of Management Learning & Education, 10(3), 374–396. Tskhay, Zhu, Zou & Rule (2018). Charisma in everyday life: conceptualization and validation of the General Charisma Inventory. Journal of Personality and Social Psychology, 114(1), 131–152.
+- **good evidence** (draft, admitted when its path is wired). Randomising between acceptable options at each decision point gives honest short-term estimates of what helps, and the probabilities should be kept away from zero and one and logged. Nahum-Shani et al. (2018). Just-in-time adaptive interventions (JITAIs) in mobile health: key components and design principles for ongoing health behavior support. Annals of Behavioral Medicine, 52(6), 446–462. Klasnja et al. (2015). Microrandomized trials: an experimental design for developing just-in-time adaptive interventions. Health Psychology, 34(Suppl), 1220–1228. Klasnja et al. (2019). Efficacy of contextually tailored suggestions for physical activity: a micro-randomized optimization trial of HeartSteps. Annals of Behavioral Medicine, 53(6), 573–582. Liao, Greenewald, Klasnja & Murphy (2020). Personalized HeartSteps: a reinforcement learning algorithm for optimizing physical activity. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(1), 18.
 - **thin evidence** (disputed, never cited). The claim that expansive “power poses” change hormones and confident behaviour is disputed: the hormone effects did not replicate, and what remains is small and comes from not slumping. Ranehill et al. (2015). Assessing the robustness of power posing: no effect on hormones and risk tolerance in a large sample of men and women. Psychological Science, 26(5), 653–656. Elkjær et al. (2020). Expansive and contractive postures and movement: a systematic review and meta-analysis of the effect of motor displays on affective and behavioral responses. Perspectives on Psychological Science, 17(1), 276–304. Körner, Röseler & Schütz (2022). Dominance and prestige: meta-analytic review of experimentally induced body position effects on behavioral, self-report, and physiological dependent variables. Psychological Bulletin, 148(1–2), 67–85.
 - **thin evidence** (disputed, never cited). The advice to repeat positive self-statements is disputed: in two experiments people with low self-esteem who repeated one felt worse, and the finding stands unreplicated. Wood, Perunovic & Lee (2009). Positive self-statements: power for some, peril for others. Psychological Science, 20(7), 860–866.
 
@@ -195,14 +195,14 @@ Your own conduct on a date: there on time with the phone away, attention on them
 
 #### Stage 5 · Deciding
 
-Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, a monthly private check on your own safety, conduct and doubts, and education before any commitment.
+Decide rather than slide: your values and non-negotiables written down before they are tested, a decide-don’t-slide note before each step, a monthly private check on your own safety, conduct and doubts, and a relationship course suggested before an engagement, yours to take or leave.
 
 - Not progress: Letting a step happen because it is easier than choosing it.
 - How it moves: moves only when you declare it
 - **Your values and non-negotiables, written down.** A short private note, typed by you, of what you value in a partner and the few things you will not accept, written before they are tested. Only you read it. Source: Jonason, Garcia, Webster, Li and Fisher (2015). People weigh dealbreakers more heavily than the qualities they want; knowing yours in advance is supported. Evidence: moderate.
 - **Decide, don’t slide.** Before each step (becoming exclusive, meeting each other’s families, moving in, an engagement), a private note: what you are choosing, and why now. Source: Owen, Rhoades and Stanley (2013). People who reported deciding their relationship steps thoughtfully reported more dedication and satisfaction than those who slid into them. Evidence: moderate.
 - **A monthly private check.** Once a month, three private questions about your own safety, your own conduct, and any doubt you keep setting aside. A yes to the safety or the conduct question shows the app’s own fixed help, inside this check and nowhere else; a doubt on its own does not. No model writes, softens or decides it, and it is not a general crisis screen. The questions: (1) In the last month, has anyone you are dating made you afraid, or tried to control where you go, whom you see or what you spend? A yes shows the help. (2) Has anything you did toward them worried you afterwards: a raised voice, pressure, checking up on them? A yes shows the help. (3) Is there a doubt about this relationship you keep setting aside? The help the app shows itself: If someone’s behaviour frightens you, or your own worries you, you do not have to sort it out alone. The National Domestic Violence Hotline answers day and night: 1-800-799-7233, or text START to 88788, or thehotline.org. In danger now, call 911. Source: Charlot, Joel, Lamb and colleagues (2023). The number and frequency of early warning signs, such as reacting badly to a no, predicted abuse six months later. Evidence: moderate.
-- **Education before a commitment.** Before an engagement: a relationship-education course together, nine to twenty hours rather than a single evening. Source: Hawkins, Stanley, Blanchard and Albright (2012). Across 148 evaluations, moderate courses of nine to twenty hours did better than short ones of one to eight. Evidence: moderate.
+- **A relationship course, if you want one.** A suggestion, never a requirement: before an engagement, a relationship-education course together, nine to twenty hours rather than a single evening. Taking one is never needed to move on or to declare a step; not taking one blocks nothing and is never counted, flagged or shown as missing. Source: Hawkins, Stanley, Blanchard and Albright (2012). Across 148 evaluations, moderate courses of nine to twenty hours did better than short ones of one to eight. Evidence: moderate.
 
 #### Stage 6 · Building
 
@@ -269,39 +269,39 @@ For a parent, in general terms. One study found a mother’s dating after divorc
 
 #### The evidence
 
-Claim cards, each source verified at Crossref: drafts until Green, and the disputed ones are never cited.
+Claim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.
 
-- **some evidence** (draft, admitted at Green). Meeting online has become the most common way heterosexual couples in the United States meet, and people in thin markets, such as middle-aged heterosexuals, are especially likely to meet partners online. Rosenfeld, Thomas & Hausen (2019). Disintermediating your friends: how online dating in the United States displaces other ways of meeting. Proceedings of the National Academy of Sciences, 116(36), 17753–17758. Rosenfeld & Thomas (2012). Searching for a mate: the rise of the Internet as a social intermediary. American Sociological Review, 77(4), 523–547.
-- **some evidence** (draft, admitted at Green). What online dating adds is access to people you would not otherwise meet; browsing many profiles side by side can turn people into a menu, and brief messaging that leads to meeting serves better than long browsing. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66.
-- **some evidence** (draft, admitted at Green). Online daters rated a first face-to-face meeting best after a moderate amount of messaging, and worse after very little or a great deal. Ramirez, Sumner, Fleuriet & Cole (2015). When online dating partners meet offline: the effect of modality switching on relational communication between online daters. Journal of Computer-Mediated Communication, 20(1), 99–114.
-- **some evidence** (draft, admitted at Green). The longer people browse dating profiles in a session, the more likely they are to reject each next one. Pronk & Denissen (2020). A rejection mind-set: choice overload in online dating. Social Psychological and Personality Science, 11(3), 388–396.
-- **some evidence** (draft, admitted at Green). About two-thirds of romantic relationships began as friendships, and the longer two people knew each other first, the less their pairing tracked consensus attractiveness and the more it rested on how they got on. Stinson, Cameron & Hoplock (2022). The friends-to-lovers pathway to romance: prevalent, preferred, and overlooked by science. Social Psychological and Personality Science, 13(2), 562–571. Hunt, Eastwick & Finkel (2015). Leveling the playing field: longer acquaintance predicts reduced assortative mating on attractiveness. Psychological Science, 26(7), 1046–1053. Eastwick & Hunt (2014). Relational mate value: consensus and uniqueness in romantic evaluations. Journal of Personality and Social Psychology, 106(5), 728–751.
-- **good evidence** (draft, admitted at Green). The traits people say they want in an ideal partner barely predict whom they come to desire in person, and more than a hundred measured traits could not predict which particular pairs would click. Eastwick & Finkel (2008). Sex differences in mate preferences revisited: do people know what they initially desire in a romantic partner? Journal of Personality and Social Psychology, 94(2), 245–264. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489. Eastwick, Luchies, Finkel & Hunt (2014). The predictive validity of ideal partner preferences: a review and meta-analysis. Psychological Bulletin, 140(3), 623–665. Eastwick et al. (2025). A worldwide test of the predictive validity of ideal partner preference matching. Journal of Personality and Social Psychology, 128(1), 123–146.
-- **some evidence** (draft, admitted at Green). Plain openings do best: a direct self-introduction or an introduction by a third person was rated most appropriate, and cute or flippant lines were rated worst. Kleinke, Meeker & Staneski (1986). Preference for opening lines: comparing ratings by men and women. Sex Roles, 15(11–12), 585–600. Weber, Goodboy & Cayanus (2010). Flirting competence: an experimental study on appropriate and effective opening lines. Communication Research Reports, 27(2), 184–191.
-- **some evidence** (draft, admitted at Green). People detect flirting poorly, and those who fear rejection believe their own overtures show far more interest than they do. Hall, Xing, Ross & Silverman (2015). Accurately detecting flirting: error management theory, the traditional sexual script, and flirting base rate. Communication Research, 42(7), 939–958. Vorauer, Cameron, Holmes & Pearce (2003). Invisible overtures: fears of rejection and the signal amplification bias. Journal of Personality and Social Psychology, 84(4), 793–812.
-- **some evidence** (draft, admitted at Green). People are less willing to turn down someone who asks them out in person than they predict, largely out of concern for the asker’s feelings. Joel, Teper & MacDonald (2014). People overestimate their willingness to reject potential romantic partners by overlooking their concern for other people. Psychological Science, 25(12), 2233–2240.
-- **some evidence** (draft, admitted at Green). A rejection lingers when it changes how a person defines themselves, most for those who believe personality cannot change. Howe & Dweck (2016). Changes in self-definition impede recovery from rejection. Personality and Social Psychology Bulletin, 42(1), 54–71.
-- **some evidence** (draft, admitted at Green). Persisting after a no is at the heart of stalking and harassment: much unwanted pursuit grows out of courtship that did not take no for an answer. Spitzberg & Cupach (2007). The state of the art of stalking: taking stock of the emerging literature. Aggression and Violent Behavior, 12(1), 64–86.
-- **some evidence** (draft, admitted at Green). Unwanted attention from strangers in public is common for women and goes with feeling objectified. Fairchild & Rudman (2008). Everyday stranger harassment and women’s objectification. Social Justice Research, 21(3), 338–357.
-- **some evidence** (draft, admitted at Green). Endorsing assertive pickup tactics tracks hostile sexism. Hall & Canterberry (2011). Sexism and assertive courtship strategies. Sex Roles, 65(11–12), 840–853.
-- **some evidence** (draft, admitted at Green). Several changes in who lives in a child’s home go with more behaviour problems, partly because of what came before; one study found a mother’s dating after divorce had little direct effect; when to introduce a new partner has no tested answer. Fomby & Cherlin (2007). Family instability and child well-being. American Sociological Review, 72(2), 181–204. Hadfield, Amos, Ungar, Gosselin & Ganong (2018). Do changes to family structure affect child and family outcomes? A systematic review of the instability hypothesis. Journal of Family Theory & Review, 10(1), 87–110. Xiao, Langlais & Anderson (2022). Is it OK if mommy dates? The influence of mother’s post-divorce dating transitions on children’s well-being. Journal of Child and Family Studies, 31(2), 400–413. Kang & Nielson (2025). Helping postdivorce families enhance parent–child relationships: clinical applications for communicating postdivorce dating with children. Journal of Marital and Family Therapy, 51(1), e12764.
-- **some evidence** (draft, admitted at Green). Shared religious practice at home goes with better relationship quality, modestly, and part of it is who chooses to share it. Ellison, Burdette & Wilcox (2010). The couple that prays together: race and ethnicity, religion, and relationship quality among working-age adults. Journal of Marriage and Family, 72(4), 963–975. Mahoney (2010). Religion in families, 1999–2009: a relational spirituality framework. Journal of Marriage and Family, 72(4), 805–827. Mahoney, Pargament, Tarakeshwar & Swank (2001). Religion in the home in the 1980s and 1990s: a meta-analytic review and conceptual analysis of links between religion, marriage, and parenting. Journal of Family Psychology, 15(4), 559–596.
-- **good evidence** (draft, admitted at Green). A relationship’s quality is predicted mostly by each person’s own view of the relationship, their sense of the partner’s commitment and appreciation, conflict and satisfaction, and hardly at all by the partner’s reported traits. Joel et al. (2020). Machine learning uncovers the most robust self-report predictors of relationship quality across 43 longitudinal couples studies. Proceedings of the National Academy of Sciences, 117(32), 19061–19071.
-- **good evidence** (draft, admitted at Green). In existing relationships, actual similarity between partners barely predicts satisfaction; perceived similarity does. Dyrenforth, Kashy, Donnellan & Lucas (2010). Predicting relationship and life satisfaction from personality in nationally representative samples from three countries: the relative importance of actor, partner, and similarity effects. Journal of Personality and Social Psychology, 99(4), 690–702. Montoya, Horton & Kirchner (2008). Is actual similarity necessary for attraction? A meta-analysis of actual and perceived similarity. Journal of Social and Personal Relationships, 25(6), 889–922.
-- **some evidence** (draft, admitted at Green). People weigh a partner’s dealbreakers more heavily than the qualities they hope for, so knowing your own few non-negotiables in advance is useful. Jonason, Garcia, Webster, Li & Fisher (2015). Relationship dealbreakers: traits people avoid in potential mates. Personality and Social Psychology Bulletin, 41(12), 1697–1711.
-- **good evidence** (draft, admitted at Green). A person’s own negative affectivity and insecure attachment weigh on relationship quality, and both can change with effort. Karney & Bradbury (1995). The longitudinal course of marital quality and stability: a review of theory, methods, and research. Psychological Bulletin, 118(1), 3–34. Li & Chan (2012). How anxious and avoidant attachment affect romantic relationship quality differently: a meta-analytic review. European Journal of Social Psychology, 42(4), 406–419. Roberts et al. (2017). A systematic review of personality trait change through intervention. Psychological Bulletin, 143(2), 117–141. Hudson, Chopik & Briley (2020). Volitional change in adult attachment: can people who want to become less anxious and avoidant move closer towards realizing those goals? European Journal of Personality, 34(1), 93–114.
-- **some evidence** (draft, admitted at Green). People who decide their relationship steps thoughtfully report more dedication and satisfaction than those who slide into them, and couples who moved in together before engagement reported somewhat poorer marriages. Stanley, Rhoades & Markman (2006). Sliding versus deciding: inertia and the premarital cohabitation effect. Family Relations, 55(4), 499–509. Rhoades, Stanley & Markman (2009). The pre-engagement cohabitation effect: a replication and extension of previous findings. Journal of Family Psychology, 23(1), 107–111. Owen, Rhoades & Stanley (2013). Sliding versus deciding in relationships: associations with relationship quality, commitment, and infidelity. Journal of Couple & Relationship Therapy, 12(2), 135–149.
-- **good evidence** (draft, admitted at Green). Relationship education improves couples’ communication, modestly; effects on quality are smaller and uncertain once unpublished studies count, and moderate courses of nine to twenty hours beat short ones. Hawkins, Blanchard, Baldwin & Fawcett (2008). Does marriage and relationship education work? A meta-analytic study. Journal of Consulting and Clinical Psychology, 76(5), 723–734. Fawcett, Hawkins, Blanchard & Carroll (2010). Do premarital education programs really work? A meta-analytic study. Family Relations, 59(3), 232–239. Hawkins, Stanley, Blanchard & Albright (2012). Exploring programmatic moderators of the effectiveness of marriage and relationship education programs: a meta-analytic study. Behavior Therapy, 43(1), 77–87. McAllister, Duncan & Hawkins (2012). Examining the early evidence for self-directed marriage and relationship education: a meta-analytic study. Family Relations, 61(5), 742–755.
-- **some evidence** (draft, admitted at Green). The number and frequency of early warning signs in a relationship, such as reacting badly to a no or resenting questions, predicted abuse six months later. Charlot et al. (2023). The predictive validity of intimate partner violence warning signs. Social Psychological and Personality Science.
-- **good evidence** (draft, admitted at Green). How couples talk predicts how they fare, modestly: negative communication goes with lower later quality and with breaking up, and hostility weighs most. Kanter et al. (2022). Does couple communication predict later relationship quality and dissolution? A meta-analysis. Journal of Marriage and Family, 84(2), 533–551. Woodin (2011). A two-dimensional approach to relationship conflict: meta-analytic findings. Journal of Family Psychology, 25(3), 325–335. Schrodt, Witt & Shimkowski (2014). A meta-analytical review of the demand/withdraw pattern of interaction and its associations with individual, relational, and communicative outcomes. Communication Monographs, 81(1), 28–58.
-- **some evidence** (draft, admitted at Green). How a partner responds to good news matters: active, enthusiastic responses go with closer, more satisfying relationships, more so than responses to bad news. Gable, Reis, Impett & Asher (2004). What do you do when things go right? The intrapersonal and interpersonal benefits of sharing positive events. Journal of Personality and Social Psychology, 87(2), 228–245. Gable, Gonzaga & Strachman (2006). Will you be there for me when things go right? Supportive responses to positive event disclosures. Journal of Personality and Social Psychology, 91(5), 904–917.
-- **some evidence** (draft, admitted at Green). Everyday gratitude between partners predicts more connection and satisfaction the next day for both, and expressing it in a lab session helped when the partner responded well. Algoe, Gable & Maisel (2010). It’s the little things: everyday gratitude as a booster shot for romantic relationships. Personal Relationships, 17(2), 217–233. Algoe & Zhaoyang (2016). Positive psychology in context: effects of expressing gratitude in ongoing relationships depend on perceptions of enactor responsiveness. The Journal of Positive Psychology, 11(4), 399–415.
-- **some evidence** (draft, admitted at Green). Doing novel, lively things together raises couples’ experienced relationship quality. Aron, Norman, Aron, McKenna & Heyman (2000). Couples’ shared participation in novel and arousing activities and experienced relationship quality. Journal of Personality and Social Psychology, 78(2), 273–284. Coulter & Malouff (2013). Effects of an intervention designed to enhance romantic relationship excitement: a randomized-control trial. Couple and Family Psychology: Research and Practice, 2(1), 34–44.
-- **some evidence** (draft, admitted at Green). A brief exercise in seeing a disagreement as a neutral third party would, done three times across a year, stopped the usual decline in marital quality. Finkel, Slotter, Luchies, Walton & Gross (2013). A brief intervention to promote conflict reappraisal preserves marital quality over time. Psychological Science, 24(8), 1595–1601.
-- **good evidence** (draft, admitted at Green). Couples who talk about sex, and talk about it well, report more relationship and sexual satisfaction. Mallory (2022). Dimensions of couples’ sexual communication, relationship satisfaction, and sexual satisfaction: a meta-analysis. Journal of Family Psychology, 36(3), 358–371.
-- **some evidence** (draft, admitted at Green). Forgiveness and sacrifice help a relationship in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly cost the one who made them. McNulty (2008). Forgiveness in marriage: putting the benefits into context. Journal of Family Psychology, 22(1), 171–175. Righetti et al. (2020). The link between sacrifice and relational and personal well-being: a meta-analysis. Psychological Bulletin, 146(10), 900–921.
-- **some evidence** (draft, admitted at Green). On days of higher outside stress, partners behave more negatively toward each other and judge the relationship less kindly. Neff & Karney (2004). How does context affect intimate relationships? Linking external stress and cognitive processes within marriage. Personality and Social Psychology Bulletin, 30(2), 134–148. Neff & Karney (2009). Stress and reactivity to daily relationship experiences: how stress hinders adaptive processes in marriage. Journal of Personality and Social Psychology, 97(3), 435–450. Buck & Neff (2012). Stress spillover in early marriage: the role of self-regulatory depletion. Journal of Family Psychology, 26(5), 698–708.
-- **some evidence** (draft, admitted at Green). Keeping a detailed diary about relationship conflict can itself shift how people rate their relationship, even when their behaviour does not change. Merrilees, Goeke-Morey & Cummings (2008). Do event-contingent diaries about marital conflict change marital interactions? Behaviour Research and Therapy, 46(2), 253–262.
+- **some evidence** (draft, admitted when its path is wired). Meeting online has become the most common way heterosexual couples in the United States meet, and people in thin markets, such as middle-aged heterosexuals, are especially likely to meet partners online. Rosenfeld, Thomas & Hausen (2019). Disintermediating your friends: how online dating in the United States displaces other ways of meeting. Proceedings of the National Academy of Sciences, 116(36), 17753–17758. Rosenfeld & Thomas (2012). Searching for a mate: the rise of the Internet as a social intermediary. American Sociological Review, 77(4), 523–547.
+- **some evidence** (draft, admitted when its path is wired). What online dating adds is access to people you would not otherwise meet; browsing many profiles side by side can turn people into a menu, and brief messaging that leads to meeting serves better than long browsing. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66.
+- **some evidence** (draft, admitted when its path is wired). Online daters rated a first face-to-face meeting best after a moderate amount of messaging, and worse after very little or a great deal. Ramirez, Sumner, Fleuriet & Cole (2015). When online dating partners meet offline: the effect of modality switching on relational communication between online daters. Journal of Computer-Mediated Communication, 20(1), 99–114.
+- **some evidence** (draft, admitted when its path is wired). The longer people browse dating profiles in a session, the more likely they are to reject each next one. Pronk & Denissen (2020). A rejection mind-set: choice overload in online dating. Social Psychological and Personality Science, 11(3), 388–396.
+- **some evidence** (draft, admitted when its path is wired). About two-thirds of romantic relationships began as friendships, and the longer two people knew each other first, the less their pairing tracked consensus attractiveness and the more it rested on how they got on. Stinson, Cameron & Hoplock (2022). The friends-to-lovers pathway to romance: prevalent, preferred, and overlooked by science. Social Psychological and Personality Science, 13(2), 562–571. Hunt, Eastwick & Finkel (2015). Leveling the playing field: longer acquaintance predicts reduced assortative mating on attractiveness. Psychological Science, 26(7), 1046–1053. Eastwick & Hunt (2014). Relational mate value: consensus and uniqueness in romantic evaluations. Journal of Personality and Social Psychology, 106(5), 728–751.
+- **good evidence** (draft, admitted when its path is wired). The traits people say they want in an ideal partner barely predict whom they come to desire in person, and more than a hundred measured traits could not predict which particular pairs would click. Eastwick & Finkel (2008). Sex differences in mate preferences revisited: do people know what they initially desire in a romantic partner? Journal of Personality and Social Psychology, 94(2), 245–264. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489. Eastwick, Luchies, Finkel & Hunt (2014). The predictive validity of ideal partner preferences: a review and meta-analysis. Psychological Bulletin, 140(3), 623–665. Eastwick et al. (2025). A worldwide test of the predictive validity of ideal partner preference matching. Journal of Personality and Social Psychology, 128(1), 123–146.
+- **some evidence** (draft, admitted when its path is wired). Plain openings do best: a direct self-introduction or an introduction by a third person was rated most appropriate, and cute or flippant lines were rated worst. Kleinke, Meeker & Staneski (1986). Preference for opening lines: comparing ratings by men and women. Sex Roles, 15(11–12), 585–600. Weber, Goodboy & Cayanus (2010). Flirting competence: an experimental study on appropriate and effective opening lines. Communication Research Reports, 27(2), 184–191.
+- **some evidence** (draft, admitted when its path is wired). People detect flirting poorly, and those who fear rejection believe their own overtures show far more interest than they do. Hall, Xing, Ross & Silverman (2015). Accurately detecting flirting: error management theory, the traditional sexual script, and flirting base rate. Communication Research, 42(7), 939–958. Vorauer, Cameron, Holmes & Pearce (2003). Invisible overtures: fears of rejection and the signal amplification bias. Journal of Personality and Social Psychology, 84(4), 793–812.
+- **some evidence** (draft, admitted when its path is wired). People are less willing to turn down someone who asks them out in person than they predict, largely out of concern for the asker’s feelings. Joel, Teper & MacDonald (2014). People overestimate their willingness to reject potential romantic partners by overlooking their concern for other people. Psychological Science, 25(12), 2233–2240.
+- **some evidence** (draft, admitted when its path is wired). A rejection lingers when it changes how a person defines themselves, most for those who believe personality cannot change. Howe & Dweck (2016). Changes in self-definition impede recovery from rejection. Personality and Social Psychology Bulletin, 42(1), 54–71.
+- **some evidence** (draft, admitted when its path is wired). Persisting after a no is at the heart of stalking and harassment: much unwanted pursuit grows out of courtship that did not take no for an answer. Spitzberg & Cupach (2007). The state of the art of stalking: taking stock of the emerging literature. Aggression and Violent Behavior, 12(1), 64–86.
+- **some evidence** (draft, admitted when its path is wired). Unwanted attention from strangers in public is common for women and goes with feeling objectified. Fairchild & Rudman (2008). Everyday stranger harassment and women’s objectification. Social Justice Research, 21(3), 338–357.
+- **some evidence** (draft, admitted when its path is wired). Endorsing assertive pickup tactics tracks hostile sexism. Hall & Canterberry (2011). Sexism and assertive courtship strategies. Sex Roles, 65(11–12), 840–853.
+- **some evidence** (draft, admitted when its path is wired). Several changes in who lives in a child’s home go with more behaviour problems, partly because of what came before; one study found a mother’s dating after divorce had little direct effect; when to introduce a new partner has no tested answer. Fomby & Cherlin (2007). Family instability and child well-being. American Sociological Review, 72(2), 181–204. Hadfield, Amos, Ungar, Gosselin & Ganong (2018). Do changes to family structure affect child and family outcomes? A systematic review of the instability hypothesis. Journal of Family Theory & Review, 10(1), 87–110. Xiao, Langlais & Anderson (2022). Is it OK if mommy dates? The influence of mother’s post-divorce dating transitions on children’s well-being. Journal of Child and Family Studies, 31(2), 400–413. Kang & Nielson (2025). Helping postdivorce families enhance parent–child relationships: clinical applications for communicating postdivorce dating with children. Journal of Marital and Family Therapy, 51(1), e12764.
+- **some evidence** (draft, admitted when its path is wired). Shared religious practice at home goes with better relationship quality, modestly, and part of it is who chooses to share it. Ellison, Burdette & Wilcox (2010). The couple that prays together: race and ethnicity, religion, and relationship quality among working-age adults. Journal of Marriage and Family, 72(4), 963–975. Mahoney (2010). Religion in families, 1999–2009: a relational spirituality framework. Journal of Marriage and Family, 72(4), 805–827. Mahoney, Pargament, Tarakeshwar & Swank (2001). Religion in the home in the 1980s and 1990s: a meta-analytic review and conceptual analysis of links between religion, marriage, and parenting. Journal of Family Psychology, 15(4), 559–596.
+- **good evidence** (draft, admitted when its path is wired). A relationship’s quality is predicted mostly by each person’s own view of the relationship, their sense of the partner’s commitment and appreciation, conflict and satisfaction, and hardly at all by the partner’s reported traits. Joel et al. (2020). Machine learning uncovers the most robust self-report predictors of relationship quality across 43 longitudinal couples studies. Proceedings of the National Academy of Sciences, 117(32), 19061–19071.
+- **good evidence** (draft, admitted when its path is wired). In existing relationships, actual similarity between partners barely predicts satisfaction; perceived similarity does. Dyrenforth, Kashy, Donnellan & Lucas (2010). Predicting relationship and life satisfaction from personality in nationally representative samples from three countries: the relative importance of actor, partner, and similarity effects. Journal of Personality and Social Psychology, 99(4), 690–702. Montoya, Horton & Kirchner (2008). Is actual similarity necessary for attraction? A meta-analysis of actual and perceived similarity. Journal of Social and Personal Relationships, 25(6), 889–922.
+- **some evidence** (draft, admitted when its path is wired). People weigh a partner’s dealbreakers more heavily than the qualities they hope for, so knowing your own few non-negotiables in advance is useful. Jonason, Garcia, Webster, Li & Fisher (2015). Relationship dealbreakers: traits people avoid in potential mates. Personality and Social Psychology Bulletin, 41(12), 1697–1711.
+- **good evidence** (draft, admitted when its path is wired). A person’s own negative affectivity and insecure attachment weigh on relationship quality, and both can change with effort. Karney & Bradbury (1995). The longitudinal course of marital quality and stability: a review of theory, methods, and research. Psychological Bulletin, 118(1), 3–34. Li & Chan (2012). How anxious and avoidant attachment affect romantic relationship quality differently: a meta-analytic review. European Journal of Social Psychology, 42(4), 406–419. Roberts et al. (2017). A systematic review of personality trait change through intervention. Psychological Bulletin, 143(2), 117–141. Hudson, Chopik & Briley (2020). Volitional change in adult attachment: can people who want to become less anxious and avoidant move closer towards realizing those goals? European Journal of Personality, 34(1), 93–114.
+- **some evidence** (draft, admitted when its path is wired). People who decide their relationship steps thoughtfully report more dedication and satisfaction than those who slide into them, and couples who moved in together before engagement reported somewhat poorer marriages. Stanley, Rhoades & Markman (2006). Sliding versus deciding: inertia and the premarital cohabitation effect. Family Relations, 55(4), 499–509. Rhoades, Stanley & Markman (2009). The pre-engagement cohabitation effect: a replication and extension of previous findings. Journal of Family Psychology, 23(1), 107–111. Owen, Rhoades & Stanley (2013). Sliding versus deciding in relationships: associations with relationship quality, commitment, and infidelity. Journal of Couple & Relationship Therapy, 12(2), 135–149.
+- **good evidence** (draft, admitted when its path is wired). Relationship education improves couples’ communication, modestly; effects on quality are smaller and uncertain once unpublished studies count, and moderate courses of nine to twenty hours beat short ones. Hawkins, Blanchard, Baldwin & Fawcett (2008). Does marriage and relationship education work? A meta-analytic study. Journal of Consulting and Clinical Psychology, 76(5), 723–734. Fawcett, Hawkins, Blanchard & Carroll (2010). Do premarital education programs really work? A meta-analytic study. Family Relations, 59(3), 232–239. Hawkins, Stanley, Blanchard & Albright (2012). Exploring programmatic moderators of the effectiveness of marriage and relationship education programs: a meta-analytic study. Behavior Therapy, 43(1), 77–87. McAllister, Duncan & Hawkins (2012). Examining the early evidence for self-directed marriage and relationship education: a meta-analytic study. Family Relations, 61(5), 742–755.
+- **some evidence** (draft, admitted when its path is wired). The number and frequency of early warning signs in a relationship, such as reacting badly to a no or resenting questions, predicted abuse six months later. Charlot et al. (2023). The predictive validity of intimate partner violence warning signs. Social Psychological and Personality Science.
+- **good evidence** (draft, admitted when its path is wired). How couples talk predicts how they fare, modestly: negative communication goes with lower later quality and with breaking up, and hostility weighs most. Kanter et al. (2022). Does couple communication predict later relationship quality and dissolution? A meta-analysis. Journal of Marriage and Family, 84(2), 533–551. Woodin (2011). A two-dimensional approach to relationship conflict: meta-analytic findings. Journal of Family Psychology, 25(3), 325–335. Schrodt, Witt & Shimkowski (2014). A meta-analytical review of the demand/withdraw pattern of interaction and its associations with individual, relational, and communicative outcomes. Communication Monographs, 81(1), 28–58.
+- **some evidence** (draft, admitted when its path is wired). How a partner responds to good news matters: active, enthusiastic responses go with closer, more satisfying relationships, more so than responses to bad news. Gable, Reis, Impett & Asher (2004). What do you do when things go right? The intrapersonal and interpersonal benefits of sharing positive events. Journal of Personality and Social Psychology, 87(2), 228–245. Gable, Gonzaga & Strachman (2006). Will you be there for me when things go right? Supportive responses to positive event disclosures. Journal of Personality and Social Psychology, 91(5), 904–917.
+- **some evidence** (draft, admitted when its path is wired). Everyday gratitude between partners predicts more connection and satisfaction the next day for both, and expressing it in a lab session helped when the partner responded well. Algoe, Gable & Maisel (2010). It’s the little things: everyday gratitude as a booster shot for romantic relationships. Personal Relationships, 17(2), 217–233. Algoe & Zhaoyang (2016). Positive psychology in context: effects of expressing gratitude in ongoing relationships depend on perceptions of enactor responsiveness. The Journal of Positive Psychology, 11(4), 399–415.
+- **some evidence** (draft, admitted when its path is wired). Doing novel, lively things together raises couples’ experienced relationship quality. Aron, Norman, Aron, McKenna & Heyman (2000). Couples’ shared participation in novel and arousing activities and experienced relationship quality. Journal of Personality and Social Psychology, 78(2), 273–284. Coulter & Malouff (2013). Effects of an intervention designed to enhance romantic relationship excitement: a randomized-control trial. Couple and Family Psychology: Research and Practice, 2(1), 34–44.
+- **some evidence** (draft, admitted when its path is wired). A brief exercise in seeing a disagreement as a neutral third party would, done three times across a year, stopped the usual decline in marital quality. Finkel, Slotter, Luchies, Walton & Gross (2013). A brief intervention to promote conflict reappraisal preserves marital quality over time. Psychological Science, 24(8), 1595–1601.
+- **good evidence** (draft, admitted when its path is wired). Couples who talk about sex, and talk about it well, report more relationship and sexual satisfaction. Mallory (2022). Dimensions of couples’ sexual communication, relationship satisfaction, and sexual satisfaction: a meta-analysis. Journal of Family Psychology, 36(3), 358–371.
+- **some evidence** (draft, admitted when its path is wired). Forgiveness and sacrifice help a relationship in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly cost the one who made them. McNulty (2008). Forgiveness in marriage: putting the benefits into context. Journal of Family Psychology, 22(1), 171–175. Righetti et al. (2020). The link between sacrifice and relational and personal well-being: a meta-analysis. Psychological Bulletin, 146(10), 900–921.
+- **some evidence** (draft, admitted when its path is wired). On days of higher outside stress, partners behave more negatively toward each other and judge the relationship less kindly. Neff & Karney (2004). How does context affect intimate relationships? Linking external stress and cognitive processes within marriage. Personality and Social Psychology Bulletin, 30(2), 134–148. Neff & Karney (2009). Stress and reactivity to daily relationship experiences: how stress hinders adaptive processes in marriage. Journal of Personality and Social Psychology, 97(3), 435–450. Buck & Neff (2012). Stress spillover in early marriage: the role of self-regulatory depletion. Journal of Family Psychology, 26(5), 698–708.
+- **some evidence** (draft, admitted when its path is wired). Keeping a detailed diary about relationship conflict can itself shift how people rate their relationship, even when their behaviour does not change. Merrilees, Goeke-Morey & Cummings (2008). Do event-contingent diaries about marital conflict change marital interactions? Behaviour Research and Therapy, 46(2), 253–262.
 - **thin evidence** (disputed, never cited). Claims that divorce can be predicted with high accuracy from a few observed behaviours are disputed: they collapse without cross-validation, and a major model failed to replicate. Heyman & Slep (2001). The hazards of predicting divorce without crossvalidation. Journal of Marriage and Family, 63(2), 473–479. Kim, Capaldi & Crosby (2007). Generalizability of Gottman and colleagues’ affective process models of couples’ relationship outcomes. Journal of Marriage and Family, 69(1), 55–72.
 - **thin evidence** (disputed, never cited). The popular claims about love languages are disputed: the evidence does not support that each person has one preferred language, that there are five, or that matching them makes couples happier. Impett, Park & Muise (2024). Popular psychology through a scientific lens: evaluating love languages from a relationship science perspective. Current Directions in Psychological Science, 33(2), 87–92.
 - **thin evidence** (disputed, never cited). The claim that dating sites’ matching algorithms find compatible partners is disputed: no compelling evidence supports it, and traits measured in advance cannot predict which pairs will click. Finkel, Eastwick, Karney, Reis & Sprecher (2012). Online dating: a critical analysis from the perspective of psychological science. Psychological Science in the Public Interest, 13(1), 3–66. Joel, Eastwick & Finkel (2017). Is romantic desire predictable? Machine learning applied to initial romantic attraction. Psychological Science, 28(10), 1478–1489.
@@ -988,7 +988,7 @@ Before the service, one conversation with someone you do not usually talk to.
 
 ### Greet someone by name
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 1, moves the stage · Partner path, stage 1, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 1, moves the stage · Partner path, stage 1, moves the stage_
 
 At a place you go every week, greet one person by their name, and add one thing you noticed about their day.
 
@@ -1002,7 +1002,7 @@ At a place you go every week, greet one person by their name, and add one thing 
 
 ### Introduce yourself to someone new there
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 5, moves the stage · Partner path, stage 1, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves the stage · Partner path, stage 1, moves the stage_
 
 At a place you go every week, introduce yourself to one person you have not met, and ask their name.
 
@@ -1016,7 +1016,7 @@ At a place you go every week, introduce yourself to one person you have not met,
 
 ### Offer your number to stay in touch
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 5, moves the stage · Partner path, stage 3, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves the stage · Partner path, stage 3, moves the stage_
 
 With someone you have enjoyed talking to, offer your number or ask for a way to stay in touch. Once, plainly.
 
@@ -1030,7 +1030,7 @@ With someone you have enjoyed talking to, offer your number or ask for a way to 
 
 ### Suggest one specific plan, face to face
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 5, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves the stage_
 
 To someone you see regularly, suggest one specific thing: a day, a time, a place. Short, easy to say no to.
 
@@ -1044,7 +1044,7 @@ To someone you see regularly, suggest one specific thing: a day, a time, a place
 
 ### Follow up after meeting someone
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 5, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 5, moves no stage_
 
 Within two days of a good conversation with someone new, send one line that picks up something they said.
 
@@ -1058,7 +1058,7 @@ Within two days of a good conversation with someone new, send one line that pick
 
 ### Introduce two people to each other
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 6, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
 
 When two people you know are in the same place, introduce them with one thing they have in common.
 
@@ -1072,7 +1072,7 @@ When two people you know are in the same place, introduce them with one thing th
 
 ### Host something small
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 6, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
 
 Invite two or three people to something small you set up: a game, a meal, a walk. An hour, not an event.
 
@@ -1086,7 +1086,7 @@ Invite two or three people to something small you set up: a game, a meal, a walk
 
 ### Take a small recurring role
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 6, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
 
 Where you already go, take one small job that repeats: set up chairs, greet at the door, bring the coffee.
 
@@ -1505,7 +1505,7 @@ In the next conversation, notice three things about them: what they said, how th
 
 ### Answer a disclosure with one of your own
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage_
 
 When someone tells you something real about themselves, tell them something of about the same weight about you. Turn for turn, not a speech.
 
@@ -1519,7 +1519,7 @@ When someone tells you something real about themselves, tell them something of a
 
 ### Return to something they said last time
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
 
 With someone you see again, bring up one thing they told you the last time: how it went, or what came of it.
 
@@ -1533,7 +1533,7 @@ With someone you see again, bring up one thing they told you the last time: how 
 
 ### Go one level deeper
 
-_Proposed: read and veto; joins the candidates at Green · Social path, stage 6, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Social path, stage 6, moves the stage_
 
 With someone you already know, ask one question that goes past the usual: what they are looking forward to, what has been hard lately.
 
@@ -1918,7 +1918,7 @@ A short board or card game with one rule and turns, ten minutes. Counting the sp
 
 ### Say hello again to someone you liked talking to
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 1, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves the stage_
 
 Someone you have met before and enjoyed talking with: greet them again where you both go, and add one sentence.
 
@@ -1932,7 +1932,7 @@ Someone you have met before and enjoyed talking with: greet them again where you
 
 ### Ask a friend for an introduction
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 1, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves no stage_
 
 Tell one friend you are open to meeting someone, and ask whether they know anyone they would like to introduce.
 
@@ -1946,7 +1946,7 @@ Tell one friend you are open to meeting someone, and ask whether they know anyon
 
 ### Say your interest plainly
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 3, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 3, moves the stage_
 
 To someone you have come to like, say it in one plain sentence: you have enjoyed talking and would like to do it again.
 
@@ -1960,7 +1960,7 @@ To someone you have come to like, say it in one plain sentence: you have enjoyed
 
 ### Make one specific, short, public invitation
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 3, moves the stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 3, moves the stage_
 
 A coffee or a walk, somewhere public, an hour at most, with a day named. One ask; take the answer graciously, whatever it is.
 
@@ -1974,7 +1974,7 @@ A coffee or a walk, somewhere public, an hour at most, with a day named. One ask
 
 ### Write or update one profile, honestly
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 1, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves no stage_
 
 On one site you chose, write or update your profile: recent photos, plain words about who you are and what you are looking for.
 
@@ -1987,7 +1987,7 @@ On one site you chose, write or update your profile: recent photos, plain words 
 
 ### Browse for fifteen minutes, then stop
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 1, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 1, moves no stage_
 
 Set a timer for fifteen minutes, read profiles on the one site you chose, and stop when it rings, whatever you found.
 
@@ -2000,7 +2000,7 @@ Set a timer for fifteen minutes, read profiles on the one site you chose, and st
 
 ### Send one specific message
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 2, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 2, moves no stage_
 
 Send one message to one person, about something specific in what they wrote. One message, not a batch.
 
@@ -2014,7 +2014,7 @@ Send one message to one person, about something specific in what they wrote. One
 
 ### Propose a short meeting in person
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 3, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 3, moves no stage_
 
 After a few days of messages, propose a short public meeting: a coffee or a walk, with a day named, within the next two or three weeks.
 
@@ -2028,7 +2028,7 @@ After a few days of messages, propose a short public meeting: a coffee or a walk
 
 ### On time, phone away
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 4, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
 
 On a day you have a date: arrive on time, and keep the phone out of sight for the whole of it.
 
@@ -2041,7 +2041,7 @@ On a day you have a date: arrive on time, and keep the phone out of sight for th
 
 ### Ask, then follow what they say
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 4, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
 
 On a date, ask about something that matters to them, and follow their answer with a second question about it.
 
@@ -2054,7 +2054,7 @@ On a date, ask about something that matters to them, and follow their answer wit
 
 ### Share something real in turn
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 4, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
 
 On a date, when they share something that matters, share something of your own of the same weight.
 
@@ -2067,7 +2067,7 @@ On a date, when they share something that matters, share something of your own o
 
 ### End the date clearly and kindly
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 4, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 4, moves no stage_
 
 At the end, say plainly whether you would like to meet again, and make it easy for them to say no. Their answer is final.
 
@@ -2080,7 +2080,7 @@ At the end, say plainly whether you would like to meet again, and make it easy f
 
 ### Meet their good news with real interest
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 6, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
 
 When your partner tells you something good, ask about it, let them tell it, and let it be theirs.
 
@@ -2093,7 +2093,7 @@ When your partner tells you something good, ask about it, let them tell it, and 
 
 ### Thank your partner for one specific thing
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 6, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
 
 Thank your partner for one specific thing they did, and say what it meant to you.
 
@@ -2106,7 +2106,7 @@ Thank your partner for one specific thing they did, and say what it meant to you
 
 ### Do one new thing together
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 6, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
 
 This week, do one thing together that neither of you has done before. Small is fine.
 
@@ -2119,7 +2119,7 @@ This week, do one thing together that neither of you has done before. Small is f
 
 ### Reappraise a disagreement
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 6, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 6, moves no stage_
 
 After a disagreement, spend seven minutes writing it as a neutral friend who wants the best for you both would see it.
 
@@ -2132,7 +2132,7 @@ After a disagreement, spend seven minutes writing it as a neutral friend who wan
 
 ### Talk openly about what you each want
 
-_Proposed: read and veto; joins the candidates at Green · Partner path, stage 7, moves no stage_
+_Proposed: Green given; joins the candidates when its path is wired · Partner path, stage 7, moves no stage_
 
 Once, kindly and without a deadline, talk with your partner about intimacy: what each of you likes and wants.
 

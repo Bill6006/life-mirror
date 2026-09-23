@@ -40,7 +40,7 @@ md += 'Proposed entries, tags, beliefs and trades are content to read and veto. 
 
 // The paths (Parts 23 and 26): each stage with its reps, the rule, what is counted and never counted, what is left out, and the evidence.
 md += '## Paths\n\n'
-md += 'Two paths, each a staged curriculum of reps, for you to read and veto. Nothing here is wired or offered until Green; the reps marked proposed join the candidates only then.\n\n'
+md += 'Two paths, each a staged curriculum of reps, with your Green. Nothing here is wired or offered until each path is wired; the reps marked proposed join the candidates only then.\n\n'
 for (const p of data.paths) {
   md += `### ${p.name}\n\n${p.what}\n\n`
   for (const st of p.stages) {
@@ -71,11 +71,11 @@ for (const p of data.paths) {
   for (const e of p.excluded) md += `- ${e.what}: ${e.why}\n`
   md += '\n'
   if (p.parents) md += `#### For a parent\n\n${p.parents}\n\n`
-  md += '#### The evidence\n\nClaim cards, each source verified at Crossref: drafts until Green, and the disputed ones are never cited.\n\n'
+  md += '#### The evidence\n\nClaim cards, each source verified at Crossref: drafts until their path is wired, and the disputed ones are never cited.\n\n'
   for (const id of p.cards) {
     const c = cardOf.get(id)
     if (!c) continue
-    md += `- **${GRADE[c.grade]}** (${c.status === 'disputed' ? 'disputed, never cited' : c.status === 'draft' ? 'draft, admitted at Green' : 'admitted'}). ${c.claim} ${c.sources.map((x) => x.cite).join(' ')}\n`
+    md += `- **${GRADE[c.grade]}** (${c.status === 'disputed' ? 'disputed, never cited' : c.status === 'draft' ? 'draft, admitted when its path is wired' : 'admitted'}). ${c.claim} ${c.sources.map((x) => x.cite).join(' ')}\n`
   }
   md += '\n'
 }
@@ -98,7 +98,7 @@ for (const f of data.families) {
   for (const m of list) {
     md += `### ${m.name}\n\n`
     const status = []
-    if (m.status === 'proposed') status.push('Proposed: read and veto; joins the candidates at Green')
+    if (m.status === 'proposed') status.push(m.path ? 'Proposed: Green given; joins the candidates when its path is wired' : 'Proposed: read and veto; joins the candidates at Green')
     if (m.parked) status.push('Parked: shown here, never offered')
     if (m.ladder) status.push(`rung ${m.ladder.rung} of the participation ladder`)
     if (m.setup) status.push(m.setup.kind === 'necessity' ? `a setup whose target is a necessity: ${NECESSITY[m.setup.necessity]}` : SETUP[m.setup.kind])

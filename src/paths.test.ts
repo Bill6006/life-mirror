@@ -130,6 +130,18 @@ describe('what the paths say', () => {
     expect(partner.parents).toContain('never schedules an introduction')
   })
 
+  it('offers the relationship course as a suggestion, never a gate (owner, 2026-09-23)', () => {
+    const course = partner.acts?.find((a) => a.id === 'relationship-education')
+    expect(course?.name).toBe('A relationship course, if you want one')
+    expect(course?.what).toMatch(/^A suggestion, never a requirement/)
+    expect(course?.what).toContain('never needed to move on or to declare a step')
+    expect(course?.what).toContain('blocks nothing and is never counted, flagged or shown as missing')
+    expect(partner.stages.find((s) => s.n === 5)?.what).toContain('yours to take or leave')
+    // No path text makes a course, a note or a check a condition of moving on.
+    const GATE = /\b(before you can|required before|must (take|complete|finish|do)|only after (a|the) course|education before any commitment)\b/i
+    for (const p of paths) for (const t of pathTexts(p)) expect(t, t).not.toMatch(GATE)
+  })
+
   it('shows the monthly check’s help only on a yes to its safety or conduct question, and nowhere else (owner, 2026-09-23)', () => {
     const acts = partner.acts ?? []
     const check = acts.find((a) => a.id === 'monthly-check')
@@ -145,7 +157,7 @@ describe('what the paths say', () => {
   })
 })
 
-describe('nothing offered differently, and the evidence held back until Green', () => {
+describe('nothing offered differently, and the evidence held back until each path is wired', () => {
   it('keeps every new rep proposed and out of every picker', () => {
     const fresh = moves.filter((m) => m.path && isProposed(m))
     expect(fresh.length).toBe(28)
@@ -161,7 +173,7 @@ describe('nothing offered differently, and the evidence held back until Green', 
     expect(moves.filter((m) => !isProposed(m)).length).toBe(99)
   })
 
-  it('backs each path with verified cards that are drafts until Green, and disputed ones never cited', () => {
+  it('backs each path with verified cards that stay drafts until the path is wired, and disputed ones never cited', () => {
     for (const p of paths) {
       for (const id of p.cards) {
         const c = cardById(id)
