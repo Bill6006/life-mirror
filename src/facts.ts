@@ -127,7 +127,7 @@ function hardFact(h: { times: number; measures: Record<HardMeasure, Association>
     values[`${id}Tier`] = tier
     parts.push(`${readingById(id).name.toLowerCase()} ${diff === null ? 'not comparable yet' : `${diff > 0 ? '+' : ''}${diff} steps (${tier})`}`)
   }
-  return fact('assoc.hardWorkout', ['workout', 'energy', 'mood', 'stress'], `The mornings after a hard session (rated too hard, or working sets close to failure), against mornings after other days that ended the same, like for like, ${h.times} times: ${parts.join(', ')}. An association, not a cause.`, values, { n: h.times })
+  return fact('assoc.hardWorkout', ['workout', 'energy', 'mood', 'stress'], `The mornings after a hard session (rated too hard, or working sets close to failure), against mornings after other days that ended the same, like for like, ${h.times === 1 ? 'once' : `${h.times} times`}: ${parts.join(', ')}. An association, not a cause.`, values, { n: h.times })
 }
 
 function assocFact(id: string, tags: string[], event: string, a: Association, after: string): Fact | null {

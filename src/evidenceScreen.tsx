@@ -186,14 +186,14 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
               {ev.eveningWorkout && (
                 <p class="calc-line" data-testid="evening-workout-line">
                   <span class="calc-key">{c.eveningWorkoutTitle}</span> ·{' '}
-                  {fill(c.eveningWorkoutLine, { n: String(ev.eveningWorkout.morning.times), with: pct(ev.eveningWorkout.morning.withEvent.mean), without: pct(ev.eveningWorkout.morning.without.mean), sleepWith: pct(ev.eveningWorkout.sleep.withEvent.mean), sleepWithout: pct(ev.eveningWorkout.sleep.without.mean) })}
+                  {fill(c.eveningWorkoutLine, { n: ev.eveningWorkout.morning.times === 1 ? c.oneEvening : fill(c.nEvenings, { n: String(ev.eveningWorkout.morning.times) }), with: pct(ev.eveningWorkout.morning.withEvent.mean), without: pct(ev.eveningWorkout.morning.without.mean), sleepWith: pct(ev.eveningWorkout.sleep.withEvent.mean), sleepWithout: pct(ev.eveningWorkout.sleep.without.mean) })}
                 </p>
               )}
               {ev.hardWorkout && (
                 <p class="calc-line" data-testid="hard-workout-line">
                   <span class="calc-key">{c.hardWorkoutTitle}</span> ·{' '}
                   {fill(c.hardWorkoutLine, {
-                    n: String(ev.hardWorkout.times),
+                    n: ev.hardWorkout.times === 1 ? c.oneDay : fill(c.nDays, { n: String(ev.hardWorkout.times) }),
                     list: HARD_MEASURES.map((id) => {
                       const d = ev.hardWorkout?.measures[id].diff ?? null
                       return fill(c.hardWorkoutItem, { reading: readingById(id).name.toLowerCase(), diff: d === null ? c.notComparable : `${d > 0 ? '+' : ''}${Math.round(d * 10) / 10}` })
