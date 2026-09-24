@@ -165,7 +165,7 @@ export const copy = {
     pickupOn: 'There is a pickup',
     pickupTime: 'Pickup time',
     soloUntil: 'Her bedtime; solo hours run until then',
-    days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+    days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
   win: {
     today: 'Minimum win today',

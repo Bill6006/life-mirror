@@ -115,7 +115,7 @@ export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings
   )
 }
 
-/** Seven small toggles, Sunday first as the phone counts them. */
+/** Seven toggles, Sunday first as the phone counts them, four to a row so each is a full target. */
 function DayChips({ label, value, onChange, testid }: { label: string; value: Record<Weekday, boolean>; onChange: (v: Record<Weekday, boolean>) => void; testid?: string }) {
   return (
     <div class="setting" data-testid={testid}>
@@ -244,6 +244,7 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
             <div class="card">
               <Seg
                 label={copy.week.churchDay}
+                class="seg-days"
                 value={w.churchDay === null ? 'none' : String(w.churchDay)}
                 options={[...WEEKDAYS.map((d) => ({ v: String(d), l: copy.week.days[d] })), { v: 'none', l: copy.week.none }]}
                 onChange={(v) => setWeek((week) => ({ ...week, churchDay: v === 'none' ? null : (Number(v) as Weekday) }))}

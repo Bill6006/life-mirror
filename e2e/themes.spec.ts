@@ -5,7 +5,8 @@ import { expect, test, type Page } from '@playwright/test'
 // states its taps open, at the phone's width, a narrower phone, and a width that stands for text
 // zoomed to 130 percent. Every run of text must read at 4.8 to 1 or better against what is behind
 // it and be at least 11.5 pixels as seen; no two runs of text may collide; nothing may run past the
-// phone's edge or truncate a label; every control must be a 48-pixel target, drawn or extended.
+// phone's edge or truncate a label; every control must be a 48-by-48 target, drawn or extended, its
+// area its own.
 // Then: switching a theme changes the look alone, at once, with nothing lost, and the choice holds.
 
 const THEMES = ['nocturne', 'instrument', 'signal'] as const
@@ -241,23 +242,48 @@ function audit(opts: { zoom: number }) {
     if (el.classList.contains('d-sub')) continue
     issues.push(`truncated: "${(el.textContent ?? '').trim().slice(0, 40)}"`)
   }
-  // Targets: 48 pixels tall as drawn or with the hit area a control extends; 24 wide at least.
+  // Targets: 48 by 48 pixels, as drawn or with the hit area a control extends (its ::after, as the
+  // browser laid it out), less whatever a container clips; and no two controls' areas laid over each
+  // other, so each keeps the whole of its own.
+  const hits: { s: string; el: Element; bar: boolean; x: number; y: number; w: number; h: number }[] = []
   const targets = document.querySelectorAll('button, a[href], input:not([type="checkbox"]), select, textarea, label.check')
   for (const el of targets) {
     const r = el.getBoundingClientRect()
     if (r.width === 0 || r.height === 0) continue
-    if (getComputedStyle(el).visibility === 'hidden') continue
+    const cs = getComputedStyle(el)
+    if (cs.visibility === 'hidden') continue
+    let { left, top, right, bottom } = r
     const after = getComputedStyle(el, '::after')
-    const extends_ = after.content !== 'none' && after.position === 'absolute'
-    const top = extends_ ? Math.max(0, -parseFloat(after.top) || 0) : 0
-    const bottom = extends_ ? Math.max(0, -parseFloat(after.bottom) || 0) : 0
-    const left = extends_ ? Math.max(0, -parseFloat(after.left) || 0) : 0
-    const right = extends_ ? Math.max(0, -parseFloat(after.right) || 0) : 0
-    const h = r.height + top + bottom
-    const w = r.width + left + right
-    if (h < 43.5) issues.push(`target ${Math.round(w)}×${Math.round(h)}: "${(el.textContent ?? el.getAttribute('aria-label') ?? '').trim().slice(0, 30)}"`)
-    else if (w < 24 - 0.5) issues.push(`target ${Math.round(w)}×${Math.round(h)} too narrow: "${(el.textContent ?? '').trim().slice(0, 30)}"`)
+    if (after.content !== 'none' && after.display !== 'none' && after.position === 'absolute' && cs.position !== 'static') {
+      const m = new DOMMatrixReadOnly(after.transform === 'none' ? undefined : after.transform)
+      const ax = r.left + parseFloat(cs.borderLeftWidth) + parseFloat(after.left) + m.e
+      const ay = r.top + parseFloat(cs.borderTopWidth) + parseFloat(after.top) + m.f
+      const aw = parseFloat(after.width)
+      const ah = parseFloat(after.height)
+      if ([ax, ay, aw, ah].every(Number.isFinite)) {
+        left = Math.min(left, ax)
+        top = Math.min(top, ay)
+        right = Math.max(right, ax + aw)
+        bottom = Math.max(bottom, ay + ah)
+      }
+    }
+    left = Math.max(left, 0)
+    right = Math.min(right, document.documentElement.clientWidth)
+    const box = clipTo(el, new DOMRect(left, top, right - left, bottom - top))
+    const s = (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 30)
+    if (!box || box.h < 47.5 || box.w < 47.5) issues.push(`target ${Math.round(box?.w ?? 0)}×${Math.round(box?.h ?? 0)}: "${s}"`)
+    if (box) hits.push({ s, el, bar: Boolean(el.closest('nav.tabs')), ...box })
   }
+  hits.sort((p, q) => p.y - q.y)
+  for (let i = 0; i < hits.length; i++)
+    for (let j = i + 1; j < hits.length && hits[j].y < hits[i].y + hits[i].h; j++) {
+      const a = hits[i]
+      const b = hits[j]
+      if (a.bar !== b.bar || a.el.contains(b.el) || b.el.contains(a.el)) continue
+      const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+      const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+      if (ox > 2 && oy > 2) issues.push(`targets overlap ${Math.round(ox)}×${Math.round(oy)}: "${a.s}" × "${b.s}"`)
+    }
   return issues
 }
 
@@ -359,6 +385,9 @@ for (const theme of THEMES) {
       for (const s of width.w === 360 ? STATES : [...STATES, ...MORE]) {
         await page.reload()
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+        // WIDE_FONT=1 stands in a wide system face (Verdana, as wide as the runner's fallback) for the phone's own
+        // type, which Instrument alone uses; Nocturne and Signal carry their fonts with them.
+        if (process.env.WIDE_FONT && theme === 'instrument') await page.addStyleTag({ content: ':root, [data-theme] { --font: Verdana, "DejaVu Sans", sans-serif }' })
         await tab(page, s.tab)
         if (s.open) await s.open(page)
         await page.waitForTimeout(250)

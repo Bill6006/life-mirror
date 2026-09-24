@@ -8,9 +8,11 @@ export function Seg<T extends string>({
   value,
   options,
   onChange,
+  class: cls,
 }: {
   label: string
   note?: string
+  class?: string
   value: T
   options: readonly { v: T; l: string }[]
   onChange: (v: T) => void
@@ -18,7 +20,7 @@ export function Seg<T extends string>({
   return (
     <div class="setting">
       <p class="setting-label">{label}</p>
-      <div class="seg" role="group" aria-label={label}>
+      <div class={cls ? `seg ${cls}` : 'seg'} role="group" aria-label={label}>
         {options.map((o) => (
           <button key={o.v} type="button" class={o.v === value ? 'seg-opt is-on' : 'seg-opt'} aria-pressed={o.v === value} onClick={() => onChange(o.v)}>
             {o.l}

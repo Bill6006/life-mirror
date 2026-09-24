@@ -270,8 +270,8 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  min-height: 44px;
-  margin: -10px 0 4px -8px;
+  min-height: 48px;
+  margin: -12px 0 2px -8px;
   padding: 0 8px 0 2px;
   border: 0;
   background: none;
@@ -565,7 +565,7 @@ code,
   box-shadow: var(--accent-glow);
 }
 
-/* A 44-pixel control keeps a 48-pixel target. */
+/* A control drawn smaller than 48 pixels keeps a 48-pixel target. */
 .pill-quiet,
 .when-chip,
 .link,
@@ -574,18 +574,18 @@ code,
   position: relative;
 }
 
+/* Its hit area, centred on it: at least 48 by 48 whatever its border, its words or its face. */
 .pill-quiet::after,
-.when-chip::after {
-  content: "";
-  position: absolute;
-  inset: -5px 0;
-}
-
+.when-chip::after,
 .link::after,
 .textbtn.inline::after {
   content: "";
   position: absolute;
-  inset: -14px -6px;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 48px);
+  height: max(100%, 48px);
+  transform: translate(-50%, -50%);
 }
 
 .accent-link {
@@ -599,6 +599,7 @@ code,
 
 .textbtn {
   min-height: 48px;
+  min-width: 48px;
   padding: 0 4px;
   background: none;
   border: 0;
@@ -661,7 +662,7 @@ code,
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
+  gap: 18px 20px;
   margin: 4px 0 12px;
 }
 
@@ -691,7 +692,7 @@ code,
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 18px;
+  gap: 28px 18px;
 }
 
 /* ---------- The label on a move that is being tested: visible, never loud ---------- */
@@ -1671,7 +1672,7 @@ a.chip {
 }
 
 .knows .disclose {
-  min-height: 44px;
+  min-height: 48px;
   padding: 0;
 }
 
@@ -1702,14 +1703,24 @@ a.chip {
 }
 
 /* ---------- Day toggles, segmented choices, switches, time rows, inputs ---------- */
-.days {
-  display: flex;
+/* Seven days four to a row, Sunday to Wednesday over Thursday to Saturday: on any phone each is a
+   48-pixel target, which seven in one row are not. */
+.days,
+.seg.seg-days {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+}
+
+.days {
   margin: 0 0 8px;
 }
 
+.seg-days .seg-opt {
+  padding: 0 4px;
+}
+
 .day {
-  flex: 1;
   min-width: 0;
   min-height: 48px;
   padding: 0 2px;
@@ -1935,6 +1946,10 @@ input[type="time"] {
   white-space: nowrap;
 }
 
+.when + .add {
+  margin-top: 12px;
+}
+
 .ping {
   margin-top: 16px;
 }
@@ -2125,6 +2140,7 @@ input[type="time"] {
 .aim-meta {
   grid-column: 2 / 4;
   grid-row: 2;
+  margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2575,7 +2591,7 @@ button.chip {
   }
 
   .e-cell {
-    min-height: 44px;
+    min-height: 48px;
     border-top: 0;
   }
 }
@@ -2600,7 +2616,7 @@ button.chip {
 .e-t::after {
   content: "";
   position: absolute;
-  inset: -6px -4px;
+  inset: -6px 0;
 }
 
 .e-t::before {
@@ -3092,6 +3108,10 @@ button.chip {
 
 [data-theme="nocturne"] .e-t::before {
   display: none;
+}
+
+[data-theme="nocturne"] .e-t::after {
+  inset: -8px 0;
 }
 
 [data-theme="nocturne"] .e-miss {
@@ -3669,7 +3689,7 @@ button.chip {
 
 .aim-extra .when,
 .aim-extra .aim-when {
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .aim-extra .sub {
@@ -3765,4 +3785,18 @@ a {
 
 .count-row .row-side {
   max-width: 55%;
+}
+
+/* Earlier's column heads in sentence case, so a wide system face still fits them (Instrument uses the
+   phone's own type); Signal keeps capitals in its own monospaced face, which ships with the app. */
+.e-head {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+[data-theme="signal"] .e-head {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
