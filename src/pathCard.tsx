@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import { kindIcon, planState, PlanTap, RowFrame, When, useQuarterMinute } from './aimCard'
 import { Icon } from './icons'
-import { Disclosure, Facts, StageProgress } from './ui'
+import { ClampText, Disclosure, Facts, StageProgress } from './ui'
 import { lastLine, type CueCount } from './aims'
 import { blockAt, type Block } from './blocks'
 import { moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
@@ -256,9 +256,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               <p class="rep-title" data-testid="aim-step">
                 {rep.name}
               </p>
-              <p class="move-what clamp2" data-testid="path-rep-what">
-                {rep.what}
-              </p>
+              <ClampText class="move-what" text={rep.what} testid="path-rep-what" />
               {rep.guardrail && (
                 <p class="calc-line ink" data-testid="path-guardrail">
                   {rep.guardrail}

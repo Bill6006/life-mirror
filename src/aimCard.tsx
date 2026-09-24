@@ -9,7 +9,7 @@ import { Icon, type IconName } from './icons'
 import { TOP_RUNG, type RungMove, type Sitting } from './ladder'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { indexLabel } from './theme'
-import { Disclosure, Facts, RungTrack } from './ui'
+import { ClampText, Disclosure, Facts, RungTrack } from './ui'
 
 /** What a commitment's card and its row on Now share: the step, its state, today's plan and the last fact. */
 interface Shared {
@@ -237,7 +237,7 @@ export function AimCard({
         <p class="eyebrow">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</p>
       </div>
       <StepTitle step={step} tag="h2" class="move-title" />
-      <p class="move-what clamp2">{step.what}</p>
+      <ClampText class="move-what" text={step.what} testid="aim-what" />
       {step.rung !== undefined && step.rungStep && (
         <div class="ladder" data-testid="aim-ladder">
           <RungTrack n={step.rung} of={TOP_RUNG} label={fill(c.rungOf, { n: String(step.rung), of: String(TOP_RUNG), name: step.rungStep })} />

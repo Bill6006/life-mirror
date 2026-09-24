@@ -189,7 +189,13 @@ function audit(opts: { zoom: number }) {
     return right - left > 0.5 && bottom - top > 0.5 ? { x: left, y: top + scrollY, w: right - left, h: bottom - top } : null
   }
   const issues: string[] = []
-  const runs: { s: string; t: Node; bar: boolean; x: number; y: number; w: number; h: number }[] = []
+  const runs: { s: string; t: Node; box: Element; bar: boolean; x: number; y: number; w: number; h: number }[] = []
+  // The box a run of text is laid out in: its nearest ancestor that is not an inline span of the same line.
+  const boxOf = (el: Element) => {
+    let e: Element = el
+    while (e.parentElement && ['inline', 'contents'].includes(getComputedStyle(e).display)) e = e.parentElement
+    return e
+  }
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
   while (walker.nextNode()) {
     const t = walker.currentNode
@@ -216,7 +222,8 @@ function audit(opts: { zoom: number }) {
     }
     if (size < MIN_TEXT - 0.05) issues.push(`tiny ${size.toFixed(1)}px: "${s.slice(0, 40)}"`)
     const bar = Boolean(el.closest('nav.tabs'))
-    for (const r of rects) runs.push({ s: s.slice(0, 30), t, bar, ...r })
+    const box = boxOf(el)
+    for (const r of rects) runs.push({ s: s.slice(0, 30), t, box, bar, ...r })
   }
   // Sorted top to bottom, each run is set only against the runs that start before it ends.
   runs.sort((p, q) => p.y - q.y)
@@ -230,6 +237,8 @@ function audit(opts: { zoom: number }) {
       const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
       const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
       if (ox > 1 && oy > 1 && ox * oy > 6) issues.push(`collision: "${a.s}" × "${b.s}"`)
+      // Two boxes side by side whose words meet on one line with no space between: one has run into the other.
+      else if (ox > -2 && oy > Math.min(a.h, b.h) / 2 && a.box !== b.box && !a.box.contains(b.box) && !b.box.contains(a.box)) issues.push(`touching: "${a.s}" × "${b.s}"`)
     }
   const width = document.documentElement.clientWidth
   for (const r of runs) if (r.x < -0.5 || r.x + r.w > width + 0.5) issues.push(`past the edge: "${r.s}"`)
@@ -302,6 +311,8 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
     open: async (p) => {
       const card = p.locator('[data-path="partner"]')
       for (const id of ['path-dates', 'path-how', 'path-settings']) await card.getByTestId(id).click()
+      // Today's rep unfolded: its whole text and the Less that folds it again.
+      await card.getByTestId('path-rep-what-more').click()
       await p.getByTestId('aim-details').first().click()
     },
   },
@@ -374,7 +385,7 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
-    // Seeding walks a whole evening check-in; the walk through 37 states at three widths follows. One limit for all of it.
+    // Seeding walks a whole evening check-in; the walk through 36 states at three widths follows. One limit for all of it.
     test.setTimeout(900_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)
@@ -476,4 +487,47 @@ test('the choice holds across a relaunch and offline; a missing or unknown value
   await page.evaluate(() => localStorage.removeItem('life-mirror.theme'))
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'nocturne')
+})
+
+test('words folded to two lines show More, and More shows them whole: nothing is cut', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await tab(page, 'Aims')
+  for (const kind of ['path-partner', 'practice']) {
+    await page.getByRole('button', { name: /^Add a commitment/ }).click()
+    await page.getByTestId(`aim-kind-${kind}`).click()
+    if (kind === 'practice') await page.locator('button.row').first().click()
+  }
+  const card = page.locator('[data-path="partner"]')
+  const what = card.getByTestId('path-rep-what')
+  const more = card.getByTestId('path-rep-what-more')
+  await expect(what).toBeVisible()
+  await expect(page.getByTestId('aim-what')).toBeVisible()
+  // More shows exactly where words are folded, in every card, and nowhere else.
+  const folds = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('p.move-what')].map((p) => ({
+        folded: p.scrollHeight > p.clientHeight + 1,
+        more: p.nextElementSibling?.classList.contains('clamp-more') ?? false,
+      })),
+    )
+  const seen = await folds()
+  expect(seen.length).toBeGreaterThanOrEqual(2)
+  expect(seen.some((f) => f.folded)).toBe(true)
+  for (const f of seen) expect(f.more).toBe(f.folded)
+  // The Partner rep's words run past two lines: More opens them whole, and Less folds them again.
+  const whole = (await what.textContent()) ?? ''
+  await expect(more).toHaveText('More')
+  await expect(more).toHaveAttribute('aria-expanded', 'false')
+  expect(await what.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true)
+  await more.click()
+  await expect(more).toHaveText('Less')
+  await expect(more).toHaveAttribute('aria-expanded', 'true')
+  expect(await what.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true)
+  await expect(what).toHaveText(whole)
+  await more.click()
+  await expect(more).toHaveText('More')
+  expect(await what.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true)
 })

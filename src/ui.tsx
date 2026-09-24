@@ -1,5 +1,5 @@
 import type { ComponentChildren, VNode } from 'preact'
-import { useId, useState } from 'preact/hooks'
+import { useId, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { copy } from './copy'
 import { Icon } from './icons'
 import { indexLabel, nextLine, screenDate, stageLine, THEME_SPECS, useTheme } from './theme'
@@ -48,6 +48,38 @@ export function SectionLabel({ children, index, testid }: { children: ComponentC
       )}
       {children}
     </h2>
+  )
+}
+
+/**
+ * Words folded to two lines, and More when they run past them: the rest is one tap away, never cut.
+ * More shows only when something is folded; Less folds it again.
+ */
+export function ClampText({ text, class: cls = '', testid }: { text: string; class?: string; testid?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [open, setOpen] = useState(false)
+  const [folded, setFolded] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || open) return
+    const measure = () => setFolded(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [text, open])
+  return (
+    <>
+      <p ref={ref} class={open ? cls : `${cls} clamp2`} data-testid={testid}>
+        {text}
+      </p>
+      {(folded || open) && (
+        <button type="button" class="link clamp-more" aria-expanded={open} data-testid={testid ? `${testid}-more` : undefined} onClick={() => setOpen(!open)}>
+          {open ? copy.disclose.less : copy.disclose.more}
+        </button>
+      )}
+    </>
   )
 }
 

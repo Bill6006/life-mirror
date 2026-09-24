@@ -1350,6 +1350,8 @@ export const copy = {
     context: 'from {when}',
     contextEarlier: 'earlier',
     repNotes: 'About this rep',
+    more: 'More',
+    less: 'Less',
   },
   // Mirror: what comes before your days, replacing the table of every pair moving together.
   beforeDays: {

@@ -897,6 +897,26 @@ code,
   color: var(--faint);
 }
 
+/* A narrow scale (a small phone, or text zoomed): each band's name on one line, the names taking
+   turns on two lines, so no word runs into the next band's. */
+.scale-wrap {
+  container-type: inline-size;
+}
+
+@container (max-width: 300px) {
+  .scale-band {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0 0.3em;
+    white-space: nowrap;
+  }
+
+  .scale-band:nth-child(even) {
+    padding-top: 1.35em;
+  }
+}
+
 .scale-band.is-active {
   color: var(--ink);
 }
@@ -2201,6 +2221,14 @@ input[type="time"] {
   overflow: hidden;
 }
 
+/* More, under words folded to two lines: on its own line, as wide as its word. */
+.clamp-more {
+  display: flex;
+  width: fit-content;
+  margin: -4px 0 12px;
+  font-size: 14px;
+}
+
 .aim-card.is-due {
   border-color: var(--accent-line);
 }
@@ -2628,13 +2656,15 @@ button.chip {
   background: var(--ink-2);
 }
 
+/* Not logged wraps inside its own column when the column is narrow, never into the next. */
 .e-miss {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   font-size: 12.5px;
+  line-height: 1.25;
   color: var(--faint);
-  white-space: nowrap;
 }
 
 .e-miss::before {
@@ -3618,9 +3648,11 @@ button.chip {
 }
 
 [data-theme="signal"] .day {
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: var(--font-data);
-  font-size: 13px;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 [data-theme="signal"] .switch,
