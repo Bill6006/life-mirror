@@ -1,7 +1,7 @@
 import { blockAt } from './blocks'
 import { db, type Aim, type AimKind, type Cue, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
 import { AIM_KINDS, keyFor, planFor, unblockKeyFor } from './aims'
-import { currentRung, ladderOf, orphanSubjects, skillsOf, TOP_RUNG, type RungMove, type Sitting } from './ladder'
+import { currentRung, ladderOf, orphanSubjects, parseRungId, skillsOf, TOP_RUNG, type RungMove, type Sitting } from './ladder'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
 // them, and the one-tap Resume that records a step as an offer to be asked about next time.
@@ -240,6 +240,46 @@ export function resumeAim(aim: Aim, sitting: Sitting, kind: 'step' | 'unblock', 
       if (plan && plan.offerId === null) await db.intentions.update(plan.id as number, { offerId: offer.id })
     }
     return offer
+  })
+}
+
+/**
+ * Did it already: a session done away from the app, recorded as started and done at the same
+ * moment (Workstream 6). Today's plan for it counts as kept, so no reminder fires for it; a rung's
+ * step moves its skill as Done does.
+ */
+export function logSession(aim: Aim, sitting: Sitting, now: Date = new Date()): Promise<RungMove | null> {
+  return db.transaction('rw', [db.offers, db.outcomes, db.intentions, db.rungMarks, db.skills], async () => {
+    const { day, block } = blockAt(now)
+    const at = now.toISOString()
+    const offer: Offer = {
+      kind: 'step',
+      day,
+      block,
+      at,
+      situationKey: keyFor(aim),
+      target: aim.kind === 'certification' ? 'focus' : 'mood',
+      stance: '',
+      band: '',
+      reading: 0,
+      moveId: sitting.id,
+      label: sitting.name,
+      minutes: sitting.minutes,
+      cardId: null,
+      candidates: [sitting.id],
+      coinFlip: false,
+      passiveId: null,
+      whyNot: null,
+      logged: true,
+      skippedAt: null,
+      closedAt: at,
+    }
+    const id = await db.offers.add(offer)
+    await db.outcomes.add({ offerId: id, moveId: sitting.id, day, block, at, outcome: 'done', why: null, passiveOutcome: null })
+    const plan = planFor(await db.intentions.where('day').equals(day).toArray(), aim.id as number, day)
+    if (plan && plan.offerId === null) await db.intentions.update(plan.id as number, { offerId: id })
+    const rung = parseRungId(sitting.id)
+    return rung ? markRungByStep(rung.skillId, rung.rung, at) : null
   })
 }
 

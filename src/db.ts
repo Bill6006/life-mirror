@@ -163,6 +163,8 @@ export interface Offer {
   setting?: SettingKind
   rule?: PickRule
   stage?: number
+  /** Recorded after the fact with "Did it already": a session done away from the app, started and done at the same moment. */
+  logged?: boolean
   skippedAt: string | null
   /** Set once the outcome has been asked, answered or not. */
   closedAt: string | null

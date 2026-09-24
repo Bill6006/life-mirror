@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks'
 import { AimCard, AimRow } from './aimCard'
-import { activeAims, addAim, addSkill, aimRecords, allIntentions, liveSkills, moveSkill, nameAim, openAimOffers, planAim, removeAim, removeSkill, resumeAim, rungMarks, setAimStep, setLadder } from './aimFlow'
-import { BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { activeAims, addAim, addSkill, aimRecords, allIntentions, liveSkills, logSession, moveSkill, nameAim, openAimOffers, planAim, removeAim, removeSkill, resumeAim, rungMarks, setAimStep, setLadder } from './aimFlow'
+import { BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, sessionsToday, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
 import { lightOnlyDay, partnerOnly, pathName, pathToday, type PathToday } from './pathStage'
@@ -135,6 +135,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
         ? lastLine('moved', lastMovedDay(aim, skills, marks, studyAims), today)
         : null
       : lastLine('done', lastDoneDay(aim, records.offers, records.outcomes, studyAims), today)
+    const todaySessions = sessionsToday(aim, records.offers, records.outcomes, today, skills, studyAims)
     const shared = {
       aim,
       step,
@@ -145,8 +146,11 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       ctx,
       plan: planFor(intentions, aim.id as number, today),
       last,
-      due: aim.id === dueAimId,
+      today: todaySessions,
+      // The line's pick carries the accent until its session is done today (Workstream 6).
+      due: aim.id === dueAimId && todaySessions.done === null,
       onResume: () => void resumeAim(aim, step, 'step'),
+      onLog: () => void logSession(aim, step),
       onUnblock: () => unblock && void resumeAim(aim, sittingOf(unblock), 'unblock'),
       onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), step.name),
     }

@@ -1,12 +1,13 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { cuesFor, movedLine, type BlockReason, type CueCount } from './aims'
+import { cuesFor, movedLine, type BlockReason, type CueCount, type TodaySessions } from './aims'
 import type { Move, PathId } from './catalogue'
 import { copy } from './copy'
 import type { Aim, Cue, DayContext, Intention, LadderKind, Offer } from './db'
-import { fill } from './format'
+import { fill, formatDayShort, formatTime } from './format'
 import { Icon, type IconName } from './icons'
 import { TOP_RUNG, type RungMove, type Sitting } from './ladder'
+import { blockAt } from './blocks'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { indexLabel } from './theme'
 import { ClampText, Disclosure, Facts, RungTrack } from './ui'
@@ -26,11 +27,25 @@ interface Shared {
   plan: Intention | null
   /** One plain fact: when the ladder last moved, or the step was last done. */
   last: string | null
-  /** The one thing to do on the screen (the Brain line names it): its Resume carries the accent. */
+  /** Today's sessions: the latest done, or a Partly with none done (Workstream 6). */
+  today: TodaySessions
+  /** The one thing to do on the screen (the Brain line names it): its Start carries the accent. */
   due?: boolean
   onResume: () => void
+  /** Did it already: a session done away from the app, recorded as done now. */
+  onLog: () => void
   onUnblock: () => void
   onPlan: (cue: Cue, time: string) => void
+}
+
+/** When a session began: the time today, or its day and time when it began on an earlier day. */
+export function startedWhen(offer: Offer): string {
+  const time = formatTime(offer.at)
+  return offer.day === blockAtDay() ? fill(copy.aims.startedAt, { time }) : fill(copy.aims.startedOn, { day: formatDayShort(offer.day), time })
+}
+
+function blockAtDay(): string {
+  return blockAt(new Date()).day
 }
 
 /** Done on a rung's step says what it did, on the same screen, for a few seconds. */
@@ -171,10 +186,12 @@ export function AimCard({
   ctx,
   plan,
   last,
+  today,
   due = false,
   onResume,
   onUnblock,
   onPlan,
+  onLog,
   counts = [],
   onRemove,
   onChangeStep,
@@ -231,7 +248,7 @@ export function AimCard({
   )
   const detailsSub = aim.kind === 'certification' ? (noSkill ? d.detailsStudyNoSkill : d.detailsStudy) : aim.kind === 'person' ? d.detailsPerson : d.detailsPractice
   return (
-    <div class={due && !open ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind={aim.kind}>
+    <div class={due && !open && !today.done ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind={aim.kind}>
       <div class="aim-head">
         <Icon name={kindIcon(aim)} />
         <p class="eyebrow">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</p>
@@ -255,10 +272,10 @@ export function AimCard({
         </div>
       )}
 
-      {open ? (
+      {open && openOffer ? (
         <>
           <p class="move-state" data-testid="aim-started">
-            {c.started}
+            {fill(c.startedCard, { when: startedWhen(openOffer) })}
           </p>
           {canDone && openOffer && (
             <div class="actions">
@@ -268,14 +285,35 @@ export function AimCard({
             </div>
           )}
         </>
+      ) : today.done ? (
+        <>
+          <p class="move-state ink" data-testid="aim-done-today">
+            {fill(c.doneTodayAt, { time: formatTime(today.done.at) })}
+          </p>
+          <div class="actions">
+            <button type="button" class="link" data-testid="aim-another" onClick={onResume}>
+              {c.doAnother}
+            </button>
+          </div>
+        </>
       ) : (
         <>
           <div class="actions">
-            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={onResume}>
-              {c.resume}
+            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={today.partly ? 'aim-resume' : 'aim-start'} onClick={onResume}>
+              {today.partly ? c.resume : c.start}
             </button>
             {!pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={d.planWhen} />}
+            {!today.partly && (
+              <button type="button" class="link" data-testid="aim-log" onClick={onLog}>
+                {c.didIt}
+              </button>
+            )}
           </div>
+          {today.partly && (
+            <p class="note faint no-gap" data-testid="aim-partly">
+              {c.partlyToday}
+            </p>
+          )}
           {(pending || planOpen) && (
             <When
               plan={plan}
@@ -300,7 +338,7 @@ export function AimCard({
         </div>
       )}
 
-      {blocked && unblock && !open && (
+      {blocked && unblock && !open && !today.done && (
         <div class="calc" data-testid="aim-blocked">
           <p class="calc-line">{fill(c.blocked, { why: c.blockedWhy[blocked] })}</p>
           <p class="calc-line ink">
@@ -435,18 +473,20 @@ export function RowFrame({
  * under both a line of facts with Plan. Several fit without a scroll; Change the step, the proofs
  * and Remove live on Aims.
  */
-export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, due = false, onResume, onUnblock, onPlan, index = 0 }: Shared & { index?: number }) {
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, today, due = false, onResume, onUnblock, onPlan, onLog, index = 0 }: Shared & { index?: number }) {
   const c = copy.aims
   const [moved, showMoved] = useMoved()
   const [planOpen, setPlanOpen] = useState(false)
   useQuarterMinute()
   const canDone = openOffer !== null && doneOpen(openOffer)
   const { pending, cues } = planState(plan, ctx)
+  // Workstream 6: a fresh session is Start; Resume only finishes one answered Partly today; once one is done today the row says so and asks nothing.
+  const done = !open && today.done !== null
   return (
     <RowFrame
       icon={kindIcon(aim)}
       index={index}
-      due={due && !open}
+      due={due && !open && !done}
       testKind={aim.kind}
       kind={<span class="aim-kind">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</span>}
       title={<StepTitle step={step} class="aim-title" />}
@@ -467,6 +507,10 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
               </button>
             )}
           </>
+        ) : done ? (
+          <span class="ink" data-testid="aim-done-today">
+            {c.doneToday}
+          </span>
         ) : (
           <>
             {blocked && unblock && (
@@ -474,16 +518,43 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
                 {c.unblockStart}
               </button>
             )}
-            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={onResume}>
-              {c.resume}
+            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={today.partly ? 'aim-resume' : 'aim-start'} onClick={onResume}>
+              {today.partly ? c.resume : c.start}
             </button>
           </>
         )
       }
-      facts={<Facts items={[fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, blocked && unblock && !open && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]} />}
-      links={!open && !pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} />}
+      facts={
+        <Facts
+          items={
+            open && openOffer
+              ? [startedWhen(openOffer), fill(copy.catalogue.minutes, { n: String(step.minutes) })]
+              : done && today.done
+                ? [formatTime(today.done.at), last && <span data-testid="aim-last">{last}</span>]
+                : [fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, today.partly && <span data-testid="aim-partly">{c.partlyToday}</span>, blocked && unblock && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]
+          }
+        />
+      }
+      links={
+        !open &&
+        (done ? (
+          <button type="button" class="link" data-testid="aim-another" onClick={onResume}>
+            {c.doAnother}
+          </button>
+        ) : (
+          <>
+            {!pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} />}
+            {!today.partly && (
+              <button type="button" class="link" data-testid="aim-log" onClick={onLog}>
+                {c.didIt}
+              </button>
+            )}
+          </>
+        ))
+      }
       below={
         !open &&
+        !done &&
         (pending || planOpen) && (
           <When
             plan={plan}

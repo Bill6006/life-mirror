@@ -472,6 +472,17 @@ export interface PathToday {
   doneEver: ReadonlySet<string>
   /** The faith family is hidden (Rule 10). */
   faithHidden: boolean
+  /** Today's one People rep, done, on either path: nothing else is offered today (D4). */
+  repDone: RepDone | null
+  /** Today's People rep answered Partly with none done: the rep Resume finishes. */
+  repPartly: string | null
+}
+
+/** Today's People rep, completed: the rep, when it was marked done, and the paths it counted for. */
+export interface RepDone {
+  moveId: string
+  at: string
+  paths: PathId[]
 }
 
 export interface PathTodayInput {
@@ -507,13 +518,39 @@ export function pathToday(i: PathTodayInput): PathToday {
   const faithHidden = i.faithHidden === true
   // Light reps only on a hard day is the Partner path's rule (Part 27).
   const elig = eligibility({ path, state, around, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true, doneEver, faithHidden })
+  // One People rep a day across both paths (Part 24; Workstream 6, D4): once today's is done, no other is offered today; after a Partly, only that rep, to finish.
+  const today = peopleRepToday(i.offers, i.outcomes, i.day)
   const picked = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
   // Your pick stands whatever the shape says, but never a faith talk while the faith family is hidden.
   const mine = picked && !(faithHidden && picked.hiddenWith === 'faith') ? picked : null
-  const pick: RepPick | null = mine
-    ? { moveId: mine.id, setting: settingFor(mine, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [mine.id], propensities: { [mine.id]: 1 }, leaning: false }
-    : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage)
-  return { aim: i.aim, path, entries, state, elig, pick, around, dateDay, doneEver, faithHidden }
+  const yours = (m: Move): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [m.id], propensities: { [m.id]: 1 }, leaning: false })
+  const pick: RepPick | null = today.done
+    ? null
+    : today.partly && hasMove(today.partly)
+      ? yours(moveById(today.partly))
+      : mine
+        ? yours(mine)
+        : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage)
+  return { aim: i.aim, path, entries, state, elig, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly }
+}
+
+/** A People rep's session, from either path: a step offer that names its paths (or, before paths, a person's step). */
+function isPeopleRep(o: Offer): boolean {
+  return o.kind === 'step' && (Boolean(o.paths?.length) || o.situationKey.startsWith('aim:path:') || o.situationKey === 'aim:person')
+}
+
+/** Today's People rep, by the day it was started: the latest one done, else the rep answered Partly with none done. */
+export function peopleRepToday(offers: readonly Offer[], outcomes: readonly Outcome[], day: string): { done: RepDone | null; partly: string | null } {
+  const answer = new Map(outcomes.map((x) => [x.offerId, x]))
+  let done: RepDone | null = null
+  let partly: { moveId: string; at: string } | null = null
+  for (const o of offers) {
+    if (o.day !== day || o.skippedAt !== null || !isPeopleRep(o)) continue
+    const x = answer.get(o.id as number)
+    if (x?.outcome === 'done' && (!done || x.at > done.at)) done = { moveId: o.moveId, at: x.at, paths: o.paths ? [...o.paths] : [] }
+    if (x?.outcome === 'partly' && (!partly || x.at > partly.at)) partly = { moveId: o.moveId, at: x.at }
+  }
+  return { done, partly: done ? null : (partly?.moveId ?? null) }
 }
 
 /** A rep the Partner path holds and the Social path does not. */
@@ -548,6 +585,17 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
   if (!on.length) return null
   const ids = on.map((v) => v.path.id)
   const row = (view: PathToday, pick: RepPick | null): PeopleRow => ({ view, pick, paths: pick ? pathsHolding(pick.moveId, ids) : [view.path.id] })
+  // Today's rep done: the row says so and offers nothing more today; answered Partly: that rep alone, to finish (D4).
+  const done = on.find((v) => v.repDone)?.repDone
+  if (done) {
+    const view = on.find((v) => done.paths.includes(v.path.id)) ?? on[0]
+    return { view, pick: null, paths: done.paths.length ? done.paths.filter((p) => ids.includes(p)) : [view.path.id] }
+  }
+  const partly = on.find((v) => v.repPartly)?.repPartly
+  if (partly) {
+    const view = on.find((v) => placeOn(v.path.id, partly)) ?? on[0]
+    return row(view, view.pick)
+  }
   const yours = on.filter((v) => v.pick?.rule === 'you').sort((a, b) => ((a.aim.pick?.at ?? '') < (b.aim.pick?.at ?? '') ? 1 : -1))
   if (yours.length) return row(yours[0], yours[0].pick)
   if (partner) {
@@ -581,7 +629,8 @@ export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx
   if (!views.length) return null
   const out = views.some((v) => v.elig.nobodyAround)
   return {
-    eligible: views.map((v) => ({ path: v.path.id, ids: v.elig.eligible.map((m) => m.id) })),
+    // Once today’s People rep is done, nothing more is offerable today (D4).
+    eligible: views.map((v) => ({ path: v.path.id, ids: v.repDone ? [] : v.elig.eligible.map((m) => m.id) })),
     ineligibleReason: out ? copy.path.shape.outReason : null,
     day,
     block,

@@ -5,7 +5,7 @@ import { updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatTime, formatWhen } from './format'
 import { useLive } from './live'
 import { privateAssociationsToday, tierOfCard } from './learningFlow'
-import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow } from './offerFlow'
+import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow, replacementsFor } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
 import { INGREDIENTS } from './score'
@@ -49,12 +49,22 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
   const logged = useLive(() => outcomeFor(offer.id), [offer.id])
   const known = outcome ?? logged ?? null
   // The Done tap opens once the move's stated minutes have passed and closes with the block; the clock is read again every so often.
-  const [, setTick] = useState(0)
+  const [tick, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 15_000)
     return () => clearInterval(id)
   }, [])
   const canDone = !compact && !known && offer.closedAt === null && offer.skippedAt === null && doneOpen(offer)
+  // Skip says what it will do: another move when one fits now, else plain Skip (D6). Read again with the clock, since it can open a write.
+  const [others, setOthers] = useState<number | null>(null)
+  useEffect(() => {
+    if (!onSkip) return
+    let live = true
+    void replacementsFor(offer).then((n) => live && setOthers(n))
+    return () => {
+      live = false
+    }
+  }, [offer.id, offer.skippedAt, onSkip === undefined, tick])
 
   // Once logged, the card is a fact line: no box, nothing sits there unticked.
   if (!compact && known && known.outcome) {
@@ -175,9 +185,9 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
               {c.done}
             </button>
           )}
-          {onSkip && (
-            <button type="button" class="textbtn" onClick={onSkip}>
-              {c.skip}
+          {onSkip && others !== null && (
+            <button type="button" class="textbtn" data-testid="move-skip" onClick={onSkip}>
+              {others > 0 ? c.skip : c.skipOnly}
             </button>
           )}
           {move?.family === 'faith' && (

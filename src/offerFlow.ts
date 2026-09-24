@@ -75,12 +75,19 @@ export function doneAvailableAt(offer: Pick<Offer, 'at' | 'moveId' | 'minutes'>)
   return new Date(offer.at).getTime() + minutes * 60_000
 }
 
+/** A commitment's session, started by your tap: a step, an unblock move, or a study night's sitting; never a move the draw offered. */
+export function isSession(offer: Pick<Offer, 'kind'>): boolean {
+  return offer.kind === 'step' || offer.kind === 'unblock' || offer.kind === 'study'
+}
+
 /**
- * Whether the Done tap is open: the move's minutes have passed and the offer's block is still on.
- * Once the block is over, the next check-in is the only way to record the move, so a later tap
- * never writes a false time.
+ * Whether the Done tap is open. A session you started stays open until you resolve it, whatever
+ * the clock or a check-in boundary says (Workstream 6, D3). A move opens once its minutes have
+ * passed and while its block is on; once the block is over, the next check-in is the only way to
+ * record it, so a later tap never writes a false time.
  */
-export function doneOpen(offer: Pick<Offer, 'at' | 'moveId' | 'day' | 'block' | 'minutes'>, now: Date = new Date()): boolean {
+export function doneOpen(offer: Pick<Offer, 'kind' | 'at' | 'moveId' | 'day' | 'block' | 'minutes'>, now: Date = new Date()): boolean {
+  if (isSession(offer)) return offer.moveId !== NOTHING
   const availableAt = doneAvailableAt(offer)
   if (availableAt === null || now.getTime() < availableAt) return false
   const slot = blockAt(now)
@@ -255,7 +262,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const tested = await db.cards.where('situationKey').equals(situation.key).filter(onPurpose).toArray()
     const obs = tested.length ? observations(await db.checkins.toArray(), await db.offers.toArray(), await db.outcomes.toArray()) : []
     const scheduled = scheduledMoves(tested, obs)
-    const base = withWindowPenalty(candidatesFor(situation, t), situation.target)
+    // After a skip here, Skip promised another move: the replacement is drawn among real moves alone (D6).
+    const replacing = (await db.offers.where('day').equals(day).filter((o) => o.block === block && o.kind === 'block' && o.skippedAt !== null).count()) > 0
+    const drawn = candidatesFor(situation, t)
+    const base = withWindowPenalty(replacing ? { ...drawn, candidates: drawn.candidates.filter((c) => c.id !== NOTHING) } : drawn, situation.target)
     const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
     const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))
     const draw = rng ?? Math.random
@@ -338,8 +348,9 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     const pickup = minutesOf(ctx.pickupTime)
     if (minutes < pickup - PICKUP_WINDOW_MIN || minutes >= pickup) return null
     const { block } = blockAt(now)
-    const existing = await db.offers.where('day').equals(day).filter((o) => o.kind === 'pickup').first()
-    if (existing) return existing.skippedAt ? null : existing
+    // The day's live pickup move stands; after a skip, another is drawn from what is left (D6).
+    const existing = await db.offers.where('day').equals(day).filter((o) => o.kind === 'pickup' && o.skippedAt === null).first()
+    if (existing) return existing
 
     const t = await withLearning(await todayState(day, settings), block, day)
     const set = pickupCandidates(block, t)
@@ -464,10 +475,44 @@ export function studyNightsAll(): Promise<StudyNight[]> {
   return db.studyNights.toArray()
 }
 
-/** Records the skip and, for a block offer, offers the next candidate for the same slot if any is left. */
+/**
+ * Records the skip, which completes nothing, and shows another at once where one fits: a move for
+ * the same check-in, or another move before pickup while its window is open (D6).
+ */
 export async function skipOffer(offer: Offer): Promise<Offer | null> {
   await db.offers.update(offer.id as number, { skippedAt: new Date().toISOString() })
-  return offer.kind === 'block' ? ensureOffer(offer.day, offer.block) : null
+  if (offer.kind === 'block') return ensureOffer(offer.day, offer.block)
+  if (offer.kind === 'pickup') return ensurePickupOffer(new Date())
+  return null
+}
+
+/**
+ * How many moves Skip could show in this offer's place right now: the same candidate rules as the
+ * draw, with this move and everything offered today left out, and never "Nothing today". Zero
+ * when a skip could show nothing, so the card says "Skip" alone rather than promise another (D6).
+ */
+export async function replacementsFor(offer: Offer, now: Date = new Date()): Promise<number> {
+  const settings = await getSettings()
+  if (settings.hideMoves || offer.skippedAt !== null || offer.closedAt !== null) return 0
+  const ctx = await ensureDayContext(offer.day, settings)
+  const t = await todayState(offer.day, settings, now)
+  const left = (ids: readonly string[]) => ids.filter((id) => id !== NOTHING && id !== offer.moveId).length
+  if (offer.kind === 'block') {
+    const slot = blockAt(now)
+    if (slot.day !== offer.day || slot.block !== offer.block) return 0
+    const checkin = await getCheckIn(offer.day, offer.block)
+    const situation = checkin && isComplete(checkin) ? situationOf(checkin) : null
+    return situation ? left(candidatesFor(situation, await withLearning(t, offer.block, offer.day)).candidates.map((c) => c.id)) : 0
+  }
+  if (offer.kind === 'pickup') {
+    if (!ctx.withHer || ctx.pickupTime === null || dayKey(now) !== offer.day) return 0
+    const minutes = now.getHours() * 60 + now.getMinutes()
+    const pickup = minutesOf(ctx.pickupTime)
+    if (minutes < pickup - PICKUP_WINDOW_MIN || minutes >= pickup) return 0
+    const block = blockAt(now).block
+    return left(pickupCandidates(block, await withLearning(t, block, offer.day)).candidates.map((c) => c.id))
+  }
+  return 0
 }
 
 /** What happened, in one tap, kept apart from what was offered. Null closes the question without an answer. */

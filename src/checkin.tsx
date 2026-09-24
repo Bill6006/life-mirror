@@ -24,7 +24,7 @@ import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
 import { TodayChips } from './extras'
 import { MoveCard } from './moveCard'
-import { offerForSlot, recordOutcome } from './offerFlow'
+import { isSession, offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
@@ -96,6 +96,8 @@ export function CheckInScreen({
     const answer = (a: Answer) => {
       setAsked((s) => new Set(s).add(toAsk.id as number))
       setMoved(null)
+      // A session you started stays yours to resolve: Not now leaves it open, with Done still on its row (D3).
+      if (a.outcome === null && isSession(toAsk)) return
       void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }).then((m) => m && setMoved(m))
     }
     return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} notice={movedLine(moved)} />

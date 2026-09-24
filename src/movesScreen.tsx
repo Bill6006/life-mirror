@@ -28,7 +28,7 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
       {settings.hideMoves ? (
         <p class="note">{c.hidden}</p>
       ) : offer ? (
-        <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />
+        <MoveCard offer={offer} onSkip={offer === here ? () => void skipOffer(offer) : undefined} />
       ) : (
         <div class="card pad">
           <p class="eyebrow small">{c.title}</p>

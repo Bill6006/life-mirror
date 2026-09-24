@@ -244,6 +244,32 @@ export function lastDoneDay(aim: Aim, offers: readonly Offer[], outcomes: readon
   return last
 }
 
+export interface TodaySessions {
+  /** The latest session started today and marked done. */
+  done: Outcome | null
+  /** A session started today was answered Partly and none is done since: the one case Resume names. */
+  partly: boolean
+}
+
+/**
+ * A commitment's sessions today, by the day each was started, never the day it was answered: the
+ * latest one done, or a Partly with none done. An unblock move is not the commitment's session.
+ */
+export function sessionsToday(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], day: string, skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): TodaySessions {
+  const keys = stepKeysOf(aim, studyAims)
+  const byOffer = new Map(outcomes.map((x) => [x.offerId, x]))
+  let done: Outcome | null = null
+  let partly = false
+  for (const o of offers) {
+    if (o.day !== day || o.skippedAt !== null || (o.kind !== 'step' && o.kind !== 'study')) continue
+    if (!keys.includes(o.situationKey) && !studyOfferBelongs(o, aim, skills, studyAims)) continue
+    const x = byOffer.get(o.id as number)
+    if (x?.outcome === 'done' && (!done || x.at > done.at)) done = x
+    if (x?.outcome === 'partly') partly = true
+  }
+  return { done, partly: partly && done === null }
+}
+
 /** One plain fact for the row: when the ladder last moved, or the step was last done, in days. A fact, never a streak. */
 export function lastLine(kind: 'moved' | 'done', day: string | null, today: string): string {
   const words = kind === 'moved' ? copy.aims.lastMoved : copy.aims.lastDone

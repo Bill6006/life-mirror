@@ -441,6 +441,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const records = { offers: i.offers.filter((o) => o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study'), outcomes: i.outcomes, nights: i.nights }
   const doneIds = new Set(i.outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
   const perAim = new Map<number, { name: string; sittings: Offer[]; skillIds: Set<number> }>()
+  const pathOffers = i.offers.filter(onTheSheet)
   const block = blockAt(i.now).block
   for (const aim of i.aims) {
     // A paused path says nothing; it has no row and no step (Part 24). The Partner path writes no
@@ -448,7 +449,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (aim.kind === 'path' && (aim.pausedAt || aim.path === 'partner')) continue
     const id = aim.id as number
     const study = aim.kind === 'certification'
-    const pt = aim.kind === 'path' ? pathToday({ aim, offers: i.offers, outcomes: i.outcomes, ctx, day: today, block }) : null
+    // The sheet the free models read never takes in the Partner path (Part 27): a Partner-only rep done today changes nothing here, though the People row and the coach know it (D4).
+    const pt = aim.kind === 'path' ? pathToday({ aim, offers: pathOffers, outcomes: i.outcomes, ctx, day: today, block }) : null
     const name = pt ? pathName(pt.path) : (aim.name ?? copy.aims.kinds[aim.kind])
     const step = pt?.pick ? sittingOf(moveById(pt.pick.moveId)) : stepFor(aim, i.skills, i.marks, studyAims)
     const own = study ? skillsOf(aim, i.skills, studyAims) : []
@@ -486,7 +488,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const ladderText = study && own.length ? `; ${own.length} ${own.length === 1 ? 'skill' : 'skills'}: ${rungs.map((n, r) => (n ? `${n} at ${rungName(r, kind)}` : null)).filter(Boolean).join(', ')}` : ''
     const planText = plan ? `; planned today ${copy.aims.cues[plan.cue].toLowerCase()} at ${plan.time}${plan.offerId !== null ? ', started' : ', not started'}` : '; no plan today'
     const cueText = counts.length ? `; cues: ${counts.map((c) => `${copy.aims.cues[c.cue].toLowerCase()} started ${c.started} of ${c.n}`).join(', ')}` : ''
-    const stepText = pt && !pt.pick ? `no rep of its stage fits this ${block} by today’s shape` : `the step is “${step.title}”, ${step.minutes} min`
+    const stepText = pt?.repDone ? `today’s People rep is done: “${moveById(pt.repDone.moveId).name}”` : pt && !pt.pick ? `no rep of its stage fits this ${block} by today’s shape` : `the step is “${step.title}”, ${step.minutes} min`
     facts.push(fact(`aim.${id}`, study ? ['study', 'ladder', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'study' : aim.kind}): ${stepText}; ${gapText}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}${ladderText}.`, values))
 
     // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by tier 1 alone.
@@ -494,14 +496,14 @@ export function buildFactSheet(i: FactInput): FactSheet {
       const bySetting = doneBySetting(pt.path, pt.entries, today)
       const done = Object.values(bySetting).reduce<number>((a, b) => a + (b ?? 0), 0)
       const settingsText = (Object.entries(bySetting) as [SettingKind, number][]).map(([k, n]) => `${copy.catalogue.paths.settingNames[k].toLowerCase()} ${n}`).join(', ')
-      const fitting = pt.elig.eligible.map((m) => m.name)
+      const fitting = pt.repDone ? [] : pt.elig.eligible.map((m) => m.name)
       const stageName = pt.path.stages.find((s) => s.n === pt.state.stage)?.name ?? ''
       facts.push(
         fact(
           `path.${id}`,
           ['social', 'people'],
-          `${pathName(pt.path)}: ${stageWords(pt.path, pt.state.stage)}${pt.state.reentry ? ', with reps from the stage below after a quiet stretch' : ''}; reps done in the last ${pt.path.rule.withinWeeks} weeks by setting: ${settingsText || 'none yet'}; fitting this ${block}: ${fitting.length ? fitting.join(', ') : pt.elig.nobodyAround ? 'none, nobody around by today’s shape' : 'none'}.`,
-          { path: pt.path.id, stage: pt.state.stage, stages: pt.path.stages.length, stageName, reentry: pt.state.reentry ? 1 : 0, done, ...Object.fromEntries(Object.entries(bySetting)), eligible: pt.elig.eligible.map((m) => m.id).join(','), nobodyAround: pt.elig.nobodyAround ? 1 : 0 },
+          `${pathName(pt.path)}: ${stageWords(pt.path, pt.state.stage)}${pt.state.reentry ? ', with reps from the stage below after a quiet stretch' : ''}; reps done in the last ${pt.path.rule.withinWeeks} weeks by setting: ${settingsText || 'none yet'}; ${pt.repDone ? 'today’s one People rep is done, so none is offered again today' : `fitting this ${block}: ${fitting.length ? fitting.join(', ') : pt.elig.nobodyAround ? 'none, nobody around by today’s shape' : 'none'}`}.`,
+          { path: pt.path.id, stage: pt.state.stage, stages: pt.path.stages.length, stageName, reentry: pt.state.reentry ? 1 : 0, done, ...Object.fromEntries(Object.entries(bySetting)), eligible: pt.repDone ? '' : pt.elig.eligible.map((m) => m.id).join(','), nobodyAround: pt.elig.nobodyAround ? 1 : 0, repDone: pt.repDone ? 1 : 0 },
           { n: done },
         ),
       )

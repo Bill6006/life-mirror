@@ -1,14 +1,14 @@
 import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
-import { kindIcon, planState, PlanTap, RowFrame, When, useQuarterMinute } from './aimCard'
+import { kindIcon, planState, PlanTap, RowFrame, startedWhen, When, useQuarterMinute } from './aimCard'
 import { Icon } from './icons'
 import { ClampText, Disclosure, Facts, StageProgress } from './ui'
 import { lastLine, type CueCount } from './aims'
 import { blockAt, type Block } from './blocks'
-import { moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
+import { hasMove, moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import { db, getDayContext, getSettings, type Aim, type Cue, type DayContext, type Intention, type Offer } from './db'
-import { fill } from './format'
+import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { setPathPick } from './pathFlow'
@@ -44,10 +44,21 @@ function whereWords(s: SettingKind): string {
   return fill(copy.path.where, { where: copy.catalogue.paths.settingNames[s] })
 }
 
-/** The rep on show: the started one while its step is open, else today's pick. */
+/** The rep on show: the started one while its step is open, else today's rep once done, else today's pick. */
 function repOf(p: Pick<PathShared, 'pt' | 'open' | 'openOffer'>): Move | null {
   if (p.open && p.openOffer) return moveById(p.openOffer.moveId)
+  if (p.pt.repDone && hasMove(p.pt.repDone.moveId)) return moveById(p.pt.repDone.moveId)
   return p.pt.pick ? moveById(p.pt.pick.moveId) : null
+}
+
+/** Today's one People rep is done and nothing is started: the row and the card say so and offer nothing more today (D4). */
+function doneToday(p: Pick<PathShared, 'pt' | 'open'>): boolean {
+  return !p.open && p.pt.repDone !== null
+}
+
+/** Start for a fresh rep; Resume only for today's rep answered Partly. */
+function startLabel(p: Pick<PathShared, 'pt'>, rep: Move): string {
+  return p.pt.repPartly === rep.id ? copy.aims.resume : copy.aims.start
 }
 
 /** Change, as a quiet tap on the facts line, so the side holds Resume alone. */
@@ -104,13 +115,14 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
   const setting = p.open ? (p.openOffer?.setting ?? null) : (p.pt.pick?.setting ?? null)
   const { pending, cues } = planState(p.plan, p.ctx)
   const notes = rep && (rep.cue || !rep.path?.[p.pt.path.id]?.advances)
+  const done = doneToday(p)
   // Plan opens the cue chips and, under them, the rep's cue and warm-up note; with no cue ahead the same tap says it is about the rep.
-  const showTap = !p.open && rep && ((!pending && cues > 0) || notes)
+  const showTap = !p.open && !done && rep && ((!pending && cues > 0) || notes)
   return (
     <RowFrame
       icon={kindIcon(p.aim)}
       index={p.index ?? 0}
-      due={Boolean(p.due) && !p.open && rep !== null}
+      due={Boolean(p.due) && !p.open && !done && rep !== null}
       testKind="path"
       path={p.pt.path.id}
       kind={
@@ -131,7 +143,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
       }
       extra={
         <>
-          {rep && !p.open && p.pt.pick?.chosenBy === 'coach' && p.pt.pick.version && (
+          {rep && !p.open && !done && p.pt.pick?.chosenBy === 'coach' && p.pt.pick.version && (
             <span class="sub" data-testid="path-coach-version">
               {p.pt.pick.version}
             </span>
@@ -158,17 +170,28 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
               </button>
             )}
           </>
+        ) : done ? (
+          <span class="ink" data-testid="aim-done-today">
+            {copy.aims.doneToday}
+          </span>
         ) : (
           rep && (
-            <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={p.onResume}>
-              {copy.aims.resume}
+            <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={p.pt.repPartly === rep.id ? 'aim-resume' : 'aim-start'} onClick={p.onResume}>
+              {startLabel(p, rep)}
             </button>
           )
         )
       }
-      facts={rep && <Facts items={repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you', (p.paths?.length ?? 0) > 1)} />}
+      facts={
+        done && p.pt.repDone ? (
+          <Facts items={[formatTime(p.pt.repDone.at), (p.paths?.length ?? 0) > 1 && <span data-testid="path-both">{copy.path.both}</span>]} />
+        ) : (
+          rep && <Facts items={repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you' && p.pt.repPartly !== rep.id, (p.paths?.length ?? 0) > 1)} />
+        )
+      }
       links={
-        !p.open && (
+        !p.open &&
+        !done && (
           <>
             <ChangeTap onChange={p.onChange} />
             {showTap && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={!pending && cues > 0 ? copy.disclose.plan : copy.disclose.repNotes} />}
@@ -177,6 +200,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
       }
       below={
         !p.open &&
+        !done &&
         rep &&
         (pending || planOpen) && (
           <>
@@ -220,8 +244,9 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
   const reps = countsByRep(p.pt.entries).filter((r) => r.offered > 0 && shown(r.moveId))
   const last = p.pt.entries.filter((e) => e.outcome === 'done' && shown(e.moveId)).pop()
   const hasNotes = rep && (rep.cue || !rep.path?.[path.id]?.advances)
+  const done = doneToday(p)
   return (
-    <div class={p.due && !p.open && rep ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind="path" data-path={path.id}>
+    <div class={p.due && !p.open && !done && rep ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind="path" data-path={path.id}>
       <div class="aim-head">
         <Icon name={kindIcon(p.aim)} />
         <p class="eyebrow">{pathName(path)}</p>
@@ -263,7 +288,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
                 </p>
               )}
               <p class="aim-facts">
-                <Facts items={repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you', (p.paths?.length ?? 0) > 1)} />
+                <Facts items={done ? [(p.paths?.length ?? 0) > 1 && <span data-testid="path-both">{copy.path.both}</span>] : repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you' && p.pt.repPartly !== rep.id, (p.paths?.length ?? 0) > 1)} />
               </p>
             </>
           ) : (
@@ -278,7 +303,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
             {p.open ? (
               <>
                 <span class="move-state" data-testid="aim-started">
-                  {copy.aims.started}
+                  {p.openOffer ? fill(copy.aims.startedCard, { when: startedWhen(p.openOffer) }) : copy.aims.started}
                 </span>
                 {canDone && p.openOffer && (
                   <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(p.openOffer as Offer)}>
@@ -286,11 +311,15 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
                   </button>
                 )}
               </>
+            ) : done && p.pt.repDone ? (
+              <span class="move-state ink" data-testid="aim-done-today">
+                {fill(copy.aims.doneTodayAt, { time: formatTime(p.pt.repDone.at) })}
+              </span>
             ) : (
               <>
                 {rep && (
-                  <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={p.onResume}>
-                    {copy.aims.resume}
+                  <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={p.pt.repPartly === rep.id ? 'aim-resume' : 'aim-start'} onClick={p.onResume}>
+                    {startLabel(p, rep)}
                   </button>
                 )}
                 <button type="button" class="textbtn" data-testid="path-change" onClick={p.onChange}>
@@ -300,7 +329,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               </>
             )}
           </div>
-          {!p.open && rep && (pending || planOpen) && (
+          {!p.open && !done && rep && (pending || planOpen) && (
             <>
               <When
                 plan={p.plan}
