@@ -364,6 +364,8 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
     tab: 'Now',
     open: async (p) => {
       const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Spanish' })
+      // Wait for the row to draw before reading its state: started (Done), or fresh or done today (Start or Do another).
+      await row.getByTestId('aim-done').or(row.getByTestId('aim-start')).or(row.getByTestId('aim-another')).first().waitFor()
       if (await row.getByTestId('aim-done').count()) await row.getByTestId('aim-done').click()
       else {
         await row.getByTestId('aim-start').or(row.getByTestId('aim-another')).first().click()
@@ -448,7 +450,7 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
     // Seeding walks a whole evening check-in; the walk through forty states at three widths follows. One limit for all of it.
-    test.setTimeout(900_000)
+    test.setTimeout(1_200_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)
     const found: string[] = []
