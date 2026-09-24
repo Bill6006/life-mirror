@@ -3,7 +3,7 @@ import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import cards from '../../src/library.json'
 import { cardLines, GUARDED_TAGS, retrieve } from './library'
-import { buildMessages, buildReviewMessages, parseOutput, rankedLines } from './prompt'
+import { buildMessages, buildReviewMessages, claudeInstructions, parseOutput, rankedLines } from './prompt'
 import { textOf } from './ai'
 import { lineBriefing, sheetLines, type LineBriefing, type Said } from './briefing'
 
@@ -109,5 +109,12 @@ describe('what the model is asked', () => {
     expect(textOf({ choices: [{ message: { content: 'd' } }] })).toBe('d')
     expect(textOf({ result: { response: 'e' } })).toBe('e')
     expect(textOf(null)).toBe('')
+  })
+})
+
+describe('the review closes its loop (Part 36)', () => {
+  it('tells Claude’s review, and not its line, to say what the record shows of last week’s change', () => {
+    expect(claudeInstructions('review')).toMatch(/review\.change, say in "held" or "didNot" what the record shows of last week's change/)
+    expect(claudeInstructions('line')).not.toMatch(/review\.change/)
   })
 })

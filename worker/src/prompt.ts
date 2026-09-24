@@ -56,6 +56,7 @@ const REVIEW_SYSTEM = `You write the weekly review for one person's phone, on Su
 Three short parts. "held": what held this week, stated as facts. "didNot": what did not, stated as facts, with no verdict on the person. "change": at most one change of strategy for the coming week, the one the facts and the evidence most support; if nothing should change, say what to keep and why.
 
 ${RULES}
+- When the facts include review.change, say in "held" or "didNot" what the record shows of last week's change, citing review.change, as facts and never as a verdict on the person.
 - Each part under ${REVIEW_PART_WORDS} words. The citations cover all three parts together.
 
 Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...", "change": "...", "factIds": ["..."], "cardIds": ["..."]}`
@@ -83,6 +84,7 @@ Three short parts. "held": what held this week, stated as facts. "didNot": what 
 ${RULES}
 ${PRIVATE_RULES}
 - The Partner path appears only as acts done and experiences the person wrote about, never as a shortfall, never as something missing.
+- When the facts include review.change, say in "held" or "didNot" what the record shows of last week's change, citing review.change, as facts and never as a verdict on the person.
 - Each part under ${REVIEW_PART_WORDS} words. The citations cover all three parts together.
 
 ${LACKED_LINE}

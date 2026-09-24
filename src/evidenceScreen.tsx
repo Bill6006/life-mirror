@@ -8,6 +8,7 @@ import { evidence, type CardEvidence } from './learningFlow'
 import { useLive } from './live'
 import { NOTHING } from './offers'
 import { readingById } from './readings'
+import { MIN_PER_ARM } from './tiers'
 import { HARD_MEASURES } from './workouts'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
@@ -62,7 +63,7 @@ function CardBlock({ e }: { e: CardEvidence }) {
           </p>
         )}
         {stats.estimator === 'adaptive' && stats.slice && <p class="calc-line">{fill(c.sliceLine, { done: String(stats.n.done), alternative: String(stats.n.alternative), diff: steps(stats.slice.diff), lo: steps(stats.slice.lo), hi: steps(stats.slice.hi) })}</p>}
-        {card.origin === 'signFlip' && stats.tier === 'little' && <p class="calc-line">{c.scheduled}</p>}
+        {(card.origin === 'signFlip' || card.origin === 'import') && !(stats.n.done >= MIN_PER_ARM && stats.n.alternative >= MIN_PER_ARM) && <p class="calc-line">{c.scheduled}</p>}
         {stats.declared && (
           <p class="calc-line">
             {fill(c.declared, { date: formatDayShort(stats.declared.at), done: String(stats.replication?.done ?? 0), alternative: String(stats.replication?.alternative ?? 0) })} · {stats.replication?.holds ? c.replicated : c.notReplicated}

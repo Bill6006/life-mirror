@@ -23,7 +23,7 @@ import {
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotThat, windowFor, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type RungMove, type Sitting } from './ladder'
-import { noTimeCeiling, observations, WINDOW_PENALTY } from './learning'
+import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from './learning'
 import { pathOn } from './pathFlow'
 import { beliefsFor, recoveryGapDue } from './learningFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings, type Weekday } from './settings'
@@ -214,6 +214,27 @@ async function mostRecentlyDoneIn(situationKey: string): Promise<string | null> 
   return done[0]?.moveId ?? null
 }
 
+/** A card tested on purpose: a flagged sign flip, or one set by a tap or a pasted hypothesis; never one the draw wrote itself. */
+export function onPurpose(c: Card): boolean {
+  return c.origin === 'signFlip' || c.origin === 'import'
+}
+
+/**
+ * The moves a situation's tests on purpose favour: each card's move and its alternative when the
+ * alternative is a move, until the card has its eight; the null offer is never favoured. The draw
+ * stays a draw with its chances recorded (Rule 16): this tilts which fitting move comes up, never
+ * whether anything is asked.
+ */
+export function scheduledMoves(cards: readonly Card[], obs: readonly Observation[]): Set<string> {
+  const out = new Set<string>()
+  for (const c of cards) {
+    if (!onPurpose(c) || hasItsEight(c, obs)) continue
+    out.add(c.moveId)
+    if (c.alternativeId !== NOTHING) out.add(c.alternativeId)
+  }
+  return out
+}
+
 /**
  * Makes sure a completed check-in in this slot has its offer. Writes the test card first,
  * then the offer. Returns the live offer, or null when nothing fits or moves are hidden.
@@ -230,10 +251,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     if (!situation) return null
 
     const t = await withLearning(await todayState(day, settings), block, day)
-    // Phase 12: a flagged sign flip is tested on purpose, offered a little more often here until its card has its eight, and then no longer (Part 33).
-    const flips = await db.cards.where('situationKey').equals(situation.key).filter((c) => c.origin === 'signFlip').toArray()
-    const obs = flips.length ? observations(await db.checkins.toArray(), await db.offers.toArray(), await db.outcomes.toArray()) : []
-    const scheduled = new Set(flips.filter((c) => !hasItsEight(c, obs)).map((c) => c.moveId))
+    // A card tested on purpose (a flagged sign flip, Phase 12; a test set by one tap or a pasted hypothesis, Part 36) is offered a little more often here until it has its eight, and then no longer (Part 33).
+    const tested = await db.cards.where('situationKey').equals(situation.key).filter(onPurpose).toArray()
+    const obs = tested.length ? observations(await db.checkins.toArray(), await db.offers.toArray(), await db.outcomes.toArray()) : []
+    const scheduled = scheduledMoves(tested, obs)
     const base = withWindowPenalty(candidatesFor(situation, t), situation.target)
     const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
     const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))

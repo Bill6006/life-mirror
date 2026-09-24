@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Card, CheckIn, Declaration } from './db'
 import type { Observation } from './learning'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
+import { onPurpose, scheduledMoves } from './offerFlow'
 import { declarationsDue, evaluateCards, evaluateWeightCard, hasItsEight, holmLevels, proposeWeights, weightPairs } from './tiers'
 
 // Fixture records reproduce each tier exactly: the draw is seeded, so the intervals are the
@@ -145,5 +146,27 @@ describe('a card tested on purpose is scheduled until it has its eight (Part 33)
     // Opportunities that were not coin flips, or were only partly done, do not count toward it.
     expect(hasItsEight(card(1), [...seven, ...obs('walk-ten', [1], { coinFlip: false, day: () => '2026-09-30' })])).toBe(false)
     expect(hasItsEight(card(1), [...seven, ...obs('walk-ten', [1], { arm: 'partly', day: () => '2026-09-30' })])).toBe(false)
+  })
+})
+
+describe('a test set on purpose is scheduled, and only until its eight (Part 36)', () => {
+  const setByTap = { ...card(3, 'walk-ten', 'nothing'), origin: 'import' as const }
+  const pasted = { ...card(4, 'walk-ten', 'nap-ten'), origin: 'import' as const }
+  const flipped = { ...card(5, 'cyclic-sigh', 'nothing'), origin: 'signFlip' as const }
+  const drawn = card(6, 'book-page', 'nap-ten')
+
+  it('favours a test set by one tap, a pasted hypothesis and a flagged sign flip, never a card the draw wrote itself', () => {
+    expect([setByTap, pasted, flipped, drawn].map(onPurpose)).toEqual([true, true, true, false])
+    expect([...scheduledMoves([setByTap, flipped, drawn], [])].sort()).toEqual(['cyclic-sigh', 'walk-ten'])
+  })
+
+  it('favours both arms of a pasted hypothesis whose alternative is a move, and never the null offer', () => {
+    expect([...scheduledMoves([pasted], [])].sort()).toEqual(['nap-ten', 'walk-ten'])
+    expect(scheduledMoves([setByTap], []).has('nothing')).toBe(false)
+  })
+
+  it('stops favouring a card once both its arms have their eight', () => {
+    const eight = [...obs('walk-ten', [1, 1, 1, 1, 1, 1, 1, 1]), ...obs('nap-ten', [0, 0, 0, 0, 0, 0, 0, 0])]
+    expect(scheduledMoves([pasted], eight).size).toBe(0)
   })
 })

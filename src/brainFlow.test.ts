@@ -217,6 +217,22 @@ describe('what the sheet learned to carry', () => {
     expect(f?.text).toBe('Workout days in the last seven: 2 (2026-09-15, 2026-09-17); 3 sessions.')
   })
 
+  it('carries last week’s one change and what the record shows since, so the review can close its loop (Part 36)', async () => {
+    await addAim('certification', null, 'French', 'language')
+    const [aim] = await studyAims()
+    await db.brainBriefs.put({ id: '2026-09-13:review', day: '2026-09-13', kind: 'review', text: 'H D C', mode: 'strategy', factIds: [`aim.${aim.id}`], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-13T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'Pin French to after her bedtime.' }, writer: 'claude' })
+    await planAim(aim, 'afterBedtime', '20:00', NOW, 'French · Ten words · hear or read it')
+    const f = factById(await factSheet(DAY, NOW), 'review.change')
+    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin French to after her bedtime.” Since then the record shows, for French, 1 plans made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the ladder moved 0 times.')
+    expect(f?.values).toMatchObject({ day: '2026-09-13', aimId: aim.id, planned: 1 })
+    // A change about no commitment: what the record shows in general since.
+    await db.brainBriefs.put({ id: '2026-09-14:review', day: '2026-09-14', kind: 'review', text: 'H D C', mode: 'strategy', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-14T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'One small move a day.' }, writer: 'claude' })
+    expect(factById(await factSheet(DAY, NOW), 'review.change')?.text).toBe('The last review, on 2026-09-14, proposed one change: “One small move a day.” Since then 0 check-ins were completed and 0 moves marked done.')
+    // Words that end without a stop get one, after the quote.
+    await db.brainBriefs.put({ id: '2026-09-15:review', day: '2026-09-15', kind: 'review', text: 'H D C', mode: 'strategy', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-15T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'Keep the cue that holds' }, writer: 'claude' })
+    expect(factById(await factSheet(DAY, NOW), 'review.change')?.text).toMatch(/proposed one change: “Keep the cue that holds”. Since then/)
+  })
+
   it('carries the last session as the other app kept it, and no comparison until one can be made (Part 35)', async () => {
     await db.outside.bulkPut([
       { id: 'w1', day: '2026-09-16', minutes: 40, at: new Date(2026, 8, 16, 18, 30).toISOString(), source: 'workout', title: 'Push + arms', workingSets: 12, effort: 'too-hard', energyAfter: 4, avgRir: 1.5 },

@@ -4,7 +4,7 @@ import type { Fact, FactSheet } from '../../src/factTypes'
 import catalogueJson from '../../src/catalogue.json'
 import { CATEGORIES, lineBriefing, permitted } from './briefing'
 import { buildMessages } from './prompt'
-import { accessFor, contextFor, FAITH_WORDS, gatesFrom, parseContextQuery, readCategory, sheetForClaude, tagsOf, type Catalogue } from './retrieval'
+import { accessFor, contextFor, factCategories, FAITH_WORDS, gatesFrom, parseContextQuery, readCategory, sheetForClaude, tagsOf, type Catalogue } from './retrieval'
 import { APP, BRAIN_APP, memoryStore } from './turso'
 
 // The private retrieval layer (Part 30): what Claude may read, closed by default, and every read
@@ -195,5 +195,13 @@ describe('the readers', () => {
     const b = await contextFor(record(), catalogue, accessFor('line', OPEN, readBrainPrefs({})), DAY, 'task:y', new Date('2026-09-18T11:45:00Z'))
     expect(b.text).toContain('Honesty.')
     expect(b.text).toContain('a date, declared for this day')
+  })
+})
+
+describe('the review’s loop (Part 36)', () => {
+  it('files last week’s change with the brain’s own history, as the daily follow-up is', () => {
+    const f = (id: string) => ({ id, tags: ['monitoring'], text: '', values: {} })
+    expect(factCategories(f('review.change'), new Map())).toEqual(['brainHistory'])
+    expect(factCategories(f('followup'), new Map())).toEqual(['brainHistory'])
   })
 })

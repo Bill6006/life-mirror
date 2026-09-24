@@ -93,7 +93,7 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
               ? [pathOfAim.get(rest) === 'partner' ? 'partnerPath' : pathOfAim.get(rest) === 'social' ? 'socialPath' : 'commitments']
               : f.id === 'study.nights'
                 ? ['commitments']
-                : f.id === 'followup'
+                : f.id === 'followup' || f.id === 'review.change'
                   ? ['brainHistory']
                   : f.id === 'becoming'
                     ? ['commitments', 'faith', 'her']

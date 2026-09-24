@@ -104,6 +104,11 @@ function signed(v: number): string {
   return v > 0 ? `+${v}` : String(v)
 }
 
+/** Words quoted inside a sentence, closed with a stop only when they end without one (Part 36). */
+function quoted(words: string): string {
+  return `“${words}”${/[.!?]$/.test(words.trim()) ? '' : '.'}`
+}
+
 /** Your rating after a session, in words. */
 const EFFORT_WORDS: Record<NonNullable<OutsideDay['effort']>, string> = { 'too-easy': 'too easy', right: 'about right', 'too-hard': 'too hard' }
 
@@ -601,6 +606,24 @@ export function buildFactSheet(i: FactInput): FactSheet {
   for (const w of i.brainBriefs) said.push({ day: w.day, source: 'worker', situationId: null, text: w.text, feedback: fb(`worker:${w.id}`) })
   said.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
 
+  /** What the record shows for a commitment since a moment: plans made and missed, steps started and done, ladder moves. */
+  const sinceOn = (aimId: number, at: string) => {
+    const about = perAim.get(aimId)
+    if (!about) return null
+    const plans = i.intentions.filter((p) => p.aimId === aimId && p.setAt > at)
+    const since = about.sittings.filter((o) => o.at > at)
+    const sinceIds = new Set(since.map((o) => o.id as number))
+    return {
+      name: about.name,
+      planned: plans.length,
+      // A plan whose day has passed with no step linked to it: its moment came and went.
+      missed: plans.filter((p) => p.day < today && p.offerId === null).length,
+      started: since.length,
+      done: i.outcomes.filter((x) => x.outcome === 'done' && sinceIds.has(x.offerId)).length,
+      moved: i.marks.filter((m) => about.skillIds.has(m.skillId) && m.at > at).length,
+    }
+  }
+
   // Closing the loop: the last line said before today, and what the record shows since it was said.
   const lines = [
     ...i.log.filter((l) => l.situationId !== null && wasShown(l, i.brainBriefs)).map((l) => ({ day: l.day, at: l.at, text: l.text, factIds: l.factIds, key: `phone:${l.day}:${l.id}`, worker: false })),
@@ -612,23 +635,28 @@ export function buildFactSheet(i: FactInput): FactSheet {
   if (last) {
     const received = fb(last.key) ?? 'untapped'
     const ref = last.factIds.map((f) => /^aim\.(\d+)$/.exec(f)).find(Boolean)
-    const about = ref ? perAim.get(Number(ref[1])) : undefined
-    if (ref && about) {
+    const s = ref ? sinceOn(Number(ref[1]), last.at) : null
+    if (ref && s) {
       const aimId = Number(ref[1])
-      const plans = i.intentions.filter((p) => p.aimId === aimId && p.setAt > last.at)
-      const planned = plans.length
-      // A plan whose day has passed with no step linked to it: its moment came and went.
-      const missed = plans.filter((p) => p.day < today && p.offerId === null).length
-      const since = about.sittings.filter((o) => o.at > last.at)
-      const sinceIds = new Set(since.map((o) => o.id as number))
-      const done = i.outcomes.filter((x) => x.outcome === 'done' && sinceIds.has(x.offerId)).length
-      const moved = i.marks.filter((m) => about.skillIds.has(m.skillId) && m.at > last.at).length
       facts.push(
-        fact('followup', ['monitoring', 'plan'], `The last line, on ${last.day}, was about ${about.name}. Since then the record shows ${planned} plans made, ${missed} of them past their day with no step started, ${since.length} steps started, ${done} marked done, and the ladder moved ${moved} times. It was received as: ${received}.`, { day: last.day, about: about.name, aimId, planned, missed, started: since.length, done, moved, received, text: last.text }),
+        fact('followup', ['monitoring', 'plan'], `The last line, on ${last.day}, was about ${s.name}. Since then the record shows ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the ladder moved ${s.moved} times. It was received as: ${received}.`, { day: last.day, about: s.name, aimId, planned: s.planned, missed: s.missed, started: s.started, done: s.done, moved: s.moved, received, text: last.text }),
       )
     } else {
-      facts.push(fact('followup', ['monitoring'], `The last line, on ${last.day}, was: “${last.text}”. It was received as: ${received}.`, { day: last.day, about: null, aimId: null, planned: 0, missed: 0, started: 0, done: 0, moved: 0, received, text: last.text }))
+      facts.push(fact('followup', ['monitoring'], `The last line, on ${last.day}, was: ${quoted(last.text)} It was received as: ${received}.`, { day: last.day, about: null, aimId: null, planned: 0, missed: 0, started: 0, done: 0, moved: 0, received, text: last.text }))
     }
+  }
+
+  // Part 36: the Sunday review closes its own loop: the last review's one change, and what the record shows since it was written.
+  const review = i.brainBriefs.filter((b) => b.kind === 'review' && b.parts && b.day < today).sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.at < b.at ? 1 : -1))[0]
+  if (review?.parts) {
+    const ref = review.factIds.map((f) => /^aim\.(\d+)$/.exec(f)).find(Boolean)
+    const s = ref ? sinceOn(Number(ref[1]), review.at) : null
+    const checkins = i.checkins.filter((c) => c.completedAt && c.completedAt > review.at).length
+    const moves = i.outcomes.filter((x) => x.outcome === 'done' && x.at > review.at).length
+    const since = s
+      ? `Since then the record shows, for ${s.name}, ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the ladder moved ${s.moved} times.`
+      : `Since then ${checkins} check-ins were completed and ${moves} moves marked done.`
+    facts.push(fact('review.change', ['monitoring'], `The last review, on ${review.day}, proposed one change: ${quoted(review.parts.change)} ${since}`, { day: review.day, change: review.parts.change, aimId: s && ref ? Number(ref[1]) : null, checkins, moves, planned: s?.planned ?? null, started: s?.started ?? null, done: s?.done ?? null, moved: s?.moved ?? null }))
   }
 
   // When today's check-ins were completed (Part 28): the Worker writes once the morning's is on a sheet built after it.
