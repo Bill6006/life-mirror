@@ -66,26 +66,49 @@ async function tab(page: Page, name: string): Promise<void> {
   await page.evaluate(() => window.scrollTo(0, 0))
 }
 
-/** The generic profile through the app's own screens: two study subjects, a practice, both paths, the evening's check-in. */
+/** An older study as the retired ladder left it (Workstream 6): a skill with two proofs, adopted at open as its current skill, its proofs kept to read. */
+async function seedOlderStudy(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['aims', 'skills', 'rungMarks'], 'readwrite')
+    tx.objectStore('aims').put({ id: 90, kind: 'certification', stepMoveId: null, name: 'Cloud certification', ladder: 'technical', createdAt: '2026-09-01T10:00:00.000Z', archivedAt: null })
+    tx.objectStore('skills').put({ id: 91, name: 'Subnetting', subject: 'Cloud certification', order: 1, createdAt: '2026-09-01T10:00:00.000Z', archivedAt: null })
+    tx.objectStore('rungMarks').put({ id: 92, skillId: 91, rung: 1, at: '2026-09-10T20:00:00.000Z', via: 'tap' })
+    tx.objectStore('rungMarks').put({ id: 93, skillId: 91, rung: 2, at: '2026-09-12T20:00:00.000Z', via: 'step' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+/** The generic profile through the app's own screens: something to learn in its own words, one with no skill named, an older study, a practice, both paths, the evening's check-in. */
 async function seedProfile(page: Page): Promise<void> {
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
   await seedRecord(page)
+  await seedOlderStudy(page)
   await page.reload()
   await tab(page, 'Aims')
   const add = () => page.getByRole('button', { name: /^Add a commitment/ }).click()
-  for (const [name, ladder] of [
-    ['Spanish', 'language'],
-    ['Cloud certification', 'technical'],
-  ] as const) {
-    await add()
-    await page.getByTestId('aim-kind-certification').click()
-    await page.getByTestId('aim-name-input').fill(name)
-    await page.getByTestId(`aim-ladder-${ladder}`).click()
-    await page.getByTestId('aim-name-add').click()
-  }
+  await add()
+  await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-goal-input').fill('Spanish')
+  await page.getByTestId('aim-method-input').fill('A class')
+  await page.getByTestId('aim-skill-now-input').fill('Ordering at a café')
+  await page.getByTestId('aim-learn-add').click()
+  await add()
+  await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-goal-input').fill('Drawing')
+  await page.getByTestId('aim-method-unsure').click()
+  await page.getByTestId('aim-learn-add').click()
   await add()
   await page.getByTestId('aim-kind-practice').click()
   await page.locator('button.row').first().click()
@@ -93,11 +116,6 @@ async function seedProfile(page: Page): Promise<void> {
   await page.getByTestId('aim-kind-path-social').click()
   await add()
   await page.getByTestId('aim-kind-path-partner').click()
-  await page.getByRole('button', { name: /^The proof ladder/ }).click()
-  await page.getByTestId('subject-chip').filter({ hasText: 'Spanish' }).click()
-  await page.getByTestId('skill-input').fill('Ordering at a café')
-  await page.getByRole('button', { name: 'Add', exact: true }).click()
-  await page.getByRole('button', { name: /Done|Close/ }).last().click()
   await tab(page, 'Now')
   await page.getByRole('button', { name: /Check in/ }).first().click()
   await tapThrough(page)
@@ -316,10 +334,44 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
       await p.getByTestId('aim-details').first().click()
     },
   },
+  {
+    // Workstream 6: something to learn opened, with how often it is practised, its skill's words and the skills so far.
+    name: 'Aims, something to learn open',
+    tab: 'Aims',
+    open: async (p) => {
+      const card = p.getByTestId('aim-card').filter({ hasText: 'Spanish' })
+      await card.getByTestId('aim-details').click()
+      await card.getByTestId('aim-rhythm-3').click()
+      await card.getByTestId('aim-skill-edit-open').click()
+    },
+  },
   { name: 'Settings', tab: 'Settings' },
   { name: 'Settings, the week', tab: 'Settings', open: async (p) => p.getByTestId('settings-week').click() },
   { name: 'Settings, check-ins', tab: 'Settings', open: async (p) => p.getByTestId('settings-checkins').click() },
   { name: 'Settings, theme', tab: 'Settings', open: async (p) => p.getByTestId('settings-theme').click() },
+  // Two that change the record, written so they can run again at every width: a session begun, then done with its one optional tap.
+  {
+    name: 'Now, a session started',
+    tab: 'Now',
+    open: async (p) => {
+      const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Spanish' })
+      await row.getByTestId('aim-start').or(row.getByTestId('aim-another')).or(row.getByTestId('aim-done')).first().click()
+      await expect(row.getByTestId('aim-started').or(row.getByTestId('aim-ease')).first()).toBeVisible()
+    },
+  },
+  {
+    name: 'Now, done today with how it went',
+    tab: 'Now',
+    open: async (p) => {
+      const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Spanish' })
+      if (await row.getByTestId('aim-done').count()) await row.getByTestId('aim-done').click()
+      else {
+        await row.getByTestId('aim-start').or(row.getByTestId('aim-another')).first().click()
+        await row.getByTestId('aim-done').click()
+      }
+      await expect(row.getByTestId('aim-ease')).toBeVisible()
+    },
+  },
 ]
 
 /** Every other screen, each in every theme: the ones the redesign did not restructure still wear the theme and keep its rules. */
@@ -340,7 +392,17 @@ const MORE: typeof STATES = [
   { name: 'History', tab: 'Moves', open: click(/^History/) },
   { name: 'The catalogue', tab: 'Moves', open: click(/^Read the catalogue/) },
   { name: 'Add a commitment', tab: 'Aims', open: click(/^Add a commitment/) },
-  { name: 'The proof ladder', tab: 'Aims', open: click(/^The proof ladder/) },
+  { name: 'Earlier proofs', tab: 'Aims', open: click(/^Earlier proofs/) },
+  {
+    // The preferred study days with their part of the day, which shows once a day is chosen.
+    name: 'Settings, preferred study days',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-week').click()
+      const thu = p.getByTestId('study-days').getByRole('button', { name: 'Thursday' })
+      if ((await thu.getAttribute('aria-pressed')) !== 'true') await thu.click()
+    },
+  },
   { name: 'Follow-through', tab: 'Aims', open: click(/^Follow-through/) },
   { name: 'Becoming', tab: 'Aims', open: click(/^Becoming/) },
   { name: 'Her', tab: 'Aims', open: click(/^Her /) },
@@ -385,7 +447,7 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
-    // Seeding walks a whole evening check-in; the walk through 36 states at three widths follows. One limit for all of it.
+    // Seeding walks a whole evening check-in; the walk through forty states at three widths follows. One limit for all of it.
     test.setTimeout(900_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)

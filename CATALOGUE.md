@@ -2323,7 +2323,7 @@ What it contributes:
 
 - The move comes before the mood: the app offers a move at the reading, never waits for the wish to do it.
 - Pleasure and mastery as learned tags: the two kinds of activity behavioural activation schedules, with connection added from self-determination theory.
-- Graded task assignment: the smaller version on a study night, and the low-effort tag as the top filter.
+- Graded task assignment: an unblock offer that starts smaller after a No, never an easier goal, and the low-effort tag as the top filter.
 - Trigger, response, avoidance pattern to alternative coping: the entry "Notice it and act anyway".
 - Activity monitoring: the record itself, and the counts under Follow-through.
 

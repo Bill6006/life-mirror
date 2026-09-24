@@ -392,7 +392,7 @@ export const copy = {
       coinFlip: 'this offer was a coin flip',
       observed: 'bedtime itself is observed, never offered',
       passive: 'it rides alongside a move rather than being one',
-      study: 'study is offered at the evening check-in on study nights',
+      study: 'study belongs to your commitments and their rhythm, never to the draw',
       schedule: 'it is not on today, by your week',
       block: 'it does not fit this block',
       hidden: 'its family is hidden',
