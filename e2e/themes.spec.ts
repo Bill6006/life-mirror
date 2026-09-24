@@ -99,21 +99,46 @@ async function seedProfile(page: Page): Promise<void> {
   await page.getByRole('button', { name: /Done|Close/ }).last().click()
   await tab(page, 'Now')
   await page.getByRole('button', { name: /Check in/ }).first().click()
-  const card = page.getByTestId('give-back')
-  for (let i = 0; i < 40 && !(await card.isVisible()); i++) {
-    if (await page.getByTestId('extras').isVisible()) {
-      await page.getByRole('button', { name: 'Done', exact: true }).click()
-      continue
-    }
-    if (await page.getByTestId('outcome-ask').isVisible()) {
-      await page.getByRole('button', { name: 'Not now', exact: true }).click()
-      continue
-    }
-    const a = page.getByTestId('anchor').nth(2)
-    if (await a.isVisible().catch(() => false)) await a.click().catch(() => undefined)
-    await page.waitForTimeout(120)
-  }
+  await tapThrough(page)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
+}
+
+/** Taps one phrase, then waits for the screen to move on: the next reading, the extras, the question or the card. */
+async function tapAnchor(page: Page): Promise<boolean> {
+  const title = await page.locator('#ci-title').textContent({ timeout: 1500 }).catch(() => null)
+  if (title === null) return false
+  try {
+    await page.getByTestId('anchor').nth(2).click({ timeout: 3000 })
+  } catch {
+    return false
+  }
+  const moved = page.locator('#ci-title', { hasNotText: title }).or(page.getByTestId('give-back')).or(page.getByTestId('extras')).or(page.getByTestId('outcome-ask'))
+  await expect(moved.first()).toBeVisible()
+  return true
+}
+
+/** Every reading tapped until the give-back card shows, the evening extras and any open question passed on the way (as the smoke tests walk it). */
+async function tapThrough(page: Page): Promise<void> {
+  const card = page.getByTestId('give-back')
+  const extras = page.getByTestId('extras')
+  const ask = page.getByTestId('outcome-ask')
+  const anchor = page.getByTestId('anchor').nth(2)
+  for (let i = 0; i < 30; i++) {
+    await expect(card.or(extras).or(ask).or(anchor).first()).toBeVisible()
+    if (await card.isVisible()) break
+    if (await ask.isVisible()) {
+      await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      await expect(ask).toBeHidden()
+      continue
+    }
+    if (await extras.isVisible()) {
+      await page.getByRole('button', { name: 'Done', exact: true }).click()
+      await expect(extras).toBeHidden()
+      continue
+    }
+    await tapAnchor(page)
+  }
+  await expect(card).toBeVisible()
 }
 
 /** Runs in the page: every visible run of text and every control, against the universal rules. */
@@ -323,9 +348,10 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
+    // Seeding walks a whole evening check-in; the walk through 37 states at three widths follows. One limit for all of it.
+    test.setTimeout(900_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)
-    test.setTimeout(900_000)
     const found: string[] = []
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
