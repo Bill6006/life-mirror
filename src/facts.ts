@@ -5,6 +5,7 @@ import { becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, las
 import { hasMove, isParked, isPathOnly, isProposed, moveById, OBSERVED_ONLY, PASSIVE, type SettingKind } from './catalogue'
 import { library } from './library'
 import { copy } from './copy'
+import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
 import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
@@ -211,6 +212,20 @@ function mean(xs: readonly number[]): number {
   return Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10
 }
 
+/** From this moment the phone marks its own line when it is on screen; lines logged before then are judged by the rule below (Part 33). */
+const SHOWN_MARKED_FROM = '2026-09-25T00:00:00.000Z'
+
+/**
+ * Whether the phone's own line was on screen, and so was said: marked when shown; before the mark
+ * existed, a line logged while the brain's own line already stood that day was never shown, since
+ * the brain's line takes the card.
+ */
+export function wasShown(l: Pick<BriefLog, 'day' | 'at' | 'shownAt'>, briefs: readonly Pick<BrainBrief, 'day' | 'at' | 'kind'>[]): boolean {
+  if (l.shownAt) return true
+  if (l.at >= SHOWN_MARKED_FROM) return false
+  return !briefs.some((w) => w.kind === 'brief' && w.day === l.day && w.at <= l.at)
+}
+
 export function buildFactSheet(i: FactInput): FactSheet {
   const facts: Fact[] = []
   const today = i.day
@@ -226,16 +241,20 @@ export function buildFactSheet(i: FactInput): FactSheet {
 
   if (ctx) {
     const weekday = formatDayLong(today).split(',')[0]
-    const parts = [`Today is ${weekday}`, ctx.pickupTime ? `a daycare day with pickup at ${ctx.pickupTime}` : 'not a daycare day', ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a study night' : 'not a study night', `her bedtime ${ctx.soloUntil}`, `the hour is ${hour}`]
+    // While she is away (the chip), the day holds no drop-off, pickup or bedtime, whatever the week's shape wrote.
+    const pickup = heldPickup(ctx)
+    const bedtime = heldBedtime(ctx)
+    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a study night' : 'not a study night', bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
     facts.push(
       fact('week.today', ['cue', 'evening'], parts.filter(Boolean).join('; ') + '.', {
         weekday,
-        daycare: ctx.pickupTime ? 1 : 0,
-        pickup: ctx.pickupTime,
+        away: ctx.withHer ? 0 : 1,
+        daycare: pickup ? 1 : 0,
+        pickup,
         office: ctx.atOffice ? 1 : 0,
         church: ctx.churchDay ? 1 : 0,
         studyNight: ctx.studyNight ? 1 : 0,
-        bedtime: ctx.soloUntil,
+        bedtime,
         hour,
       }),
     )
@@ -245,17 +264,20 @@ export function buildFactSheet(i: FactInput): FactSheet {
   if (tctx) {
     const tday = addDays(today, 1)
     const tweekday = formatDayLong(tday).split(',')[0]
-    const tparts = [`Tomorrow is ${tweekday}`, tctx.pickupTime ? `a daycare day with pickup at ${tctx.pickupTime}` : 'not a daycare day', tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a study night' : 'not a study night', `her bedtime ${tctx.soloUntil}`]
+    const tpickup = heldPickup(tctx)
+    const tbedtime = heldBedtime(tctx)
+    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a study night' : 'not a study night', tbedtime ? `her bedtime ${tbedtime}` : null]
     facts.push(
       fact('week.tomorrow', ['cue'], tparts.filter(Boolean).join('; ') + '.', {
         day: tday,
         weekday: tweekday,
-        daycare: tctx.pickupTime ? 1 : 0,
-        pickup: tctx.pickupTime,
+        away: tctx.withHer ? 0 : 1,
+        daycare: tpickup ? 1 : 0,
+        pickup: tpickup,
         office: tctx.atOffice ? 1 : 0,
         church: tctx.churchDay ? 1 : 0,
         studyNight: tctx.studyNight ? 1 : 0,
-        bedtime: tctx.soloUntil,
+        bedtime: tbedtime,
       }),
     )
   }
@@ -281,7 +303,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (latest && CONTEXT_IDS.includes(id)) {
       const p = latest.answers[id] as 1 | 2 | 3 | 4 | 5
       const word = headword(anchorFor(id, p))
-      facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : 'social'], `${reading.name} read “${word}” (${p} of 5) at the ${latest.block} check-in on ${latest.day}.`, { position: p, word, day: latest.day, block: latest.block }))
+      facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : id === 'motivation' ? 'mood' : 'social'], `${reading.name} read “${word}” (${p} of 5) at the ${latest.block} check-in on ${latest.day}.`, { position: p, word, day: latest.day, block: latest.block }))
     }
     const ps = positionsOf(i.checkins, id)
     if (ps.length >= TREND_WINDOW * 2) {
@@ -299,7 +321,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (!t.forecast) continue
     facts.push(fact(`forecast.${t.block}`, ['forecast', t.block], `Today's ${t.block} is forecast at ${Math.round(t.forecast.point)}, ${Math.round(t.forecast.lo)} to ${Math.round(t.forecast.hi)}${t.actual !== null ? `; it read ${t.actual}` : ''}.`, { block: t.block, point: Math.round(t.forecast.point), lo: Math.round(t.forecast.lo), hi: Math.round(t.forecast.hi), actual: t.actual, width: Math.round(t.forecast.hi - t.forecast.lo) }))
   }
-  if (i.brief.whatIf !== null) facts.push(fact('whatIf', ['forecast', 'evening'], `Tonight's what-if: the evening forecast with the day's move done reads ${Math.round(i.brief.whatIf)}.`, { value: Math.round(i.brief.whatIf) }))
+  if (i.brief.whatIf !== null) facts.push(fact('whatIf', ['forecast', 'evening'], `Tonight's what-if: with nothing extra done, the evening usually reads about ${Math.round(i.brief.whatIf)}, the average over recent days with no move marked done in the evening; an assumption, never verified.`, { value: Math.round(i.brief.whatIf) }))
 
   if (i.brief.lastNight) {
     const ln = i.brief.lastNight
@@ -534,13 +556,13 @@ export function buildFactSheet(i: FactInput): FactSheet {
 
   const said: SaidEntry[] = []
   const fb = (key: string) => i.feedback.find((f) => f.briefKey === key)?.answer ?? null
-  for (const l of i.log) if (l.situationId !== null) said.push({ day: l.day, source: 'phone', situationId: l.situationId, text: l.text, feedback: fb(`phone:${l.day}:${l.id}`) })
+  for (const l of i.log) if (l.situationId !== null && wasShown(l, i.brainBriefs)) said.push({ day: l.day, source: 'phone', situationId: l.situationId, text: l.text, feedback: fb(`phone:${l.day}:${l.id}`) })
   for (const w of i.brainBriefs) said.push({ day: w.day, source: 'worker', situationId: null, text: w.text, feedback: fb(`worker:${w.id}`) })
   said.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
 
   // Closing the loop: the last line said before today, and what the record shows since it was said.
   const lines = [
-    ...i.log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, at: l.at, text: l.text, factIds: l.factIds, key: `phone:${l.day}:${l.id}`, worker: false })),
+    ...i.log.filter((l) => l.situationId !== null && wasShown(l, i.brainBriefs)).map((l) => ({ day: l.day, at: l.at, text: l.text, factIds: l.factIds, key: `phone:${l.day}:${l.id}`, worker: false })),
     ...i.brainBriefs.filter((w) => w.kind === 'brief').map((w) => ({ day: w.day, at: w.at, text: w.text, factIds: w.factIds, key: `worker:${w.id}`, worker: true })),
   ]
     .filter((l) => l.day < today)

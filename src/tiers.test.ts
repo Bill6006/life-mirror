@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Card, CheckIn, Declaration } from './db'
 import type { Observation } from './learning'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { declarationsDue, evaluateCards, evaluateWeightCard, holmLevels, proposeWeights, weightPairs } from './tiers'
+import { declarationsDue, evaluateCards, evaluateWeightCard, hasItsEight, holmLevels, proposeWeights, weightPairs } from './tiers'
 
 // Fixture records reproduce each tier exactly: the draw is seeded, so the intervals are the
 // same every run. Confirmatory claims rest on the coin-flip slice.
@@ -133,5 +133,17 @@ describe('weight cards', () => {
     expect(s.n).toBe(pairs.length)
     expect(['little', 'unclear', 'promising', 'unhelpful']).toContain(s.tier)
     expect(evaluateWeightCard(short.slice(0, 6), { mood: 2 }).tier).toBe('little')
+  })
+})
+
+describe('a card tested on purpose is scheduled until it has its eight (Part 33)', () => {
+  it('is short while either arm has fewer than eight done coin-flip opportunities, and has its eight once both do', () => {
+    const seven = [...obs('walk-ten', [1, 1, 1, 1, 1, 1, 1]), ...obs('nap-ten', [0, 0, 0, 0, 0, 0, 0, 0])]
+    expect(hasItsEight(card(1), seven)).toBe(false)
+    const eight = [...seven, ...obs('walk-ten', [1], { day: () => '2026-09-30' })]
+    expect(hasItsEight(card(1), eight)).toBe(true)
+    // Opportunities that were not coin flips, or were only partly done, do not count toward it.
+    expect(hasItsEight(card(1), [...seven, ...obs('walk-ten', [1], { coinFlip: false, day: () => '2026-09-30' })])).toBe(false)
+    expect(hasItsEight(card(1), [...seven, ...obs('walk-ten', [1], { arm: 'partly', day: () => '2026-09-30' })])).toBe(false)
   })
 })

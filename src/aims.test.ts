@@ -117,7 +117,7 @@ describe('counts only', () => {
 })
 
 describe('one tap says when', () => {
-  const ctx = { pickupTime: '17:30', soloUntil: '20:00' }
+  const ctx = { withHer: true, pickupTime: '17:30', soloUntil: '20:00' }
 
   it('offers the cues still ahead today, each with its time, and none in the small hours', () => {
     expect(cuesFor(ctx, new Date(2026, 8, 7, 9, 0))).toEqual([
@@ -128,9 +128,11 @@ describe('one tap says when', () => {
     expect(cuesFor(ctx, new Date(2026, 8, 7, 14, 0)).map((c) => c.time)).toEqual(['17:30', '20:00', '17:00'])
     expect(cuesFor(ctx, new Date(2026, 8, 7, 18, 0)).map((c) => c.cue)).toEqual(['afterBedtime'])
     expect(cuesFor(ctx, new Date(2026, 8, 7, 21, 0))).toEqual([])
-    expect(cuesFor({ pickupTime: null, soloUntil: '20:00' }, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['afterBedtime', 'nextCheckIn'])
+    expect(cuesFor({ withHer: true, pickupTime: null, soloUntil: '20:00' }, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['afterBedtime', 'nextCheckIn'])
     expect(cuesFor(null, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['nextCheckIn'])
     expect(cuesFor(ctx, new Date(2026, 8, 8, 1, 0))).toEqual([])
+    // A day she is away offers neither after pickup nor after her bedtime (Part 33).
+    expect(cuesFor({ ...ctx, withHer: false }, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['nextCheckIn'])
   })
 
   it('takes the latest plan of the day, and counts plans and starts under each cue', () => {

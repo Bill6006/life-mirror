@@ -23,7 +23,7 @@ concurrency:
 jobs:
   test-build-deploy:
     # One job, one checkout, one build folder: the tests run on exactly what is deployed.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

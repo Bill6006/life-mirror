@@ -1,4 +1,5 @@
 import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
+import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
 import { propensities } from './adaptive'
 import { choose, type Rng } from './bandit'
@@ -22,11 +23,12 @@ import {
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotThat, windowFor, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type RungMove, type Sitting } from './ladder'
-import { noTimeCeiling, WINDOW_PENALTY } from './learning'
+import { noTimeCeiling, observations, WINDOW_PENALTY } from './learning'
 import { pathOn } from './pathFlow'
 import { beliefsFor, recoveryGapDue } from './learningFlow'
 import { inDaylight, minutesOf, type Settings, type Weekday } from './settings'
 import { studyVersions, type ReasonCheck } from './studyNight'
+import { hasItsEight } from './tiers'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
 // card (what is being tested, written first), and the outcome (what happened).
@@ -190,7 +192,7 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
   // Part 24: with a path on, its row is the day's one people rep.
   const pathIsOn = (await db.aims.filter(pathOn).count()) > 0
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: ctx.pickupTime, asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */
@@ -228,9 +230,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     if (!situation) return null
 
     const t = await withLearning(await todayState(day, settings), block, day)
-    // Phase 12: a flagged sign flip is tested on purpose, offered a little more often here until its card has its eight.
+    // Phase 12: a flagged sign flip is tested on purpose, offered a little more often here until its card has its eight, and then no longer (Part 33).
     const flips = await db.cards.where('situationKey').equals(situation.key).filter((c) => c.origin === 'signFlip').toArray()
-    const scheduled = new Set(flips.map((c) => c.moveId))
+    const obs = flips.length ? observations(await db.checkins.toArray(), await db.offers.toArray(), await db.outcomes.toArray()) : []
+    const scheduled = new Set(flips.filter((c) => !hasItsEight(c, obs)).map((c) => c.moveId))
     const base = withWindowPenalty(candidatesFor(situation, t), situation.target)
     const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
     const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))

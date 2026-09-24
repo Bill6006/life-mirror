@@ -168,6 +168,16 @@ export function evaluateCard(card: Card, obs: readonly Observation[], declaratio
   return { cardId: id, window: card.window as Window, n, interval, estimator, slice, partlyMean, tier: tierFrom(interval, card.worthwhile, declared, replication), declared, replication }
 }
 
+/**
+ * Whether a card has its eight: done opportunities on both arms enough for its tier to be read,
+ * counted as the card's own evidence counts them. A card tested on purpose is scheduled until
+ * then, and no longer (Part 33).
+ */
+export function hasItsEight(card: Card, obs: readonly Observation[]): boolean {
+  const { n } = evaluateCard(card, obs, [], 1 - ALPHA, seeded(1))
+  return n.done >= MIN_PER_ARM && n.alternative >= MIN_PER_ARM
+}
+
 /** Every active card, short windows first, p-values ranked once so Holm's levels apply across the day. */
 export function evaluateCards(cards: readonly Card[], obs: readonly Observation[], declarations: readonly Declaration[], seed = 7): CardStats[] {
   const first = cards.map((c) => evaluateCard(c, obs, declarations, 1 - ALPHA, seeded(seed + (c.id as number))))

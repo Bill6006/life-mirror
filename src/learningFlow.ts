@@ -9,7 +9,7 @@ import { decayAfterStop, energyCost, FLAT, moveBelief, nothingBelief, observatio
 import { NOTHING } from './offers'
 import { readings, setAnchorSwaps } from './readings'
 import { setLearnedWeights } from './score'
-import { declarationsDue, evaluateCards, proposeWeights, weightStanding, type CardStats, type WeightStats } from './tiers'
+import { declarationsDue, evaluateCards, proposeWeights, weightStanding, type CardStats, type Tier, type WeightStats } from './tiers'
 
 // The learning engine on the phone. Once a day: every effect in the record, the beliefs the
 // bandit draws from, sign flips with cards to test them on purpose, declarations when a card
@@ -155,6 +155,24 @@ export interface Evidence {
 }
 
 /** Everything the Evidence screen shows, computed from the records at the moment of asking. */
+/**
+ * One card's tier exactly as Evidence shows it (Part 33): every effect card read together, so the
+ * correction for testing many at once is the same, and a passive card read like for like. Null
+ * for a card that is gone or holds a weight.
+ */
+export async function tierOfCard(cardId: number, today: string): Promise<Tier | null> {
+  const { checkins, offers, outcomes, cards, declarations } = await records()
+  const card = cards.find((c) => c.id === cardId)
+  if (!card || card.origin === 'weight') return null
+  if (card.origin === 'passive') return associationTier(passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today), card.worthwhile * 25)
+  const stats = evaluateCards(
+    cards.filter((c) => c.origin !== 'weight'),
+    observations(checkins, offers, outcomes),
+    declarations,
+  )
+  return stats.find((s) => s.cardId === cardId)?.tier ?? null
+}
+
 export async function evidence(today: string): Promise<Evidence> {
   const { checkins, offers, outcomes, cards, declarations } = await records()
   const settings = await getSettings()

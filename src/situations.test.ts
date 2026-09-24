@@ -188,3 +188,19 @@ describe('what the engine sees early, and the one tap it offers', () => {
     expect(phoneReview(sheetOf([young]), [])).toMatchObject({ held: 'No commitment had a step started in the last seven days.', didNot: 'Piano: added 2 days ago, no step started yet.' })
   })
 })
+
+describe('a tap on the brain’s own line reaches the phone’s ranking (Part 33)', () => {
+  it('counts toward the situations resting on the same facts, framing facts aside', () => {
+    const onFacts = (answer: 'useful' | 'knew' | 'not', factIds: string[]) => ({ situationId: null, answer, factIds })
+    expect(usefulness('first-skill', [onFacts('not', ['aim.1', 'week.today'])], ['aim.1'])).toBeCloseTo(0.8)
+    expect(usefulness('first-skill', [onFacts('useful', ['aim.1'])], ['aim.1', 'direction'])).toBeCloseTo(1.1)
+    // Sharing only the day's shape or the direction says nothing about what the line was about.
+    expect(usefulness('first-skill', [onFacts('not', ['week.today', 'direction'])], ['aim.1', 'week.today', 'direction'])).toBe(1)
+    // A tap on another phone line is that line's alone.
+    expect(usefulness('first-skill', [{ situationId: 'cue-switch', answer: 'not' }], ['aim.1'])).toBe(1)
+    // In the ranking: twice not useful on the brain's lines about the same commitment tips the day to the direction line.
+    const facts = [today, aim(1, { skills: 0 }), { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values: { study: 0, conversations: 0, faith: 0, her: 0 } }] as Fact[]
+    expect(chooseLine(sheetOf(facts), [], [onFacts('not', ['aim.1']), onFacts('not', ['aim.1'])])?.situationId).toBe('direction-counts')
+    expect(chooseLine(sheetOf(facts), [], [onFacts('not', ['week.today']), onFacts('not', ['week.today'])])?.situationId).toBe('first-skill')
+  })
+})

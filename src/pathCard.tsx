@@ -27,7 +27,7 @@ export interface PathShared {
   block: Block
   open: boolean
   openOffer: Offer | null
-  ctx: Pick<DayContext, 'pickupTime' | 'soloUntil'> | null
+  ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null
   plan: Intention | null
   /** Tier 2's one counted line for this context, shown only under "no people rep fits". */
   carried: string | null

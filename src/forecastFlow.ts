@@ -1,10 +1,10 @@
-import { addDays, BLOCKS, type Block } from './blocks'
+import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
-import type { CheckIn, DayContext } from './db'
+import type { CheckIn, DayContext, OutsideDay } from './db'
 import { observations, slotKey } from './learning'
 import type { ReadingId } from './readings'
 import { evaluateCards } from './tiers'
@@ -67,7 +67,7 @@ async function forecastOnce(today: string): Promise<void> {
 
 export type LastNightKey = 'dinner' | 'caffeine' | 'coolingOff' | 'bigSocial' | 'napped' | 'nothingLanded' | 'hardToSeePoint' | 'necessity' | 'churchDay' | 'workout'
 
-/** What yesterday's evening carried that the record can set this morning against: its extras and chips, a necessity missed, the church day, a workout day. */
+/** What yesterday's evening carried that the record can set this morning against: its extras and chips, a necessity missed, the church day, a workout finished that evening. */
 export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | undefined, workout: boolean): LastNightKey[] {
   const ex = evening?.extras ?? {}
   const keys: LastNightKey[] = []
@@ -84,7 +84,23 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   return keys
 }
 
-/** The evening test for a key: what the evening record says, or what its day's context and the outside days say. */
+/**
+ * The days whose evening carried a workout: a session the other app finished in the evening block
+ * (from 17:00, the small hours counting to the evening before), never a morning or afternoon one,
+ * so a morning session is not told back as last night's (Part 33).
+ */
+export function eveningWorkoutDays(rows: readonly Pick<OutsideDay, 'at'>[]): Set<string> {
+  const out = new Set<string>()
+  for (const r of rows) {
+    const t = Date.parse(r.at)
+    if (!Number.isFinite(t)) continue
+    const slot = blockAt(new Date(t))
+    if (slot.block === 'evening') out.add(slot.day)
+  }
+  return out
+}
+
+/** The evening test for a key: what the evening record says, or what its day's context and the evening workouts say. */
 function eventTest(key: LastNightKey, ctxByDay: ReadonlyMap<string, DayContext>, outside: ReadonlySet<string>): (c: CheckIn) => boolean {
   switch (key) {
     case 'necessity':
@@ -155,7 +171,7 @@ export async function briefData(today: string): Promise<Brief> {
   const yesterday = addDays(today, -1)
   const [offers, outcomes, contexts, outsideRows] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.days.toArray(), db.outside.toArray()])
   const ctxByDay = new Map(contexts.map((c) => [c.day, c]))
-  const outside = new Set(outsideRows.map((o) => o.day))
+  const outside = eveningWorkoutDays(outsideRows)
   const eve = checkins.find((c) => c.day === yesterday && c.block === 'evening')
   // Caffeine is set only against evenings where the item was seen and left: an evening nobody saw it enters neither side (Part 22).
   const caffeineKnown = (c: CheckIn) => Boolean(c.extras?.caffeine || c.extras?.caffeineIntake || c.extras?.caffeineShown)

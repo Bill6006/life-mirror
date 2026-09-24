@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
 import { db, type CheckIn } from './db'
-import { briefData, runForecasting } from './forecastFlow'
+import { briefData, eveningWorkoutDays, runForecasting } from './forecastFlow'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
 // The forecast writer against the real store: single-flight, add-only, each slot written once
@@ -45,5 +45,13 @@ describe('the forecast writer', () => {
     expect((await briefData(TODAY)).whatIf).not.toBeNull()
     await db.checkins.add(ci(TODAY, 'evening', 3))
     expect((await briefData(TODAY)).whatIf).toBeNull()
+  })
+})
+
+describe('last night’s workout (Part 33)', () => {
+  it('counts a session finished in the evening, the small hours going to the evening before, and never a morning one', () => {
+    const at = (d: number, h: number, m: number) => new Date(2026, 8, d, h, m).toISOString()
+    const days = eveningWorkoutDays([{ at: at(20, 7, 30) }, { at: at(21, 18, 45) }, { at: at(23, 1, 10) }, { at: at(24, 16, 59) }, { at: 'not a time' }])
+    expect([...days].sort()).toEqual(['2026-09-21', '2026-09-22'])
   })
 })

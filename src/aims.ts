@@ -3,6 +3,7 @@ import { pathById, pathKey, pathName } from './pathStage'
 import { blockAt, blockStart, dayKey, daysBetween } from './blocks'
 import { copy } from './copy'
 import type { Aim, AimKind, Cue, DayContext, Intention, Offer, Outcome, OutcomeWhy, RungMark, Skill, StudyNight, StudyReason, Win } from './db'
+import { heldBedtime, heldPickup } from './dayShape'
 import { fill } from './format'
 import { firstStudyId, ladderOf, lastMarkDay, nextStep, parseRungId, rungName, rungStep, sittingOf, skillsOf, type RungMove, type Sitting } from './ladder'
 import { NOTHING } from './offers'
@@ -179,14 +180,16 @@ export function aheadToday(time: string | null | undefined, now: Date): time is 
 
 /**
  * One tap says when. The cues on offer at this moment, each with the time it names today: after
- * pickup on a daycare day, after her bedtime, at the next check-in. A cue whose moment has passed
+ * pickup on a daycare day and after her bedtime, both only while she is with you, and at the next check-in. A cue whose moment has passed
  * is not offered, and none are in the small hours; then the step is for now.
  */
-export function cuesFor(ctx: Pick<DayContext, 'pickupTime' | 'soloUntil'> | null, now: Date): CueOffer[] {
+export function cuesFor(ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null, now: Date): CueOffer[] {
   if (blockAt(now).day !== dayKey(now)) return []
   const out: CueOffer[] = []
-  if (ctx && aheadToday(ctx.pickupTime, now)) out.push({ cue: 'afterPickup', time: ctx.pickupTime })
-  if (ctx && aheadToday(ctx.soloUntil, now)) out.push({ cue: 'afterBedtime', time: ctx.soloUntil })
+  const pickup = heldPickup(ctx)
+  const bedtime = heldBedtime(ctx)
+  if (aheadToday(pickup, now)) out.push({ cue: 'afterPickup', time: pickup })
+  if (aheadToday(bedtime, now)) out.push({ cue: 'afterBedtime', time: bedtime })
   const block = blockAt(now).block
   const next = block === 'morning' ? 'afternoon' : block === 'afternoon' ? 'evening' : null
   if (next && aheadToday(blockStart[next], now)) out.push({ cue: 'nextCheckIn', time: blockStart[next] })

@@ -21,7 +21,7 @@ interface Shared {
   blocked: BlockReason | null
   unblock: Move | null
   /** Today's context, for the cues on offer; null before the day is written. */
-  ctx: Pick<DayContext, 'pickupTime' | 'soloUntil'> | null
+  ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null
   /** Today's plan for the step, or null. */
   plan: Intention | null
   /** One plain fact: when the ladder last moved, or the step was last done. */

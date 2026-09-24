@@ -27,7 +27,7 @@ import { rankLines } from './situations'
 
 const DAY = '2026-09-23'
 const MORNING = new Date(2026, 8, 23, 9, 0)
-const office = { atOffice: true, churchDay: false, pickupTime: null }
+const office = { atOffice: true, churchDay: false, pickupTime: null, withHer: true }
 const partnerPath = paths.find((p) => p.id === 'partner') as Path
 
 const socialAim: Aim = { id: 1, kind: 'path', path: 'social', stepMoveId: null, createdAt: '2026-09-01T00:00:00.000Z', archivedAt: null }

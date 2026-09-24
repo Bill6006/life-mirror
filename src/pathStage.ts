@@ -4,6 +4,7 @@ import { copy } from './copy'
 import type { CoachBlock } from './factTypes'
 import type { Aim, CheckIn, CoachPick, DayContext, Offer, Outcome, PathMark } from './db'
 import { fill } from './format'
+import { heldPickup } from './dayShape'
 import { inPerson, peopleAround } from './people'
 
 // The path commitment (Part 24), the pure part: the stage a path stands on, derived from the
@@ -477,7 +478,7 @@ export interface PathTodayInput {
   aim: Aim
   offers: readonly Offer[]
   outcomes: readonly Outcome[]
-  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'> | null
+  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'> | null
   day: string
   block: Block
   /** Part 27: the path's declarations: stages, date days and milestones. */
@@ -564,10 +565,10 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
 }
 
 /** Today's shape for a block, in words, from the day record alone (tier 1). */
-export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'> | null, block: Block): string {
+export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'> | null, block: Block): string {
   const c = copy.path.shape
   if (!ctx) return c.unknown
-  const why = ctx.atOffice && block !== 'evening' ? c.office : ctx.churchDay && block === 'morning' ? c.church : ctx.pickupTime && peopleAround(ctx, block) ? c.daycare : null
+  const why = ctx.atOffice && block !== 'evening' ? c.office : ctx.churchDay && block === 'morning' ? c.church : heldPickup(ctx) && peopleAround(ctx, block) ? c.daycare : null
   return why ? fill(c.around, { why }) : c.nobody
 }
 

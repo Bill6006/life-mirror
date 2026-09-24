@@ -9,7 +9,7 @@ import { blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, orderB
 // People around (Part 20): today's shape decides whether an in-person rep may be offered; what
 // completed reps suggest is evidence, and the draw never reads it.
 
-const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'> => ({ atOffice: false, churchDay: false, pickupTime: null, ...patch })
+const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'> => ({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, ...patch })
 
 describe('tier 1: today’s shape, and nothing else', () => {
   it('puts people around on an office day’s working blocks, the church morning, and a daycare day’s drop-off and pickup blocks', () => {
@@ -19,6 +19,9 @@ describe('tier 1: today’s shape, and nothing else', () => {
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '15:00' }), b as 'morning'))).toEqual([true, true, false])
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({}), b as 'morning'))).toEqual([false, false, false])
     expect(peopleAround(null, 'morning')).toBe(false)
+    // A day she is away holds no drop-off or pickup (Part 33); the office and the church morning still hold.
+    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false }), b as 'morning'))).toEqual([false, false, false])
+    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false, atOffice: true }), b as 'morning'))).toEqual([true, true, false])
     expect(blockOfTime('17:30')).toBe('evening')
     expect(blockOfTime('12:00')).toBe('afternoon')
   })
@@ -90,7 +93,7 @@ describe('tier 1 in today’s state, and history that never touches it', () => {
     const ordered = orderByEvidence([moveById('call-not-text'), moveById('eye-contact-stranger')], 'weekend', 'afternoon', carried)
     expect(ordered.map((m) => m.id)).toEqual(['eye-contact-stranger', 'call-not-text'])
     expect(orderByEvidence([moveById('call-not-text'), moveById('eye-contact-stranger')], 'weekday', 'evening', carried).map((m) => m.id)).toEqual(['call-not-text', 'eye-contact-stranger'])
-    const week = [{ day: SAT, atOffice: false, churchDay: false, pickupTime: null }]
+    const week = [{ day: SAT, atOffice: false, churchDay: false, pickupTime: null, withHer: true }]
     expect(uncoveredContexts(carried, week)).toEqual([{ kind: 'weekend', block: 'afternoon', n: 3 }])
     expect(uncoveredContexts(new Map(), week)).toEqual([])
   })

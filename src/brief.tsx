@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
+import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
 import { fill } from './format'
@@ -218,6 +218,10 @@ export function Brief({ day, version = 0, primary = false }: { day: string; vers
     setBusy(true)
     void chooseAndLog(day).finally(() => setBusy(false))
   }, [version, day])
+  // The phone's own line counts as said only once it has been on screen (Part 33).
+  useEffect(() => {
+    if (b && line) void markShown(line)
+  }, [Boolean(b), line?.key])
   const c = copy.brief
   if (!b || line === undefined) return null
   // While the action's state is still being read the title is blank, rather than a time the line has not established.

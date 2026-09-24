@@ -1,6 +1,7 @@
 import { addDays, blockStart, parseDay, type Block } from './blocks'
 import { hasMove, moveById, type Move } from './catalogue'
 import { copy } from './copy'
+import { heldPickup } from './dayShape'
 import type { DayContext, Offer, Outcome } from './db'
 import { fill } from './format'
 import { minutesOf } from './settings'
@@ -17,7 +18,7 @@ import { minutesOf } from './settings'
 // the fact sheet as an observation and send the owner to correct tier 1. The draw never reads it,
 // so history can neither widen nor narrow what is offered.
 
-type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime'>
+type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'>
 
 /** The block a time of day falls in. */
 export function blockOfTime(hhmm: string): Block {
@@ -32,9 +33,10 @@ export function peopleAround(ctx: Shape | null | undefined, block: Block): boole
   if (!ctx) return false
   if (ctx.atOffice && (block === 'morning' || block === 'afternoon')) return true
   if (ctx.churchDay && block === 'morning') return true
-  if (ctx.pickupTime) {
-    // A daycare day: the drop-off in the morning, and the block that holds the pickup.
-    if (block === 'morning' || block === blockOfTime(ctx.pickupTime)) return true
+  const pickup = heldPickup(ctx)
+  if (pickup) {
+    // A daycare day she is with you: the drop-off in the morning, and the block that holds the pickup.
+    if (block === 'morning' || block === blockOfTime(pickup)) return true
   }
   return false
 }

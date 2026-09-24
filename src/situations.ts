@@ -52,7 +52,12 @@ export interface SaidBefore {
 export interface FeedbackBefore {
   situationId: string | null
   answer: 'useful' | 'knew' | 'not'
+  /** For a tap on the brain's own line: the facts that line cited. */
+  factIds?: readonly string[]
 }
+
+/** Facts nearly any line leans on for its framing: sharing one says nothing about what a line was about. */
+const FRAMING = new Set(['record', 'week.today', 'week.tomorrow', 'week.yesterday', 'direction', 'cadence'])
 
 const CUES = ['afterPickup', 'afterBedtime', 'nextCheckIn'] as const
 type Cue = (typeof CUES)[number]
@@ -577,9 +582,14 @@ export const SITUATIONS: readonly Situation[] = [
   },
 ]
 
-/** How you received a situation before: useful lifts it, knew it and not useful lower it, within bounds. */
-export function usefulness(id: string, feedback: readonly FeedbackBefore[]): number {
-  const own = feedback.filter((f) => f.situationId === id)
+/**
+ * How you received a situation before: useful lifts it, knew it and not useful lower it, within
+ * bounds. A tap on the brain's own line counts toward every situation resting on one of the same
+ * facts, framing aside, so it reaches the phone's ranking too (Part 33).
+ */
+export function usefulness(id: string, feedback: readonly FeedbackBefore[], citing: readonly string[] = []): number {
+  const about = citing.filter((f) => !FRAMING.has(f))
+  const own = feedback.filter((f) => f.situationId === id || (f.situationId === null && (f.factIds ?? []).some((x) => about.includes(x))))
   const v = 1 + Math.min(0.3, own.filter((f) => f.answer === 'useful').length * 0.1) - own.filter((f) => f.answer === 'not').length * 0.2 - own.filter((f) => f.answer === 'knew').length * 0.1
   return Math.max(0.3, Math.min(1.3, v))
 }
@@ -617,7 +627,7 @@ export function rankLines(sheet: FactSheet, said: readonly SaidBefore[], feedbac
     if (since !== null && since < sit.cooldownDays) continue
     const novelty = since !== null && since < 30 ? 0.8 : 1
     const cards = m.cardIds ?? [...sit.cards]
-    const score = m.strength * gradeWeight(bestGrade(cards)) * novelty * usefulness(sit.id, feedback)
+    const score = m.strength * gradeWeight(bestGrade(cards)) * novelty * usefulness(sit.id, feedback, m.factIds)
     out.push({ situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: cards, score, action: m.action ?? null })
   }
   // Stable: among equal scores the situation listed first wins, as it always has.

@@ -177,7 +177,7 @@ describe('the record, the card’s counts and the coach block', () => {
 
   it('writes the coach block by allowlist: exactly the contract’s keys, with no tier-2 or reading key', () => {
     const aim = { id: 7, kind: 'path' as const, path: 'social' as const, stepMoveId: null, createdAt: '2026-09-01T00:00:00.000Z', archivedAt: null }
-    const ctx = { atOffice: false, churchDay: false, pickupTime: null }
+    const ctx = { atOffice: false, churchDay: false, pickupTime: null, withHer: true }
     const view = pathToday({ aim, offers: [], outcomes: [], ctx, day: '2026-09-20', block: 'evening' })
     const block = coachBlock([view], ctx, '2026-09-20', 'evening')
     expect(Object.keys(block ?? {})).toEqual([...COACH_BLOCK_KEYS])

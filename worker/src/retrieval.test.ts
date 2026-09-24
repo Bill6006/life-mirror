@@ -152,6 +152,18 @@ describe('the readers', () => {
     expect(await texts(shown, 'notes')).toContain('church ran long')
   })
 
+  it('say no pickup on a day she was away, whatever the week wrote (Part 33)', async () => {
+    const store = record()
+    put(store, 'days', '2026-09-16', '2026-09-16', { day: '2026-09-16', withHer: false, pickupTime: '17:00', atOffice: false, churchDay: false, studyNight: false })
+    put(store, 'days', '2026-09-17', '2026-09-17', { day: '2026-09-17', withHer: true, pickupTime: '17:00', atOffice: false, churchDay: false, studyNight: false })
+    const a = accessFor('line', OPEN, readBrainPrefs({}))
+    const items = (await readCategory({ store, catalogue, a }, 'dayRecord', week)) ?? []
+    const dayText = (d: string) => items.filter((i) => i.day === d && i.text.startsWith('the day')).map((i) => i.text).join(' | ')
+    expect(dayText('2026-09-16')).toContain('she was away')
+    expect(dayText('2026-09-16')).not.toContain('pickup')
+    expect(dayText('2026-09-17')).toContain('a daycare day, pickup at 17:00')
+  })
+
   it('filter the reps by the tags their moves carry, and refuse a tag on a category whose lines carry none', async () => {
     const store = record()
     const a = accessFor('line', OPEN, readBrainPrefs({}))

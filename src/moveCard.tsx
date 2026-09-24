@@ -4,7 +4,7 @@ import { copy } from './copy'
 import { updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatTime, formatWhen } from './format'
 import { useLive } from './live'
-import { privateAssociationsToday } from './learningFlow'
+import { privateAssociationsToday, tierOfCard } from './learningFlow'
 import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
@@ -36,6 +36,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
   const move = nothing ? null : moveById(offer.moveId)
   const card = useLive(() => cardById(offer.cardId), [offer.cardId])
   const counts = useLive(() => offerCounts(offer.situationKey, offer.moveId), [offer.situationKey, offer.moveId, outcome?.id])
+  // The card's own tier, as Evidence shows it; never a fixed word (Part 33).
+  const tier = useLive(() => (offer.cardId === null ? Promise.resolve(null) : tierOfCard(offer.cardId, offer.day)), [offer.cardId, offer.day, outcome?.id])
   const target = readingById(offer.target)
   const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
   const whyNot = reasonText(offer)
@@ -120,7 +122,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
           <div class="ev">
             <span class="calc-key">{c.evidence}</span>
             <span class="calc-line">
-              <span class="tier">{c.tierLittle}</span> {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
+              <span class="tier" data-testid="move-tier">{copy.evidence.tiers[tier ?? 'little']}</span> {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
             </span>
           </div>
           {whyNot && (

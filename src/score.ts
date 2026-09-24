@@ -20,7 +20,7 @@ export const INGREDIENT_IDS: readonly ReadingId[] = Object.keys(INGREDIENTS)
 export const TOTAL_INGREDIENTS = INGREDIENT_IDS.length
 
 /** Shown beside the reading, never inside it. */
-export const CONTEXT_IDS: readonly ReadingId[] = ['hunger', 'sleepHours', 'sleepQuality', 'confidence', 'loneliness', 'socialEnergy']
+export const CONTEXT_IDS: readonly ReadingId[] = ['hunger', 'sleepHours', 'sleepQuality', 'confidence', 'motivation', 'loneliness', 'socialEnergy']
 
 /** The five bands of the plan, boundaries at 20, 40, 60, 80. The four stances they replaced in the design pass are gone; older offers still carry one as a word. */
 export type Band = 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'

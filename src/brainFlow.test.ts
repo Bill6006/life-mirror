@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addAim, addSkill, planAim, studyAims } from './aimFlow'
-import { weekBuckets } from './facts'
-import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, lineTiming, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
+import { wasShown, weekBuckets } from './facts'
+import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
 import type { LineAction } from './brainShared'
-import { db, ensureDayContext, getSettings } from './db'
+import { dayGuard } from './brainShared'
+import { db, ensureDayContext, getSettings, setDayContext, updateSettings } from './db'
 import { factById } from './facts'
 
 // The brain on the phone, end to end on a seeded record: the sheet built from the record, the
@@ -36,6 +37,51 @@ describe('the brain on the phone', () => {
     expect(a?.text).toContain('French (study): the step is “Ten words · hear or read it”, 10 min; the ladder has not moved yet; planned today after her bedtime at 20:00, not started')
     expect(factById(sheet, 'follow')).toBeDefined()
     expect((await db.intentions.toArray())[0].step).toBe('French · Ten words · hear or read it')
+  })
+
+  it('marks the phone’s own line once it is on screen, and keeps the first time (Part 33)', async () => {
+    await addAim('certification', null, 'French', 'language')
+    await chooseAndLog(DAY, NOW)
+    const line = (await todaysLine(DAY))!
+    const id = Number(line.key.split(':')[2])
+    expect((await db.briefLog.get(id))?.shownAt).toBeUndefined()
+    await markShown(line, new Date(2026, 8, 18, 8, 5))
+    const first = (await db.briefLog.get(id))?.shownAt
+    expect(first).toBe(new Date(2026, 8, 18, 8, 5).toISOString())
+    await markShown(line, new Date(2026, 8, 18, 9, 0))
+    expect((await db.briefLog.get(id))?.shownAt).toBe(first)
+    // The brain's own lines are said by being written; nothing to mark.
+    await markShown({ key: 'worker:1', source: 'worker' })
+  })
+
+  it('counts a phone line as said once shown, and before marks existed, unless the brain’s line already stood that day (Part 33)', () => {
+    expect(wasShown({ day: '2026-09-26', at: '2026-09-26T12:00:00.000Z', shownAt: '2026-09-26T12:00:01.000Z' }, [])).toBe(true)
+    expect(wasShown({ day: '2026-09-26', at: '2026-09-26T12:00:00.000Z' }, [])).toBe(false)
+    const brain = [{ day: '2026-09-20', at: '2026-09-20T13:00:00.000Z', kind: 'brief' as const }]
+    expect(wasShown({ day: '2026-09-20', at: '2026-09-20T12:00:00.000Z' }, brain)).toBe(true)
+    expect(wasShown({ day: '2026-09-20', at: '2026-09-20T14:00:00.000Z' }, brain)).toBe(false)
+    expect(wasShown({ day: '2026-09-20', at: '2026-09-20T14:00:00.000Z' }, [{ ...brain[0], kind: 'review' as const }])).toBe(true)
+  })
+
+  it('holds no drop-off, pickup or bedtime on a day she is away, and the guard refuses the words (Part 33)', async () => {
+    // A Friday on a week with a 17:00 pickup on the daycare days: then the chip.
+    await db.days.clear()
+    await updateSettings((s) => ({ ...s, week: { ...s.week, pickupTime: '17:00' } }))
+    await ensureDayContext(DAY, await getSettings())
+    const before = await factSheet(DAY, NOW)
+    expect(factById(before, 'week.today')?.values).toMatchObject({ away: 0, daycare: 1, pickup: '17:00', bedtime: '20:00' })
+    expect(dayGuard('After pickup, one short sitting.', before, DAY)).toBeNull()
+    await setDayContext(DAY, { withHer: false })
+    const away = await factSheet(DAY, NOW)
+    const today = factById(away, 'week.today')
+    expect(today?.values).toMatchObject({ away: 1, daycare: 0, pickup: null, bedtime: null })
+    expect(today?.text).toContain('she is away today')
+    expect(today?.text).not.toMatch(/pickup|bedtime/)
+    expect(dayGuard('After pickup, one short sitting.', away, DAY)).toMatch(/pickup or daycare/)
+    expect(dayGuard('Say hello to someone at the drop-off.', away, DAY)).not.toBeNull()
+    // The chip taken back restores the day.
+    await setDayContext(DAY, { withHer: true })
+    expect(factById(await factSheet(DAY, NOW), 'week.today')?.values).toMatchObject({ away: 0, daycare: 1, pickup: '17:00' })
   })
 
   it('chooses the day’s line once, logs it, takes one tap, and reads the Worker’s line first when there is one', async () => {

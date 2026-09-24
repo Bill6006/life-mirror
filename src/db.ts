@@ -401,6 +401,8 @@ export interface BriefLog {
   at: string
   /** Set when the line's facts stopped holding and it left the screen. It was still said: its cooldown counts, and the next day's follow-up can find it. */
   withdrawnAt?: string
+  /** Set the first time the line was on screen. A line logged while the brain's own line stood was never shown, so it was never said (Part 33). */
+  shownAt?: string
 }
 
 /** One tap under a line: how it landed. Filed once per line. */

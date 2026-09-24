@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db, type CheckIn, type Offer } from './db'
-import { beliefsFor, evidence, recoveryGapDue, runLearning } from './learningFlow'
+import { beliefsFor, evidence, recoveryGapDue, runLearning, tierOfCard } from './learningFlow'
 import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -32,6 +32,14 @@ describe('the daily run and the null offer', () => {
     expect(beliefs(NOTHING).n).toBeGreaterThan(0)
     const ev = await evidence('2026-09-11')
     expect(ev.nothing).toEqual({ offered: 1, done: 1, skipped: 0 })
+  })
+
+  it('reads a card’s tier as Evidence shows it, never a fixed word, and nothing for a card that is gone (Part 33)', async () => {
+    const id = (await db.cards.add({ createdAt: '2026-09-10T20:00:00.000Z', situationKey: 'evening:mood', block: 'evening', target: 'mood', moveId: 'walk-ten', alternativeId: NOTHING, window: 'nextBlock', worthwhile: 1, origin: 'app' })) as number
+    const shown = (await evidence('2026-09-11')).cards.find((c) => c.card.id === id)?.stats.tier
+    expect(await tierOfCard(id, '2026-09-11')).toBe(shown)
+    expect(shown).toBe('little')
+    expect(await tierOfCard(id + 99, '2026-09-11')).toBeNull()
   })
 
   it('assigns the recovery gap the evening after a marked big social day, and after the church day', async () => {

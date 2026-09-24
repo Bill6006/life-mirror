@@ -14,8 +14,8 @@ import { coachBlock, pathKey, pathToday, whyThisRep, type PathToday } from './pa
 
 const DAY = '2026-09-23'
 const aim: Aim = { id: 1, kind: 'path', path: 'social', stepMoveId: null, createdAt: '2026-09-01T00:00:00.000Z', archivedAt: null }
-const office = { atOffice: true, churchDay: false, pickupTime: null }
-const home = { atOffice: false, churchDay: false, pickupTime: null }
+const office = { atOffice: true, churchDay: false, pickupTime: null, withHer: true }
+const home = { atOffice: false, churchDay: false, pickupTime: null, withHer: true }
 const view = (a: Aim = aim, offers: Offer[] = [], outcomes: Outcome[] = [], ctx = office, block: Block = 'morning'): PathToday => pathToday({ aim: a, offers, outcomes, ctx, day: DAY, block })
 /** A coach pick naming reps, each with its own line of today's version. */
 const coach = (ids: string[], extra: Partial<CoachPick> = {}): CoachPick => ({ id: `${DAY}:coach`, day: DAY, block: 'morning', path: 'social', ids, versions: Object.fromEntries(ids.map((id) => [id, `Today's version of ${id}.`])), model: 'claude-opus-5-5', at: `${DAY}T11:52:00.000Z`, ...extra })

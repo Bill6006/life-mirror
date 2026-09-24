@@ -8,7 +8,7 @@ import type { LineAction, LineCue, WriterModel } from './brainShared'
 import { copy } from './copy'
 import { fill } from './format'
 import { hasMove, moveById } from './catalogue'
-import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Offer, type Outcome, type PathMark } from './db'
+import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
 import { briefData, usualFor } from './forecastFlow'
 import { cardFromHypothesis, type Hypothesis } from './hypothesis'
@@ -16,7 +16,7 @@ import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
 import { INGREDIENTS } from './score'
 import { withDefaults } from './settings'
-import { lineFor, phoneReview, rankLines, type ReviewParts } from './situations'
+import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
@@ -49,11 +49,19 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
   const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
-  const answers = feedback.map((f) => ({ situationId: f.situationId, answer: f.answer }))
-  sheet.shortlist = rankLines(sheet, said, answers)
+  sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs))
     .slice(0, SHORTLIST)
     .map((c) => ({ situationId: c.situationId, mode: c.mode, text: c.text, factIds: c.factIds, cardIds: c.cardIds, score: Math.round(c.score * 100) / 100 }))
   return sheet
+}
+
+/**
+ * How each line was received, for the phone's ranking: a tap on the brain's own line carries the
+ * facts that line cited, so it counts toward the phone's lines about the same thing (Part 33).
+ */
+export function receivedBefore(feedback: readonly BriefFeedback[], briefs: readonly Pick<BrainBrief, 'id' | 'factIds'>[]): FeedbackBefore[] {
+  const cited = new Map(briefs.map((b) => [`worker:${b.id}`, b.factIds]))
+  return feedback.map((f) => ({ situationId: f.situationId, answer: f.answer, ...(f.situationId === null ? { factIds: cited.get(f.briefKey) ?? [] } : {}) }))
 }
 
 /** How many of the engine's true situations the sheet carries, best first. */
@@ -216,7 +224,7 @@ export async function chooseAndLog(day: string, now: Date = new Date()): Promise
     if (current.action && onTheRow(current, off) && (await lineActionState(day, current.action, now))?.state === 'done') return
   }
   const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
-  const feedback = (await db.briefFeedback.toArray()).map((f) => ({ situationId: f.situationId, answer: f.answer }))
+  const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
   const choice = rankLines(sheet, said, feedback).find((c) => onTheRow(c, off)) ?? null
   const empty = existing.filter((e) => e.situationId === null)
   if (!choice && !current && empty.length) return
@@ -241,6 +249,17 @@ export async function feedbackFor(key: string | null): Promise<BriefFeedback | n
 }
 
 /** One tap under the line: useful, knew it, or not. Recorded once per line; it shapes what is said next. */
+/** Marks the phone's own line as on screen, once: only a line that was shown counts as said (Part 33). */
+export async function markShown(line: Pick<BriefLine, 'key' | 'source'>, now: Date = new Date()): Promise<void> {
+  if (line.source !== 'phone') return
+  const id = Number(line.key.split(':')[2])
+  if (!Number.isInteger(id)) return
+  await db.transaction('rw', db.briefLog, async () => {
+    const row = await db.briefLog.get(id)
+    if (row && !row.shownAt) await db.briefLog.update(id, { shownAt: now.toISOString() })
+  })
+}
+
 export async function recordFeedback(day: string, line: BriefLine, answer: 'useful' | 'knew' | 'not', now: Date = new Date()): Promise<void> {
   if (await db.briefFeedback.where('briefKey').equals(line.key).first()) return
   await db.briefFeedback.add({ day, briefKey: line.key, situationId: line.situationId, answer, at: now.toISOString() })
@@ -356,7 +375,7 @@ export async function weekReview(day: string, now: Date = new Date()): Promise<W
   const since = addDays(day, -6)
   const worker = (await db.brainBriefs.toArray()).filter((b) => b.kind === 'review' && b.parts && b.day >= since && b.day <= day).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
   if (worker?.parts) return { source: 'worker', model: worker.model, day: worker.day, ...worker.parts, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
-  const feedback = (await db.briefFeedback.toArray()).map((f) => ({ situationId: f.situationId, answer: f.answer }))
+  const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
   return { source: 'phone', model: null, day, ...phoneReview(await factSheet(day, now), feedback) }
 }
 
