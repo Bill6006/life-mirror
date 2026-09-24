@@ -111,7 +111,7 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if (isPathOnly(move)) return 'pathOnly'
   if (OBSERVED_ONLY.has(move.id)) return 'observed'
   if (PASSIVE.has(move.id)) return 'passive'
-  // Study has its own step at the evening check-in on study nights (Rule 20); the day's draw never offers it.
+  // Study belongs to your commitments, their rhythm and your fixed days (Workstream 6); the day's draw never offers it (Rule 16).
   if (move.family === 'study') return 'study'
   // A one-time setup already made stays made; if it came undone, its catalogue entry says so and it returns (Rule 13).
   if (t.standing?.includes(move.id)) return 'standing'

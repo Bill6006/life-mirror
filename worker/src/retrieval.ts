@@ -232,7 +232,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       for (const d of days) {
         const b = obj(d.body)
         // A day she was away held no drop-off or pickup, whatever the week's shape wrote.
-        const parts = [b.atOffice ? 'at the office' : 'at home', b.pickupTime && b.withHer !== false ? `a daycare day, pickup at ${str(b.pickupTime)}` : null, b.churchDay ? 'a church day' : null, b.studyNight ? 'a study night' : null, b.withHer === false ? 'she was away' : null].filter(Boolean)
+        const parts = [b.atOffice ? 'at the office' : 'at home', b.pickupTime && b.withHer !== false ? `a daycare day, pickup at ${str(b.pickupTime)}` : null, b.churchDay ? 'a church day' : null, b.studyNight ? 'a preferred study day' : null, b.withHer === false ? 'she was away' : null].filter(Boolean)
         items.push({ day: d.day, text: `the day: ${parts.join('; ')}` })
       }
       for (const c of cs) {

@@ -36,7 +36,8 @@ describe('the brain on the phone', () => {
     expect(factById(sheet, 'week.today')?.values).toMatchObject({ weekday: 'Friday', bedtime: '20:00', hour: 8 })
     const a = factById(sheet, `aim.${aim.id}`)
     expect(a?.values).toMatchObject({ kind: 'certification', name: 'French', skill: 'Ten words', skills: 1, sessions: 0, practiceDays: 0, doneToday: 0, plan: 'afterBedtime', planTime: '20:00', planStarted: 0, gapDays: null })
-    expect(a?.text).toContain('French (learning): the current skill is “Ten words”; no session on it yet; not practised yet; planned today after her bedtime at 20:00, not started')
+    expect(a?.text).toContain('French (learning): the current skill is “Ten words”; no session on it yet; not practised yet; no rhythm set, so no count makes it due; planned today after her bedtime at 20:00, not started')
+    expect(a?.values).toMatchObject({ due: 'planned', perWeek: null, fixed: null, faith: 0 })
     // The retired ladder is not a fact of today (Workstream 6, D2).
     expect(a?.values).not.toHaveProperty('highRungs')
     expect(factById(sheet, 'follow')).toBeDefined()

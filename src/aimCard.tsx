@@ -10,6 +10,8 @@ import { fill, formatDayShort, formatTime } from './format'
 import { Icon, type IconName } from './icons'
 import type { Sitting } from './ladder'
 import { doneOpen, recordDoneNow } from './offerFlow'
+import { MAX_PER_WEEK, MAX_REST_DAYS, quiet, type Due, type Rhythm } from './rhythm'
+import type { Weekday } from './settings'
 import { indexLabel } from './theme'
 import { ClampText, Disclosure, Facts } from './ui'
 
@@ -34,11 +36,99 @@ interface Shared {
   due?: boolean
   /** A learning commitment asks how each session went, one optional tap, until the tap has gone unused a dozen times running. */
   askEase?: boolean
+  /** Part 39: whether it is due today and why, with its rhythm and fixed days and the taps that change them. */
+  cadence?: Cadence
   onResume: () => void
   /** Did it already: a session done away from the app, recorded as done now; says which, for the ease tap. */
   onLog: () => Promise<number | null>
   onUnblock: () => void
   onPlan: (cue: Cue, time: string) => void
+}
+
+/** Part 39: a commitment's rhythm and fixed days, set by you and never assumed, and what they make of today. */
+export interface Cadence {
+  due: Due
+  rhythm: Rhythm | null
+  schedule: readonly Weekday[]
+  /** A faith practice takes fixed days alone: it is never counted by the days between (Rule 10). */
+  faith: boolean
+  /** Something to learn sets its rhythm; a practice, its fixed days alone. */
+  onRhythm?: (r: Rhythm | null) => void
+  onSchedule: (days: Weekday[]) => void
+}
+
+/** What makes today due or not, in a few plain words: a fixed day, the next one, the week's count against its rhythm, or a rest day. Counts, never a grade. */
+export function cadenceWords(c: Cadence | undefined): string | null {
+  if (!c) return null
+  const a = copy.aims
+  const d = c.due
+  if (d.state === 'resting') return a.resting
+  if (d.by === 'schedule') return d.state === 'due' ? a.dueFixed : d.next !== undefined ? fill(a.nextFixed, { day: copy.week.days[d.next] }) : null
+  if (d.by === 'rhythm' && c.rhythm && d.week !== undefined) return fill(a.rhythmWeek, { n: String(d.week), per: String(c.rhythm.perWeek) })
+  return null
+}
+
+/** A session is recovery-sensitive when its rhythm keeps rest days: no Do another on the same day. */
+function restful(c: Cadence | undefined): boolean {
+  return (c?.rhythm?.restDays ?? 0) > 0
+}
+
+const WEEKDAYS: readonly Weekday[] = [0, 1, 2, 3, 4, 5, 6]
+
+/** Seven day chips, four to a row, each a whole target. */
+function WeekdayChips({ label, value, onChange, testid }: { label: string; value: readonly Weekday[]; onChange: (days: Weekday[]) => void; testid: string }) {
+  return (
+    <>
+      <p class="setting-label">{label}</p>
+      <div class="days" role="group" aria-label={label} data-testid={testid}>
+        {WEEKDAYS.map((d) => {
+          const on = value.includes(d)
+          return (
+            <button key={d} type="button" class={on ? 'day is-on' : 'day'} aria-pressed={on} aria-label={new Date(2026, 0, 4 + d).toLocaleDateString(undefined, { weekday: 'long' })} data-testid={`${testid}-${d}`} onClick={() => onChange(on ? value.filter((x) => x !== d) : [...value, d])}>
+              {copy.week.days[d]}
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+/** How often: flexible or a number a week, rest days between, and fixed days; for a practice, fixed days alone. Nothing is assumed (Part 39). */
+function CadenceEditor({ c }: { c: Cadence }) {
+  const a = copy.aims
+  const per = c.rhythm?.perWeek ?? 0
+  const rest = c.rhythm?.restDays ?? 0
+  return (
+    <div class="cadence" data-testid="aim-cadence">
+      {c.onRhythm && !c.faith && (
+        <>
+          <p class="setting-label">{a.rhythmLabel}</p>
+          <div class="days" role="group" aria-label={a.rhythmLabel} data-testid="aim-rhythm">
+            {Array.from({ length: MAX_PER_WEEK + 1 }, (_, n) => (
+              <button key={n} type="button" class={per === n ? 'day is-on' : 'day'} aria-pressed={per === n} data-testid={`aim-rhythm-${n}`} onClick={() => c.onRhythm?.(n === 0 ? null : { perWeek: n, restDays: rest })}>
+                {n === 0 ? a.rhythmFlexible : String(n)}
+              </button>
+            ))}
+          </div>
+          {per > 0 && (
+            <>
+              <p class="setting-label">{a.restLabel}</p>
+              <div class="days" role="group" aria-label={a.restLabel} data-testid="aim-rest">
+                {Array.from({ length: MAX_REST_DAYS + 1 }, (_, n) => (
+                  <button key={n} type="button" class={rest === n ? 'day is-on' : 'day'} aria-pressed={rest === n} data-testid={`aim-rest-${n}`} onClick={() => c.onRhythm?.({ perWeek: per, restDays: n })}>
+                    {a.rest[n]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+      <WeekdayChips label={a.fixedLabel} value={c.schedule} onChange={c.onSchedule} testid="aim-fixed" />
+      <p class="note faint no-gap">{c.faith ? a.rhythmNoteFaith : c.onRhythm ? a.rhythmNote : a.rhythmNotePractice}</p>
+    </div>
+  )
 }
 
 /** When a session began: the time today, or its day and time when it began on an earlier day. */
@@ -284,6 +374,7 @@ export function AimCard({
   today,
   due = false,
   askEase = false,
+  cadence,
   onResume,
   onUnblock,
   onPlan,
@@ -316,9 +407,10 @@ export function AimCard({
   const unnamed = learning !== undefined && learning.current === null
   const done = !open && today.done !== null
   const detailsSub = learning ? (learning.current ? d.detailsStudy : d.detailsStudyNoSkill) : aim.kind === 'person' ? d.detailsPerson : d.detailsPractice
+  const when = !open && !done ? cadenceWords(cadence) : null
   const facts = learning
-    ? [learning.current?.method && withMethod(learning.current.method), step.minutes > 0 && fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>]
-    : [fill(c.sized, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>]
+    ? [learning.current?.method && withMethod(learning.current.method), step.minutes > 0 && fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>]
+    : [fill(c.sized, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>]
   return (
     <div class={due && !open && !done && !unnamed && !paused ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind={aim.kind}>
       <div class="aim-head">
@@ -369,16 +461,18 @@ export function AimCard({
             {fill(c.doneTodayAt, { time: formatTime(today.done.at) })}
           </p>
           {askEase && justDone !== null && <EaseTap key={justDone} offerId={justDone} withNote />}
-          <div class="actions">
-            <button type="button" class="link" data-testid="aim-another" onClick={onResume}>
-              {c.doAnother}
-            </button>
-          </div>
+          {!restful(cadence) && (
+            <div class="actions">
+              <button type="button" class="link" data-testid="aim-another" onClick={onResume}>
+                {c.doAnother}
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>
           <div class="actions">
-            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={today.partly ? 'aim-resume' : 'aim-start'} onClick={onResume}>
+            <button type="button" class={due ? 'pill-quiet is-primary' : cadence && quiet(cadence.due) ? 'link' : 'pill-quiet'} data-testid={today.partly ? 'aim-resume' : 'aim-start'} onClick={onResume}>
               {today.partly ? c.resume : c.start}
             </button>
             {!pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={d.planWhen} />}
@@ -430,6 +524,7 @@ export function AimCard({
       )}
 
       <Disclosure label={d.details} sub={detailsSub} testid="aim-details">
+        {cadence && <CadenceEditor c={cadence} />}
         {learning ? (
           <>
             {learning.current && (
@@ -604,7 +699,7 @@ export function RowFrame({
  * Something to learn with no skill named shows where to name it and nothing to start. Several fit
  * without a scroll; the rest lives on Aims.
  */
-export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, today, due = false, askEase = false, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0 }: Shared & { unnamed?: boolean; index?: number }) {
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0 }: Shared & { unnamed?: boolean; index?: number }) {
   const c = copy.aims
   const [planOpen, setPlanOpen] = useState(false)
   const [justDone, setJustDone] = useState<number | null>(null)
@@ -613,6 +708,8 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
   const { pending, cues } = planState(plan, ctx)
   const done = !open && today.done !== null
   const minutes = step.minutes > 0 && fill(copy.catalogue.minutes, { n: String(step.minutes) })
+  const when = !open && !done ? cadenceWords(cadence) : null
+  const hush = cadence !== undefined && quiet(cadence.due)
   return (
     <RowFrame
       icon={kindIcon(aim)}
@@ -640,7 +737,7 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
                 {c.unblockStart}
               </button>
             )}
-            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={today.partly ? 'aim-resume' : 'aim-start'} onClick={onResume}>
+            <button type="button" class={due ? 'pill-quiet is-primary' : hush ? 'link' : 'pill-quiet'} data-testid={today.partly ? 'aim-resume' : 'aim-start'} onClick={onResume}>
               {today.partly ? c.resume : c.start}
             </button>
           </>
@@ -655,7 +752,7 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
                 ? [<span data-testid="aim-started">{startedWhen(openOffer)}</span>, minutes]
                 : done && today.done
                   ? [formatTime(today.done.at), last && <span data-testid="aim-last">{last}</span>]
-                  : [minutes, last && <span data-testid="aim-last">{last}</span>, today.partly && <span data-testid="aim-partly">{c.partlyToday}</span>, blocked && unblock && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]
+                  : [minutes, last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>, today.partly && <span data-testid="aim-partly">{c.partlyToday}</span>, blocked && unblock && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]
           }
         />
       }
@@ -663,9 +760,11 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
         !open &&
         !unnamed &&
         (done ? (
-          <button type="button" class="link" data-testid="aim-another" onClick={onResume}>
-            {c.doAnother}
-          </button>
+          !restful(cadence) && (
+            <button type="button" class="link" data-testid="aim-another" onClick={onResume}>
+              {c.doAnother}
+            </button>
+          )
         ) : (
           <>
             {!pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} />}

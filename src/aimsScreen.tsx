@@ -1,7 +1,9 @@
+import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
-import { AimCard, AimRow, type LearningView } from './aimCard'
-import { activeAims, addAim, addLearning, aimRecords, allIntentions, editSkill, finishAim, finishedAims, liveSkills, logSession, makeCurrent, openAimOffers, pauseAim, planAim, removeAim, reopenAim, resumeAim, rungMarks, setAimStep, setCurrentSkill, type AimRecords } from './aimFlow'
-import { BECOMING_KEYS, becoming, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { AimCard, AimRow, type Cadence, type LearningView } from './aimCard'
+import { activeAims, addAim, addLearning, aimRecords, allIntentions, editSkill, finishAim, finishedAims, liveSkills, logSession, makeCurrent, openAimOffers, pauseAim, planAim, removeAim, reopenAim, resumeAim, rungMarks, setAimStep, setCurrentSkill, setRhythm, setSchedule, type AimRecords } from './aimFlow'
+import { BECOMING_KEYS, becoming, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { dueOf, inStudyTime, isFaithPractice, rankOf, rhythmOf, scheduleOf, type Rhythm } from './rhythm'
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
 import { lightOnlyDay, partnerOnly, pathName, pathToday, type PathToday } from './pathStage'
@@ -121,34 +123,46 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     }
   }
   let rowShown = false
-  // Rows are numbered in the order they show; only the compact theme draws the numbers.
-  let row = 0
-  const items = aims.map((aim) => {
+  // Part 39: each commitment's state today. On Now the rows go in that order (started, planned, due,
+  // partly, open, done today, then a rest day or a met week); inside your preferred study time what is
+  // due to learn comes first among equals. That preference never makes anything due.
+  const studyTime = inStudyTime(settings, new Date())
+  const entries: { rank: number; learning: boolean; pos: number; render: (index: number) => ComponentChildren }[] = []
+  aims.forEach((aim, pos) => {
     if (aim.kind === 'path') {
       if (compact) {
         // Now holds one People row, whatever paths are on.
-        if (rowShown || !people) return null
+        if (rowShown || !people) return
         rowShown = true
-        return <PathRow key="people" {...pathShared(people.view.aim, { ...people.view, pick: people.pick }, people.paths, null)} index={row++} due={people.view.aim.id === dueAimId} />
+        const started = open.some((o) => views.some((v) => keysOf(v.aim, []).includes(o.situationKey)))
+        const rank = started ? 0 : people.view.repDone ? rankOf({ state: 'done' }) : people.pick ? rankOf({ state: 'due' }) : rankOf({ state: 'notDue' })
+        entries.push({ rank, learning: false, pos, render: (index) => <PathRow key="people" {...pathShared(people.view.aim, { ...people.view, pick: people.pick }, people.paths, null)} index={index} due={people.view.aim.id === dueAimId} /> })
+        return
       }
       const view = views.find((v) => v.aim.id === aim.id)
       const pt = view ?? todayFor(aim)
       const owns = people !== null && people.view.aim.id === aim.id
       const elsewhere = view && people && !owns ? { path: people.view.path.id, shared: people.paths.includes(pt.path.id) } : null
-      return (
-        <PathCard
-          key={aim.id}
-          {...pathShared(aim, owns && people ? { ...pt, pick: people.pick } : pt, owns && people ? people.paths : [pt.path.id], elsewhere)}
-          today={today}
-          counts={cueCounts(intentions, aim.id as number)}
-          due={aim.id === dueAimId}
-          onPause={(paused) => void pausePath(aim.id as number, paused)}
-          onRemove={() => onRemove?.(aim)}
-          prompts={pt.path.id === 'partner' ? <PartnerPrompts pt={pt} lightOnly={lightOnly} today={today} /> : undefined}
-          dates={pt.path.id === 'partner' ? <PartnerDates pt={pt} today={today} /> : undefined}
-          settings={pt.path.id === 'partner' ? <PartnerSettings paused={Boolean(aim.pausedAt)} onNotes={() => onPartnerNotes?.()} /> : undefined}
-        />
-      )
+      entries.push({
+        rank: 0,
+        learning: false,
+        pos,
+        render: () => (
+          <PathCard
+            key={aim.id}
+            {...pathShared(aim, owns && people ? { ...pt, pick: people.pick } : pt, owns && people ? people.paths : [pt.path.id], elsewhere)}
+            today={today}
+            counts={cueCounts(intentions, aim.id as number)}
+            due={aim.id === dueAimId}
+            onPause={(paused) => void pausePath(aim.id as number, paused)}
+            onRemove={() => onRemove?.(aim)}
+            prompts={pt.path.id === 'partner' ? <PartnerPrompts pt={pt} lightOnly={lightOnly} today={today} /> : undefined}
+            dates={pt.path.id === 'partner' ? <PartnerDates pt={pt} today={today} /> : undefined}
+            settings={pt.path.id === 'partner' ? <PartnerSettings paused={Boolean(aim.pausedAt)} onNotes={() => onPartnerNotes?.()} /> : undefined}
+          />
+        ),
+      })
+      return
     }
     const step = stepFor(aim, skills, marks, studyAims)
     const keys = keysOf(aim, studyAims)
@@ -160,6 +174,13 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     const last = study ? lastLine('practised', lastPracticeDay(aim, records.offers, records.outcomes, skills, studyAims), today) : lastLine('done', lastDoneDay(aim, records.offers, records.outcomes, studyAims), today)
     const todaySessions = sessionsToday(aim, records.offers, records.outcomes, today, skills, studyAims)
     const current = study ? currentSkillOf(aim, skills, marks, studyAims) : null
+    const plan = planFor(intentions, aim.id as number, today)
+    const rhythm = rhythmOf(aim.rhythm)
+    const schedule = scheduleOf(aim.schedule)
+    const faith = isFaithPractice(aim)
+    const due = dueOf({ rhythm, schedule, paused: Boolean(aim.pausedAt), started: openOffer !== null, doneToday: todaySessions.done !== null, partlyToday: todaySessions.partly, planned: plan !== null && plan.offerId === null, faith, practiceDays: practiceDaysOf(aim, records.offers, records.outcomes, skills, studyAims), today })
+    const id = aim.id as number
+    const cadence: Cadence = { due, rhythm, schedule, faith, ...(study ? { onRhythm: (r: Rhythm | null) => void setRhythm(id, r) } : {}), onSchedule: (days) => void setSchedule(id, days) }
     const shared = {
       aim,
       step,
@@ -168,32 +189,44 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       blocked,
       unblock,
       ctx,
-      plan: planFor(intentions, aim.id as number, today),
+      plan,
       last,
       today: todaySessions,
       // The line's pick carries the accent until its session is done today (Workstream 6).
       due: aim.id === dueAimId && todaySessions.done === null,
       // Something to learn asks how each session went, until the tap has gone unused a dozen times running.
       askEase: study && !easeOff,
+      cadence,
       onResume: () => void resumeAim(aim, step, 'step'),
       onLog: () => logSession(aim, step),
       onUnblock: () => unblock && void resumeAim(aim, sittingOf(unblock), 'unblock'),
       onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), step.name),
     }
-    return compact ? (
-      <AimRow key={aim.id} {...shared} unnamed={study && current === null} index={row++} />
-    ) : (
-      <AimCard
-        key={aim.id}
-        {...shared}
-        counts={cueCounts(intentions, aim.id as number)}
-        onRemove={onRemove ? () => onRemove(aim) : undefined}
-        onChangeStep={onChangeStep && !study && aim.kind !== 'person' ? () => onChangeStep(aim) : undefined}
-        onConvert={aim.kind === 'person' && !socialOn ? () => void convertToSocial(aim.id as number) : undefined}
-        learning={study ? learningView(aim, current, skills, marks, records, studyAims) : undefined}
-      />
-    )
+    // Something to learn with no skill named has nothing to start, so it sits with what is not due.
+    const rank = study && current === null ? rankOf({ state: 'notDue' }) : rankOf(due)
+    entries.push({
+      rank,
+      learning: study,
+      pos,
+      render: (index) =>
+        compact ? (
+          <AimRow key={aim.id} {...shared} unnamed={study && current === null} index={index} />
+        ) : (
+          <AimCard
+            key={aim.id}
+            {...shared}
+            counts={cueCounts(intentions, aim.id as number)}
+            onRemove={onRemove ? () => onRemove(aim) : undefined}
+            onChangeStep={onChangeStep && !study && aim.kind !== 'person' ? () => onChangeStep(aim) : undefined}
+            onConvert={aim.kind === 'person' && !socialOn ? () => void convertToSocial(aim.id as number) : undefined}
+            learning={study ? learningView(aim, current, skills, marks, records, studyAims) : undefined}
+          />
+        ),
+    })
   })
+  // Rows are numbered in the order they show; only the compact theme draws the numbers. Aims keeps its own order.
+  const ordered = compact ? [...entries].sort((a, b) => a.rank - b.rank || Number(b.learning && studyTime) - Number(a.learning && studyTime) || a.pos - b.pos) : entries
+  const items = ordered.map((e, index) => e.render(index))
   if (compact) {
     return (
       <div class="card aims-card">

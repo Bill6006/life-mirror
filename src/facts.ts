@@ -1,7 +1,8 @@
 import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { doneBySetting, pathName, pathToday, stageWords } from './pathStage'
 import { associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
-import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, planFor, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
+import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
+import { dueOf, isFaithPractice, rhythmOf, scheduleOf } from './rhythm'
 import { hasMove, isParked, isPathOnly, isProposed, moveById, OBSERVED_ONLY, PASSIVE, type SettingKind } from './catalogue'
 import { library } from './library'
 import { copy } from './copy'
@@ -275,7 +276,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     // While she is away (the chip), the day holds no drop-off, pickup or bedtime, whatever the week's shape wrote.
     const pickup = heldPickup(ctx)
     const bedtime = heldBedtime(ctx)
-    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a study night' : 'not a study night', bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
+    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a preferred study day' : null, bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
     facts.push(
       fact('week.today', ['cue', 'evening'], parts.filter(Boolean).join('; ') + '.', {
         weekday,
@@ -297,7 +298,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const tweekday = formatDayLong(tday).split(',')[0]
     const tpickup = heldPickup(tctx)
     const tbedtime = heldBedtime(tctx)
-    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a study night' : 'not a study night', tbedtime ? `her bedtime ${tbedtime}` : null]
+    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a preferred study day' : null, tbedtime ? `her bedtime ${tbedtime}` : null]
     facts.push(
       fact('week.tomorrow', ['cue'], tparts.filter(Boolean).join('; ') + '.', {
         day: tday,
@@ -313,7 +314,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     )
   }
   const yctx = i.contexts.find((c) => c.day === yesterday)
-  if (yctx) facts.push(fact('week.yesterday', ['recovery'], `Yesterday was ${yctx.churchDay ? 'a church day' : 'not a church day'}, ${yctx.studyNight ? 'a study night' : 'not a study night'}, ${yctx.withHer ? 'with her' : 'without her'}.`, { church: yctx.churchDay ? 1 : 0, studyNight: yctx.studyNight ? 1 : 0, withHer: yctx.withHer ? 1 : 0 }))
+  if (yctx) facts.push(fact('week.yesterday', ['recovery'], `Yesterday was ${yctx.churchDay ? 'a church day' : 'not a church day'}, ${yctx.withHer ? 'with her' : 'without her'}${yctx.studyNight ? ', a preferred study day' : ''}.`, { church: yctx.churchDay ? 1 : 0, studyNight: yctx.studyNight ? 1 : 0, withHer: yctx.withHer ? 1 : 0 }))
 
   // Readings: yesterday's blocks and today's logged ones, out of 100 with the band.
   for (const day of [yesterday, today]) {
@@ -446,6 +447,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
     // A paused path says nothing; it has no row and no step (Part 24). The Partner path writes no
     // commitment fact at all: the sheet carries it only as the date-day fact (Part 27).
     if (aim.kind === 'path' && (aim.pausedAt || aim.path === 'partner')) continue
+    // A paused commitment says nothing either: nothing surfaces it and its paused weeks are never read as fading (Workstream 6).
+    if (aim.pausedAt) continue
     const id = aim.id as number
     const study = aim.kind === 'certification'
     // The sheet the free models read never takes in the Partner path (Part 27): a Partner-only rep done today changes nothing here, though the People row and the coach know it (D4).
@@ -456,7 +459,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const own = study ? skillsOfAim(aim, i.skills, studyAims) : []
     const current = study ? currentSkillOf(aim, i.skills, i.marks, studyAims) : null
     const practice = current ? practiceOn(current, i.offers, i.outcomes) : null
-    const doneToday = sessionsToday(aim, records.offers, records.outcomes, today, i.skills, studyAims).done !== null
+    const todaySessions = sessionsToday(aim, records.offers, records.outcomes, today, i.skills, studyAims)
+    const doneToday = todaySessions.done !== null
     const lastDay = study ? lastPracticeDay(aim, records.offers, records.outcomes, i.skills, studyAims) : lastDoneDay(aim, records.offers, records.outcomes, studyAims)
     const gap = lastDay ? daysBetween(lastDay, today) : null
     const blocked = blockedBy(aim, records.offers, records.outcomes, records.nights, i.skills, studyAims)
@@ -464,6 +468,11 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const keys = keysOf(aim, studyAims)
     const open = openOffers.some((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, i.skills, studyAims))
     const counts = cueCounts(i.intentions, id)
+    // Part 39: its own rhythm or fixed days, and what they make of today; a faith practice is never counted by the days between (Rule 10).
+    const rhythm = rhythmOf(aim.rhythm)
+    const schedule = scheduleOf(aim.schedule)
+    const faith = isFaithPractice(aim)
+    const due = pt ? null : dueOf({ rhythm, schedule, paused: false, started: open, doneToday, partlyToday: todaySessions.partly, planned: plan !== null && plan.offerId === null, faith, practiceDays: practiceDaysOf(aim, records.offers, records.outcomes, i.skills, studyAims), today })
     const values: Record<string, number | string | null> = {
       kind: aim.kind,
       name,
@@ -476,6 +485,11 @@ export function buildFactSheet(i: FactInput): FactSheet {
       planStarted: plan && plan.offerId !== null ? 1 : 0,
       open: open ? 1 : 0,
       doneToday: doneToday ? 1 : 0,
+      due: due?.state ?? null,
+      perWeek: rhythm?.perWeek ?? null,
+      restDays: rhythm?.restDays ?? null,
+      fixed: schedule.length ? schedule.map((d) => copy.week.days[d]).join(', ') : null,
+      faith: faith ? 1 : 0,
       ...(study
         ? {
             skill: current?.name ?? null,
@@ -496,6 +510,15 @@ export function buildFactSheet(i: FactInput): FactSheet {
     }
     const gapText = gap === null ? (study ? 'not practised yet' : 'not done yet') : gap === 0 ? (study ? 'practised today' : 'done today') : `last ${study ? 'practised' : 'done'} ${gap} days ago`
     const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+    const cadenceText = pt
+      ? ''
+      : schedule.length
+        ? `; fixed days ${schedule.map((d) => copy.week.days[d]).join(', ')}${due?.state === 'due' ? ', today among them' : due?.next !== undefined ? `, next on ${copy.week.days[due.next]}` : ''}`
+        : faith
+          ? ''
+          : rhythm
+            ? `; rhythm ${rhythm.perWeek} a week${rhythm.restDays ? ` with ${plural(rhythm.restDays, 'rest day', 'rest days')} between` : ''}${due?.week !== undefined ? `, ${plural(due.week, 'practice day', 'practice days')} in the seven before today` : ''}${due?.state === 'resting' ? ', so today is a rest day' : due?.state === 'due' ? ', so it is due today' : due?.state === 'notDue' ? ', so this week’s are in' : ''}`
+            : '; no rhythm set, so no count makes it due'
     const practiceText = practice && practice.sessions > 0 ? `${plural(practice.sessions, 'session', 'sessions')} on it on ${plural(practice.days, 'day', 'different days')}${practice.since ? ` since ${practice.since}` : ''}` : 'no session on it yet'
     const planText = plan ? `; planned today ${copy.aims.cues[plan.cue].toLowerCase()} at ${plan.time}${plan.offerId !== null ? ', started' : ', not started'}` : '; no plan today'
     const cueText = counts.length ? `; cues: ${counts.map((c) => `${copy.aims.cues[c.cue].toLowerCase()} started ${c.started} of ${c.n}`).join(', ')}` : ''
@@ -508,7 +531,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
         : pt && !pt.pick
           ? `no rep of its stage fits this ${block} by today’s shape`
           : `the step is “${step.title}”, ${step.minutes} min`
-    facts.push(fact(`aim.${id}`, study ? ['study', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'learning' : aim.kind}): ${stepText}; ${gapText}${doneToday ? '; a session is done today' : ''}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}.`, values))
+    facts.push(fact(`aim.${id}`, study ? ['study', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'learning' : aim.kind}): ${stepText}; ${gapText}${doneToday ? '; a session is done today' : ''}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${cadenceText}${planText}${cueText}.`, values))
 
     // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by tier 1 alone.
     if (pt) {

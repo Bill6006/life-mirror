@@ -298,7 +298,18 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
                 onChange={(v) => setWeek((week) => ({ ...week, churchDay: v === 'none' ? null : (Number(v) as Weekday) }))}
               />
               <SwitchRow label={copy.week.livesWithMe} note={copy.week.livesWithMeNote} on={w.livesWithMe} onChange={(livesWithMe) => setWeek((week) => ({ ...week, livesWithMe }))} testid="lives-with-me" />
-              <DayChips label={copy.week.studyNights} value={w.studyNights} onChange={(studyNights) => setWeek((week) => ({ ...week, studyNights }))} />
+              <DayChips label={copy.week.studyNights} value={w.studyNights} onChange={(studyNights) => setWeek((week) => ({ ...week, studyNights }))} testid="study-days" />
+              {/* Workstream 6, D5: a preference only. It orders what is already due to learn; it never makes anything due or picks a subject. */}
+              {WEEKDAYS.some((d) => w.studyNights[d]) && (
+                <Seg
+                  label={copy.week.studyPartLabel}
+                  class="seg-halves"
+                  value={w.studyPart ?? 'any'}
+                  options={(['any', 'morning', 'afternoon', 'evening'] as const).map((v) => ({ v, l: copy.week.studyParts[v] }))}
+                  onChange={(v) => setWeek((week) => ({ ...week, studyPart: v as NonNullable<typeof week.studyPart> }))}
+                />
+              )}
+              <p class="note faint in-card" data-testid="study-days-note">{copy.week.studyNote}</p>
               <DayChips label={copy.week.officeDays} value={w.officeDays} onChange={(officeDays) => setWeek((week) => ({ ...week, officeDays }))} testid="office-days" />
               <PlaceRow place={cur.place} onSave={(place) => set((s) => ({ ...s, place }))} />
               {!cur.place && <TimeRow label={copy.week.daylightFrom} value={cur.daylight.from} onChange={(from) => set((s) => ({ ...s, daylight: { ...s.daylight, from } }))} />}

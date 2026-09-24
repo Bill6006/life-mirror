@@ -357,6 +357,10 @@ export interface Aim {
   method?: string
   /** A learning commitment you finished: dated, distinct from Remove, and reopened by a tap. */
   finishedAt?: string | null
+  /** Part 39: how often you practise it (sessions a week, rest days between); absent, it is flexible and never due by a count. Set by you, never assumed. */
+  rhythm?: { perWeek: number; restDays: number } | null
+  /** Part 39: fixed days (0 is Sunday); when any are set they alone decide the days it is due. */
+  schedule?: number[]
   /** A Social path converted from A person, which keeps that commitment's whole record. */
   convertedFrom?: 'person'
   convertedAt?: string

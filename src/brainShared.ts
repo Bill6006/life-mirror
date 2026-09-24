@@ -283,7 +283,8 @@ const SCHEDULE_WORDS: readonly { what: string; re: RegExp; holds: (s: DayShape) 
   { what: 'pickup or daycare', re: /\b(?:pickup|pick-up|daycare|drop-?off)\b|\bpick(?:ing|ed)?\s+up\s+(?:your|her|the)\s+(?:child|daughter|kid|little one)\b|\bafter\s+pick(?:ing)?\s*up\b/i, holds: (s) => s.daycare },
   { what: 'the office', re: /\b(?:office|at work|colleagues?|co-?workers?)\b/i, holds: (s) => s.office },
   { what: 'church', re: /\b(?:church|congregation)\b/i, holds: (s) => s.church },
-  { what: 'a study night', re: /\bstudy night\b/i, holds: (s) => s.studyNight },
+  // Study Night is retired as an engine (Workstream 6, D5): no day holds one, so no line may speak of one.
+  { what: 'a study night', re: /\bstudy night\b/i, holds: () => false },
   { what: 'people around', re: PEOPLE_AROUND_WORDS, holds: peopleAroundThatDay },
 ]
 

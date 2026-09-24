@@ -70,6 +70,12 @@ function aims(sheet: FactSheet): Fact[] {
   return factsWhere(sheet, 'aim.')
 }
 
+/** A commitment its rhythm leaves alone today: a rest day, or a week whose sessions are in. Nothing nudges it (Part 39). */
+function restful(f: Fact): boolean {
+  const due = str(f, 'due')
+  return due !== 'resting' && due !== 'notDue'
+}
+
 function cueOf(f: Fact, cue: Cue): { n: number; started: number } {
   return { n: num(f, `cue_${cue}_n`) ?? 0, started: num(f, `cue_${cue}_started`) ?? 0 }
 }
@@ -199,6 +205,7 @@ export const SITUATIONS: readonly Situation[] = [
     cooldownDays: 5,
     test: (sheet) => {
       const stalled = aims(sheet)
+        .filter((f) => num(f, 'faith') !== 1 && restful(f))
         .map((f) => ({ f, d: num(f, 'gapDays') ?? -1 }))
         .filter((x) => x.d >= 7)
         .sort((a, b) => b.d - a.d)[0]
@@ -273,7 +280,8 @@ export const SITUATIONS: readonly Situation[] = [
       if (!today) return null
       const bedtime = str(today, 'bedtime')
       if (bedtime && sheet.hour >= Number(bedtime.split(':')[0])) return null
-      const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && num(f, 'doneToday') !== 1 && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || str(f, 'skill') !== null))
+      // Never a faith practice (Rule 10), and never on a rest day or a week whose rhythm is met (Part 39).
+      const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && num(f, 'doneToday') !== 1 && restful(f) && num(f, 'faith') !== 1 && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || str(f, 'skill') !== null))
       return a ? { factIds: [a.id, today.id], strength: 0.6, vars: { name: s(str(a, 'name')), step: s(str(a, 'step')) }, action: { kind: 'plan', aimId: aimIdOf(a), cue: bestCue(a) } } : null
     },
   },
@@ -365,6 +373,7 @@ export const SITUATIONS: readonly Situation[] = [
       const weekday = str(today, 'weekday')
       if (!today || !(weekday === 'Monday' || sheet.day.endsWith('-01'))) return null
       const stalled = aims(sheet)
+        .filter((f) => num(f, 'faith') !== 1 && restful(f))
         .map((f) => ({ f, d: num(f, 'gapDays') ?? -1 }))
         .filter((x) => x.d >= 5)
         .sort((a, b) => b.d - a.d)[0]
@@ -427,7 +436,7 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const t = factsWhere(sheet, 'trajectory.')
         .map((f) => ({ f, before: (num(f, 'w3') ?? 0) + (num(f, 'w2') ?? 0), lately: (num(f, 'w1') ?? 0) + (num(f, 'w0') ?? 0) }))
-        .filter((x) => x.before >= 2 && x.lately === 0 && (num(x.f, 'ageDays') ?? 0) >= 21)
+        .filter((x) => x.before >= 2 && x.lately === 0 && (num(x.f, 'ageDays') ?? 0) >= 21 && num(factById(sheet, `aim.${num(x.f, 'aimId')}`), 'faith') !== 1)
         .sort((a, b) => b.before - a.before)[0]
       if (!t) return null
       const aim = factById(sheet, `aim.${num(t.f, 'aimId')}`)
@@ -442,7 +451,7 @@ export const SITUATIONS: readonly Situation[] = [
     cooldownDays: 7,
     test: (sheet) => {
       const t = factsWhere(sheet, 'trajectory.')
-        .filter((f) => (num(f, 'w1') ?? 0) >= 2 && num(f, 'w0') === 0 && (num(f, 'ageDays') ?? 0) >= 14)
+        .filter((f) => (num(f, 'w1') ?? 0) >= 2 && num(f, 'w0') === 0 && (num(f, 'ageDays') ?? 0) >= 14 && num(factById(sheet, `aim.${num(f, 'aimId')}`), 'faith') !== 1)
         .sort((a, b) => (num(b, 'w1') ?? 0) - (num(a, 'w1') ?? 0))[0]
       if (!t) return null
       const aim = factById(sheet, `aim.${num(t, 'aimId')}`)

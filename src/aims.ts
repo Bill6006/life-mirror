@@ -248,21 +248,25 @@ export function cueCounts(intentions: readonly Intention[], aimId: number): CueC
   return CUES.map((cue) => counts.get(cue)).filter((c): c is CueCount => c !== undefined)
 }
 
-/** The day a study commitment's ladder last moved, or null before any mark. */
 /**
  * The last day a learning commitment was practised: the day a session of it began that you marked
  * done or partly (Workstream 6), or null before any. Silence is not a gap in practice (Rule 2): an
  * unlogged day is only unlogged.
  */
 export function lastPracticeDay(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): string | null {
+  return practiceDaysOf(aim, offers, outcomes, skills, studyAims).pop() ?? null
+}
+
+/** The different days a commitment was practised, oldest first: the day each session began that you marked done or partly. A rhythm counts these (Part 39). */
+export function practiceDaysOf(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): string[] {
   const keys = stepKeysOf(aim, studyAims)
   const own = new Map(offers.filter((o) => (o.kind === 'step' || o.kind === 'study') && o.skippedAt === null && (keys.includes(o.situationKey) || studyOfferBelongs(o, aim, skills, studyAims))).map((o) => [o.id as number, o.day]))
-  let last: string | null = null
+  const days = new Set<string>()
   for (const x of outcomes) {
     const day = x.outcome === 'done' || x.outcome === 'partly' ? own.get(x.offerId) : undefined
-    if (day !== undefined && (last === null || day > last)) last = day
+    if (day !== undefined) days.add(day)
   }
-  return last
+  return [...days].sort()
 }
 
 /** A skill's practice since it became current: its sessions and the different days they fell on, done or partly, and how they went where you said. */

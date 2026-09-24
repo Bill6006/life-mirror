@@ -25,7 +25,14 @@ export interface WeekShape {
   churchDay: Weekday | null
   /** The constant: she lives with you. The exception is one chip inside the check-in. */
   livesWithMe: boolean
+  /**
+   * Preferred study days (Workstream 6, D5; kept under its older name). A preference only: on these
+   * days, in the part of the day below, what is already due to learn comes first on Now. It never makes
+   * anything due and never picks a subject; learning can happen at any time of day.
+   */
   studyNights: Record<Weekday, boolean>
+  /** The part of those days the preference holds for; any time when unset. */
+  studyPart?: 'any' | 'morning' | 'afternoon' | 'evening'
   /** Days at the office rather than at home; the exception is one chip inside the check-in. Quiet is not to be had there. */
   officeDays: Record<Weekday, boolean>
   /** Days she is at daycare: the pickup, and the daycare day it implies, hold on these. */

@@ -2,6 +2,7 @@ import { blockAt } from './blocks'
 import { db, type Aim, type AimKind, type Cue, type Ease, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
 import { AIM_KINDS, keyFor, planFor, unblockKeyFor } from './aims'
 import { ladderOf, nextStep, orphanSubjects, skillsOf, type Sitting } from './ladder'
+import { rhythmOf, scheduleOf, type Rhythm } from './rhythm'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
 // them, and the one-tap Resume that records a step as an offer to be asked about next time.
@@ -344,6 +345,16 @@ export function makeCurrent(aimId: number, skillId: number, now: Date = new Date
     await db.skills.update(skillId, { aimId, startedAt: at, endedAt: undefined })
     await db.aims.update(aimId, { currentSkillId: skillId })
   })
+}
+
+/** How often you practise it, set by you: sessions a week and rest days between; null makes it flexible again. Never assumed (Workstream 6, Part 39). */
+export async function setRhythm(aimId: number, rhythm: Rhythm | null): Promise<void> {
+  await db.aims.update(aimId, { rhythm: rhythm ? rhythmOf(rhythm) : null })
+}
+
+/** Fixed days, set by you: when any are set they alone decide when it is due; none leaves that to its rhythm. */
+export async function setSchedule(aimId: number, days: readonly number[]): Promise<void> {
+  await db.aims.update(aimId, { schedule: scheduleOf(days) })
 }
 
 /** Paused: no row on Now and nothing surfaces it, its record kept; taken up again by the same tap. */

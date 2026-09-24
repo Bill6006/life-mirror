@@ -115,6 +115,12 @@ describe('the guard every writer inherits: the day a line is for, and names kept
     expect(dayGuard('Pick up the thread with one short sitting after her bedtime.', base, '2026-09-19')).toBeNull()
   })
 
+  it('refuses a study night on any day, even a preferred study day: that engine is retired (Workstream 6, D5)', () => {
+    const preferred: FactSheet = { ...base, facts: [{ ...friday, values: { ...friday.values, studyNight: 1 } }, saturday] }
+    expect(dayGuard('Tonight is a study night: ten minutes.', preferred, '2026-09-18')).toBe('speaks of a study night, which Friday 2026-09-18 does not hold')
+    expect(dayGuard('Ten minutes of the current skill, whenever it suits.', preferred, '2026-09-18')).toBeNull()
+  })
+
   it('refuses a claim that people are around on a day whose shape puts nobody there', () => {
     expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-19')).toBe('speaks of people around, which Saturday 2026-09-19 does not hold')
     expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-18')).toBeNull()
