@@ -473,6 +473,8 @@ export interface BrainRead {
   count: number
   bytes: number
   via: 'briefing' | 'context'
+  /** Read by a coach run made by hand to test the path: shown as a test run. */
+  dry?: boolean
 }
 
 /**

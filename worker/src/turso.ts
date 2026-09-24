@@ -106,7 +106,15 @@ export interface TaskRow {
   fallbackReason?: string
   /** From the fire to the stored line. */
   latencyMs?: number
+  /** A coach pick taken back where the phone reads it, when and why: its watch turned it off, it was switched off, or the monthly check's help showed. */
+  withdrawn?: { at: string; reason: string }
 }
+
+/** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
+export type DayTask = Pick<TaskRow, 'id' | 'kind' | 'day' | 'forced' | 'fires'> & { refusals?: readonly string[] }
+
+/** A line or review as the coach's gate and watch read it: when it was stored, who wrote it, and for which day. Never its words. */
+export type DayLine = Pick<BriefRow, 'id' | 'kind' | 'day' | 'at' | 'writer' | 'forDay'>
 
 /** The coach's pick for a day (Part 32): up to two of the People row's candidates and one line of today's version. The phone reads it and uses it only while it holds. */
 export interface CoachRow {
@@ -143,6 +151,8 @@ export interface ReadRow {
   count: number
   bytes: number
   via: 'briefing' | 'context'
+  /** Read by a coach run made by hand to test the path: shown on the phone as a test run. */
+  dry?: boolean
 }
 
 /** One of the phone's own rows, as the retrieval layer reads it. */
@@ -209,12 +219,14 @@ export interface Store {
   writeRead(row: ReadRow): Promise<void>
   /** The newest reads logged, newest first. */
   readReads(limit: number): Promise<ReadRow[]>
-  /** The coach's pick for a day, and whether one is stored. */
+  /** The coach's pick for a day, whether one is stored, the stored pick itself, and its withdrawal: kept on record, gone from the phone. */
   writeCoach(row: CoachRow, now: string): Promise<void>
   hasCoach(id: string): Promise<boolean>
-  /** A spot-check recorded, and the tasks and spot-checks of the bridge, newest first, for the gate. */
+  readCoach(id: string): Promise<CoachRow | null>
+  withdrawCoach(id: string, now: string): Promise<void>
+  /** A spot-check recorded; and from a day on, the bridge's tasks and spot-checks with the lines and reviews, in the fields the coach's gate and watch read. */
   writeSpot(row: SpotRow): Promise<void>
-  readTasks(limit: number): Promise<(TaskRow | SpotRow)[]>
+  readWatchRows(from: string): Promise<{ rows: (DayTask | SpotRow)[]; lines: DayLine[] }>
   /** The phone's own rows of one store, newest day first, within a day range when one is given: the retrieval layer's only read. */
   readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
   /** One of the phone's own rows by id, or null. */
@@ -307,13 +319,36 @@ export function tursoStore(url: string, token: string): Store {
       const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'coach' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
       return r.length > 0
     },
+    async readCoach(id) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'coach' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
+      return r[0] ? parse<CoachRow>(r[0].body) : null
+    },
+    async withdrawCoach(id, now) {
+      // The row stays, marked deleted with a new sync time: the phone's next pull drops the pick, and the record keeps what was chosen.
+      await client.execute({ sql: `UPDATE records SET deleted = 1, updated_at = ?, synced_at = ? WHERE app = ? AND store = 'coach' AND id = ?`, args: [now, now, BRAIN_APP, id] })
+    },
     async writeSpot(row) {
       const now = new Date().toISOString()
       await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
     },
-    async readTasks(limit) {
-      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
-      return r.map((row) => parse<TaskRow | SpotRow>(row.body)).filter((x): x is TaskRow | SpotRow => x !== null && (x.kind === 'task' || x.kind === 'spotcheck'))
+    async readWatchRows(from) {
+      // Only the fields the gate and the watch read, taken out by the database, so a year of days stays a small read.
+      const [bridge, briefs] = await Promise.all([
+        rows(`SELECT id, day, json_extract(body, '$.kind') AS kind, json_extract(body, '$.forced') AS forced, json_extract(body, '$.fires') AS fires, json_extract(body, '$.refusals') AS refusals, json_extract(body, '$.at') AS at, json_extract(body, '$.runs') AS runs, json_extract(body, '$.clean') AS clean FROM records WHERE app = ? AND store = 'bridge' AND deleted = 0 AND day >= ?`, [BRAIN_APP, from]),
+        rows(`SELECT id, day, json_extract(body, '$.kind') AS kind, json_extract(body, '$.at') AS at, json_extract(body, '$.writer') AS writer, json_extract(body, '$.forDay') AS forDay FROM records WHERE app = ? AND store = 'briefs' AND deleted = 0 AND day >= ?`, [BRAIN_APP, from]),
+      ])
+      const out: (DayTask | SpotRow)[] = []
+      for (const r of bridge) {
+        if (r.kind === 'task') out.push({ id: String(r.id), kind: 'task', day: String(r.day), ...(r.forced ? { forced: true } : {}), ...(typeof r.fires === 'number' ? { fires: r.fires } : {}), refusals: parse<string[]>(r.refusals) ?? [] })
+        else if (r.kind === 'spotcheck') out.push({ id: String(r.id), kind: 'spotcheck', day: String(r.day), at: String(r.at), runs: Number(r.runs), clean: Boolean(r.clean) })
+      }
+      const lines: DayLine[] = []
+      for (const r of briefs) {
+        if (r.kind !== 'brief' && r.kind !== 'review') continue
+        const writer = r.writer === 'claude' || r.writer === 'free' ? (r.writer as 'claude' | 'free') : null
+        lines.push({ id: String(r.id), kind: r.kind as 'brief' | 'review', day: String(r.day), at: String(r.at), ...(writer ? { writer } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}) })
+      }
+      return { rows: out, lines }
     },
     async readRecords(store, range = {}, limit = 500) {
       const where = ['app = ?', 'store = ?', 'deleted = 0']
@@ -442,15 +477,27 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
       const r = rows.get(key(BRAIN_APP, 'coach', id))
       return Boolean(r && !r.deleted)
     },
+    async readCoach(id) {
+      const r = rows.get(key(BRAIN_APP, 'coach', id))
+      return r && !r.deleted ? parse<CoachRow>(r.body) : null
+    },
+    async withdrawCoach(id, now) {
+      const r = rows.get(key(BRAIN_APP, 'coach', id))
+      if (r) rows.set(key(BRAIN_APP, 'coach', id), { ...r, deleted: 1, updated_at: now, synced_at: now })
+    },
     async writeSpot(row) {
       rows.set(key(BRAIN_APP, 'bridge', row.id), { app: BRAIN_APP, store: 'bridge', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
     },
-    async readTasks(limit) {
-      return live(BRAIN_APP, 'bridge')
-        .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
-        .map((r) => parse<TaskRow | SpotRow>(r.body))
-        .filter((x): x is TaskRow | SpotRow => x !== null && (x.kind === 'task' || x.kind === 'spotcheck'))
-        .slice(0, limit)
+    async readWatchRows(from) {
+      const since = (app: string, store: string) => live(app, store).filter((r) => (r.day ?? '') >= from)
+      return {
+        rows: since(BRAIN_APP, 'bridge')
+          .map((r) => parse<TaskRow | SpotRow>(r.body))
+          .filter((x): x is TaskRow | SpotRow => x !== null && (x.kind === 'task' || x.kind === 'spotcheck')),
+        lines: since(BRAIN_APP, 'briefs')
+          .map((r) => parse<BriefRow>(r.body))
+          .filter((b): b is BriefRow => b !== null && (b.kind === 'brief' || b.kind === 'review')),
+      }
     },
     async readRecords(store, range = {}, limit = 500) {
       return live(APP, store)

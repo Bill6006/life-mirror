@@ -127,7 +127,7 @@ export function brainReadOf(id: string, body: string): BrainRead | null {
     const r = JSON.parse(body) as Partial<BrainRead>
     if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review' && r.task !== 'coach')) return null
     const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
-    return { id, day: r.day, at: r.at, task: r.task, category: r.category, count: n(r.count), bytes: n(r.bytes), via: r.via === 'context' ? 'context' : 'briefing' }
+    return { id, day: r.day, at: r.at, task: r.task, category: r.category, count: n(r.count), bytes: n(r.bytes), via: r.via === 'context' ? 'context' : 'briefing', ...(r.dry === true ? { dry: true } : {}) }
   } catch {
     return null
   }

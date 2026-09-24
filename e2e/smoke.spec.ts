@@ -200,6 +200,8 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await putBrief(page, { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'A line Claude wrote for this test.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:48:00.000Z', factsDay: '2026-09-18', writer: 'claude', askedModel: 'opus' })
   await putInto(page, 'brainReads', { id: 'read:1', day: '2026-09-18', at: '2026-09-18T11:47:00.000Z', task: 'line', category: 'notes', count: 3, bytes: 240, via: 'briefing' })
   await putInto(page, 'brainReads', { id: 'read:2', day: '2026-09-18', at: '2026-09-18T11:47:01.000Z', task: 'line', category: 'reflections', count: 2, bytes: 2048, via: 'briefing' })
+  // A coach run made by hand to test the path: its reads are shown apart, as a test run.
+  await putInto(page, 'brainReads', { id: 'read:3', day: '2026-09-18', at: '2026-09-18T11:49:00.000Z', task: 'coach', category: 'notes', count: 1, bytes: 80, via: 'context', dry: true })
   await page.reload()
 
   // The card: the one-word tag in the title row, and under Why, Claude with the model asked for and the one that wrote.
@@ -225,10 +227,16 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await screen.getByTestId('brain-switch-notes').click()
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'false')
   await expect(screen.getByTestId('brain-recent-line')).toHaveText(/Claude, asked for Opus, written by claude-opus-5-5$/)
-  await expect(screen.getByTestId('brain-read-group')).toContainText('the day’s line')
-  await expect(screen.getByTestId('brain-read-group')).toContainText('Check-in notes 3, 240 B')
-  await expect(screen.getByTestId('brain-read-group')).toContainText('Reflections 2, 2.0 KB')
-  await expect(screen.getByTestId('brain-coach')).toContainText('Once its reliability gate is met')
+  const groups = screen.getByTestId('brain-read-group')
+  await expect(groups).toHaveCount(2)
+  await expect(groups.nth(0)).toContainText('the coach, a test run')
+  await expect(groups.nth(0)).toContainText('Check-in notes 1, 80 B')
+  await expect(groups.nth(1)).toContainText('the day’s line')
+  await expect(groups.nth(1)).toContainText('Check-in notes 3, 240 B')
+  await expect(groups.nth(1)).toContainText('Reflections 2, 2.0 KB')
+  await expect(screen.getByTestId('brain-coach')).toContainText('It is watched every day')
+  await expect(screen.getByTestId('brain-coach')).toContainText('the app’s own pick stands until ten clean days in a row')
+  await expect(screen.getByTestId('brain-switch-monthlyCheck')).toContainText('Read only by the coach; never by the day’s line or the review.')
   await expect(screen.getByTestId('brain-coach-last')).toHaveText('It has not chosen yet.')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 

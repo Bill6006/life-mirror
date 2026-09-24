@@ -5,7 +5,7 @@ import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
-import { gateNow, recordSpot, runCoach } from './coach'
+import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { localTime } from './time'
 
 // The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
@@ -84,11 +84,13 @@ const handler: ExportedHandler<Env> = {
       if (w !== null && w !== 'claude' && w !== 'free') return json({ reason: 'writer must be claude or free' }, 400)
       return json(await dispatch(m[1] as Job, env, new Date(), url.searchParams.get('force') === '1', w ?? undefined, url.searchParams.get('dry') === '1'))
     }
-    // With the run key: the coach's reliability gate as the bridge's rows read today (Part 32), and a spot-check of the run logs recorded.
+    // With the run key: the coach's watch as the bridge's rows read now (Part 32): on or off and why, every failure since launch, the ten-day check, and where today stands. And a spot-check of the run logs recorded.
     if (url.pathname === '/run/coach-gate' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
       const now = new Date()
-      return json(await gateNow(tursoStore(env.TURSO_URL, env.TURSO_TOKEN), localTime(now, env.TIMEZONE).day, env.TIMEZONE))
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      const watch = await watchNow(store, now, env.TIMEZONE, env.COACH_LAUNCH)
+      return json({ switchedOn: env.COACH_WRITER === 'on', ...watch, today: await coachToday(store, localTime(now, env.TIMEZONE).day) })
     }
     if (url.pathname === '/run/coach-spotcheck' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })

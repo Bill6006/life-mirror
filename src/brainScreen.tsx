@@ -23,19 +23,20 @@ function writerOf(b: BrainBrief): string {
   return fill(b.fallback ? c.recentFallback : c.recentFree, { model: b.model })
 }
 
-/** The reads of one day and task, summed per category, in the order they were first read. */
-function readGroups(reads: readonly BrainRead[]): { day: string; task: BrainRead['task']; items: { category: string; count: number; bytes: number }[] }[] {
-  const groups = new Map<string, { day: string; task: BrainRead['task']; items: Map<string, { category: string; count: number; bytes: number }> }>()
+/** The reads of one day and task, summed per category, in the order they were first read; a test run's reads kept apart and named as one. */
+function readGroups(reads: readonly BrainRead[]): { day: string; task: BrainRead['task']; dry: boolean; items: { category: string; count: number; bytes: number }[] }[] {
+  const groups = new Map<string, { day: string; task: BrainRead['task']; dry: boolean; items: Map<string, { category: string; count: number; bytes: number }> }>()
   for (const r of [...reads].sort((a, b) => (a.at < b.at ? 1 : -1))) {
-    const key = `${r.day}|${r.task}`
-    const g = groups.get(key) ?? { day: r.day, task: r.task, items: new Map() }
+    const dry = r.dry === true
+    const key = `${r.day}|${r.task}|${dry}`
+    const g = groups.get(key) ?? { day: r.day, task: r.task, dry, items: new Map() }
     const item = g.items.get(r.category) ?? { category: r.category, count: 0, bytes: 0 }
     item.count += r.count
     item.bytes += r.bytes
     g.items.set(r.category, item)
     groups.set(key, g)
   }
-  return [...groups.values()].slice(0, 14).map((g) => ({ day: g.day, task: g.task, items: [...g.items.values()] }))
+  return [...groups.values()].slice(0, 14).map((g) => ({ day: g.day, task: g.task, dry: g.dry, items: [...g.items.values()] }))
 }
 
 export function BrainScreen({ onClose }: { onClose: () => void }) {
@@ -109,9 +110,9 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
       <div class="card pad" data-testid="brain-reads">
         {reads.length === 0 && <p class="note faint no-gap">{c.readNone}</p>}
         {readGroups(reads).map((g) => (
-          <p key={`${g.day}|${g.task}`} class="calc-line" data-testid="brain-read-group">
+          <p key={`${g.day}|${g.task}|${g.dry}`} class="calc-line" data-testid="brain-read-group">
             <span class="calc-key">
-              {formatDayShort(g.day)} · {c.tasks[g.task]}
+              {formatDayShort(g.day)} · {g.dry ? fill(c.testRun, { task: c.tasks[g.task] }) : c.tasks[g.task]}
             </span>{' '}
             {g.items.map((i) => fill(c.readItem, { category: labelOf(i.category), count: String(i.count), size: size(i.bytes) })).join('; ')}
           </p>

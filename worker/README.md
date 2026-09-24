@@ -45,16 +45,30 @@ plan's included allowance, with usage credits off.
 
 ## The coach (Part 32)
 
-With `COACH_WRITER = "on"` the coach runs once a day, after the day's line, but only while its
-reliability gate is met. The gate is read every day from the bridge's own rows: ten consecutive
-scheduled days back from yesterday with every safety condition held (fired once, a line stored by
-13:00, no wrong-day refusal left unresolved, Sunday's review stored), Claude's own line on at least
-seven of them, and a clean spot-check of the routine's run logs made since the count began. The
-coach names one or two of the People row's own candidates and one line of today's version; the
-Worker refuses anything outside the set, any rating, verdict or reply-as-success, and anyone in
-person when nobody is around. With two, the phone draws between them; the phone checks again at
-the tap and falls back to its own pick. On the Partner path the coach defers to the monthly
-check's help. Until the gate is met, the phone's own pick stands.
+With `COACH_WRITER = "on"` the coach runs once a day, after the day's line. It is on from
+`COACH_LAUNCH` (the owner's word, 2026-09-23) and watched on every tick from the bridge's own rows.
+It turns off at the first failure after launch:
+
+- a day fired on schedule that broke a safety condition: fired more than once, no line stored by
+  13:00 or one stored after it, a line for another day, a wrong-day refusal left unresolved, or
+  Sunday's review missing;
+- Claude's own line on fewer than seven of the last ten scheduled days;
+- no three days in a row of it among the first five after launch;
+- a spot-check of the routine's run logs that found a key.
+
+Today counts as soon as its condition is settled. Turning off takes back today's pick where the phone
+reads it; the row stays on record. A run still open is closed. From then on the phone's own pick
+stands. The coach comes back only when the ten-day check is met with all ten days after the
+failure: ten consecutive scheduled clean days, Claude's own line on seven, and the latest
+spot-check clean. A day with nothing to write from, or run by hand, is a gap. It is not a failure,
+though the ten-day check's count restarts after it. Without `COACH_LAUNCH`, the ten-day check
+alone switches the coach on.
+
+The coach names one or two of the People row's own candidates, each with one line of today's
+version. The Worker refuses anything outside the set, any rating, verdict or reply-as-success, and
+anyone in person when nobody is around. With two, the phone draws between them. The phone checks
+again at the tap and falls back to its own pick. On the Partner path the coach defers to the
+monthly check's help, even over a pick it made before the help showed.
 
 ## Once
 
@@ -75,7 +89,7 @@ Wrangler asks you to confirm the free plan's Workers AI usage the first time.
 
 - `https://life-mirror-brain.<your-subdomain>.workers.dev/health` answers `{"ok":true}`.
 - With a run key: `/run/push?key=…&kind=test` shows a test notification on the phone; `/run/brief?key=…&force=1` writes today's line now (the phone shows it after its next sync, within fifteen minutes or at open), and `&writer=claude` or `&writer=free` picks the writer; `/run/review?key=…&force=1` writes the week's review now; `/run/cues?key=…` sends a reminder for any plan whose moment has come.
-- `/run/coach-gate?key=…` shows the coach's gate as the rows read today; `/run/coach-spotcheck?key=…&runs=N&clean=1` records a spot-check of N run logs; `/run/coach?key=…&force=1&dry=1` runs the coach's whole path by hand without storing its pick where the phone reads it.
+- `/run/coach-gate?key=…` shows the coach's watch: on or off and why, every failure since launch, the ten-day check, and where today stands (the row the phone's coach block offers, the day's coach task, the pick stored). `/run/coach-spotcheck?key=…&runs=N&clean=1` records a spot-check of N run logs. `/run/coach?key=…&force=1&dry=1` runs the coach's whole path by hand without storing its pick where the phone reads it, and its reads show on the phone as a test run.
 - `/run/brief-report?key=…` lists the last thirty lines by their days, trigger, writer and refusals, never their words; `/run/bridge-report?key=…` lists each day's Claude task and how it ended.
 - The Cloud screen on the phone says when the brain last wrote and with which model.
 

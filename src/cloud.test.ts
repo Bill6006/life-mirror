@@ -487,4 +487,25 @@ describe('the Brain settings and what Claude read (Part 30)', () => {
     expect(await db.brainBriefs.get('2026-09-18:brief')).toMatchObject({ writer: 'claude', askedModel: 'opus', model: 'claude-opus-5-5' })
     expect(await db.brainReads.toArray()).toEqual([{ id: 'read:1', day: '2026-09-18', at: '2026-09-18T11:47:00.000Z', task: 'line', category: 'notes', count: 3, bytes: 240, via: 'briefing' }])
   })
+
+  it('keeps a test run’s reads marked as one', async () => {
+    const store = memoryStore()
+    await store.upsert([brainRow('reads', 'read:9', { day: '2026-09-23', at: '2026-09-23T23:00:00.000Z', task: 'coach', category: 'notes', count: 1, bytes: 80, via: 'context', dry: true }, '2026-09-23T23:00:01.000Z')])
+    await withToken(store)
+    await syncNow()
+    expect(await db.brainReads.get('read:9')).toMatchObject({ task: 'coach', dry: true })
+  })
+
+  it('reads the coach’s pick, and drops it when the Worker takes it back', async () => {
+    const store = memoryStore()
+    const pick = { day: '2026-09-24', block: 'morning', path: 'social', ids: ['greet-by-name'], versions: { 'greet-by-name': 'Greet one colleague by name.' }, model: 'claude-opus-5-5', at: '2026-09-24T11:52:00.000Z' }
+    await store.upsert([brainRow('coach', '2026-09-24:coach', pick, '2026-09-24T11:52:01.000Z')])
+    await withToken(store)
+    await syncNow()
+    expect(await db.coachPicks.get('2026-09-24:coach')).toMatchObject({ ids: ['greet-by-name'] })
+    // Taken back: the row stays in the database, marked deleted with a new sync time.
+    await store.upsert([{ ...brainRow('coach', '2026-09-24:coach', pick, '2026-09-24T16:00:00.000Z'), deleted: 1 }])
+    await syncNow()
+    expect(await db.coachPicks.count()).toBe(0)
+  })
 })

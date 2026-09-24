@@ -2,8 +2,8 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Block } from './blocks'
 import { coachPickOf } from './cloudSync'
-import { db, type Aim, type CoachPick, type Offer, type Outcome } from './db'
-import { coachRow, peopleRowOf, resumePath } from './pathFlow'
+import { db, type Aim, type CoachPick, type MonthlyCheck, type Offer, type Outcome } from './db'
+import { coachAllowed, coachRow, peopleRowOf, resumePath } from './pathFlow'
 import { isComparable } from './pathLearning'
 import { coachBlock, pathKey, pathToday, whyThisRep, type PathToday } from './pathStage'
 
@@ -74,6 +74,27 @@ describe('the coach’s pick in the People row', () => {
     const row = peopleRowOf([view()], [], DAY, 'morning', coach(two))
     const offer = await resumePath(aim, row!.pick!, 1, new Date(2026, 8, 23, 8, 0), row!.paths)
     expect(offer).toMatchObject({ chosenBy: 'coach', rule: 'coach+draw', candidates: two, propensities: { [two[0]]: 0.5, [two[1]]: 0.5 }, propensity: 0.5 })
+  })
+})
+
+describe('the coach and the monthly check’s help', () => {
+  const check = (answers: MonthlyCheck['answers'], month = DAY.slice(0, 7)): MonthlyCheck => ({ id: 1, month, day: `${month}-01`, answers, at: `${month}-01T12:00:00.000Z` })
+  const yes = check({ safety: true, conduct: null, doubt: null })
+
+  it('drops a Partner pick at the tap while this month’s check shows its help, even one made before the help showed', () => {
+    const partner = coach(['talk-ordinary-week'], { path: 'partner' })
+    expect(coachAllowed(partner, [yes], DAY)).toBeNull()
+    expect(coachAllowed(partner, [check({ safety: null, conduct: true, doubt: null })], DAY)).toBeNull()
+  })
+
+  it('keeps it on any other answer, in another month, and keeps a Social pick whatever the check says', () => {
+    const partner = coach(['talk-ordinary-week'], { path: 'partner' })
+    expect(coachAllowed(partner, [check({ safety: false, conduct: false, doubt: true })], DAY)).toBe(partner)
+    expect(coachAllowed(partner, [check({ safety: true, conduct: null, doubt: null }, '2026-08')], DAY)).toBe(partner)
+    expect(coachAllowed(partner, [], DAY)).toBe(partner)
+    const social = coach(['greet-by-name'])
+    expect(coachAllowed(social, [yes], DAY)).toBe(social)
+    expect(coachAllowed(null, [yes], DAY)).toBeNull()
   })
 })
 

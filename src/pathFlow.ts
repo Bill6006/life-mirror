@@ -64,6 +64,17 @@ export function peopleRowOf(views: readonly PathToday[], open: readonly Offer[],
 }
 
 /**
+ * The coach's pick as the row may use it (Part 32): none on the Partner path while this month's
+ * check shows its help. The coach defers to that help at the tap too, even over a pick it made
+ * before the help showed.
+ */
+export function coachAllowed(pick: CoachPick | null, checks: readonly MonthlyCheck[], today: string): CoachPick | null {
+  if (!pick) return null
+  const check = checkThisMonth(checks, today)
+  return pick.path === 'partner' && check !== null && checkShowsHelp(check.answers) ? null : pick
+}
+
+/**
  * The People row as the coach may choose for it (Part 32): the path its slot rule gave the row and
  * the reps it may offer this block; no candidates while a step is started or the pick is yours.
  */

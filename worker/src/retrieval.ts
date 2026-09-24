@@ -379,10 +379,10 @@ export function itemLines(items: readonly Item[]): string {
   return items.map((i) => `- ${i.day ? `${i.day}: ` : ''}${i.text}`).join('\n')
 }
 
-/** Logs one read, never its content. */
-async function logRead(store: Store, run: string, seq: number, task: ReadTask, day: string, category: Category, items: readonly Item[], text: string, via: ReadRow['via'], now: Date): Promise<void> {
+/** Logs one read, never its content; a read by a coach run made by hand to test the path is marked as one. */
+async function logRead(store: Store, run: string, seq: number, task: ReadTask, day: string, category: Category, items: readonly Item[], text: string, via: ReadRow['via'], now: Date, dry = false): Promise<void> {
   const at = now.toISOString()
-  await store.writeRead({ id: `read:${run}:${at}:${seq}`, day, at, task, category, count: items.length, bytes: bytesOf(text), via })
+  await store.writeRead({ id: `read:${run}:${at}:${seq}`, day, at, task, category, count: items.length, bytes: bytesOf(text), via, ...(dry ? { dry: true } : {}) })
 }
 
 /** How much private context each task's briefing may carry (engineering judgment). */
@@ -402,7 +402,7 @@ interface Section {
  * gets the week, the Partner path as acts done and experiences written, never a shortfall; the
  * monthly check is in neither. Every category read is logged.
  */
-export async function contextFor(store: Store, catalogue: Catalogue, a: Access, forDay: string, run: string, now: Date, noteIdsOnSheet: ReadonlySet<string> = new Set(), rowPath: 'social' | 'partner' = 'social'): Promise<{ text: string; bytes: number }> {
+export async function contextFor(store: Store, catalogue: Catalogue, a: Access, forDay: string, run: string, now: Date, noteIdsOnSheet: ReadonlySet<string> = new Set(), rowPath: 'social' | 'partner' = 'social', dry = false): Promise<{ text: string; bytes: number }> {
   const week = { from: addDays(forDay, -7), to: forDay }
   const rowCategory: Category = rowPath === 'partner' ? 'partnerPath' : 'socialPath'
   const sections: Section[] =
@@ -456,7 +456,7 @@ export async function contextFor(store: Store, catalogue: Catalogue, a: Access, 
       used += bytesOf(line) + 1
     }
     const text = itemLines(kept)
-    await logRead(store, run, seq++, a.task, forDay, s.category, kept, text, 'briefing', now)
+    await logRead(store, run, seq++, a.task, forDay, s.category, kept, text, 'briefing', now, dry)
     if (kept.length) parts.push(`[${s.category}] ${s.title}\n${text}`)
   }
   const text = parts.join('\n\n')
@@ -521,7 +521,7 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
  * One on-demand read, after its checks: the lines, cut to what the run may still read, then logged;
  * or null when the category has no reader. The review reads the Partner path as acts done only.
  */
-export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access, category: Category, q: Query, day: string, run: string, seq: number, now: Date, maxBytes: number): Promise<{ items: Item[]; text: string; truncated: boolean } | null> {
+export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access, category: Category, q: Query, day: string, run: string, seq: number, now: Date, maxBytes: number, dry = false): Promise<{ items: Item[]; text: string; truncated: boolean } | null> {
   const all = await readCategory({ store, catalogue, a }, category, a.task === 'review' && category === 'partnerPath' ? { ...q, doneOnly: true } : q)
   if (all === null) return null
   let items = all
@@ -530,6 +530,6 @@ export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access
     items = items.slice(0, -1)
     text = itemLines(items)
   }
-  await logRead(store, run, seq, a.task, day, category, items, text, 'context', now)
+  await logRead(store, run, seq, a.task, day, category, items, text, 'context', now, dry)
   return { items, text, truncated: items.length < all.length }
 }

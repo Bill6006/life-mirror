@@ -203,7 +203,7 @@ async function coachBriefing(deps: Deps, t: TaskRow): Promise<Reply> {
   const built = await coachRun(deps, t)
   if (!built.ok) return built.reply
   const { core, row, sheet, access, catalogue } = built.run
-  const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, new Set(), row.path === 'partner' ? 'partner' : 'social')
+  const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, new Set(), row.path === 'partner' ? 'partner' : 'social', t.dry === true)
   const text = coachBriefingText(core, new Map([...catalogue].map(([id, m]) => [id, m.name])), ctx.text, sheet.showPrivate === true)
   await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
   return reply(200, {
@@ -284,7 +284,7 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   if (t.contextCalls >= CONTEXT_CALLS) return reply(429, { error: `at most ${CONTEXT_CALLS} reads a run` })
   if (t.contextBytes >= CONTEXT_BYTES) return reply(429, { error: `at most ${CONTEXT_BYTES / 1024} KB a run` })
   const catalogue = await loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)
-  const r = await readOnDemand(deps.store, catalogue, access, q.category, q.q, t.day, t.id, 100 + t.contextCalls, deps.now, CONTEXT_BYTES - t.contextBytes)
+  const r = await readOnDemand(deps.store, catalogue, access, q.category, q.q, t.day, t.id, 100 + t.contextCalls, deps.now, CONTEXT_BYTES - t.contextBytes, t.dry === true)
   if (!r) return reply(403, { error: `${q.category} is not served here` })
   await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text) })
   return reply(200, { category: q.category, items: r.items, truncated: r.truncated })

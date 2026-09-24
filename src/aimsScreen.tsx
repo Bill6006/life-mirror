@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { AimCard, AimRow } from './aimCard'
 import { activeAims, addAim, addSkill, aimRecords, allIntentions, liveSkills, moveSkill, nameAim, openAimOffers, planAim, removeAim, removeSkill, resumeAim, rungMarks, setAimStep, setLadder } from './aimFlow'
 import { BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
-import { addPathAim, convertToSocial, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
+import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
 import { lightOnlyDay, partnerOnly, pathName, pathToday, type PathToday } from './pathStage'
 import { PartnerExtras } from './partnerScreen'
@@ -37,10 +37,11 @@ function useAims() {
   const pathMarks = useLive(() => db.pathMarks.toArray(), [])
   const settings = useLive(getSettings, [])
   const todays = useLive(() => db.checkins.where('day').equals(today).toArray(), [today])
-  // The coach's pick for today, when the brain wrote one (Part 32); the row uses it only while it holds.
+  // The coach's pick for today, when the brain wrote one (Part 32); the row uses it only while it holds, and never on the Partner path while the monthly check shows its help.
   const coach = useLive(() => db.coachPicks.where('day').equals(today).toArray(), [today])
-  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach) return null
-  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: [...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null }
+  const checks = useLive(monthlyChecks, [])
+  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks) return null
+  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today) }
 }
 
 /** What a plan says when its reminder shows: the rep's name, except a rep the Partner path holds alone, which the lock screen shows only as a people rep. */
