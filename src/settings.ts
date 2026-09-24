@@ -80,6 +80,8 @@ export interface Settings {
   readingDecisions: Record<string, string>
   /** Chips brought back, by the day you did; the count of untapped evenings restarts there. */
   chipsBack: Record<string, string>
+  /** Workstream 6: the day you brought back the question on how a learning session went, after it stopped appearing unused; null until then. */
+  easeBack: string | null
   /** Learned weights for the reading out of 100, applied only once a weight card holds up. */
   weights: Record<string, number> | null
   /** Daylight hours, HH:MM: a move that needs daylight is offered only inside them. Used while no place is set. */
@@ -122,6 +124,7 @@ export const DEFAULT_SETTINGS: Settings = {
   retiredReadings: [],
   readingDecisions: {},
   chipsBack: {},
+  easeBack: null,
   daylight: { from: '07:00', to: '19:00' },
   place: null,
   setupUndone: {},
@@ -152,6 +155,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     retiredReadings: stored.retiredReadings ?? [],
     readingDecisions: stored.readingDecisions ?? {},
     chipsBack: stored.chipsBack ?? {},
+    easeBack: typeof stored.easeBack === 'string' ? stored.easeBack : null,
     weights: stored.weights ?? null,
     daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
     place: placeOf(stored.place),

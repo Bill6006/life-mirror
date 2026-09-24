@@ -165,20 +165,9 @@ export const SITUATIONS: readonly Situation[] = [
     cards: [],
     cooldownDays: 3,
     test: (sheet) => {
-      const a = aims(sheet).find((f) => str(f, 'kind') === 'certification' && num(f, 'skills') === 0)
+      // Something to learn with no current skill named: nothing can start until it is (Workstream 6).
+      const a = aims(sheet).find((f) => str(f, 'kind') === 'certification' && str(f, 'skill') === null)
       return a ? { factIds: [a.id], strength: 0.9, vars: { name: s(str(a, 'name')) } } : null
-    },
-  },
-  {
-    id: 'study-no-time',
-    weekly: true,
-    mode: 'strategy',
-    cards: ['implementation-intentions'],
-    cooldownDays: 10,
-    test: (sheet) => {
-      const f = factById(sheet, 'study.nights')
-      const n = num(f, 'noTime') ?? 0
-      return f && n >= 2 ? { factIds: [f.id], strength: 0.8, vars: { n: s(n) } } : null
     },
   },
   {
@@ -200,17 +189,6 @@ export const SITUATIONS: readonly Situation[] = [
             ? fill(copy.caffeine.lowerQuality, { q: s(Math.abs(quality)) })
             : null
       return what ? { factIds: [f.id], strength: 0.8, vars: { what, low: s(str(f, 'low')), high: s(str(f, 'high')), n: s(num(f, 'n')), m: s(num(f, 'm')) } } : null
-    },
-  },
-  {
-    id: 'ladder-flat',
-    weekly: true,
-    mode: 'strategy',
-    cards: ['testing-effect', 'spacing-effect'],
-    cooldownDays: 10,
-    test: (sheet) => {
-      const a = aims(sheet).find((f) => str(f, 'kind') === 'certification' && (num(f, 'skills') ?? 0) >= 3 && num(f, 'highRungs') === 0)
-      return a ? { factIds: [a.id], strength: 0.8, vars: { name: s(str(a, 'name')), k: s(num(a, 'skills')) } } : null
     },
   },
   {
@@ -271,17 +249,6 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    id: 'study-tired',
-    mode: 'perspective',
-    cards: ['distributed-practice-motor', 'spacing-effect', 'ego-depletion-not-replicated'],
-    cooldownDays: 10,
-    test: (sheet) => {
-      const f = factById(sheet, 'study.nights')
-      const n = num(f, 'tired') ?? 0
-      return f && n >= 2 ? { factIds: [f.id], strength: 0.7, vars: { n: s(n) } } : null
-    },
-  },
-  {
     id: 'cue-holds',
     mode: 'encouragement',
     cards: ['implementation-intentions', 'monitoring-progress'],
@@ -306,7 +273,7 @@ export const SITUATIONS: readonly Situation[] = [
       if (!today) return null
       const bedtime = str(today, 'bedtime')
       if (bedtime && sheet.hour >= Number(bedtime.split(':')[0])) return null
-      const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || (num(f, 'skills') ?? 0) > 0))
+      const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && num(f, 'doneToday') !== 1 && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || str(f, 'skill') !== null))
       return a ? { factIds: [a.id, today.id], strength: 0.6, vars: { name: s(str(a, 'name')), step: s(str(a, 'step')) }, action: { kind: 'plan', aimId: aimIdOf(a), cue: bestCue(a) } } : null
     },
   },
@@ -507,9 +474,9 @@ export const SITUATIONS: readonly Situation[] = [
       if (!f || num(f, 'aimId') === null) return null
       const started = num(f, 'started') ?? 0
       const done = num(f, 'done') ?? 0
-      const moved = num(f, 'moved') ?? 0
-      if (started + done + moved === 0) return null
-      const what = [started ? `${started} ${started === 1 ? 'step' : 'steps'} started` : null, done ? `${done} marked done` : null, moved ? `the ladder moved ${moved === 1 ? 'once' : `${moved} times`}` : null].filter(Boolean).join(', ')
+      const changed = num(f, 'changed') ?? 0
+      if (started + done + changed === 0) return null
+      const what = [started ? `${started} ${started === 1 ? 'step' : 'steps'} started` : null, done ? `${done} marked done` : null, changed ? `the current skill changed ${changed === 1 ? 'once' : `${changed} times`}` : null].filter(Boolean).join(', ')
       return { factIds: [f.id], strength: 0.55, vars: { name: s(str(f, 'about')), what } }
     },
   },
@@ -522,7 +489,7 @@ export const SITUATIONS: readonly Situation[] = [
       const f = factById(sheet, 'followup')
       if (!f || num(f, 'aimId') === null || str(f, 'received') === 'not') return null
       const missed = num(f, 'missed') ?? 0
-      if (missed === 0 || (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'moved') ?? 0) > 0) return null
+      if (missed === 0 || (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'changed') ?? 0) > 0) return null
       const aim = factById(sheet, `aim.${num(f, 'aimId')}`)
       if (aim && str(aim, 'plan') !== null) return null
       return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.65, vars: { name: s(str(f, 'about')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
@@ -536,7 +503,7 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const f = factById(sheet, 'followup')
       if (!f || num(f, 'aimId') === null || str(f, 'received') === 'not') return null
-      if ((num(f, 'planned') ?? 0) + (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'moved') ?? 0) > 0) return null
+      if ((num(f, 'planned') ?? 0) + (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'changed') ?? 0) > 0) return null
       const aim = factById(sheet, `aim.${num(f, 'aimId')}`)
       return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.6, vars: { name: s(str(f, 'about')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
     },

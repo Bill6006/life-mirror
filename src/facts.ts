@@ -1,7 +1,7 @@
 import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { doneBySetting, pathName, pathToday, stageWords } from './pathStage'
 import { associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
-import { becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastMovedDay, planFor, stepFor, studyOfferBelongs } from './aims'
+import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, planFor, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
 import { hasMove, isParked, isPathOnly, isProposed, moveById, OBSERVED_ONLY, PASSIVE, type SettingKind } from './catalogue'
 import { library } from './library'
 import { copy } from './copy'
@@ -11,12 +11,11 @@ import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel,
 import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
-import { currentRung, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from './ladder'
+import { sittingOf } from './ladder'
 import type { Evidence } from './learningFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
 import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, INGREDIENTS, readingOf } from './score'
-import { keptCount } from './studyNight'
 import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
 
 // The fact sheet: everything the app knows about the day, as facts with ids and values, built by
@@ -440,7 +439,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const openOffers = i.offers.filter((o) => (o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study') && o.closedAt === null && o.skippedAt === null)
   const records = { offers: i.offers.filter((o) => o.kind === 'step' || o.kind === 'unblock' || o.kind === 'study'), outcomes: i.outcomes, nights: i.nights }
   const doneIds = new Set(i.outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
-  const perAim = new Map<number, { name: string; sittings: Offer[]; skillIds: Set<number> }>()
+  const perAim = new Map<number, { name: string; sittings: Offer[]; skills: Skill[] }>()
   const pathOffers = i.offers.filter(onTheSheet)
   const block = blockAt(i.now).block
   for (const aim of i.aims) {
@@ -453,17 +452,18 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const pt = aim.kind === 'path' ? pathToday({ aim, offers: pathOffers, outcomes: i.outcomes, ctx, day: today, block }) : null
     const name = pt ? pathName(pt.path) : (aim.name ?? copy.aims.kinds[aim.kind])
     const step = pt?.pick ? sittingOf(moveById(pt.pick.moveId)) : stepFor(aim, i.skills, i.marks, studyAims)
-    const own = study ? skillsOf(aim, i.skills, studyAims) : []
-    const lastDay = study ? (own.length ? lastMovedDay(aim, i.skills, i.marks, studyAims) : null) : lastDoneDay(aim, records.offers, records.outcomes, studyAims)
+    // Something to learn (Workstream 6): its current skill and the practice on it; the retired ladder is history, not a fact of today.
+    const own = study ? skillsOfAim(aim, i.skills, studyAims) : []
+    const current = study ? currentSkillOf(aim, i.skills, i.marks, studyAims) : null
+    const practice = current ? practiceOn(current, i.offers, i.outcomes) : null
+    const doneToday = sessionsToday(aim, records.offers, records.outcomes, today, i.skills, studyAims).done !== null
+    const lastDay = study ? lastPracticeDay(aim, records.offers, records.outcomes, i.skills, studyAims) : lastDoneDay(aim, records.offers, records.outcomes, studyAims)
     const gap = lastDay ? daysBetween(lastDay, today) : null
     const blocked = blockedBy(aim, records.offers, records.outcomes, records.nights, i.skills, studyAims)
     const plan = planFor(i.intentions, id, today)
     const keys = keysOf(aim, studyAims)
     const open = openOffers.some((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, i.skills, studyAims))
     const counts = cueCounts(i.intentions, id)
-    const rungs = Array.from({ length: TOP_RUNG + 1 }, () => 0)
-    for (const s of own) rungs[currentRung(i.marks, s.id as number)]++
-    const kind = own[0] ? ladderOf(own[0]) : (aim.ladder ?? 'technical')
     const values: Record<string, number | string | null> = {
       kind: aim.kind,
       name,
@@ -475,21 +475,40 @@ export function buildFactSheet(i: FactInput): FactSheet {
       planTime: plan?.time ?? null,
       planStarted: plan && plan.offerId !== null ? 1 : 0,
       open: open ? 1 : 0,
-      skills: own.length,
-      lowRungs: rungs[0] + rungs[1] + rungs[2],
-      highRungs: rungs[3] + rungs[4] + rungs[5] + rungs[6],
-      top: rungs[TOP_RUNG],
+      doneToday: doneToday ? 1 : 0,
+      ...(study
+        ? {
+            skill: current?.name ?? null,
+            method: current?.method ?? null,
+            skills: own.length,
+            sessions: practice?.sessions ?? 0,
+            practiceDays: practice?.days ?? 0,
+            since: practice?.since ?? null,
+            hard: practice?.ease.hard ?? 0,
+            right: practice?.ease.right ?? 0,
+            easy: practice?.ease.easy ?? 0,
+          }
+        : {}),
     }
     for (const c of counts) {
       values[`cue_${c.cue}_n`] = c.n
       values[`cue_${c.cue}_started`] = c.started
     }
-    const gapText = gap === null ? (study ? (own.length ? 'the ladder has not moved yet' : 'no skill on its ladder yet') : 'not done yet') : gap === 0 ? (study ? 'moved today' : 'done today') : `last ${study ? 'moved' : 'done'} ${gap} days ago`
-    const ladderText = study && own.length ? `; ${own.length} ${own.length === 1 ? 'skill' : 'skills'}: ${rungs.map((n, r) => (n ? `${n} at ${rungName(r, kind)}` : null)).filter(Boolean).join(', ')}` : ''
+    const gapText = gap === null ? (study ? 'not practised yet' : 'not done yet') : gap === 0 ? (study ? 'practised today' : 'done today') : `last ${study ? 'practised' : 'done'} ${gap} days ago`
+    const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+    const practiceText = practice && practice.sessions > 0 ? `${plural(practice.sessions, 'session', 'sessions')} on it on ${plural(practice.days, 'day', 'different days')}${practice.since ? ` since ${practice.since}` : ''}` : 'no session on it yet'
     const planText = plan ? `; planned today ${copy.aims.cues[plan.cue].toLowerCase()} at ${plan.time}${plan.offerId !== null ? ', started' : ', not started'}` : '; no plan today'
     const cueText = counts.length ? `; cues: ${counts.map((c) => `${copy.aims.cues[c.cue].toLowerCase()} started ${c.started} of ${c.n}`).join(', ')}` : ''
-    const stepText = pt?.repDone ? `today’s People rep is done: “${moveById(pt.repDone.moveId).name}”` : pt && !pt.pick ? `no rep of its stage fits this ${block} by today’s shape` : `the step is “${step.title}”, ${step.minutes} min`
-    facts.push(fact(`aim.${id}`, study ? ['study', 'ladder', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'study' : aim.kind}): ${stepText}; ${gapText}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}${ladderText}.`, values))
+    const stepText = study
+      ? current
+        ? `the current skill is “${current.name}”${current.method ? ` with ${current.method}` : ''}${current.minutes ? `, ${current.minutes} min a session` : ''}; ${practiceText}`
+        : 'no current skill named yet'
+      : pt?.repDone
+        ? `today’s People rep is done: “${moveById(pt.repDone.moveId).name}”`
+        : pt && !pt.pick
+          ? `no rep of its stage fits this ${block} by today’s shape`
+          : `the step is “${step.title}”, ${step.minutes} min`
+    facts.push(fact(`aim.${id}`, study ? ['study', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'learning' : aim.kind}): ${stepText}; ${gapText}${doneToday ? '; a session is done today' : ''}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${planText}${cueText}.`, values))
 
     // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by tier 1 alone.
     if (pt) {
@@ -524,21 +543,13 @@ export function buildFactSheet(i: FactInput): FactSheet {
         { n: started.reduce((a, b) => a + b, 0) },
       ),
     )
-    perAim.set(id, { name, sittings, skillIds: new Set(own.map((sk) => sk.id as number)) })
+    perAim.set(id, { name, sittings, skills: own })
   }
 
   // Part 27: the Partner path's one fact, and only on a declared date day while the path is on.
   const partnerOn = i.aims.some((a) => a.kind === 'path' && a.path === 'partner' && !a.pausedAt && a.archivedAt === null)
   if (partnerOn && (i.pathMarks ?? []).some((m) => m.path === 'partner' && m.kind === 'date' && m.day === today)) {
     facts.push(fact('partner.dateDay', ['dating'], 'Today is a declared date day.', { dateDay: 1 }))
-  }
-
-  const kept = keptCount(i.nights)
-  if (kept.total) {
-    const lastTen = [...i.nights].sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, 10)
-    const reasons = { tired: 0, noTime: 0, tooMuch: 0, didntWant: 0 }
-    for (const n of lastTen) if (n.reason) reasons[n.reason]++
-    facts.push(fact('study.nights', ['study', 'evening', 'energy'], `Study nights kept ${kept.kept} of ${kept.total}; of the last ${lastTen.length}, not now for tired ${reasons.tired}, no time ${reasons.noTime}, too much on ${reasons.tooMuch}, didn't want to ${reasons.didntWant}.`, { kept: kept.kept, total: kept.total, recent: lastTen.length, ...reasons }, { n: kept.total }))
   }
 
   // The counts the sheet carries leave the Partner path's own steps out (Part 27).
@@ -608,7 +619,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   for (const w of i.brainBriefs) said.push({ day: w.day, source: 'worker', situationId: null, text: w.text, feedback: fb(`worker:${w.id}`) })
   said.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
 
-  /** What the record shows for a commitment since a moment: plans made and missed, steps started and done, ladder moves. */
+  /** What the record shows for a commitment since a moment: plans made and missed, steps started and done, and a new current skill. */
   const sinceOn = (aimId: number, at: string) => {
     const about = perAim.get(aimId)
     if (!about) return null
@@ -622,7 +633,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
       missed: plans.filter((p) => p.day < today && p.offerId === null).length,
       started: since.length,
       done: i.outcomes.filter((x) => x.outcome === 'done' && sinceIds.has(x.offerId)).length,
-      moved: i.marks.filter((m) => about.skillIds.has(m.skillId) && m.at > at).length,
+      // A new current skill since: the one thing that now changes a learning commitment's step (Workstream 6).
+      changed: about.skills.filter((sk) => typeof sk.startedAt === 'string' && sk.startedAt > at).length,
     }
   }
 
@@ -641,10 +653,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (ref && s) {
       const aimId = Number(ref[1])
       facts.push(
-        fact('followup', ['monitoring', 'plan'], `The last line, on ${last.day}, was about ${s.name}. Since then the record shows ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the ladder moved ${s.moved} times. It was received as: ${received}.`, { day: last.day, about: s.name, aimId, planned: s.planned, missed: s.missed, started: s.started, done: s.done, moved: s.moved, received, text: last.text }),
+        fact('followup', ['monitoring', 'plan'], `The last line, on ${last.day}, was about ${s.name}. Since then the record shows ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the current skill changed ${s.changed} times. It was received as: ${received}.`, { day: last.day, about: s.name, aimId, planned: s.planned, missed: s.missed, started: s.started, done: s.done, changed: s.changed, received, text: last.text }),
       )
     } else {
-      facts.push(fact('followup', ['monitoring'], `The last line, on ${last.day}, was: ${quoted(last.text)} It was received as: ${received}.`, { day: last.day, about: null, aimId: null, planned: 0, missed: 0, started: 0, done: 0, moved: 0, received, text: last.text }))
+      facts.push(fact('followup', ['monitoring'], `The last line, on ${last.day}, was: ${quoted(last.text)} It was received as: ${received}.`, { day: last.day, about: null, aimId: null, planned: 0, missed: 0, started: 0, done: 0, changed: 0, received, text: last.text }))
     }
   }
 
@@ -656,9 +668,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const checkins = i.checkins.filter((c) => c.completedAt && c.completedAt > review.at).length
     const moves = i.outcomes.filter((x) => x.outcome === 'done' && x.at > review.at).length
     const since = s
-      ? `Since then the record shows, for ${s.name}, ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the ladder moved ${s.moved} times.`
+      ? `Since then the record shows, for ${s.name}, ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the current skill changed ${s.changed} times.`
       : `Since then ${checkins} check-ins were completed and ${moves} moves marked done.`
-    facts.push(fact('review.change', ['monitoring'], `The last review, on ${review.day}, proposed one change: ${quoted(review.parts.change)} ${since}`, { day: review.day, change: review.parts.change, aimId: s && ref ? Number(ref[1]) : null, checkins, moves, planned: s?.planned ?? null, started: s?.started ?? null, done: s?.done ?? null, moved: s?.moved ?? null }))
+    facts.push(fact('review.change', ['monitoring'], `The last review, on ${review.day}, proposed one change: ${quoted(review.parts.change)} ${since}`, { day: review.day, change: review.parts.change, aimId: s && ref ? Number(ref[1]) : null, checkins, moves, planned: s?.planned ?? null, started: s?.started ?? null, done: s?.done ?? null, changed: s?.changed ?? null }))
   }
 
   // When today's check-ins were completed (Part 28): the Worker writes once the morning's is on a sheet built after it.

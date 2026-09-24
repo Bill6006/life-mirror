@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks'
-import { AimCard, AimRow } from './aimCard'
-import { activeAims, addAim, addSkill, aimRecords, allIntentions, liveSkills, logSession, moveSkill, nameAim, openAimOffers, planAim, removeAim, removeSkill, resumeAim, rungMarks, setAimStep, setLadder } from './aimFlow'
-import { BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, lastDoneDay, lastLine, lastMovedDay, planFor, sessionsToday, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { AimCard, AimRow, type LearningView } from './aimCard'
+import { activeAims, addAim, addLearning, aimRecords, allIntentions, editSkill, finishAim, finishedAims, liveSkills, logSession, makeCurrent, openAimOffers, pauseAim, planAim, removeAim, reopenAim, resumeAim, rungMarks, setAimStep, setCurrentSkill, type AimRecords } from './aimFlow'
+import { BECOMING_KEYS, becoming, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
 import { lightOnlyDay, partnerOnly, pathName, pathToday, type PathToday } from './pathStage'
@@ -10,11 +10,11 @@ import { blockAt } from './blocks'
 import { families, type PathId } from './catalogue'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { allWins, db, getDayContext, getSettings, type Aim, type AimKind, type Cue, type Intention, type LadderKind } from './db'
+import { allWins, db, getDayContext, getSettings, type Aim, type AimKind, type Cue, type Intention, type RungMark, type Skill } from './db'
 import { fill, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
-import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from './ladder'
+import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf } from './ladder'
 import { useLive } from './live'
 import { todaysLine } from './brainFlow'
 import { ScreenHead, SectionLabel } from './ui'
@@ -46,6 +46,32 @@ function useAims() {
   return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today) }
 }
 
+/** A learning commitment's own view: the practice on its current skill, the skills before it newest first with their sessions, the proofs the retired ladder recorded (read only), and the taps only you make. */
+function learningView(aim: Aim, current: Skill | null, skills: readonly Skill[], marks: readonly RungMark[], records: AimRecords, studyAims: readonly Aim[]): LearningView {
+  const own = skillsOfAim(aim, skills, studyAims)
+  const earlier = own
+    .filter((sk) => sk.id !== current?.id)
+    .sort((a, b) => ((a.endedAt ?? a.createdAt) < (b.endedAt ?? b.createdAt) ? 1 : -1))
+    .map((skill) => ({ skill, sessions: practiceOn({ ...skill, startedAt: undefined }, records.offers, records.outcomes).sessions }))
+  const proofs: Record<number, string[]> = {}
+  for (const sk of own) {
+    const reached = [...new Set(marks.filter((m) => m.skillId === sk.id && m.rung > 0).sort((a, b) => (a.at < b.at ? -1 : 1)).map((m) => m.rung))]
+    if (reached.length) proofs[sk.id as number] = reached.map((r) => rungName(r, ladderOf(sk)))
+  }
+  const id = aim.id as number
+  return {
+    current,
+    practice: current ? practiceOn(current, records.offers, records.outcomes) : null,
+    earlier,
+    proofs,
+    onSetSkill: (w) => void setCurrentSkill(id, w),
+    onEditSkill: (skillId, w) => void editSkill(skillId, w),
+    onMakeCurrent: (skillId) => void makeCurrent(id, skillId),
+    onPause: (paused) => void pauseAim(id, paused),
+    onFinish: () => void finishAim(id),
+  }
+}
+
 /** What a plan says when its reminder shows: the rep's name, except a rep the Partner path holds alone, which the lock screen shows only as a people rep. */
 function planLabel(pt: PathToday): string {
   const rep = pt.pick
@@ -59,7 +85,8 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
   const data = useAims()
   if (!data) return null
   const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, coach } = data
-  const aims = compact ? data.aims.filter((a) => !(a.kind === 'path' && a.pausedAt)) : data.aims
+  const easeOff = easeRetired(records.offers, records.outcomes, settings.easeBack ?? null)
+  const aims = compact ? data.aims.filter((a) => !a.pausedAt) : data.aims
   if (aims.length === 0) return null
   const studyAims = aims.filter((a) => a.kind === 'certification')
   const socialOn = aims.some((a) => a.kind === 'path' && a.path === 'social')
@@ -129,13 +156,10 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     const blocked = blockedBy(aim, records.offers, records.outcomes, records.nights, skills, studyAims)
     const unblock = blocked ? unblockFor(blocked) : null
     const study = aim.kind === 'certification'
-    // One plain fact: when the ladder last moved, or the step was last done. A study commitment with no skills yet has no ladder to move.
-    const last = study
-      ? skillsOf(aim, skills, studyAims).length
-        ? lastLine('moved', lastMovedDay(aim, skills, marks, studyAims), today)
-        : null
-      : lastLine('done', lastDoneDay(aim, records.offers, records.outcomes, studyAims), today)
+    // One plain fact: when it was last practised, or the step last done. Silence is not a gap in practice (Rule 2).
+    const last = study ? lastLine('practised', lastPracticeDay(aim, records.offers, records.outcomes, skills, studyAims), today) : lastLine('done', lastDoneDay(aim, records.offers, records.outcomes, studyAims), today)
     const todaySessions = sessionsToday(aim, records.offers, records.outcomes, today, skills, studyAims)
+    const current = study ? currentSkillOf(aim, skills, marks, studyAims) : null
     const shared = {
       aim,
       step,
@@ -149,13 +173,15 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       today: todaySessions,
       // The line's pick carries the accent until its session is done today (Workstream 6).
       due: aim.id === dueAimId && todaySessions.done === null,
+      // Something to learn asks how each session went, until the tap has gone unused a dozen times running.
+      askEase: study && !easeOff,
       onResume: () => void resumeAim(aim, step, 'step'),
-      onLog: () => void logSession(aim, step),
+      onLog: () => logSession(aim, step),
       onUnblock: () => unblock && void resumeAim(aim, sittingOf(unblock), 'unblock'),
       onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), step.name),
     }
     return compact ? (
-      <AimRow key={aim.id} {...shared} index={row++} />
+      <AimRow key={aim.id} {...shared} unnamed={study && current === null} index={row++} />
     ) : (
       <AimCard
         key={aim.id}
@@ -164,10 +190,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
         onRemove={onRemove ? () => onRemove(aim) : undefined}
         onChangeStep={onChangeStep && !study && aim.kind !== 'person' ? () => onChangeStep(aim) : undefined}
         onConvert={aim.kind === 'person' && !socialOn ? () => void convertToSocial(aim.id as number) : undefined}
-        skillCount={study ? skillsOf(aim, skills, studyAims).length : undefined}
-        onAddSkill={study && aim.name ? (n) => void addSkill(n, aim.name ?? '') : undefined}
-        onName={study && !aim.name ? (n, k) => void nameAim(aim.id as number, n, k) : undefined}
-        onLadder={study ? (k) => void setLadder(aim.id as number, k) : undefined}
+        learning={study ? learningView(aim, current, skills, marks, records, studyAims) : undefined}
       />
     )
   })
@@ -202,9 +225,11 @@ export function AimsScreen({
 }) {
   const today = blockAt(new Date())
   const aims = useLive(activeAims, [])
-  // The one commitment the Brain's line names is the one thing to do here: its Resume carries the accent.
+  // The one commitment the Brain's line names is the one thing to do here: its Start carries the accent.
   const line = useLive(() => todaysLine(today.day), [today.day])
-  if (!aims) return <section class="screen" />
+  const proofs = useLive(() => db.rungMarks.count(), [])
+  const finished = useLive(finishedAims, [])
+  if (!aims || proofs === undefined || !finished) return <section class="screen" />
   const c = copy.aims
   const dueAimId = line?.action?.kind === 'plan' ? line.action.aimId : null
 
@@ -219,12 +244,26 @@ export function AimsScreen({
       <div class="card doors">
         <ul class="rows">
           <NavRow label={c.add} note={c.addDoor} onClick={onAdd} />
-          <NavRow label={c.ladder} note={c.ladderDoor} onClick={onLadder} />
+          {proofs > 0 && <NavRow label={c.ladder} note={c.ladderDoor} onClick={onLadder} />}
           <NavRow label={c.follow} note={c.followDoor} onClick={onFollow} />
           <NavRow label={c.becoming} note={c.becomingDoor} onClick={onBecoming} />
           <NavRow label={c.her} note={c.herDoor} onClick={onHer} />
         </ul>
       </div>
+      {finished.length > 0 && (
+        <div class="calc" data-testid="aims-finished">
+          <p class="calc-line ink">{c.finished}</p>
+          {finished.map((a) => (
+            <p key={a.id} class="calc-line" data-testid="aim-finished">
+              {fill(c.finishedLine, { name: a.name ?? c.kinds[a.kind], day: formatDayShort(blockAt(new Date(a.finishedAt as string)).day) })}
+              {' · '}
+              <button type="button" class="textbtn inline" data-testid="aim-reopen" onClick={() => void reopenAim(a.id as number)}>
+                {c.reopen}
+              </button>
+            </p>
+          ))}
+        </div>
+      )}
       <p class="note faint">{c.dataNote}</p>
     </section>
   )
@@ -263,28 +302,41 @@ function StepPicker({ kind, onPick }: { kind: AimKind; onPick: (moveId: string) 
   )
 }
 
-/** Study, named by you: what you are learning, and which six proofs it climbs, chosen once. */
-function StudyForm({ onAdd }: { onAdd: (name: string, ladder: LadderKind) => void }) {
+/**
+ * Something to learn (Workstream 6): the goal in your words, how you learn or practise it or that
+ * you are not sure yet, the one thing to work on now when you know it, and anything that would
+ * change the advice. No cadence is asked or assumed; the card keeps a place for the skill.
+ */
+function LearningForm({ onAdd }: { onAdd: (goal: string, method: string, skill: string, about: string) => void }) {
   const c = copy.aims
-  const [name, setName] = useState('')
-  const [ladder, setLadder] = useState<LadderKind>('technical')
+  const [goal, setGoal] = useState('')
+  const [method, setMethod] = useState('')
+  const [unsure, setUnsure] = useState(false)
+  const [skill, setSkill] = useState('')
+  const [about, setAbout] = useState('')
+  const input = (label: string, value: string, set: (v: string) => void, testid: string, max: number, placeholder: string, disabled = false) => (
+    <>
+      <p class="setting-label">{label}</p>
+      <div class="add">
+        <input class="input" type="text" maxLength={max} aria-label={label} placeholder={placeholder} value={value} disabled={disabled} data-testid={testid} onInput={(e) => set((e.currentTarget as HTMLInputElement).value)} />
+      </div>
+    </>
+  )
   return (
     <>
-      <p class="note">{c.studyNote}</p>
-      <div class="add">
-        <input class="input" type="text" maxLength={40} placeholder={c.studyNamePlaceholder} value={name} data-testid="aim-name-input" onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)} />
-      </div>
-      <p class="setting-label">{c.studyLadder}</p>
-      <div class="days" role="group" aria-label={c.studyLadder}>
-        {(['technical', 'language', 'craft'] as const).map((k) => (
-          <button key={k} type="button" class={ladder === k ? 'day is-on' : 'day'} aria-pressed={ladder === k} data-testid={`aim-ladder-${k}`} onClick={() => setLadder(k)}>
-            {copy.ladder.kinds[k]}
-          </button>
-        ))}
-      </div>
-      <p class="note faint">{copy.ladder.kindNote}</p>
+      <p class="note">{c.learnNote}</p>
+      {input(c.goalLabel, goal, setGoal, 'aim-goal-input', 60, c.goalPlaceholder)}
+      {input(c.methodLabel, unsure ? '' : method, setMethod, 'aim-method-input', 60, c.methodPlaceholder, unsure)}
+      <span class="when method-unsure" role="group" aria-label={c.methodLabel}>
+        <button type="button" class={unsure ? 'when-chip is-on' : 'when-chip'} aria-pressed={unsure} data-testid="aim-method-unsure" onClick={() => setUnsure((v) => !v)}>
+          {c.notSure}
+        </button>
+      </span>
+      {input(c.skillLabel, skill, setSkill, 'aim-skill-now-input', 80, c.skillNowPlaceholder)}
+      <p class="note faint">{c.skillNowNote}</p>
+      {input(c.aboutLabel, about, setAbout, 'aim-about-input', 240, c.aboutPlaceholder)}
       <div class="actions">
-        <button type="button" class="pill-ink" data-testid="aim-name-add" disabled={!name.trim()} onClick={() => onAdd(name, ladder)}>
+        <button type="button" class="pill-ink" data-testid="aim-learn-add" disabled={!goal.trim()} onClick={() => onAdd(goal, unsure ? '' : method, skill, about)}>
           {c.studyAdd}
         </button>
       </div>
@@ -293,8 +345,8 @@ function StudyForm({ onAdd }: { onAdd: (name: string, ladder: LadderKind) => voi
 }
 
 /**
- * Two taps deeper than Now: pick a kind; study is named by you and chooses its six proofs; a
- * practice picks its step from the catalogue; the Social path is added in one tap (Part 24), and the
+ * Two taps deeper than Now: pick a kind; something to learn is named by you with the one thing to
+ * work on now (Workstream 6); a practice picks its step from the catalogue; the Social path is added in one tap (Part 24), and the
  * Partner path too, only ever by your own tap (Part 27). A person can no longer be added: one already
  * on the list converts to the Social path from its card.
  */
@@ -340,7 +392,7 @@ export function AddAimScreen({ onClose }: { onClose: () => void }) {
           </div>
         </>
       ) : kind === 'certification' ? (
-        <StudyForm onAdd={(name, ladder) => void addAim('certification', null, name, ladder).then(onClose)} />
+        <LearningForm onAdd={(goal, method, skill, about) => void addLearning(goal, method, skill, about).then(onClose)} />
       ) : (
         <StepPicker kind={kind} onPick={(id) => void addAim(kind, id).then(onClose)} />
       )}
@@ -376,49 +428,35 @@ export function PickStepScreen({ aimId, onClose }: { aimId: number; onClose: () 
   )
 }
 
-/** The proof ladder: skills typed once on the phone, six proofs each, counts only, moved only by your tap. */
+/**
+ * Earlier proofs (Workstream 6, D2): what each skill reached on the retired proof ladder, kept as it
+ * was, with the day of each mark. Read only: nothing here adds a skill or moves a rung.
+ */
 export function LadderScreen({ onClose }: { onClose: () => void }) {
-  const skills = useLive(liveSkills, [])
+  const skills = useLive(() => db.skills.toArray(), [])
   const marks = useLive(rungMarks, [])
-  const aims = useLive(activeAims, [])
-  const [name, setName] = useState('')
-  const [picked, setPicked] = useState<string | null>(null)
-  if (!skills || !marks || !aims) return <section class="screen" />
+  if (!skills || !marks) return <section class="screen" />
   const l = copy.ladder
-  // A skill goes under one of your study commitments; the first is picked until you tap another.
-  const subjects = aims.filter((a) => a.kind === 'certification').map((a) => (a.name ?? '').trim()).filter(Boolean)
-  const subject = picked !== null && subjects.includes(picked) ? picked : (subjects[0] ?? '')
-
-  function add() {
-    const n = name.trim()
-    if (!n) return
-    void addSkill(n, subject)
-    setName('')
-  }
-
+  const marked = skills.filter((sk) => marks.some((m) => m.skillId === sk.id))
   return (
     <section class="screen" data-testid="ladder">
       <header class="screen-head">
         <p class="eyebrow">{l.title}</p>
       </header>
       <p class="note">{l.intro}</p>
-      {/* How a skill moves, from the door that now carries one line. */}
-      <p class="note faint">{copy.aims.ladderNote}</p>
-
-      {skills.length > 0 && (
+      {marked.length > 0 && (
         <div class="calc ladder-counts" data-testid="ladder-counts">
           {(['technical', 'language', 'craft'] as const).map((k) =>
-            ladderCounts(skills, marks, k).map((n, i) => n > 0 && <p key={`${k}${i}`} class="calc-line">{fill(l.countLine, { n: String(n), rung: rungName(i, k) })}</p>),
+            ladderCounts(marked, marks, k).map((n, i) => n > 0 && <p key={`${k}${i}`} class="calc-line">{fill(l.countLine, { n: String(n), rung: rungName(i, k) })}</p>),
           )}
         </div>
       )}
-
       <div class="card">
-        {skills.length === 0 ? (
-          <p class="note faint in-card">{l.noSkills}</p>
+        {marked.length === 0 ? (
+          <p class="note faint in-card">{l.noneKept}</p>
         ) : (
           <ul class="rows">
-            {groupBySubject(skills).flatMap((g) => [
+            {groupBySubject(marked.map((sk) => ({ ...sk, archivedAt: null }))).flatMap((g) => [
               ...(g.subject
                 ? [
                     <li key={`subject-${g.subject}`} class="row is-static" data-testid="skill-subject">
@@ -429,63 +467,22 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
                     </li>,
                   ]
                 : []),
-              ...g.skills.map((s) => {
-              const rung = currentRung(marks, s.id as number)
-              return (
-                <li key={s.id} class="skill-row" data-testid="skill-row">
-                  <span class="row-main">
-                    {s.name}
-                    <span class="sub">{rungName(rung, ladderOf(s))}</span>
-                  </span>
-                  <div class="skill-actions">
-                    <button type="button" class="textbtn" data-testid="rung-up" disabled={rung >= TOP_RUNG} onClick={() => void moveSkill(s.id as number, 1)}>
-                      {l.up}
-                    </button>
-                    <button type="button" class="textbtn" data-testid="rung-back" disabled={rung <= 0} onClick={() => void moveSkill(s.id as number, -1)}>
-                      {l.back}
-                    </button>
-                    <button type="button" class="textbtn faint" onClick={() => void removeSkill(s.id as number)}>
-                      {l.remove}
-                    </button>
-                  </div>
-                </li>
-              )
+              ...g.skills.map((sk) => {
+                const own = marks.filter((m) => m.skillId === sk.id).sort((a, b) => (a.at < b.at ? -1 : 1))
+                return (
+                  <li key={sk.id} class="row is-static" data-testid="skill-row">
+                    <span class="row-main">
+                      {sk.name}
+                      <span class="sub">{rungName(currentRung(marks, sk.id as number), ladderOf(sk))}</span>
+                      <span class="sub faint">{own.map((m) => fill(l.markLine, { rung: rungName(m.rung, ladderOf(sk)), day: formatDayShort(blockAt(new Date(m.at)).day) })).join(' · ')}</span>
+                    </span>
+                  </li>
+                )
               }),
             ])}
           </ul>
         )}
       </div>
-
-      {subjects.length === 0 && <p class="note faint">{l.noSubjects}</p>}
-      {subjects.length > 0 && (
-        <div class="days" role="group" aria-label={l.subjectPick}>
-          {subjects.map((s) => (
-            <button key={s} type="button" class={subject === s ? 'day is-on' : 'day'} aria-pressed={subject === s} data-testid="subject-chip" onClick={() => setPicked(s)}>
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-      <div class="add">
-        <input
-          class="input"
-          type="text"
-          maxLength={60}
-          placeholder={l.skillPlaceholder}
-          value={name}
-          data-testid="skill-input"
-          onInput={(e) => setName((e.currentTarget as HTMLInputElement).value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') add()
-          }}
-        />
-        <button type="button" class="pill-quiet" onClick={add} disabled={!name.trim()}>
-          {l.add}
-        </button>
-      </div>
-      {skills.length === 0 && <p class="note faint">{l.emptyStep}</p>}
-      <p class="note faint">{l.subjectNote}</p>
-
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>
           {copy.summary.done}
@@ -602,7 +599,7 @@ export function BecomingScreen({ onClose }: { onClose: () => void }) {
  */
 export function AimsOnNow({ onChangeRep, dueAimId = null }: { onChangeRep?: (aimId: number) => void; dueAimId?: number | null }) {
   const data = useAims()
-  if (!data || !data.aims.some((a) => !(a.kind === 'path' && a.pausedAt))) return null
+  if (!data || !data.aims.some((a) => !a.pausedAt)) return null
   const c = copy.aims
   return (
     <>

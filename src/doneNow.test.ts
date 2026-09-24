@@ -98,18 +98,16 @@ describe('the Done tap, widened', () => {
     expect(await pendingOffers()).toEqual([])
   })
 
-  it('on a rung’s step, moves the skill up as the check-in would, and says what it did', async () => {
+  it('records a rung’s step started before the ladder was retired, and moves no skill (Workstream 6, D2)', async () => {
     await db.skills.add({ name: 'one', order: 1, createdAt: '', archivedAt: null })
     const id = await db.offers.add({ ...offer('rung:1:1'), kind: 'step', situationKey: 'aim:certification', target: 'focus', label: 'one · step' })
     const o = (await db.offers.get(id)) as Offer
-    const moved = await recordDoneNow(o, new Date(2026, 8, 11, 21, 0))
-    expect(moved).toMatchObject({ from: 0, to: 1, skill: { name: 'one' } })
-    const marks = await db.rungMarks.toArray()
-    expect(marks).toHaveLength(1)
-    expect(marks[0]).toMatchObject({ skillId: 1, rung: 1, via: 'step' })
+    expect(await recordDoneNow(o, new Date(2026, 8, 11, 21, 0))).toBe(true)
+    expect(await db.rungMarks.count()).toBe(0)
+    expect((await db.outcomes.toArray()).map((x) => x.outcome)).toEqual(['done'])
     expect((await db.offers.get(id))?.closedAt).not.toBeNull()
-    // Tapped again, nothing more is written and nothing is said.
-    expect(await recordDoneNow(o, new Date(2026, 8, 11, 21, 1))).toBeNull()
+    // Tapped again, nothing more is written.
+    expect(await recordDoneNow(o, new Date(2026, 8, 11, 21, 1))).toBe(false)
   })
 
   it('opens on the ladder’s own clock when the offer carries its minutes: ten for a language, twenty for the technical rung', () => {

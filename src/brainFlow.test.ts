@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addAim, addSkill, planAim, studyAims } from './aimFlow'
+import { addAim, addSkill, planAim, resumeAim, studyAims } from './aimFlow'
+import { stepFor } from './aims'
+import { recordDoneNow } from './offerFlow'
 import { wasShown, weekBuckets } from './facts'
 import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
 import type { LineAction } from './brainShared'
@@ -22,7 +24,7 @@ describe('the brain on the phone', () => {
     await ensureDayContext(DAY, await getSettings())
   })
 
-  it('builds the sheet from the record: the day, the commitment, its plan and the ladder', async () => {
+  it('builds the sheet from the record: the day, the commitment, its current skill and its plan', async () => {
     await addAim('certification', null, 'French', 'language')
     const [aim] = await studyAims()
     await addSkill('Ten words', 'French')
@@ -33,8 +35,10 @@ describe('the brain on the phone', () => {
     expect(factById(sheet, 'record')?.values.checkins).toBe(0)
     expect(factById(sheet, 'week.today')?.values).toMatchObject({ weekday: 'Friday', bedtime: '20:00', hour: 8 })
     const a = factById(sheet, `aim.${aim.id}`)
-    expect(a?.values).toMatchObject({ kind: 'certification', name: 'French', skills: 1, plan: 'afterBedtime', planTime: '20:00', planStarted: 0, gapDays: null })
-    expect(a?.text).toContain('French (study): the step is “Ten words · hear or read it”, 10 min; the ladder has not moved yet; planned today after her bedtime at 20:00, not started')
+    expect(a?.values).toMatchObject({ kind: 'certification', name: 'French', skill: 'Ten words', skills: 1, sessions: 0, practiceDays: 0, doneToday: 0, plan: 'afterBedtime', planTime: '20:00', planStarted: 0, gapDays: null })
+    expect(a?.text).toContain('French (learning): the current skill is “Ten words”; no session on it yet; not practised yet; planned today after her bedtime at 20:00, not started')
+    // The retired ladder is not a fact of today (Workstream 6, D2).
+    expect(a?.values).not.toHaveProperty('highRungs')
     expect(factById(sheet, 'follow')).toBeDefined()
     expect((await db.intentions.toArray())[0].step).toBe('French · Ten words · hear or read it')
   })
@@ -90,7 +94,7 @@ describe('the brain on the phone', () => {
     await chooseAndLog(DAY, NOW)
     const line = await todaysLine(DAY)
     expect(line).toMatchObject({ source: 'phone', situationId: 'first-skill' })
-    expect(line?.text).toContain('French has no skill on its ladder yet')
+    expect(line?.text).toContain('French has no current skill yet')
     // Kept while its situation holds: a second run changes nothing.
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 0))
     expect(await db.briefLog.count()).toBe(1)
@@ -223,7 +227,7 @@ describe('what the sheet learned to carry', () => {
     await db.brainBriefs.put({ id: '2026-09-13:review', day: '2026-09-13', kind: 'review', text: 'H D C', mode: 'strategy', factIds: [`aim.${aim.id}`], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-13T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'Pin French to after her bedtime.' }, writer: 'claude' })
     await planAim(aim, 'afterBedtime', '20:00', NOW, 'French · Ten words · hear or read it')
     const f = factById(await factSheet(DAY, NOW), 'review.change')
-    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin French to after her bedtime.” Since then the record shows, for French, 1 plans made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the ladder moved 0 times.')
+    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin French to after her bedtime.” Since then the record shows, for French, 1 plans made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the current skill changed 0 times.')
     expect(f?.values).toMatchObject({ day: '2026-09-13', aimId: aim.id, planned: 1 })
     // A change about no commitment: what the record shows in general since.
     await db.brainBriefs.put({ id: '2026-09-14:review', day: '2026-09-14', kind: 'review', text: 'H D C', mode: 'strategy', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-14T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'One small move a day.' }, writer: 'claude' })
@@ -269,6 +273,21 @@ describe('the line, acted on', () => {
     await ensureDayContext(DAY, await getSettings())
   })
 
+  it('takes its plan tap away once that commitment’s session is started or done today: nothing is left to plan (Workstream 6)', async () => {
+    await addAim('certification', null, 'French', 'language')
+    await addSkill('Ten words', 'French')
+    await chooseAndLog(DAY, NOW)
+    const line = await todaysLine(DAY)
+    expect(line?.action).toMatchObject({ kind: 'plan', aimId: 1 })
+    expect((await lineActionState(DAY, line?.action ?? null, NOW))?.state).toBe('open')
+    const [aim] = await studyAims()
+    const session = await resumeAim(aim, stepFor(aim, await db.skills.toArray(), [], [aim]), 'step', NOW)
+    expect((await lineActionState(DAY, line?.action ?? null, NOW))?.state).toBe('gone')
+    await recordDoneNow(session, new Date(NOW.getTime() + 20 * 60_000))
+    expect((await lineActionState(DAY, line?.action ?? null, NOW))?.state).toBe('gone')
+    expect(await applyLineAction(DAY, line!.action!, NOW)).toBe(false)
+  })
+
   it('does what it says in one tap, says why it said it, sets a test once, and makes the check-in lighter', async () => {
     await addAim('certification', null, 'French', 'language')
     await addSkill('Ten words', 'French')
@@ -277,7 +296,7 @@ describe('the line, acted on', () => {
     expect(line?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
     expect(await lineActionState(DAY, line?.action ?? null, NOW)).toEqual({ state: 'open', cue: 'afterBedtime', time: '20:00' })
     expect(await applyLineAction(DAY, line!.action!, NOW)).toBe(true)
-    expect((await db.intentions.toArray())[0]).toMatchObject({ aimId: 1, cue: 'afterBedtime', time: '20:00', step: 'French · Ten words · hear or read it' })
+    expect((await db.intentions.toArray())[0]).toMatchObject({ aimId: 1, cue: 'afterBedtime', time: '20:00', step: 'Ten words' })
     expect((await lineActionState(DAY, line!.action, NOW))?.state).toBe('done')
     expect(await applyLineAction(DAY, line!.action!, NOW)).toBe(false)
     // Past her bedtime the cue is gone for the day.
@@ -286,7 +305,7 @@ describe('the line, acted on', () => {
 
     await writeFactsRow(DAY, NOW)
     const why = await whyFor(line!, DAY)
-    expect(why.facts[0].text).toContain('French (study)')
+    expect(why.facts[0].text).toContain('French (learning)')
     expect(why.cards.map((c) => c.id)).toEqual(['implementation-intentions'])
 
     expect((await lineActionState(DAY, { kind: 'test', moveId: 'walk-ten' }, NOW))?.state).toBe('open')

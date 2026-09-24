@@ -1,5 +1,5 @@
 import { activeAims, aimRecords, allIntentions, isOpenAimOffer, liveSkills, planAim, rungMarks } from './aimFlow'
-import { aheadToday, cuesFor, planFor, stepFor } from './aims'
+import { aheadToday, cuesFor, keysOf, planFor, sessionsToday, stepFor } from './aims'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import type { CoachBlock } from './factTypes'
 import { coachRow, pathOn, peopleRowOf } from './pathFlow'
@@ -290,6 +290,12 @@ export async function lineActionState(day: string, action: LineAction | null, no
     if (!aim) return { state: 'gone' }
     const plan = planFor(await allIntentions(), action.aimId, day)
     if (plan) return { state: 'done', time: plan.time }
+    // A session started or done today needs no plan: the tap is no longer there (Workstream 6).
+    const aims = await activeAims()
+    const studyAims = aims.filter((a) => a.kind === 'certification')
+    const records = await aimRecords()
+    const keys = keysOf(aim, studyAims)
+    if (records.offers.some((o) => isOpenAimOffer(o) && keys.includes(o.situationKey)) || sessionsToday(aim, records.offers, records.outcomes, day, await liveSkills(), studyAims).done) return { state: 'gone' }
     const cue = cuesFor(await getDayContext(day), now).find((c) => c.cue === action.cue)
     return cue ? { state: 'open', cue: cue.cue, time: cue.time } : { state: 'gone' }
   }

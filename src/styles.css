@@ -2522,6 +2522,47 @@ button.chip {
   color: var(--ink);
 }
 
+/* Workstream 6: how a learning session went, one optional tap after it, and a skill's own words. */
+.when.method-unsure {
+  margin-bottom: 14px;
+}
+
+.ease {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ease .when {
+  margin-top: 2px;
+}
+
+.ease .add {
+  width: 100%;
+  margin: 4px 0 0;
+}
+
+.skill-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.skill-form .actions {
+  margin-top: 4px;
+}
+
+.history-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 6px;
+}
+
 .sub.ink,
 .note.ink {
   color: var(--ink);

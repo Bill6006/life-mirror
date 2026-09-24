@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addAim, addSkill, adoptOrphanSubjects, alignLadders, allIntentions, markRungByStep, moveSkill, nameAim, planAim, resumeAim, setLadder, studyAims } from './aimFlow'
+import { addAim, addLearning, addSkill, adoptOrphanSubjects, alignLadders, allIntentions, nameAim, planAim, resumeAim, setLadder, studyAims } from './aimFlow'
 import { cueCounts, planFor, stepFor } from './aims'
 import { db } from './db'
 import { currentRung } from './ladder'
@@ -80,16 +80,16 @@ describe('the ladder a subject climbs', () => {
     expect(await db.skills.toArray()).toEqual(skills)
   })
 
-  it('changes the six proofs on the card: the commitment and its skills take the ladder, the marks stay, the step takes the new words', async () => {
+  it('keeps an older commitment’s marks when its six proofs are brought into line, and its step is the skill, never a rung (Workstream 6)', async () => {
     await addAim('certification', null, 'Networking')
     await addSkill('Subnetting', 'Networking')
-    await moveSkill(1, 1)
+    await db.rungMarks.add({ skillId: 1, rung: 1, at: '2026-09-07T20:00:00.000Z', via: 'tap' })
     await setLadder(1, 'language')
     const [aim] = await studyAims()
     expect(aim.ladder).toBe('language')
     expect((await db.skills.get(1))?.ladder).toBe('language')
     expect(currentRung(await db.rungMarks.toArray(), 1)).toBe(1)
-    expect(stepFor(aim, await db.skills.toArray(), await db.rungMarks.toArray(), [aim]).name).toBe('Networking · Subnetting · say it')
+    expect(stepFor(aim, await db.skills.toArray(), await db.rungMarks.toArray(), [aim])).toMatchObject({ id: 'skill:1', name: 'Subnetting', kind: 'skill' })
   })
 })
 
@@ -99,25 +99,18 @@ describe('one tap says when', () => {
     await db.open()
   })
 
-  it('records the cue for today, a later tap replaces it, and Resume keeps the plan', async () => {
-    await addAim('certification', null, 'French', 'language')
+  it('records the cue for today, a later tap replaces it, and Start keeps the plan', async () => {
+    await addLearning('French', 'Pimsleur', 'Understand spoken French')
     const [aim] = await studyAims()
     await planAim(aim, 'afterPickup', '17:30', new Date(2026, 8, 7, 9, 0))
     await planAim(aim, 'afterBedtime', '20:00', new Date(2026, 8, 7, 9, 1))
     const plan = planFor(await allIntentions(), aim.id as number, '2026-09-07')
     expect(plan).toMatchObject({ cue: 'afterBedtime', time: '20:00', offerId: null })
-    const offer = await resumeAim(aim, stepFor(aim, [], [], [aim]), 'step', new Date(2026, 8, 7, 20, 10))
-    expect(offer.minutes).toBe(stepFor(aim, [], [], [aim]).minutes)
+    const step = stepFor(aim, await db.skills.toArray(), [], [aim])
+    expect(step.id).toBe('skill:1')
+    const offer = await resumeAim(aim, step, 'step', new Date(2026, 8, 7, 20, 10))
+    expect(offer).toMatchObject({ moveId: 'skill:1', label: 'Understand spoken French' })
     expect((await allIntentions()).find((i) => i.id === plan?.id)?.offerId).toBe(offer.id)
     expect(cueCounts(await allIntentions(), aim.id as number)).toEqual([{ cue: 'afterBedtime', n: 1, started: 1 }])
-  })
-
-  it('says what Done did to the skill', async () => {
-    await addAim('certification', null, 'French', 'language')
-    await addSkill('Ten words', 'French')
-    expect(await markRungByStep(1, 1, '2026-09-07T20:00:00Z')).toMatchObject({ from: 0, to: 1, skill: { name: 'Ten words', ladder: 'language' } })
-    expect(await markRungByStep(1, 1, '2026-09-07T20:30:00Z')).toMatchObject({ from: 1, to: 1 })
-    expect(await markRungByStep(9, 1, '2026-09-07T20:30:00Z')).toBeNull()
-    expect(await db.rungMarks.count()).toBe(1)
   })
 })

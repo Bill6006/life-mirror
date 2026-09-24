@@ -1,7 +1,7 @@
 import { blockAt } from './blocks'
-import { db, type Aim, type AimKind, type Cue, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
+import { db, type Aim, type AimKind, type Cue, type Ease, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
 import { AIM_KINDS, keyFor, planFor, unblockKeyFor } from './aims'
-import { currentRung, ladderOf, orphanSubjects, parseRungId, skillsOf, TOP_RUNG, type RungMove, type Sitting } from './ladder'
+import { ladderOf, nextStep, orphanSubjects, skillsOf, type Sitting } from './ladder'
 
 // Aims on the phone: the commitments you chose, the skills you typed once, the marks that moved
 // them, and the one-tap Resume that records a step as an offer to be asked about next time.
@@ -46,8 +46,8 @@ export function nameAim(id: number, name: string, ladder?: LadderKind): Promise<
 }
 
 /**
- * A subject's six proofs, changed on its card: the commitment and every skill under its name take
- * the ladder. The marks stay; each rung keeps its number and takes the new words.
+ * A subject's six proofs, as older commitments chose them. Used only to bring a name and its
+ * skills into line before adoption (Workstream 6 retired the ladder as an engine, D2).
  */
 export function setLadder(aimId: number, ladder: LadderKind): Promise<void> {
   return db.transaction('rw', [db.aims, db.skills], async () => {
@@ -157,29 +157,6 @@ export function rungMarks(): Promise<RungMark[]> {
   return db.rungMarks.toArray()
 }
 
-/** Moves a skill one rung up or back, by your tap alone. Recorded as a mark, never edited. */
-export function moveSkill(skillId: number, delta: 1 | -1): Promise<void> {
-  return db.transaction('rw', db.rungMarks, async () => {
-    const marks = await db.rungMarks.where('skillId').equals(skillId).toArray()
-    const rung = Math.max(0, Math.min(TOP_RUNG, currentRung(marks, skillId) + delta))
-    if (rung === currentRung(marks, skillId)) return
-    await db.rungMarks.add({ skillId, rung, at: new Date().toISOString(), via: 'tap' })
-  })
-}
-
-/** Done on a rung's step is the tap that moves the skill up; it never moves a skill back. Says what it did. */
-export function markRungByStep(skillId: number, rung: number, at: string): Promise<RungMove | null> {
-  return db.transaction('rw', [db.rungMarks, db.skills], async () => {
-    const skill = await db.skills.get(skillId)
-    if (!skill) return null
-    const marks = await db.rungMarks.where('skillId').equals(skillId).toArray()
-    const from = currentRung(marks, skillId)
-    if (from >= rung) return { skill, from, to: from }
-    await db.rungMarks.add({ skillId, rung, at, via: 'step' })
-    return { skill, from, to: rung }
-  })
-}
-
 /** Every open step, unblock or started study offer: begun, not yet asked about. */
 /** A commitment's step, unblock or study offer, started and not yet answered or skipped. */
 export function isOpenAimOffer(o: Offer): boolean {
@@ -245,11 +222,11 @@ export function resumeAim(aim: Aim, sitting: Sitting, kind: 'step' | 'unblock', 
 
 /**
  * Did it already: a session done away from the app, recorded as started and done at the same
- * moment (Workstream 6). Today's plan for it counts as kept, so no reminder fires for it; a rung's
- * step moves its skill as Done does.
+ * moment (Workstream 6). Today's plan for it counts as kept, so no reminder fires for it. Returns
+ * the session, for the one optional tap on how it went.
  */
-export function logSession(aim: Aim, sitting: Sitting, now: Date = new Date()): Promise<RungMove | null> {
-  return db.transaction('rw', [db.offers, db.outcomes, db.intentions, db.rungMarks, db.skills], async () => {
+export function logSession(aim: Aim, sitting: Sitting, now: Date = new Date()): Promise<number> {
+  return db.transaction('rw', [db.offers, db.outcomes, db.intentions], async () => {
     const { day, block } = blockAt(now)
     const at = now.toISOString()
     const offer: Offer = {
@@ -278,8 +255,149 @@ export function logSession(aim: Aim, sitting: Sitting, now: Date = new Date()): 
     await db.outcomes.add({ offerId: id, moveId: sitting.id, day, block, at, outcome: 'done', why: null, passiveOutcome: null })
     const plan = planFor(await db.intentions.where('day').equals(day).toArray(), aim.id as number, day)
     if (plan && plan.offerId === null) await db.intentions.update(plan.id as number, { offerId: id })
-    const rung = parseRungId(sitting.id)
-    return rung ? markRungByStep(rung.skillId, rung.rung, at) : null
+    return id
+  })
+}
+
+/** A skill as you describe it: its name, how you practise it, how to do it, and a session's minutes when you know them. */
+export interface SkillWords {
+  name: string
+  method?: string
+  how?: string
+  minutes?: number | null
+}
+
+function tidy(w: SkillWords): Pick<Skill, 'name' | 'method' | 'how' | 'minutes'> {
+  const out: Pick<Skill, 'name' | 'method' | 'how' | 'minutes'> = { name: w.name.trim().slice(0, 80) }
+  const method = w.method?.trim()
+  const how = w.how?.trim()
+  if (method) out.method = method.slice(0, 60)
+  if (how) out.how = how.slice(0, 240)
+  if (typeof w.minutes === 'number' && Number.isFinite(w.minutes) && w.minutes >= 1 && w.minutes <= 240) out.minutes = Math.round(w.minutes)
+  return out
+}
+
+async function nextOrder(): Promise<number> {
+  return (await db.skills.toArray()).reduce((m, s) => Math.max(m, s.order), 0) + 1
+}
+
+/**
+ * Something to learn (Workstream 6): the goal in your words, how you learn or practise it, the one
+ * thing to work on now when you know it, and anything that would change the advice. It exists at
+ * once; with no skill named, its card keeps a place for one. No cadence is assigned. A goal already
+ * on the list changes nothing. Returns the commitment, or null when nothing was added.
+ */
+export function addLearning(goal: string, method = '', skill = '', about = '', now: Date = new Date()): Promise<number | null> {
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    const name = goal.trim().slice(0, 60)
+    if (!name) return null
+    const live = await db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
+    if (live.some((a) => (a.name ?? '').trim().toLowerCase() === name.toLowerCase())) return null
+    const at = now.toISOString()
+    const told = about.trim().slice(0, 240)
+    const aimId = (await db.aims.add({ kind: 'certification', stepMoveId: null, name, createdAt: at, archivedAt: null, currentSkillId: null, ...(told ? { about: told } : {}) })) as number
+    if (skill.trim()) {
+      const id = (await db.skills.add({ ...tidy({ name: skill, method }), aimId, source: 'you', startedAt: at, order: await nextOrder(), createdAt: at, archivedAt: null })) as number
+      await db.aims.update(aimId, { currentSkillId: id })
+    } else if (method.trim()) {
+      // The method waits on the commitment until a skill is named; it becomes that skill's.
+      await db.aims.update(aimId, { method: method.trim().slice(0, 60) })
+    }
+    return aimId
+  })
+}
+
+/**
+ * A new current skill, in your words: the one it replaces stays in the history with its sessions,
+ * marked as ended; the new one begins now (Workstream 6). Nothing changes a skill but you.
+ */
+export function setCurrentSkill(aimId: number, words: SkillWords, now: Date = new Date(), source: 'you' | 'claude' = 'you'): Promise<number | null> {
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    const aim = await db.aims.get(aimId)
+    if (!aim || aim.kind !== 'certification' || !words.name.trim()) return null
+    const at = now.toISOString()
+    if (typeof aim.currentSkillId === 'number') await db.skills.update(aim.currentSkillId, { endedAt: at })
+    const id = (await db.skills.add({ ...tidy({ method: aim.method, ...words }), aimId, source, startedAt: at, order: await nextOrder(), createdAt: at, archivedAt: null })) as number
+    await db.aims.update(aimId, { currentSkillId: id, method: undefined })
+    return id
+  })
+}
+
+/** Changes the words of a skill you named, the current one or an earlier one; its sessions stay its own. */
+export function editSkill(skillId: number, words: SkillWords): Promise<void> {
+  return db.transaction('rw', db.skills, async () => {
+    const skill = await db.skills.get(skillId)
+    if (!skill || !words.name.trim()) return
+    const t = tidy(words)
+    await db.skills.update(skillId, { name: t.name, method: t.method, how: t.how, minutes: t.minutes })
+  })
+}
+
+/** Back to an earlier skill, or on to one you named before: it becomes current from now; the one it replaces ends now. */
+export function makeCurrent(aimId: number, skillId: number, now: Date = new Date()): Promise<void> {
+  return db.transaction('rw', [db.aims, db.skills], async () => {
+    const aim = await db.aims.get(aimId)
+    const skill = await db.skills.get(skillId)
+    if (!aim || !skill || skill.archivedAt !== null || aim.currentSkillId === skillId) return
+    const at = now.toISOString()
+    if (typeof aim.currentSkillId === 'number') await db.skills.update(aim.currentSkillId, { endedAt: at })
+    await db.skills.update(skillId, { aimId, startedAt: at, endedAt: undefined })
+    await db.aims.update(aimId, { currentSkillId: skillId })
+  })
+}
+
+/** Paused: no row on Now and nothing surfaces it, its record kept; taken up again by the same tap. */
+export async function pauseAim(aimId: number, paused: boolean): Promise<void> {
+  await db.aims.update(aimId, { pausedAt: paused ? new Date().toISOString() : null })
+}
+
+/** Finished: the goal is reached, dated and kept; distinct from Remove, and reopened by a tap. */
+export async function finishAim(aimId: number, now: Date = new Date()): Promise<void> {
+  await db.aims.update(aimId, { finishedAt: now.toISOString(), archivedAt: now.toISOString() })
+}
+
+export async function reopenAim(aimId: number): Promise<void> {
+  await db.aims.update(aimId, { finishedAt: null, archivedAt: null })
+}
+
+export function finishedAims(): Promise<Aim[]> {
+  return db.aims.filter((a) => typeof a.finishedAt === 'string' && a.finishedAt !== '').toArray()
+}
+
+/** How a session went, one optional tap after it: evidence for a review, never a grade. A second tap replaces the first. */
+export async function setEase(offerId: number, ease: Ease | null): Promise<void> {
+  const x = await db.outcomes.where('offerId').equals(offerId).first()
+  if (x?.id !== undefined) await db.outcomes.update(x.id, { ease: ease ?? undefined })
+}
+
+/** One optional line about a session, in your words. */
+export async function setSessionNote(offerId: number, note: string): Promise<void> {
+  const x = await db.outcomes.where('offerId').equals(offerId).first()
+  const text = note.trim().slice(0, 200)
+  if (x?.id !== undefined) await db.outcomes.update(x.id, { note: text || undefined })
+}
+
+/**
+ * Runs at open (Workstream 6, D2): each learning commitment made before the current skill existed
+ * takes, as its current skill, the one the retired ladder's step named, and files its skills under
+ * itself. Its marks stay as history and move nothing. Changes nothing once each has been adopted.
+ */
+export function adoptCurrentSkills(): Promise<void> {
+  return db.transaction('rw', [db.aims, db.skills, db.rungMarks], async () => {
+    const study = await db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
+    const skills = await db.skills.toArray()
+    const marks = await db.rungMarks.toArray()
+    for (const aim of study) {
+      if (aim.currentSkillId !== undefined) continue
+      const own = skillsOf(aim, skills, study)
+      for (const sk of own) if (sk.aimId === undefined) await db.skills.update(sk.id as number, { aimId: aim.id })
+      const current = nextStep(own, marks)?.skill ?? null
+      if (current) {
+        const moved = marks.filter((m) => m.skillId === current.id).map((m) => m.at).sort().pop()
+        await db.skills.update(current.id as number, { startedAt: moved ?? aim.createdAt })
+      }
+      await db.aims.update(aim.id as number, { currentSkillId: current ? (current.id as number) : null })
+    }
   })
 }
 

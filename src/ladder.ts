@@ -24,7 +24,9 @@ export interface Sitting {
   what: string
   minutes: number
   effort: Effort
-  kind: 'move' | 'rung'
+  kind: 'move' | 'rung' | 'skill'
+  /** A learning session: how it is practised (Workstream 6). */
+  method?: string
 }
 
 /** What Done on a rung's step did to the skill: up one rung, or nothing when it already stood there. */
@@ -56,6 +58,33 @@ export function sittingOf(move: Move): Sitting {
 
 export function rungId(skillId: number, rung: number): string {
   return `rung:${skillId}:${rung}`
+}
+
+/** A learning commitment's session of one skill (Workstream 6): the skill's id, never a rung. */
+export function skillSessionId(skillId: number): string {
+  return `skill:${skillId}`
+}
+
+export function parseSkillSessionId(id: string): number | null {
+  const m = /^skill:([0-9]+)$/.exec(id)
+  return m ? Number(m[1]) : null
+}
+
+/**
+ * A session of the current skill: the skill as named, how it is practised, its minutes when you
+ * gave them (never assumed), and how to do it in your words. The ladder no longer sets steps.
+ */
+export function skillStep(skill: Skill): Sitting {
+  return {
+    id: skillSessionId(skill.id as number),
+    name: skill.name,
+    title: skill.name,
+    what: skill.how?.trim() ?? '',
+    minutes: skill.minutes ?? 0,
+    effort: 'low',
+    kind: 'skill',
+    ...(skill.method?.trim() ? { method: skill.method.trim() } : {}),
+  }
 }
 
 export function parseRungId(id: string): { skillId: number; rung: number } | null {

@@ -10,11 +10,11 @@ function sheetOf(facts: Fact[], hour = 8): FactSheet {
   return { version: 1, day: '2026-09-18', builtAt: '', hour, weeks: 3, days: 22, direction: null, said: [], facts }
 }
 const today: Fact = { id: 'week.today', tags: [], text: 'Today is Friday.', values: { weekday: 'Friday', bedtime: '20:00', hour: 8 } }
-const aim = (id: number, values: Record<string, number | string | null>): Fact => ({ id: `aim.${id}`, tags: ['study'], text: '', values: { kind: 'certification', name: 'French', step: 'Ten words · say it', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, skills: 1, lowRungs: 1, highRungs: 0, top: 0, ...values } })
+const aim = (id: number, values: Record<string, number | string | null>): Fact => ({ id: `aim.${id}`, tags: ['study'], text: '', values: { kind: 'certification', name: 'French', step: 'Ten words', skill: 'Ten words', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, doneToday: 0, skills: 1, ...values } })
 
 describe('the ranking the sheet carries (Part 28)', () => {
   it('ranks every true situation best first, the phone’s own line at the head, a resting one left out', () => {
-    const facts = [today, aim(1, { skills: 0 }), { id: 'necessities.3d', tags: [], text: '', values: { misses: 2 }, n: 3 }, { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }] as Fact[]
+    const facts = [today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' }), { id: 'necessities.3d', tags: [], text: '', values: { misses: 2 }, n: 3 }, { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }] as Fact[]
     const ranked = rankLines(sheetOf(facts), [], [])
     expect(ranked.length).toBeGreaterThan(1)
     expect(ranked[0]).toEqual(chooseLine(sheetOf(facts), [], []))
@@ -35,22 +35,22 @@ describe('the judgment engine', () => {
   })
 
   it('says the first skill is missing, with the commitment’s name', () => {
-    const c = chooseLine(sheetOf([today, aim(1, { skills: 0 })]), [], [])
+    const c = chooseLine(sheetOf([today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' })]), [], [])
     expect(c?.situationId).toBe('first-skill')
-    expect(c?.text).toBe('French has no skill on its ladder yet. Add the first; nothing can move until it does.')
+    expect(c?.text).toBe('French has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.')
     expect(c?.factIds).toEqual(['aim.1'])
   })
 
   it('asks for a cue before her bedtime and not after, naming the step', () => {
     const c = chooseLine(sheetOf([today, aim(1, {})]), [], [])
     expect(c?.situationId).toBe('say-when')
-    expect(c?.text).toContain('French: the step is Ten words · say it.')
+    expect(c?.text).toContain('French: the step is Ten words.')
     expect(chooseLine(sheetOf([today, aim(1, {})], 21), [], [])).toBeNull()
   })
 
   it('ranks a stretch above everything, and rests it for two days once said', () => {
     const stretch: Fact = { id: 'stretch', tags: [], text: '', values: { under: 4, of: 6, chips: 1, necessities: 0 }, n: 6 }
-    const facts = [today, aim(1, { skills: 0 }), stretch]
+    const facts = [today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' }), stretch]
     const c = chooseLine(sheetOf(facts), [], [])
     expect(c?.situationId).toBe('stretch')
     expect(c?.text).toContain('4 of the last 6 blocks')
@@ -71,7 +71,7 @@ describe('the judgment engine', () => {
     expect(usefulness('x', [{ situationId: 'x', answer: 'useful' }])).toBeCloseTo(1.1)
     expect(usefulness('x', Array.from({ length: 9 }, () => ({ situationId: 'x', answer: 'not' as const })))).toBe(0.3)
     // A missing first skill outranks the monthly direction line until it was twice not useful; strong evidence behind the other then tips it.
-    const facts = [today, aim(1, { skills: 0 }), { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values: { study: 0, conversations: 0, faith: 0, her: 0 } }]
+    const facts = [today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' }), { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values: { study: 0, conversations: 0, faith: 0, her: 0 } }]
     expect(chooseLine(sheetOf(facts), [], [])?.situationId).toBe('first-skill')
     expect(chooseLine(sheetOf(facts), [], [{ situationId: 'first-skill', answer: 'not' }, { situationId: 'first-skill', answer: 'not' }])?.situationId).toBe('direction-counts')
     // Warnings with strong evidence outrank a recommendation with none.
@@ -111,7 +111,7 @@ describe('what the engine sees early, and the one tap it offers', () => {
     expect(chooseLine(sheetOf([today, aim(1, {})]), [], [])?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
     const kept = aim(1, { cue_nextCheckIn_n: 3, cue_nextCheckIn_started: 3 })
     expect(chooseLine(sheetOf([today, kept]), [], [])?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'nextCheckIn' })
-    expect(chooseLine(sheetOf([today, aim(1, { skills: 0 })]), [], [])?.action).toBeNull()
+    expect(chooseLine(sheetOf([today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' })]), [], [])?.action).toBeNull()
   })
 
   it('sees a commitment fading before anything else does, and offers to pin it', () => {
@@ -136,11 +136,11 @@ describe('what the engine sees early, and the one tap it offers', () => {
   })
 
   it('closes the loop on what it said yesterday, either way, and lets Not useful end it', () => {
-    const done: Fact = { id: 'followup', tags: [], text: '', values: { day: '2026-09-17', about: 'French', aimId: 1, planned: 1, started: 1, done: 1, moved: 1, received: 'useful', text: 'x' } }
+    const done: Fact = { id: 'followup', tags: [], text: '', values: { day: '2026-09-17', about: 'French', aimId: 1, planned: 1, started: 1, done: 1, changed: 1, received: 'useful', text: 'x' } }
     const closed = chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 0 }), done]), [], [])
     expect(closed?.situationId).toBe('loop-closed')
-    expect(closed?.text).toBe('Yesterday’s line was about French; since then the record shows 1 step started, 1 marked done, the ladder moved once. That is the loop closing.')
-    const open: Fact = { ...done, values: { ...done.values, planned: 0, started: 0, done: 0, moved: 0, received: 'untapped' } }
+    expect(closed?.text).toBe('Yesterday’s line was about French; since then the record shows 1 step started, 1 marked done, the current skill changed once. That is the loop closing.')
+    const open: Fact = { ...done, values: { ...done.values, planned: 0, started: 0, done: 0, changed: 0, received: 'untapped' } }
     const o = chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 2 }), open]), [], [])
     expect(o?.situationId).toBe('loop-open')
     expect(o?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
@@ -167,7 +167,7 @@ describe('what the engine sees early, and the one tap it offers', () => {
   it('takes the week’s one change only from a pattern over days, never from a fact of one day', () => {
     const dayScoped = ['loneliness-high', 'caffeine-late', 'short-night-today', 'say-when', 'stretch', 'necessities-missed', 'loop-closed', 'loop-open', 'loop-planned', 'church-morning']
     for (const id of dayScoped) expect(isWeekScoped(SITUATIONS.find((x) => x.id === id)!), id).toBe(false)
-    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'caffeine-sleep-even', 'caffeine-sleep-shorter', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'ladder-flat', 'propose-test', 'step-stalled', 'study-no-time'])
+    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'caffeine-sleep-even', 'caffeine-sleep-shorter', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'propose-test', 'step-stalled'])
     // The smoke test's case: the only true thing is a reading at the last check-in; the week's change says nothing.
     const lonely: Fact = { id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off' } }
     expect(chooseLine(sheetOf([lonely]), [], [])?.situationId).toBe('loneliness-high')
@@ -199,7 +199,7 @@ describe('a tap on the brain’s own line reaches the phone’s ranking (Part 33
     // A tap on another phone line is that line's alone.
     expect(usefulness('first-skill', [{ situationId: 'cue-switch', answer: 'not' }], ['aim.1'])).toBe(1)
     // In the ranking: twice not useful on the brain's lines about the same commitment tips the day to the direction line.
-    const facts = [today, aim(1, { skills: 0 }), { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values: { study: 0, conversations: 0, faith: 0, her: 0 } }] as Fact[]
+    const facts = [today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' }), { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values: { study: 0, conversations: 0, faith: 0, her: 0 } }] as Fact[]
     expect(chooseLine(sheetOf(facts), [], [onFacts('not', ['aim.1']), onFacts('not', ['aim.1'])])?.situationId).toBe('direction-counts')
     expect(chooseLine(sheetOf(facts), [], [onFacts('not', ['week.today']), onFacts('not', ['week.today'])])?.situationId).toBe('first-skill')
   })

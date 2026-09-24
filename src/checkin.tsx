@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { movedLine } from './aims'
 import { OutcomeAsk, type Answer } from './ask'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import { changesInWords } from './change'
@@ -19,7 +18,6 @@ import {
   type Offer,
 } from './db'
 import { fill, formatTime } from './format'
-import type { RungMove } from './ladder'
 import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
 import { TodayChips } from './extras'
@@ -77,8 +75,6 @@ export function CheckInScreen({
   const [asked, setAsked] = useState<Set<number>>(new Set())
   const resumed = useRef(Boolean(only))
   const lastTap = useRef(performance.now())
-  // Done on a rung's step: what it did, said once on the screen that follows.
-  const [moved, setMoved] = useState<RungMove | null>(null)
 
   const answers: Answers = { ...(record?.answers ?? {}), ...local }
 
@@ -95,12 +91,11 @@ export function CheckInScreen({
   if (toAsk) {
     const answer = (a: Answer) => {
       setAsked((s) => new Set(s).add(toAsk.id as number))
-      setMoved(null)
       // A session you started stays yours to resolve: Not now leaves it open, with Done still on its row (D3).
       if (a.outcome === null && isSession(toAsk)) return
-      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }).then((m) => m && setMoved(m))
+      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }, a.ease)
     }
-    return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} notice={movedLine(moved)} />
+    return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} />
   }
 
   const safeIndex = Math.min(index, total - 1)
@@ -109,7 +104,6 @@ export function CheckInScreen({
   const answered = ids.filter((r) => answers[r] !== undefined).length
 
   function pick(position: Position) {
-    setMoved(null)
     const now = performance.now()
     const gap = now - lastTap.current
     lastTap.current = now
@@ -145,11 +139,6 @@ export function CheckInScreen({
         {reading.name}
       </h1>
       <p class="note">{reading.prompt}</p>
-      {moved && (
-        <p class="note ink" data-testid="rung-moved">
-          {movedLine(moved)}
-        </p>
-      )}
 
       <div class="card">
         <ul class="rows anchors">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { skillsOf } from './ladder'
-import { becoming, blockedBy, cueCounts, cuesFor, EMPTY_LADDER_STEP, followThrough, lastDoneDay, lastLine, lastMovedDay, movedLine, planFor, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
+import { becoming, blockedBy, cueCounts, cuesFor, EASE_UNUSED_RETIRES, easeRetired, followThrough, lastDoneDay, lastLine, lastPracticeDay, NO_SKILL, planFor, practiceOn, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
 import { dayKey } from './blocks'
 import { moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { Aim, Cue, Intention, Offer, Outcome, RungMark, Skill, StudyNight, Win } from './db'
@@ -31,11 +31,18 @@ const offer = (id: number, kind: Offer['kind'], moveId: string, day: string, at:
 const outcome = (offerId: number, moveId: string, result: Outcome['outcome'], why: Outcome['why'] = null): Outcome => ({ offerId, moveId, day: '2026-09-08', block: 'morning', at: '', outcome: result, why, passiveOutcome: null })
 
 describe('a commitment and its protected step', () => {
-  it('pre-fills the certification from the ladder, and from the catalogue while the ladder is empty', () => {
-    expect(stepFor(aim('certification'), [], []).id).toBe(EMPTY_LADDER_STEP)
+  it('takes a learning commitment’s step from its current skill, before adoption from the skill the retired ladder named, and with none offers nothing to start (Workstream 6)', () => {
+    expect(stepFor(aim('certification'), [], []).id).toBe(NO_SKILL)
     const skills = [skill(1, 'Subnetting')]
-    expect(stepFor(aim('certification'), skills, []).name).toBe('Subnetting · watch or read it')
-    expect(stepFor(aim('certification'), skills, [mark(1, 2, '2026-09-01T10:00:00Z')]).name).toBe('Subnetting · build it once')
+    // Before adoption: the skill the ladder's step named, as a session of that skill, never a rung, whatever its marks.
+    expect(stepFor(aim('certification'), skills, [])).toMatchObject({ id: 'skill:1', name: 'Subnetting', kind: 'skill' })
+    expect(stepFor(aim('certification'), skills, [mark(1, 2, '2026-09-01T10:00:00Z')]).id).toBe('skill:1')
+    // Adopted: the skill it names, with how it is practised and its minutes as you gave them; nothing assumed.
+    const named: Aim = { ...aim('certification'), currentSkillId: 2 }
+    const current: Skill = { ...skill(2, 'Understand spoken French'), aimId: 1, method: 'Pimsleur', minutes: 30 }
+    expect(stepFor(named, [...skills, current], [])).toMatchObject({ id: 'skill:2', name: 'Understand spoken French', method: 'Pimsleur', minutes: 30, kind: 'skill' })
+    expect(stepFor({ ...named, currentSkillId: 3 }, [...skills, current, { ...skill(3, 'Say it'), aimId: 1 }], []).minutes).toBe(0)
+    expect(stepFor({ ...named, currentSkillId: null }, [...skills, current], []).id).toBe(NO_SKILL)
   })
 
   it('takes a person or a practice step from the catalogue, never bedtime, never a passive item', () => {
@@ -162,21 +169,39 @@ describe('the last fact on a row', () => {
     expect(lastDoneDay(a, offers, [])).toBeNull()
     expect(lastLine('done', '2026-09-05', '2026-09-08')).toBe('last done 3 days ago')
     expect(lastLine('done', '2026-09-08', '2026-09-08')).toBe('done today')
-    expect(lastLine('moved', '2026-09-07', '2026-09-08')).toBe('moved yesterday')
-    expect(lastLine('moved', null, '2026-09-08')).toBe('not moved yet')
-    const study: Aim = { id: 1, kind: 'certification', stepMoveId: null, name: 'French', ladder: 'language', createdAt: '', archivedAt: null }
-    const skills = [{ id: 1, name: 'Ten words', subject: 'French', order: 1, createdAt: '', archivedAt: null } as Skill]
-    const at = new Date(2026, 8, 6, 23, 30).toISOString()
-    expect(lastMovedDay(study, skills, [mark(1, 1, at)])).toBe(dayKey(new Date(at)))
-    expect(lastMovedDay(study, skills, [])).toBeNull()
+    expect(lastLine('practised', '2026-09-07', '2026-09-08')).toBe('practised yesterday')
+    expect(lastLine('practised', null, '2026-09-08')).toBe('not practised yet')
+    // Something to learn: the last day a session of it was done or partly done, by the day it began; a No is not practice.
+    const study: Aim = { id: 1, kind: 'certification', stepMoveId: null, name: 'French', createdAt: '', archivedAt: null, currentSkillId: 1 }
+    const sessions = [offer(3, 'step', 'skill:1', '2026-09-06', '2026-09-06T20:00:00Z', 'aim:certification:1'), offer(4, 'step', 'skill:1', '2026-09-07', '2026-09-07T20:00:00Z', 'aim:certification:1')]
+    expect(lastPracticeDay(study, sessions, [outcome(3, 'skill:1', 'partly'), outcome(4, 'skill:1', 'no')])).toBe('2026-09-06')
+    expect(lastPracticeDay(study, sessions, [])).toBeNull()
+    expect(dayKey(new Date(2026, 8, 6, 12))).toBe('2026-09-06')
   })
 
-  it('says what Done did to the skill, in its own ladder’s words', () => {
-    const skill = { id: 1, name: 'Ten words', subject: 'French', ladder: 'language', order: 1, createdAt: '', archivedAt: null } as Skill
-    expect(movedLine({ skill, from: 1, to: 2 })).toBe('Ten words advanced to Said.')
-    expect(movedLine({ skill, from: 2, to: 2 })).toBe('Ten words already stood at Said.')
-    expect(movedLine({ skill: { ...skill, ladder: 'technical' }, from: 2, to: 3 })).toBe('Ten words advanced to Built once.')
-    expect(movedLine(null)).toBeNull()
+  it('counts a skill’s practice since it became current: sessions and the different days they began, a second the same day adding a session and never a day (Workstream 6)', () => {
+    const sk: Skill = { ...skill(1, 'Understand spoken French'), startedAt: '2026-09-05T15:00:00.000Z' }
+    const key = 'aim:certification:1'
+    const offers = [
+      offer(1, 'step', 'skill:1', '2026-09-04', '2026-09-04T20:00:00Z', key),
+      offer(2, 'step', 'skill:1', '2026-09-06', '2026-09-06T08:00:00Z', key),
+      offer(3, 'step', 'skill:1', '2026-09-06', '2026-09-06T20:00:00Z', key),
+      offer(4, 'step', 'skill:1', '2026-09-07', '2026-09-07T20:00:00Z', key),
+      offer(5, 'step', 'skill:9', '2026-09-07', '2026-09-07T21:00:00Z', key),
+    ]
+    const outs = [outcome(1, 'skill:1', 'done'), { ...outcome(2, 'skill:1', 'done'), ease: 'hard' as const }, outcome(3, 'skill:1', 'partly'), outcome(4, 'skill:1', 'no'), outcome(5, 'skill:9', 'done')]
+    expect(practiceOn(sk, offers, outs)).toEqual({ sessions: 2, days: 1, since: '2026-09-05', ease: { hard: 1, right: 0, easy: 0 } })
+  })
+
+  it('retires the question on how a session went after a dozen sessions running with no answer, and brings it back when you do (Rule 17)', () => {
+    const key = 'aim:certification:1'
+    const n = EASE_UNUSED_RETIRES
+    const offers = Array.from({ length: n }, (_, k) => offer(k + 1, 'step', 'skill:1', '2026-09-25', `2026-09-25T10:${String(k).padStart(2, '0')}:00.000Z`, key))
+    const outs = offers.map((o) => ({ ...outcome(o.id as number, 'skill:1', 'done'), at: o.at }))
+    expect(easeRetired(offers, outs, null)).toBe(true)
+    expect(easeRetired(offers, outs.map((x, k) => (k === n - 1 ? { ...x, ease: 'right' as const } : x)), null)).toBe(false)
+    expect(easeRetired(offers.slice(1), outs.slice(1), null)).toBe(false)
+    expect(easeRetired(offers, outs, '2026-09-25T10:30:00.000Z')).toBe(false)
   })
 })
 
@@ -190,8 +215,9 @@ describe('several study subjects', () => {
     const skills = [sk(1, 'Subnetting', 1), sk(2, 'Ten words', 2, 'French'), sk(3, 'Routing', 3, 'Networking')]
     expect(skillsOf(a, skills, [a, b]).map((s) => s.name)).toEqual(['Subnetting', 'Routing'])
     expect(skillsOf(b, skills, [a, b]).map((s) => s.name)).toEqual(['Ten words'])
-    expect(stepFor(b, skills, [], [a, b]).name).toBe('French · Ten words · watch or read it')
-    expect(stepFor(a, skills, [], [a, b]).name).toBe('Subnetting · watch or read it')
+    // Before adoption each takes the skill its own subject's ladder named, as a session of that skill.
+    expect(stepFor(b, skills, [], [a, b]).name).toBe('Ten words')
+    expect(stepFor(a, skills, [], [a, b]).name).toBe('Subnetting')
   })
 
   it('keeps each subject’s offers apart by key, the first also answering to the older key by kind', () => {

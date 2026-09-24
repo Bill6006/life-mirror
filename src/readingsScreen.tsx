@@ -1,3 +1,4 @@
+import { easeRetired } from './aims'
 import { chipStates, readingProposals, type ChipId } from './audit'
 import { blockAt } from './blocks'
 import { copy } from './copy'
@@ -16,7 +17,9 @@ export function ReadingsScreen({ onClose }: { onClose: () => void }) {
   const checkins = useLive(allCheckIns, [])
   const contexts = useLive(() => db.days.toArray(), [])
   const swaps = useLive(() => db.anchorSwaps.toArray(), [])
-  if (!settings || !checkins || !contexts || !swaps) return <section class="screen" />
+  // Workstream 6: the question on how a learning session went retires as a chip does, and comes back the same way.
+  const easeOff = useLive(async () => easeRetired(await db.offers.toArray(), await db.outcomes.toArray(), (await getSettings()).easeBack), [])
+  if (!settings || !checkins || !contexts || !swaps || easeOff === undefined) return <section class="screen" />
   const c = copy.readingsScreen
   const proposals = readingProposals(checkins, settings.retiredReadings, settings.readingDecisions, today)
   const chips = chipStates(checkins, contexts, settings.chipsBack, today)
@@ -99,6 +102,17 @@ export function ReadingsScreen({ onClose }: { onClose: () => void }) {
               )}
             </li>
           ))}
+          <li class="row is-static" data-testid="chip-state-ease">
+            <span class="row-main">
+              {c.easeName}
+              <span class="sub">{easeOff ? c.easeRetired : c.easeOn}</span>
+            </span>
+            {easeOff && (
+              <button type="button" class="textbtn" data-testid="chip-back-ease" onClick={() => void updateSettings((st) => ({ ...st, easeBack: new Date().toISOString() }))}>
+                {c.bringBack}
+              </button>
+            )}
+          </li>
         </ul>
       </div>
 

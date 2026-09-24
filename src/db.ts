@@ -140,7 +140,7 @@ export interface Offer {
   stance: string
   band: string
   reading: number
-  /** A catalogue id, "nothing" for the null offer, or a rung of the proof ladder ("rung:skill:rung"). */
+  /** A catalogue id, "nothing" for the null offer, a session of a learning commitment's skill ("skill:id", Workstream 6), or, before the ladder was retired, a rung of the proof ladder ("rung:skill:rung"). */
   moveId: string
   /** What was offered, in words, when the id alone cannot say (a rung of the ladder). */
   label?: string
@@ -324,7 +324,14 @@ export interface Outcome {
   why: OutcomeWhy | null
   /** Whether the passive item riding alongside happened, when there was one. */
   passiveOutcome: 'done' | 'no' | null
+  /** How a learning session went, one optional tap after it (Workstream 6): evidence for a review, never a grade. */
+  ease?: Ease
+  /** One optional line about the session, in your words. */
+  note?: string
 }
+
+/** How a session went, in your own sense of it: harder than it should be, about right, or easy now. */
+export type Ease = 'hard' | 'right' | 'easy'
 
 export type AimKind = 'certification' | 'person' | 'practice' | 'path'
 
@@ -340,8 +347,16 @@ export interface Aim {
   ladder?: LadderKind
   /** A path commitment (Part 24): which path. */
   path?: PathId
-  /** A path paused by you: no row on Now and no step, its record kept. */
+  /** A path, or a learning commitment, paused by you: no row on Now and no step, its record kept. */
   pausedAt?: string | null
+  /** A learning commitment's current skill (Workstream 6): the one thing it works on now, until you change it. Null: none named yet. */
+  currentSkillId?: number | null
+  /** What you said would change the advice when you added it: what you can already do, what matters most, anything to avoid. */
+  about?: string
+  /** How you said you learn or practise it, held here until a skill is named, then that skill's. */
+  method?: string
+  /** A learning commitment you finished: dated, distinct from Remove, and reopened by a tap. */
+  finishedAt?: string | null
   /** A Social path converted from A person, which keeps that commitment's whole record. */
   convertedFrom?: 'person'
   convertedAt?: string
@@ -360,8 +375,21 @@ export interface Skill {
   name: string
   /** The subject the skill belongs to, typed once: a certification, a language. Empty when there is only the one. */
   subject?: string
-  /** The ladder its subject chose once; absent means technical. */
+  /** The ladder its subject chose once; absent means technical. Kept as history since the ladder was retired (Workstream 6, D2). */
   ladder?: LadderKind
+  /** The learning commitment it belongs to (Workstream 6); older skills are matched by their subject until adopted. */
+  aimId?: number
+  /** How it is practised: a class, an app, a book, a teacher. */
+  method?: string
+  /** How to practise it, in a line or two. */
+  how?: string
+  /** A session's minutes, when you know them; never assumed. */
+  minutes?: number
+  /** Who named it: you, or a suggestion you accepted. */
+  source?: 'you' | 'claude'
+  /** When it last became the commitment's current skill, and when it stopped being current. */
+  startedAt?: string
+  endedAt?: string
   order: number
   createdAt: string
   archivedAt: string | null

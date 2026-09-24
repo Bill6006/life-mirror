@@ -267,7 +267,9 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       break
     }
     case 'commitments': {
-      const [aims, plans] = await Promise.all([x.store.readRecords('aims'), x.store.readRecords('intentions', { from: q.from, to: q.to })])
+      const [aims, plans, skills] = await Promise.all([x.store.readRecords('aims'), x.store.readRecords('intentions', { from: q.from, to: q.to }), x.store.readRecords('skills')])
+      // Something to learn names its one current skill and how it is practised (Workstream 6); the retired ladder is not read.
+      const skillName = new Map(skills.map((r) => obj(r.body)).filter((b) => typeof b.id === 'number' && !b.archivedAt).map((b) => [b.id as number, { name: str(b.name), method: str(b.method) }]))
       const faithAim = new Set<number>()
       items = []
       for (const r of aims) {
@@ -278,7 +280,9 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
           if (typeof b.id === 'number') faithAim.add(b.id)
           if (!faith) continue
         }
-        items.push({ day: null, text: `a commitment: ${str(b.name) || nameOf(x.catalogue, move)} (${str(b.kind)})` })
+        const current = b.kind === 'certification' && typeof b.currentSkillId === 'number' ? skillName.get(b.currentSkillId) : undefined
+        const what = b.kind === 'certification' ? `something to learn${current?.name ? `, current skill “${current.name}”${current.method ? ` with ${current.method}` : ''}` : ', no current skill named yet'}` : str(b.kind)
+        items.push({ day: null, text: `a commitment: ${str(b.name) || nameOf(x.catalogue, move)} (${what}${b.pausedAt ? ', paused' : ''})` })
       }
       for (const r of plans) {
         const b = obj(r.body)

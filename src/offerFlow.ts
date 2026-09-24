@@ -1,9 +1,8 @@
-import { addDays, blockAt, dayKey, parseDay, type Block } from './blocks'
+import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
 import { propensities } from './adaptive'
-import { choose, type Rng } from './bandit'
-import { activeAims, liveSkills, markRungByStep, rungMarks } from './aimFlow'
+import type { Rng } from './bandit'
 import { hasMove, LADDERS, moveById } from './catalogue'
 import {
   db,
@@ -12,22 +11,20 @@ import {
   getSettings,
   isComplete,
   type Card,
+  type Ease,
   type Offer,
   type Outcome,
   type OutcomeWhy,
-  type StudyDecision,
   type StudyNight,
-  type StudyReason,
   type WinOutcome,
 } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotThat, windowFor, type TodayState } from './offers'
 import type { ReadingId } from './readings'
-import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type RungMove, type Sitting } from './ladder'
+import { parseRungId, RUNG_MINUTES } from './ladder'
 import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from './learning'
 import { pathOn } from './pathFlow'
 import { beliefsFor, recoveryGapDue } from './learningFlow'
-import { daylightFor, inDaylight, minutesOf, type Settings, type Weekday } from './settings'
-import { studyVersions, type ReasonCheck } from './studyNight'
+import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'
 import { hasItsEight } from './tiers'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
@@ -97,20 +94,19 @@ export function doneOpen(offer: Pick<Offer, 'kind' | 'at' | 'moveId' | 'day' | '
 /**
  * Done, tapped on the card at the moment: the outcome as its own record with its own timestamp, in
  * the block the tap fell in. With no passive item left to ask about, the question closes there;
- * else the offer stays open for that one question. Done on a rung's step moves the skill up, as
- * it does from the check-in, and says what it did. Nothing is written once the block is over.
+ * else the offer stays open for that one question. It moves nothing else: the retired ladder
+ * moves no skill (Workstream 6, D2). True when it wrote the answer.
  */
-export function recordDoneNow(offer: Offer, now: Date = new Date(), passiveOutcome: 'done' | 'no' | null = null): Promise<RungMove | null> {
-  return db.transaction('rw', [db.outcomes, db.offers, db.rungMarks, db.skills], async () => {
-    if (!doneOpen(offer, now)) return null
+export function recordDoneNow(offer: Offer, now: Date = new Date(), passiveOutcome: 'done' | 'no' | null = null): Promise<boolean> {
+  return db.transaction('rw', [db.outcomes, db.offers], async () => {
+    if (!doneOpen(offer, now)) return false
     const existing = await db.outcomes.where('offerId').equals(offer.id as number).first()
-    if (existing) return null
+    if (existing) return false
     const slot = blockAt(now)
     const at = now.toISOString()
     await db.outcomes.add({ offerId: offer.id as number, moveId: offer.moveId, day: slot.day, block: slot.block, at, outcome: 'done', why: null, passiveOutcome })
     if (!offer.passiveId || passiveOutcome !== null) await db.offers.update(offer.id as number, { closedAt: at })
-    const rung = parseRungId(offer.moveId)
-    return rung ? markRungByStep(rung.skillId, rung.rung, at) : null
+    return true
   })
 }
 
@@ -397,80 +393,6 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
   })
 }
 
-/**
- * What the study step offers tonight: with the certification among your aims, the proof
- * ladder's next rung, sized to one sitting; otherwise one of the catalogue's study versions not
- * offered today, drawn by the same bandit.
- */
-export async function studyOfferSitting(day: string, rng?: Rng): Promise<Sitting | null> {
-  const certification = (await activeAims()).find((a) => a.kind === 'certification')
-  if (certification) {
-    const next = nextStep(await liveSkills(), await rungMarks())
-    if (next) return rungStep(next.skill, next.rung)
-  }
-  const today = await db.offers.where('day').equals(day).toArray()
-  const versions = studyVersions(today.map((o) => o.moveId))
-  const choice = choose(
-    versions.map((m) => ({ id: m.id, effort: m.effort })),
-    await beliefsFor('study:evening', versions.map((m) => m.id)),
-    rng,
-  )
-  return choice ? sittingOf(moveById(choice.id)) : null
-}
-
-/**
- * Records a study night's decision: the offer (what was offered, skipped when Not now), and
- * the decision with its reason and how it read against tonight's readings.
- */
-export function recordStudyNight(
-  day: string,
-  offered: Sitting,
-  decision: StudyDecision,
-  reason: StudyReason | null,
-  check: ReasonCheck,
-  smaller: Sitting | null,
-): Promise<void> {
-  return db.transaction('rw', [db.offers, db.studyNights], async () => {
-    const now = new Date().toISOString()
-    const started = decision === 'started' ? offered : decision === 'smaller' ? smaller : null
-    const offer: Offer = {
-      kind: 'study',
-      day,
-      block: 'evening',
-      at: now,
-      situationKey: 'study:evening',
-      target: 'focus',
-      stance: '',
-      band: '',
-      reading: 0,
-      moveId: started?.id ?? offered.id,
-      label: started?.name ?? offered.name,
-      minutes: started?.minutes ?? offered.minutes,
-      cardId: null,
-      candidates: [offered.id],
-      coinFlip: false,
-      passiveId: null,
-      whyNot: null,
-      skippedAt: started ? null : now,
-      closedAt: null,
-    }
-    const offerId = await db.offers.add(offer)
-    const record: StudyNight = {
-      day,
-      weekday: parseDay(day).getDay() as Weekday,
-      offerId,
-      offeredMoveId: offered.id,
-      decision,
-      reason,
-      supported: check.supported,
-      evidence: check.evidence,
-      smallerMoveId: smaller?.id ?? null,
-      at: now,
-    }
-    await db.studyNights.add(record)
-  })
-}
-
 export function studyNightsAll(): Promise<StudyNight[]> {
   return db.studyNights.toArray()
 }
@@ -516,22 +438,20 @@ export async function replacementsFor(offer: Offer, now: Date = new Date()): Pro
 }
 
 /** What happened, in one tap, kept apart from what was offered. Null closes the question without an answer. */
-export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }): Promise<RungMove | null> {
-  return db.transaction('rw', [db.offers, db.outcomes, db.rungMarks, db.skills], async () => {
+export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }, ease: Ease | null = null): Promise<void> {
+  return db.transaction('rw', [db.offers, db.outcomes], async () => {
     const now = new Date().toISOString()
     // Recorded from the card already: only the passive item was left to answer.
     const existing = await db.outcomes.where('offerId').equals(offer.id as number).first()
     if (existing?.id !== undefined) {
       await db.outcomes.update(existing.id, { passiveOutcome })
       await db.offers.update(offer.id as number, { closedAt: now })
-      return null
+      return
     }
-    const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome }
+    // A learning session's one optional tap on how it went rides with the answer (Workstream 6); nothing moves a rung (D2).
+    const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome, ...(ease && outcome !== 'no' && outcome !== null ? { ease } : {}) }
     await db.outcomes.add(record)
     await db.offers.update(offer.id as number, { closedAt: now })
-    // Done on a rung's step is your tap that moves the skill up the proof ladder.
-    const rung = parseRungId(offer.moveId)
-    return rung && outcome === 'done' ? markRungByStep(rung.skillId, rung.rung, now) : null
   })
 }
 

@@ -11,7 +11,7 @@ import { CloudScreen } from './cloudScreen'
 import { EvidenceScreen } from './evidenceScreen'
 import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
-import { adoptOrphanSubjects, alignLadders } from './aimFlow'
+import { adoptCurrentSkills, adoptOrphanSubjects, alignLadders } from './aimFlow'
 import { writeFactsRow } from './brainFlow'
 import { refreshPushIfKeyChanged } from './push'
 import { loadAudits, runLearning } from './learningFlow'
@@ -19,7 +19,7 @@ import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
 import { copy } from './copy'
 import { DataScreen } from './dataScreen'
-import { allCheckIns, getDayContext, getSettings, updateSettings } from './db'
+import { allCheckIns, db, getSettings, updateSettings } from './db'
 import { ExtrasScreen } from './extras'
 import { LegendScreen } from './legend'
 import { useLive } from './live'
@@ -33,7 +33,6 @@ import { useReminders } from './reminders'
 import { extrasEnabled } from './settings'
 import { SettingsScreen, SettingsSectionScreen, type SettingsSection } from './settingsScreen'
 import { Icon } from './icons'
-import { StudyNightStep } from './studyStep'
 import { logUse, pruneUseLog } from './useLog'
 import { WordingScreen } from './wording'
 
@@ -44,7 +43,6 @@ type View =
   | { kind: 'tabs' }
   | { kind: 'checkin'; day: string; block: Block; only?: ReadingId }
   | { kind: 'extras'; day: string; block: Block; fresh: boolean }
-  | { kind: 'study'; day: string; block: Block; fresh: boolean }
   | { kind: 'summary'; day: string; block: Block; fresh: boolean }
   | { kind: 'wording' }
   | { kind: 'legend' }
@@ -75,7 +73,6 @@ function screenOf(view: View, tab: Tab): string | null {
       return tab
     case 'checkin':
     case 'extras':
-    case 'study':
       return null
     case 'summary':
       return view.fresh ? null : 'summary'
@@ -115,6 +112,8 @@ export function App() {
     void loadAudits()
       .then(adoptOrphanSubjects)
       .then(alignLadders)
+      // Workstream 6: each older learning commitment takes, once, the skill its step named as its current skill.
+      .then(adoptCurrentSkills)
       .then(() => runLearning(day))
       .then(() => runForecasting(day))
       .then(() => writeFactsRow(day))
@@ -130,6 +129,11 @@ export function App() {
     const day = blockAt(new Date()).day
     void runForecasting(day).then(() => writeFactsRow(day))
   }, [all?.length, completed])
+  // Workstream 6: a session recorded today (Done, Did it already, an answer) changes what the day's line may say.
+  const recorded = useLive(() => db.outcomes.where('day').equals(blockAt(new Date()).day).count(), [])
+  useEffect(() => {
+    if (recorded !== undefined) void writeFactsRow(blockAt(new Date()).day)
+  }, [recorded])
 
   useEffect(() => {
     // The phone's back gesture returns to the tabs; ask the browser to keep our storage.
@@ -162,9 +166,9 @@ export function App() {
     else setView({ kind: 'tabs' })
   }
 
-  /** After the evening's extras (or straight after the readings when they are off): the study step on a study night, else the card. */
+  /** After the evening's extras (or straight after the readings when they are off): the card. Study Night no longer sets a step (Workstream 6, D5). */
   function afterEvening(day: string, block: Block, fresh: boolean) {
-    void getDayContext(day).then((ctx) => setView(ctx?.studyNight ? { kind: 'study', day, block, fresh } : { kind: 'summary', day, block, fresh }))
+    setView({ kind: 'summary', day, block, fresh })
   }
 
   function content() {
@@ -192,8 +196,6 @@ export function App() {
         )
       case 'extras':
         return <ExtrasScreen day={view.day} block={view.block} onDone={() => (view.fresh ? afterEvening(view.day, view.block, true) : setView({ kind: 'summary', day: view.day, block: view.block, fresh: false }))} />
-      case 'study':
-        return <StudyNightStep key={view.day} day={view.day} block={view.block} onDone={() => setView({ kind: 'summary', day: view.day, block: view.block, fresh: view.fresh })} />
       case 'summary':
         return (
           <SummaryScreen

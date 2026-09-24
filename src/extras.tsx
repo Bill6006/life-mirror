@@ -221,13 +221,6 @@ export function TodayChips({ day }: { day: string }) {
         <ul class="rows">
           {!chipRetired('away', states) && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />}
           <ExtraRow
-            label={settings.week.studyNights[weekday] ? copy.today.notStudyNight : copy.today.studyNight}
-            on={ctx.studyNight !== settings.week.studyNights[weekday]}
-            onLabel={copy.extras.yes}
-            testid="chip-study"
-            onClick={() => void setDayContext(day, { studyNight: !ctx.studyNight })}
-          />
-          <ExtraRow
             label={office ? copy.today.homeToday : copy.today.officeToday}
             on={Boolean(ctx.atOffice) !== office}
             onLabel={copy.extras.yes}

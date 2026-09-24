@@ -89,14 +89,15 @@ describe('Did it already', () => {
     expect(sessionsToday(aim, r.offers, r.outcomes, DAY).done).not.toBeNull()
   })
 
-  it('moves a rung’s skill as Done does, while the ladder still sets steps', async () => {
+  it('records a session of the current skill and moves no rung (Workstream 6, D2)', async () => {
     await addAim('certification', null, 'A language', 'language')
     await addSkill('A word', 'A language', 'language')
     const aim = (await activeAims()).find((a) => a.kind === 'certification') as Aim
     const step = stepFor(aim, await liveSkills(), [])
-    const moved = await logSession(aim, step, MORNING)
-    expect(moved).toMatchObject({ from: 0, to: 1 })
-    expect((await rungMarks()).map((m) => m.via)).toEqual(['step'])
+    expect(step.id).toBe('skill:1')
+    const id = await logSession(aim, step, MORNING)
+    expect((await db.offers.get(id))?.moveId).toBe('skill:1')
+    expect(await rungMarks()).toEqual([])
   })
 })
 

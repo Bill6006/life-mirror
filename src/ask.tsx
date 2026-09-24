@@ -1,7 +1,9 @@
 import { useState } from 'preact/hooks'
 import { moveById } from './catalogue'
 import { copy } from './copy'
-import type { Offer, OutcomeWhy, WinOutcome } from './db'
+import { easeRetired } from './aims'
+import { db, getSettings, type Ease, type Offer, type OutcomeWhy, type WinOutcome } from './db'
+import { parseSkillSessionId } from './ladder'
 import { useLive } from './live'
 import { offerName, outcomeFor } from './offerFlow'
 import { NOTHING } from './offers'
@@ -12,7 +14,11 @@ export interface Answer {
   outcome: WinOutcome | null
   why: OutcomeWhy | null
   passiveOutcome: 'done' | 'no' | null
+  /** A learning session's one optional tap on how it went (Workstream 6), after Done or Partly. */
+  ease: Ease | null
 }
+
+const EASES: readonly Ease[] = ['hard', 'right', 'easy']
 
 /**
  * The one-tap question at the start of the next check-in: what happened, kept apart from what
@@ -22,31 +28,40 @@ export interface Answer {
  */
 export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; onAnswer: (a: Answer) => void; notice?: string | null }) {
   const [outcome, setOutcome] = useState<WinOutcome | null | undefined>(undefined)
+  // A learning session asks how it went, one optional tap, until that tap has gone unused a dozen sessions running.
+  const learning = parseSkillSessionId(offer.moveId) !== null
+  const easeOff = useLive(async () => (learning ? easeRetired(await db.offers.toArray(), await db.outcomes.toArray(), (await getSettings()).easeBack) : true), [offer.id])
   const [why, setWhy] = useState<OutcomeWhy | null | undefined>(undefined)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
   const nothing = offer.moveId === NOTHING
   const existing = useLive(() => outcomeFor(offer.id), [offer.id])
   const c = copy.ask
-  if (existing === undefined) return <section class="screen" />
+  if (existing === undefined || easeOff === undefined) return <section class="screen" />
 
   // Recorded from the card already: the move's answer stands, only the passive item is asked.
   const passiveOnly = existing !== null && passive !== null && existing.passiveOutcome === null
   const askWhy = !passiveOnly && outcome === 'no' && why === undefined
   const askPassive = passive !== null && (passiveOnly || (outcome !== undefined && !askWhy))
+  const askEase = learning && !easeOff && (outcome === 'done' || outcome === 'partly')
 
   function finish(passiveOutcome: 'done' | 'no' | null) {
-    if (passiveOnly && existing) onAnswer({ outcome: existing.outcome, why: existing.why, passiveOutcome })
-    else onAnswer({ outcome: outcome ?? null, why: why ?? null, passiveOutcome })
+    if (passiveOnly && existing) onAnswer({ outcome: existing.outcome, why: existing.why, passiveOutcome, ease: null })
+    else onAnswer({ outcome: outcome ?? null, why: why ?? null, passiveOutcome, ease: null })
   }
 
   function chooseOutcome(o: WinOutcome | null) {
     setOutcome(o)
-    if (o !== 'no' && !passive) onAnswer({ outcome: o, why: null, passiveOutcome: null })
+    if (learning && !easeOff && (o === 'done' || o === 'partly')) return
+    if (o !== 'no' && !passive) onAnswer({ outcome: o, why: null, passiveOutcome: null, ease: null })
   }
 
   function chooseWhy(w: OutcomeWhy | null) {
     setWhy(w)
-    if (!passive) onAnswer({ outcome: 'no', why: w, passiveOutcome: null })
+    if (!passive) onAnswer({ outcome: 'no', why: w, passiveOutcome: null, ease: null })
+  }
+
+  function chooseEase(e: Ease | null) {
+    onAnswer({ outcome: outcome ?? null, why: null, passiveOutcome: null, ease: e })
   }
 
   return (
@@ -77,7 +92,7 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
             </ul>
           </div>
           <div class="actions">
-            <button type="button" class="textbtn" onClick={() => onAnswer({ outcome: null, why: null, passiveOutcome: null })}>
+            <button type="button" class="textbtn" onClick={() => onAnswer({ outcome: null, why: null, passiveOutcome: null, ease: null })}>
               {c.skip}
             </button>
           </div>
@@ -104,6 +119,30 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
               {c.whySkip}
             </button>
           </div>
+        </>
+      )}
+
+      {askEase && (
+        <>
+          <p class="note">{copy.aims.easeQuestion}</p>
+          <div class="card">
+            <ul class="rows">
+              {EASES.map((e) => (
+                <li key={e}>
+                  <button type="button" class="row anchor" data-testid="ease" onClick={() => chooseEase(e)}>
+                    <span class="anchor-mark" aria-hidden="true" />
+                    <span class="row-main">{copy.aims.ease[e]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div class="actions">
+            <button type="button" class="textbtn" data-testid="ease-skip" onClick={() => chooseEase(null)}>
+              {c.whySkip}
+            </button>
+          </div>
+          <p class="note faint">{copy.aims.easeNote}</p>
         </>
       )}
 

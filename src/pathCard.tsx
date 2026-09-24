@@ -162,14 +162,12 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
       }
       side={
         p.open ? (
-          <>
-            <span data-testid="aim-started">{copy.aims.startedShort}</span>
-            {canDone && p.openOffer && (
-              <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(p.openOffer as Offer)}>
-                {copy.move.done}
-              </button>
-            )}
-          </>
+          canDone &&
+          p.openOffer && (
+            <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(p.openOffer as Offer)}>
+              {copy.move.done}
+            </button>
+          )
         ) : done ? (
           <span class="ink" data-testid="aim-done-today">
             {copy.aims.doneToday}
@@ -186,7 +184,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
         done && p.pt.repDone ? (
           <Facts items={[formatTime(p.pt.repDone.at), (p.paths?.length ?? 0) > 1 && <span data-testid="path-both">{copy.path.both}</span>]} />
         ) : (
-          rep && <Facts items={repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you' && p.pt.repPartly !== rep.id, (p.paths?.length ?? 0) > 1)} />
+          rep && <Facts items={[p.open && p.openOffer && <span data-testid="aim-started">{startedWhen(p.openOffer)}</span>, ...repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you' && p.pt.repPartly !== rep.id, (p.paths?.length ?? 0) > 1)]} />
         )
       }
       links={
