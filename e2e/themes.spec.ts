@@ -493,7 +493,27 @@ test('a theme switch changes the look alone: at once, no reload, the same screen
       for (const d of main.querySelectorAll('.date')) d.remove()
       return (main.textContent ?? '').replace(/\s+/g, ' ').trim()
     })
-  const before = await said()
+  // Now draws once its reads return, and its Brief chooses the day's line each time it opens: read the
+  // screen only once the line is on it and nothing has changed for a moment, or two reads of a screen
+  // not yet drawn compare equal and prove nothing, and a read taken before the line reads differently.
+  const settled = async (): Promise<string> => {
+    await expect(page.getByTestId('brief-line')).toBeVisible({ timeout: 15_000 })
+    let last = ''
+    await expect
+      .poll(
+        async () => {
+          const now = await said()
+          const steady = now !== '' && now === last
+          last = now
+          return steady
+        },
+        { intervals: [400], timeout: 15_000 },
+      )
+      .toBe(true)
+    return last
+  }
+  const before = await settled()
+  expect(before).toContain('Check in')
   // A mark on the window: a reload would lose it.
   await page.evaluate(() => ((window as unknown as { mark: number }).mark = 42))
   await tab(page, 'Settings')
@@ -512,7 +532,7 @@ test('a theme switch changes the look alone: at once, no reload, the same screen
   await page.getByTestId('theme-signal').click()
   await page.getByRole('button', { name: 'Settings' }).first().click()
   await tab(page, 'Now')
-  expect(await said()).toBe(before)
+  expect(await settled()).toBe(before)
 })
 
 test('the choice holds across a relaunch and offline; a missing or unknown value is Nocturne', async ({ page, context }) => {
