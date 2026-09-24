@@ -2,15 +2,18 @@ import { useEffect, useState } from 'preact/hooks'
 import { AimsOnNow } from './aimsScreen'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { Brief } from './brief'
+import { lineActionState, todaysLine } from './brainFlow'
 import { copy } from './copy'
 import { allCheckIns, answeredCount, askedOf, ensureDayContext, getDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
-import { fill, formatDayLong, formatDayShort, formatTime } from './format'
+import { fill, formatDayShort, formatTime } from './format'
+import { Icon } from './icons'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
 import { ensurePickupOffer, offerForSlot, pendingOffers, skipOffer, studyNightsAll, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
 import { activeBlocks } from './settings'
 import { keptCount } from './studyNight'
+import { Disclosure, Facts, ScreenHead, SectionLabel } from './ui'
 
 type WindowState = 'logged' | 'partial' | 'now' | 'missed' | 'later'
 
@@ -25,16 +28,6 @@ function statusOf(c: CheckIn): string {
   return isComplete(c)
     ? fill(copy.now.logged, { time: formatTime(c.completedAt ?? c.updatedAt) })
     : fill(copy.now.incomplete, { n: String(answeredCount(c)), total: String(askedOf(c).length) })
-}
-
-/** One small glyph per state: filled when logged, ringed when open now, faint when later or missed. */
-function Glyph({ state }: { state: WindowState }) {
-  return (
-    <svg class={`glyph is-${state}`} viewBox="0 0 16 16" aria-hidden="true">
-      <circle class="glyph-ring" cx="8" cy="8" r="6.5" />
-      {(state === 'logged' || state === 'now' || state === 'partial') && <circle class="glyph-dot" cx="8" cy="8" r={state === 'logged' ? 6.5 : 2.5} />}
-    </svg>
-  )
 }
 
 /** Asked once, at first open after this build: one line, yours, kept on this phone. Never asked again. */
@@ -56,6 +49,117 @@ function DirectionAsk() {
         </button>
       </div>
       <p class="note faint no-gap">{c.note}</p>
+    </div>
+  )
+}
+
+/** Today's blocks: one card, a block each, its state in words (never colour alone), a tap where there is something to open. */
+function Status({ windows, today, onOpen, onCheckIn }: { windows: readonly TodayWindow[]; today: { day: string; block: Block }; onOpen: (day: string, block: Block) => void; onCheckIn: (day: string, block: Block) => void }) {
+  return (
+    <div class="card today" style={{ '--n': String(windows.length) }}>
+      <div class="windows">
+        {windows.map((w) => {
+          const tappable = w.state === 'logged' || w.state === 'partial' || w.state === 'now'
+          const onTap = () => (w.state === 'logged' || (w.state === 'partial' && w.block !== today.block) ? onOpen(today.day, w.block) : onCheckIn(today.day, w.block))
+          const inner = (
+            <>
+              <span class="w-mark" aria-hidden="true" />
+              <Icon name={w.block} class="w-ic" />
+              <span class="w-name">{copy.blocks[w.block]}</span>
+              <span class="w-state">
+                {w.text}
+                {w.time && <span class="w-time"> {w.time}</span>}
+              </span>
+            </>
+          )
+          return tappable ? (
+            <button key={w.block} type="button" class={`window is-${w.state}`} data-testid="block-row" onClick={onTap}>
+              {inner}
+            </button>
+          ) : (
+            <div key={w.block} class={`window is-${w.state}`} data-testid="block-row">
+              {inner}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** How much the moves know: one line, and how they pick one tap behind it, in the same words as before. */
+function Knows({ weeks }: { weeks: number }) {
+  const c = copy.move
+  const w = weeks === 1 ? c.weeksOne : fill(c.weeksMany, { n: String(weeks) })
+  const [lead, rest] = fill(c.knowsShort, { weeks: w }).split(' · ')
+  return (
+    <div class="knows" data-testid="knows">
+      <Facts items={[lead, rest]} />
+      <Disclosure label={copy.disclose.knowsMore} testid="knows-more">
+        <p class="note faint no-gap">{fill(c.knows, { weeks: String(weeks) })}</p>
+      </Disclosure>
+    </div>
+  )
+}
+
+/**
+ * Earlier: one row a day, a column per block, each time a tap that opens that check-in. A block
+ * not logged says so in words. Three days show; the rest sit behind one row, in the same grid.
+ */
+export function Earlier({ checkins, blocks, onOpen }: { checkins: readonly CheckIn[]; blocks: readonly Block[]; onOpen: (day: string, block: Block) => void }) {
+  const byDay = new Map<string, Map<Block, CheckIn>>()
+  for (const c of checkins) {
+    if (!byDay.has(c.day)) byDay.set(c.day, new Map())
+    ;(byDay.get(c.day) as Map<Block, CheckIn>).set(c.block, c)
+  }
+  const days = [...byDay.keys()].sort((a, b) => (a < b ? 1 : -1)).slice(0, 10)
+  // The blocks you check in now, and any block the shown days hold.
+  const cols = BLOCKS.filter((b) => blocks.includes(b) || days.some((d) => byDay.get(d)?.has(b)))
+  const c = copy.earlier
+  const rows = (list: readonly string[]) =>
+    list.map((day) => (
+      <div key={day} class="e-row" role="row" data-testid="earlier-day">
+        <span class="e-day" role="rowheader">
+          {formatDayShort(day)}
+        </span>
+        {cols.map((b) => {
+          const ci = byDay.get(day)?.get(b)
+          return (
+            <span key={b} class="e-cell" role="cell">
+              {ci ? (
+                <button type="button" class="e-t" aria-label={`${fill(c.open, { block: copy.blocks[b], day: formatDayShort(day) })} · ${statusOf(ci)}`} data-testid="earlier-time" onClick={() => onOpen(day, b)}>
+                  {isComplete(ci) ? formatTime(ci.completedAt ?? ci.updatedAt) : fill(copy.now.incomplete, { n: String(answeredCount(ci)), total: String(askedOf(ci).length) })}
+                </button>
+              ) : (
+                <span class="e-miss">{c.notLogged}</span>
+              )}
+            </span>
+          )
+        })}
+      </div>
+    ))
+  // One grid for the header, the days and the days behind the tap, so every column lines up; on a
+  // narrow phone each day's name sits over its three times instead of beside them.
+  return (
+    <div class="card earlier" data-testid="earlier">
+      <div class="e-grid" style={{ '--cols': String(cols.length) }} role="table" aria-label={c.title}>
+        <div class="e-row e-heads" role="row">
+          <span class="e-head e-head-day" role="columnheader">
+            {c.day}
+          </span>
+          {cols.map((b) => (
+            <span key={b} class="e-head" role="columnheader">
+              {copy.blocks[b]}
+            </span>
+          ))}
+        </div>
+        {rows(days.slice(0, 3))}
+        {days.length > 3 && (
+          <Disclosure label={c.more} sub={fill(c.moreCount, { n: String(days.length - 3) })} testid="earlier-more" class="e-more">
+            {rows(days.slice(3))}
+          </Disclosure>
+        )}
+      </div>
     </div>
   )
 }
@@ -86,6 +190,9 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
   const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block, tick])
   const pending = useLive(pendingOffers, [])
   const weeks = useLive(() => weeksOfRecord(today.day), [today.day])
+  // The Brain's line and its action, read here too, to decide which one thing carries the accent.
+  const line = useLive(() => todaysLine(today.day), [today.day])
+  const act = useLive(() => (line ? lineActionState(today.day, line.action ?? null) : Promise.resolve(null)), [today.day, line?.key, JSON.stringify(line?.action ?? null), all?.length])
   if (!all || !settings || win === undefined || here === undefined || pickup === undefined || pending === undefined) return <section class="screen" />
 
   const active = activeBlocks(settings.frequency)
@@ -115,49 +222,25 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
         ? fill(copy.today.continue, { block: copy.blocks[today.block] })
         : null
 
+  // One accent on Now, for the one thing to do: the check-in while its block is open; else the
+  // Brain line's own action while it is open; else Resume on the commitment that action names.
+  const briefPrimary = action === null && Boolean(line?.action) && act?.state === 'open'
+  const dueAimId = action === null && !briefPrimary && line?.action?.kind === 'plan' ? line.action.aimId : null
+
   const offer = here ?? pending.find((o) => o.kind === 'block') ?? null
 
   return (
-    <section class="screen">
-      <header class="screen-head">
-        <h1 class="eyebrow">{copy.tabs.now}</h1>
-        <p class="date">{formatDayLong(today.day)}</p>
-      </header>
+    <section class="screen now">
+      <ScreenHead title={copy.tabs.now} day={today.day} />
 
       {settings.directionAskedAt === null && <DirectionAsk />}
 
       <ReadingHero all={all} today={today} />
-      <Brief day={today.day} version={all.length} />
+      <Brief day={today.day} version={all.length} primary={briefPrimary} />
 
-      <div class="card today" style={{ '--n': String(windows.length) }}>
-        <div class="windows">
-          {windows.map((w) => {
-            const tappable = w.state === 'logged' || w.state === 'partial' || w.state === 'now'
-            const onTap = () => (w.state === 'logged' || (w.state === 'partial' && w.block !== today.block) ? onOpen(today.day, w.block) : onCheckIn(today.day, w.block))
-            const inner = (
-              <>
-                <Glyph state={w.state} />
-                <span class="w-name">{copy.blocks[w.block]}</span>
-                <span class="w-state">
-                  {w.text}
-                  {w.time && <span class="w-time">{w.time}</span>}
-                </span>
-              </>
-            )
-            return tappable ? (
-              <button key={w.block} type="button" class={`window is-${w.state}`} data-testid="block-row" onClick={onTap}>
-                {inner}
-              </button>
-            ) : (
-              <div key={w.block} class={`window is-${w.state}`} data-testid="block-row">
-                {inner}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <Status windows={windows} today={today} onOpen={onOpen} onCheckIn={onCheckIn} />
       {action && (
-        <button type="button" class="pill-ink" onClick={() => onCheckIn(today.day, today.block)}>
+        <button type="button" class="pill-ink is-primary" onClick={() => onCheckIn(today.day, today.block)}>
           {action}
         </button>
       )}
@@ -168,17 +251,13 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
         </p>
       )}
 
-      <AimsOnNow onChangeRep={onChangeRep} />
+      <AimsOnNow onChangeRep={onChangeRep} dueAimId={dueAimId} />
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={() => void skipOffer(offer)} />}
-      {!settings.hideMoves && (
-        <p class="note faint knows" data-testid="knows">
-          {fill(copy.move.knows, { weeks: String(weeks ?? 0) })}
-        </p>
-      )}
+      {!settings.hideMoves && <Knows weeks={weeks ?? 0} />}
 
-      <ContextChips all={all} today={today.day} />
+      <ContextChips all={all} today={today.day} index={1} />
 
       {win && (
         <div class="card pad win-card">
@@ -192,22 +271,8 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
 
       {earlier.length > 0 && (
         <>
-          <h2 class="section">{copy.now.earlier}</h2>
-          <div class="card">
-            <ul class="rows">
-              {earlier.slice(0, 30).map((c) => (
-                <li key={`${c.day}-${c.block}`}>
-                  <button type="button" class="row" onClick={() => onOpen(c.day, c.block)}>
-                    <span class="row-main">
-                      {formatDayShort(c.day)} · {copy.blocks[c.block]}
-                    </span>
-                    <span class="row-side">{statusOf(c)}</span>
-                    <span class="chev" aria-hidden="true">›</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SectionLabel index={2}>{copy.now.earlier}</SectionLabel>
+          <Earlier checkins={earlier} blocks={active} onOpen={onOpen} />
         </>
       )}
     </section>

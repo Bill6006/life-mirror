@@ -1,11 +1,15 @@
+import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { cuesFor, movedLine, type BlockReason, type CueCount } from './aims'
-import type { Move } from './catalogue'
+import type { Move, PathId } from './catalogue'
 import { copy } from './copy'
 import type { Aim, Cue, DayContext, Intention, LadderKind, Offer } from './db'
 import { fill } from './format'
-import type { RungMove, Sitting } from './ladder'
+import { Icon, type IconName } from './icons'
+import { TOP_RUNG, type RungMove, type Sitting } from './ladder'
 import { doneOpen, recordDoneNow } from './offerFlow'
+import { indexLabel } from './theme'
+import { Disclosure, Facts, RungTrack } from './ui'
 
 /** What a commitment's card and its row on Now share: the step, its state, today's plan and the last fact. */
 interface Shared {
@@ -22,6 +26,8 @@ interface Shared {
   plan: Intention | null
   /** One plain fact: when the ladder last moved, or the step was last done. */
   last: string | null
+  /** The one thing to do on the screen (the Brain line names it): its Resume carries the accent. */
+  due?: boolean
   onResume: () => void
   onUnblock: () => void
   onPlan: (cue: Cue, time: string) => void
@@ -59,6 +65,46 @@ export function LadderChips({ value, onPick, prefix = 'aim-ladder' }: { value: L
         </button>
       ))}
     </div>
+  )
+}
+
+/** A commitment's icon: its kind, or its path. */
+export function kindIcon(aim: Pick<Aim, 'kind' | 'path'>): IconName {
+  if (aim.kind === 'path') return (aim.path as PathId) === 'partner' ? 'partner' : 'social'
+  return aim.kind === 'certification' ? 'study' : aim.kind === 'practice' ? 'practice' : 'person'
+}
+
+/** The step's name. A rung step sets its rung on a line of its own; the text still reads "skill · rung". */
+export function StepTitle({ step, tag = 'span', class: cls }: { step: Sitting; tag?: 'span' | 'h2'; class: string }) {
+  const Tag = tag
+  if (step.skill && step.rungStep) {
+    return (
+      <Tag class={cls} data-testid="aim-step">
+        {step.skill}
+        <span class="rung-sep"> · </span>
+        <span class="aim-rung">{step.rungStep}</span>
+      </Tag>
+    )
+  }
+  return (
+    <Tag class={cls} data-testid="aim-step">
+      {step.title}
+    </Tag>
+  )
+}
+
+/** Whether a plan waits for today, and the cues still ahead. */
+export function planState(plan: Intention | null, ctx: Shared['ctx']): { pending: Intention | null; cues: number } {
+  return { pending: plan && plan.offerId === null ? plan : null, cues: cuesFor(ctx, new Date()).length }
+}
+
+/** The quiet Plan tap: opens the cue chips under the step. Absent while a plan waits (it shows itself) or when no cue is ahead. */
+export function PlanTap({ open, onToggle, label = copy.disclose.plan }: { open: boolean; onToggle: () => void; label?: string }) {
+  return (
+    <button type="button" class="link plan" aria-expanded={open} data-testid="aim-plan-open" onClick={onToggle}>
+      <Icon name="clock" />
+      {label}
+    </button>
   )
 }
 
@@ -110,9 +156,10 @@ export function When({ plan, ctx, onPlan }: Pick<Shared, 'plan' | 'ctx' | 'onPla
 }
 
 /**
- * A commitment's protected next step: one line sized to one sitting, held above the move on
- * Now where the state ranking cannot displace it. Resume is one tap. When the last step ended
- * in No or Not now, the offer under it removes the obstacle; it never shrinks the aim.
+ * A commitment's protected next step on Aims: the step and how to do it, the ladder it climbs,
+ * Resume and when. Its proofs, skills and removal sit behind Details; adding the first skill stays
+ * in view until there is one. When the last step ended in No or Not now, the offer under it
+ * removes the obstacle; it never shrinks the aim.
  */
 export function AimCard({
   aim,
@@ -124,6 +171,7 @@ export function AimCard({
   ctx,
   plan,
   last,
+  due = false,
   onResume,
   onUnblock,
   onPlan,
@@ -152,49 +200,53 @@ export function AimCard({
   onLadder?: (ladder: LadderKind) => void
 }) {
   const c = copy.aims
+  const d = copy.disclose
   const [skill, setSkill] = useState('')
   const [name, setName] = useState('')
   const [nameLadder, setNameLadder] = useState<LadderKind>(aim.ladder ?? 'technical')
   const [changingLadder, setChangingLadder] = useState(false)
+  const [planOpen, setPlanOpen] = useState(false)
   const [moved, showMoved] = useMoved()
   useQuarterMinute()
   const canDone = openOffer !== null && doneOpen(openOffer)
   const ladder = aim.ladder ?? 'technical'
+  const { pending, cues } = planState(plan, ctx)
+  const noSkill = skillCount === 0
+  const addSkill = onAddSkill && (
+    <div class="add">
+      <input class="input" type="text" maxLength={60} placeholder={c.skillPlaceholder} value={skill} data-testid="aim-skill-input" onInput={(e) => setSkill((e.currentTarget as HTMLInputElement).value)} />
+      <button
+        type="button"
+        class="pill-quiet"
+        data-testid="aim-skill-add"
+        disabled={!skill.trim()}
+        onClick={() => {
+          onAddSkill(skill)
+          setSkill('')
+        }}
+      >
+        {c.addSkillHere}
+      </button>
+    </div>
+  )
+  const detailsSub = aim.kind === 'certification' ? (noSkill ? d.detailsStudyNoSkill : d.detailsStudy) : aim.kind === 'person' ? d.detailsPerson : d.detailsPractice
   return (
-    <div class="card pad move-card aim-card" data-testid="aim-card" data-kind={aim.kind}>
-      <p class="eyebrow small">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</p>
-      <h2 class="move-title" data-testid="aim-step">
-        {step.title}
-      </h2>
-      <p class="move-what">{step.what}</p>
-      <p class="move-meta">
-        {fill(c.sized, { n: String(step.minutes) })}
-        {last && <span data-testid="aim-last"> · {last}</span>}
-      </p>
-      {skillCount !== undefined && <p class="move-meta">{skillCount === 1 ? c.skillOne : skillCount ? fill(c.skillsOn, { n: String(skillCount) }) : c.noSkillsYet}</p>}
-      {onLadder && (
-        <div class="calc">
-          <p class="calc-line" data-testid="aim-proofs">
-            {fill(c.proofs, { kind: copy.ladder.kinds[ladder] })}
-            {' · '}
-            <button type="button" class="textbtn inline" data-testid="aim-ladder-change" onClick={() => setChangingLadder((v) => !v)}>
-              {c.changeProofs}
-            </button>
-          </p>
-          {changingLadder && (
-            <>
-              <LadderChips
-                value={ladder}
-                onPick={(k) => {
-                  onLadder(k)
-                  setChangingLadder(false)
-                }}
-              />
-              <p class="note faint no-gap">{c.proofsNote}</p>
-            </>
-          )}
+    <div class={due && !open ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind={aim.kind}>
+      <div class="aim-head">
+        <Icon name={kindIcon(aim)} />
+        <p class="eyebrow">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</p>
+      </div>
+      <StepTitle step={step} tag="h2" class="move-title" />
+      <p class="move-what clamp2">{step.what}</p>
+      {step.rung !== undefined && step.rungStep && (
+        <div class="ladder" data-testid="aim-ladder">
+          <RungTrack n={step.rung} of={TOP_RUNG} label={fill(c.rungOf, { n: String(step.rung), of: String(TOP_RUNG), name: step.rungStep })} />
+          <span class="ladder-cap">{fill(c.rungOf, { n: String(step.rung), of: String(TOP_RUNG), name: step.rungStep })}</span>
         </div>
       )}
+      <p class="aim-facts">
+        <Facts items={[fill(c.sized, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, noSkill ? c.noSkillsShort : null]} />
+      </p>
       {moved && (
         <div class="calc">
           <p class="calc-line ink" data-testid="aim-moved">
@@ -219,11 +271,21 @@ export function AimCard({
       ) : (
         <>
           <div class="actions">
-            <button type="button" class="pill-quiet" data-testid="aim-resume" onClick={onResume}>
+            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={onResume}>
               {c.resume}
             </button>
+            {!pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={d.planWhen} />}
           </div>
-          <When plan={plan} ctx={ctx} onPlan={onPlan} />
+          {(pending || planOpen) && (
+            <When
+              plan={plan}
+              ctx={ctx}
+              onPlan={(cue, time) => {
+                onPlan(cue, time)
+                setPlanOpen(false)
+              }}
+            />
+          )}
         </>
       )}
 
@@ -261,79 +323,142 @@ export function AimCard({
           <LadderChips value={nameLadder} onPick={setNameLadder} prefix="aim-name-ladder" />
         </>
       )}
-      {onAddSkill && (
-        <div class="add">
-          <input class="input" type="text" maxLength={60} placeholder={c.skillPlaceholder} value={skill} data-testid="aim-skill-input" onInput={(e) => setSkill((e.currentTarget as HTMLInputElement).value)} />
-          <button
-            type="button"
-            class="pill-quiet"
-            data-testid="aim-skill-add"
-            disabled={!skill.trim()}
-            onClick={() => {
-              onAddSkill(skill)
-              setSkill('')
-            }}
-          >
-            {c.addSkillHere}
-          </button>
-        </div>
-      )}
-      {onConvert && (
-        <div class="calc" data-testid="aim-convert">
-          <button type="button" class="pill-quiet" data-testid="aim-convert-social" onClick={onConvert}>
-            {copy.path.convert}
-          </button>
-          <p class="note faint no-gap">{copy.path.convertNote}</p>
-        </div>
-      )}
-      {(onRemove || onChangeStep) && (
-        <div class="actions">
-          {onChangeStep && (
-            <button type="button" class="textbtn" onClick={onChangeStep}>
-              {c.changeStep}
+      {/* Until a study has its first skill, adding one stays in view. */}
+      {noSkill && addSkill}
+
+      <Disclosure label={d.details} sub={detailsSub} testid="aim-details">
+        {skillCount !== undefined && skillCount > 0 && <p class="move-meta">{skillCount === 1 ? c.skillOne : fill(c.skillsOn, { n: String(skillCount) })}</p>}
+        {onLadder && (
+          <div class="calc">
+            <p class="calc-line" data-testid="aim-proofs">
+              {fill(c.proofs, { kind: copy.ladder.kinds[ladder] })}
+              {' · '}
+              <button type="button" class="textbtn inline" data-testid="aim-ladder-change" onClick={() => setChangingLadder((v) => !v)}>
+                {c.changeProofs}
+              </button>
+            </p>
+            {changingLadder && (
+              <>
+                <LadderChips
+                  value={ladder}
+                  onPick={(k) => {
+                    onLadder(k)
+                    setChangingLadder(false)
+                  }}
+                />
+                <p class="note faint no-gap">{c.proofsNote}</p>
+              </>
+            )}
+          </div>
+        )}
+        {!noSkill && addSkill}
+        {onConvert && (
+          <div class="calc" data-testid="aim-convert">
+            <button type="button" class="pill-quiet" data-testid="aim-convert-social" onClick={onConvert}>
+              {copy.path.convert}
             </button>
-          )}
-          {onRemove && (
-            <button type="button" class="textbtn faint" onClick={onRemove}>
-              {c.remove}
-            </button>
-          )}
-        </div>
-      )}
+            <p class="note faint no-gap">{copy.path.convertNote}</p>
+          </div>
+        )}
+        {(onRemove || onChangeStep) && (
+          <div class="actions">
+            {onChangeStep && (
+              <button type="button" class="textbtn" onClick={onChangeStep}>
+                {c.changeStep}
+              </button>
+            )}
+            {onRemove && (
+              <button type="button" class="textbtn faint" onClick={onRemove}>
+                {c.remove}
+              </button>
+            )}
+          </div>
+        )}
+      </Disclosure>
     </div>
   )
 }
 
+/** A row on Now: an icon (or the index), the kind, the step, one tap beside, and a line of facts with its quiet taps under both. */
+export function RowFrame({
+  icon,
+  index,
+  kind,
+  title,
+  extra,
+  side,
+  facts,
+  links,
+  below,
+  due,
+  testKind,
+  path,
+}: {
+  icon: IconName
+  index: number
+  kind: ComponentChildren
+  title: ComponentChildren
+  extra?: ComponentChildren
+  side: ComponentChildren
+  facts: ComponentChildren
+  links?: ComponentChildren
+  below?: ComponentChildren
+  due: boolean
+  testKind: string
+  path?: string
+}) {
+  return (
+    <li class={due ? 'aim-row is-due' : 'aim-row'} data-testid="aim-card" data-kind={testKind} data-path={path}>
+      <span class="aim-ic" aria-hidden="true">
+        <Icon name={icon} />
+      </span>
+      <span class="idx aim-idx" aria-hidden="true">
+        {indexLabel(index)}
+      </span>
+      <div class="aim-main">
+        {kind}
+        {title}
+        {extra}
+      </div>
+      <span class="aim-side">{side}</span>
+      <div class="aim-meta">
+        {facts}
+        {links && <span class="links">{links}</span>}
+      </div>
+      {below && <div class="aim-extra">{below}</div>}
+    </li>
+  )
+}
+
 /**
- * The same commitment on Now, as one row: its subject or kind, the step, its minutes and the last
- * fact, one tap beside, and one tap that says when on a line of its own under the row. Several fit
- * without a scroll; Change the step, the proofs and Remove live on Aims.
+ * The same commitment on Now, as one row: its subject or kind, the step, one tap beside, and
+ * under both a line of facts with Plan. Several fit without a scroll; Change the step, the proofs
+ * and Remove live on Aims.
  */
-export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, onResume, onUnblock, onPlan }: Shared) {
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, due = false, onResume, onUnblock, onPlan, index = 0 }: Shared & { index?: number }) {
   const c = copy.aims
   const [moved, showMoved] = useMoved()
+  const [planOpen, setPlanOpen] = useState(false)
   useQuarterMinute()
   const canDone = openOffer !== null && doneOpen(openOffer)
+  const { pending, cues } = planState(plan, ctx)
   return (
-    <li class="row is-static aim-row" data-testid="aim-card" data-kind={aim.kind}>
-      <span class="row-main">
-        <span class="sub">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</span>
-        <span class="aim-row-title" data-testid="aim-step">
-          {step.title}
-        </span>
-        <span class="sub">
-          {fill(copy.catalogue.minutes, { n: String(step.minutes) })}
-          {last && <span data-testid="aim-last"> · {last}</span>}
-          {blocked && unblock && !open && ' · ' + fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })}
-        </span>
-        {moved && (
+    <RowFrame
+      icon={kindIcon(aim)}
+      index={index}
+      due={due && !open}
+      testKind={aim.kind}
+      kind={<span class="aim-kind">{aim.name ?? step.subject ?? c.kinds[aim.kind]}</span>}
+      title={<StepTitle step={step} class="aim-title" />}
+      extra={
+        moved && (
           <span class="sub ink" data-testid="aim-moved">
             {movedLine(moved)}
           </span>
-        )}
-      </span>
-      <span class="row-side aim-row-side">
-        {open ? (
+        )
+      }
+      side={
+        open ? (
           <>
             <span data-testid="aim-started">{c.startedShort}</span>
             {canDone && openOffer && (
@@ -349,13 +474,27 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
                 {c.unblockStart}
               </button>
             )}
-            <button type="button" class="pill-quiet" data-testid="aim-resume" onClick={onResume}>
+            <button type="button" class={due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={onResume}>
               {c.resume}
             </button>
           </>
-        )}
-      </span>
-      {!open && <When plan={plan} ctx={ctx} onPlan={onPlan} />}
-    </li>
+        )
+      }
+      facts={<Facts items={[fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, blocked && unblock && !open && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]} />}
+      links={!open && !pending && cues > 0 && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} />}
+      below={
+        !open &&
+        (pending || planOpen) && (
+          <When
+            plan={plan}
+            ctx={ctx}
+            onPlan={(cue, time) => {
+              onPlan(cue, time)
+              setPlanOpen(false)
+            }}
+          />
+        )
+      }
+    />
   )
 }

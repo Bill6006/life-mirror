@@ -101,6 +101,7 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
       </header>
       <p class="note">{c.intro}</p>
       <p class="note faint">{c.register}</p>
+      <p class="note faint">{copy.movesTab.tiersNote}</p>
 
       <h2 class="section">{c.cards}</h2>
       {ev.cards.length === 0 ? (

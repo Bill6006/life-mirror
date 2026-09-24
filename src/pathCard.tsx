@@ -1,6 +1,8 @@
 import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
-import { When, useQuarterMinute } from './aimCard'
+import { kindIcon, planState, PlanTap, RowFrame, When, useQuarterMinute } from './aimCard'
+import { Icon } from './icons'
+import { Disclosure, Facts, StageProgress } from './ui'
 import { lastLine, type CueCount } from './aims'
 import { blockAt, type Block } from './blocks'
 import { moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
@@ -48,18 +50,29 @@ function repOf(p: Pick<PathShared, 'pt' | 'open' | 'openOffer'>): Move | null {
   return p.pt.pick ? moveById(p.pt.pick.moveId) : null
 }
 
-/** Change, as a quiet tap on a line of the row, so the side holds Resume alone. */
+/** Change, as a quiet tap on the facts line, so the side holds Resume alone. */
 function ChangeTap({ onChange }: { onChange: () => void }) {
   return (
-    <button type="button" class="textbtn inline" data-testid="path-change" onClick={onChange}>
+    <button type="button" class="link" data-testid="path-change" onClick={onChange}>
       {copy.path.change}
     </button>
   )
 }
 
-/** The rep in a row: its cue as its one line, then its minutes, where, whose pick, whether it counts for both paths, and Change; a rep with a guardrail says it (Part 26: one ask, and anything but a yes is final). */
-function RepLines({ path, rep, setting, yours, both, onChange }: { path: Path; rep: Move; setting: SettingKind | null; yours: boolean; both: boolean; onChange: (() => void) | null }) {
-  const moves = rep.path?.[path.id]?.advances
+/** The rep's facts: its minutes, where, whose pick, and whether it counts for both paths. */
+function repFacts(rep: Move, setting: SettingKind | null, yours: boolean, both: boolean) {
+  return [
+    fill(copy.catalogue.minutes, { n: String(rep.minutes) }),
+    setting && whereWords(setting),
+    yours && copy.path.yours,
+    both && <span data-testid="path-both">{copy.path.both}</span>,
+  ]
+}
+
+/** What sits behind the rep's own tap: its cue and, for a warm-up, that it does not move the stage (moved behind the rep, not off the phone). */
+function RepNotes({ path, rep }: { path: Path; rep: Move }) {
+  const warm = !rep.path?.[path.id]?.advances
+  if (!rep.cue && !warm) return null
   return (
     <>
       {rep.cue && (
@@ -67,80 +80,76 @@ function RepLines({ path, rep, setting, yours, both, onChange }: { path: Path; r
           {copy.catalogue.paths.cue}: {rep.cue}
         </span>
       )}
-      <span class="sub">
-        {fill(copy.catalogue.minutes, { n: String(rep.minutes) })}
-        {setting && ` · ${whereWords(setting)}`}
-        {yours && ` · ${copy.path.yours}`}
-        {both && (
-          <span data-testid="path-both">
-            {' · '}
-            {copy.path.both}
-          </span>
-        )}
-        {onChange && (
-          <>
-            {' · '}
-            <ChangeTap onChange={onChange} />
-          </>
-        )}
-      </span>
-      {!moves && (
+      {warm && (
         <span class="sub" data-testid="path-warmup">
           {copy.path.warmUp}
-        </span>
-      )}
-      {rep.guardrail && (
-        <span class="sub ink" data-testid="path-guardrail">
-          {rep.guardrail}
         </span>
       )}
     </>
   )
 }
 
-/** On Now: the path's one People row. */
-export function PathRow(p: PathShared) {
+/** The next stage's name, or null at the last. */
+function nextStage(path: Path, stage: number): string | null {
+  return path.stages.find((s) => s.n === stage + 1)?.name ?? null
+}
+
+/** On Now: the path's one People row, the same frame as every commitment's. */
+export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
   const c = copy.path
   useQuarterMinute()
+  const [planOpen, setPlanOpen] = useState(false)
   const rep = repOf(p)
   const canDone = p.openOffer !== null && doneOpen(p.openOffer)
   const setting = p.open ? (p.openOffer?.setting ?? null) : (p.pt.pick?.setting ?? null)
+  const { pending, cues } = planState(p.plan, p.ctx)
+  const notes = rep && (rep.cue || !rep.path?.[p.pt.path.id]?.advances)
+  // Plan opens the cue chips and, under them, the rep's cue and warm-up note; with no cue ahead the same tap says it is about the rep.
+  const showTap = !p.open && rep && ((!pending && cues > 0) || notes)
   return (
-    <li class="row is-static aim-row" data-testid="aim-card" data-kind="path" data-path={p.pt.path.id}>
-      <span class="row-main">
-        <span class="sub" data-testid="path-stage">
-          {pathName(p.pt.path)} · {stageWords(p.pt.path, p.pt.state.stage)}
+    <RowFrame
+      icon={kindIcon(p.aim)}
+      index={p.index ?? 0}
+      due={Boolean(p.due) && !p.open && rep !== null}
+      testKind="path"
+      path={p.pt.path.id}
+      kind={
+        <span class="aim-kind" data-testid="path-stage">
+          <Facts items={[pathName(p.pt.path), stageWords(p.pt.path, p.pt.state.stage)]} />
         </span>
-        {rep ? (
-          <>
-            <span class="aim-row-title" data-testid="aim-step">
-              {rep.name}
-            </span>
-            <RepLines path={p.pt.path} rep={rep} setting={setting} yours={!p.open && p.pt.pick?.chosenBy === 'you'} both={(p.paths?.length ?? 0) > 1} onChange={p.open ? null : p.onChange} />
-            {!p.open && p.pt.pick?.chosenBy === 'coach' && p.pt.pick.version && (
-              <span class="sub" data-testid="path-coach-version">
-                {p.pt.pick.version}
-              </span>
-            )}
-          </>
+      }
+      title={
+        rep ? (
+          <span class="aim-title" data-testid="aim-step">
+            {rep.name}
+          </span>
         ) : (
-          <>
-            <span class="aim-row-title" data-testid="path-none">
-              {c.none[p.block]}
+          <span class="aim-title" data-testid="path-none">
+            {c.none[p.block]}
+          </span>
+        )
+      }
+      extra={
+        <>
+          {rep && !p.open && p.pt.pick?.chosenBy === 'coach' && p.pt.pick.version && (
+            <span class="sub" data-testid="path-coach-version">
+              {p.pt.pick.version}
             </span>
-            {p.carried && (
-              <span class="sub" data-testid="path-carried">
-                {p.carried}
-              </span>
-            )}
-            <span class="sub">
-              <ChangeTap onChange={p.onChange} />
+          )}
+          {rep?.guardrail && (
+            <span class="sub ink" data-testid="path-guardrail">
+              {rep.guardrail}
             </span>
-          </>
-        )}
-      </span>
-      <span class="row-side aim-row-side">
-        {p.open ? (
+          )}
+          {!rep && p.carried && (
+            <span class="sub" data-testid="path-carried">
+              {p.carried}
+            </span>
+          )}
+        </>
+      }
+      side={
+        p.open ? (
           <>
             <span data-testid="aim-started">{copy.aims.startedShort}</span>
             {canDone && p.openOffer && (
@@ -151,38 +160,73 @@ export function PathRow(p: PathShared) {
           </>
         ) : (
           rep && (
-            <button type="button" class="pill-quiet" data-testid="aim-resume" onClick={p.onResume}>
+            <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={p.onResume}>
               {copy.aims.resume}
             </button>
           )
-        )}
-      </span>
-      {!p.open && rep && <When plan={p.plan} ctx={p.ctx} onPlan={p.onPlan} />}
-    </li>
+        )
+      }
+      facts={rep && <Facts items={repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you', (p.paths?.length ?? 0) > 1)} />}
+      links={
+        !p.open && (
+          <>
+            <ChangeTap onChange={p.onChange} />
+            {showTap && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={!pending && cues > 0 ? copy.disclose.plan : copy.disclose.repNotes} />}
+          </>
+        )
+      }
+      below={
+        !p.open &&
+        rep &&
+        (pending || planOpen) && (
+          <>
+            <When
+              plan={p.plan}
+              ctx={p.ctx}
+              onPlan={(cue, time) => {
+                p.onPlan(cue, time)
+                setPlanOpen(false)
+              }}
+            />
+            {planOpen && <RepNotes path={p.pt.path} rep={rep} />}
+          </>
+        )
+      }
+    />
   )
 }
 
-/** On Aims: the path's card. A path's own controls, such as the Partner path's, sit under its counts. */
-export function PathCard(p: PathShared & { today: string; counts: readonly CueCount[]; onPause: (paused: boolean) => void; onRemove: () => void; children?: ComponentChildren }) {
+/**
+ * On Aims: the path's card. In front, the stage and what comes next, today's rep with Resume,
+ * Change and Plan, and your reps so far. Behind their own rows: how the path works (the stage, what
+ * counts and what does not, why this rep, a warm-up note), a declared date on the Partner path, and
+ * the path's settings with Pause and Remove. This month's prompts stay in front.
+ */
+export function PathCard(p: PathShared & { today: string; counts: readonly CueCount[]; due?: boolean; onPause: (paused: boolean) => void; onRemove: () => void; prompts?: ComponentChildren; dates?: ComponentChildren; settings?: ComponentChildren }) {
   const c = copy.path
+  const d = copy.disclose
   useQuarterMinute()
+  const [planOpen, setPlanOpen] = useState(false)
   const path = p.pt.path
   const stage = path.stages.find((s) => s.n === p.pt.state.stage)
   const rep = repOf(p)
   const canDone = p.openOffer !== null && doneOpen(p.openOffer)
   const setting = p.open ? (p.openOffer?.setting ?? null) : (p.pt.pick?.setting ?? null)
   const paused = Boolean(p.aim.pausedAt)
+  const partnerPath = path.id === 'partner'
+  const { pending, cues } = planState(p.plan, p.ctx)
   // A faith talk is not counted on screen while the faith family is hidden (Rule 10).
   const shown = (moveId: string) => !(p.pt.faithHidden && moveById(moveId).hiddenWith === 'faith')
   const reps = countsByRep(p.pt.entries).filter((r) => r.offered > 0 && shown(r.moveId))
   const last = p.pt.entries.filter((e) => e.outcome === 'done' && shown(e.moveId)).pop()
+  const hasNotes = rep && (rep.cue || !rep.path?.[path.id]?.advances)
   return (
-    <div class="card pad move-card aim-card" data-testid="aim-card" data-kind="path" data-path={path.id}>
-      <p class="eyebrow small">{pathName(path)}</p>
-      <h2 class="move-title" data-testid="path-stage">
-        {stageWords(path, p.pt.state.stage)}
-      </h2>
-      {stage && <p class="move-what">{stage.what}</p>}
+    <div class={p.due && !p.open && rep ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind="path" data-path={path.id}>
+      <div class="aim-head">
+        <Icon name={kindIcon(p.aim)} />
+        <p class="eyebrow">{pathName(path)}</p>
+      </div>
+      <StageProgress n={p.pt.state.stage} of={path.stages.length} name={stage?.name ?? ''} next={nextStage(path, p.pt.state.stage)} testid="path-progress" />
       {p.pt.state.reentry && (
         <p class="note" data-testid="path-reentry">
           {c.reentry}
@@ -194,8 +238,8 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
           {c.paused}
         </p>
       ) : p.elsewhere && !p.open ? (
-        <div class="calc">
-          <p class="calc-line" data-testid="path-elsewhere">
+        <div class="rep">
+          <p class="calc-line no-gap" data-testid="path-elsewhere">
             {fill(p.elsewhere.shared ? c.elsewhereShared : c.elsewhere, { path: pathById(p.elsewhere.path).name })}
           </p>
           <div class="actions">
@@ -205,13 +249,14 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
           </div>
         </div>
       ) : (
-        <div class="calc">
+        <div class="rep" data-testid="path-rep">
+          <p class="eyebrow">{c.todaysRep}</p>
           {rep ? (
             <>
-              <p class="calc-line ink" data-testid="aim-step">
+              <p class="rep-title" data-testid="aim-step">
                 {rep.name}
               </p>
-              <p class="calc-line" data-testid="path-rep-what">
+              <p class="move-what clamp2" data-testid="path-rep-what">
                 {rep.what}
               </p>
               {rep.guardrail && (
@@ -219,26 +264,13 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
                   {rep.guardrail}
                 </p>
               )}
-              <p class="calc-line">
-                {fill(copy.catalogue.minutes, { n: String(rep.minutes) })}
-                {setting && ` · ${whereWords(setting)}`}
-                {!p.open && p.pt.pick?.chosenBy === 'you' && ` · ${c.yours}`}
-                {(p.paths?.length ?? 0) > 1 && ` · ${c.both}`}
+              <p class="aim-facts">
+                <Facts items={repFacts(rep, setting, !p.open && p.pt.pick?.chosenBy === 'you', (p.paths?.length ?? 0) > 1)} />
               </p>
-              {!rep.path?.[path.id]?.advances && (
-                <p class="calc-line" data-testid="path-warmup">
-                  {c.warmUp}
-                </p>
-              )}
-              {!p.open && p.pt.pick && (
-                <p class="calc-line" data-testid="path-why">
-                  <span class="calc-key">{c.why.title}</span> · {whyThisRep(p.pt.pick)}
-                </p>
-              )}
             </>
           ) : (
             <>
-              <p class="calc-line ink" data-testid="path-none">
+              <p class="rep-title" data-testid="path-none">
                 {c.none[p.block]}
               </p>
               {p.carried && <p class="calc-line">{p.carried}</p>}
@@ -259,48 +291,52 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
             ) : (
               <>
                 {rep && (
-                  <button type="button" class="pill-quiet" data-testid="aim-resume" onClick={p.onResume}>
+                  <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="aim-resume" onClick={p.onResume}>
                     {copy.aims.resume}
                   </button>
                 )}
                 <button type="button" class="textbtn" data-testid="path-change" onClick={p.onChange}>
                   {c.change}
                 </button>
+                {rep && ((!pending && cues > 0) || hasNotes) && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={!pending && cues > 0 ? d.plan : d.repNotes} />}
               </>
             )}
           </div>
-          {!p.open && rep && <When plan={p.plan} ctx={p.ctx} onPlan={p.onPlan} />}
+          {!p.open && rep && (pending || planOpen) && (
+            <>
+              <When
+                plan={p.plan}
+                ctx={p.ctx}
+                onPlan={(cue, time) => {
+                  p.onPlan(cue, time)
+                  setPlanOpen(false)
+                }}
+              />
+              {planOpen && rep.cue && (
+                <span class="sub" data-testid="path-rep-cue">
+                  {copy.catalogue.paths.cue}: {rep.cue}
+                </span>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      <div class="calc">
-        <p class="calc-line">
-          <span class="calc-key">{c.counts}</span> · {path.counted}
+      {reps.length === 0 ? (
+        <p class="reps-line" data-testid="path-reps">
+          <span class="eyebrow">{c.byRep}</span>
+          <span class="muted">{c.repsNone}</span>
         </p>
-        {stage && (
-          <p class="calc-line">
-            <span class="calc-key">{c.notProgress}</span> · {stage.notProgress}
-          </p>
-        )}
-        {last && (
-          <p class="calc-line" data-testid="path-last">
-            {fill(c.lastRep, { rep: moveById(last.moveId).name, when: lastLine('done', last.day, p.today) })}
-          </p>
-        )}
-      </div>
-
-      <div class="calc" data-testid="path-reps">
-        <p class="calc-line ink">{c.byRep}</p>
-        {reps.length === 0 ? (
-          <p class="calc-line">{c.noReps}</p>
-        ) : (
-          reps.map((r) => (
+      ) : (
+        <div class="calc" data-testid="path-reps">
+          <p class="calc-line ink">{c.byRep}</p>
+          {reps.map((r) => (
             <p key={r.moveId} class="calc-line" data-testid="path-rep-count">
               {fill(c.repLine, { rep: moveById(r.moveId).name, done: String(r.done), partly: String(r.partly), no: String(r.no) })}
             </p>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {p.counts.length > 0 && (
         <div class="calc">
@@ -312,16 +348,60 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         </div>
       )}
 
-      {p.children}
+      {!paused && p.prompts}
 
-      <div class="actions">
-        <button type="button" class="textbtn" data-testid="path-pause" onClick={() => p.onPause(!paused)}>
-          {paused ? c.unpause : c.pause}
-        </button>
-        <button type="button" class="textbtn faint" onClick={p.onRemove}>
-          {copy.aims.remove}
-        </button>
-      </div>
+      {partnerPath && !paused && p.dates && (
+        <Disclosure label={d.date} sub={d.dateNote} testid="path-dates">
+          {p.dates}
+        </Disclosure>
+      )}
+
+      <Disclosure label={d.how} sub={partnerPath ? d.howPartner : d.howSocial} testid="path-how">
+        <div class="calc evidence">
+          {stage && <p class="move-what">{stage.what}</p>}
+          {rep && !rep.path?.[path.id]?.advances && (
+            <p class="calc-line" data-testid="path-warmup">
+              {c.warmUp}
+            </p>
+          )}
+          {!p.open && p.pt.pick && (
+            <div class="ev">
+              <span class="calc-key">{c.why.title}</span>
+              <span class="calc-line" data-testid="path-why">
+                <span class="dot-sep">{c.why.title} · </span>
+                {whyThisRep(p.pt.pick)}
+              </span>
+            </div>
+          )}
+          <div class="ev">
+            <span class="calc-key">{c.counts}</span>
+            <span class="calc-line">{path.counted}</span>
+          </div>
+          {stage && (
+            <div class="ev">
+              <span class="calc-key">{c.notProgress}</span>
+              <span class="calc-line">{stage.notProgress}</span>
+            </div>
+          )}
+          {last && (
+            <p class="calc-line" data-testid="path-last">
+              {fill(c.lastRep, { rep: moveById(last.moveId).name, when: lastLine('done', last.day, p.today) })}
+            </p>
+          )}
+        </div>
+      </Disclosure>
+
+      <Disclosure label={d.pathSettings} sub={partnerPath ? d.pathSettingsPartner : d.pathSettingsSocial} testid="path-settings">
+        {p.settings}
+        <div class="actions">
+          <button type="button" class="textbtn" data-testid="path-pause" onClick={() => p.onPause(!paused)}>
+            {paused ? c.unpause : c.pause}
+          </button>
+          <button type="button" class="textbtn faint" onClick={p.onRemove}>
+            {copy.aims.remove}
+          </button>
+        </div>
+      </Disclosure>
     </div>
   )
 }

@@ -16,6 +16,11 @@ export interface Sitting {
   title: string
   /** The subject the step belongs to, when its skill has one. */
   subject?: string
+  /** A rung step, in two parts for a card that sets the rung on its own line: the skill, and what proves the rung. The title joins them. */
+  skill?: string
+  rungStep?: string
+  /** The rung this step proves, 1 to 6, and of how many. */
+  rung?: number
   what: string
   minutes: number
   effort: Effort
@@ -91,6 +96,9 @@ export function rungStep(skill: Skill, rung: number): Sitting {
     name: subject ? `${subject} · ${title}` : title,
     title,
     ...(subject ? { subject } : {}),
+    skill: skill.name,
+    rungStep: words.steps[r - 1],
+    rung: r,
     what: words.what[r - 1],
     minutes: (kind === 'technical' ? RUNG_MINUTES : LANGUAGE_RUNG_MINUTES)[r],
     effort: r === 3 || r === 4 ? 'medium' : 'low',

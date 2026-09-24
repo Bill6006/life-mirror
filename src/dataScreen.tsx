@@ -169,6 +169,12 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
+      {/* Who reads what: moved here from the foot of Settings when Settings became a list of sections. */}
+      <h2 class="section">{copy.settings.data}</h2>
+      <div class="card pad" data-testid="data-who-reads">
+        <p class="note no-gap">{copy.settings.dataNote}</p>
+      </div>
+
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>
           {copy.summary.done}

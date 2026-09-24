@@ -5,17 +5,19 @@ import { BECOMING_KEYS, becoming, blockedBy, cueCounts, followThrough, keysOf, l
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
 import { lightOnlyDay, partnerOnly, pathName, pathToday, type PathToday } from './pathStage'
-import { PartnerExtras } from './partnerScreen'
+import { PartnerDates, PartnerPrompts, PartnerSettings } from './partnerScreen'
 import { blockAt } from './blocks'
 import { families, type PathId } from './catalogue'
 import { NavRow } from './controls'
 import { copy } from './copy'
 import { allWins, db, getDayContext, getSettings, type Aim, type AimKind, type Cue, type Intention, type LadderKind } from './db'
-import { fill, formatDayLong, formatDayShort } from './format'
+import { fill, formatDayShort } from './format'
 import { whatBringsYouBack } from './associations'
 import { hasMove, moveById } from './catalogue'
 import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from './ladder'
 import { useLive } from './live'
+import { todaysLine } from './brainFlow'
+import { ScreenHead, SectionLabel } from './ui'
 
 // The Aims tab: the commitments you chose with their protected steps, and the doors to the
 // proof ladder, follow-through and who you are becoming. Nothing here grades, ranks or streaks.
@@ -53,7 +55,7 @@ function planLabel(pt: PathToday): string {
 
 /** The cards of every commitment, with Resume and the unblock offer; shared by Now and the Aims tab. */
 /** Every commitment with its protected step: full cards on Aims, or one row each on Now so several fit without a scroll. A paused path has no row on Now. */
-export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, compact = false }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; onPartnerNotes?: () => void; compact?: boolean }) {
+export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, compact = false, dueAimId = null }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; onPartnerNotes?: () => void; compact?: boolean; dueAimId?: number | null }) {
   const data = useAims()
   if (!data) return null
   const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, coach } = data
@@ -92,13 +94,15 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     }
   }
   let rowShown = false
+  // Rows are numbered in the order they show; only the compact theme draws the numbers.
+  let row = 0
   const items = aims.map((aim) => {
     if (aim.kind === 'path') {
       if (compact) {
         // Now holds one People row, whatever paths are on.
         if (rowShown || !people) return null
         rowShown = true
-        return <PathRow key="people" {...pathShared(people.view.aim, { ...people.view, pick: people.pick }, people.paths, null)} />
+        return <PathRow key="people" {...pathShared(people.view.aim, { ...people.view, pick: people.pick }, people.paths, null)} index={row++} due={people.view.aim.id === dueAimId} />
       }
       const view = views.find((v) => v.aim.id === aim.id)
       const pt = view ?? todayFor(aim)
@@ -110,11 +114,13 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
           {...pathShared(aim, owns && people ? { ...pt, pick: people.pick } : pt, owns && people ? people.paths : [pt.path.id], elsewhere)}
           today={today}
           counts={cueCounts(intentions, aim.id as number)}
+          due={aim.id === dueAimId}
           onPause={(paused) => void pausePath(aim.id as number, paused)}
           onRemove={() => onRemove?.(aim)}
-        >
-          {pt.path.id === 'partner' && <PartnerExtras pt={pt} paused={Boolean(aim.pausedAt)} lightOnly={lightOnly} today={today} onNotes={() => onPartnerNotes?.()} />}
-        </PathCard>
+          prompts={pt.path.id === 'partner' ? <PartnerPrompts pt={pt} lightOnly={lightOnly} today={today} /> : undefined}
+          dates={pt.path.id === 'partner' ? <PartnerDates pt={pt} today={today} /> : undefined}
+          settings={pt.path.id === 'partner' ? <PartnerSettings paused={Boolean(aim.pausedAt)} onNotes={() => onPartnerNotes?.()} /> : undefined}
+        />
       )
     }
     const step = stepFor(aim, skills, marks, studyAims)
@@ -139,12 +145,13 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       ctx,
       plan: planFor(intentions, aim.id as number, today),
       last,
+      due: aim.id === dueAimId,
       onResume: () => void resumeAim(aim, step, 'step'),
       onUnblock: () => unblock && void resumeAim(aim, sittingOf(unblock), 'unblock'),
       onPlan: (cue: Cue, time: string) => void planAim(aim, cue, time, new Date(), step.name),
     }
     return compact ? (
-      <AimRow key={aim.id} {...shared} />
+      <AimRow key={aim.id} {...shared} index={row++} />
     ) : (
       <AimCard
         key={aim.id}
@@ -162,7 +169,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
   })
   if (compact) {
     return (
-      <div class="card">
+      <div class="card aims-card">
         <ul class="rows">{items}</ul>
       </div>
     )
@@ -191,27 +198,27 @@ export function AimsScreen({
 }) {
   const today = blockAt(new Date())
   const aims = useLive(activeAims, [])
+  // The one commitment the Brain's line names is the one thing to do here: its Resume carries the accent.
+  const line = useLive(() => todaysLine(today.day), [today.day])
   if (!aims) return <section class="screen" />
   const c = copy.aims
+  const dueAimId = line?.action?.kind === 'plan' ? line.action.aimId : null
 
   return (
     <section class="screen">
-      <header class="screen-head">
-        <h1 class="eyebrow">{copy.tabs.aims}</h1>
-        <p class="date">{formatDayLong(today.day)}</p>
-      </header>
+      <ScreenHead title={copy.tabs.aims} day={today.day} />
 
-      <h2 class="section">{c.commitments}</h2>
+      <SectionLabel index={0}>{c.commitments}</SectionLabel>
       {aims.length === 0 && <p class="note">{c.none}</p>}
-      <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} onChangeRep={(aim) => onChangeRep(aim.id as number)} onPartnerNotes={onPartnerNotes} />
+      <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} onChangeRep={(aim) => onChangeRep(aim.id as number)} onPartnerNotes={onPartnerNotes} dueAimId={dueAimId} />
 
-      <div class="card">
+      <div class="card doors">
         <ul class="rows">
-          <NavRow label={c.add} note={c.addNote} onClick={onAdd} />
-          <NavRow label={c.ladder} note={c.ladderNote} onClick={onLadder} />
-          <NavRow label={c.follow} note={c.followNote} onClick={onFollow} />
-          <NavRow label={c.becoming} note={c.becomingNote} onClick={onBecoming} />
-          <NavRow label={c.her} note={c.herNote} onClick={onHer} />
+          <NavRow label={c.add} note={c.addDoor} onClick={onAdd} />
+          <NavRow label={c.ladder} note={c.ladderDoor} onClick={onLadder} />
+          <NavRow label={c.follow} note={c.followDoor} onClick={onFollow} />
+          <NavRow label={c.becoming} note={c.becomingDoor} onClick={onBecoming} />
+          <NavRow label={c.her} note={c.herDoor} onClick={onHer} />
         </ul>
       </div>
       <p class="note faint">{c.dataNote}</p>
@@ -391,6 +398,8 @@ export function LadderScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{l.title}</p>
       </header>
       <p class="note">{l.intro}</p>
+      {/* How a skill moves, from the door that now carries one line. */}
+      <p class="note faint">{copy.aims.ladderNote}</p>
 
       {skills.length > 0 && (
         <div class="calc ladder-counts" data-testid="ladder-counts">
@@ -587,16 +596,16 @@ export function BecomingScreen({ onClose }: { onClose: () => void }) {
  * On Now: every commitment's protected step under its own heading, above the move under its own.
  * Never blended (Rule 8); the two headings are what says so. A paused path has no row.
  */
-export function AimsOnNow({ onChangeRep }: { onChangeRep?: (aimId: number) => void }) {
+export function AimsOnNow({ onChangeRep, dueAimId = null }: { onChangeRep?: (aimId: number) => void; dueAimId?: number | null }) {
   const data = useAims()
   if (!data || !data.aims.some((a) => !(a.kind === 'path' && a.pausedAt))) return null
   const c = copy.aims
   return (
     <>
-      <h2 class="section" data-testid="your-aims">
+      <SectionLabel index={0} testid="your-aims">
         {c.yourAims}
-      </h2>
-      <AimCards compact onChangeRep={onChangeRep ? (aim) => onChangeRep(aim.id as number) : undefined} />
+      </SectionLabel>
+      <AimCards compact onChangeRep={onChangeRep ? (aim) => onChangeRep(aim.id as number) : undefined} dueAimId={dueAimId} />
     </>
   )
 }

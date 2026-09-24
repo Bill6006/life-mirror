@@ -3,11 +3,12 @@ import { blockAt } from './blocks'
 import { NavRow } from './controls'
 import { copy } from './copy'
 import { getSettings } from './db'
-import { fill, formatDayLong, formatDayShort } from './format'
+import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
 import { deleteOutcome, offerForSlot, offerHistory, pendingOffers, skipOffer } from './offerFlow'
 import { readingById } from './readings'
+import { ScreenHead } from './ui'
 
 /** The Moves tab: the live move with why and testing, then the doors to History and the catalogue. */
 export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory: () => void; onCatalogue: () => void; onEvidence: () => void }) {
@@ -22,10 +23,7 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
 
   return (
     <section class="screen">
-      <header class="screen-head">
-        <h1 class="eyebrow">{copy.tabs.moves}</h1>
-        <p class="date">{formatDayLong(today.day)}</p>
-      </header>
+      <ScreenHead title={copy.tabs.moves} day={today.day} />
 
       {settings.hideMoves ? (
         <p class="note">{c.hidden}</p>
@@ -39,14 +37,14 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
       )}
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
 
-      <div class="card">
+      {/* The doors, each with one line; the note on how tiers are computed now sits inside Evidence, where the tiers are. */}
+      <div class="card doors">
         <ul class="rows">
-          <NavRow label={copy.evidence.title} note={copy.movesTab.evidenceNote} onClick={onEvidence} />
-          <NavRow label={copy.history.title} note={copy.movesTab.historyNote} onClick={onHistory} />
-          <NavRow label={copy.catalogue.read} note={copy.catalogue.readNote} onClick={onCatalogue} />
+          <NavRow label={copy.evidence.title} note={copy.movesTab.evidenceDoor} onClick={onEvidence} />
+          <NavRow label={copy.history.title} note={copy.movesTab.historyDoor} onClick={onHistory} />
+          <NavRow label={copy.catalogue.read} note={copy.movesTab.catalogueDoor} onClick={onCatalogue} />
         </ul>
       </div>
-      <p class="note faint">{copy.movesTab.tiersNote}</p>
     </section>
   )
 }
@@ -64,6 +62,7 @@ export function HistoryScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{h.title}</p>
         <p class="date">{fill(h.count, { n: String(entries.length) })}</p>
       </header>
+      <p class="note faint">{copy.movesTab.historyNote}</p>
       {entries.length === 0 ? (
         <p class="note">{h.empty}</p>
       ) : (

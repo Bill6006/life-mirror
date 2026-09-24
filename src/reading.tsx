@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks'
 import type { Block, Slot } from './blocks'
 import { onBoard } from './caffeineRecord'
 import { copy } from './copy'
@@ -5,6 +6,7 @@ import { askedOf, type CheckIn } from './db'
 import { fill, formatDayShort, formatTime } from './format'
 import { anchorFor, headword, readingById } from './readings'
 import { Scale } from './scale'
+import { Facts, SectionLabel } from './ui'
 import { bandOf, INGREDIENTS, latestContext, latestFullReading, readingOf, todayGlance, TOTAL_INGREDIENTS, type Reading100 } from './score'
 
 // The reading out of 100 and what sits beside it. Everything derived is in the calculation
@@ -66,8 +68,7 @@ export function ReadingHero({ all, today }: { all: CheckIn[]; today: Slot }) {
       <Value reading={full.reading} />
       <Scale value={full.reading.value} />
       <p class="hero-recipe">
-        {recipe(full.reading)} · {whenOf(full.checkin, today.day)}
-        {onBoard(all, full.checkin) && <OnBoard />}
+        <Facts items={[...recipe(full.reading).split(' · '), whenOf(full.checkin, today.day), onBoard(all, full.checkin) && <span data-testid="caffeine-on-board">{copy.caffeine.onBoard}</span>]} />
       </p>
     </div>
   )
@@ -118,21 +119,45 @@ export function Glance({ all, day, blocks, today }: { all: CheckIn[]; day: strin
   )
 }
 
-/** Hunger, sleep, confidence, loneliness, social energy as small chips: latest value, and the day when it is not today. Facts. */
-export function ContextChips({ all, today }: { all: CheckIn[]; today: string }) {
+/**
+ * Hunger, sleep, confidence, loneliness, social energy: the latest value of each, as facts in a small
+ * grid. One from an earlier day says so, and its day and time are one tap behind it (the approved
+ * structure moved the dates behind the value; none is lost).
+ */
+export function ContextChips({ all, today, index }: { all: CheckIn[]; today: string; index?: number }) {
   const values = latestContext(all)
+  const [shown, setShown] = useState<string | null>(null)
   if (!values.length) return null
   return (
-    <div class="context">
-      <p class="eyebrow small">{copy.reading.context}</p>
-      <ul class="chips">
-        {values.map((v) => (
-          <li key={v.id} class="chip">
-            <span class="chip-name">{readingById(v.id).name}</span>
-            <span class="chip-value">{headword(anchorFor(v.id, v.position))}</span>
-            {v.checkin.day !== today && <span class="chip-when">{formatDayShort(v.checkin.day)}</span>}
-          </li>
-        ))}
+    <div class="context" data-testid="context">
+      <SectionLabel index={index}>{copy.reading.context}</SectionLabel>
+      <ul class="context-grid">
+        {values.map((v) => {
+          const old = v.checkin.day !== today
+          const open = shown === v.id
+          const body = (
+            <>
+              <span class="ctx-k">
+                <Facts items={[readingById(v.id).name, old && copy.disclose.contextEarlier]} />
+              </span>
+              <span class="ctx-v">{headword(anchorFor(v.id, v.position))}</span>
+              {old && open && <span class="ctx-when">{fill(copy.disclose.context, { when: whenOf(v.checkin, today) })}</span>}
+            </>
+          )
+          return (
+            <li key={v.id}>
+              {old ? (
+                <button type="button" class="ctx" aria-expanded={open} data-testid="context-cell" onClick={() => setShown(open ? null : v.id)}>
+                  {body}
+                </button>
+              ) : (
+                <div class="ctx" data-testid="context-cell">
+                  {body}
+                </div>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

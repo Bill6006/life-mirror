@@ -1,19 +1,43 @@
 import { useState } from 'preact/hooks'
 import { blockAt, BLOCKS } from './blocks'
-import { Heatmap, MiniTrace, PairBar, Trace } from './charts'
+import { BEFORE_MIN, comesBefore, type BeforePair } from './beforeDays'
+import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
 import { allCheckIns } from './db'
-import { fill, formatDayLong, weekdayInitial } from './format'
+import { fill, weekdayInitial } from './format'
 import { useLive } from './live'
 import { readingById, type ReadingId } from './readings'
 import { CONTEXT_IDS } from './score'
 import { contextTrace, dayValues, heatmapRows, latestLogged, weekSeries } from './series'
-import { MIN_SHARED, movesTogether } from './stats'
+import { Disclosure, ScreenHead, SectionLabel } from './ui'
 
-function signed(rho: number): string {
-  const v = Math.round(rho * 100) / 100
-  return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2)
+const round = (v: number) => String(Math.round(v))
+const signed = (v: number) => (Math.round(v) > 0 ? '+' : Math.round(v) < 0 ? '−' : '') + String(Math.abs(Math.round(v)))
+
+/** One pair: the evening, then what the morning after read against like evenings, with its interval. */
+function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
+  const c = copy.beforeDays
+  const event = fill(c.event, { reading: readingById(p.reading).name.toLowerCase(), level: c[p.level] })
+  if (!p.enough || p.diff === null || p.lo === null || p.hi === null) {
+    return (
+      <li class="before-row" data-testid="before-gathering">
+        <span class="before-event">{event}</span>
+        <span class="before-line">{fill(c.tooFew, { n: String(Math.min(p.withN, p.withoutN)), need: String(BEFORE_MIN) })}</span>
+      </li>
+    )
+  }
+  const dir = Math.round(p.diff) > 0 ? c.higher : Math.round(p.diff) < 0 ? c.lower : null
+  return (
+    <li class="before-row" data-testid="before-pair">
+      <span class="before-event">{event}</span>
+      <span class="before-line">
+        {c.outcome} ·{' '}
+        {dir ? fill(c.diff, { dir, points: round(Math.abs(p.diff)), n: String(p.withN), lo: signed(p.lo), hi: signed(p.hi) }) : fill(c.diffSame, { n: String(p.withN), lo: signed(p.lo), hi: signed(p.hi) })}
+      </span>
+      <IntervalBar lo={p.lo} hi={p.hi} est={p.diff} span={span} />
+    </li>
+  )
 }
 
 /** Your own record, drawn. Every chart here is a calculation from the check-ins; each carries its caption. */
@@ -28,16 +52,18 @@ export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
   const overlay = overlayId ? contextTrace(all, today.day, overlayId) : null
   const week = weekSeries(all, today.day)
   const rows = heatmapRows(all, today.day)
-  const pairs = movesTogether(all)
+  const before = comesBefore(all, today.day)
+  const shown = before.filter((p) => p.enough)
+  const gathering = before.filter((p) => !p.enough)
+  // Every interval on one axis, so the pairs can be read against each other.
+  const span = Math.max(10, ...shown.flatMap((p) => [Math.abs(p.lo as number), Math.abs(p.hi as number)]))
   const loggedToday = BLOCKS.filter((b) => todayVals.values[b] !== null).length
-  const min = String(MIN_SHARED)
+  const c = copy.beforeDays
+  const min = String(BEFORE_MIN)
 
   return (
     <section class="screen">
-      <header class="screen-head">
-        <h1 class="eyebrow">{copy.tabs.mirror}</h1>
-        <p class="date">{formatDayLong(today.day)}</p>
-      </header>
+      <ScreenHead title={copy.tabs.mirror} day={today.day} />
 
       {all.length === 0 && <p class="note">{copy.mirror.empty}</p>}
 
@@ -47,7 +73,7 @@ export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
         </ul>
       </div>
 
-      <h2 class="section">{copy.mirror.today}</h2>
+      <SectionLabel index={0}>{copy.mirror.today}</SectionLabel>
       <div class="card chart-card">
         <Trace day={todayVals} overlay={overlay} latest={latest} />
         <ul class="chips overlay-chips" aria-label={copy.mirror.overlay}>
@@ -67,7 +93,7 @@ export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
         <p class="calc-line caption">{fill(copy.mirror.todayCaption, { n: String(loggedToday) })}</p>
       </div>
 
-      <h2 class="section">{copy.mirror.week}</h2>
+      <SectionLabel index={1}>{copy.mirror.week}</SectionLabel>
       <div class="card chart-card">
         <div class="week">
           {week.map((d) => (
@@ -80,32 +106,35 @@ export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
         <p class="calc-line caption">{copy.mirror.weekCaption}</p>
       </div>
 
-      <h2 class="section">{copy.mirror.heatmap}</h2>
+      <SectionLabel index={2}>{copy.mirror.heatmap}</SectionLabel>
       <div class="card chart-card">
         <Heatmap rows={rows} today={today.day} current={today.block} />
         <p class="calc-line caption">{fill(copy.mirror.heatCaption, { days: String(rows.length) })}</p>
       </div>
 
-      <h2 class="section">{copy.mirror.together}</h2>
-      <div class="card">
-        <p class="note in-card together-note">{copy.mirror.togetherNote}</p>
-        {pairs.length === 0 ? (
-          <p class="note in-card faint">{fill(copy.mirror.togetherEmpty, { min })}</p>
-        ) : (
+      <SectionLabel index={3} testid="before-days">
+        {c.title}
+      </SectionLabel>
+      <div class="card pad" data-testid="before-card">
+        <p class="note together-note">{c.note}</p>
+        {shown.length === 0 && <p class="note faint">{fill(c.empty, { need: min })}</p>}
+        {shown.length > 0 && (
           <ul class="rows">
-            {pairs.slice(0, 10).map((p) => (
-              <li key={`${p.a}-${p.b}`} class="row is-static">
-                <span class="row-main">
-                  {readingById(p.a).name} · {readingById(p.b).name}
-                  <span class="sub">{fill(copy.mirror.shared, { n: String(p.n) })}</span>
-                </span>
-                <PairBar rho={p.rho} />
-                <span class="row-side ink mono">{signed(p.rho)}</span>
-              </li>
+            {shown.map((p) => (
+              <BeforeRow key={`${p.reading}-${p.level}`} p={p} span={span} />
             ))}
           </ul>
         )}
-        <p class="calc-line caption in-card">{fill(copy.mirror.togetherCaption, { min })}</p>
+        {gathering.length > 0 && (
+          <Disclosure label={fill(c.moreTooFew, { n: String(gathering.length) })} testid="before-gathering-more">
+            <ul class="rows">
+              {gathering.map((p) => (
+                <BeforeRow key={`${p.reading}-${p.level}`} p={p} span={span} />
+              ))}
+            </ul>
+          </Disclosure>
+        )}
+        <p class="calc-line caption">{fill(c.caption, { need: min })}</p>
       </div>
     </section>
   )

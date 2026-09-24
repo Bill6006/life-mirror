@@ -49,30 +49,45 @@ function monthName(ym: string): string {
   return new Date(`${ym}-15T12:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 }
 
-/** On the Partner card: the date chips, the next stage, the online switch, the month's reflection and check, and Notes and checks. */
-export function PartnerExtras({ pt, paused, lightOnly, today, onNotes }: { pt: PathToday; paused: boolean; lightOnly: boolean; today: string; onNotes: () => void }) {
-  const marks = useLive(() => pathMarks('partner'), [])
-  const settings = useLive(getSettings, [])
+/** On the Partner card's face: this month's reflection and check, while they are open. Time-bound, so never behind a tap. */
+export function PartnerPrompts({ pt, lightOnly, today }: { pt: PathToday; lightOnly: boolean; today: string }) {
   const checks = useLive(monthlyChecks, [])
   const notesAll = useLive(() => reflections('partner'), [])
-  if (!marks || !settings || !checks || !notesAll) return null
+  if (!checks || !notesAll) return null
   const c = copy.path.partner
-  const notes = (
-    <ul class="rows">
-      <NavRow label={c.notes} note={c.notesNote} onClick={onNotes} />
-    </ul>
+  const stage = pt.state.stage
+  const checkOpen = checkPromptShown(stage, lightOnly, checks, today)
+  const reflectionOpen = reflectionPromptShown(stage, lightOnly, notesAll, today)
+  if (!checkOpen && !reflectionOpen) return null
+  return (
+    <div class="calc" data-testid="partner-prompts">
+      {reflectionOpen && (
+        <p class="calc-line" data-testid="partner-reflection-open">
+          {c.reflectionOpen}
+        </p>
+      )}
+      {checkOpen && (
+        <p class="calc-line" data-testid="partner-check-open">
+          {c.checkOpen}
+        </p>
+      )}
+    </div>
   )
-  if (paused) return <div class="calc">{notes}</div>
+}
+
+/** Declare a date: the seven day chips and their note; the next stage declared in one tap, and Undo. */
+export function PartnerDates({ pt, today }: { pt: PathToday; today: string }) {
+  const marks = useLive(() => pathMarks('partner'), [])
+  if (!marks) return null
+  const c = copy.path.partner
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i))
   const dateOn = (day: string) => marks.find((m) => m.kind === 'date' && m.day === day)
   const stage = pt.state.stage
   const next = pt.path.stages.find((s) => s.n === stage + 1)
   const canDeclare = next !== undefined && (next.advance ?? 'counts') === 'declared' && stage >= (pt.path.stages.find((s) => s.advance === 'declared')?.n ?? Infinity)
   const lastStage = marks.filter((m) => m.kind === 'stage').sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  const checkOpen = checkPromptShown(stage, lightOnly, checks, today)
-  const reflectionOpen = reflectionPromptShown(stage, lightOnly, notesAll, today)
   return (
-    <div class="calc" data-testid="partner-extras">
+    <div data-testid="partner-extras">
       <p class="calc-line ink">{c.datesTitle}</p>
       <div class="when" role="group" aria-label={c.datesTitle}>
         {days.map((day) => {
@@ -109,26 +124,26 @@ export function PartnerExtras({ pt, paused, lightOnly, today, onNotes }: { pt: P
           </button>
         </p>
       )}
-      {(canDeclare || lastStage) && <p class="note faint">{c.declareNote}</p>}
-
-      <SwitchRow label={c.online} note={c.onlineNote} on={settings.partnerOnline} testid="partner-online" onChange={(on) => void updateSettings((s) => ({ ...s, partnerOnline: on }))} />
-
-      {reflectionOpen && (
-        <p class="calc-line" data-testid="partner-reflection-open">
-          {c.reflectionOpen}
-        </p>
-      )}
-      {checkOpen && (
-        <p class="calc-line" data-testid="partner-check-open">
-          {c.checkOpen}
-        </p>
-      )}
-      {notes}
+      {(canDeclare || lastStage) && <p class="note faint no-gap">{c.declareNote}</p>}
     </div>
   )
 }
 
-/** A note typed and saved whole. Empty and saved, it is removed. */
+/** Path settings for the Partner path: the online channel's switch, and the door to its notes and checks. */
+export function PartnerSettings({ paused, onNotes }: { paused: boolean; onNotes: () => void }) {
+  const settings = useLive(getSettings, [])
+  if (!settings) return null
+  const c = copy.path.partner
+  return (
+    <>
+      {!paused && <SwitchRow label={c.online} note={c.onlineNote} on={settings.partnerOnline} testid="partner-online" onChange={(on) => void updateSettings((s) => ({ ...s, partnerOnline: on }))} />}
+      <ul class="rows">
+        <NavRow label={c.notes} note={c.notesNote} onClick={onNotes} />
+      </ul>
+    </>
+  )
+}
+
 function NoteEditor({ saved, placeholder, testid, rows = 4, onSave }: { saved: Reflection | undefined; placeholder: string; testid: string; rows?: number; onSave: (text: string) => Promise<void> }) {
   const c = copy.partnerNotes
   const [text, setText] = useState<string | null>(null)

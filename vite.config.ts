@@ -5,7 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
 
 const BASE = '/life-mirror/'
-const GROUND = '#14171f'
+// The install's own colours are the default theme's ground (Nocturne); the page sets the chosen theme's at run time.
+const GROUND = '#0d111d'
 
 // The pipeline passes the commit, run link and unit-test count in as environment
 // variables so the About screen can prove which run tested the deployed build.
@@ -35,7 +36,8 @@ export default defineConfig(({ mode }) => ({
       srcDir: 'src',
       filename: 'sw.ts',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // The theme fonts are precached with everything else, so no theme ever waits on the network.
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}'],
         rollupFormat: 'iife',
       },
       registerType: 'autoUpdate',

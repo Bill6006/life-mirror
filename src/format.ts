@@ -12,8 +12,13 @@ export function daysAgoWords(n: number, words: { today: string; yesterday: strin
   return words.daysAgo.replace('{n}', String(n))
 }
 
+/** A clock time as a person writes it: "9:15 am", no leading zero, the day half in lower case where the locale has one. */
+export function clockText(s: string): string {
+  return s.replace(/\s?([AaPp])\.?\s?[Mm]\.?$/, (_, half: string) => ` ${half.toLowerCase()}m`)
+}
+
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return clockText(new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))
 }
 
 export function formatWhen(iso: string): string {

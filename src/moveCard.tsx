@@ -9,6 +9,7 @@ import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, rec
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
 import { INGREDIENTS } from './score'
+import { Disclosure, Tag } from './ui'
 
 function times(n: number): string {
   return n === 1 ? copy.move.once : n === 2 ? copy.move.twice : fill(copy.move.nTimes, { n: String(n) })
@@ -77,68 +78,84 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
     )
   }
 
+  const whyText =
+    offer.kind === 'pickup'
+      ? c.whyPickup
+      : nothing
+        ? fill(c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
+        : fill(c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })
+  const shownPrivates = (privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
+
   return (
     <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind}>
-      <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
+      <div class="move-head">
+        <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
+        {card && <Tag>{c.testing}</Tag>}
+      </div>
       <h2 class="move-title" data-testid="move-name">
         {nothing ? c.nothing : move?.name}
       </h2>
       <p class="move-what">{nothing ? c.nothingWhat : move?.what}</p>
       {move && (
-        <p class="move-meta">
-          {move.minutes === 0 ? copy.catalogue.noTime : fill(copy.catalogue.minutes, { n: String(move.minutes) })} · {fill(copy.catalogue.effort, { level: copy.catalogue.efforts[move.effort] })} ·{' '}
-          {fill(copy.catalogue.needsLabel, { needs: move.needs.length ? move.needs.map((n) => copy.catalogue.needs[n]).join(', ') : copy.catalogue.needsNothing })}
-        </p>
+        <ul class="move-facts" data-testid="move-facts">
+          <li class="fact">{move.minutes === 0 ? copy.catalogue.noTime : fill(copy.catalogue.minutes, { n: String(move.minutes) })}</li>
+          <li class="fact">{fill(copy.catalogue.effort, { level: copy.catalogue.efforts[move.effort] })}</li>
+          <li class="fact">{fill(copy.catalogue.needsLabel, { needs: move.needs.length ? move.needs.map((n) => copy.catalogue.needs[n]).join(', ') : copy.catalogue.needsNothing })}</li>
+        </ul>
       )}
       {passive && (
         <p class="move-passive">
-          {c.alongside}: <span class="ink">{passive.name}</span>
+          <span class="along-k">{c.alongside}</span>
+          <span class="ink">{passive.name}</span>
         </p>
       )}
 
-      <div class="calc">
-        <p class="calc-line">
-          <span class="calc-key">{c.why}</span> ·{' '}
-          {offer.kind === 'pickup'
-            ? c.whyPickup
-            : nothing
-              ? fill(c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
-              : fill(c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })}
-        </p>
-        <p class="calc-line">
-          <span class="calc-key">{c.evidence}</span> · {c.tierLittle} ·{' '}
-          {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
-        </p>
-        {whyNot && (
-          <p class="calc-line">
-            <span class="calc-key">{c.whyNot}</span> · {whyNot}
-          </p>
-        )}
-        {privates &&
-          privates
-            .filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
-            .map((p) => (
-              <p key={p.itemId} class="calc-line" data-testid="private-line">
+      {/* Why this, the evidence, why not that, what the record says of a private item, and the test: one tap away, in the same words. */}
+      <Disclosure label={copy.disclose.moveWhy} testid="move-why">
+        <div class="calc evidence" data-testid="move-evidence">
+          <div class="ev">
+            <span class="calc-key">{c.why}</span>
+            <span class="calc-line">{whyText}</span>
+          </div>
+          <div class="ev">
+            <span class="calc-key">{c.evidence}</span>
+            <span class="calc-line">
+              <span class="tier">{c.tierLittle}</span> {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
+            </span>
+          </div>
+          {whyNot && (
+            <div class="ev">
+              <span class="calc-key">{c.whyNot}</span>
+              <span class="calc-line">{whyNot}</span>
+            </div>
+          )}
+          {shownPrivates.map((p) => (
+            <div key={p.itemId} class="ev">
+              <span class="calc-line" data-testid="private-line">
                 {fill(c.privateInline, { name: p.name, with: round(p.association.withEvent.mean), without: round(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: moveById(p.alternativeId).name })}
-              </p>
-            ))}
-        <p class="calc-line testing">
-          <span class="calc-key">{c.testing}</span> ·{' '}
-          {card === undefined
-            ? '…'
-            : card === null
-              ? c.testingNone
-              : fill(c.testingLine, {
-                  move: move?.name ?? c.nothing,
-                  alternative: moveById(card.alternativeId).name,
-                  target: target.name.toLowerCase(),
-                  window: windowOf(card.window),
-                  id: String(card.id),
-                  date: formatWhen(card.createdAt),
-                })}
-          {offer.coinFlip && ` ${c.coinFlip}`}
-        </p>
-      </div>
+              </span>
+            </div>
+          ))}
+          <div class="ev test">
+            <span class="calc-key">{c.testing}</span>
+            <span class="calc-line testing">
+              {card === undefined
+                ? '…'
+                : card === null
+                  ? c.testingNone
+                  : fill(c.testingLine, {
+                      move: move?.name ?? c.nothing,
+                      alternative: moveById(card.alternativeId).name,
+                      target: target.name.toLowerCase(),
+                      window: windowOf(card.window),
+                      id: String(card.id),
+                      date: formatWhen(card.createdAt),
+                    })}
+              {offer.coinFlip && ` ${c.coinFlip}`}
+            </span>
+          </div>
+        </div>
+      </Disclosure>
 
       {known && known.outcome && (
         <p class="move-state">

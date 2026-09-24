@@ -93,6 +93,18 @@ async function putBrief(page: Page, row: Record<string, unknown>): Promise<void>
   await putInto(page, 'brainBriefs', row)
 }
 
+/** Settings is a list of sections (2026-09-24): open one by its row. */
+async function settingsSection(page: Page, id: string): Promise<void> {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByTestId(`settings-${id}`).click()
+}
+
+/** From a section back to the Settings tab, where the tab bar shows again. */
+async function backToSettings(page: Page): Promise<void> {
+  await page.locator('.sub-head .back').click()
+  await expect(page.locator('nav.tabs')).toBeVisible()
+}
+
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
 async function tapThrough(page: Page, nth = 2): Promise<number> {
   const card = page.getByTestId('give-back')
@@ -130,15 +142,16 @@ test('the live shell installs, reads on a phone, and opens offline', async ({ pa
 
   // Installable: a manifest is linked and the theme colour is the ground.
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /manifest\.webmanifest$/)
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#14171f')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0d111d')
 
   // One scroll per screen: nothing is wider than the phone.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   expect(overflow).toBeLessThanOrEqual(0)
 
   // The About stamp carries a commit the pipeline run can be matched against.
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await settingsSection(page, 'about')
   await expect(page.getByTestId('build-commit')).toHaveText(/^([0-9a-f]{7}|unbuilt)$/)
+  await backToSettings(page)
 
   // Offline after one load: wait for the worker, cut the network, reload.
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
@@ -257,7 +270,7 @@ test('a past day is named by its day, never "Today so far", and the null offer i
   // The next morning, yesterday's summary is headed with yesterday.
   await page.clock.setFixedTime(new Date(2026, 8, 8, 8, 30))
   await page.reload()
-  await page.getByRole('button', { name: /Sep 7 · Morning/ }).click()
+  await page.getByRole('button', { name: /Morning check-in of .*Sep 7/ }).click()
   await expect(page.getByTestId('summary')).toBeVisible()
   await expect(page.getByTestId('day-glance')).toContainText('Sep 7')
   await expect(page.getByTestId('day-glance')).not.toContainText('Today so far')
@@ -346,7 +359,7 @@ test('the direction sentence is asked once, kept on the phone, and never asked a
   await expect(ask).toHaveCount(0)
   await page.reload()
   await expect(page.getByTestId('direction-ask')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await settingsSection(page, 'direction')
   await expect(page.getByTestId('direction-field')).toHaveValue('One line of my own.')
 })
 
@@ -359,20 +372,23 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
   // The card carries the move, its why, its testing line and the honest evidence line.
   const card = page.getByTestId('give-back')
   await expect(card.getByTestId('move-card')).toBeVisible()
-  await expect(card.getByText('Why this')).toBeVisible()
-  await expect(card.getByText('Testing')).toBeVisible()
-  await expect(card.getByText('Little evidence')).toBeVisible()
+  await card.getByTestId('move-why').click()
+  const evidence = card.getByTestId('move-evidence')
+  await expect(evidence.getByText('Why this')).toBeVisible()
+  await expect(evidence.getByText('Testing')).toBeVisible()
+  await expect(evidence.getByText('Little evidence')).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
   // Now shows it and the honest line; Skip records and shows the next candidate.
   const first = await page.getByTestId('move-card').getByTestId('move-name').innerText()
-  await expect(page.getByTestId('knows')).toContainText('weeks of record')
+  await expect(page.getByTestId('knows')).toContainText(/weeks? of record/)
   await page.getByRole('button', { name: /^Skip/ }).click()
   await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText(first)
 
   // The constant lives in Settings; nothing about her appears on Now.
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await settingsSection(page, 'week')
   await expect(page.getByTestId('lives-with-me')).toHaveAttribute('aria-pressed', 'true')
+  await backToSettings(page)
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.getByText(/she is with you|She's away/)).toHaveCount(0)
 
@@ -457,13 +473,13 @@ test('the mirror draws from the record, and delete everything empties it', async
   await expect(page.getByTestId('trace').locator('circle.ch-dot')).toHaveCount(1)
   await expect(page.getByTestId('mini')).toHaveCount(7)
   await expect(page.getByTestId('heatmap')).toBeVisible()
-  await expect(page.getByText('Moving together is not causing.')).toBeVisible()
+  await expect(page.getByTestId('before-card')).toContainText('none of it is a cause')
   await page.getByRole('button', { name: 'Hunger', exact: true }).click()
   await expect(page.getByTestId('trace').locator('circle.ch-dot-ov')).toHaveCount(1)
 
   // Data: private items stay out of an export unless ticked; delete everything takes two taps and a word.
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('button', { name: /^Data Export everything/ }).click()
+  await page.getByTestId('settings-data').click()
   await expect(page.getByTestId('include-private')).not.toBeChecked()
   await page.getByTestId('delete-start').click()
   await expect(page.getByTestId('delete-confirm')).toBeDisabled()
@@ -533,18 +549,20 @@ test('Low-demand mode and depth change the check-in at once and persist', async 
   await page.goto('./')
   await expect(page.getByTestId('block-row')).toHaveCount(3)
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await settingsSection(page, 'checkins')
   await page.getByTestId('low-demand').click()
   await expect(page.getByTestId('low-demand')).toHaveAttribute('aria-pressed', 'true')
+  await backToSettings(page)
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.getByTestId('block-row')).toHaveCount(1)
 
   await page.reload()
   await expect(page.getByTestId('block-row')).toHaveCount(1)
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await settingsSection(page, 'checkins')
   await page.getByTestId('low-demand').click()
   await page.getByRole('button', { name: 'Short', exact: true }).click()
+  await backToSettings(page)
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.getByTestId('block-row')).toHaveCount(3)
 
@@ -627,6 +645,7 @@ test('aims: a commitment with nothing typed, a step held above the move, Resume 
   await expect(page.getByTestId('aim-step')).toContainText('Subnetting · practise it')
   // The last fact on the card, and the six proofs changed in one tap: the mark stays, the words change.
   await expect(page.getByTestId('aim-last')).toContainText('moved today')
+  await page.getByTestId('aim-details').click()
   await page.getByTestId('aim-ladder-change').click()
   await page.getByTestId('aim-ladder-language').click()
   await expect(page.getByTestId('aim-step')).toContainText('Subnetting · say it')
@@ -671,7 +690,7 @@ test('learning: Evidence shows a card with its tier, the two new chips answer fr
 
   // An imported hypothesis: a card, marked imported, and nowhere else.
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('button', { name: /^Data Export everything/ }).click()
+  await page.getByTestId('settings-data').click()
   await page.getByTestId('hypothesis-input').fill('{"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}')
   await page.getByTestId('hypothesis-add').click()
   await expect(page.getByTestId('hypothesis-result')).toContainText('Card written')
@@ -830,7 +849,7 @@ test('a Done tap on the card, once the move’s minutes have passed, writes the 
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await page.getByTestId('move-done').click()
-  await expect(page.getByTestId('move-fact')).toContainText(/Done · 0?4:30 PM/)
+  await expect(page.getByTestId('move-fact')).toContainText(/Done · 4:30 pm/)
   // A passive item alongside is asked right there, once; answered, nothing sits unticked.
   const inline = page.getByTestId('passive-inline-done')
   if (await inline.count()) await inline.click()
@@ -1125,6 +1144,7 @@ test('study named by you: a language and an instrument sit beside each other, ea
   await expect(page.getByTestId('brief')).toBeVisible()
   await expect(page.getByTestId('brief-line')).toHaveCount(0)
   // One tap says when: a cue for the first step, then Resume; the plan is kept and counted.
+  await page.getByTestId('aim-plan-open').first().click()
   await page.getByTestId('aim-cue-afterBedtime').first().click()
   await expect(page.getByTestId('aim-plan').first()).toContainText('After her bedtime, 20:00')
   await page.getByTestId('aim-resume').first().click()
@@ -1176,7 +1196,8 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await page.locator('[data-kind="path"]').getByTestId('aim-done').click()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(page.getByTestId('path-rep-count')).toHaveText(`${rep} · done 1 · partly 0 · no 0`)
-  // Part 25: the card says in one line which rule chose today's rep.
+  // Part 25: the card says in one line which rule chose today's rep, under How this path works.
+  await page.getByTestId('path-how').click()
   await expect(page.getByTestId('path-why')).toContainText('Why this rep')
   // Evidence counts the rep; a difference waits for five a side.
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
@@ -1235,6 +1256,7 @@ test('the coach: a pick stubbed for today shows its version under the rep and sa
   expect([shown, other]).toContain(drawn)
   await expect(row.getByTestId('path-coach-version')).toHaveText(lineFor(drawn))
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.locator('[data-path="social"]').getByTestId('path-how').click()
   await expect(page.locator('[data-path="social"]')).toContainText('The coach named two of the reps that fit now; drawn between them, even chances, kept with the step.')
 })
 
@@ -1258,6 +1280,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')
   await expect(page.getByTestId('aim-resume')).toHaveCount(1)
   await expect(page.getByTestId('path-elsewhere')).toHaveCount(1)
+  await partnerCard.getByTestId('path-settings').click()
   await expect(partnerCard.getByTestId('partner-online')).toHaveAttribute('aria-pressed', 'false')
 
   // Now: exactly one People row; a Partner-only rep holds it on a day the bound allows.
@@ -1283,12 +1306,14 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   for (const p of ['social', 'partner']) await expect(page.locator(`[data-path="${p}"]`).getByTestId('path-rep-count')).toHaveText('Greet someone by name · done 1 · partly 0 · no 0')
 
   // A date declared with its day: today moves the path to Dating, and a rep about your conduct on a date is the row's today.
+  await partnerCard.getByTestId('path-dates').click()
   await partnerCard.getByTestId('partner-date-2026-09-23').click()
   await expect(partnerCard.getByTestId('partner-date-2026-09-23')).toHaveAttribute('aria-pressed', 'true')
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 4 of 7 · Dating')
   // From Dating on the month's reflection and check are yours, and a note before each step: the card says the month's are open.
   await expect(partnerCard.getByTestId('partner-check-open')).toBeVisible()
   await expect(partnerCard.getByTestId('partner-reflection-open')).toBeVisible()
+  await partnerCard.getByTestId('path-settings').click()
   await partnerCard.getByRole('button', { name: /^Notes and checks/ }).click()
   await expect(page.getByTestId('monthly-check')).toBeVisible()
   await expect(page.getByTestId('partner-reflection-monthly')).toBeVisible()
@@ -1312,12 +1337,14 @@ test('the Partner path: added by its own tap beside the Social path, one People 
 
   // The next stage declared in one tap, with nothing asked first; this month's check stays open.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await partnerCard.getByTestId('path-dates').click()
   await partnerCard.getByTestId('partner-declare').click()
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 5 of 7 · Deciding')
   await expect(partnerCard.getByTestId('partner-declared')).toContainText('Undo')
   await expect(partnerCard.getByTestId('partner-check-open')).toBeVisible()
 
   // Notes and checks: an engagement is one tap and needs no course; the course is a suggestion beside its note.
+  await partnerCard.getByTestId('path-settings').click()
   await partnerCard.getByRole('button', { name: /^Notes and checks/ }).click()
   await expect(page.getByTestId('partner-notes')).toBeVisible()
   await page.getByTestId('partner-step-engagement').click()
@@ -1365,6 +1392,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
 
   // Undo: the date deleted, the stage recomputed from what is left.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await partnerCard.getByTestId('path-dates').click()
   await partnerCard.getByTestId('partner-declared-undo').click()
   await partnerCard.getByTestId('partner-date-2026-09-23').click()
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')

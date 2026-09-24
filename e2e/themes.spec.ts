@@ -1,0 +1,424 @@
+import { writeFileSync } from 'node:fs'
+import { expect, test, type Page } from '@playwright/test'
+
+// The three themes (Rule 15, revised 2026-09-24): each one checked on every major screen and the
+// states its taps open, at the phone's width, a narrower phone, and a width that stands for text
+// zoomed to 130 percent. Every run of text must read at 4.8 to 1 or better against what is behind
+// it and be at least 11.5 pixels as seen; no two runs of text may collide; nothing may run past the
+// phone's edge or truncate a label; every control must be a 48-pixel target, drawn or extended.
+// Then: switching a theme changes the look alone, at once, with nothing lost, and the choice holds.
+
+const THEMES = ['nocturne', 'instrument', 'signal'] as const
+type Theme = (typeof THEMES)[number]
+const GROUNDS: Record<Theme, string> = { nocturne: '#0d111d', instrument: '#14171f', signal: '#0a0c0f' }
+
+let pageErrors: string[] = []
+test.beforeEach(async ({ page }) => {
+  pageErrors = []
+  page.on('pageerror', (e) => pageErrors.push(String(e)))
+})
+test.afterEach(() => {
+  expect(pageErrors).toEqual([])
+})
+
+/** Nine days of completed check-ins straight into the phone's store, one afternoon unlogged. */
+async function seedRecord(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const hours: Record<string, number> = { morning: 9, afternoon: 14, evening: 21 }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins'], 'readwrite')
+    const store = tx.objectStore('checkins')
+    const now = new Date()
+    for (let d = 9; d >= 1; d--) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d)
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      let bi = 0
+      for (const block of Object.keys(blocks)) {
+        bi++
+        if (d === 2 && block === 'afternoon') continue
+        const answers: Record<string, number> = {}
+        blocks[block].forEach((id, ri) => (answers[id] = 1 + ((d * 7 + bi * 3 + ri * 3 + (ri % 2) * d) % 5)))
+        const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 10 + d)
+        const done = new Date(at.getTime() + 95_000)
+        store.add({ day, block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done.toISOString(), updatedAt: done.toISOString(), answers, activeMs: 60_000 })
+      }
+    }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+async function tab(page: Page, name: string): Promise<void> {
+  await page.locator('nav.tabs').getByRole('button', { name, exact: true }).click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+}
+
+/** The generic profile through the app's own screens: two study subjects, a practice, both paths, the evening's check-in. */
+async function seedProfile(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await seedRecord(page)
+  await page.reload()
+  await tab(page, 'Aims')
+  const add = () => page.getByRole('button', { name: /^Add a commitment/ }).click()
+  for (const [name, ladder] of [
+    ['Spanish', 'language'],
+    ['Cloud certification', 'technical'],
+  ] as const) {
+    await add()
+    await page.getByTestId('aim-kind-certification').click()
+    await page.getByTestId('aim-name-input').fill(name)
+    await page.getByTestId(`aim-ladder-${ladder}`).click()
+    await page.getByTestId('aim-name-add').click()
+  }
+  await add()
+  await page.getByTestId('aim-kind-practice').click()
+  await page.locator('button.row').first().click()
+  await add()
+  await page.getByTestId('aim-kind-path-social').click()
+  await add()
+  await page.getByTestId('aim-kind-path-partner').click()
+  await page.getByRole('button', { name: /^The proof ladder/ }).click()
+  await page.getByTestId('subject-chip').filter({ hasText: 'Spanish' }).click()
+  await page.getByTestId('skill-input').fill('Ordering at a café')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('button', { name: /Done|Close/ }).last().click()
+  await tab(page, 'Now')
+  await page.getByRole('button', { name: /Check in/ }).first().click()
+  const card = page.getByTestId('give-back')
+  for (let i = 0; i < 40 && !(await card.isVisible()); i++) {
+    if (await page.getByTestId('extras').isVisible()) {
+      await page.getByRole('button', { name: 'Done', exact: true }).click()
+      continue
+    }
+    if (await page.getByTestId('outcome-ask').isVisible()) {
+      await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      continue
+    }
+    const a = page.getByTestId('anchor').nth(2)
+    if (await a.isVisible().catch(() => false)) await a.click().catch(() => undefined)
+    await page.waitForTimeout(120)
+  }
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+}
+
+/** Runs in the page: every visible run of text and every control, against the universal rules. */
+function audit(opts: { zoom: number }) {
+  const MIN_TEXT = 11.5 / opts.zoom
+  const MIN_CONTRAST = 4.8
+  const parse = (c: string) => {
+    const m = c.match(/rgba?\(([^)]+)\)/)
+    if (!m) return null
+    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number)
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }
+  }
+  type C = { r: number; g: number; b: number; a: number }
+  const lin = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
+  const lum = (c: C) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+  const over = (top: C, bot: C): C => ({ r: top.r * top.a + bot.r * (1 - top.a), g: top.g * top.a + bot.g * (1 - top.a), b: top.b * top.a + bot.b * (1 - top.a), a: 1 })
+  const behind = (el: Element): C => {
+    const layers: C[] = []
+    for (let e: Element | null = el; e; e = e.parentElement) {
+      const c = parse(getComputedStyle(e).backgroundColor)
+      if (c && c.a > 0) {
+        layers.push(c)
+        if (c.a >= 1) break
+      }
+    }
+    let acc = layers.length && layers[layers.length - 1].a >= 1 ? (layers.pop() as C) : { r: 0, g: 0, b: 0, a: 1 }
+    while (layers.length) acc = over(layers.pop() as C, acc)
+    return acc
+  }
+  const opacityOf = (el: Element) => {
+    let o = 1
+    for (let e: Element | null = el; e; e = e.parentElement) o *= Number(getComputedStyle(e).opacity)
+    return o
+  }
+  const clipTo = (el: Element, r: DOMRect) => {
+    let { left, top, right, bottom } = r
+    for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) {
+      const cs = getComputedStyle(e)
+      if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+        const b = e.getBoundingClientRect()
+        left = Math.max(left, b.left)
+        top = Math.max(top, b.top)
+        right = Math.min(right, b.right)
+        bottom = Math.min(bottom, b.bottom)
+      }
+    }
+    return right - left > 0.5 && bottom - top > 0.5 ? { x: left, y: top + scrollY, w: right - left, h: bottom - top } : null
+  }
+  const issues: string[] = []
+  const runs: { s: string; t: Node; bar: boolean; x: number; y: number; w: number; h: number }[] = []
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  while (walker.nextNode()) {
+    const t = walker.currentNode
+    const s = (t.textContent ?? '').trim()
+    if (!s) continue
+    const el = t.parentElement as Element
+    const cs = getComputedStyle(el)
+    if (cs.visibility === 'hidden') continue
+    const range = document.createRange()
+    range.selectNodeContents(t)
+    const rects = [...range.getClientRects()].map((r) => clipTo(el, r)).filter((r): r is NonNullable<typeof r> => r !== null)
+    if (!rects.length) continue
+    // A disabled control is exempt from contrast, as the guidelines exempt it; its text still may not be tiny.
+    const disabled = Boolean(el.closest('button:disabled, input:disabled'))
+    const svg = el instanceof SVGElement
+    const fg0 = parse(svg ? cs.fill : cs.color) ?? parse(cs.color)
+    const bg = behind(el)
+    const fg = fg0 ? over({ ...fg0, a: fg0.a * opacityOf(el) }, bg) : null
+    const size = svg && (el as SVGGraphicsElement).getScreenCTM ? parseFloat(cs.fontSize) * ((el as SVGGraphicsElement).getScreenCTM()?.a ?? 1) : parseFloat(cs.fontSize)
+    if (fg && !disabled) {
+      const [hi, lo] = [lum(fg), lum(bg)].sort((a, b) => b - a)
+      const ratio = (hi + 0.05) / (lo + 0.05)
+      if (ratio < MIN_CONTRAST) issues.push(`contrast ${ratio.toFixed(2)}:1 at ${size.toFixed(1)}px: "${s.slice(0, 40)}"`)
+    }
+    if (size < MIN_TEXT - 0.05) issues.push(`tiny ${size.toFixed(1)}px: "${s.slice(0, 40)}"`)
+    const bar = Boolean(el.closest('nav.tabs'))
+    for (const r of rects) runs.push({ s: s.slice(0, 30), t, bar, ...r })
+  }
+  // Sorted top to bottom, each run is set only against the runs that start before it ends.
+  runs.sort((p, q) => p.y - q.y)
+  for (let i = 0; i < runs.length; i++)
+    for (let j = i + 1; j < runs.length && runs[j].y < runs[i].y + runs[i].h; j++) {
+      const a = runs[i]
+      const b = runs[j]
+      if (a.t === b.t) continue
+      // The tab bar stays at the foot of the screen and the page scrolls under it, as it should: not a collision.
+      if (a.bar !== b.bar) continue
+      const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+      const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+      if (ox > 1 && oy > 1 && ox * oy > 6) issues.push(`collision: "${a.s}" × "${b.s}"`)
+    }
+  const width = document.documentElement.clientWidth
+  for (const r of runs) if (r.x < -0.5 || r.x + r.w > width + 0.5) issues.push(`past the edge: "${r.s}"`)
+  if (document.documentElement.scrollWidth > width) issues.push('the screen scrolls sideways')
+  // A label cut with an ellipsis loses words. Only a list row's one-line summary may truncate: its screen says it whole.
+  for (const el of document.querySelectorAll('body *')) {
+    const cs = getComputedStyle(el)
+    if (cs.textOverflow !== 'ellipsis' || el.scrollWidth <= el.clientWidth + 1) continue
+    if (el.closest('.settings-list, .doors') && el.classList.contains('sub')) continue
+    if (el.classList.contains('d-sub')) continue
+    issues.push(`truncated: "${(el.textContent ?? '').trim().slice(0, 40)}"`)
+  }
+  // Targets: 48 pixels tall as drawn or with the hit area a control extends; 24 wide at least.
+  const targets = document.querySelectorAll('button, a[href], input:not([type="checkbox"]), select, textarea, label.check')
+  for (const el of targets) {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 || r.height === 0) continue
+    if (getComputedStyle(el).visibility === 'hidden') continue
+    const after = getComputedStyle(el, '::after')
+    const extends_ = after.content !== 'none' && after.position === 'absolute'
+    const top = extends_ ? Math.max(0, -parseFloat(after.top) || 0) : 0
+    const bottom = extends_ ? Math.max(0, -parseFloat(after.bottom) || 0) : 0
+    const left = extends_ ? Math.max(0, -parseFloat(after.left) || 0) : 0
+    const right = extends_ ? Math.max(0, -parseFloat(after.right) || 0) : 0
+    const h = r.height + top + bottom
+    const w = r.width + left + right
+    if (h < 43.5) issues.push(`target ${Math.round(w)}×${Math.round(h)}: "${(el.textContent ?? el.getAttribute('aria-label') ?? '').trim().slice(0, 30)}"`)
+    else if (w < 24 - 0.5) issues.push(`target ${Math.round(w)}×${Math.round(h)} too narrow: "${(el.textContent ?? '').trim().slice(0, 30)}"`)
+  }
+  return issues
+}
+
+/** Each state: how to reach it from the tab it lives on. */
+const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> }[] = [
+  { name: 'Now', tab: 'Now' },
+  { name: 'Now, Why open', tab: 'Now', open: async (p) => p.getByTestId('move-why').first().click() },
+  { name: 'Now, Earlier days open', tab: 'Now', open: async (p) => p.getByTestId('earlier-more').click() },
+  { name: 'Now, Plan open', tab: 'Now', open: async (p) => p.getByTestId('aim-plan-open').first().click() },
+  { name: 'Mirror', tab: 'Mirror' },
+  { name: 'Moves, Why open', tab: 'Moves', open: async (p) => p.getByTestId('move-why').first().click() },
+  { name: 'Aims', tab: 'Aims' },
+  {
+    name: 'Aims, the Partner card open',
+    tab: 'Aims',
+    open: async (p) => {
+      const card = p.locator('[data-path="partner"]')
+      for (const id of ['path-dates', 'path-how', 'path-settings']) await card.getByTestId(id).click()
+      await p.getByTestId('aim-details').first().click()
+    },
+  },
+  { name: 'Settings', tab: 'Settings' },
+  { name: 'Settings, the week', tab: 'Settings', open: async (p) => p.getByTestId('settings-week').click() },
+  { name: 'Settings, check-ins', tab: 'Settings', open: async (p) => p.getByTestId('settings-checkins').click() },
+  { name: 'Settings, theme', tab: 'Settings', open: async (p) => p.getByTestId('settings-theme').click() },
+]
+
+/** Every other screen, each in every theme: the ones the redesign did not restructure still wear the theme and keep its rules. */
+const click = (name: RegExp | string) => async (p: Page) => p.getByRole('button', { name }).first().click()
+const MORE: typeof STATES = [
+  { name: 'Summary', tab: 'Now', open: click(/Logged/) },
+  {
+    name: 'Check-in, one reading',
+    tab: 'Now',
+    open: async (p) => {
+      await p.getByRole('button', { name: /Logged/ }).first().click()
+      await p.getByTestId('reading-row').first().click()
+    },
+  },
+  { name: 'Change the rep', tab: 'Now', open: async (p) => p.getByTestId('path-change').first().click() },
+  { name: 'The weekly view', tab: 'Mirror', open: click(/^The weekly view/) },
+  { name: 'Evidence', tab: 'Moves', open: click(/^Evidence/) },
+  { name: 'History', tab: 'Moves', open: click(/^History/) },
+  { name: 'The catalogue', tab: 'Moves', open: click(/^Read the catalogue/) },
+  { name: 'Add a commitment', tab: 'Aims', open: click(/^Add a commitment/) },
+  { name: 'The proof ladder', tab: 'Aims', open: click(/^The proof ladder/) },
+  { name: 'Follow-through', tab: 'Aims', open: click(/^Follow-through/) },
+  { name: 'Becoming', tab: 'Aims', open: click(/^Becoming/) },
+  { name: 'Her', tab: 'Aims', open: click(/^Her /) },
+  {
+    name: 'Partner notes',
+    tab: 'Aims',
+    open: async (p) => {
+      await p.locator('[data-path="partner"]').getByTestId('path-settings').click()
+      await p.getByRole('button', { name: /^Notes and checks/ }).click()
+    },
+  },
+  { name: 'Settings, evening extras', tab: 'Settings', open: async (p) => p.getByTestId('settings-extras').click() },
+  {
+    name: 'Settings, moves and private items',
+    tab: 'Settings',
+    open: async (p) => p.getByTestId('settings-moves').click(),
+  },
+  {
+    name: 'Private items',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-moves').click()
+      await p.getByTestId('settings-private').click()
+    },
+  },
+  { name: 'Settings, your direction', tab: 'Settings', open: async (p) => p.getByTestId('settings-direction').click() },
+  { name: 'Brain', tab: 'Settings', open: async (p) => p.getByTestId('settings-brain').click() },
+  { name: 'Cloud copy', tab: 'Settings', open: async (p) => p.getByTestId('settings-cloud').click() },
+  { name: 'Data and privacy', tab: 'Settings', open: async (p) => p.getByTestId('settings-data').click() },
+  { name: 'Readings and chips', tab: 'Settings', open: async (p) => p.getByTestId('settings-readings').click() },
+  { name: 'Wording', tab: 'Settings', open: async (p) => p.getByTestId('settings-wording').click() },
+  { name: 'Legend', tab: 'Settings', open: async (p) => p.getByTestId('settings-legend').click() },
+  { name: 'About', tab: 'Settings', open: async (p) => p.getByTestId('settings-about').click() },
+]
+
+const WIDTHS: { w: number; zoom: number; label: string }[] = [
+  { w: 390, zoom: 1, label: '390' },
+  { w: 360, zoom: 1, label: '360' },
+  // A 390-pixel phone with its text zoomed to 130 percent lays out as 300 pixels, every size drawn 1.3 times larger.
+  { w: 300, zoom: 1.3, label: '390 at 130%' },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedProfile(page)
+    test.setTimeout(900_000)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      // The other screens at the phone's width and at zoomed text; the narrower phone adds nothing they do not already meet.
+      for (const s of width.w === 360 ? STATES : [...STATES, ...MORE]) {
+        await page.reload()
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+        await tab(page, s.tab)
+        if (s.open) await s.open(page)
+        await page.waitForTimeout(250)
+        await page.evaluate(() => document.fonts.ready.then(() => undefined))
+        const issues = await page.evaluate(audit, { zoom: width.zoom })
+        for (const i of issues) found.push(`${width.label} · ${s.name} · ${i}`)
+      }
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+test('a theme switch changes the look alone: at once, no reload, the same screen, the same record', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
+  await page.goto('./')
+  // New and current installs open in Nocturne, the browser's colour its ground.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'nocturne')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', GROUNDS.nocturne)
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await seedRecord(page)
+  await page.reload()
+  // What the screen says, without the date (the one thing a theme writes its own way on Now).
+  const said = () =>
+    page.evaluate(() => {
+      const main = (document.querySelector('#main') as HTMLElement).cloneNode(true) as HTMLElement
+      for (const d of main.querySelectorAll('.date')) d.remove()
+      return (main.textContent ?? '').replace(/\s+/g, ' ').trim()
+    })
+  const before = await said()
+  // A mark on the window: a reload would lose it.
+  await page.evaluate(() => ((window as unknown as { mark: number }).mark = 42))
+  await tab(page, 'Settings')
+  await expect(page.getByTestId('settings-theme')).toContainText('Nocturne')
+  await page.getByTestId('settings-theme').click()
+  for (const t of ['signal', 'instrument', 'nocturne'] as const) {
+    await page.getByTestId(`theme-${t}`).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', t)
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', GROUNDS[t])
+    await expect(page.getByTestId(`theme-${t}`)).toHaveAttribute('aria-checked', 'true')
+    // Still on the same screen, in the same page: nothing reloaded.
+    await expect(page.getByTestId('settings-section-theme')).toBeVisible()
+    expect(await page.evaluate(() => (window as unknown as { mark?: number }).mark)).toBe(42)
+  }
+  // The record reads the same in any theme: switch, go back to Now, compare the words.
+  await page.getByTestId('theme-signal').click()
+  await page.getByRole('button', { name: 'Settings' }).first().click()
+  await tab(page, 'Now')
+  expect(await said()).toBe(before)
+})
+
+test('the choice holds across a relaunch and offline; a missing or unknown value is Nocturne', async ({ page, context }) => {
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await tab(page, 'Settings')
+  await page.getByTestId('settings-theme').click()
+  await page.getByTestId('theme-instrument').click()
+  await page.reload()
+  // Set before the first paint: the attribute is there as the page loads.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'instrument')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', GROUNDS.instrument)
+  expect(await page.evaluate(() => localStorage.getItem('life-mirror.theme'))).toBe('instrument')
+
+  // Offline after one load, the theme and its fonts come from the phone.
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
+  await page.evaluate(() => localStorage.setItem('life-mirror.theme', 'signal'))
+  await context.setOffline(true)
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'signal')
+  const fonts = await page.evaluate(async () => {
+    await document.fonts.load('16px "Space Grotesk"')
+    await document.fonts.load('16px "JetBrains Mono"')
+    await document.fonts.load('16px "Manrope"')
+    return [document.fonts.check('16px "Space Grotesk"'), document.fonts.check('16px "JetBrains Mono"'), document.fonts.check('16px "Manrope"')]
+  })
+  expect(fonts).toEqual([true, true, true])
+  await context.setOffline(false)
+
+  for (const bad of ['', 'neon', 'Nocturne']) {
+    await page.evaluate((v) => localStorage.setItem('life-mirror.theme', v), bad)
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'nocturne')
+  }
+  await page.evaluate(() => localStorage.removeItem('life-mirror.theme'))
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'nocturne')
+})

@@ -159,7 +159,7 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
 }
 
 /** The line, its one action, and the taps. Kept while its situation holds; looked at again whenever the screen opens or the record changes. */
-function BrainLine({ day, line, act, open, onToggle }: { day: string; line: BriefLine; act: ActionState | null | undefined; open: boolean; onToggle: () => void }) {
+function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; line: BriefLine; act: ActionState | null | undefined; open: boolean; onToggle: () => void; primary: boolean }) {
   const fb = useLive(() => feedbackFor(line.key), [line.key])
   const c = copy.brain
   return (
@@ -169,7 +169,7 @@ function BrainLine({ day, line, act, open, onToggle }: { day: string; line: Brie
       </p>
       {line.action && act?.state === 'open' && (
         <div class="actions">
-          <button type="button" class="pill-quiet" data-testid="brief-action" onClick={() => void applyLineAction(day, line.action as NonNullable<BriefLine['action']>)}>
+          <button type="button" class={primary ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="brief-action" onClick={() => void applyLineAction(day, line.action as NonNullable<BriefLine['action']>)}>
             {actionLabel(line, act)}
           </button>
         </div>
@@ -206,7 +206,8 @@ function BrainLine({ day, line, act, open, onToggle }: { day: string; line: Brie
   )
 }
 
-export function Brief({ day, version = 0 }: { day: string; version?: number }) {
+/** The brief on Now. Its action carries the screen's one accent only when Now says it is the thing to do (primary). */
+export function Brief({ day, version = 0, primary = false }: { day: string; version?: number; primary?: boolean }) {
   const b = useLive(() => briefData(day), [day])
   const line = useLive(() => todaysLine(day), [day])
   const act = useLive(() => (line ? lineActionState(day, line.action ?? null) : Promise.resolve(null)), [day, line?.key, JSON.stringify(line?.action ?? null), version])
@@ -235,7 +236,7 @@ export function Brief({ day, version = 0 }: { day: string; version?: number }) {
       </div>
       {line ? (
         <>
-          <BrainLine day={day} line={line} act={act} open={open} onToggle={() => setOpen((v) => !v)} />
+          <BrainLine day={day} line={line} act={act} open={open} onToggle={() => setOpen((v) => !v)} primary={primary} />
           {b.ready && !isStretchLine(line) && <Warning b={b} />}
           {open && <WhyPanel day={day} line={line} b={b} />}
         </>

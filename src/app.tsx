@@ -31,7 +31,8 @@ import { PrivateScreen } from './private'
 import type { ReadingId } from './readings'
 import { useReminders } from './reminders'
 import { extrasEnabled } from './settings'
-import { SettingsScreen } from './settingsScreen'
+import { SettingsScreen, SettingsSectionScreen, type SettingsSection } from './settingsScreen'
+import { Icon } from './icons'
 import { StudyNightStep } from './studyStep'
 import { WordingScreen } from './wording'
 
@@ -46,7 +47,8 @@ type View =
   | { kind: 'summary'; day: string; block: Block; fresh: boolean }
   | { kind: 'wording' }
   | { kind: 'legend' }
-  | { kind: 'private' }
+  | { kind: 'private'; from?: SettingsSection }
+  | { kind: 'settings'; section: SettingsSection }
   | { kind: 'data' }
   | { kind: 'catalogue' }
   | { kind: 'history' }
@@ -177,7 +179,9 @@ export function App() {
       case 'legend':
         return <LegendScreen onClose={closeAll} />
       case 'private':
-        return <PrivateScreen onClose={closeAll} />
+        return <PrivateScreen onClose={() => (view.from ? setView({ kind: 'settings', section: view.from }) : closeAll())} />
+      case 'settings':
+        return <SettingsSectionScreen key={view.section} section={view.section} onClose={closeAll} onPrivate={() => setView({ kind: 'private', from: view.section })} />
       case 'data':
         return <DataScreen onClose={closeAll} />
       case 'catalogue':
@@ -247,9 +251,9 @@ export function App() {
       case 'settings':
         return (
           <SettingsScreen
+            onSection={(section) => open({ kind: 'settings', section })}
             onWording={() => open({ kind: 'wording' })}
             onLegend={() => open({ kind: 'legend' })}
-            onPrivate={() => open({ kind: 'private' })}
             onData={() => open({ kind: 'data' })}
             onCloud={() => open({ kind: 'cloud' })}
             onBrain={() => open({ kind: 'brain' })}
@@ -264,6 +268,7 @@ export function App() {
       <main id="main">{content()}</main>
       {view.kind === 'tabs' && (
         <nav class="tabs" aria-label="Sections">
+          <div class="tabs-inner">
           {order.map((t) => (
             <button
               key={t}
@@ -272,9 +277,11 @@ export function App() {
               aria-current={t === tab ? 'page' : undefined}
               onClick={() => setTab(t)}
             >
-              {copy.tabs[t]}
+              <Icon name={t} class="tab-ic" />
+              <span class="tab-label">{copy.tabs[t]}</span>
             </button>
           ))}
+          </div>
         </nav>
       )}
     </div>

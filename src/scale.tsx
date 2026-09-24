@@ -1,3 +1,4 @@
+import { useWidth } from './charts'
 import { copy } from './copy'
 import { bandOf, type Band } from './score'
 
@@ -20,7 +21,8 @@ export const BAND_EDGES: readonly number[] = [20, 40, 60, 80]
  * Hollow when the mark shows the last full reading rather than a current one.
  */
 export function Scale({ value, hollow = false, compact = false }: { value: number | null; hollow?: boolean; compact?: boolean }) {
-  const W = 320
+  // Drawn at the width it is shown at, so its numbers are the size the stylesheet gives them on any phone.
+  const [ref, W] = useWidth(320)
   const H = compact ? 30 : 40
   const x0 = 8
   const x1 = W - 8
@@ -30,8 +32,8 @@ export function Scale({ value, hollow = false, compact = false }: { value: numbe
   const label = value === null ? copy.reading.scaleEmpty : `${value} · ${copy.bands[active as Band]}`
 
   return (
-    <div class="scale-wrap">
-      <svg class="scale" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
+    <div class="scale-wrap" ref={ref}>
+      <svg class="scale" viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={label}>
         <line class="scale-track" x1={x0} y1={y} x2={x1} y2={y} />
         {BAND_EDGES.map((v) => (
           <line key={v} class="scale-tick" x1={x(v)} y1={y - 5} x2={x(v)} y2={y + 5} />
@@ -43,6 +45,8 @@ export function Scale({ value, hollow = false, compact = false }: { value: numbe
             </text>
           ))}
         {value !== null && <circle class={hollow ? 'scale-mark is-hollow' : 'scale-mark'} cx={x(value)} cy={y} r={compact ? 5 : 7} />}
+        {/* Signal draws the reading as a needle; the other themes hide it and draw the mark. */}
+        {value !== null && <line class="scale-needle" x1={x(value)} x2={x(value)} y1={y - (compact ? 8 : 11)} y2={y + (compact ? 8 : 11)} />}
       </svg>
       {!compact && (
         <ol class="scale-bands" aria-hidden="true">

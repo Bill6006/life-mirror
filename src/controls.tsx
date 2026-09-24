@@ -1,3 +1,5 @@
+import { Icon } from './icons'
+
 // The few controls Settings needs: a segmented choice, a switch row, a time row, a link row.
 
 export function Seg<T extends string>({
@@ -49,15 +51,15 @@ export function TimeRow({ label, value, onChange }: { label: string; value: stri
   )
 }
 
-export function NavRow({ label, note, onClick }: { label: string; note?: string; onClick: () => void }) {
+export function NavRow({ label, note, onClick, testid }: { label: string; note?: string; onClick: () => void; testid?: string }) {
   return (
     <li>
-      <button type="button" class="row" onClick={onClick}>
+      <button type="button" class="row" data-testid={testid} onClick={onClick}>
         <span class="row-main">
           {label}
           {note && <span class="sub">{note}</span>}
         </span>
-        <span class="chev" aria-hidden="true">›</span>
+        <Icon name="chev" class="chev" />
       </button>
     </li>
   )
