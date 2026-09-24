@@ -419,7 +419,7 @@ test('the evening chips answer from the record and the text line is kept', async
   await page.getByRole('button', { name: /Check in/ }).click()
   const extras = page.getByTestId('extras')
   const anchor = page.getByTestId('anchor').nth(2)
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     await expect(extras.or(anchor).first()).toBeVisible()
     if (await extras.isVisible()) break
     await tapAnchor(page)
@@ -664,7 +664,7 @@ test('learning: Evidence shows a card with its tier, the two new chips answer fr
   await page.getByRole('button', { name: /Check in/ }).click()
   const extras = page.getByTestId('extras')
   const anchor = page.getByTestId('anchor').nth(2)
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     await expect(extras.or(anchor).first()).toBeVisible()
     if (await extras.isVisible()) break
     await tapAnchor(page)
@@ -723,7 +723,7 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await page.getByRole('button', { name: /Check in/ }).click()
   const extras = page.getByTestId('extras')
   const anchor = page.getByTestId('anchor').nth(2)
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 30; i++) {
     await expect(extras.or(anchor).first()).toBeVisible()
     if (await extras.isVisible()) break
     await tapAnchor(page)
@@ -1433,4 +1433,30 @@ test('the use log counts on this phone alone, and what Claude lacked is counted 
   )
   await page.getByTestId('settings-brain').click()
   await expect(page.getByTestId('brain-lacked-counts')).toHaveText('Your notes 1 · Workout detail 1')
+})
+
+test('daylight from where you are: a place typed once, the sun shown back, the fixed hours standing in until then (Part 35)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 9, 30))
+  await page.goto('./')
+  await settingsSection(page, 'week')
+  const note = page.getByTestId('place-note')
+  await expect(note).toContainText('until then the hours below do')
+  await expect(page.getByText('Daylight from', { exact: true })).toBeVisible()
+  // Not a place: said plainly, nothing kept.
+  await page.getByTestId('place-field').fill('New York')
+  await page.getByTestId('place-field').press('Enter')
+  await expect(note).toContainText('Two numbers, like 40.7, -74.0')
+  // A place: rounded to one decimal, the day's sun shown back, the fixed hours gone.
+  await page.getByTestId('place-field').fill('40.7128, -74.0060')
+  await page.getByTestId('place-field').press('Enter')
+  await expect(note).toContainText(/Today: sunrise \d{1,2}:\d{2} am, sunset \d{1,2}:\d{2} pm/)
+  await expect(page.getByTestId('place-field')).toHaveValue('40.7, -74.0')
+  await expect(page.getByText('Daylight from', { exact: true })).toHaveCount(0)
+  await backToSettings(page)
+  await expect(page.getByTestId('settings-week')).toContainText('daylight by the sun')
+  // Emptied, the hours you set take over again.
+  await page.getByTestId('settings-week').click()
+  await page.getByTestId('place-field').fill('')
+  await page.getByTestId('place-field').press('Enter')
+  await expect(page.getByText('Daylight from', { exact: true })).toBeVisible()
 })

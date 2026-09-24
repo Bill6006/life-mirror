@@ -4091,5 +4091,53 @@
     "caveats": "Kept as disputed so the brain never cites a compatibility match.",
     "app": "Excluded from the Partner path.",
     "reviewed": "2026-09-23"
+  },
+  {
+    "id": "evening-exercise-sleep",
+    "claim": "An evening session did not harm the night’s sleep on average, and deepened it a little; vigorous exercise that ends within an hour of bedtime may delay sleep and shorten it.",
+    "domain": "sleep",
+    "tags": [
+      "workout",
+      "sleep",
+      "evening"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 23 studies of a single evening session against none: slow-wave sleep up 1.3 percentage points, stage 1 down 0.9, REM onset 7.7 minutes later; no harm to sleep overall",
+    "population": "healthy adults, single sessions, mostly in sleep laboratories",
+    "sources": [
+      {
+        "cite": "Stutz, Eiholzer & Spengler (2019). Effects of Evening Exercise on Sleep in Healthy Participants: A Systematic Review and Meta-Analysis. Sports Medicine, 49(2), 269–287.",
+        "doi": "10.1007/s40279-018-1015-0"
+      }
+    ],
+    "caveats": "The links with intensity and bedtime temperature vanished when one study was left out; the one exception the review names is vigorous exercise ending an hour or less before bed.",
+    "app": "An evening session, read from the other app, is set against that night’s sleep and the next morning like for like: an association in your record, never the session’s effect.",
+    "reviewed": "2026-09-24",
+    "status": "admitted"
+  },
+  {
+    "id": "single-session-mood",
+    "claim": "A single session of exercise lifts mood and eases anxiety and low mood in the half hour after it, by a small to moderate amount on average, with wide differences between studies.",
+    "domain": "mood",
+    "tags": [
+      "workout",
+      "mood",
+      "energy"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "meta-analysis of 103 studies, 4,671 people: mood g = 0.34 (0.23 to 0.44), anxiety g = 0.50, depressive symptoms g = 0.41, measured within 30 minutes of the session",
+    "population": "adults, healthy and not",
+    "sources": [
+      {
+        "cite": "Weinstein, van Aert, Donovan, Muskens & Kop (2024). Affective Responses to Acute Exercise: A Meta-Analysis of the Potential Beneficial Effects of a Single Bout of Exercise on General Mood, Anxiety, and Depressive Symptoms. Psychosomatic Medicine, 86(6), 486–497.",
+        "doi": "10.1097/PSY.0000000000001321"
+      }
+    ],
+    "caveats": "Mostly before-and-after measures within half an hour; it says nothing of the next day, and why the response varies so much between studies is not known.",
+    "app": "A hard session’s day is set against the next morning’s energy, mood, focus and stress like for like: an association in your record, never the session’s effect.",
+    "reviewed": "2026-09-24",
+    "status": "admitted"
   }
 ]

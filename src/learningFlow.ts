@@ -1,15 +1,16 @@
 import { anchorSwapDue } from './audit'
 import { addDays } from './blocks'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
-import { associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
+import { associationBy, associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
-import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type Declaration, type Outcome, type TagBeliefRow } from './db'
+import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type CheckIn, type Declaration, type Outcome, type TagBeliefRow } from './db'
 import { cardFromHypothesis, parseHypothesis, type Parsed } from './hypothesis'
 import { decayAfterStop, energyCost, FLAT, moveBelief, nothingBelief, observations, priorOf, signFlips, spillover, tagBeliefs, type Belief, type MoveBelief, type Observation, type TagBelief } from './learning'
 import { NOTHING } from './offers'
 import { readings, setAnchorSwaps } from './readings'
 import { setLearnedWeights } from './score'
 import { declarationsDue, evaluateCards, proposeWeights, weightStanding, type CardStats, type Tier, type WeightStats } from './tiers'
+import { eveningWorkoutDays, HARD_MEASURES, hardDays, type HardMeasure } from './workouts'
 
 // The learning engine on the phone. Once a day: every effect in the record, the beliefs the
 // bandit draws from, sign flips with cards to test them on purpose, declarations when a card
@@ -148,6 +149,10 @@ export interface Evidence {
   caffeine: CaffeineEvidence
   /** The other app's finished workouts: the evenings of workout days, like for like. */
   workouts: Association | null
+  /** Part 35: an evening session against the morning after, its reading out of 100 and its sleep quality (0 to 100 from the five phrases), like for like. */
+  eveningWorkout: { morning: Association; sleep: Association } | null
+  /** Part 35: a hard session's day against the next morning's energy, mood, focus and stress, each in anchor steps in its own direction, like for like. */
+  hardWorkout: { times: number; measures: Record<HardMeasure, Association> } | null
   bringsYouBack: { moveId: string; n: number }[]
   /** The null offer: how often it was offered, kept to, and skipped. */
   nothing: { offered: number; done: number; skipped: number }
@@ -202,8 +207,17 @@ export async function evidence(today: string): Promise<Evidence> {
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial))
   const caffeine = morningAssociation(checkins, today, (c) => Boolean(c.extras?.heavyCaffeine))
   const cafe = caffeineEvidence(checkins, today)
-  const outsideDays = new Set((await db.outside.toArray()).map((o) => o.day))
+  const sessions = await db.outside.toArray()
+  const outsideDays = new Set(sessions.map((o) => o.day))
   const workouts = dayAssociation(checkins, today, (d) => outsideDays.has(d))
+  // Part 35: evening sessions against the night and the morning after; hard sessions against the next morning's four readings.
+  const evenings = eveningWorkoutDays(sessions)
+  const onEvening = (c: CheckIn) => evenings.has(c.day)
+  const eveningMorning = associationFor(checkins, today, onEvening)
+  const eveningSleep = associationBy(checkins, today, onEvening, (m) => (m.answers.sleepQuality === undefined ? null : (m.answers.sleepQuality - 1) * 25))
+  const hard = hardDays(sessions)
+  const onHard = (c: CheckIn) => hard.has(c.day)
+  const hardMeasures = Object.fromEntries(HARD_MEASURES.map((id) => [id, associationBy(checkins, today, onHard, (m) => m.answers[id] ?? null)])) as Record<HardMeasure, Association>
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
   const weeks = first ? Math.floor((Math.max(0, (Date.parse(today) - Date.parse(first)) / 86_400_000) + 1) / 7) : 0
   const nulls = offers.filter((o) => o.moveId === NOTHING)
@@ -220,6 +234,8 @@ export async function evidence(today: string): Promise<Evidence> {
     heavyCaffeine: caffeine.times > 0 && cafe.itemDays < HABIT_DAYS ? caffeine : null,
     caffeine: cafe,
     workouts: workouts.times > 0 ? workouts : null,
+    eveningWorkout: eveningMorning.times > 0 ? { morning: eveningMorning, sleep: eveningSleep } : null,
+    hardWorkout: hardMeasures.energy.times > 0 ? { times: hardMeasures.energy.times, measures: hardMeasures } : null,
     bringsYouBack: whatBringsYouBack(offers, outcomes),
     nothing,
     weeks,

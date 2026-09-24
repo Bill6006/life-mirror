@@ -1,10 +1,11 @@
-import { addDays, blockAt, BLOCKS, type Block } from './blocks'
+import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
-import type { CheckIn, DayContext, OutsideDay } from './db'
+import type { CheckIn, DayContext } from './db'
+import { eveningWorkoutDays } from './workouts'
 import { observations, slotKey } from './learning'
 import type { ReadingId } from './readings'
 import { evaluateCards } from './tiers'
@@ -82,22 +83,6 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   if (ctx?.churchDay) keys.push('churchDay')
   if (workout) keys.push('workout')
   return keys
-}
-
-/**
- * The days whose evening carried a workout: a session the other app finished in the evening block
- * (from 17:00, the small hours counting to the evening before), never a morning or afternoon one,
- * so a morning session is not told back as last night's (Part 33).
- */
-export function eveningWorkoutDays(rows: readonly Pick<OutsideDay, 'at'>[]): Set<string> {
-  const out = new Set<string>()
-  for (const r of rows) {
-    const t = Date.parse(r.at)
-    if (!Number.isFinite(t)) continue
-    const slot = blockAt(new Date(t))
-    if (slot.block === 'evening') out.add(slot.day)
-  }
-  return out
 }
 
 /** The evening test for a key: what the evening record says, or what its day's context and the evening workouts say. */

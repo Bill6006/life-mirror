@@ -15,8 +15,9 @@ import { currentRung, ladderOf, rungName, sittingOf, skillsOf, TOP_RUNG } from '
 import type { Evidence } from './learningFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
-import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, readingOf } from './score'
+import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, INGREDIENTS, readingOf } from './score'
 import { keptCount } from './studyNight'
+import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
 
 // The fact sheet: everything the app knows about the day, as facts with ids and values, built by
 // the same deterministic code that draws every screen. The brain, on the phone or in the Worker,
@@ -101,6 +102,32 @@ function round(v: number | null): number | null {
 
 function signed(v: number): string {
   return v > 0 ? `+${v}` : String(v)
+}
+
+/** Your rating after a session, in words. */
+const EFFORT_WORDS: Record<NonNullable<OutsideDay['effort']>, string> = { 'too-easy': 'too easy', right: 'about right', 'too-hard': 'too hard' }
+
+/** A reading moving by this many anchor steps is worth a second look (ten points of a hundred). */
+const HARD_WORTHWHILE_STEPS = 0.4
+
+/**
+ * Part 35: the mornings after a hard session, against the mornings after other days that ended
+ * the same, like for like, each reading in anchor steps in its own direction (stress up is more
+ * stress); each tier read in that reading's good direction. An association, never a cause.
+ */
+function hardFact(h: { times: number; measures: Record<HardMeasure, Association> }): Fact {
+  const parts: string[] = []
+  const values: Record<string, number | string | null> = { times: h.times }
+  for (const id of HARD_MEASURES) {
+    const a = h.measures[id]
+    const diff = a.diff === null ? null : Math.round(a.diff * 10) / 10
+    const good = INGREDIENTS[id] === 'down' ? -1 : 1
+    const tier = associationTier({ ...a, diff: diff === null ? null : good * diff }, HARD_WORTHWHILE_STEPS)
+    values[id] = diff
+    values[`${id}Tier`] = tier
+    parts.push(`${readingById(id).name.toLowerCase()} ${diff === null ? 'not comparable yet' : `${diff > 0 ? '+' : ''}${diff} steps (${tier})`}`)
+  }
+  return fact('assoc.hardWorkout', ['workout', 'energy', 'mood', 'stress'], `The mornings after a hard session (rated too hard, or working sets close to failure), against mornings after other days that ended the same, like for like, ${h.times} times: ${parts.join(', ')}. An association, not a cause.`, values, { n: h.times })
 }
 
 function assocFact(id: string, tags: string[], event: string, a: Association, after: string): Fact | null {
@@ -368,6 +395,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
   chip('assoc.bigSocial', ['social-event', 'recovery'], 'a big social event', i.evidence.bigSocial, 'Mornings after')
   chip('assoc.heavyCaffeine', ['caffeine', 'afternoon'], 'a morning marked heavy caffeine, before amounts were recorded', i.evidence.heavyCaffeine, 'Afternoons after')
   chip('assoc.workouts', ['workout', 'evening'], 'a workout day', i.evidence.workouts, 'Evenings of')
+  // Part 35: an evening session against the night and the morning after; a hard session against the next morning's four readings.
+  chip('assoc.eveningWorkout', ['workout', 'evening', 'sleep'], 'an evening workout', i.evidence.eveningWorkout?.morning ?? null, 'Mornings after')
+  chip('assoc.eveningWorkout.sleep', ['workout', 'sleep'], 'an evening workout', i.evidence.eveningWorkout?.sleep ?? null, 'Sleep quality the mornings after')
+  if (i.evidence.hardWorkout) facts.push(hardFact(i.evidence.hardWorkout))
   chip('assoc.napped', ['nap', 'sleep'], 'a nap', associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped)), 'Mornings after')
   // Sleep is answered every full morning and is the largest lever on the day: short nights set against the afternoons that follow, like for like.
   chip('assoc.shortSleep', ['sleep', 'afternoon', 'energy'], 'a short night (under six hours)', morningAssociation(i.checkins, today, (c) => (c.answers.sleepHours ?? 9) <= SHORT_SLEEP), 'Afternoons after')
@@ -510,7 +541,16 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const bc = becoming(sheetOffers, i.outcomes)
   facts.push(fact('becoming', ['monitoring'], `Under the direction: ${bc.study.n} study sessions, ${bc.conversations.n} conversations started, ${bc.faith.n} faith practices, ${bc.timeWithHer.n} times with her.`, { study: bc.study.n, conversations: bc.conversations.n, faith: bc.faith.n, her: bc.timeWithHer.n }))
 
-  // Two workouts on one day are one workout day.
+  // Part 35: the last session, as the other app kept it, told as it was.
+  const lastSession = lastWorkout(i.outside)
+  const slot = lastSession ? sessionSlot(lastSession) : null
+  if (lastSession && slot) {
+    const last = lastSession
+    const weekday = formatDayLong(slot.day).split(',')[0]
+    const parts = [`The last workout: ${weekday} ${slot.block} (${slot.day})`, last.title ?? null, last.minutes ? `${last.minutes} min` : null, last.workingSets !== undefined ? `${last.workingSets} working sets` : null, last.endedEarly ? 'ended early' : null, last.effort ? `rated ${EFFORT_WORDS[last.effort]}` : null, last.energyAfter !== undefined ? `energy afterwards ${last.energyAfter} of 5` : null, last.avgRir !== undefined ? `about ${last.avgRir} reps in reserve` : null, last.imported ? 'brought in by import' : null]
+    facts.push(fact('workout.last', ['workout', slot.block], parts.filter(Boolean).join(', ') + '.', { day: slot.day, block: slot.block, title: last.title ?? null, minutes: last.minutes, workingSets: last.workingSets ?? null, endedEarly: last.endedEarly ? 1 : 0, effort: last.effort ?? null, energyAfter: last.energyAfter ?? null, avgRir: last.avgRir ?? null, hard: isHard(last) ? 1 : 0 }))
+  }
+  // Two workouts on one day are one workout day; each session is still its own.
   // Part 20's tier 2: where in-person reps were done, as counts. An observation for the line; never a reason to offer one.
   const carried = carriedByContext(sheetOffers, i.outcomes, i.contexts, today)
   if (carried.size) {
@@ -521,7 +561,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
     facts.push(fact('people.seen', ['people', 'social'], `In the last eight weeks, in-person reps marked done have been carried by: ${parts.join('; ')}. A count of the past, not who is around today.`, Object.fromEntries(carried), { n: [...carried.values()].reduce((a, b) => a + b, 0) }))
   }
   const workouts = [...new Set(i.outside.filter((o) => o.day >= since && o.day <= today).map((o) => o.day))].sort()
-  facts.push(fact('outside.7d', ['workout'], `Workout days in the last seven: ${workouts.length}${workouts.length ? ` (${workouts.join(', ')})` : ''}.`, { days: workouts.length }, { n: workouts.length }))
+  const sessions7 = i.outside.filter((o) => o.day >= since && o.day <= today).length
+  facts.push(fact('outside.7d', ['workout'], `Workout days in the last seven: ${workouts.length}${workouts.length ? ` (${workouts.join(', ')})` : ''}${sessions7 > workouts.length ? `; ${sessions7} sessions` : ''}.`, { days: workouts.length, sessions: sessions7 }, { n: workouts.length }))
 
   const lastEvenings = [1, 2, 3].map((d) => i.checkins.find((c) => c.day === addDays(today, -d) && c.block === 'evening'))
   const misses = lastEvenings.reduce((n, c) => n + Object.values(c?.extras?.necessities ?? {}).filter(Boolean).length, 0)

@@ -17,6 +17,12 @@ export function clockText(s: string): string {
   return s.replace(/\s?([AaPp])\.?\s?[Mm]\.?$/, (_, half: string) => ` ${half.toLowerCase()}m`)
 }
 
+/** A time of day kept as HH:MM, as a person writes it: 7:00 am. */
+export function formatHHMM(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  return clockText(new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))
+}
+
 export function formatTime(iso: string): string {
   return clockText(new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))
 }

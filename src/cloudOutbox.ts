@@ -38,6 +38,8 @@ export interface CloudMeta {
   watermark: string
   lastSyncAt: string | null
   lastError: string | null
+  /** For the other app's rows: which reading of them the rows here hold, so a richer reading re-reads them all once (Part 35). */
+  detail?: number
 }
 
 const silent = new WeakSet<Transaction>()

@@ -204,7 +204,7 @@ describe('what the sheet learned to carry', () => {
     expect(weekBuckets(['2026-09-18', '2026-09-12', '2026-09-11', '2026-08-25', '2026-08-21', '2026-08-01', '2026-09-19'], DAY)).toEqual([1, 0, 1, 2])
   })
 
-  it('counts two workouts on one day as one workout day', async () => {
+  it('counts two workouts on one day as one workout day, and each session as its own (Part 35)', async () => {
     await db.outside.bulkPut([
       { id: 'w1', day: '2026-09-17', minutes: 40, at: '2026-09-17T11:00:00.000Z', source: 'workout' },
       { id: 'w2', day: '2026-09-17', minutes: 15, at: '2026-09-17T22:00:00.000Z', source: 'workout' },
@@ -213,7 +213,22 @@ describe('what the sheet learned to carry', () => {
     ])
     const f = factById(await factSheet(DAY, NOW), 'outside.7d')
     expect(f?.values.days).toBe(2)
-    expect(f?.text).toBe('Workout days in the last seven: 2 (2026-09-15, 2026-09-17).')
+    expect(f?.values.sessions).toBe(3)
+    expect(f?.text).toBe('Workout days in the last seven: 2 (2026-09-15, 2026-09-17); 3 sessions.')
+  })
+
+  it('carries the last session as the other app kept it, and no comparison until one can be made (Part 35)', async () => {
+    await db.outside.bulkPut([
+      { id: 'w1', day: '2026-09-16', minutes: 40, at: new Date(2026, 8, 16, 18, 30).toISOString(), source: 'workout', title: 'Push + arms', workingSets: 12, effort: 'too-hard', energyAfter: 4, avgRir: 1.5 },
+      { id: 'w2', day: '2026-09-17', minutes: 30, at: new Date(2026, 8, 17, 7, 10).toISOString(), source: 'workout', title: 'Lower body', workingSets: 9, endedEarly: true },
+    ])
+    const sheet = await factSheet(DAY, NOW)
+    const last = factById(sheet, 'workout.last')
+    expect(last?.text).toBe('The last workout: Thursday morning (2026-09-17), Lower body, 30 min, 9 working sets, ended early.')
+    expect(last?.values).toMatchObject({ block: 'morning', hard: 0, endedEarly: 1, workingSets: 9 })
+    // No evening logged: nothing to set a hard session or an evening one against yet.
+    expect(factById(sheet, 'assoc.hardWorkout')).toBeUndefined()
+    expect(factById(sheet, 'assoc.eveningWorkout')).toBeUndefined()
   })
 
   it('carries your own words, the trajectory of a commitment, and what happened since the last line', async () => {

@@ -1,6 +1,7 @@
 import { BLOCKS, blockAt, type Block } from './blocks'
 import type { CheckIn } from './db'
 import { blockReadings, type ReadingId } from './readings'
+import { sunLocal, type Place } from './sun'
 
 // Settings are one record on the phone. Depth and frequency are separate controls; Low-demand
 // mode is a preset over both that remembers what it replaced.
@@ -81,8 +82,10 @@ export interface Settings {
   chipsBack: Record<string, string>
   /** Learned weights for the reading out of 100, applied only once a weight card holds up. */
   weights: Record<string, number> | null
-  /** Daylight hours, HH:MM: a move that needs daylight is offered only inside them. */
+  /** Daylight hours, HH:MM: a move that needs daylight is offered only inside them. Used while no place is set. */
   daylight: { from: string; to: string }
+  /** Part 35: where you are, roughly (one decimal of latitude and longitude), typed once; the day's sunrise and sunset then set the daylight hours. Null until set. */
+  place: Place | null
   /** One-time setups you said came undone, by the day you said so; each is offered again after that day. */
   setupUndone: Record<string, string>
   /** The Partner path's optional online channel (Part 27): off until you turn it on; off, none of its reps is offered. */
@@ -120,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readingDecisions: {},
   chipsBack: {},
   daylight: { from: '07:00', to: '19:00' },
+  place: null,
   setupUndone: {},
   weights: null,
   partnerOnline: false,
@@ -150,6 +154,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     chipsBack: stored.chipsBack ?? {},
     weights: stored.weights ?? null,
     daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
+    place: placeOf(stored.place),
     setupUndone: stored.setupUndone ?? {},
     partnerOnline: stored.partnerOnline === true,
   }
@@ -177,6 +182,21 @@ export function activeBlocks(frequency: Frequency): readonly Block[] {
 export function minutesOf(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
+}
+
+/** A stored place, kept only when both numbers are in range; anything else is no place. */
+function placeOf(v: unknown): Place | null {
+  const p = v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+  return p && typeof p.lat === 'number' && typeof p.lon === 'number' && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180 ? { lat: p.lat, lon: p.lon } : null
+}
+
+/**
+ * The daylight hours for a day (Part 35): sunrise to sunset where you are, once a place is set;
+ * else, and on a day the sun neither rises nor sets there, the hours you set.
+ */
+export function daylightFor(settings: Pick<Settings, 'daylight' | 'place'>, day: string): { from: string; to: string } {
+  const sun = settings.place ? sunLocal(day, settings.place) : null
+  return sun ? { from: sun.rise, to: sun.set } : settings.daylight
 }
 
 /** Whether a moment falls inside the daylight hours; a window that ends before it starts wraps past midnight. */

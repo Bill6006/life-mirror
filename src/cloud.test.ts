@@ -436,6 +436,43 @@ describe('the other app’s finished workouts, read from the same database', () 
     expect(outsideDayOf(JSON.stringify({ completedAt: 'yesterday' }))).toBeNull()
     expect(outsideDayOf(JSON.stringify({ completedAt: new Date(2026, 8, 11, 7, 45).toISOString(), elapsedSeconds: 90 }))).toMatchObject({ day: '2026-09-11', minutes: 2 })
   })
+
+  it('reads each session’s detail from the same row, and leaves out what a row lacks or holds in another shape (Part 35)', () => {
+    const set = (kind: string, rir: number | null, completed = true) => ({ kind, reps: 8, weight: 60, rir, completed })
+    const full = outsideDayOf(
+      JSON.stringify({
+        startedAt: new Date(2026, 8, 20, 18, 0).toISOString(),
+        completedAt: new Date(2026, 8, 20, 18, 50).toISOString(),
+        elapsedSeconds: 2940,
+        title: 'Push + arms',
+        endedEarly: false,
+        entries: [{ exerciseId: 'a', sets: [set('warmup', null), set('working', 2), set('working', 1), set('working', null)] }, { exerciseId: 'b', sets: [set('working', 0), set('working', 3, false), set('drop', 0)] }],
+        rating: { effort: 'too-hard', energyAfter: 4, pain: false, note: 'kept private' },
+      }),
+    )
+    expect(full).toMatchObject({ day: '2026-09-20', minutes: 49, title: 'Push + arms', endedEarly: false, workingSets: 4, effort: 'too-hard', energyAfter: 4, avgRir: 1 })
+    expect(full).not.toHaveProperty('imported')
+    expect(JSON.stringify(full)).not.toContain('kept private')
+    const bare = outsideDayOf(JSON.stringify({ completedAt: new Date(2026, 8, 21, 7, 0).toISOString(), rating: { effort: 'hard?', energyAfter: 9 }, entries: 'none', source: 'legacy-import' }))
+    expect(bare).toMatchObject({ day: '2026-09-21', imported: true })
+    for (const k of ['startedAt', 'title', 'effort', 'energyAfter', 'avgRir', 'workingSets']) expect(bare).not.toHaveProperty(k)
+  })
+
+  it('re-reads every workout once from the start when the reading of them grows, so the ones already kept gain their detail (Part 35)', async () => {
+    const store = memoryStore()
+    await store.upsert([outsideRow('w1', { id: 'w1', completedAt: new Date(2026, 8, 11, 19, 0).toISOString(), title: 'Lower body', rating: { effort: 'right', energyAfter: 3 } }, '2026-09-11T20:00:00.000Z')])
+    // A phone that read these rows before Part 35: its watermark is past the row, and it kept no detail.
+    await db.outside.put({ id: 'w1', day: '2026-09-11', minutes: null, at: new Date(2026, 8, 11, 19, 0).toISOString(), source: 'workout' })
+    await db.cloudMeta.put({ key: 'outside', watermark: '2026-09-12T00:00:00.000Z', lastSyncAt: null, lastError: null })
+    await withToken(store)
+    await syncNow()
+    expect(await db.outside.get('w1')).toMatchObject({ title: 'Lower body', effort: 'right', energyAfter: 3 })
+    expect((await getOutsideMeta()).detail).toBe(2)
+    // Once only: the next pull starts from its watermark again.
+    await db.outside.update('w1', { title: 'kept here' })
+    await syncNow()
+    expect((await db.outside.get('w1'))?.title).toBe('kept here')
+  })
 })
 
 describe('the brain’s lines, read from the same database', () => {

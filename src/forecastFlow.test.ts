@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
 import { db, type CheckIn } from './db'
-import { briefData, eveningWorkoutDays, runForecasting } from './forecastFlow'
+import { briefData, runForecasting } from './forecastFlow'
+import { eveningWorkoutDays } from './workouts'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
 // The forecast writer against the real store: single-flight, add-only, each slot written once

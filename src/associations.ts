@@ -85,6 +85,24 @@ export function associationFor(checkins: readonly CheckIn[], today: string, isEv
   return likeForLike(eveningPoints(checkins, today, isEvent, include))
 }
 
+/**
+ * As eveningPoints, with the outcome read from the next morning by a measure of its own: a
+ * reading's position, say, rather than the reading out of 100 (Part 35).
+ */
+export function eveningPointsBy(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, measure: (morning: CheckIn) => number | null): DayPoint[] {
+  const byKey = indexCheckIns(checkins)
+  return checkins
+    .filter((c) => c.block === 'evening' && c.day < today)
+    .map((c) => {
+      const m = byKey.get(slotKey(addDays(c.day, 1), 'morning'))
+      return { day: c.day, band: eveningBand(byKey, c.day), event: isEvent(c), outcome: m ? measure(m) : null }
+    })
+}
+
+export function associationBy(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, measure: (morning: CheckIn) => number | null): Association {
+  return likeForLike(eveningPointsBy(checkins, today, isEvent, measure))
+}
+
 /** Every morning before today as a point: whether it carried the event, its band, and what that afternoon read. */
 export function morningPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): DayPoint[] {
   const byKey = indexCheckIns(checkins)

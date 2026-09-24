@@ -134,15 +134,42 @@ export function brainReadOf(id: string, body: string): BrainRead | null {
   }
 }
 
-/** What an outside workout row says: its local day from the completion time, and its minutes when the record carries them. */
+/** Which reading of the other app's rows this app keeps: 2 adds each session's detail (Part 35). */
+export const OUTSIDE_DETAIL = 2
+
+/**
+ * What an outside workout row says: its local day from the completion time, its minutes, and since
+ * Part 35 the detail the other app keeps: when it began, its type, whether it ended early, the
+ * working sets done, your rating afterwards and the reps in reserve. Anything a row lacks or holds
+ * in another shape is left out, never guessed; a row that cannot be read at all is no session.
+ */
 export function outsideDayOf(body: string): Omit<OutsideDay, 'id'> | null {
   try {
-    const r = JSON.parse(body) as { completedAt?: unknown; elapsedSeconds?: unknown }
+    const r = JSON.parse(body) as Record<string, unknown>
     if (typeof r.completedAt !== 'string' || !r.completedAt) return null
     const at = new Date(r.completedAt)
     if (Number.isNaN(at.getTime())) return null
     const minutes = typeof r.elapsedSeconds === 'number' && r.elapsedSeconds > 0 ? Math.round(r.elapsedSeconds / 60) : null
-    return { day: dayKey(at), minutes, at: r.completedAt, source: 'workout' }
+    const sets = (Array.isArray(r.entries) ? r.entries : []).flatMap((e) => (e && typeof e === 'object' && Array.isArray((e as { sets?: unknown }).sets) ? ((e as { sets: unknown[] }).sets as Record<string, unknown>[]) : []))
+    const working = sets.filter((s) => s && s.kind === 'working' && s.completed !== false)
+    const rirs = working.map((s) => s.rir).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+    const rating = r.rating && typeof r.rating === 'object' ? (r.rating as Record<string, unknown>) : null
+    const effort = rating && (rating.effort === 'too-easy' || rating.effort === 'right' || rating.effort === 'too-hard') ? rating.effort : null
+    const energy = rating && typeof rating.energyAfter === 'number' && rating.energyAfter >= 1 && rating.energyAfter <= 5 ? rating.energyAfter : null
+    return {
+      day: dayKey(at),
+      minutes,
+      at: r.completedAt,
+      source: 'workout',
+      ...(typeof r.startedAt === 'string' && Number.isFinite(Date.parse(r.startedAt)) ? { startedAt: r.startedAt } : {}),
+      ...(typeof r.title === 'string' && r.title.trim() ? { title: r.title.trim().slice(0, 60) } : {}),
+      ...(typeof r.endedEarly === 'boolean' ? { endedEarly: r.endedEarly } : {}),
+      ...(Array.isArray(r.entries) ? { workingSets: working.length } : {}),
+      ...(effort ? { effort } : {}),
+      ...(energy !== null ? { energyAfter: energy } : {}),
+      ...(rirs.length ? { avgRir: Math.round((rirs.reduce((a, b) => a + b, 0) / rirs.length) * 10) / 10 } : {}),
+      ...(r.source === 'legacy-import' ? { imported: true } : {}),
+    }
   } catch {
     return null
   }
@@ -346,6 +373,9 @@ export function wholeRuns<T extends { synced_at: string }>(rows: T[], page: numb
  */
 async function pullOutside(store: CloudStore): Promise<number> {
   let applied = 0
+  // A richer reading of the rows re-reads them all once from the start, so every session already kept gains its detail (Part 35).
+  const first = await getOutsideMeta()
+  if ((first.detail ?? 1) < OUTSIDE_DETAIL) await db.cloudMeta.put({ ...first, key: 'outside', watermark: '', detail: OUTSIDE_DETAIL })
   for (;;) {
     const meta = await getOutsideMeta()
     const page = await store.pull(OUTSIDE_APP, meta.watermark, PAGE)
@@ -358,7 +388,7 @@ async function pullOutside(store: CloudStore): Promise<number> {
         if (day) await db.outside.put({ id: row.id, ...day })
         else await db.outside.delete(row.id)
       }
-      await db.cloudMeta.put({ ...meta, key: 'outside', watermark: rows[rows.length - 1].synced_at })
+      await db.cloudMeta.put({ ...meta, key: 'outside', watermark: rows[rows.length - 1].synced_at, detail: OUTSIDE_DETAIL })
     })
     applied += rows.length
     if (page.length < PAGE) break

@@ -26,7 +26,7 @@ import { nextStep, parseRungId, RUNG_MINUTES, rungStep, sittingOf, type RungMove
 import { noTimeCeiling, observations, WINDOW_PENALTY } from './learning'
 import { pathOn } from './pathFlow'
 import { beliefsFor, recoveryGapDue } from './learningFlow'
-import { inDaylight, minutesOf, type Settings, type Weekday } from './settings'
+import { daylightFor, inDaylight, minutesOf, type Settings, type Weekday } from './settings'
 import { studyVersions, type ReasonCheck } from './studyNight'
 import { hasItsEight } from './tiers'
 
@@ -192,7 +192,7 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
   // Part 24: with a path on, its row is the day's one people rep.
   const pathIsOn = (await db.aims.filter(pathOn).count()) > 0
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(settings.daylight, now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */

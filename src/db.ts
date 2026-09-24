@@ -9,6 +9,7 @@ import { blockIndex, compareSlots, parseDay, type Block, type Slot } from './blo
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, withDefaults, type Settings, type Weekday } from './settings'
+import { sunLocal } from './sun'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
@@ -62,6 +63,8 @@ export interface DayContext {
   atOffice?: boolean
   pickupTime: string | null
   soloUntil: string
+  /** Part 35: the day's sunrise and sunset where you are, HH:MM, when a place was set as the day began: its light, kept for the record. */
+  light?: { rise: string; set: string }
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string
@@ -287,8 +290,23 @@ export interface OutsideDay {
   day: string
   /** Minutes the session ran, when the record says. */
   minutes: number | null
+  /** When it finished. */
   at: string
   source: 'workout'
+  /** Part 35, read from the same row, each only when the row holds it: when it began. */
+  startedAt?: string
+  /** Its type, as the other app titles it: Push + arms, Lower body and so on. */
+  title?: string
+  endedEarly?: boolean
+  /** Working sets done: warm-ups and sets left undone are not counted. */
+  workingSets?: number
+  /** Your rating afterwards, when you gave one: the effort, and your energy from 1 to 5. */
+  effort?: 'too-easy' | 'right' | 'too-hard'
+  energyAfter?: number
+  /** Reps in reserve, averaged over the working sets that logged one. */
+  avgRir?: number
+  /** An older session brought in by the other app's import, not logged live. */
+  imported?: boolean
 }
 
 /** What HAPPENED: the one-tap answer at the next check-in. Null means the question was passed over. */
@@ -991,6 +1009,7 @@ export async function getDayContext(day: string): Promise<DayContext | null> {
 export function contextFromWeek(day: string, settings: Settings, createdAt: string = new Date().toISOString()): DayContext {
   const weekday = parseDay(day).getDay() as Weekday
   const w = settings.week
+  const light = settings.place ? sunLocal(day, settings.place) : null
   return {
     day,
     weekday,
@@ -1001,6 +1020,7 @@ export function contextFromWeek(day: string, settings: Settings, createdAt: stri
     // The pickup, and the daycare day it implies, hold on the daycare days you set.
     pickupTime: w.daycareDays[weekday] ? w.pickupTime : null,
     soloUntil: w.soloUntil,
+    ...(light ? { light } : {}),
     changed: false,
     createdAt,
   }

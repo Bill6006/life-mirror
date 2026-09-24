@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
+import { blockAt } from './blocks'
 import { build } from './build'
 import { Seg, SwitchRow, TimeRow } from './controls'
 import { copy } from './copy'
 import { getSettings, updateSettings } from './db'
-import { fill, formatWhen } from './format'
+import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
 import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
-import { activeBlocks, applyLowDemand, type Settings, type Weekday } from './settings'
+import { activeBlocks, applyLowDemand, daylightFor, type Settings, type Weekday } from './settings'
+import { parsePlace, placeText, sunLocal, type Place } from './sun'
 import { setTheme, THEMES, useTheme, type ThemeId } from './theme'
 import { Disclosure, LinkRow, SectionLabel, SubHead } from './ui'
 
@@ -39,7 +41,7 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
   const extrasOn = EXTRA_KEYS.filter((k) => s.extras[k]).length
   const tests = build.unitTests === null ? n.aboutNoTests : fill(n.aboutTests, { n: String(build.unitTests) })
   return {
-    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: w.pickupTime }), fill(n.daylight, { from: s.daylight.from, to: s.daylight.to })].join(' · '),
+    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: w.pickupTime }), fill(s.place ? n.daylightSun : n.daylight, daylightFor(s, blockAt(new Date()).day))].join(' · '),
     checkins: [...(s.lowDemand ? [n.lowDemandOn] : []), freq, s.depth === 'full' ? n.depthFull : n.depthShort, fill(n.quiet, { from: s.quietStart, to: s.quietEnd }), s.reminders.enabled ? n.remindersOn : n.remindersOff].join(' · '),
     extras: fill(n.extrasOn, { n: String(extrasOn), of: String(EXTRA_KEYS.length) }),
     moves: [s.hideFaith ? n.faithOff : n.faithOn, s.privateInSelection ? n.privateIn : n.privateOut].join(' · '),
@@ -127,6 +129,52 @@ function DayChips({ label, value, onChange, testid }: { label: string; value: Re
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Where you are, roughly (Part 35): typed once as latitude and longitude, kept to one decimal, and
+ * today's sunrise and sunset shown back. Emptied, the hours you set take over again. Nothing is
+ * looked up or sent anywhere: the sun is worked out on the phone.
+ */
+function PlaceRow({ place, onSave }: { place: Place | null; onSave: (p: Place | null) => void }) {
+  const w = copy.week
+  const [text, setText] = useState(place ? placeText(place) : '')
+  const [bad, setBad] = useState(false)
+  useEffect(() => setText(place ? placeText(place) : ''), [place?.lat, place?.lon])
+  const sun = place ? sunLocal(blockAt(new Date()).day, place) : null
+  function save() {
+    if (!text.trim()) {
+      setBad(false)
+      if (place) onSave(null)
+      return
+    }
+    const p = parsePlace(text)
+    setBad(!p)
+    if (p && (p.lat !== place?.lat || p.lon !== place?.lon)) onSave(p)
+  }
+  return (
+    <div class="setting" data-testid="place-row">
+      <p class="setting-label">{w.place}</p>
+      <input
+        class="input"
+        type="text"
+        inputMode="decimal"
+        maxLength={40}
+        placeholder={w.placeHint}
+        value={text}
+        aria-label={w.place}
+        data-testid="place-field"
+        onInput={(e) => setText((e.currentTarget as HTMLInputElement).value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+        }}
+      />
+      <p class="note faint" data-testid="place-note">
+        {bad ? w.placeBad : place ? (sun ? fill(w.placeSun, { rise: formatHHMM(sun.rise), set: formatHHMM(sun.set) }) : w.placePolar) : w.placeNone}
+      </p>
     </div>
   )
 }
@@ -252,8 +300,9 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
               <SwitchRow label={copy.week.livesWithMe} note={copy.week.livesWithMeNote} on={w.livesWithMe} onChange={(livesWithMe) => setWeek((week) => ({ ...week, livesWithMe }))} testid="lives-with-me" />
               <DayChips label={copy.week.studyNights} value={w.studyNights} onChange={(studyNights) => setWeek((week) => ({ ...week, studyNights }))} />
               <DayChips label={copy.week.officeDays} value={w.officeDays} onChange={(officeDays) => setWeek((week) => ({ ...week, officeDays }))} testid="office-days" />
-              <TimeRow label={copy.week.daylightFrom} value={cur.daylight.from} onChange={(from) => set((s) => ({ ...s, daylight: { ...s.daylight, from } }))} />
-              <TimeRow label={copy.week.daylightTo} value={cur.daylight.to} onChange={(to) => set((s) => ({ ...s, daylight: { ...s.daylight, to } }))} />
+              <PlaceRow place={cur.place} onSave={(place) => set((s) => ({ ...s, place }))} />
+              {!cur.place && <TimeRow label={copy.week.daylightFrom} value={cur.daylight.from} onChange={(from) => set((s) => ({ ...s, daylight: { ...s.daylight, from } }))} />}
+              {!cur.place && <TimeRow label={copy.week.daylightTo} value={cur.daylight.to} onChange={(to) => set((s) => ({ ...s, daylight: { ...s.daylight, to } }))} />}
               <SwitchRow label={copy.week.pickupOn} on={w.pickupTime !== null} onChange={(on) => setWeek((week) => ({ ...week, pickupTime: on ? '17:00' : null }))} testid="pickup-on" />
               {w.pickupTime !== null && <TimeRow label={copy.week.pickupTime} value={w.pickupTime} onChange={(pickupTime) => setWeek((week) => ({ ...week, pickupTime }))} />}
               {w.pickupTime !== null && <DayChips label={copy.week.daycareDays} value={w.daycareDays} onChange={(daycareDays) => setWeek((week) => ({ ...week, daycareDays }))} testid="daycare-days" />}
