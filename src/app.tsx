@@ -34,6 +34,7 @@ import { extrasEnabled } from './settings'
 import { SettingsScreen, SettingsSectionScreen, type SettingsSection } from './settingsScreen'
 import { Icon } from './icons'
 import { StudyNightStep } from './studyStep'
+import { logUse, pruneUseLog } from './useLog'
 import { WordingScreen } from './wording'
 
 type Tab = keyof typeof copy.tabs
@@ -67,10 +68,40 @@ type View =
   | { kind: 'weekly' }
   | { kind: 'readings' }
 
+/** The screen a view is, for the use log: a tab, a sub-screen or a Settings section; the check-in's own steps are counted apart. */
+function screenOf(view: View, tab: Tab): string | null {
+  switch (view.kind) {
+    case 'tabs':
+      return tab
+    case 'checkin':
+    case 'extras':
+    case 'study':
+      return null
+    case 'summary':
+      return view.fresh ? null : 'summary'
+    case 'settings':
+      return `settings:${view.section}`
+    default:
+      return view.kind
+  }
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
   const [view, setView] = useState<View>({ kind: 'tabs' })
   const pushed = useRef(0)
+  // Part 34: how the app is used, on this phone alone. A screen each time it opens; a check-in when it opens, and when it is left before its end.
+  const shown = screenOf(view, tab)
+  useEffect(() => {
+    if (shown) void logUse('screen', shown)
+  }, [shown])
+  const before = useRef<View>(view)
+  useEffect(() => {
+    const prev = before.current
+    before.current = view
+    if (view.kind === 'checkin' && !view.only && !(prev.kind === 'checkin' && prev.day === view.day && prev.block === view.block)) void logUse('checkinOpened', view.block)
+    if (prev.kind === 'checkin' && !prev.only && view.kind === 'tabs') void logUse('checkinLeft', prev.block)
+  }, [view])
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
   const pending = useLive(pendingOffers, [])
@@ -80,6 +111,7 @@ export function App() {
   // Phase 10: beliefs update once a day, on open.
   useEffect(() => {
     const day = blockAt(new Date()).day
+    void pruneUseLog(day)
     void loadAudits()
       .then(adoptOrphanSubjects)
       .then(alignLadders)

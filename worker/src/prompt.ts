@@ -1,4 +1,4 @@
-import { GRADE_PHRASES, LINE_CUES, MAX_WORDS, MODES, REVIEW_PART_WORDS } from '../../src/brainShared'
+import { GRADE_PHRASES, LACKED, LACKED_MEANS, LINE_CUES, MAX_LACKED, MAX_WORDS, MODES, REVIEW_PART_WORDS } from '../../src/brainShared'
 import type { RankedLine } from '../../src/factTypes'
 import type { CoachCoreKey, LineBriefing, Said } from './briefing'
 import { COACH_WORDS } from './coachCheck'
@@ -60,6 +60,9 @@ ${RULES}
 
 Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...", "change": "...", "factIds": ["..."], "cardIds": ["..."]}`
 
+/** Part 34: what the writer may say it lacked, counted on the phone and nothing more. */
+const LACKED_LINE = `Optionally, in "lacked", name up to ${MAX_LACKED} things you would have needed and did not have, as ids from this list: ${LACKED.map((id) => `${id} (${LACKED_MEANS[id]})`).join('; ')}. Leave it [] when nothing was missing. It is counted on the phone, never shown, and never decides whether your answer is accepted.`
+
 const CLAUDE_LINE_SYSTEM = `You write one line a day for one person's phone, as Claude, from their Life Mirror record, through their own Worker. You get the shape of the day you are writing for, the phone's own ranking of what is true today (best first), the day's fact sheet (each fact has an id in brackets), a set of claim cards from an evidence library (each with an id and a grade), what was said on recent days with how it landed, and private context from their record.
 
 Write the single most useful thing for this person to hear, understand, reconsider or do on the day you are writing for; the phone's ranking is a strong guide, not a rule. Choose one mode: ${MODES.join(', ')}. Sometimes that is an observation, a challenge, a change of strategy, a warning, a recommendation, a perspective, or encouragement. Never comfort by default and never push by default; the facts and the evidence decide.
@@ -69,7 +72,9 @@ ${PRIVATE_RULES}
 - One line, under ${MAX_WORDS} words.
 ${ACTION_RULE}
 
-Answer with JSON only, nothing before or after: {"mode": "...", "text": "...", "factIds": ["..."], "cardIds": ["..."], "action": null}`
+${LACKED_LINE}
+
+Answer with JSON only, nothing before or after: {"mode": "...", "text": "...", "factIds": ["..."], "cardIds": ["..."], "action": null, "lacked": []}`
 
 const CLAUDE_REVIEW_SYSTEM = `You write the weekly review for one person's phone, on Sunday, as Claude, from their Life Mirror record, through their own Worker: the week as the fact sheet shows it, the private context of the week read through their Brain settings, and what was said this week with how it landed.
 
@@ -80,7 +85,9 @@ ${PRIVATE_RULES}
 - The Partner path appears only as acts done and experiences the person wrote about, never as a shortfall, never as something missing.
 - Each part under ${REVIEW_PART_WORDS} words. The citations cover all three parts together.
 
-Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...", "change": "...", "factIds": ["..."], "cardIds": ["..."]}`
+${LACKED_LINE}
+
+Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...", "change": "...", "factIds": ["..."], "cardIds": ["..."], "lacked": []}`
 
 const CLAUDE_COACH_SYSTEM = `You are the coach for one person's Life Mirror paths, as Claude, through their own Worker. The app has already decided which reps are possible for the People row today; you choose among them and word today's version. You never widen or narrow what is possible.
 

@@ -8,6 +8,7 @@ import { gradeWord } from './library'
 import { useLive } from './live'
 import { nameOf } from './offerFlow'
 import { readingById } from './readings'
+import { logUse } from './useLog'
 
 // The brief on Now. The brain's line for the day comes first: the Worker's when it wrote one,
 // else the phone's own, chosen by the situation engine from the fact sheet and the library.
@@ -169,7 +170,7 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
       </p>
       {line.action && act?.state === 'open' && (
         <div class="actions">
-          <button type="button" class={primary ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="brief-action" onClick={() => void applyLineAction(day, line.action as NonNullable<BriefLine['action']>)}>
+          <button type="button" class={primary ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid="brief-action" onClick={() => void applyLineAction(day, line.action as NonNullable<BriefLine['action']>).then(() => logUse('lineAction', line.action?.kind))}>
             {actionLabel(line, act)}
           </button>
         </div>
@@ -240,7 +241,17 @@ export function Brief({ day, version = 0, primary = false }: { day: string; vers
       </div>
       {line ? (
         <>
-          <BrainLine day={day} line={line} act={act} open={open} onToggle={() => setOpen((v) => !v)} primary={primary} />
+          <BrainLine
+            day={day}
+            line={line}
+            act={act}
+            open={open}
+            onToggle={() => {
+              if (!open) void logUse('lineWhy')
+              setOpen((v) => !v)
+            }}
+            primary={primary}
+          />
           {b.ready && !isStretchLine(line) && <Warning b={b} />}
           {open && <WhyPanel day={day} line={line} b={b} />}
         </>

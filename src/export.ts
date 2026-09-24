@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type Win } from './db'
+import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
@@ -30,6 +30,8 @@ export interface RecordsData {
   pathMarks?: readonly PathMark[]
   reflections?: readonly Reflection[]
   monthlyChecks?: readonly MonthlyCheck[]
+  /** How the app is used (Part 34): counts and times, on this phone alone; in your own file only. */
+  useLog?: readonly UseRow[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -133,6 +135,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       checkins,
       freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
+      useLog: (records?.useLog ?? []).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),
       ...(records
         ? {
             offers: offers.map((o) => {
@@ -149,7 +152,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             },
             brain: {
               lines: (records.brain?.log ?? []).filter((l) => !aboutPartner(l.factIds)).map((l) => ({ day: l.day, source: 'phone', situation: l.situationId, mode: l.mode, text: l.text, facts: l.factIds, cards: l.cardIds, at: l.at })),
-              briefs: (records.brain?.briefs ?? []).filter((b) => !aboutPartner(b.factIds)).map((b) => ({ id: b.id, day: b.day, kind: b.kind, mode: b.mode, text: b.text, facts: b.factIds, cards: b.cardIds, model: b.model, at: b.at })),
+              briefs: (records.brain?.briefs ?? []).filter((b) => !aboutPartner(b.factIds)).map((b) => ({ id: b.id, day: b.day, kind: b.kind, mode: b.mode, text: b.text, facts: b.factIds, cards: b.cardIds, model: b.model, at: b.at, lacked: b.lacked ?? [] })),
               feedback: (records.brain?.feedback ?? []).map((f) => ({ day: f.day, line: f.briefKey, situation: f.situationId, answer: f.answer, at: f.at })),
             },
             ...(partner

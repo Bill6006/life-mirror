@@ -67,6 +67,36 @@ export function nearRepeat(text: string, recent: readonly { day: string; text: s
 }
 export const REVIEW_PART_WORDS = 45
 
+/**
+ * What Claude may say it lacked for a line or the week's review (Part 34): a fixed list, counted
+ * on the phone and nothing more. It never reaches the line and never refuses one; anything off the
+ * list is dropped.
+ */
+export const LACKED = ['longerRecord', 'workoutDetail', 'sleepDetail', 'dayPlans', 'reasons', 'outcomes', 'notes', 'people', 'other'] as const
+export type Lacked = (typeof LACKED)[number]
+export const MAX_LACKED = 3
+
+/** What each id means, as the writer is told. */
+export const LACKED_MEANS: Readonly<Record<Lacked, string>> = {
+  longerRecord: 'more days of record than exist yet',
+  workoutDetail: 'what a workout was, beyond that the day had one',
+  sleepDetail: 'sleep beyond the two sleep readings',
+  dayPlans: 'what the day held: plans, events, who was coming',
+  reasons: 'why a step or a move was not done',
+  outcomes: 'whether a move or a step helped',
+  notes: 'your own notes',
+  people: 'who was around',
+  other: 'something not on this list',
+}
+
+/** The ids a writer named, known ones only, each once, at most three; anything else is dropped, never refused. */
+export function lackedOf(v: unknown): Lacked[] {
+  if (!Array.isArray(v)) return []
+  const out: Lacked[] = []
+  for (const x of v) if (typeof x === 'string' && (LACKED as readonly string[]).includes(x) && !out.includes(x as Lacked)) out.push(x as Lacked)
+  return out.slice(0, MAX_LACKED)
+}
+
 export type LineCue = 'afterPickup' | 'afterBedtime' | 'nextCheckIn'
 export const LINE_CUES: readonly LineCue[] = ['afterPickup', 'afterBedtime', 'nextCheckIn']
 

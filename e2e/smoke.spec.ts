@@ -1397,3 +1397,40 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await partnerCard.getByTestId('partner-date-2026-09-23').click()
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')
 })
+
+test('the use log counts on this phone alone, and what Claude lacked is counted under Brain (Part 34)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 9, 30))
+  await page.goto('./')
+  // A few screens, and a check-in opened and left before its end.
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).first().click()
+  await page.getByTestId('anchor').nth(2).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await settingsSection(page, 'data')
+  const card = page.getByTestId('use-log')
+  await expect(card).toContainText('never synced, never sent')
+  await expect(card.getByTestId('use-checkins')).toHaveText('Check-ins: 1 opened, 1 left before the end')
+  // Now three times: on opening, by its tab, and on leaving the check-in.
+  await expect(card.getByTestId('use-screens')).toContainText('Now 3')
+  await card.getByTestId('use-screens').click()
+  await expect(card.getByTestId('use-screen-list')).toContainText('Mirror 1')
+  await expect(card.getByTestId('use-screen-list')).toContainText('Data and privacy 1')
+  await expect(card.getByTestId('use-screen-list')).toContainText('Settings 1')
+  await page.getByRole('button', { name: 'Done', exact: true }).last().click()
+  // Claude has named nothing yet; a line that named two things is counted, never shown.
+  await page.evaluate(
+    () =>
+      new Promise<void>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => {
+          const tx = r.result.transaction('brainBriefs', 'readwrite')
+          tx.objectStore('brainBriefs').put({ id: '2026-09-24:brief', day: '2026-09-24', kind: 'brief', text: 'A line Claude wrote for this test.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-24T13:00:00.000Z', factsDay: '2026-09-24', writer: 'claude', askedModel: 'opus', lacked: ['workoutDetail', 'notes'] })
+          tx.oncomplete = () => res()
+          tx.onerror = () => rej(tx.error)
+        }
+      }),
+  )
+  await page.getByTestId('settings-brain').click()
+  await expect(page.getByTestId('brain-lacked-counts')).toHaveText('Your notes 1 · Workout detail 1')
+})

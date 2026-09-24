@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { aimsSnapshot } from './aimFlow'
 import { deleteCloudCopy } from './cloudSync'
 import { importHypothesis } from './learningFlow'
-import { dayKey } from './blocks'
+import { blockAt, dayKey } from './blocks'
 import { copy } from './copy'
 import { allCheckIns, allWins, db, getSettings, privateItems, updateSettings, wipeEverything } from './db'
 import { buildExport } from './export'
@@ -10,8 +10,55 @@ import { fill, formatWhen } from './format'
 import { useLive } from './live'
 import { unsubscribePush } from './push'
 import { shareOrDownload } from './share'
+import { Disclosure } from './ui'
+import { useSummary, type UseSummary } from './useLog'
 
 /** Rule 13 of the plan: anything recorded can be exported or deleted. Rule 11: private items stay out unless ticked, and so does the Partner path (Part 27). */
+/** A screen's name for the use log's list: a tab, a Settings section, or a sub-screen. */
+function screenName(id: string): string {
+  const u = copy.useLog
+  if (id in copy.tabs) return copy.tabs[id as keyof typeof copy.tabs]
+  if (id.startsWith('settings:')) {
+    const section = id.slice('settings:'.length)
+    return `${copy.tabs.settings} · ${(copy.settingsNav as Record<string, unknown>)[section] ?? section}`
+  }
+  return (u.screenNames as Record<string, string>)[id] ?? id
+}
+
+/** How you use the app (Part 34): counts over four weeks, on this phone alone. The full list of screens sits behind one row. */
+function UseCard({ use }: { use: UseSummary }) {
+  const u = copy.useLog
+  const top = use.screens.slice(0, 3).map((s) => fill(u.screenItem, { what: screenName(s.what), n: String(s.n) })).join(' · ')
+  return (
+    <>
+      <h2 class="section">{u.title}</h2>
+      <div class="card pad" data-testid="use-log">
+        <p class="note">{u.note}</p>
+        <p class="calc-line" data-testid="use-checkins">
+          {fill(u.checkins, { opened: String(use.checkins.opened), left: String(use.checkins.left) })}
+        </p>
+        <p class="calc-line" data-testid="use-line">
+          {use.line.withAction ? fill(u.line, { taken: String(use.line.taken), days: String(use.line.withAction), why: String(use.line.why) }) : fill(u.lineNone, { why: String(use.line.why) })}
+        </p>
+        <p class="calc-line" data-testid="use-coach">
+          {use.coach.picked ? fill(u.coach, { notTaken: String(use.coach.notTaken), picked: String(use.coach.picked) }) : u.coachNone}
+        </p>
+        <p class="calc-line">{fill(u.notifications, { n: String(use.notifications) })}</p>
+        <p class="calc-line">{fill(u.change, { opened: String(use.change.opened), picked: String(use.change.picked) })}</p>
+        <Disclosure label={u.screens} sub={top || u.screensNone} testid="use-screens">
+          <ul class="plain" data-testid="use-screen-list">
+            {use.screens.map((s) => (
+              <li key={s.what} class="calc-line">
+                {fill(u.screenItem, { what: screenName(s.what), n: String(s.n) })}
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+      </div>
+    </>
+  )
+}
+
 export function DataScreen({ onClose }: { onClose: () => void }) {
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
@@ -27,7 +74,8 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [cloudFailed, setCloudFailed] = useState(false)
   const [hypothesis, setHypothesis] = useState('')
   const [imported, setImported] = useState<string | null>(null)
-  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() }, pathMarks: await db.pathMarks.toArray(), reflections: await db.reflections.toArray(), monthlyChecks: await db.monthlyChecks.toArray() }), [])
+  const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() }, pathMarks: await db.pathMarks.toArray(), reflections: await db.reflections.toArray(), monthlyChecks: await db.monthlyChecks.toArray(), useLog: await db.useLog.toArray() }), [])
+  const use = useLive(() => useSummary(blockAt(new Date()).day), [])
   if (!settings || !all || !wins || !items || !aims || !records) return <section class="screen" />
 
   async function exportAll() {
@@ -174,6 +222,8 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
       <div class="card pad" data-testid="data-who-reads">
         <p class="note no-gap">{copy.settings.dataNote}</p>
       </div>
+
+      {use && <UseCard use={use} />}
 
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>

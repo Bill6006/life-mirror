@@ -1,4 +1,5 @@
-import { BRAIN_SWITCHES, WRITER_MODELS, type WriterModel } from './brainShared'
+import { addDays, blockAt } from './blocks'
+import { BRAIN_SWITCHES, WRITER_MODELS, type Lacked, type WriterModel } from './brainShared'
 import { getBrainPrefs, setBrainSwitch, setWriterModel } from './brainPrefs'
 import { hasMove, moveById } from './catalogue'
 import { SwitchRow } from './controls'
@@ -6,6 +7,7 @@ import { copy } from './copy'
 import { db, getSettings, type BrainBrief, type BrainRead } from './db'
 import { fill, formatDayShort } from './format'
 import { useLive } from './live'
+import { USE_WINDOW_DAYS } from './useLog'
 
 /**
  * Settings → Brain (Part 30): who writes the day's line, one row of chips starting on Opus; what
@@ -39,12 +41,22 @@ function readGroups(reads: readonly BrainRead[]): { day: string; task: BrainRead
   return [...groups.values()].slice(0, 14).map((g) => ({ day: g.day, task: g.task, dry: g.dry, items: [...g.items.values()] }))
 }
 
+/** What Claude named as lacking over the last four weeks of its lines and reviews, most first (Part 34). */
+export async function lackedCounts(today: string): Promise<{ id: Lacked; n: number }[]> {
+  const from = addDays(today, -(USE_WINDOW_DAYS - 1))
+  const counts = new Map<Lacked, number>()
+  for (const b of await db.brainBriefs.where('day').between(from, today, true, true).toArray()) for (const id of b.lacked ?? []) counts.set(id, (counts.get(id) ?? 0) + 1)
+  return [...counts].map(([id, n]) => ({ id, n })).sort((a, b) => b.n - a.n || (a.id < b.id ? -1 : 1))
+}
+
 export function BrainScreen({ onClose }: { onClose: () => void }) {
   const prefs = useLive(getBrainPrefs, [])
   const settings = useLive(getSettings, [])
   const lines = useLive(() => db.brainBriefs.orderBy('day').reverse().filter((b) => b.kind === 'brief').limit(7).toArray(), [])
   const reads = useLive(() => db.brainReads.orderBy('day').reverse().limit(400).toArray(), [])
   const coached = useLive(() => db.coachPicks.orderBy('day').reverse().limit(1).toArray(), [])
+  // Part 34: what Claude said it lacked, counted over four weeks of its lines and reviews.
+  const lacked = useLive(() => lackedCounts(blockAt(new Date()).day), [])
   if (!prefs || !settings || !lines || !reads || !coached) return <section class="screen" />
   const c = copy.brainScreen
   const labelOf = (category: string) => (c.switches as Record<string, { label: string }>)[category]?.label ?? category
@@ -102,6 +114,14 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
         <p class="note faint">{c.coachNote}</p>
         <p class="calc-line no-gap" data-testid="brain-coach-last">
           {coached[0] ? fill(c.coachLast, { day: formatDayShort(coached[0].day), reps: coached[0].ids.map((id) => (hasMove(id) ? moveById(id).name : id)).join(', ') }) : c.coachNone}
+        </p>
+      </div>
+
+      <h2 class="section">{c.lacked}</h2>
+      <div class="card pad" data-testid="brain-lacked">
+        <p class="note faint">{c.lackedNote}</p>
+        <p class="calc-line no-gap" data-testid="brain-lacked-counts">
+          {lacked && lacked.length ? lacked.map((l) => fill(c.lackedItem, { what: c.lackedLabels[l.id], n: String(l.n) })).join(' · ') : c.lackedNone}
         </p>
       </div>
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { LACKED } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import catalogue from '../../src/catalogue.json'
 import cards from '../../src/library.json'
@@ -250,6 +251,26 @@ describe('the line Claude posts back', () => {
     expect(await store.readTask(taskIdOf('line', DAY))).toMatchObject({ status: 'written', writer: 'claude', writtenModel: 'claude-opus-5-5', posts: 1, latencyMs: 180_000 })
     expect((await post(store, at('07:49'), good)).status).toBe(409)
     expect(await runBrief(env, store, freeRun, at('08:30'), { fetcher })).toMatchObject({ wrote: false, reason: 'written already' })
+  })
+
+  it('keeps what Claude said it lacked, known ids only, each once, at most three, and never refuses a line over it (Part 34)', async () => {
+    const store = withSheet()
+    await fired(store)
+    expect(await post(store, at('07:48'), { ...good, lacked: ['workoutDetail', 'bogus', 'workoutDetail', 'notes', 'sleepDetail', 'people'] })).toEqual({ status: 200, body: { ok: true } })
+    expect(briefOf(store, `${DAY}:brief`).lacked).toEqual(['workoutDetail', 'notes', 'sleepDetail'])
+    const other = withSheet()
+    await fired(other)
+    expect(await post(other, at('07:48'), { ...good, lacked: 'everything' })).toEqual({ status: 200, body: { ok: true } })
+    expect(briefOf(other, `${DAY}:brief`).lacked).toBeUndefined()
+  })
+
+  it('tells Claude the list it may name what it lacked from, and shows the field in the answer’s shape (Part 34)', async () => {
+    const store = withSheet()
+    await fired(store)
+    const b = (await handleBriefing(deps(store, at('07:46')), url('/claude/briefing', { task: 'line', day: DAY }))).body as { instructions: string; answer: Record<string, unknown> }
+    for (const id of LACKED) expect(b.instructions).toContain(id)
+    expect(b.instructions).toMatch(/never decides whether your answer is accepted/)
+    expect(b.answer).toHaveProperty('lacked')
   })
 
   it('refuses an invalid line with its reason, allows one corrected retry, and after two refusals the free chain writes', async () => {

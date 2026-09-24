@@ -1,4 +1,4 @@
-import { isWriterModel, readBrainPrefs, validateReview, type BrainOutput, type ReviewOutput } from '../../src/brainShared'
+import { isWriterModel, lackedOf, readBrainPrefs, validateReview, type BrainOutput, type ReviewOutput } from '../../src/brainShared'
 import { coachCore, lineBriefing, type CoachCoreKey, type LineBriefing, type Said } from './briefing'
 import { lineCheck, saidLately } from './checks'
 import { checkCoach, rowOf } from './coachCheck'
@@ -255,8 +255,8 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
   await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
   const answer =
     t.task === 'line'
-      ? { mode: 'one of the modes named in the instructions', text: 'the line', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null }
-      : { held: 'what held', didNot: 'what did not', change: 'one change', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'] }
+      ? { mode: 'one of the modes named in the instructions', text: 'the line', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null, lacked: ['ids from the instructions’ list, or none'] }
+      : { held: 'what held', didNot: 'what did not', change: 'one change', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], lacked: ['ids from the instructions’ list, or none'] }
   return reply(200, {
     task: t.task,
     day: t.day,
@@ -338,7 +338,9 @@ export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
   const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'
   const runnerModel = clip(o.runnerModel, 100)
   const latencyMs = deps.now.getTime() - Date.parse(t.firedAt ?? t.at)
-  const common = { day: t.day, model: writtenModel, at, factsDay: b.factsDay, forDay: t.day, trigger: t.trigger, shape: b.shape, refusals: t.refusals, calls: posts, latencyMs, writer: 'claude' as const, askedModel: t.askedModel, runnerModel }
+  // Part 34: what Claude said it lacked, known ids only; never a reason to refuse.
+  const lacked = lackedOf(answer && typeof answer === 'object' ? (answer as Record<string, unknown>).lacked : undefined)
+  const common = { day: t.day, model: writtenModel, at, factsDay: b.factsDay, forDay: t.day, trigger: t.trigger, shape: b.shape, refusals: t.refusals, calls: posts, latencyMs, writer: 'claude' as const, askedModel: t.askedModel, runnerModel, ...(lacked.length ? { lacked } : {}) }
   let row: BriefRow
   if (t.task === 'line') {
     const v = verdict.value as BrainOutput

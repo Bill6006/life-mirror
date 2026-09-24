@@ -1,4 +1,4 @@
-import type { BrainPrefsBody, LineAction } from './brainShared'
+import type { BrainPrefsBody, Lacked, LineAction } from './brainShared'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
@@ -405,6 +405,23 @@ export interface BriefLog {
   shownAt?: string
 }
 
+/**
+ * How the app is used (Part 34), kept on this phone alone: never synced, never sent, never read by
+ * any model. Counts and times only, no content: a screen opened, a check-in opened or left before
+ * its end, the line's one tap taken or its Why opened, a notification opened, a rep picked through
+ * Change. Read together after a few weeks, it becomes a removal list for your veto.
+ */
+export type UseKind = 'screen' | 'checkinOpened' | 'checkinLeft' | 'lineAction' | 'lineWhy' | 'notification' | 'changePicked'
+
+export interface UseRow {
+  id?: number
+  day: string
+  at: string
+  kind: UseKind
+  /** Which one: the screen, the block, the action or the notification; a fixed id, never content. */
+  what?: string
+}
+
 /** One tap under a line: how it landed. Filed once per line. */
 export interface BriefFeedback {
   id?: number
@@ -440,6 +457,8 @@ export interface BrainBrief {
   askedModel?: string
   /** For the free chain standing in for Claude: why it did. */
   fallback?: string
+  /** What Claude said it lacked for this line or review (Part 34): ids from a fixed list, counted only. */
+  lacked?: Lacked[]
 }
 
 /** The Brain settings (Part 30): which model writes, and what Claude may read. One row, synced, so the Worker reads it at every request. */
@@ -595,6 +614,7 @@ class LifeMirrorDB extends Dexie {
   pathMarks!: Table<PathMark, number>
   reflections!: Table<Reflection, number>
   monthlyChecks!: Table<MonthlyCheck, number>
+  useLog!: Table<UseRow, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -777,6 +797,10 @@ class LifeMirrorDB extends Dexie {
     // Part 32: the coach's pick for the day, pulled from the brain's own rows and never synced from here.
     this.version(15).stores({
       coachPicks: 'id, day',
+    })
+    // Part 34: how the app is used, on this phone alone and never synced.
+    this.version(16).stores({
+      useLog: '++id, day, kind',
     })
     installOutbox(this)
   }
@@ -1054,7 +1078,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks, db.useLog], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -1094,6 +1118,7 @@ export function wipeEverything(): Promise<void> {
       db.brainPrefs.clear(),
       db.brainReads.clear(),
       db.coachPicks.clear(),
+      db.useLog.clear(),
     ])
   })
 }

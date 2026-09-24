@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayGuard, nearRepeat, numberGrounded, numbersIn, shapeFor, validateAction, validateOutput, validateReview } from './brainShared'
+import { dayGuard, lackedOf, nearRepeat, numberGrounded, numbersIn, shapeFor, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -132,5 +132,15 @@ describe('the guard every writer inherits: the day a line is for, and names kept
     expect(validateOutput({ mode: 'recommendation', text: 'After pickup, one short sitting.', factIds: ['week.today'], cardIds: [] }, base, library, 60, '2026-09-19')).toMatchObject({ ok: false, reason: 'speaks of pickup or daycare, which Saturday 2026-09-19 does not hold' })
     expect(validateOutput({ mode: 'recommendation', text: 'After pickup, one short sitting.', factIds: ['week.today'], cardIds: [] }, base, library, 60, '2026-09-18').ok).toBe(true)
     expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Talk to someone in person on Saturday.', factIds: ['week.today'], cardIds: [] }, base, library, '2026-09-19')).toMatchObject({ ok: false, reason: 'change: speaks of people around, which Saturday 2026-09-19 does not hold' })
+  })
+})
+
+describe('what the writer said it lacked (Part 34)', () => {
+  it('keeps known ids, each once, at most three, and drops everything else', () => {
+    expect(lackedOf(['workoutDetail', 'x', 'workoutDetail', 'notes'])).toEqual(['workoutDetail', 'notes'])
+    expect(lackedOf(['longerRecord', 'workoutDetail', 'sleepDetail', 'dayPlans'])).toEqual(['longerRecord', 'workoutDetail', 'sleepDetail'])
+    expect(lackedOf('notes')).toEqual([])
+    expect(lackedOf(undefined)).toEqual([])
+    expect(lackedOf([1, null, { id: 'notes' }])).toEqual([])
   })
 })

@@ -4,6 +4,7 @@ import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type CoachPick, type Monthly
 import { keysOf, planFor } from './aims'
 import { coachPickFor, pathById, pathKey, pathsHolding, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
 import type { CoachBlock } from './factTypes'
+import { logUse } from './useLog'
 
 // The path commitment on the phone (Part 24): added once per path, converted from A person with
 // its record kept, paused and resumed, a rep picked by you through Change, and Resume, which
@@ -40,6 +41,7 @@ export async function pausePath(aimId: number, paused: boolean): Promise<void> {
 /** Your pick through Change: today's rep, offered whatever the shape says, until the day ends or it is done. With two paths on, the later pick is the row's. */
 export async function setPathPick(aimId: number, moveId: string, day: string, now: Date = new Date()): Promise<void> {
   await db.aims.update(aimId, { pick: { day, moveId, at: now.toISOString() } })
+  await logUse('changePicked', undefined, now)
 }
 
 /** Whether a path is on: on the list and not paused. */

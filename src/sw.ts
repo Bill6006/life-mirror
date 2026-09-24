@@ -7,6 +7,7 @@ import { copy } from './copy'
 import { allCheckIns, db, getSettings, markReminded, updateSettings, type CheckIn, type Intention } from './db'
 import { fill } from './format'
 import { minutesOf, pushDecision } from './settings'
+import { logUse } from './useLog'
 import { VAPID_PUBLIC_KEY } from './vapid'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<PrecacheEntry | string> }
@@ -97,9 +98,15 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   )
 })
 
-// A tapped reminder brings the app forward at the right block, or opens it there.
+/** Which kind of notice a tag is, for the use log: never its words. */
+function noticeKind(tag: string): string {
+  return tag.startsWith('checkin-') ? 'checkin' : ['cue', 'cue2', 'test', 'quiet'].includes(tag) ? tag : 'other'
+}
+
+// A tapped reminder brings the app forward at the right block, or opens it there. The tap is counted on this phone alone (Part 34).
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  void logUse('notification', noticeKind(event.notification.tag ?? ''))
   const url = (event.notification.data as { url?: string } | undefined)?.url ?? BASE
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {

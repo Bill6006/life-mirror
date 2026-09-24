@@ -54,6 +54,8 @@ export interface BriefRow {
   calls?: number
   /** From the trigger to the stored row. */
   latencyMs?: number
+  /** What Claude said it lacked (Part 34): ids from a fixed list, counted on the phone. */
+  lacked?: string[]
   /** Who wrote it (Part 30): Claude through the routine, or the free model chain. Absent on rows written before Part 30. */
   writer?: 'claude' | 'free'
   /** For Claude's line: the alias asked for, and the routine's own model; `model` is the id that wrote it, as the run reported it. */
