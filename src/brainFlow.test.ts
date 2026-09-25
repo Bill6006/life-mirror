@@ -4,11 +4,12 @@ import { addAim, addSkill, planAim, resumeAim, studyAims } from './aimFlow'
 import { stepFor } from './aims'
 import { recordDoneNow } from './offerFlow'
 import { wasShown, weekBuckets } from './facts'
-import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
+import { applyLineAction, brainStatus, chooseAndLog, factSheet, feedbackFor, lineActionState, lineMoment, lineTiming, markShown, momentGone, recordFeedback, todaysLine, weekReview, whyFor, writeFactsRow } from './brainFlow'
 import type { LineAction } from './brainShared'
 import { dayGuard } from './brainShared'
-import { db, ensureDayContext, getSettings, setDayContext, updateSettings } from './db'
+import { db, ensureDayContext, getDayContext, getSettings, setDayContext, updateSettings } from './db'
 import { factById } from './facts'
+import { clockTimesIn } from './format'
 
 // The brain on the phone, end to end on a seeded record: the sheet built from the record, the
 // day's line chosen once and logged, the tap filed under it, the facts row written only when
@@ -91,15 +92,15 @@ describe('the brain on the phone', () => {
 
   it('chooses the day’s line once, logs it, takes one tap, and reads the Worker’s line first when there is one', async () => {
     await addAim('certification', null, 'French', 'language')
-    expect(await todaysLine(DAY)).toBeNull()
+    expect(await todaysLine(DAY, NOW)).toBeNull()
     await chooseAndLog(DAY, NOW)
-    const line = await todaysLine(DAY)
+    const line = await todaysLine(DAY, NOW)
     expect(line).toMatchObject({ source: 'phone', situationId: 'first-skill' })
     expect(line?.text).toContain('French has no current skill yet')
     // Kept while its situation holds: a second run changes nothing.
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 0))
     expect(await db.briefLog.count()).toBe(1)
-    expect((await todaysLine(DAY))?.key).toBe(line?.key)
+    expect((await todaysLine(DAY, new Date(2026, 8, 18, 9, 0)))?.key).toBe(line?.key)
     // The tap, filed once.
     expect(await feedbackFor(line?.key ?? null)).toBeNull()
     await recordFeedback(DAY, line!, 'useful', NOW)
@@ -109,14 +110,14 @@ describe('the brain on the phone', () => {
     // Withdrawn once its facts no longer hold: a skill added, and the next true situation takes its place.
     await addSkill('Ten words', 'French')
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 30))
-    expect((await todaysLine(DAY))?.situationId).toBe('say-when')
+    expect((await todaysLine(DAY, new Date(2026, 8, 18, 9, 30)))?.situationId).toBe('say-when')
     // Withdrawn, not deleted: it was said, so the row stays, marked, and its tap stays filed under it.
     const rows = await db.briefLog.orderBy('id').toArray()
     expect(rows.map((r) => [r.situationId, Boolean(r.withdrawnAt)])).toEqual([['first-skill', true], ['say-when', false]])
     expect((await factSheet(DAY, NOW)).said.map((x) => x.situationId)).toEqual(['first-skill', 'say-when'])
     // The Worker's line, pulled from its rows, comes first.
     await db.brainBriefs.put({ id: 'w1', day: DAY, kind: 'brief', text: 'From the Worker.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'm', at: '2026-09-18T05:15:00.000Z' })
-    expect(await todaysLine(DAY)).toMatchObject({ source: 'worker', key: 'worker:w1', text: 'From the Worker.', model: 'm' })
+    expect(await todaysLine(DAY, new Date(2026, 8, 18, 9, 30))).toMatchObject({ source: 'worker', key: 'worker:w1', text: 'From the Worker.', model: 'm' })
     expect(await brainStatus()).toMatchObject({ day: DAY, model: 'm' })
   })
 
@@ -267,6 +268,111 @@ describe('what the sheet learned to carry', () => {
   })
 })
 
+describe('a line whose moment is gone (truth audit, 2026-09-24)', () => {
+  const at = (h: number, m = 0) => new Date(2026, 8, 18, h, m)
+  // A clearly expired timed cue: written at ten in the morning for pickup at 17:30, read at 22:33.
+  const pickupLine = { id: `${DAY}:brief`, day: DAY, kind: 'brief' as const, text: 'After pickup at 17:30, say hello to the next person you see.', mode: 'recommendation', factIds: ['week.today'], cardIds: [], model: '@cf/test/model', at: at(10).toISOString() }
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await updateSettings((s) => ({ ...s, week: { ...s.week, pickupTime: '17:30' } }))
+    await ensureDayContext(DAY, await getSettings())
+  })
+
+  it('reads clock times in either form, and never a ratio, a longer number or an hour that is no hour', () => {
+    expect(clockTimesIn('After pickup at 17:30, say hello to the next person you see.')).toEqual([17 * 60 + 30])
+    expect(clockTimesIn('At 5:30 PM, and again at 6:08 am.')).toEqual([17 * 60 + 30, 6 * 60 + 8])
+    expect(clockTimesIn('12:00 AM and 12:15 PM')).toEqual([0, 12 * 60 + 15])
+    expect(clockTimesIn('A 3:2 split, a 12:05:33 stamp, 24:10, 13:30 PM, and 1.5:30.')).toEqual([])
+  })
+
+  it('pins a line to the latest moment still ahead when it was written, or its plan’s cue; a time already past then was seen, not pointed to', () => {
+    const ctx = { withHer: true, pickupTime: '17:30', soloUntil: '20:00' }
+    expect(lineMoment({ text: pickupLine.text, action: null, at: pickupLine.at }, DAY, ctx, null)).toBe(17 * 60 + 30)
+    // An observation of the morning, written in the afternoon, points to no moment.
+    expect(lineMoment({ text: 'Your 07:40 check-in read higher than usual.', action: null, at: at(16).toISOString() }, DAY, ctx, null)).toBeNull()
+    // A line written the evening before points to every time of the day it is for.
+    expect(lineMoment({ text: 'Tomorrow, after pickup at 17:30.', action: null, at: new Date(2026, 8, 17, 21, 0).toISOString() }, DAY, ctx, null)).toBe(17 * 60 + 30)
+    // A plan cue: its time today, the plan's own once made, and the evening's for the next check-in.
+    expect(lineMoment({ text: 'One sitting.', action: { kind: 'plan', aimId: 1, cue: 'afterPickup' }, at: pickupLine.at }, DAY, ctx, null)).toBe(17 * 60 + 30)
+    expect(lineMoment({ text: 'One sitting.', action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' }, at: pickupLine.at }, DAY, ctx, null)).toBe(20 * 60)
+    expect(lineMoment({ text: 'One sitting.', action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' }, at: pickupLine.at }, DAY, ctx, { time: '21:15' })).toBe(21 * 60 + 15)
+    expect(lineMoment({ text: 'One sitting.', action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' }, at: pickupLine.at }, DAY, ctx, null)).toBe(17 * 60)
+    // A line with no time and no plan is pinned to nothing, and never goes.
+    expect(lineMoment({ text: 'One sitting.', action: { kind: 'depth', value: 'short' }, at: pickupLine.at }, DAY, ctx, null)).toBeNull()
+    expect(momentGone(null, DAY, new Date(2026, 8, 19, 3, 0))).toBe(false)
+  })
+
+  it('keeps the moment live for two hours after it, into the small hours that still belong to the day', () => {
+    const pickup = 17 * 60 + 30
+    expect(momentGone(pickup, DAY, at(19, 30))).toBe(false)
+    expect(momentGone(pickup, DAY, at(19, 31))).toBe(true)
+    expect(momentGone(pickup, DAY, at(22, 33))).toBe(true)
+    expect(momentGone(23 * 60 + 30, DAY, new Date(2026, 8, 19, 1, 0))).toBe(false)
+    expect(momentGone(23 * 60 + 30, DAY, new Date(2026, 8, 19, 1, 31))).toBe(true)
+  })
+
+  it('shows the pickup line until its moment is gone, then not at all, and puts no line in its place', async () => {
+    await db.brainBriefs.put(pickupLine)
+    expect((await todaysLine(DAY, at(17, 0)))?.text).toBe(pickupLine.text)
+    expect((await todaysLine(DAY, at(19, 0)))?.text).toBe(pickupLine.text)
+    expect(await todaysLine(DAY, at(22, 33))).toBeNull()
+    // Reading it writes nothing: no stand-in line is made to fill the card.
+    expect(await db.briefLog.count()).toBe(0)
+  })
+
+  it('gives way at 22:33 to the phone’s own line when that is still true, since it names no moment', async () => {
+    await addAim('certification', null, 'French', 'language')
+    await chooseAndLog(DAY, at(10, 5))
+    await db.brainBriefs.put(pickupLine)
+    expect((await todaysLine(DAY, at(18, 0)))?.source).toBe('worker')
+    const late = await todaysLine(DAY, at(22, 33))
+    expect(late).toMatchObject({ source: 'phone', situationId: 'first-skill' })
+  })
+
+  it('goes the same way when the moment is its plan’s cue rather than its words', async () => {
+    await db.brainBriefs.put({ ...pickupLine, text: 'After pickup, say hello to the next person you see.', action: { kind: 'plan', aimId: 1, cue: 'afterPickup' } })
+    expect(await todaysLine(DAY, at(19, 0))).not.toBeNull()
+    expect(await todaysLine(DAY, at(22, 33))).toBeNull()
+  })
+
+  it('keeps an observation of a time that had already passed when it was written', async () => {
+    await db.brainBriefs.put({ ...pickupLine, text: 'Your 07:40 check-in read higher than usual.', mode: 'observation', at: at(16).toISOString() })
+    expect((await todaysLine(DAY, at(22, 33)))?.text).toBe('Your 07:40 check-in read higher than usual.')
+  })
+
+  it('withdraws the phone’s own line once its moment is gone, even while its situation still holds', async () => {
+    // A step last taken nine days ago: the stalled line holds at any hour, and pins the step to her bedtime, 20:00.
+    await addAim('certification', null, 'French', 'language')
+    await addSkill('Ten words', 'French')
+    const [aim] = await studyAims()
+    const session = await resumeAim(aim, stepFor(aim, await db.skills.toArray(), [], [aim]), 'step', new Date(2026, 8, 9, 20, 0))
+    await recordDoneNow(session, new Date(2026, 8, 9, 20, 20))
+    await chooseAndLog(DAY, at(21, 0))
+    const stalled = (await db.briefLog.toArray()).find((r) => r.situationId === 'step-stalled' && !r.withdrawnAt)
+    expect(stalled?.action).toMatchObject({ kind: 'plan', cue: 'afterBedtime' })
+    expect((await todaysLine(DAY, at(21, 0)))?.situationId).toBe('step-stalled')
+    // At 22:30 its situation still holds, but its moment is two hours gone.
+    await chooseAndLog(DAY, at(22, 30))
+    expect((await db.briefLog.get(stalled?.id as number))?.withdrawnAt).toBe(at(22, 30).toISOString())
+    expect((await todaysLine(DAY, at(22, 30)))?.situationId).not.toBe('step-stalled')
+  })
+
+  it('withdraws the phone’s own line once its moment is gone, and chooses none whose moment is already gone', async () => {
+    await addAim('certification', null, 'French', 'language')
+    await addSkill('Ten words', 'French')
+    await chooseAndLog(DAY, at(9, 0))
+    expect(await todaysLine(DAY, at(9, 0))).toMatchObject({ situationId: 'say-when', action: { kind: 'plan', cue: 'afterBedtime' } })
+    // Her bedtime is 20:00: at 22:30 the line is two hours past it.
+    await chooseAndLog(DAY, at(22, 30))
+    const rows = await db.briefLog.orderBy('id').toArray()
+    expect(rows.find((r) => r.situationId === 'say-when')?.withdrawnAt).toBe(at(22, 30).toISOString())
+    const now = await todaysLine(DAY, at(22, 30))
+    expect(now?.situationId).not.toBe('say-when')
+    if (now) expect(momentGone(lineMoment({ text: now.text, action: now.action, at: now.at }, DAY, await getDayContext(DAY), null), DAY, at(22, 30))).toBe(false)
+  })
+})
+
 describe('the line, acted on', () => {
   beforeEach(async () => {
     await db.delete()
@@ -278,7 +384,7 @@ describe('the line, acted on', () => {
     await addAim('certification', null, 'French', 'language')
     await addSkill('Ten words', 'French')
     await chooseAndLog(DAY, NOW)
-    const line = await todaysLine(DAY)
+    const line = await todaysLine(DAY, NOW)
     expect(line?.action).toMatchObject({ kind: 'plan', aimId: 1 })
     expect((await lineActionState(DAY, line?.action ?? null, NOW))?.state).toBe('open')
     const [aim] = await studyAims()
@@ -293,7 +399,7 @@ describe('the line, acted on', () => {
     await addAim('certification', null, 'French', 'language')
     await addSkill('Ten words', 'French')
     await chooseAndLog(DAY, NOW)
-    const line = await todaysLine(DAY)
+    const line = await todaysLine(DAY, NOW)
     expect(line?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
     expect(await lineActionState(DAY, line?.action ?? null, NOW)).toEqual({ state: 'open', cue: 'afterBedtime', time: '20:00' })
     expect(await applyLineAction(DAY, line!.action!, NOW)).toBe(true)
@@ -355,12 +461,12 @@ describe('the line, acted on', () => {
     await addAim('certification', null, 'French', 'language')
     await addSkill('Ten words', 'French')
     await chooseAndLog(DAY, NOW)
-    const line = await todaysLine(DAY)
+    const line = await todaysLine(DAY, NOW)
     expect(line?.situationId).toBe('say-when')
     await applyLineAction(DAY, line!.action!, new Date(2026, 8, 18, 8, 5))
     // Its situation no longer tests true, since a plan exists; the tap was taken, so it stays with what was done under it.
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 0))
-    expect((await todaysLine(DAY))?.key).toBe(line?.key)
+    expect((await todaysLine(DAY, new Date(2026, 8, 18, 9, 0)))?.key).toBe(line?.key)
     expect(await db.briefLog.count()).toBe(1)
     // The morning after: the sheet carries what the record shows since the line, and the engine says so.
     const next = '2026-09-19'
@@ -369,7 +475,7 @@ describe('the line, acted on', () => {
     const sheet = await factSheet(next, morning)
     expect(factById(sheet, 'followup')?.values).toMatchObject({ day: DAY, about: 'French', aimId: 1, planned: 1, missed: 1, started: 0, received: 'untapped' })
     await chooseAndLog(next, morning)
-    const after = await todaysLine(next)
+    const after = await todaysLine(next, morning)
     expect(after?.situationId).toBe('loop-planned')
     expect(after?.text).toContain('Yesterday’s line was about French: a plan was made, and its moment passed without a start.')
     expect(after?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })

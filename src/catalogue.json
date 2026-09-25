@@ -1446,9 +1446,9 @@
       "family": "study",
       "what": "Open it, read one paragraph, and you are allowed to stop.",
       "source": {
-        "who": "Gollwitzer and Sheeran",
-        "what": "Meta-analysis of 94 studies: deciding exactly when and where to act roughly doubles follow-through on intentions",
-        "year": 2006,
+        "who": "Sheeran, Listrom and Gollwitzer",
+        "what": "Meta-analysis of 642 tests: deciding exactly when and where to act reliably raises follow-through, by a small margin, for studying as for other goals",
+        "year": 2025,
         "strength": "moderate"
       },
       "minutes": 2,
@@ -1491,7 +1491,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.3,
-        "note": "Gollwitzer and Sheeran 2006: if-then plans raise goal attainment, d about 0.65; about a third of a step on motivation"
+        "note": "Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation"
       }
     },
     {
@@ -1714,9 +1714,9 @@
       "family": "study",
       "what": "Which chapter, which page, at what time tomorrow, on one line.",
       "source": {
-        "who": "Gollwitzer and Sheeran",
-        "what": "Meta-analysis of 94 studies: a concrete when-and-where plan is the strongest simple predictor of doing the thing",
-        "year": 2006,
+        "who": "Sheeran, Listrom and Gollwitzer",
+        "what": "Meta-analysis of 642 tests: a concrete when-and-where plan reliably raises the chance of doing the thing, by a small margin, for studying as for other goals",
+        "year": 2025,
         "strength": "strong"
       },
       "minutes": 3,
@@ -1759,7 +1759,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.3,
-        "note": "Gollwitzer and Sheeran 2006; about a third of a step on motivation next morning"
+        "note": "Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation next morning"
       }
     },
     {
@@ -4082,9 +4082,9 @@
       "family": "finishing",
       "what": "One line, small enough to do in five minutes, then do only that.",
       "source": {
-        "who": "Gollwitzer and Sheeran",
-        "what": "Meta-analysis of 94 studies: a concrete plan for the next action is the strongest simple predictor of taking it",
-        "year": 2006,
+        "who": "Sheeran, Listrom and Gollwitzer",
+        "what": "Meta-analysis of 642 tests: a concrete plan for the next action reliably raises the chance of taking it, by a small margin on average",
+        "year": 2025,
         "strength": "strong"
       },
       "minutes": 5,
@@ -4130,7 +4130,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.3,
-        "note": "Gollwitzer and Sheeran 2006; about a third of a step on motivation"
+        "note": "Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation"
       }
     },
     {
@@ -4206,9 +4206,9 @@
       "family": "setup",
       "what": "One alarm, set once, for the minute you must be out of the door for the thing you are always late to. Arriving is not the cue; leaving is.",
       "source": {
-        "who": "Gollwitzer and Sheeran",
-        "what": "Meta-analysis of 94 studies: if-then plans raised goal attainment with an effect of d about 0.65, strongest for getting started on time",
-        "year": 2006,
+        "who": "Sheeran, Listrom and Gollwitzer",
+        "what": "Meta-analysis of 642 tests: if-then plans reliably raise goal attainment, by a small margin on behaviour; plans naming both a time and a place did best (d about .46)",
+        "year": 2025,
         "strength": "strong"
       },
       "minutes": 3,
@@ -4375,9 +4375,9 @@
       "family": "setup",
       "what": "The dentist, the doctor, the car: one call or one form, today, and it is off the list for good.",
       "source": {
-        "who": "Gollwitzer and Sheeran",
-        "what": "The same meta-analysis: a fixed when-and-where turns an intention into an act",
-        "year": 2006,
+        "who": "Sheeran, Listrom and Gollwitzer",
+        "what": "The same meta-analysis: if-then plans had small-to-medium effects on attending cancer screening and on taking medication",
+        "year": 2025,
         "strength": "strong"
       },
       "minutes": 10,

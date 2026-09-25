@@ -163,3 +163,22 @@ describe('the catalogue of moves', () => {
     }
   })
 })
+
+describe('what the moves resting on if-then plans say of them (truth audit, 2026-09-24)', () => {
+  const ifThen = moves.filter((m) => /Gollwitzer/.test(m.source.who))
+  it('cites the 2025 meta-analysis and says no more than it found: reliable, small on behaviour', () => {
+    expect(ifThen.map((m) => m.id).sort()).toEqual(['book-the-appointment', 'leaving-alarm', 'smallest-next-step', 'study-plan-next', 'two-minute-start'])
+    for (const m of ifThen) {
+      expect(m.source.year, m.id).toBe(2025)
+      expect(m.source.what, m.id).not.toMatch(/doubles|strongest simple predictor|turns an intention into an act|far more|greatly|0\.65/i)
+    }
+  })
+
+  it('keeps each starting belief, and says it was set from the larger 2006 estimate', () => {
+    for (const id of ['two-minute-start', 'study-plan-next', 'smallest-next-step']) {
+      const m = moves.find((x) => x.id === id)
+      expect(m?.prior.effect, id).toBe(0.3)
+      expect(m?.prior.note, id).toMatch(/^Set from Gollwitzer and Sheeran 2006 \(d about 0\.65\), above the 2025 estimate for behaviour \(d = \.27\)/)
+    }
+  })
+})

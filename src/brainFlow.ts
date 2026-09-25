@@ -1,21 +1,22 @@
 import { activeAims, aimRecords, allIntentions, isOpenAimOffer, liveSkills, planAim, rungMarks } from './aimFlow'
 import { aheadToday, cuesFor, keysOf, planFor, sessionsToday, stepFor } from './aims'
-import { addDays, blockAt, BLOCKS, type Block } from './blocks'
+import { addDays, blockAt, BLOCKS, blockStart, dayKey, daysBetween, type Block } from './blocks'
+import { heldBedtime, heldPickup } from './dayShape'
 import type { CoachBlock } from './factTypes'
 import { coachRow, pathOn, peopleRowOf } from './pathFlow'
 import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
 import type { LineAction, LineCue, WriterModel } from './brainShared'
 import { copy } from './copy'
-import { fill } from './format'
+import { clockTimesIn, fill } from './format'
 import { hasMove, moveById } from './catalogue'
-import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Offer, type Outcome, type PathMark } from './db'
+import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
 import { briefData, usualFor } from './forecastFlow'
 import { cardFromHypothesis, type Hypothesis } from './hypothesis'
 import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
 import { INGREDIENTS } from './score'
-import { withDefaults } from './settings'
+import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
@@ -171,6 +172,8 @@ export interface BriefLine {
   writer?: 'claude' | 'free'
   askedModel?: string
   fallback?: string
+  /** When the line was written: the Worker's row, or the phone's choice. A clock time its words name counts as a moment it points to only if still ahead then. */
+  at?: string
 }
 
 /** Who wrote a line or a review, in the words its screen uses (Part 30): Claude with the model asked for and the one that wrote, the free chain and why it stood in for Claude, or the phone. */
@@ -183,17 +186,25 @@ export function writtenBy(w: { source: 'phone' | 'worker'; model: string | null;
 
 /**
  * Today's line: the Worker's when it wrote one, else the phone's own; null when neither has anything
- * to say. A line that would compete with the People row is not shown (Part 27).
+ * to say. A line that would compete with the People row is not shown (Part 27), nor one whose moment
+ * is gone: pinned to pickup at 17:30, it is not the day's line at 22:33 (truth audit, 2026-09-24).
+ * Nothing is written in its place: the phone's own line stands only if it is itself still live.
  */
 export async function todaysLine(day: string, now: Date = new Date()): Promise<BriefLine | null> {
   // Every read first, in one go, so the live query that shows the line tracks each table it reads.
-  const [briefs, log, record] = await Promise.all([db.brainBriefs.where('day').equals(day).toArray(), db.briefLog.where('day').equals(day).toArray(), pathRecord(day)])
+  const [briefs, log, record, ctx, intentions] = await Promise.all([db.brainBriefs.where('day').equals(day).toArray(), db.briefLog.where('day').equals(day).toArray(), pathRecord(day), getDayContext(day), db.intentions.where('day').equals(day).toArray()])
   const off = offOf(record, day, now)
-  const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
-  const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
+  const live = (l: { text: string; action?: LineAction | null; at?: string }) => !momentGone(lineMoment({ text: l.text, action: l.action ?? null, at: l.at }, day, ctx, planOf(intentions, l.action ?? null, day)), day, now)
+  const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off) && live(b)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
+  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
+  const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off) && live(l)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
   if (!own) return null
-  return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day }
+  return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day, at: own.at }
+}
+
+/** Today's plan for the commitment a line's action names, if it names one and a plan was made. */
+function planOf(intentions: readonly Intention[], action: LineAction | null, day: string): Intention | null {
+  return action?.kind === 'plan' ? planFor(intentions, action.aimId, day) : null
 }
 
 /**
@@ -203,15 +214,16 @@ export async function todaysLine(day: string, now: Date = new Date()): Promise<B
  * deleted: it was said, so it rests its situation and the next day's follow-up can find it; the
  * next true situation takes its place. A day with nothing to say is logged as such and looked at
  * again when the record changes. A line about a path whose step is not the People row's today is
- * never chosen, and one already said is withdrawn (Part 27).
+ * never chosen, and one already said is withdrawn (Part 27). A line whose moment is gone is withdrawn
+ * too, and none is chosen whose moment is already gone (truth audit, 2026-09-24).
  */
 export async function chooseAndLog(day: string, now: Date = new Date()): Promise<void> {
   const existing = await db.briefLog.where('day').equals(day).toArray()
   await ensureDayContext(day, await getSettings())
-  const sheet = await factSheet(day, now)
-  const off = await offTheRow(day, now)
+  const [sheet, off, ctx, intentions] = await Promise.all([factSheet(day, now), offTheRow(day, now), getDayContext(day), allIntentions()])
+  const live = (l: { text: string; action?: LineAction | null; at?: string }) => !momentGone(lineMoment({ text: l.text, action: l.action ?? null, at: l.at }, day, ctx, planOf(intentions, l.action ?? null, day)), day, now)
   const current = existing.find((e) => e.situationId !== null && !e.withdrawnAt)
-  if (current) {
+  if (current && live(current)) {
     const match = lineFor(sheet, current.situationId as string)
     // Kept while its situation holds and it does not compete with the People row (Part 27).
     if (match && onTheRow(match, off)) {
@@ -225,7 +237,7 @@ export async function chooseAndLog(day: string, now: Date = new Date()): Promise
   }
   const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
   const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
-  const choice = rankLines(sheet, said, feedback).find((c) => onTheRow(c, off)) ?? null
+  const choice = rankLines(sheet, said, feedback).find((c) => onTheRow(c, off) && live({ text: c.text, action: c.action ?? null, at: now.toISOString() })) ?? null
   const empty = existing.filter((e) => e.situationId === null)
   if (!choice && !current && empty.length) return
   await db.transaction('rw', db.briefLog, async () => {
@@ -342,6 +354,44 @@ export function lineTiming(action: LineAction | null, state: ActionState | null 
   if (!action || !state) return 'forToday'
   if (action.kind === 'plan') return state.state !== 'gone' && aheadToday(state.time, now) ? 'laterToday' : 'forToday'
   return state.state === 'open' ? 'now' : 'forToday'
+}
+
+/**
+ * How long the moment a line is pinned to stays live. A step pinned to pickup or her bedtime may take
+ * a while to begin; two hours is well past the cue's own reminder and its follow-up forty-five
+ * minutes on (truth audit, 2026-09-24).
+ */
+export const MOMENT_LIVE_MINUTES = 120
+
+/** Minutes from a day's midnight to a moment: past 1,440 in the small hours that still belong to it. */
+function minutesInto(day: string, at: Date): number {
+  return daysBetween(day, dayKey(at)) * 1440 + at.getHours() * 60 + at.getMinutes()
+}
+
+/**
+ * The moment of the day a line is pinned to, in minutes after the day's midnight, or null when it
+ * names none: the time of its plan once made, else the time its cue names today; and any clock time
+ * its words name that was still ahead when it was written. A time already past then was something
+ * it saw, not a moment it pointed to. The latest of them.
+ */
+export function lineMoment(line: { text: string; action: LineAction | null; at?: string }, day: string, ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null | undefined, plan: { time: string } | null): number | null {
+  const moments: number[] = []
+  if (line.at) {
+    const written = minutesInto(day, new Date(line.at))
+    for (const t of clockTimesIn(line.text)) if (t > written) moments.push(t)
+  }
+  if (line.action?.kind === 'plan') {
+    // The next check-in can name no later moment than the evening's.
+    const cue = line.action.cue === 'afterPickup' ? heldPickup(ctx) : line.action.cue === 'afterBedtime' ? heldBedtime(ctx) : blockStart.evening
+    const t = plan?.time ?? cue
+    if (t) moments.push(minutesOf(t))
+  }
+  return moments.length ? Math.max(...moments) : null
+}
+
+/** Whether a line's moment is gone: two hours past it. A line pinned to no moment never is. */
+export function momentGone(moment: number | null, day: string, now: Date): boolean {
+  return moment !== null && minutesInto(day, now) > moment + MOMENT_LIVE_MINUTES
 }
 
 export interface Why {

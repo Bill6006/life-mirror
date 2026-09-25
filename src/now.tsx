@@ -6,7 +6,7 @@ import { PlaceQuestion } from './locationScreen'
 import { lineActionState, todaysLine } from './brainFlow'
 import { copy } from './copy'
 import { allCheckIns, answeredCount, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
-import { fill, formatDayShort, formatTime } from './format'
+import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon } from './icons'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
@@ -188,8 +188,8 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
   const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block, tick])
   const pending = useLive(pendingOffers, [])
   const weeks = useLive(() => weeksOfRecord(today.day), [today.day])
-  // The Brain's line and its action, read here too, to decide which one thing carries the accent.
-  const line = useLive(() => todaysLine(today.day), [today.day])
+  // The Brain's line and its action, read here too, to decide which one thing carries the accent. Read again each minute: a line whose moment is gone leaves.
+  const line = useLive(() => todaysLine(today.day), [today.day, tick])
   const act = useLive(() => (line ? lineActionState(today.day, line.action ?? null) : Promise.resolve(null)), [today.day, line?.key, JSON.stringify(line?.action ?? null), all?.length])
   if (!all || !settings || win === undefined || here === undefined || pickup === undefined || pending === undefined) return <section class="screen" />
 
@@ -209,7 +209,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
     if (!active.includes(b)) return []
     if (i === current) return [{ block: b, state: 'now', text: copy.today.now }]
     if (i < current) return [{ block: b, state: 'missed', text: copy.now.notLogged }]
-    return [{ block: b, state: 'later', text: fill(copy.now.from, { time: blockStart[b] }) }]
+    return [{ block: b, state: 'later', text: fill(copy.now.from, { time: formatHHMM(blockStart[b]) }) }]
   })
 
   const currentWindow = windows.find((w) => w.block === today.block)
@@ -234,7 +234,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
       {settings.directionAskedAt === null && <DirectionAsk />}
 
       <ReadingHero all={all} today={today} />
-      <Brief day={today.day} version={all.length} primary={briefPrimary} />
+      <Brief day={today.day} version={all.length} tick={tick} primary={briefPrimary} />
       <PlaceQuestion />
 
       <Status windows={windows} today={today} onOpen={onOpen} onCheckIn={onCheckIn} />

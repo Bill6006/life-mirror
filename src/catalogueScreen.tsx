@@ -3,7 +3,7 @@ import { cardById, gradeWord } from './library'
 import { blockAt } from './blocks'
 import { copy } from './copy'
 import { updateSettings } from './db'
-import { fill, formatDayShort } from './format'
+import { clockTimes12, fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { standingSince } from './offerFlow'
 import { readingById } from './readings'
@@ -254,7 +254,7 @@ function PathSection({ path }: { path: Path }) {
           const status = card.status === 'disputed' ? c.disputed : card.status === 'draft' ? c.draft : c.admitted
           return (
             <p key={id} class="calc-line">
-              <span class="calc-key">{gradeWord(card.grade)}</span> · {card.claim} ({status}; {card.sources[0].cite})
+              <span class="calc-key">{gradeWord(card.grade)}</span> · {clockTimes12(card.claim)} ({status}; {card.sources[0].cite})
             </p>
           )
         })}

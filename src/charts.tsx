@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { BLOCKS, type Block } from './blocks'
 import { copy } from './copy'
 import { formatDayTiny, formatTime, weekdayShort } from './format'
-import { lowestAhead } from './forecast'
 import { valuePlacement, whiskerParts } from './chartGeometry'
 import type { ContextPoint, DayValues } from './series'
 
@@ -232,11 +231,12 @@ const BAND_GUTTER = 68
 /**
  * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
  * names, and the seven days across the rest. One flat step per day at the expected reading with
- * a vertical connector between days, a thin whisker for the range, and the lowest day in the
- * accent. A day with no forecast is a gap, not a guess. The plot is a few translucent panes laid
- * over one another, tinted by the theme, so the cells read without ever looking striped.
+ * a vertical connector between days, a thin whisker for the range, and the lowest days in the
+ * accent, none when no day reads lower than another. A day with no forecast is a gap, not a guess.
+ * The plot is a few translucent panes laid over one another, tinted by the theme, so the cells
+ * read without ever looking striped.
  */
-export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
+export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: readonly number[] }) {
   const [ref, W] = useWidth(320)
   const H = 136
   const top = 10
@@ -252,8 +252,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
   const centreOf = (i: number) => x0 + (i + 0.5) * step
   /** A value's baseline: just above its step, or just under it when the step is too near the top. */
   const labelY = (v: number) => valuePlacement(y(v), top).y
-  const low = lowestAhead(rows)
-  const lowValue = low === -1 ? null : rows[low].expected
+  const isLow = (i: number) => low.includes(i)
   // Every vertical the grid draws: the plot's own edges and each day's, plus a notch under each.
   const dayEdges = rows.map((_, i) => startOf(i))
   const verticals = [left, ...dayEdges, right]
@@ -311,7 +310,7 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
           // The whisker stops at its number and starts again past its step, so it runs through neither. With no step, it runs whole.
           const parts: readonly (readonly [number, number])[] = whiskerParts(hi, lo, mid, top, WHISKER_GAP)
           return (
-            <g key={`w${d.day}`} class={i === low ? 'wa-whisker is-low' : 'wa-whisker'}>
+            <g key={`w${d.day}`} class={isLow(i) ? 'wa-whisker is-low' : 'wa-whisker'}>
               {parts.map(([from, to]) => to > from && <line key={from} x1={cx} x2={cx} y1={from} y2={to} />)}
               <line x1={cx - CAP_HALF} x2={cx + CAP_HALF} y1={hi} y2={hi} />
               <line x1={cx - CAP_HALF} x2={cx + CAP_HALF} y1={lo} y2={lo} />
@@ -319,16 +318,16 @@ export function WeekAhead({ rows }: { rows: readonly AheadDay[] }) {
           )
         })}
         <path class="wa-step" d={stepPath} />
-        {lowValue !== null && <line class="wa-step is-low" x1={startOf(low)} x2={endOf(low)} y1={y(lowValue)} y2={y(lowValue)} />}
+        {rows.map((d, i) => isLow(i) && d.expected !== null && <line key={`l${d.day}`} class="wa-step is-low" x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />)}
         {rows.map((d, i) =>
           d.expected === null ? null : (
-            <text key={`v${d.day}`} class={i === low ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={labelY(d.expected)} text-anchor="middle" data-testid="ahead-value">
+            <text key={`v${d.day}`} class={isLow(i) ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={labelY(d.expected)} text-anchor="middle" data-testid="ahead-value">
               {Math.round(d.expected)}
             </text>
           ),
         )}
         {rows.map((d, i) => (
-          <text key={`d${d.day}`} class={i === low ? 'wa-day is-low' : 'wa-day'} x={centreOf(i)} y={bottom + 16} text-anchor="middle">
+          <text key={`d${d.day}`} class={isLow(i) ? 'wa-day is-low' : 'wa-day'} x={centreOf(i)} y={bottom + 16} text-anchor="middle">
             {weekdayShort(d.day)}
           </text>
         ))}

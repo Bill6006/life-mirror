@@ -2,7 +2,7 @@ import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
-import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, MIN_DAYS_TODAY, scoresDue, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
+import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
 import type { CheckIn, DayContext } from './db'
 import { eveningWorkoutDays } from './workouts'
@@ -204,6 +204,10 @@ export interface Weekly {
   prompt: string
   weekAhead: AheadRow[]
   weekAheadReady: boolean
+  /** The days ahead drawn as the lowest: none when no day reads lower, or the model cannot tell weekdays apart. */
+  weekAheadLow: number[]
+  /** True when the model has no weekday term, so the days ahead come out alike by construction. */
+  weekAheadAlike: boolean
   shift: Shift | null
 }
 
@@ -231,8 +235,9 @@ export async function weeklyData(today: string): Promise<Weekly> {
   const cardMoves = new Map(effectCards.map((c) => [c.id as number, { moveId: c.moveId, situationKey: c.situationKey }]))
   const weekAhead = weekAheadRows(forecasts, today)
   const latest = forecasts.reduce<Forecast | null>((m, f) => (m === null || f.madeOn > m.madeOn ? f : m), null)
+  const model = (latest?.model as ModelId | undefined) ?? null
   return {
-    model: (latest?.model as ModelId | undefined) ?? null,
+    model,
     scorecard: scorecard(scores, checkins, declarations, stats),
     best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day))),
     gap: gap(checkins, today),
@@ -243,6 +248,8 @@ export async function weeklyData(today: string): Promise<Weekly> {
     prompt: extensionPromptText({ situations, offers, outcomes, health, stats, cardMoves }, extensionPrompt.template),
     weekAhead,
     weekAheadReady: weekAhead.some((w) => w.expected !== null),
+    weekAheadLow: lowestAhead(weekAhead, model),
+    weekAheadAlike: model !== null && !tellsWeekdaysApart(model),
     shift: baselineShift(dayReadings(checkins, today), today),
   }
 }

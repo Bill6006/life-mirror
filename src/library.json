@@ -1,7 +1,7 @@
 [
   {
     "id": "implementation-intentions",
-    "claim": "Forming an if-then plan (when situation X arises, I will do Y) raises the rate at which a goal is acted on, with a medium-to-large effect across many studies.",
+    "claim": "Forming an if-then plan (when situation X arises, I will do Y) reliably raises the rate at which a goal is acted on. The effect on behaviour is small on average, and larger when the plan is a true if-then, the goal is wanted, and the plan is rehearsed.",
     "domain": "behaviour-change",
     "tags": [
       "cue",
@@ -11,17 +11,21 @@
     ],
     "grade": "A",
     "replication": "replicated",
-    "effect": "d = 0.65 across 94 independent tests (meta-analysis)",
+    "effect": "d = .27 on behaviour across 301 tests and d = .36 across all 642, about .15 once publication bias is allowed for; the earlier meta-analysis of 94 tests (2006) put it at d = .65",
     "population": "adults and students; health, academic, work and everyday goals",
     "sources": [
+      {
+        "cite": "Sheeran, Listrom & Gollwitzer (2025). The when and how of planning: meta-analysis of the scope and components of implementation intentions in 642 tests. European Review of Social Psychology, 36(1), 162–194.",
+        "doi": "10.1080/10463283.2024.2334563"
+      },
       {
         "cite": "Gollwitzer & Sheeran (2006). Implementation intentions and goal achievement: a meta-analysis of effects and processes. Advances in Experimental Social Psychology, 38, 69–119.",
         "doi": "10.1016/S0065-2601(06)38002-1"
       }
     ],
-    "caveats": "Works when the goal itself is wanted; the specific cue does the work, not the resolve. Weaker for goals the person is ambivalent about.",
+    "caveats": "Small and uneven across goals: little or no effect on vaccination or voting, small on diet, exercise and studying, larger on screening, medication and self-monitoring. Works when the goal itself is wanted; the specific cue does the work, not the resolve.",
     "app": "One tap says when: after pickup, after her bedtime, at the next check-in. The cue counts show which cue holds.",
-    "reviewed": "2026-09-18",
+    "reviewed": "2026-09-24",
     "status": "admitted"
   },
   {

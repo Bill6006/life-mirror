@@ -33,6 +33,11 @@ function weekdayName(d: Weekday): string {
   return new Date(2026, 0, 4 + d).toLocaleDateString(undefined, { weekday: 'long' })
 }
 
+/** A span of the day kept as HH:MM, shown as 7:00 AM–9:00 PM. */
+function clockSpan(span: { from: string; to: string }): { from: string; to: string } {
+  return { from: formatHHMM(span.from), to: formatHHMM(span.to) }
+}
+
 const EXTRA_KEYS = ['minimumWin', 'caffeine', 'dinner', 'privateLog', 'faith'] as const
 
 /** Each section's one line: what is set, in the words the section uses. */
@@ -43,9 +48,9 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
   const extrasOn = EXTRA_KEYS.filter((k) => s.extras[k]).length
   const tests = build.unitTests === null ? n.aboutNoTests : fill(n.aboutTests, { n: String(build.unitTests) })
   return {
-    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: w.pickupTime }), fill(s.place ? n.daylightSun : n.daylight, daylightFor(s, blockAt(new Date()).day))].join(' · '),
+    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: formatHHMM(w.pickupTime) }), fill(s.place ? n.daylightSun : n.daylight, clockSpan(daylightFor(s, blockAt(new Date()).day)))].join(' · '),
     location: s.location.on ? fill(n.locationOn, { known: n.locationKnownNone }) : n.locationOff,
-    checkins: [...(s.lowDemand ? [n.lowDemandOn] : []), freq, s.depth === 'full' ? n.depthFull : n.depthShort, fill(n.quiet, { from: s.quietStart, to: s.quietEnd }), s.reminders.enabled ? n.remindersOn : n.remindersOff].join(' · '),
+    checkins: [...(s.lowDemand ? [n.lowDemandOn] : []), freq, s.depth === 'full' ? n.depthFull : n.depthShort, fill(n.quiet, clockSpan({ from: s.quietStart, to: s.quietEnd })), s.reminders.enabled ? n.remindersOn : n.remindersOff].join(' · '),
     extras: fill(n.extrasOn, { n: String(extrasOn), of: String(EXTRA_KEYS.length) }),
     moves: [s.hideFaith ? n.faithOff : n.faithOn, s.privateInSelection ? n.privateIn : n.privateOut].join(' · '),
     direction: s.direction ?? n.directionNone,

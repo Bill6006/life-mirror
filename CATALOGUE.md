@@ -760,11 +760,11 @@ Twenty-five minutes, something you already know how to make, for both of you.
 
 Open it, read one paragraph, and you are allowed to stop.
 
-- Source: Gollwitzer and Sheeran (2006). Meta-analysis of 94 studies: deciding exactly when and where to act roughly doubles follow-through on intentions. Evidence: moderate.
+- Source: Sheeran, Listrom and Gollwitzer (2025). Meta-analysis of 642 tests: deciding exactly when and where to act reliably raises follow-through, by a small margin, for studying as for other goals. Evidence: moderate.
 - Takes: 2 min · effort to start: low · cost to assign: low · needs: kit
 - Tags: short, low effort, mastery · intensity low
 - Should move: Motivation ↑ (next block)
-- Starting belief: Motivation ↑ by about a third of a step over the next block · Gollwitzer and Sheeran 2006: if-then plans raise goal attainment, d about 0.65; about a third of a step on motivation.
+- Starting belief: Motivation ↑ by about a third of a step over the next block · Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation.
 - When: morning, afternoon, evening
 - Not alongside: One 25-minute block, phone in another room
 - Stands in for: just start, the five-minute rule
@@ -828,11 +828,11 @@ To the wall, to the mirror or to her, in your own words, until it is clear.
 
 Which chapter, which page, at what time tomorrow, on one line.
 
-- Source: Gollwitzer and Sheeran (2006). Meta-analysis of 94 studies: a concrete when-and-where plan is the strongest simple predictor of doing the thing. Evidence: strong.
+- Source: Sheeran, Listrom and Gollwitzer (2025). Meta-analysis of 642 tests: a concrete when-and-where plan reliably raises the chance of doing the thing, by a small margin, for studying as for other goals. Evidence: strong.
 - Takes: 3 min · effort to start: low · cost to assign: low · needs: nothing
 - Tags: short, low effort, mastery · intensity low
 - Should move: Motivation ↑ (next morning), Overwhelm ↓ (next block)
-- Starting belief: Motivation ↑ by about a third of a step over the next morning · Gollwitzer and Sheeran 2006; about a third of a step on motivation next morning.
+- Starting belief: Motivation ↑ by about a third of a step over the next morning · Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation next morning.
 - When: afternoon, evening
 - Stands in for: make a study timetable, set a study goal
 - Counts toward: study
@@ -1691,11 +1691,11 @@ Close them all, keep the one you are working in, and do that one.
 
 One line, small enough to do in five minutes, then do only that.
 
-- Source: Gollwitzer and Sheeran (2006). Meta-analysis of 94 studies: a concrete plan for the next action is the strongest simple predictor of taking it. Evidence: strong.
+- Source: Sheeran, Listrom and Gollwitzer (2025). Meta-analysis of 642 tests: a concrete plan for the next action reliably raises the chance of taking it, by a small margin on average. Evidence: strong.
 - Takes: 5 min · effort to start: low · cost to assign: low · needs: nothing
 - Tags: short, low effort, mastery · intensity low
 - Should move: Motivation ↑ (next block), Overwhelm ↓ (next block)
-- Starting belief: Motivation ↑ by about a third of a step over the next block · Gollwitzer and Sheeran 2006; about a third of a step on motivation.
+- Starting belief: Motivation ↑ by about a third of a step over the next block · Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation.
 - When: morning, afternoon, evening
 - Not alongside: Finish one thing that is nearly done
 - Stands in for: break it down, eat the frog
@@ -1738,7 +1738,7 @@ _a setup for chronic lateness_
 
 One alarm, set once, for the minute you must be out of the door for the thing you are always late to. Arriving is not the cue; leaving is.
 
-- Source: Gollwitzer and Sheeran (2006). Meta-analysis of 94 studies: if-then plans raised goal attainment with an effect of d about 0.65, strongest for getting started on time. Evidence: strong.
+- Source: Sheeran, Listrom and Gollwitzer (2025). Meta-analysis of 642 tests: if-then plans reliably raise goal attainment, by a small margin on behaviour; plans naming both a time and a place did best (d about .46). Evidence: strong.
 - Takes: 3 min · effort to start: low · cost to assign: low · needs: kit
 - Tags: short, low effort, mastery · intensity low
 - Should move: Stress ↓ (later that day), Overwhelm ↓ (seven days)
@@ -1784,7 +1784,7 @@ _closes an avoided task, for good_
 
 The dentist, the doctor, the car: one call or one form, today, and it is off the list for good.
 
-- Source: Gollwitzer and Sheeran (2006). The same meta-analysis: a fixed when-and-where turns an intention into an act. Evidence: strong.
+- Source: Sheeran, Listrom and Gollwitzer (2025). The same meta-analysis: if-then plans had small-to-medium effects on attending cancer screening and on taking medication. Evidence: strong.
 - Takes: 10 min · effort to start: medium · cost to assign: medium · needs: kit
 - Tags: short, mastery · intensity low
 - Should move: Overwhelm ↓ (seven days), Stress ↓ (later that day)

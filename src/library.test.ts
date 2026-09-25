@@ -62,3 +62,18 @@ describe('the evidence library', () => {
     expect(bestGrade([])).toBeNull()
   })
 })
+
+describe('how strongly if-then plans may be spoken of (truth audit, 2026-09-24)', () => {
+  // The line "greatly boost follow-through" repeated this card faithfully: it said medium-to-large, from the 2006
+  // meta-analysis of 94 tests. The 2025 one, of 642 tests, found the effect reliable but small on behaviour.
+  it('says the effect is reliable and small on behaviour, from the 2025 meta-analysis first', () => {
+    const card = cardById('implementation-intentions')
+    expect(card?.grade).toBe('A')
+    expect(card?.claim).toContain('reliably raises')
+    expect(card?.claim).toContain('small on average')
+    expect(card?.claim).not.toMatch(/medium-to-large|large effect|doubles|greatly|far more/i)
+    expect(card?.effect).toContain('d = .27 on behaviour across 301 tests')
+    expect(card?.sources[0].doi).toBe('10.1080/10463283.2024.2334563')
+    expect(card?.sources.map((s) => s.doi)).toContain('10.1016/S0065-2601(06)38002-1')
+  })
+})

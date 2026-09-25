@@ -245,15 +245,26 @@ export function weekAheadRows(forecasts: readonly Forecast[], today: string): Ah
   })
 }
 
-/** The lowest of the days ahead, the one worth planning around; -1 when none of them has a forecast. */
-export function lowestAhead(rows: readonly { expected: number | null }[]): number {
-  let at = -1
-  for (let i = 0; i < rows.length; i++) {
-    const v = rows[i].expected
-    if (v === null) continue
-    if (at === -1 || v < (rows[at].expected as number)) at = i
-  }
-  return at
+/**
+ * Whether a model can tell one weekday from another. The same-block and last-value models have no
+ * weekday term: every day ahead rests on the same recent record, so the week comes out alike.
+ */
+export function tellsWeekdaysApart(model: ModelId): boolean {
+  return model === 'weekdayBlock' || model === 'blend'
+}
+
+/**
+ * The days ahead worth planning around: every day at the lowest expected reading. None when no day
+ * reads lower than another, or when the model cannot tell weekdays apart, since then any difference
+ * between its days is the edge of its window or rounding, not the day.
+ */
+export function lowestAhead(rows: readonly { expected: number | null }[], model: ModelId | null): number[] {
+  if (model !== null && !tellsWeekdaysApart(model)) return []
+  const values = rows.flatMap((r) => (r.expected === null ? [] : [r.expected]))
+  if (!values.length) return []
+  const min = Math.min(...values)
+  if (values.every((v) => v === min)) return []
+  return rows.flatMap((r, i) => (r.expected === min ? [i] : []))
 }
 
 /** A forecast is scored once its slot is logged; a slot never logged is never scored. */

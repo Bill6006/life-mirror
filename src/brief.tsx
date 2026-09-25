@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
-import { fill } from './format'
+import { clockTimes12, fill, formatHHMM } from './format'
 import { briefData, type Brief as BriefData, type LastNight, type YesterdayMove } from './forecastFlow'
 import { gradeWord } from './library'
 import { useLive } from './live'
@@ -55,7 +55,7 @@ function actionLabel(line: BriefLine, state: ActionState): string {
   const c = copy.brain
   const a = line.action
   if (!a) return ''
-  if (a.kind === 'plan') return fill(c.actionPlan, { cue: copy.aims.cues[state.cue ?? a.cue].toLowerCase(), time: state.time ?? '' })
+  if (a.kind === 'plan') return fill(c.actionPlan, { cue: copy.aims.cues[state.cue ?? a.cue].toLowerCase(), time: state.time ? formatHHMM(state.time) : '' })
   if (a.kind === 'depth') return c.actionDepth
   return fill(c.actionTest, { move: hasMove(a.moveId) ? moveById(a.moveId).name : a.moveId })
 }
@@ -129,7 +129,7 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
           {why.facts.length === 0 && <p class="calc-line">{c.whyNoFacts}</p>}
           {why.facts.map((f) => (
             <p key={f.id} class="calc-line">
-              {f.text}
+              {clockTimes12(f.text)}
             </p>
           ))}
           {why.cards.length > 0 && (
@@ -139,7 +139,7 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
           )}
           {why.cards.map((card) => (
             <p key={card.id} class="calc-line">
-              {card.claim} <span class="muted">{fill(c.whyCard, { grade: gradeWord(card.grade), effect: card.effect, source: card.sources[0]?.cite ?? '' })}</span>
+              {clockTimes12(card.claim)} <span class="muted">{fill(c.whyCard, { grade: gradeWord(card.grade), effect: clockTimes12(card.effect), source: card.sources[0]?.cite ?? '' })}</span>
             </p>
           ))}
         </>
@@ -166,7 +166,7 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
   return (
     <div class="brain-line">
       <p class="calc-line ink" data-testid="brief-line">
-        {line.text}
+        {clockTimes12(line.text)}
       </p>
       {line.action && act?.state === 'open' && (
         <div class="actions">
@@ -208,17 +208,19 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
 }
 
 /** The brief on Now. Its action carries the screen's one accent only when Now says it is the thing to do (primary). */
-export function Brief({ day, version = 0, primary = false }: { day: string; version?: number; primary?: boolean }) {
+export function Brief({ day, version = 0, tick = 0, primary = false }: { day: string; version?: number; tick?: number; primary?: boolean }) {
   const b = useLive(() => briefData(day), [day])
-  const line = useLive(() => todaysLine(day), [day])
+  // Read again each minute: a line whose moment is gone is not the day's line (truth audit, 2026-09-24).
+  const line = useLive(() => todaysLine(day), [day, tick])
   const act = useLive(() => (line ? lineActionState(day, line.action ?? null) : Promise.resolve(null)), [day, line?.key, JSON.stringify(line?.action ?? null), version])
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
+  // Chosen again every fifteen minutes too, so a phone line whose moment is gone gives way to one still true.
   useEffect(() => {
     if (busy) return
     setBusy(true)
     void chooseAndLog(day).finally(() => setBusy(false))
-  }, [version, day])
+  }, [version, day, Math.floor(tick / 15)])
   // The phone's own line counts as said only once it has been on screen (Part 33).
   useEffect(() => {
     if (b && line) void markShown(line)

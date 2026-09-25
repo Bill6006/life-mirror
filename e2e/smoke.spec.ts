@@ -67,6 +67,48 @@ async function seedRecord(page: Page, days: number): Promise<void> {
   }, days)
 }
 
+/** Writes days of completed check-ins whose reading is set by weekday: (p - 1) × 25, with p by getDay(). */
+async function seedLevels(page: Page, days: number, byWeekday: readonly number[]): Promise<void> {
+  await page.evaluate(
+    async ({ n, levels }) => {
+      const blocks: Record<string, string[]> = {
+        morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+        afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+        evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+      }
+      const up = ['mood', 'energy', 'focus']
+      const down = ['stress', 'overwhelm', 'irritation']
+      const hours: Record<string, number> = { morning: 7, afternoon: 13, evening: 19 }
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const tx = dbx.transaction(['checkins'], 'readwrite')
+      const store = tx.objectStore('checkins')
+      const now = new Date()
+      for (let d = n; d >= 1; d--) {
+        const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d)
+        const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        const p = levels[date.getDay()]
+        for (const block of Object.keys(blocks)) {
+          const answers: Record<string, number> = {}
+          for (const id of blocks[block]) answers[id] = up.includes(id) ? p : down.includes(id) ? 6 - p : 3
+          const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 40)
+          const done = new Date(at.getTime() + 95_000)
+          store.add({ day, block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done.toISOString(), updatedAt: done.toISOString(), answers, activeMs: 60_000 })
+        }
+      }
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+      })
+      dbx.close()
+    },
+    { n: days, levels: byWeekday },
+  )
+}
+
 /** Writes a row into one of the phone's stores as the sync from the brain's rows would; the caller reloads to read it. */
 async function putInto(page: Page, store: string, row: Record<string, unknown>): Promise<void> {
   await page.evaluate(
@@ -340,13 +382,118 @@ test('the brief card: the line, its action and the taps by default; the readings
   await page.reload()
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(card.getByTestId('brief-when')).toHaveText('Later today')
-  await expect(card.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 20:00')
+  await expect(card.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 8:00 PM')
   await card.getByTestId('brief-action').click()
   await expect(card.getByTestId('brief-acted')).toHaveText('Planned for today.')
   await expect(card.getByTestId('brief-when')).toHaveText('Later today')
   await page.clock.setFixedTime(new Date(2026, 8, 18, 20, 5))
   await page.reload()
   await expect(card.getByTestId('brief-when')).toHaveText('For today')
+})
+
+/** Every 24-hour clock time in a screen's text: 17:30 and "the hour is 16" found, 5:30 PM and "the hour is 4 PM" not. */
+const h24 = (text: string) => [...text.matchAll(/(?<![\d:.])\d{1,2}:[0-5]\d(?![\d:])(?!\s?[AP]M\b)|\bthe hour is \d{1,2}\b(?!\s?[AP]M\b)/g)].map((m) => m[0])
+
+test('every screen shows a clock time as 5:30 PM, never 17:30, while the record keeps HH:MM (truth audit, 2026-09-24)', async ({ page }) => {
+  test.setTimeout(180_000)
+  // The day before, the week is set: a pickup at 17:30 on the daycare days, her bedtime at 20:00.
+  await page.clock.setFixedTime(new Date(2026, 8, 17, 12, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await settingsSection(page, 'week')
+  await page.getByTestId('pickup-on').click()
+  await page.getByLabel('Pickup time').fill('17:30')
+  await backToSettings(page)
+  await seedRecord(page, 24)
+  // Friday 18 September, 4 PM: the day is seen for the first time, and takes its shape from that week.
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 16, 0))
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await addLearning(page, 'Networking', 'Small talk')
+  await expect(page.getByTestId('aim-card')).toHaveCount(1)
+  // The brain's line and review, in the words the facts keep: 17:30 and 20:00.
+  const at = new Date(2026, 8, 18, 10, 0).toISOString()
+  await putBrief(page, { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'After pickup at 17:30, one short sitting; her bedtime is 20:00.', mode: 'recommendation', factIds: ['week.today'], cardIds: ['post-lunch-dip'], model: '@cf/test/model', at, factsDay: '2026-09-18', action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } })
+  await putBrief(page, { id: '2026-09-18:review', day: '2026-09-18', kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: '@cf/test/model', at, parts: { held: 'Networking held at 20:00 twice.', didNot: 'Nothing after 21:30.', change: 'Try 19:45 on Monday.' } })
+  await page.reload()
+  const found: string[] = []
+  const sweep = async (name: string) => {
+    await page.waitForTimeout(300)
+    for (const t of h24(await page.locator('body').innerText())) found.push(`${name}: ${t}`)
+  }
+  // Now: the line, its plan tap, Why with the facts it cites and its card, and the check-in windows.
+  const card = page.getByTestId('brief')
+  await expect(card.getByTestId('brief-line')).toHaveText('After pickup at 5:30 PM, one short sitting; her bedtime is 8:00 PM.')
+  await expect(card.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 8:00 PM')
+  await sweep('Now')
+  await card.getByTestId('brief-why').click()
+  await expect(card.getByTestId('brief-why-panel')).toContainText('pickup at 5:30 PM')
+  await expect(card.getByTestId('brief-why-panel')).toContainText('1:00 PM to 4:00 PM')
+  await sweep('Now, Why open')
+  await card.getByTestId('brief-action').click()
+  await expect(card.getByTestId('brief-acted')).toBeVisible()
+  // What was kept is still HH:MM: the plan's own time, as scheduling reads it.
+  const kept = await page.evaluate(
+    () =>
+      new Promise<string>((res) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => {
+          const q = r.result.transaction(['intentions'], 'readonly').objectStore('intentions').getAll()
+          q.onsuccess = () => res(String(q.result[0]?.time))
+        }
+      }),
+  )
+  expect(kept).toBe('20:00')
+  await expect(page.getByTestId('aim-plan').first()).toContainText('After her bedtime, 8:00 PM')
+  await sweep('Now, planned')
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await sweep('Aims')
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await sweep('Mirror')
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('week-review-held')).toHaveText('Networking held at 8:00 PM twice.')
+  await sweep('The weekly view')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await sweep('Moves')
+  for (const door of [/^History/, /^Evidence/]) {
+    await page.getByRole('button', { name: door }).click()
+    await sweep(String(door))
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
+  }
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.getByTestId('settings-week')).toContainText('pickup 5:30 PM')
+  await sweep('Settings')
+  for (const id of ['week', 'checkins', 'location', 'cloud', 'data', 'brain', 'about']) {
+    await page.getByTestId(`settings-${id}`).click()
+    await sweep(`Settings, ${id}`)
+    // A section goes back by its arrow; a screen of its own (Cloud copy) closes with Done.
+    await page.locator('.sub-head .back').or(page.getByRole('button', { name: 'Done', exact: true })).first().click()
+    await expect(page.locator('nav.tabs')).toBeVisible()
+  }
+  expect(found).toEqual([])
+})
+
+test('a Brain line pinned to a moment leaves an open Now two hours after it, and nothing is made up in its place (truth audit, 2026-09-24)', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 8, 18, 19, 25) })
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  // Written at ten in the morning for pickup at 17:30: a clearly timed cue.
+  await putBrief(page, { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'After pickup at 17:30, say hello to the next person you see.', mode: 'recommendation', factIds: ['week.today'], cardIds: [], model: '@cf/test/model', at: new Date(2026, 8, 18, 10, 0).toISOString(), factsDay: '2026-09-18' })
+  await page.reload()
+  const card = page.getByTestId('brief')
+  await expect(card.getByTestId('brief-line')).toHaveText('After pickup at 5:30 PM, say hello to the next person you see.')
+  // Left open: at 7:35 PM the minute's tick reads the line again, two hours and five minutes past its moment.
+  await page.clock.fastForward('10:00')
+  await expect(card.getByTestId('brief-line')).toHaveCount(0)
+  await expect(card.getByTestId('brief-writer-tag')).toHaveCount(0)
+  // Opened afresh at 10:33 PM: still gone, and no line stands in for it.
+  await page.clock.setSystemTime(new Date(2026, 8, 18, 22, 33))
+  await page.reload()
+  await expect(card).toBeVisible()
+  await expect(card.getByTestId('brief-line')).toHaveCount(0)
 })
 
 test('an incomplete block reads Incomplete and no number', async ({ page }) => {
@@ -722,7 +869,7 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   await expect(page.getByTestId('weekly')).toBeVisible()
   // The week ahead is the first thing on the screen, and says what it is waiting for.
-  await expect(page.getByTestId('week-ahead')).toContainText('The week ahead appears after fourteen days of record')
+  await expect(page.getByTestId('week-ahead')).toContainText('The week ahead appears once fourteen days each have a complete check-in')
   const order = await page.getByTestId('weekly').locator('h2.section').allInnerTexts()
   expect(order[0].toLowerCase()).toBe('the week ahead, as you usually are')
   await expect(page.getByTestId('hit-rate')).toContainText('No day-ahead forecasts scored yet')
@@ -745,6 +892,38 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await expect(page.getByTestId('necessity-shower')).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('give-back')).toBeVisible()
+})
+
+test('the week ahead: a model blind to weekdays says the days come out alike and marks none of them (truth audit, 2026-09-24)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 0))
+  await page.goto('./')
+  await seedLevels(page, 35, [4, 4, 4, 4, 4, 4, 4])
+  await page.reload()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  const ahead = page.getByTestId('week-ahead')
+  await expect(ahead.getByTestId('ahead-value')).toHaveCount(7)
+  expect(new Set(await ahead.getByTestId('ahead-value').allTextContents())).toEqual(new Set(['75']))
+  await expect(ahead.locator('.is-low')).toHaveCount(0)
+  await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
+  await expect(page.getByTestId('week-ahead-model')).toContainText('It does not tell one weekday from another, so the days ahead come out alike.')
+})
+
+test('the week ahead: a Monday dip in the record is forecast, and the Monday alone is drawn as the lowest (truth audit, 2026-09-24)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 0))
+  await page.goto('./')
+  await seedLevels(page, 35, [4, 2, 4, 4, 4, 4, 4])
+  await page.reload()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  const ahead = page.getByTestId('week-ahead')
+  await expect(ahead.getByTestId('ahead-value')).toHaveCount(7)
+  // Thursday 1 October to Wednesday 7 October: the Monday is the fifth day.
+  expect(await ahead.getByTestId('ahead-value').allTextContents()).toEqual(['75', '75', '75', '75', '25', '75', '75'])
+  await expect(ahead.locator('.wa-val.is-low')).toHaveCount(1)
+  await expect(ahead.locator('.wa-val.is-low')).toHaveText('25')
+  await expect(page.getByTestId('week-ahead-model')).toContainText('Expected from this weekday at this time of day')
+  await expect(page.getByTestId('week-ahead-model')).not.toContainText('come out alike')
 })
 
 test('testing smarter: readings and chips are decided by you, no swap yet, the baseline steady line, the estimator named', async ({ page }) => {
@@ -864,7 +1043,7 @@ test('a Done tap on the card, once the move’s minutes have passed, writes the 
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await page.getByTestId('move-done').click()
-  await expect(page.getByTestId('move-fact')).toContainText(/Done · 4:30 pm/)
+  await expect(page.getByTestId('move-fact')).toContainText(/Done · 4:30 PM/)
   // A passive item alongside is asked right there, once; answered, nothing sits unticked.
   const inline = page.getByTestId('passive-inline-done')
   if (await inline.count()) await inline.click()
@@ -1081,7 +1260,7 @@ test('the line does what it says in one tap, shows why it said it, and the week 
   // A commitment with a step and no moment for it: the line says so, and offers the moment itself.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.getByTestId('brief-line')).toContainText('French: the step is Ten words.')
-  await expect(page.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 20:00')
+  await expect(page.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 8:00 PM')
   // Why it said this: the fact as the record words it, and the card with its grade and its source.
   await page.getByTestId('brief-why').click()
   await expect(page.getByTestId('brief-why-panel')).toContainText('French (learning): the current skill is “Ten words”')
@@ -1092,7 +1271,7 @@ test('the line does what it says in one tap, shows why it said it, and the week 
   await page.getByTestId('brief-action').click()
   await expect(page.getByTestId('brief-acted')).toHaveText('Planned for today.')
   await expect(page.getByTestId('brief-action')).toHaveCount(0)
-  await expect(page.getByTestId('aim-plan')).toContainText('After her bedtime, 20:00')
+  await expect(page.getByTestId('aim-plan')).toContainText('After her bedtime, 8:00 PM')
   await page.reload()
   await expect(page.getByTestId('brief-line')).toContainText('French: the step is Ten words')
   await expect(page.getByTestId('brief-acted')).toHaveText('Planned for today.')
@@ -1135,7 +1314,7 @@ test('something to learn: a language and an instrument sit beside each other, ea
   const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'French' })
   await row.getByTestId('aim-plan-open').click()
   await row.getByTestId('aim-cue-afterBedtime').click()
-  await expect(row.getByTestId('aim-plan')).toContainText('After her bedtime, 20:00')
+  await expect(row.getByTestId('aim-plan')).toContainText('After her bedtime, 8:00 PM')
   await row.getByTestId('aim-start').click()
   await expect(row.getByTestId('aim-started')).toBeVisible()
   // Done is there at once and stays across the block's end (D3); Done today follows, with one optional tap on how it went.
@@ -1543,7 +1722,7 @@ test('Location Context: off until turned on, kinds of place only, the sun where 
   await page.getByTestId('location-switch').click()
   await expect(page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('location-status')).toHaveText('On. Last noted: out, at no place you named in the afternoon.')
-  await expect(page.getByTestId('location-daylight')).toContainText(/^Sunrise \d{1,2}:\d{2} [ap]m, sunset \d{1,2}:\d{2} [ap]m, where you are\.$/)
+  await expect(page.getByTestId('location-daylight')).toContainText(/^Sunrise \d{1,2}:\d{2} [AP]M, sunset \d{1,2}:\d{2} [AP]M, where you are\.$/)
   // Named once, where you are.
   await page.getByTestId('location-name-home').click()
   await expect(page.getByTestId('location-name-here')).toContainText('Named. It is known from now on.')
@@ -1582,7 +1761,7 @@ test('Location Context refused by the phone: said plainly, nothing read, the sun
   await page.getByTestId('location-switch').click()
   await expect(page.getByTestId('location-status')).toHaveText('Blocked for Life Mirror in your phone’s settings. Daylight uses the place you typed under The week, or the hours you set.')
   await expect(page.getByTestId('location-name-here')).toHaveCount(0)
-  await expect(page.getByTestId('location-daylight')).toHaveText('From 7:00 am to 7:00 pm: the hours you set under The week.')
+  await expect(page.getByTestId('location-daylight')).toHaveText('From 7:00 AM to 7:00 PM: the hours you set under The week.')
   await backToSettings(page)
   await page.getByTestId('settings-week').click()
   await page.getByTestId('place-field').fill('40.7, -74.0')
@@ -1605,7 +1784,7 @@ test('daylight from where you are: a place typed once, the sun shown back, the f
   // A place: rounded to one decimal, the day's sun shown back, the fixed hours gone.
   await page.getByTestId('place-field').fill('40.7128, -74.0060')
   await page.getByTestId('place-field').press('Enter')
-  await expect(note).toContainText(/Today: sunrise \d{1,2}:\d{2} am, sunset \d{1,2}:\d{2} pm/)
+  await expect(note).toContainText(/Today: sunrise \d{1,2}:\d{2} AM, sunset \d{1,2}:\d{2} PM/)
   await expect(page.getByTestId('place-field')).toHaveValue('40.7, -74.0')
   await expect(page.getByText('Daylight from', { exact: true })).toHaveCount(0)
   await backToSettings(page)

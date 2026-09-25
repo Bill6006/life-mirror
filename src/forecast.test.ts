@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { addDays } from './blocks'
+import { addDays, daysBetween } from './blocks'
 import type { CheckIn, Forecast } from './db'
-import { BACKTEST_DAYS, backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, horizonBand, loggedDays, lowestAhead, predict, scoresDue, valuesByKey, visibleBefore, weekAheadRows } from './forecast'
+import { BACKTEST_DAYS, backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, horizonBand, loggedDays, lowestAhead, predict, scoresDue, tellsWeekdaysApart, valuesByKey, visibleBefore, weekAheadRows } from './forecast'
 import { slotKey } from './learning'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -126,12 +126,109 @@ describe('early warning', () => {
 })
 
 describe('the lowest day ahead', () => {
-  it('is the smallest expected reading, skips days with no forecast, and is -1 when none has one', () => {
-    expect(lowestAhead([{ expected: 52 }, { expected: null }, { expected: 43 }, { expected: 57 }])).toBe(2)
-    expect(lowestAhead([{ expected: null }, { expected: null }])).toBe(-1)
-    expect(lowestAhead([])).toBe(-1)
-    // A tie keeps the first of them, so the chart never jumps between equals.
-    expect(lowestAhead([{ expected: 40 }, { expected: 40 }])).toBe(0)
+  it('is every day at the smallest expected reading, skipping days with no forecast, and none when none has one', () => {
+    expect(lowestAhead([{ expected: 52 }, { expected: null }, { expected: 43 }, { expected: 57 }], 'weekdayBlock')).toEqual([2])
+    expect(lowestAhead([{ expected: null }, { expected: null }], 'weekdayBlock')).toEqual([])
+    expect(lowestAhead([], 'blend')).toEqual([])
+    // Two days at the lowest are both the lowest: marking only the first would say it was lower than its equal.
+    expect(lowestAhead([{ expected: 40 }, { expected: 52 }, { expected: 40 }], 'blend')).toEqual([0, 2])
+  })
+
+  it('marks no day when no day reads lower than another, as when all seven read 69 (truth audit, 2026-09-24)', () => {
+    const alike = Array.from({ length: 7 }, () => ({ expected: 69 }))
+    expect(lowestAhead(alike, 'weekdayBlock')).toEqual([])
+    expect(lowestAhead([{ expected: 55 }, { expected: null }], 'blend')).toEqual([])
+  })
+
+  it('marks no day for a model blind to weekdays: a point between its days is its window’s edge or rounding, not the day', () => {
+    const rows = [69, 69, 68, 69, 69, 69, 69].map((expected) => ({ expected }))
+    expect(lowestAhead(rows, 'sameBlock')).toEqual([])
+    expect(lowestAhead(rows, 'lastValue')).toEqual([])
+    expect(lowestAhead(rows, 'weekdayBlock')).toEqual([2])
+    expect(tellsWeekdaysApart('sameBlock')).toBe(false)
+    expect(tellsWeekdaysApart('lastValue')).toBe(false)
+    expect(tellsWeekdaysApart('weekdayBlock')).toBe(true)
+    expect(tellsWeekdaysApart('blend')).toBe(true)
+  })
+})
+
+describe('why the week ahead can read the same seven times (truth audit, 2026-09-24)', () => {
+  const isMonday = (day: string) => new Date(`${day}T12:00:00`).getDay() === 1
+  /** Five weeks at one level with day-to-day noise and no weekday in it: a fixed pseudo-random draw. */
+  const steady = new Map<string, number>()
+  let seed = 11
+  for (let back = 35; back >= 1; back--) {
+    for (const block of ['morning', 'afternoon', 'evening'] as const) {
+      seed = (seed * 48271) % 2147483647
+      steady.set(slotKey(addDays(TODAY, -back), block), 69 + (seed % 13) - 6)
+    }
+  }
+  /** Five weeks with a Monday dip every week, the rest level: a pattern a weekday model can see. */
+  const dip = new Map<string, number>()
+  for (let back = 35; back >= 1; back--) {
+    const day = addDays(TODAY, -back)
+    for (const block of ['morning', 'afternoon', 'evening'] as const) dip.set(slotKey(day, block), isMonday(day) ? 30 : 70)
+  }
+  const aheadOf = (values: Map<string, number>) => {
+    const chosen = chooseModel(values, TODAY)!
+    const rows = weekAheadRows(forecastsDue(chosen, values, [], TODAY, new Set()), TODAY)
+    return { chosen, rows }
+  }
+
+  it('with no weekday in the record, a weekday-blind model wins a day ahead, and its seven days come out alike with none marked', () => {
+    const { chosen, rows } = aheadOf(steady)
+    expect(tellsWeekdaysApart(chosen.model)).toBe(false)
+    const mae = (m: string) => chosen.backtests.find((b) => b.model === m)?.mae as number
+    for (const other of ['weekdayBlock', 'blend'] as const) expect(mae(chosen.model)).toBeLessThan(mae(other))
+    const values = rows.map((r) => r.expected as number)
+    expect(values.every((v) => v !== null)).toBe(true)
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1)
+    expect(lowestAhead(rows, chosen.model)).toEqual([])
+  })
+
+  it('shares one baseline: each day’s forecast differs from tomorrow’s only by the oldest days its four weeks drop, under a point', () => {
+    for (const block of ['morning', 'afternoon', 'evening'] as const) {
+      const tomorrow = predict('sameBlock', steady, addDays(TODAY, 1), block) as number
+      for (let h = 2; h <= 7; h++) expect(Math.abs((predict('sameBlock', steady, addDays(TODAY, h), block) as number) - tomorrow)).toBeLessThan(1)
+    }
+  })
+
+  it('with a weekly dip in the record, a weekday model wins, the days ahead differ, and the dip day is the one marked', () => {
+    const { chosen, rows } = aheadOf(dip)
+    expect(tellsWeekdaysApart(chosen.model)).toBe(true)
+    const monday = rows.findIndex((r) => isMonday(r.day))
+    expect(rows[monday].expected as number).toBeLessThan(rows[(monday + 1) % 7].expected as number)
+    expect(lowestAhead(rows, chosen.model)).toEqual([monday])
+  })
+
+  it('draws each day’s range from its own distance: tomorrow’s from errors a day out, a week out from errors a week out', () => {
+    const chosen = chooseModel(steady, TODAY)!
+    const due = forecastsDue(chosen, steady, [], TODAY, new Set())
+    for (const h of [1, 7]) {
+      const band = horizonBand(chosen, steady, TODAY, h)
+      const f = due.find((x) => x.horizon === h && x.block === 'evening')!
+      const p = predict(chosen.model, steady, f.day, 'evening') as number
+      expect(f.lo).toBe(Math.max(0, Math.min(100, Math.round(p + band.lo))))
+      expect(f.hi).toBe(Math.max(0, Math.min(100, Math.round(p + band.hi))))
+    }
+    expect(backtest(chosen.model, steady, TODAY, BACKTEST_DAYS, 7).n).toBeGreaterThanOrEqual(5)
+  })
+
+  it('waits for fourteen days that each have a complete check-in, not fourteen days on the calendar', () => {
+    // Every other day logged: twenty-six days on the calendar, thirteen with a check-in, and no week ahead.
+    const sparse = new Map([...steady].filter(([k]) => {
+      const back = daysBetween(k.slice(0, 10), TODAY)
+      return back <= 26 && back % 2 === 0
+    }))
+    expect(loggedDays(sparse)).toBe(13)
+    const c = chooseModel(sparse, TODAY)!
+    expect(forecastsDue(c, sparse, [], TODAY, new Set()).every((f) => f.horizon === 0)).toBe(true)
+    const fourteen = new Map([...steady].filter(([k]) => {
+      const back = daysBetween(k.slice(0, 10), TODAY)
+      return back <= 28 && back % 2 === 0
+    }))
+    expect(loggedDays(fourteen)).toBe(14)
+    expect(forecastsDue(chooseModel(fourteen, TODAY)!, fourteen, [], TODAY, new Set()).some((f) => f.horizon === 7)).toBe(true)
   })
 })
 

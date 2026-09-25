@@ -1,5 +1,6 @@
 import { weekReview, writtenBy } from './brainFlow'
 import { copy } from './copy'
+import { clockTimes12 } from './format'
 import { useLive } from './live'
 
 /**
@@ -17,13 +18,13 @@ export function WeekReviewCard({ day }: { day: string }) {
       <div class="card pad" data-testid="week-review">
         <div class="calc">
           <p class="calc-line">
-            <span class="calc-key">{c.held}</span> · <span data-testid="week-review-held">{r.held}</span>
+            <span class="calc-key">{c.held}</span> · <span data-testid="week-review-held">{clockTimes12(r.held)}</span>
           </p>
           <p class="calc-line">
-            <span class="calc-key">{c.didNot}</span> · <span data-testid="week-review-did-not">{r.didNot}</span>
+            <span class="calc-key">{c.didNot}</span> · <span data-testid="week-review-did-not">{clockTimes12(r.didNot)}</span>
           </p>
           <p class="calc-line ink">
-            <span class="calc-key">{c.change}</span> · <span data-testid="week-review-change">{r.change}</span>
+            <span class="calc-key">{c.change}</span> · <span data-testid="week-review-change">{clockTimes12(r.change)}</span>
           </p>
         </div>
         <p class="note faint no-gap" data-testid="week-review-writer">

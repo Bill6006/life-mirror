@@ -38,10 +38,15 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
         {w.weekAheadReady ? (
           <>
             <div class="week-chart">
-              <WeekAhead rows={w.weekAhead} />
+              <WeekAhead rows={w.weekAhead} low={w.weekAheadLow} />
             </div>
             <p class="note no-gap">{c.aheadCaption}</p>
-            {w.model && <p class="note faint no-gap">{fill(c.model, { model: copy.brief.models[w.model] })}</p>}
+            {w.model && (
+              <p class="note faint no-gap" data-testid="week-ahead-model">
+                {fill(c.model, { model: copy.brief.models[w.model] })}
+                {w.weekAheadAlike && ` ${c.aheadAlike}`}
+              </p>
+            )}
           </>
         ) : (
           <p class="note no-gap">{c.aheadNone}</p>

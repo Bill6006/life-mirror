@@ -6,7 +6,7 @@ import { blockAt } from './blocks'
 import type { Move, PathId } from './catalogue'
 import { copy } from './copy'
 import type { Aim, Cue, DayContext, Ease, Intention, Offer, Skill } from './db'
-import { fill, formatDayShort, formatTime } from './format'
+import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon, type IconName } from './icons'
 import type { Sitting } from './ladder'
 import { doneOpen, recordDoneNow } from './offerFlow'
@@ -319,7 +319,7 @@ export function When({ plan, ctx, onPlan }: Pick<Shared, 'plan' | 'ctx' | 'onPla
   if (pending && !changing) {
     return (
       <span class="sub aim-when" data-testid="aim-plan">
-        {fill(c.planned, { cue: c.cues[pending.cue], time: pending.time })}
+        {fill(c.planned, { cue: c.cues[pending.cue], time: formatHHMM(pending.time) })}
         {cues.length > 0 && (
           <>
             {' · '}
