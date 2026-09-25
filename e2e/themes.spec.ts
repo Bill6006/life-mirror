@@ -415,6 +415,15 @@ const MORE: typeof STATES = [
       await p.getByTestId('reading-row').first().click()
     },
   },
+  {
+    name: 'Check-in, Loneliness and what it does not ask',
+    tab: 'Now',
+    open: async (p) => {
+      await p.getByRole('button', { name: /Logged/ }).first().click()
+      await p.getByTestId('reading-row').filter({ hasText: 'Loneliness' }).first().click()
+      await expect(p.getByTestId('reading-help')).toBeVisible()
+    },
+  },
   { name: 'Change the rep', tab: 'Now', open: async (p) => p.getByTestId('path-change').first().click() },
   { name: 'The weekly view', tab: 'Mirror', open: click(/^The weekly view/) },
   { name: 'Evidence', tab: 'Moves', open: click(/^Evidence/) },
@@ -485,7 +494,7 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
-    // Seeding walks a whole evening check-in; the walk through forty-one states at three widths follows. One limit for all of it.
+    // Seeding walks a whole evening check-in; the walk through forty-two states at three widths follows. One limit for all of it.
     test.setTimeout(1_200_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)

@@ -101,3 +101,11 @@ describe('how the app is used, in your own file (Follow-up F1)', () => {
     expect(out.useLog.map((r: { what: string }) => r.what)).toEqual(['launch', 'evidence'])
   })
 })
+
+describe('the record keeps what Loneliness asked, as it stood (Part 42)', () => {
+  it('dates the middle phrase and the question reworded, the answers keeping their meaning', () => {
+    const key = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }).json).key
+    expect(key.reworded).toContainEqual({ reading: 'loneliness', position: 3, on: '2026-09-24', from: 'Wanting — a fair bit feels missing', to: 'Distant — a fair bit feels missing' })
+    expect(key.reprompted).toEqual([{ reading: 'loneliness', on: '2026-09-24', from: 'Right now', to: 'How much meaningful closeness feels missing' }])
+  })
+})

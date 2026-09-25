@@ -21,6 +21,7 @@ export function WordingScreen({ onClose }: { onClose: () => void }) {
         <div key={r.id} class="wording-reading">
           <h2 class="title-sm">{r.name}</h2>
           <p class="note faint">{r.prompt}</p>
+          {r.help && <p class="note faint">{r.help}</p>}
           <div class="card">
             <ul class="rows">
               {activeAnchors(r.id).map((a, i) => {

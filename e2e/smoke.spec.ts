@@ -1491,6 +1491,22 @@ test('what Claude may be given of how the app is used: counts over whole days to
   await expect(page.getByTestId('use-given-note')).toContainText('Claude reads none of them yet')
 })
 
+test('Loneliness asks how much meaningful closeness feels missing, never whether company is wanted (Part 42)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 19, 30))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).first().click()
+  const heading = page.getByRole('heading', { name: 'Loneliness', exact: true })
+  for (let i = 0; i < 12 && !(await heading.isVisible()); i++) {
+    await page.getByTestId('anchor').nth(2).click()
+    await page.waitForTimeout(150)
+  }
+  await expect(heading).toBeVisible()
+  await expect(page.locator('.checkin p.note').first()).toHaveText('How much meaningful closeness feels missing')
+  await expect(page.getByTestId('reading-help')).toHaveText('Not whether you want company right now, or how many people are around.')
+  await expect(page.getByTestId('anchor').nth(2)).toContainText('Distant')
+  await expect(page.getByTestId('anchor').nth(2)).toContainText('a fair bit feels missing')
+})
+
 test('daylight from where you are: a place typed once, the sun shown back, the fixed hours standing in until then (Part 35)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 24, 9, 30))
   await page.goto('./')

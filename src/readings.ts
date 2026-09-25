@@ -13,6 +13,10 @@ export interface Reading {
   id: ReadingId
   name: string
   prompt: string
+  /** One line under the prompt where a reading is easily misread (Part 42): what it does not ask. */
+  help?: string
+  /** What the reading measures, in the words a writer reads beside its answers (Part 42). */
+  meaning?: string
   unit: Unit
   /** Five phrases, least to most of the thing named. */
   anchors: readonly string[]

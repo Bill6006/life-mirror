@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockReadings, readings } from './readings'
+import { blockReadings, readingById, readings } from './readings'
 
 // Rule 4: a reading, never a verdict. Rule 3: no near-duplicates.
 const banned = ['failed', 'bad', 'lazy', 'behind', 'weak', 'slipped again']
@@ -91,5 +91,24 @@ describe('readings and anchors', () => {
       const heads = r.anchors.map((a) => a.split(' — ')[0].toLowerCase())
       expect(new Set(heads).size, r.id).toBe(5)
     }
+  })
+})
+
+describe('Loneliness asks what it measures (Part 42)', () => {
+  const r = readingById('loneliness')
+
+  it('asks how much meaningful closeness feels missing, and says what it does not ask', () => {
+    expect(r.prompt).toBe('How much meaningful closeness feels missing')
+    expect(r.help).toBe('Not whether you want company right now, or how many people are around.')
+    expect(r.meaning).toMatch(/meaningful closeness feels missing, not a wish for company/)
+  })
+
+  it('keeps its five answers on the one axis of closeness felt missing, with no wish for company in any of them', () => {
+    expect(r.anchors).toEqual(['Content — nothing feels missing', 'Slight — a little feels missing', 'Distant — a fair bit feels missing', 'Lonely — a lot feels missing', 'Cut off — all closeness feels missing'])
+    for (const a of [...r.anchors, ...(r.alternates ?? []).filter((x): x is string => x !== null)]) expect(a).not.toMatch(/\bwant|\bwish|company|around|alone|people\b/i)
+  })
+
+  it('leaves the wish for company to Social energy, which asks it', () => {
+    expect(readingById('socialEnergy').prompt).toBe('Appetite for people')
   })
 })

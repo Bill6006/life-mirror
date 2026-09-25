@@ -112,13 +112,15 @@ _Holding attention_
 
 ## Loneliness
 
-_Right now_
+_How much meaningful closeness feels missing_
+
+Not whether you want company right now, or how many people are around.
 
 - Content — nothing feels missing
   - or: Settled — nothing is missing
 - Slight — a little feels missing
   - or: Mild — a little is missing
-- Wanting — a fair bit feels missing
+- Distant — a fair bit feels missing
 - Lonely — a lot feels missing
   - or: Hollow — a lot feels missing
 - Cut off — all closeness feels missing

@@ -179,12 +179,14 @@
     {
       "id": "loneliness",
       "name": "Loneliness",
-      "prompt": "Right now",
+      "prompt": "How much meaningful closeness feels missing",
+      "help": "Not whether you want company right now, or how many people are around.",
+      "meaning": "how much meaningful closeness feels missing, not a wish for company or how many people are around",
       "unit": "step",
       "anchors": [
         "Content — nothing feels missing",
         "Slight — a little feels missing",
-        "Wanting — a fair bit feels missing",
+        "Distant — a fair bit feels missing",
         "Lonely — a lot feels missing",
         "Cut off — all closeness feels missing"
       ],

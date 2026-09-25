@@ -15,6 +15,7 @@ md += 'Every block asks all six ingredients of the reading out of 100 (mood, ene
 md += 'Under each phrase but the middle, one pre-written alternate (Phase 9), for your veto. A swap happens only in Phase 12, once per reading, never the middle, logged and dated. Sleep hours is a band of hours and has none.\n\n'
 for (const r of data.readings) {
   md += `## ${r.name}\n\n_${r.prompt}_\n\n`
+  if (r.help) md += `${r.help}\n\n`
   r.anchors.forEach((a, i) => {
     md += `- ${a}\n`
     const alt = r.alternates?.[i]

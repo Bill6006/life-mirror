@@ -10,7 +10,11 @@ import type { Settings } from './settings'
 export const REWORDED: readonly { reading: string; position: number; on: string; from: string; to: string }[] = [
   { reading: 'loneliness', position: 1, on: '2026-09-11', from: 'Connected — people feel close', to: 'Connected — or fine on my own' },
   { reading: 'loneliness', position: 4, on: '2026-09-11', from: 'Alone — nobody feels close today', to: 'Lonely — nobody feels close' },
+  { reading: 'loneliness', position: 3, on: '2026-09-24', from: 'Wanting — a fair bit feels missing', to: 'Distant — a fair bit feels missing' },
 ]
+
+/** A reading's question as it stood, dated where it was reworded: the answers keep their meaning (Part 42). */
+export const REPROMPTED: readonly { reading: string; on: string; from: string; to: string }[] = [{ reading: 'loneliness', on: '2026-09-24', from: 'Right now', to: 'How much meaningful closeness feels missing' }]
 
 /** Offers, cards, outcomes and declarations: what was offered against what you did. */
 export interface RecordsData {
@@ -131,6 +135,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, goodEnd: INGREDIENTS[r.id] === 'down' ? 'low' : INGREDIENTS[r.id] === 'up' ? 'high' : 'context', anchors: r.anchors, alternates: r.alternates ?? null })),
         positions: 'Each answer is a position 1 to 5 into the anchors, in order. Points are 0, 25, 50, 75, 100, reversed where the good end is low.',
         reworded: REWORDED,
+        reprompted: REPROMPTED,
         swaps: (records?.anchorSwaps ?? []).map((s) => ({ reading: s.reading, position: s.position, from: s.from, to: s.to, on: s.at, answers: s.answers, stretchDays: s.stretchDays })),
         retiredReadings: settings.retiredReadings,
         weights: settings.weights,

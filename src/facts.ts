@@ -99,6 +99,11 @@ function nameOfMove(id: string, label?: string): string {
   return hasMove(id) ? moveById(id).name : (label ?? id)
 }
 
+/** A reading by name, with what it measures where it is easily misread (Part 42): Loneliness is missing closeness, not a wish for company. */
+function named(r: { name: string; meaning?: string }): string {
+  return r.meaning ? `${r.name} (${r.meaning})` : r.name
+}
+
 function round(v: number | null): number | null {
   return v === null ? null : Math.round(v)
 }
@@ -338,13 +343,13 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (latest && CONTEXT_IDS.includes(id)) {
       const p = latest.answers[id] as 1 | 2 | 3 | 4 | 5
       const word = headword(anchorFor(id, p))
-      facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : id === 'motivation' ? 'mood' : 'social'], `${reading.name} read “${word}” (${p} of 5) at the ${latest.block} check-in on ${latest.day}.`, { position: p, word, day: latest.day, block: latest.block }))
+      facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : id === 'motivation' ? 'mood' : 'social'], `${named(reading)} read “${word}” (${p} of 5) at the ${latest.block} check-in on ${latest.day}.`, { position: p, word, day: latest.day, block: latest.block }))
     }
     const ps = positionsOf(i.checkins, id)
     if (ps.length >= TREND_WINDOW * 2) {
       const recent = mean(ps.slice(-TREND_WINDOW))
       const prior = mean(ps.slice(-TREND_WINDOW * 2, -TREND_WINDOW))
-      facts.push(fact(`trend.${id}`, [id === 'loneliness' ? 'loneliness' : 'mood'], `${reading.name}: the last ${TREND_WINDOW} answers average ${recent} of 5 against ${prior} for the ${TREND_WINDOW} before.`, { recent, prior, window: TREND_WINDOW }, { n: TREND_WINDOW }))
+      facts.push(fact(`trend.${id}`, [id === 'loneliness' ? 'loneliness' : 'mood'], `${named(reading)}: the last ${TREND_WINDOW} answers average ${recent} of 5 against ${prior} for the ${TREND_WINDOW} before.`, { recent, prior, window: TREND_WINDOW }, { n: TREND_WINDOW }))
     }
   }
 

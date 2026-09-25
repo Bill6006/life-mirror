@@ -139,6 +139,11 @@ export function CheckInScreen({
         {reading.name}
       </h1>
       <p class="note">{reading.prompt}</p>
+      {reading.help && (
+        <p class="note faint" data-testid="reading-help">
+          {reading.help}
+        </p>
+      )}
 
       <div class="card">
         <ul class="rows anchors">
