@@ -1,8 +1,9 @@
-import type { BrainPrefsBody } from '../../src/brainShared'
+import { USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
 import type { Fact, FactSheet } from '../../src/factTypes'
 import { readingById } from '../../src/readings'
+import { isUsageFact, useEventText, USAGE_FOR, USAGE_SLICE } from '../../src/useShared'
 import { CATEGORIES, permitted, type Category, type Gates } from './briefing'
-import { addDays } from './time'
+import { addDays, localTime } from './time'
 import type { ReadRow, RecordRow, Store } from './turso'
 
 // The private retrieval layer (Part 30; Rule 21 as amended 2026-09-23): the only path from the
@@ -55,10 +56,11 @@ export const FAITH_WORDS = /\b(faith|church|god|pray(?:s|ed|ing|er|ers)?|bible|s
  * The governing rules as the owner's own settings row states them; with no settings row, closed.
  * Rule 21's amendment names Anthropic (2026-09-23), so Claude may read what the rest allows.
  */
-export function gatesFrom(settings: unknown): Gates {
-  if (!settings || typeof settings !== 'object') return { faithHidden: true, privateInSelection: false, claudeMayRead: true }
+export function gatesFrom(settings: unknown, usage: 'gated' | 'open' = USAGE_TO_CLAUDE): Gates {
+  const usageOpen = usage === 'open'
+  if (!settings || typeof settings !== 'object') return { faithHidden: true, privateInSelection: false, claudeMayRead: true, usageOpen }
   const s = settings as Record<string, unknown>
-  return { faithHidden: s.hideFaith === true, privateInSelection: s.privateInSelection === true, claudeMayRead: true }
+  return { faithHidden: s.hideFaith === true, privateInSelection: s.privateInSelection === true, claudeMayRead: true, usageOpen }
 }
 
 /** What one Claude task may read: the one check, fixed for the run. */
@@ -81,7 +83,9 @@ export function accessFor(task: ReadTask, gates: Gates, prefs: BrainPrefsBody): 
 export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>): Category[] {
   const [head, rest] = [f.id.split('.')[0], f.id.split('.')[1]]
   const own: Category[] =
-    head === 'note'
+    head === 'usage'
+      ? ['usage']
+      : head === 'note'
       ? ['notes']
       : head === 'private'
         ? ['privateItems']
@@ -114,7 +118,7 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
 export function sheetForClaude(sheet: FactSheet, a: Access): FactSheet {
   const pathOfAim = new Map(sheet.facts.filter((f) => f.id.startsWith('path.')).map((f) => [f.id.slice(5), String(f.values.path ?? '')]))
   const faith = a.allowed('faith')
-  const facts = sheet.facts.filter((f) => factCategories(f, pathOfAim).every((c) => a.allowed(c)) && (faith || !(f.id.startsWith('note.') && FAITH_WORDS.test(f.text))))
+  const facts = sheet.facts.filter((f) => factCategories(f, pathOfAim).every((c) => a.allowed(c)) && (faith || !(f.id.startsWith('note.') && FAITH_WORDS.test(f.text))) && (!isUsageFact(f.id) || USAGE_FOR[a.task].includes(f.id)))
   const kept = new Set(facts.map((f) => f.id))
   return {
     ...sheet,
@@ -142,6 +146,8 @@ interface Ctx {
   store: Store
   catalogue: Catalogue
   a: Access
+  /** The phone's zone, for the clock time of an event in a slice; UTC when not given. */
+  timeZone?: string
 }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
@@ -209,7 +215,7 @@ async function pathMarks(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<
 }
 
 /** Every category that has a reader. The others (the fact sheet, which the briefing carries, the monthly check, the coach's core, tier 2) are never served here. */
-export const READABLE: readonly Category[] = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory']
+export const READABLE: readonly Category[] = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage', 'usageEvents']
 
 /** One category's lines for a query, newest first, or null when it has no reader. The caller has already passed the check. */
 export async function readCategory(x: Ctx, category: Category, q: Query): Promise<Item[] | null> {
@@ -366,6 +372,30 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       ]
       break
     }
+    case 'usage': {
+      // How the app was used, as the day's sheet counts it: the facts that bear on this task, never a reason.
+      const facts = (await x.store.readFacts(q.to)) ?? (await x.store.readFacts(addDays(q.to, -1)))
+      items = (facts?.sheet.facts ?? []).filter((f) => isUsageFact(f.id) && USAGE_FOR[x.a.task].includes(f.id)).map((f) => ({ day: facts?.sheet.day ?? null, text: f.text }))
+      break
+    }
+    case 'usageEvents': {
+      // A short slice of events in order, for when the order matters: fixed words and a clock time, nothing another switch governs.
+      const rows = await x.store.readRecords('useLog', { from: q.from, to: q.to }, 2000)
+      const zone = x.timeZone ?? 'UTC'
+      items = rows
+        .map((r) => ({ r, b: obj(r.body) }))
+        .map(({ r, b }) => {
+          const text = useEventText(str(b.kind), str(b.what) || null)
+          const at = Date.parse(str(b.at))
+          if (!text || !Number.isFinite(at)) return null
+          const t = localTime(new Date(at), zone)
+          return { day: r.day, at: str(b.at), text: `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} ${text}` }
+        })
+        .filter((i): i is Item & { at: string } => i !== null)
+        .sort((a, b) => (a.at < b.at ? 1 : -1))
+        .map(({ day, text }) => ({ day, text }))
+      break
+    }
     default:
       return null
   }
@@ -388,6 +418,17 @@ export function itemLines(items: readonly Item[]): string {
 async function logRead(store: Store, run: string, seq: number, task: ReadTask, day: string, category: Category, items: readonly Item[], text: string, via: ReadRow['via'], now: Date, dry = false): Promise<void> {
   const at = now.toISOString()
   await store.writeRead({ id: `read:${run}:${at}:${seq}`, day, at, task, category, count: items.length, bytes: bytesOf(text), via, ...(dry ? { dry: true } : {}) })
+}
+
+/**
+ * The usage facts a briefing's sheet carried to Claude (Follow-up F1), logged like every read: the
+ * task, the category, how many and their size, never their words. Nothing is logged when the sheet
+ * carried none, as it carries none while the gate is closed.
+ */
+export async function logUsageOnSheet(store: Store, run: string, task: ReadTask, day: string, sheet: FactSheet, now: Date, dry = false): Promise<void> {
+  const items = sheet.facts.filter((f) => isUsageFact(f.id)).map((f) => ({ day: sheet.day, text: f.text }))
+  if (!items.length) return
+  await logRead(store, run, 99, task, day, 'usage', items, itemLines(items), 'briefing', now, dry)
 }
 
 /** How much private context each task's briefing may carry (engineering judgment). */
@@ -421,6 +462,7 @@ export async function contextFor(store: Store, catalogue: Catalogue, a: Access, 
           ...(rowPath === 'partner' ? [{ category: 'monthlyCheck' as Category, title: 'The monthly check, this month and last', q: { from: addDays(forDay, -62), to: forDay, limit: 2 } }] : []),
           { category: 'privateItems', title: 'Private items', q: { from: forDay, to: forDay, limit: 10 } },
           { category: 'faith', title: 'Faith this week', q: { ...week, limit: 5 } },
+          { category: 'usage', title: 'How the People row was used (what was observed, never why)', q: { from: forDay, to: forDay, limit: 4 } },
         ]
       : a.task === 'line'
       ? [
@@ -501,11 +543,15 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
   for (const k of url.searchParams.keys()) if (!(CONTEXT_PARAMS as readonly string[]).includes(k)) return { ok: false, reason: `unknown parameter "${k}"` }
   const category = url.searchParams.get('category') ?? ''
   if (!(CATEGORIES as readonly string[]).includes(category)) return { ok: false, reason: `category "${category}" is not one the layer names` }
-  const from = url.searchParams.get('from') ?? addDays(day, -30)
+  const slice = category === 'usageEvents'
   const to = url.searchParams.get('to') ?? day
+  const from = url.searchParams.get('from') ?? (slice && DAY_RE.test(to) ? addDays(to, -(USAGE_SLICE.maxDays - 1)) : addDays(day, -30))
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || from > to) return { ok: false, reason: 'from and to must be days, from before to' }
   if (to > day) return { ok: false, reason: 'to may not be after the task’s day' }
   if (from < addDays(day, -366)) return { ok: false, reason: 'from may reach back a year at most' }
+  // Follow-up F1: a slice of events is short and recent: a week at most, from the last fourteen days.
+  if (slice && from < addDays(day, -(USAGE_SLICE.reachDays - 1))) return { ok: false, reason: `a slice of events reaches back ${USAGE_SLICE.reachDays} days at most` }
+  if (slice && addDays(from, USAGE_SLICE.maxDays - 1) < to) return { ok: false, reason: `a slice of events covers ${USAGE_SLICE.maxDays} days at most` }
   const path = url.searchParams.get('path')
   if (path !== null && path !== 'social' && path !== 'partner') return { ok: false, reason: 'path must be social or partner' }
   const stageRaw = url.searchParams.get('stage')
@@ -517,8 +563,9 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
   if (tag !== undefined && !/^[A-Za-z][A-Za-z-]{0,39}$/.test(tag)) return { ok: false, reason: 'tag is one word of letters' }
   if (tag !== undefined && !TAGGED.includes(category as Category)) return { ok: false, reason: 'tag filters the paths’ reps and faith’s practices, whose moves carry tags' }
   const limitRaw = url.searchParams.get('limit')
-  const limit = limitRaw === null ? 20 : Number(limitRaw)
+  const limit = limitRaw === null ? (slice ? USAGE_SLICE.defaultEvents : 20) : Number(limitRaw)
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) return { ok: false, reason: 'limit must be from 1 to 50' }
+  if (slice && limit > USAGE_SLICE.maxEvents) return { ok: false, reason: `a slice of events holds ${USAGE_SLICE.maxEvents} at most` }
   return { ok: true, category: category as Category, q: { from, to, ...(path ? { path } : {}), ...(stage !== undefined ? { stage } : {}), ...(q ? { q } : {}), ...(tag ? { tag } : {}), limit } }
 }
 
@@ -526,8 +573,8 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
  * One on-demand read, after its checks: the lines, cut to what the run may still read, then logged;
  * or null when the category has no reader. The review reads the Partner path as acts done only.
  */
-export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access, category: Category, q: Query, day: string, run: string, seq: number, now: Date, maxBytes: number, dry = false): Promise<{ items: Item[]; text: string; truncated: boolean } | null> {
-  const all = await readCategory({ store, catalogue, a }, category, a.task === 'review' && category === 'partnerPath' ? { ...q, doneOnly: true } : q)
+export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access, category: Category, q: Query, day: string, run: string, seq: number, now: Date, maxBytes: number, dry = false, timeZone?: string): Promise<{ items: Item[]; text: string; truncated: boolean } | null> {
+  const all = await readCategory({ store, catalogue, a, ...(timeZone ? { timeZone } : {}) }, category, a.task === 'review' && category === 'partnerPath' ? { ...q, doneOnly: true } : q)
   if (all === null) return null
   let items = all
   let text = itemLines(items)

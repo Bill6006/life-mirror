@@ -1,5 +1,6 @@
 import type { FactSheet } from './factTypes'
 import type { ClaimCard, Grade } from './libraryTypes'
+import { isUsageFact } from './useShared'
 
 // What the brain may say, checked the same way on the phone and in the Worker: one of the
 // modes, grounded in facts named by id, every number taken from those facts, no evidence
@@ -117,9 +118,19 @@ export function isWriterModel(v: unknown): v is WriterModel {
  * What Claude may read (Part 30, Rule 21 as amended 2026-09-23), one switch each on the Brain
  * screen, every one on by default and each the owner's to turn off. The retrieval layer's other
  * categories are not switches: the fact sheet's frame, the coach's decision core, and tier 2.
+ * `usage` (Follow-up F1) governs how Life Mirror is used: its counts and, for the weekly review
+ * alone, a short slice of its events.
  */
-export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory'] as const
+export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage'] as const
 export type BrainSwitch = (typeof BRAIN_SWITCHES)[number]
+
+/**
+ * Follow-up F1 (2026-09-24): whether Claude may be given how Life Mirror is used at all. Gated while
+ * the reliability monitoring runs (2026-09-24 to 2026-09-28, then the ten-day check to 2026-10-04):
+ * giving it would change the monitored prompts and their size. Collection goes on meanwhile. Opened
+ * only at the owner's word once monitoring is complete; the phone and the Worker read this one value.
+ */
+export const USAGE_TO_CLAUDE: 'gated' | 'open' = 'gated'
 
 /** The Brain settings, as the phone syncs them in the one row `brainPrefs`. */
 export interface BrainPrefsBody {
@@ -172,6 +183,32 @@ const CAFFEINE_FREE = /\bcaffeine[- ]free\b|\bno caffeine\b(?! (?:was )?reported
 const CAFFEINE_WORDS = /\b(caffeine|coffee|espresso|energy drinks?|pre-workout|\d+ ?mg)\b/i
 export const CAUSAL_WORDS = /\bcaus(?:e|es|ed|ing)\b|\bbecause of\b|\baffect(?:s|ed|ing)?\b/i
 
+/**
+ * Usage is evidence, never an explanation (Follow-up F1). A line that cites how the app was used may
+ * say what was observed, and may offer a reason about the app or the moment only as a possibility
+ * to test. A verdict on the person is never said, hedged or not.
+ */
+export const USAGE_VERDICT = /\b(lazy|laziness|lack(?:s|ed|ing)? (?:of )?(?:motivation|discipline|willpower|interest|commitment)|unmotivated|(?:n['’]t|not) care|not interested|uninterested|can['’]?t be bothered|gave up|given up|giving up)\b/i
+/** A reason or a cause given for how the app was used. */
+export const USAGE_REASON = /\b(because|since you|as you|due to|so you|why you|avoid(?:s|ed|ing|ance)?|resist(?:s|ed|ing|ance)?|procrastinat\w*|forg[eo]t(?:s|ten|ting)?|ignor(?:e|es|ed|ing)|bored|boring|hate(?:s|d)?|dislike(?:s|d)?|motivation|motivated|caus(?:e|es|ed|ing)|affect(?:s|ed|ing)?|led to|leads to|makes? you)\b/i
+/** Words that keep a reason a possibility to test. */
+export const USAGE_HEDGE = /\b(may|might|could|perhaps|possibly|maybe|one possibility|a possibility|worth testing|to test|a guess|if so|whether)\b/i
+
+/** Why a text about how the app was used may not be said, or null. */
+export function usageRefusal(text: string): string | null {
+  if (USAGE_VERDICT.test(text)) return 'passes a verdict on the person from how the app was used; say what was observed'
+  if (USAGE_REASON.test(text) && !USAGE_HEDGE.test(text)) return 'gives a reason for how the app was used as a fact; say what was observed, or offer a reason as a possibility to test'
+  return null
+}
+
+/** Words that speak of using the app itself. */
+export const USAGE_TALK = /\b(open(?:ed|s|ing)?|tapp(?:ed|ing)|taps?|skipp(?:ed|ing)|the app|life mirror|screens?|notifications?)\b/i
+
+/** A text given how the app was used without citing it (the coach's version, say), held to the same rule once it speaks of that use. */
+export function usageTalkRefusal(text: string): string | null {
+  return USAGE_TALK.test(text) ? usageRefusal(text) : null
+}
+
 function words(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
@@ -208,12 +245,19 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   if (CAFFEINE_FREE.test(text)) return 'calls a window caffeine-free; none reported is not none'
   if (CAFFEINE_WORDS.test(text) && CAUSAL_WORDS.test(text)) return 'speaks of caffeine as a cause'
   if (factIds.some(isPathFact) && speaksOfOutcomes(text)) return 'rates a person or counts an outcome, in a line about a path'
+  // Follow-up F1: a line citing how the app was used says what was observed; a reason stays a possibility.
+  if (factIds.some(isUsageFact)) {
+    const why = usageRefusal(text)
+    if (why) return why
+  }
   for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
     if (text.toLowerCase().includes(phrase) && GRADE_ORDER[grade] < best) return `says "${phrase}" beyond the cited cards' grade`
   }
-  if (cardIds.length === 0 && EVIDENCE_WORDS.test(text)) return 'speaks of evidence without citing a card'
+  // Follow-up F1: a line citing how the app was used may name the Evidence screen; that name is not a claim.
+  const claims = factIds.some(isUsageFact) ? text.replace(/\b[Tt]he Evidence screen\b/g, '') : text
+  if (cardIds.length === 0 && EVIDENCE_WORDS.test(claims)) return 'speaks of evidence without citing a card'
   return null
 }
 

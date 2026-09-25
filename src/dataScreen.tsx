@@ -11,7 +11,10 @@ import { useLive } from './live'
 import { unsubscribePush } from './push'
 import { shareOrDownload } from './share'
 import { Disclosure } from './ui'
-import { useSummary, type UseSummary } from './useLog'
+import { USAGE_TO_CLAUDE } from './brainShared'
+import type { Fact } from './factTypes'
+import type { UseSummary } from './usageFacts'
+import { usageFactsToday, useSummary } from './useRead'
 
 /** Rule 13 of the plan: anything recorded can be exported or deleted. Rule 11: private items stay out unless ticked, and so does the Partner path (Part 27). */
 /** A screen's name for the use log's list: a tab, a Settings section, or a sub-screen. */
@@ -25,8 +28,13 @@ function screenName(id: string): string {
   return (u.screenNames as Record<string, string>)[id] ?? id
 }
 
-/** How you use the app (Part 34): counts over four weeks, on this phone alone. The full list of screens sits behind one row. */
-function UseCard({ use }: { use: UseSummary }) {
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many.replace('{n}', String(n)))
+
+/**
+ * How you use the app (Part 34; Follow-up F1): counts over four weeks, and what Claude may be given
+ * of them, word for word, behind one row. The full list of screens sits behind another.
+ */
+function UseCard({ use, given }: { use: UseSummary; given: readonly Fact[] }) {
   const u = copy.useLog
   const top = use.screens.slice(0, 3).map((s) => fill(u.screenItem, { what: screenName(s.what), n: String(s.n) })).join(' · ')
   return (
@@ -43,13 +51,34 @@ function UseCard({ use }: { use: UseSummary }) {
         <p class="calc-line" data-testid="use-coach">
           {use.coach.picked ? fill(u.coach, { notTaken: String(use.coach.notTaken), picked: String(use.coach.picked) }) : u.coachNone}
         </p>
+        <p class="calc-line" data-testid="use-opened">
+          {fill(u.opened, { times: plural(use.opened.times, 'once', '{n} times'), days: plural(use.opened.days, 'one day', '{n} days') })}
+        </p>
         <p class="calc-line">{fill(u.notifications, { n: String(use.notifications) })}</p>
-        <p class="calc-line">{fill(u.change, { opened: String(use.change.opened), picked: String(use.change.picked) })}</p>
+        <p class="calc-line" data-testid="use-change">
+          {fill(u.change, {
+            opened: use.change.opened ? fill(u.changeOpened, { times: plural(use.change.opened, 'once', '{n} times') }) : u.changeNot,
+            picked: use.change.picked ? fill(u.changePicked, { times: plural(use.change.picked, 'once', '{n} times') }) : use.change.opened ? u.changeNone : '',
+          })}
+        </p>
         <Disclosure label={u.screens} sub={top || u.screensNone} testid="use-screens">
           <ul class="plain" data-testid="use-screen-list">
             {use.screens.map((s) => (
               <li key={s.what} class="calc-line">
                 {fill(u.screenItem, { what: screenName(s.what), n: String(s.n) })}
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
+        <Disclosure label={u.given} sub={given.length ? fill(u.givenSub, { n: String(given.length) }) : u.givenSubNone} testid="use-given">
+          <p class="note faint" data-testid="use-given-note">
+            {USAGE_TO_CLAUDE === 'open' ? u.givenOpen : u.givenGated}
+          </p>
+          {given.length === 0 && <p class="calc-line">{u.givenNone}</p>}
+          <ul class="plain" data-testid="use-given-list">
+            {given.map((f) => (
+              <li key={f.id} class="calc-line">
+                {f.text}
               </li>
             ))}
           </ul>
@@ -76,6 +105,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [imported, setImported] = useState<string | null>(null)
   const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() }, pathMarks: await db.pathMarks.toArray(), reflections: await db.reflections.toArray(), monthlyChecks: await db.monthlyChecks.toArray(), useLog: await db.useLog.toArray() }), [])
   const use = useLive(() => useSummary(blockAt(new Date()).day), [])
+  const given = useLive(() => usageFactsToday(blockAt(new Date()).day), [])
   if (!settings || !all || !wins || !items || !aims || !records) return <section class="screen" />
 
   async function exportAll() {
@@ -83,7 +113,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
     setBusy(true)
     setFailed(false)
     try {
-      const bundle = buildExport(all, wins, items, settings, { includePrivate, includePartner }, aims, records)
+      const bundle = buildExport(all, wins, items, settings, { includePrivate, includePartner }, aims, records ? { ...records, usage: given ?? [] } : records)
       const stamp = dayKey(new Date())
       const files = [
         new File([bundle.json], `life-mirror-${stamp}.json`, { type: 'application/json' }),
@@ -223,7 +253,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
         <p class="note no-gap">{copy.settings.dataNote}</p>
       </div>
 
-      {use && <UseCard use={use} />}
+      {use && given && <UseCard use={use} given={given} />}
 
       <div class="actions">
         <button type="button" class="textbtn" onClick={onClose}>

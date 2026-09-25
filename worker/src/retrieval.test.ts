@@ -104,7 +104,7 @@ describe('the permission check, for Claude', () => {
   })
 
   it('closes when the settings row cannot be read: faith hidden, private items out of picks', () => {
-    expect(gatesFrom(null)).toEqual({ faithHidden: true, privateInSelection: false, claudeMayRead: true })
+    expect(gatesFrom(null)).toEqual({ faithHidden: true, privateInSelection: false, claudeMayRead: true, usageOpen: false })
   })
 })
 

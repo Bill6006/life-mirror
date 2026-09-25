@@ -1,7 +1,7 @@
 import { validateReview } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import { generateCandidates, generateValid, newUsage, neuronsOf, textOf, type Runner } from './ai'
-import { lineBriefing } from './briefing'
+import { lineBriefing, withoutUsage } from './briefing'
 import { lineCheck, saidLately } from './checks'
 import { claudeOn, fallbackReason, rowIdOf, startTask, taskIdOf, timeoutMinutes, type ClaudeTask } from './claude'
 import type { Env } from './env'
@@ -92,9 +92,11 @@ async function markFallback(store: Store, t: TaskRow | null, reason: string, now
 
 /** The free model chain's line: three candidates, one chosen; stored with who wrote it, and why it stood in for Claude when it did. */
 async function writeFreeLine(env: JobEnv, store: Store, run: Runner, now: Date, day: string, due: Due, opts: BriefOptions, started: number, fallback?: string): Promise<BriefResult> {
-  const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), due.sheet)
+  // The free chain reads the fact sheet alone, and never how Life Mirror is used (Follow-up F1).
+  const sheet = withoutUsage(due.sheet)
+  const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), sheet)
   // The one path to a prompt: the briefing, for today, relabelled when the sheet is yesterday's; refused when it cannot say what today holds.
-  const built = lineBriefing({ task: 'line', writer: 'free', sheet: due.sheet, forDay: day, cards, said: await saidLately(store, due.sheet) })
+  const built = lineBriefing({ task: 'line', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet) })
   if (!built.ok) return { wrote: false, reason: built.reason, day, ...(fallback ? { fallback } : {}) }
   const b = built.briefing
 
@@ -207,7 +209,9 @@ export async function runBrief(env: JobEnv, store: Store, run: Runner, now: Date
 }
 
 /** The free model chain's review: three parts, each held to the rules of a line. */
-async function writeFreeReview(env: JobEnv, store: Store, run: Runner, now: Date, day: string, sheet: FactSheet, trigger: Trigger, opts: BriefOptions, started: number, fallback?: string): Promise<BriefResult> {
+async function writeFreeReview(env: JobEnv, store: Store, run: Runner, now: Date, day: string, whole: FactSheet, trigger: Trigger, opts: BriefOptions, started: number, fallback?: string): Promise<BriefResult> {
+  // The free chain reads the fact sheet alone, and never how Life Mirror is used (Follow-up F1).
+  const sheet = withoutUsage(whole)
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), sheet, 16)
   const built = lineBriefing({ task: 'review', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet) })
   if (!built.ok) return { wrote: false, reason: built.reason, day, ...(fallback ? { fallback } : {}) }

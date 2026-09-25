@@ -1,5 +1,6 @@
 import { compareSlots } from './blocks'
 import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
@@ -30,8 +31,10 @@ export interface RecordsData {
   pathMarks?: readonly PathMark[]
   reflections?: readonly Reflection[]
   monthlyChecks?: readonly MonthlyCheck[]
-  /** How the app is used (Part 34): counts and times, on this phone alone; in your own file only. */
+  /** How the app is used (Part 34; F1): counts, times and fixed ids, never content. */
   useLog?: readonly UseRow[]
+  /** The usage facts the day's sheet carries: what Claude may be given, word for word (Follow-up F1). */
+  usage?: readonly Fact[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -42,6 +45,9 @@ export interface ExportOptions {
   /** The Partner path's record: its commitment, its steps, what you declared, your notes and the monthly checks (Part 27). */
   includePartner?: boolean
 }
+
+/** Screens that are the Partner path's own: their opening goes with the path's record (Part 27). */
+const PARTNER_SCREENS: readonly string[] = ['partnerNotes']
 
 /**
  * A step of the Partner path's own: offered through its row, or a rep the Social path does not
@@ -130,12 +136,14 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         weights: settings.weights,
         caffeine: 'caffeineBand is the band reported for the window from caffeineSince (null: since waking) to caffeineAt: 1 under 100 mg, 2 100 to 199, 3 200 to 299, 4 300 or more. caffeineShown without a band means the item was seen and none was reported, never a confirmed none. caffeineAfterMidday and heavyCaffeineThisMorning are the older yes/no records: some caffeine, amount unknown.',
         events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday'],
+        useLog: 'How Life Mirror was used, in its own words: appOpened (launch, or return after five minutes away), screen (which one), checkinOpened and checkinLeft (the block), lineAction, lineWhy, notification (its kind) and changePicked, each with its day and time. Never content, never anything outside the app. The Partner path’s own screens are left out unless the Partner path is included. usage is what Claude may be given of it: counts over windows ending the day before, what was observed and never why.',
       },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
       checkins,
       freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
-      useLog: (records?.useLog ?? []).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),
+      useLog: (records?.useLog ?? []).filter((r) => partner || !PARTNER_SCREENS.includes(r.what ?? '')).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),
+      usage: (records?.usage ?? []).map((f) => ({ id: f.id, text: f.text })),
       ...(records
         ? {
             offers: offers.map((o) => {

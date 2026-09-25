@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { lackedCounts } from './brainScreen'
 import { SYNCED_STORES } from './cloudOutbox'
 import { db, type Offer } from './db'
-import { logUse, pruneUseLog, useSummary, USE_KEEP_DAYS } from './useLog'
+import { APP_RETURN_MINUTES, watchAppOpens, type Visibility } from './appOpens'
+import { logUse, pruneUseLog, queueUseRowsForCloud, USE_KEEP_DAYS } from './useLog'
+import { useSummary } from './useRead'
 
-// Part 34: how the app is used, on this phone alone. Counts and times, no content; a summary of four
-// weeks set against the record; old rows dropped; nothing of it synced.
+// Part 34: how the app is used. Counts and times, no content; a summary of four weeks set against
+// the record; old rows dropped. Follow-up F1: it syncs with the rest of the record to your own
+// database, the rows kept before it did queued once, and opening Life Mirror is counted.
 
 const TODAY = '2026-09-24'
 const at = (day: number, h = 10) => new Date(2026, 8, day, h, 0)
@@ -19,8 +22,52 @@ describe('the use log', () => {
     await db.open()
   })
 
-  it('is never synced: it is on this phone alone', () => {
-    expect(SYNCED_STORES).not.toContain('useLog')
+  it('syncs with the rest of the record to your own database (F1): each use is queued as it is written', async () => {
+    expect(SYNCED_STORES).toContain('useLog')
+    await logUse('screen', 'now', at(24))
+    const queued = await db.outbox.toArray()
+    expect(queued).toHaveLength(1)
+    expect(queued[0]).toMatchObject({ store: 'useLog', op: 'put', day: TODAY })
+    expect(JSON.parse(queued[0].body ?? '{}')).toMatchObject({ kind: 'screen', what: 'now', day: TODAY })
+  })
+
+  it('queues the rows kept before it synced once, and never twice: a row queued or known to the cloud copy stays as it is', async () => {
+    // Rows written before F1, as Part 34 kept them: straight into the table, no outbox row.
+    await db.transaction('rw', db.useLog, async () => {
+      for (const d of [21, 22, 23]) await db.useLog.add({ day: `2026-09-${d}`, at: at(d).toISOString(), kind: 'screen', what: 'now' })
+    })
+    await db.outbox.clear()
+    const [a, b, c] = await db.useLog.toArray()
+    await db.cloudRows.put({ store: 'useLog', key: String(a.id), updatedAt: a.at, syncedAt: a.at })
+    await db.outbox.add({ store: 'useLog', key: String(b.id), op: 'put', body: JSON.stringify(b), day: b.day, updatedAt: b.at, at: b.at })
+    expect(await queueUseRowsForCloud(at(24))).toBe(1)
+    expect((await db.outbox.toArray()).map((r) => r.key).sort()).toEqual([String(b.id), String(c.id)].sort())
+    expect(await queueUseRowsForCloud(at(24))).toBe(0)
+  })
+
+  it('counts Life Mirror opened: at launch, and on coming back after five minutes away, never sooner', async () => {
+    let now = at(24, 9)
+    const listeners: (() => void)[] = []
+    const page = { visibilityState: 'visible' as DocumentVisibilityState, addEventListener: (_: string, f: () => void) => listeners.push(f), removeEventListener: () => undefined } as unknown as Visibility & { visibilityState: DocumentVisibilityState }
+    const flip = async (state: DocumentVisibilityState, minutes: number) => {
+      now = new Date(now.getTime() + minutes * 60_000)
+      ;(page as { visibilityState: DocumentVisibilityState }).visibilityState = state
+      for (const f of listeners) f()
+      await new Promise((r) => setTimeout(r, 20))
+    }
+    const stop = watchAppOpens(page, () => now)
+    await new Promise((r) => setTimeout(r, 20))
+    await flip('hidden', 1)
+    await flip('visible', APP_RETURN_MINUTES - 1)
+    await flip('hidden', 1)
+    await flip('visible', APP_RETURN_MINUTES)
+    stop()
+    expect((await db.useLog.toArray()).map((r) => [r.kind, r.what])).toEqual([
+      ['appOpened', 'launch'],
+      ['appOpened', 'return'],
+    ])
+    const u = await useSummary(TODAY)
+    expect(u.opened).toEqual({ times: 2, days: 1 })
   })
 
   it('records a use with its day and a fixed id, never content', async () => {

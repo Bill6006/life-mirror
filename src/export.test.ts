@@ -79,3 +79,25 @@ describe('export', () => {
     expect(bundle.offersCsv.split(String.fromCharCode(10))[0]).toContain('outcome')
   })
 })
+
+describe('how the app is used, in your own file (Follow-up F1)', () => {
+  const useLog = [
+    { day: '2026-09-05', at: '2026-09-05T12:00:00.000Z', kind: 'appOpened', what: 'launch' },
+    { day: '2026-09-05', at: '2026-09-05T12:01:00.000Z', kind: 'screen', what: 'evidence' },
+    { day: '2026-09-05', at: '2026-09-05T12:02:00.000Z', kind: 'screen', what: 'partnerNotes' },
+  ] as const
+  const usage = [{ id: 'usage.checkins', tags: [], text: 'Check-ins in the 7 days to yesterday: opened 3 times, 1 of them left before the end.', values: { days: 7, opened: 3, left: 1 } }]
+  const records = { offers: [], outcomes: [], cards: [], declarations: [], useLog: [...useLog], usage }
+
+  it('carries every use with its kind, its fixed id and its time, and what Claude may be given, word for word', () => {
+    const out = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false, includePartner: true }, undefined, records).json)
+    expect(out.useLog).toEqual(useLog.map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what })))
+    expect(out.usage).toEqual([{ id: 'usage.checkins', text: usage[0].text }])
+    expect(out.key.useLog).toMatch(/Never content, never anything outside the app/)
+  })
+
+  it('leaves the Partner path’s own screens out unless the Partner path is included (Part 27)', () => {
+    const out = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, records).json)
+    expect(out.useLog.map((r: { what: string }) => r.what)).toEqual(['launch', 'evidence'])
+  })
+})

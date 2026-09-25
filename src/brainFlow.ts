@@ -42,11 +42,11 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
     db.briefFeedback.toArray(),
     db.brainBriefs.toArray(),
   ])
-  const [offers, outcomes, pathMarks] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray()])
+  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray()])
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks })
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims } })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
   sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs))

@@ -87,6 +87,32 @@ async function seedOlderStudy(page: Page): Promise<void> {
   })
 }
 
+/** Three earlier days of use (Follow-up F1), so what Claude may be given has lines to show. */
+async function seedUse(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['useLog'], 'readwrite')
+    const store = tx.objectStore('useLog')
+    for (const [day, n] of [['2026-09-20', 3], ['2026-09-21', 5], ['2026-09-22', 4]] as const) {
+      for (let k = 0; k < n; k++) store.add({ day, at: `${day}T1${k}:00:00.000Z`, kind: 'screen', what: k % 2 ? 'aims' : 'now' })
+      store.add({ day, at: `${day}T12:30:00.000Z`, kind: 'checkinOpened', what: 'evening' })
+      store.add({ day, at: `${day}T12:40:00.000Z`, kind: 'lineWhy' })
+      store.add({ day, at: `${day}T12:50:00.000Z`, kind: 'appOpened', what: 'launch' })
+    }
+    store.add({ day: '2026-09-22', at: '2026-09-22T13:00:00.000Z', kind: 'screen', what: 'evidence' })
+    store.add({ day: '2026-09-22', at: '2026-09-22T13:10:00.000Z', kind: 'checkinLeft', what: 'evening' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
 /** The generic profile through the app's own screens: something to learn in its own words, one with no skill named, an older study, a practice, both paths, the evening's check-in. */
 async function seedProfile(page: Page): Promise<void> {
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
@@ -95,6 +121,7 @@ async function seedProfile(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
   await seedRecord(page)
   await seedOlderStudy(page)
+  await seedUse(page)
   await page.reload()
   await tab(page, 'Aims')
   const add = () => page.getByRole('button', { name: /^Add a commitment/ }).click()
@@ -434,6 +461,15 @@ const MORE: typeof STATES = [
   { name: 'Brain', tab: 'Settings', open: async (p) => p.getByTestId('settings-brain').click() },
   { name: 'Cloud copy', tab: 'Settings', open: async (p) => p.getByTestId('settings-cloud').click() },
   { name: 'Data and privacy', tab: 'Settings', open: async (p) => p.getByTestId('settings-data').click() },
+  {
+    name: 'Data and privacy, what Claude may be given',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-data').click()
+      await p.getByTestId('use-given').click()
+      await expect(p.getByTestId('use-given-list').locator('li').first()).toBeVisible()
+    },
+  },
   { name: 'Readings and chips', tab: 'Settings', open: async (p) => p.getByTestId('settings-readings').click() },
   { name: 'Wording', tab: 'Settings', open: async (p) => p.getByTestId('settings-wording').click() },
   { name: 'Legend', tab: 'Settings', open: async (p) => p.getByTestId('settings-legend').click() },
@@ -449,7 +485,7 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
-    // Seeding walks a whole evening check-in; the walk through forty states at three widths follows. One limit for all of it.
+    // Seeding walks a whole evening check-in; the walk through forty-one states at three widths follows. One limit for all of it.
     test.setTimeout(1_200_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)

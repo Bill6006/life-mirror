@@ -246,7 +246,11 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await screen.getByTestId('brain-model-sonnet').click()
   await expect(screen.getByTestId('brain-model-sonnet')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-model-opus')).toHaveAttribute('aria-pressed', 'false')
-  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(11)
+  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(12)
+  // Follow-up F1: how the app is used has a switch of its own, on, and says Claude reads none of it yet.
+  await expect(screen.getByTestId('brain-switch-usage')).toHaveAttribute('aria-pressed', 'true')
+  await expect(screen.getByTestId('brain-switch-usage')).toContainText('What was observed, never why; nothing outside the app, no keystrokes, nothing you type.')
+  await expect(screen.getByTestId('brain-switch-usage')).toContainText('Claude reads none of it yet: it opens after the reliability checks end, and only at your word.')
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'true')
   await screen.getByTestId('brain-switch-notes').click()
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'false')
@@ -1401,7 +1405,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')
 })
 
-test('the use log counts on this phone alone, and what Claude lacked is counted under Brain (Part 34)', async ({ page }) => {
+test('the use log counts how the app is used and what Claude may be given of it, and what Claude lacked is counted under Brain (Part 34, F1)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 24, 9, 30))
   await page.goto('./')
   // A few screens, and a check-in opened and left before its end.
@@ -1412,7 +1416,16 @@ test('the use log counts on this phone alone, and what Claude lacked is counted 
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await settingsSection(page, 'data')
   const card = page.getByTestId('use-log')
-  await expect(card).toContainText('never synced, never sent')
+  await expect(card).toContainText('Never anything outside the app, never a keystroke or what you type, never other phone activity.')
+  await expect(card).toContainText('Kept on this phone and, with the cloud copy on, in your own database.')
+  // Opening Life Mirror is counted (F1): once at launch.
+  await expect(card.getByTestId('use-opened')).toHaveText('Life Mirror opened: once, on one day')
+  await expect(card.getByTestId('use-change')).toHaveText('Change on the People row: not opened')
+  // What Claude may be given: counts over whole days to yesterday, none yet on a first day; Claude reads none of it while gated.
+  await expect(card.getByTestId('use-given')).toContainText('Nothing yet')
+  await card.getByTestId('use-given').click()
+  await expect(card.getByTestId('use-given-note')).toContainText('Claude reads none of them yet: they open after the reliability checks end, and only at your word.')
+  await expect(card).toContainText('Nothing yet: the counts cover whole days, from yesterday back.')
   await expect(card.getByTestId('use-checkins')).toHaveText('Check-ins: 1 opened, 1 left before the end')
   // Now three times: on opening, by its tab, and on leaving the check-in.
   await expect(card.getByTestId('use-screens')).toContainText('Now 3')
@@ -1436,6 +1449,46 @@ test('the use log counts on this phone alone, and what Claude lacked is counted 
   )
   await page.getByTestId('settings-brain').click()
   await expect(page.getByTestId('brain-lacked-counts')).toHaveText('Your notes 1 · Workout detail 1')
+})
+
+test('what Claude may be given of how the app is used: counts over whole days to yesterday, word for word, no time of day, and none of it read while gated (F1)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 20, 9, 30))
+  await page.goto('./')
+  // Two earlier days of use, as the log keeps them; counting began on the first.
+  await page.evaluate(
+    () =>
+      new Promise<void>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => {
+          const tx = r.result.transaction('useLog', 'readwrite')
+          const s = tx.objectStore('useLog')
+          const add = (day: string, h: number, kind: string, what?: string) => s.add({ day, at: `${day}T${String(h).padStart(2, '0')}:00:00.000Z`, kind, ...(what ? { what } : {}) })
+          add('2026-10-18', 12, 'checkinOpened', 'morning')
+          add('2026-10-18', 13, 'screen', 'now')
+          add('2026-10-19', 12, 'checkinOpened', 'evening')
+          add('2026-10-19', 12, 'checkinLeft', 'evening')
+          add('2026-10-19', 13, 'screen', 'now')
+          add('2026-10-19', 14, 'screen', 'now')
+          add('2026-10-19', 15, 'screen', 'evidence')
+          add('2026-10-19', 16, 'screen', 'partnerNotes')
+          tx.oncomplete = () => res()
+          tx.onerror = () => rej(tx.error)
+        }
+      }),
+  )
+  await page.reload()
+  await settingsSection(page, 'data')
+  const given = page.getByTestId('use-given')
+  await expect(given).toContainText('4 lines, from yesterday back')
+  await given.click()
+  const list = page.getByTestId('use-given-list')
+  await expect(list).toContainText('Check-ins in the 2 days counted so far, to yesterday: opened 2 times, 1 of them left before the end.')
+  await expect(list).toContainText('Screens in the 2 days counted so far, to yesterday: opened most, Now 3, the Evidence screen 1;')
+  await expect(list).toContainText('The line’s one tap: not offered in the 2 days counted so far, to yesterday. Why under the line: not opened.')
+  // Today's use waits for tomorrow; a Partner screen is never named; no clock time, no date.
+  const text = (await list.textContent()) ?? ''
+  expect(text).not.toMatch(/Partner|\d{1,2}:\d{2}|2026-/)
+  await expect(page.getByTestId('use-given-note')).toContainText('Claude reads none of them yet')
 })
 
 test('daylight from where you are: a place typed once, the sun shown back, the fixed hours standing in until then (Part 35)', async ({ page }) => {

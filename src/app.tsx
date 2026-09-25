@@ -33,7 +33,8 @@ import { useReminders } from './reminders'
 import { extrasEnabled } from './settings'
 import { SettingsScreen, SettingsSectionScreen, type SettingsSection } from './settingsScreen'
 import { Icon } from './icons'
-import { logUse, pruneUseLog } from './useLog'
+import { logUse, pruneUseLog, queueUseRowsForCloud } from './useLog'
+import { watchAppOpens } from './appOpens'
 import { WordingScreen } from './wording'
 
 type Tab = keyof typeof copy.tabs
@@ -105,10 +106,13 @@ export function App() {
   useReminders(settings, all)
   // The cloud copy: pull on open and every fifteen minutes, push soon after any change; nothing without a token.
   useEffect(() => startCloud(), [])
+  // Follow-up F1: Life Mirror opened, at launch and on coming back after five minutes away; nothing about the rest of the phone.
+  useEffect(() => watchAppOpens(), [])
   // Phase 10: beliefs update once a day, on open.
   useEffect(() => {
     const day = blockAt(new Date()).day
-    void pruneUseLog(day)
+    // Follow-up F1: the use log syncs with the record; rows kept before it did are queued once.
+    void pruneUseLog(day).then(() => queueUseRowsForCloud())
     void loadAudits()
       .then(adoptOrphanSubjects)
       .then(alignLadders)

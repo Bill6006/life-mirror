@@ -1,3 +1,4 @@
+import { isUsageFact } from '../../src/useShared'
 import { isWriterModel, lackedOf, readBrainPrefs, validateReview, type BrainOutput, type ReviewOutput } from '../../src/brainShared'
 import { coachCore, lineBriefing, type CoachCoreKey, type LineBriefing, type Said } from './briefing'
 import { lineCheck, saidLately } from './checks'
@@ -6,7 +7,7 @@ import { surfaceGuard, type Surface } from './surface'
 import type { Env } from './env'
 import { loadLibrary, retrieve } from './library'
 import { claudeBriefingText, claudeInstructions, coachBriefingText, parseOutput } from './prompt'
-import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
+import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, logUsageOnSheet, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
 import { addDays } from './time'
 import type { FactSheet } from '../../src/factTypes'
 import type { BriefRow, Store, TaskRow } from './turso'
@@ -31,7 +32,7 @@ export const TIMEOUT_MINUTES = 20
 const MAX_FACTS_AGE_MS = 48 * 3_600_000
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
-export type ClaudeEnv = Pick<Env, 'CLAUDE_WRITER' | 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN' | 'CLAUDE_TIMEOUT_MINUTES' | 'LIBRARY_URL' | 'CATALOGUE_URL'>
+export type ClaudeEnv = Pick<Env, 'CLAUDE_WRITER' | 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN' | 'CLAUDE_TIMEOUT_MINUTES' | 'LIBRARY_URL' | 'CATALOGUE_URL'> & Partial<Pick<Env, 'TIMEZONE'>>
 
 const enc = new TextEncoder()
 
@@ -227,7 +228,7 @@ async function coachLine(deps: Deps, t: TaskRow, o: Record<string, unknown>): Pr
   const { core, row, sheet } = built.run
   const answer = typeof o.answer === 'string' ? parseOutput(o.answer) : o.answer
   const names = sheet.showPrivate === true ? [] : await privateNames(deps.store)
-  const verdict = checkCoach(answer, core, sheet, t.day, { names, bears: row.path === 'partner' || core.dateDay === true })
+  const verdict = checkCoach(answer, core, sheet, t.day, { names, bears: row.path === 'partner' || core.dateDay === true, usage: built.run.access.allowed('usage') })
   const posts = t.posts + 1
   if (!verdict.ok) {
     await deps.store.writeTask({ ...t, posts, refusals: [...t.refusals, verdict.reason].slice(-10), ...(posts >= MAX_POSTS ? { status: 'refused' as const } : {}) })
@@ -251,6 +252,8 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
   const { t, b, access, catalogue } = built.run
   const onSheet = new Set(b.sheet.facts.filter((f) => f.id.startsWith('note.')).map((f) => f.id))
   const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, onSheet)
+  // Follow-up F1: the usage facts the sheet carried, logged by count and size; none while the gate is closed.
+  await logUsageOnSheet(deps.store, t.id, t.task === 'review' ? 'review' : 'line', t.day, b.sheet, deps.now, t.dry === true)
   const text = claudeBriefingText({ ...b, context: ctx.text })
   await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
   const answer =
@@ -284,7 +287,7 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   if (t.contextCalls >= CONTEXT_CALLS) return reply(429, { error: `at most ${CONTEXT_CALLS} reads a run` })
   if (t.contextBytes >= CONTEXT_BYTES) return reply(429, { error: `at most ${CONTEXT_BYTES / 1024} KB a run` })
   const catalogue = await loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)
-  const r = await readOnDemand(deps.store, catalogue, access, q.category, q.q, t.day, t.id, 100 + t.contextCalls, deps.now, CONTEXT_BYTES - t.contextBytes, t.dry === true)
+  const r = await readOnDemand(deps.store, catalogue, access, q.category, q.q, t.day, t.id, 100 + t.contextCalls, deps.now, CONTEXT_BYTES - t.contextBytes, t.dry === true, deps.env.TIMEZONE)
   if (!r) return reply(403, { error: `${q.category} is not served here` })
   await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text) })
   return reply(200, { category: q.category, items: r.items, truncated: r.truncated })
@@ -326,7 +329,7 @@ export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
     t.task === 'line'
       ? await partnerBearsOn(deps.store, t.day, access)
       : access.allowed('partnerPath') && ((await readCategory({ store: deps.store, catalogue, a: access }, 'partnerPath', { from: addDays(t.day, -7), to: t.day, limit: 1, doneOnly: true })) ?? []).length > 0
-  const surface = { names, bears }
+  const surface = { names, bears, usage: b.sheet.facts.some((f) => isUsageFact(f.id)) }
   const verdict = t.task === 'line' ? checkClaudeLine(b, said, answer, surface) : checkClaudeReview(b, answer, surface)
   const posts = t.posts + 1
   if (!verdict.ok) {

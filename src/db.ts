@@ -10,6 +10,7 @@ import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type Out
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
+import type { UseKind } from './useShared'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
@@ -458,12 +459,13 @@ export interface BriefLog {
 }
 
 /**
- * How the app is used (Part 34), kept on this phone alone: never synced, never sent, never read by
- * any model. Counts and times only, no content: a screen opened, a check-in opened or left before
- * its end, the line's one tap taken or its Why opened, a notification opened, a rep picked through
- * Change. Read together after a few weeks, it becomes a removal list for your veto.
+ * How the app is used (Part 34; Follow-up F1): counts and times only, no content. Life Mirror opened,
+ * a screen opened, a check-in opened or left before its end, the line's one tap taken or its Why
+ * opened, a notification opened, a rep picked through Change. Nothing outside the app, no keystroke,
+ * nothing typed. Kept on this phone and, with the cloud copy on, in your own database (F1); Claude
+ * may be given counts of it under Settings → Brain, never an explanation of why.
  */
-export type UseKind = 'screen' | 'checkinOpened' | 'checkinLeft' | 'lineAction' | 'lineWhy' | 'notification' | 'changePicked'
+export type { UseKind } from './useShared'
 
 export interface UseRow {
   id?: number

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayGuard, lackedOf, nearRepeat, numberGrounded, numbersIn, shapeFor, validateAction, validateOutput, validateReview } from './brainShared'
+import { BRAIN_SWITCHES, dayGuard, lackedOf, nearRepeat, numberGrounded, numbersIn, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -148,5 +148,54 @@ describe('what the writer said it lacked (Part 34)', () => {
     expect(lackedOf('notes')).toEqual([])
     expect(lackedOf(undefined)).toEqual([])
     expect(lackedOf([1, null, { id: 'notes' }])).toEqual([])
+  })
+})
+
+describe('how Life Mirror is used, as evidence and never an explanation (Follow-up F1)', () => {
+  const usage: FactSheet = {
+    ...sheet,
+    facts: [
+      ...sheet.facts,
+      { id: 'usage.line', tags: [], text: 'The line’s one tap: offered on 5 of the 7 days to yesterday, taken on 2 of them. Why under the line: opened 4 times.', values: { days: 7, offered: 5, taken: 2, why: 4 } },
+      { id: 'usage.screens', tags: [], text: 'Screens in the 28 days to yesterday: opened most, Now 40; opened once or twice, the Evidence screen 1.', values: { days: 28, often: 'Now 40', rarely: 'the Evidence screen 1', never: '', neverDays: 56 } },
+    ],
+  }
+  const line = (text: string, factIds = ['usage.screens']) => validateOutput({ mode: 'observation', text, factIds, cardIds: [] }, usage, library)
+
+  it('gives Claude a switch of its own, on until turned off, and keeps its access gated while the reliability checks run', () => {
+    expect(BRAIN_SWITCHES).toContain('usage')
+    expect(readBrainPrefs({ switches: { usage: false } }).switches).toEqual({ usage: false })
+    // Opening it changes the monitored prompts: only at the owner's word, once monitoring is complete.
+    expect(USAGE_TO_CLAUDE).toBe('gated')
+  })
+
+  it('lets a line say what was observed, and offer a reason about the app only as a possibility to test', () => {
+    expect(line('The Evidence screen was opened once in the 28 days to yesterday.').ok).toBe(true)
+    expect(line('The Evidence screen was opened once in 28 days; it may sit too far down to find.').ok).toBe(true)
+    expect(line('Why under the line was opened 4 times in 7 days: worth testing whether the line says enough.', ['usage.line']).ok).toBe(true)
+  })
+
+  it('refuses a reason stated as fact, and a verdict on the person, hedged or not', () => {
+    expect(line('The Evidence screen was opened once in 28 days because you avoid looking at it.')).toMatchObject({ ok: false, reason: 'gives a reason for how the app was used as a fact; say what was observed, or offer a reason as a possibility to test' })
+    expect(line('You ignored the Evidence screen: opened once in 28 days.').ok).toBe(false)
+    expect(line('The Evidence screen was opened once in 28 days; the Now screen caused that.').ok).toBe(false)
+    expect(line('The Evidence screen was opened once in 28 days; you lack motivation.')).toMatchObject({ ok: false, reason: 'passes a verdict on the person from how the app was used; say what was observed' })
+    expect(line('The Evidence screen was opened once in 28 days; you may not care about it.').ok).toBe(false)
+    expect(line('The Evidence screen was opened once in 28 days; perhaps you gave up on it.').ok).toBe(false)
+  })
+
+  it('holds a count to the fact it cites, as every line is', () => {
+    expect(line('The Evidence screen was opened 3 times in 28 days.')).toEqual({ ok: false, reason: 'the number 3 is not in the cited facts' })
+  })
+
+  it('leaves every line that cites no usage fact as it was', () => {
+    const plain = validateOutput({ mode: 'observation', text: 'Yesterday evening read 62 because the day was calm.', factIds: ['reading.2026-09-17.evening'], cardIds: [] }, usage, library)
+    expect(plain.ok).toBe(true)
+  })
+
+  it('holds a writer given usage without citing it to the same rule once it speaks of that use (the coach)', () => {
+    expect(usageTalkRefusal('Since you keep opening Change without choosing, this one is short.')).not.toBeNull()
+    expect(usageTalkRefusal('Opened Change 3 times; this one may suit the afternoon better.')).toBeNull()
+    expect(usageTalkRefusal('A short hello, because the afternoon is busy.')).toBeNull()
   })
 })

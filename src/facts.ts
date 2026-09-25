@@ -9,7 +9,7 @@ import { copy } from './copy'
 import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
-import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, Win } from './db'
+import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { sittingOf } from './ladder'
@@ -17,6 +17,7 @@ import type { Evidence } from './learningFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
 import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, INGREDIENTS, readingOf } from './score'
+import { usageFacts } from './usageFacts'
 import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
 
 // The fact sheet: everything the app knows about the day, as facts with ids and values, built by
@@ -58,6 +59,8 @@ export interface FactInput {
   lowDemand: boolean
   /** Part 27: the paths' declarations, for the one Partner fact the sheet carries, the date day. */
   pathMarks?: PathMark[]
+  /** Follow-up F1: how Life Mirror is used, and what its counts are set against. Absent, no usage fact is written. */
+  use?: { rows: UseRow[]; coachPicks: CoachPick[]; allAims: Aim[] }
 }
 
 /**
@@ -695,6 +698,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
       : `Since then ${checkins} check-ins were completed and ${moves} moves marked done.`
     facts.push(fact('review.change', ['monitoring'], `The last review, on ${review.day}, proposed one change: ${quoted(review.parts.change)} ${since}`, { day: review.day, change: review.parts.change, aimId: s && ref ? Number(ref[1]) : null, checkins, moves, planned: s?.planned ?? null, started: s?.started ?? null, done: s?.done ?? null, changed: s?.changed ?? null }))
   }
+
+  // Follow-up F1: how Life Mirror is used, as counts over windows ending yesterday; observations, never reasons.
+  if (i.use) facts.push(...usageFacts({ rows: i.use.rows, briefs: i.brainBriefs, log: i.log, picks: i.use.coachPicks, offers: i.offers, outcomes: i.outcomes, intentions: i.intentions, aims: i.use.allAims }, today))
 
   // When today's check-ins were completed (Part 28): the Worker writes once the morning's is on a sheet built after it.
   const checkedIn: NonNullable<FactSheet['checkedIn']> = {}
