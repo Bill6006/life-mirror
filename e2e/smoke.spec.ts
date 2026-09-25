@@ -1795,3 +1795,258 @@ test('daylight from where you are: a place typed once, the sun shown back, the f
   await page.getByTestId('place-field').press('Enter')
   await expect(page.getByText('Daylight from', { exact: true })).toBeVisible()
 })
+
+// ─── The skill coach (Parts 40 and 41) ──────────────────────────────────────────────────────────
+// Built behind their gate: as the build ships it asks, shows and stores nothing. A test browser
+// alone may preview it (the Worker's own gate stays closed, so a preview sends nothing to Claude);
+// the previews write Claude's answers into the phone's store as the brain's pull would.
+
+const PREVIEW = 'life-mirror.preview.skillCoach'
+type Ask = { id: number; aimId: number; kind: string; revision: string; day: string; claude: boolean; decision?: string; after?: string; care?: string; days?: number; reason?: string }
+
+/** Every row of one of the phone's stores. */
+async function rowsOf<T = Record<string, unknown>>(page: Page, store: string): Promise<T[]> {
+  return page.evaluate(
+    (s) =>
+      new Promise<T[]>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onerror = () => rej(r.error)
+        r.onsuccess = () => {
+          const q = r.result.transaction([s], 'readonly').objectStore(s).getAll()
+          q.onerror = () => rej(q.error)
+          q.onsuccess = () => {
+            res(q.result as T[])
+            r.result.close()
+          }
+        }
+      }),
+    store,
+  )
+}
+
+/** Claude's answer to an ask, written as the brain's pull puts it on the phone; the caller reloads to read it. */
+async function answerAsk(page: Page, askId: number, answer: Record<string, unknown>): Promise<void> {
+  const ask = (await rowsOf<Ask>(page, 'coachAsks')).find((a) => a.id === askId)
+  if (!ask) throw new Error(`no ask ${askId}`)
+  await putInto(page, 'coachProposals', { id: `ask:${askId}`, askId, aimId: ask.aimId, kind: ask.kind, revision: ask.revision, day: ask.day, at: `${ask.day}T21:00:00.000Z`, model: 'claude-opus-5-5', askedModel: 'opus', ...answer })
+}
+
+/** One session of each commitment named, recorded on Now with Did it already at 6 PM on that day of September 2026; a second, begun with Do another and marked Done, for those named twice. */
+async function practiseOn(page: Page, d: number, names: readonly string[], twice: readonly string[] = []): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 8, d, 18, 0))
+  await page.reload()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  for (const name of names) {
+    const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: name })
+    await row.getByTestId('aim-log').click()
+    await expect(row.getByTestId('aim-done-today')).toBeVisible()
+    if (twice.includes(name)) {
+      await row.getByTestId('aim-another').click()
+      await row.getByTestId('aim-done').click()
+      await expect(row.getByTestId('aim-done-today')).toBeVisible()
+    }
+  }
+}
+
+async function startWithDirection(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+}
+
+const COACH_IDS = ['coach-pending', 'coach-ask', 'coach-care', 'coach-suggestion', 'coach-review', 'aim-review-mark', 'aim-safety', 'aim-likely-next']
+
+test('the skill coach stays dark while its gate is closed: commitments are set up and practised by hand as before, and nothing is asked, shown or stored (Parts 40–41)', async ({ page }) => {
+  test.setTimeout(180_000)
+  await startWithDirection(page)
+  // A goal with no skill, and a physical one: neither asks Claude, no safety question shows, and each card asks for the one thing to work on now.
+  await addLearning(page, 'Italian')
+  await addLearning(page, 'Headstand')
+  for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
+  await expect(page.getByTestId('aim-skill-set-name')).toHaveCount(2)
+  const italian = page.getByTestId('aim-card').filter({ hasText: 'Italian' })
+  await italian.getByTestId('aim-skill-set-name').fill('Ten words')
+  await italian.getByTestId('aim-skill-set-save').click()
+  await expect(italian.getByTestId('aim-step')).toHaveText('Ten words')
+  await italian.getByTestId('aim-details').click()
+  await expect(italian.getByTestId('coach-ask-row')).toHaveCount(0)
+  // Six different practice days with a week behind the skill: where a review would fall due, and none does.
+  for (const d of [8, 9, 10, 11, 12, 13]) await practiseOn(page, d, ['Italian'])
+  await page.clock.setFixedTime(new Date(2026, 8, 14, 18, 0))
+  await page.reload()
+  await expect(page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Italian' })).toBeVisible()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(italian.getByTestId('aim-practice')).toContainText('6 sessions on 6 different days')
+  for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
+  expect(await rowsOf(page, 'coachAsks')).toEqual([])
+  expect(await rowsOf(page, 'coachProposals')).toEqual([])
+})
+
+test('the skill coach, previewed (Part 40): a first skill asked for at once; Claude’s suggestion changes nothing until you choose; Another suggestion, Edit first, and the likely next on your tap', async ({ page }) => {
+  await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
+  await startWithDirection(page)
+  await addLearning(page, 'Italian', '', 'An audio course')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Italian' })
+  // Asked at once; meanwhile the one thing to work on now can be yours.
+  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for a first skill')
+  await expect(card.getByTestId('aim-skill-set-name')).toBeVisible()
+  const [first] = await rowsOf<Ask>(page, 'coachAsks')
+  expect(first).toMatchObject({ kind: 'setup', claude: true, day: '2026-09-07' })
+  expect(first).not.toHaveProperty('care')
+  await answerAsk(page, first.id, { suggestion: { skill: 'Understand everyday spoken Italian', method: 'An audio course', how: 'One lesson a session, answering aloud before the speaker does.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest stands on.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  const s = card.getByTestId('coach-suggestion')
+  await expect(s).toContainText('Claude suggests')
+  await expect(card.getByTestId('coach-suggestion-skill')).toHaveText('Understand everyday spoken Italian')
+  await expect(s).toContainText('With an audio course · 30 minutes a session · 5 a week')
+  await expect(s).toContainText('Why: Listening first builds the ear the rest stands on.')
+  await expect(s).toContainText('Likely next: Short spoken answers')
+  await expect(card.getByTestId('coach-safety')).toHaveCount(0)
+  // Nothing is set until you choose: still no current skill; the form steps aside while the suggestion shows.
+  await expect(card.getByTestId('aim-step')).toHaveText('No current skill yet')
+  await expect(card.getByTestId('aim-skill-set-name')).toHaveCount(0)
+  // Another suggestion: this one set aside and another asked for; your own words are possible again meanwhile.
+  await card.getByTestId('coach-another').click()
+  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for another suggestion')
+  await expect(card.getByTestId('aim-skill-set-name')).toBeVisible()
+  const asks = await rowsOf<Ask>(page, 'coachAsks')
+  expect(asks).toHaveLength(2)
+  expect(asks[0]).toMatchObject({ decision: 'another' })
+  expect(asks[1]).toMatchObject({ kind: 'setup', after: `ask:${first.id}` })
+  await answerAsk(page, asks[1].id, { suggestion: { skill: 'Hear and repeat core phrases', method: 'An audio course', how: 'Pause after each phrase and say it back aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Saying it back fixes the sounds early.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  // Edit first: the suggestion in your words, then used.
+  await card.getByTestId('coach-edit').click()
+  await expect(card.getByTestId('coach-editor-name')).toHaveValue('Hear and repeat core phrases')
+  await card.getByTestId('coach-editor-minutes').fill('20')
+  await card.getByTestId('coach-editor-rhythm-4').click()
+  await card.getByTestId('coach-editor-save').click()
+  await expect(card.getByTestId('aim-step')).toHaveText('Hear and repeat core phrases')
+  await expect(card.getByTestId('coach-suggestion')).toHaveCount(0)
+  const [aim] = await rowsOf<{ rhythm?: unknown }>(page, 'aims')
+  expect(aim.rhythm).toEqual({ perWeek: 4, restDays: 0 })
+  expect((await rowsOf<{ name: string }>(page, 'skills')).find((k) => k.name === 'Hear and repeat core phrases')).toMatchObject({ minutes: 20, source: 'claude', likelyNext: 'Short spoken answers' })
+  expect((await rowsOf<Ask>(page, 'coachAsks'))[1]).toMatchObject({ decision: 'edited' })
+  // The likely next, taken from Details on your tap alone; the skill before stays in the history.
+  await card.getByTestId('aim-details').click()
+  await expect(card.getByTestId('aim-likely-next')).toContainText('Likely next: Short spoken answers')
+  await card.getByTestId('aim-take-next').click()
+  await expect(card.getByTestId('aim-step')).toHaveText('Short spoken answers')
+  await expect(card.getByTestId('aim-history-earlier')).toContainText('Hear and repeat core phrases')
+  await expect(page.locator('#main')).not.toContainText('%')
+})
+
+test('the skill coach, previewed (Part 40): a physical goal asks one safety question first; Write my own sets a suggestion aside; Use this keeps its safety line and rest days', async ({ page }) => {
+  await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
+  await startWithDirection(page)
+  await addLearning(page, 'Headstand')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Headstand' })
+  // Nothing is asked until the one question is answered or left empty.
+  await expect(card.getByTestId('coach-care')).toBeVisible()
+  await expect(card.getByTestId('coach-pending')).toHaveCount(0)
+  expect(await rowsOf(page, 'coachAsks')).toEqual([])
+  await card.getByTestId('coach-care').fill('A sore left wrist')
+  await card.getByTestId('coach-ask').click()
+  await expect(card.getByTestId('coach-pending')).toBeVisible()
+  const [ask] = await rowsOf<Ask>(page, 'coachAsks')
+  expect(ask).toMatchObject({ kind: 'setup', care: 'A sore left wrist' })
+  const hold = { skill: 'Wall-supported holds', method: null, how: 'Kick up facing the wall and hold, coming down with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Wall holds build the line while the wrist is minded.', physical: true, safety: 'Warm the wrists first; stop at sharp pain in the wrist or neck.', likelyNext: 'Chest-to-wall holds' }
+  await answerAsk(page, ask.id, { suggestion: hold })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(card.getByTestId('coach-safety')).toHaveText('Warm the wrists first; stop at sharp pain in the wrist or neck. Not medical advice.')
+  await expect(card.getByTestId('coach-suggestion')).toContainText('12 minutes a session · 3 a week, with a rest day between')
+  // Write my own: set aside, and the card's own form is yours.
+  await card.getByTestId('coach-own').click()
+  await expect(card.getByTestId('coach-suggestion')).toHaveCount(0)
+  await card.getByTestId('aim-skill-set-name').fill('Wrist warm-ups')
+  await card.getByTestId('aim-skill-set-save').click()
+  await expect(card.getByTestId('aim-step')).toHaveText('Wrist warm-ups')
+  expect((await rowsOf<Ask>(page, 'coachAsks'))[0]).toMatchObject({ decision: 'own' })
+  // Asked again from Details: the question first, starting from the last answer; emptied this time.
+  await card.getByTestId('aim-details').click()
+  await expect(card.getByTestId('coach-care')).toHaveValue('A sore left wrist')
+  await card.getByTestId('coach-care').fill('')
+  await card.getByTestId('coach-ask').click()
+  await expect(card.getByTestId('coach-pending')).toBeVisible()
+  const second = (await rowsOf<Ask>(page, 'coachAsks'))[1]
+  expect(second).toMatchObject({ kind: 'setup', care: '' })
+  await answerAsk(page, second.id, { suggestion: hold })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await card.getByTestId('coach-use').click()
+  await expect(card.getByTestId('aim-step')).toHaveText('Wall-supported holds')
+  await expect(card.getByTestId('aim-safety')).toHaveText('Warm the wrists first; stop at sharp pain in the wrist or neck. Not medical advice.')
+  expect((await rowsOf<{ rhythm?: unknown }>(page, 'aims'))[0].rhythm).toEqual({ perWeek: 3, restDays: 1 })
+  await card.getByTestId('aim-details').click()
+  await expect(card.getByTestId('aim-history-earlier')).toContainText('Wrist warm-ups')
+  // The app keeps the rest day: after a session, no second that day, and the next day rests.
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Headstand' })
+  await row.getByTestId('aim-log').click()
+  await expect(row.getByTestId('aim-done-today')).toBeVisible()
+  await expect(row.getByTestId('aim-another')).toHaveCount(0)
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 18, 0))
+  await page.reload()
+  await expect(row.getByTestId('aim-due')).toHaveText('a rest day')
+})
+
+test('a progression review, previewed (Part 41): six different practice days with a week behind the skill, never sooner and never by sessions on one day; marked on the row and the card; Keep changes nothing; Claude’s Progress only on your tap, the goal kept', async ({ page }) => {
+  test.setTimeout(240_000)
+  await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
+  await startWithDirection(page)
+  await addLearning(page, 'Cello', 'Scale of C', 'A teacher')
+  await addLearning(page, 'Guitar', 'Open chords', 'A book')
+  // Cello: two sessions on the 8th, then one a day to the 12th, six sessions on five days. Guitar: one a day, the 8th to the 13th.
+  await practiseOn(page, 8, ['Cello', 'Guitar'], ['Cello'])
+  for (const d of [9, 10, 11, 12]) await practiseOn(page, d, ['Cello', 'Guitar'])
+  await practiseOn(page, 13, ['Guitar'])
+  // The 13th: six practice days on Guitar, with six calendar days behind its skill; no review yet.
+  await expect(page.getByTestId('aim-review-mark')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(page.getByTestId('coach-review')).toHaveCount(0)
+  // The 14th, a week behind both: Guitar's review is due; Cello's six sessions fell on five days, so its is not.
+  await page.clock.setFixedTime(new Date(2026, 8, 14, 9, 0))
+  await page.reload()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const guitarRow = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Guitar' })
+  const celloRow = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Cello' })
+  await expect(guitarRow.getByTestId('aim-review-mark')).toHaveText('Review')
+  await expect(celloRow.getByTestId('aim-review-mark')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  const guitar = page.getByTestId('aim-card').filter({ hasText: 'Guitar' })
+  const cello = page.getByTestId('aim-card').filter({ hasText: 'Cello' })
+  await expect(guitar.getByTestId('coach-review-head')).toHaveText('6 practice days on Open chords')
+  await expect(guitar.getByTestId('coach-review-question')).toHaveText('Keep it, adjust it, or move on?')
+  await expect(guitar.getByTestId('coach-review-pending')).toBeVisible()
+  await expect(cello.getByTestId('coach-review')).toHaveCount(0)
+  // Keep: nothing changes, and the count starts again.
+  const before = await rowsOf(page, 'skills')
+  await guitar.getByTestId('coach-review-keep').click()
+  await expect(guitar.getByTestId('coach-review')).toHaveCount(0)
+  expect(await rowsOf(page, 'skills')).toEqual(before)
+  expect((await rowsOf<Ask>(page, 'coachAsks')).find((a) => a.kind === 'review')).toMatchObject({ decision: 'kept', days: 6, reason: 'ordinary' })
+  // Cello's sixth practice day, that evening: its review follows the session, marked on the row.
+  await practiseOn(page, 14, ['Cello'])
+  await expect(celloRow.getByTestId('aim-review-mark')).toHaveText('Review')
+  const open = (await rowsOf<Ask>(page, 'coachAsks')).find((a) => a.kind === 'review' && !a.decision) as Ask
+  expect(open).toMatchObject({ days: 6, reason: 'ordinary', claude: true })
+  // Claude's view: Progress, its evidence as facts; nothing moves until the tap.
+  await answerAsk(page, open.id, { review: { verdict: 'progress', evidence: ['7 sessions on 6 different days.'], why: 'The scale of C holds; the next scale builds on it.', change: { skill: 'Scale of G', how: 'Hands separately, then together, slowly.' } } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(cello.getByTestId('coach-review-verdict')).toHaveText('Claude suggests moving on to Scale of G.')
+  await expect(cello.getByTestId('coach-review-evidence')).toHaveText(['7 sessions on 6 different days.'])
+  await expect(cello.getByTestId('aim-step')).toHaveText('Scale of C')
+  await cello.getByTestId('coach-review-use').click()
+  await expect(cello.getByTestId('aim-step')).toHaveText('Scale of G')
+  await expect(cello.getByTestId('coach-review')).toHaveCount(0)
+  await cello.getByTestId('aim-details').click()
+  await expect(cello.getByTestId('aim-history-earlier')).toContainText('Scale of C')
+  expect((await rowsOf<{ name: string }>(page, 'aims')).map((a) => a.name)).toEqual(['Cello', 'Guitar'])
+  await expect(page.locator('#main')).not.toContainText('%')
+})

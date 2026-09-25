@@ -8,6 +8,7 @@ import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage
 import type { LineAction, LineCue, WriterModel } from './brainShared'
 import { copy } from './copy'
 import { clockTimesIn, fill } from './format'
+import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
 import { hasMove, moveById } from './catalogue'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
@@ -24,7 +25,7 @@ import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts 
 // landed; the one tap that does what the line says; why it said it; and the week reviewed. The
 // Worker's line, when there is one, is read from the rows it wrote.
 
-export async function factSheet(day: string, now: Date = new Date()): Promise<FactSheet> {
+export async function factSheet(day: string, now: Date = new Date(), coach: CoachMode = coachMode()): Promise<FactSheet> {
   const [checkins, contexts, brief, ev, aims, skills, marks, records, intentions, wins, outside, items, settings, log, feedback, brainBriefs] = await Promise.all([
     allCheckIns(),
     db.days.toArray(),
@@ -43,11 +44,17 @@ export async function factSheet(day: string, now: Date = new Date()): Promise<Fa
     db.briefFeedback.toArray(),
     db.brainBriefs.toArray(),
   ])
-  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray()])
+  // Parts 40 and 41: the reviews waiting for an answer, read only while their gate is open; closed, the sheet is as it was.
+  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([])])
+  const reviews = new Map<number, { days: number; reason: 'ordinary' | 'struggle' }>()
+  for (const a of asks) {
+    const aim = aims.find((x) => x.id === a.aimId)
+    if (a.kind === 'review' && !a.decision && aim && a.skillId === aim.currentSkillId) reviews.set(a.aimId, { days: a.days ?? 0, reason: a.reason ?? 'ordinary' })
+  }
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims } })
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
   sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs))

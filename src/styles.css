@@ -2574,6 +2574,13 @@ button.chip {
   margin-top: 6px;
 }
 
+/* The skill coach (Parts 40 and 41): a block inside another draws no second rule. */
+.calc .calc.coach,
+.coach .calc {
+  padding-left: 0;
+  border-left: 0;
+}
+
 .sub.ink,
 .note.ink {
   color: var(--ink);

@@ -1,5 +1,6 @@
 import { createClient } from '@libsql/client/web'
 import type { LineAction } from '../../src/brainShared'
+import type { CoachProposal } from '../../src/coachShared'
 import type { CoachBlock, FactSheet } from '../../src/factTypes'
 
 // The same database the phone syncs to, through the same generic `records` table. The Worker
@@ -41,8 +42,8 @@ export interface BriefRow {
   action?: LineAction | null
   /** The review's three parts, on a row of kind review. */
   parts?: { held: string; didNot: string; change: string }
-  /** What set it off (Part 28): the morning check-in, the fallback hour, Sunday's hour, or a run by hand. */
-  trigger?: 'checkin' | 'fallback' | 'sunday' | 'forced'
+  /** What set it off (Part 28): the morning check-in, the fallback hour, Sunday's hour, or a run by hand; and for the skill coach's runs (Parts 40 and 41), an ask. */
+  trigger?: 'checkin' | 'fallback' | 'sunday' | 'forced' | 'ask'
   /** The target day's shape as the briefing named it. */
   shape?: string
   /** Every refusal on the way, by model and reason, in order: the validator's, the day guard's and the repeat check's. */
@@ -72,7 +73,7 @@ export interface BriefRow {
 export interface TaskRow {
   id: string
   kind: 'task'
-  task: 'line' | 'review' | 'coach'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress'
   day: string
   at: string
   status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
@@ -110,6 +111,8 @@ export interface TaskRow {
   latencyMs?: number
   /** A coach pick taken back where the phone reads it, when and why: its watch turned it off, it was switched off, or the monthly check's help showed. */
   withdrawn?: { at: string; reason: string }
+  /** A skill coach's run (Parts 40 and 41): the phone's asks it answers. */
+  asks?: number[]
 }
 
 /** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
@@ -148,7 +151,7 @@ export interface ReadRow {
   id: string
   day: string
   at: string
-  task: 'line' | 'review' | 'coach'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress'
   category: string
   count: number
   bytes: number
@@ -233,6 +236,10 @@ export interface Store {
   readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
   /** One of the phone's own rows by id, or null. */
   readRecord(store: string, id: string): Promise<unknown | null>
+  /** The skill coach's proposals (Parts 40 and 41): one per ask, the ids of those stored, and one written. */
+  proposalIds(): Promise<Set<string>>
+  readProposals(): Promise<CoachProposal[]>
+  writeProposal(row: CoachProposal, now: string): Promise<void>
 }
 
 function parse<T>(body: unknown): T | null {
@@ -370,6 +377,17 @@ export function tursoStore(url: string, token: string): Store {
     async readRecord(store, id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = ? AND id = ? AND deleted = 0`, [APP, store, id])
       return r[0] ? parse<unknown>(r[0].body) : null
+    },
+    async readProposals() {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'proposals' AND deleted = 0`, [BRAIN_APP])
+      return r.map((x) => parse<CoachProposal>(x.body)).filter((p): p is CoachProposal => p !== null)
+    },
+    async proposalIds() {
+      const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'proposals' AND deleted = 0`, [BRAIN_APP])
+      return new Set(r.map((x) => String(x.id)))
+    },
+    async writeProposal(row, now) {
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'proposals', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
     },
   }
 }
@@ -511,6 +529,15 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     async readRecord(store, id) {
       const r = rows.get(key(APP, store, id))
       return r && !r.deleted ? parse<unknown>(r.body) : null
+    },
+    async proposalIds() {
+      return new Set(live(BRAIN_APP, 'proposals').map((r) => r.id))
+    },
+    async readProposals() {
+      return live(BRAIN_APP, 'proposals').map((r) => parse<CoachProposal>(r.body)).filter((p): p is CoachProposal => p !== null)
+    },
+    async writeProposal(row, now) {
+      rows.set(key(BRAIN_APP, 'proposals', row.id), { app: BRAIN_APP, store: 'proposals', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
     },
   }
 }

@@ -24,7 +24,7 @@ import type { BriefRow, Store, TaskRow } from './turso'
 // the record.
 
 export const FIRE_BETA = 'experimental-cc-routine-2026-04-01'
-export type ClaudeTask = 'line' | 'review' | 'coach'
+export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress'
 /** A line may be posted twice: the first, and one corrected retry after a refusal. */
 export const MAX_POSTS = 2
 /** No valid line within this many minutes, and the free chain writes (the plan's twenty). */
@@ -264,7 +264,7 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
     task: t.task,
     day: t.day,
     askedModel: t.askedModel,
-    instructions: claudeInstructions(t.task),
+    instructions: claudeInstructions(t.task as 'line' | 'review'),
     briefing: text,
     answer,
     post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },

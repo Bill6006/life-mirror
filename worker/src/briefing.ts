@@ -13,7 +13,7 @@ import { addDays } from './time'
 // rules, then the owner's switches, then the task's profile. A category no profile names is
 // never read, an invented one included.
 
-export type Task = 'line' | 'review' | 'coach'
+export type Task = 'line' | 'review' | 'coach' | 'skill' | 'progress'
 export type Writer = 'free' | 'claude'
 
 /**
@@ -65,6 +65,9 @@ export const PROFILES: Readonly<Record<Task, Readonly<Record<Writer, readonly Ca
     free: [],
     claude: ['coachCore', 'dayRecord', 'notes', 'privateItems', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'faith', 'usage'],
   },
+  // Parts 40 and 41: the skill coach reads one commitment whole (its words, skills, sessions with how they went, and what it proposed before with your decisions), the day's record for a physical skill's load, and your recent check-in notes. Nothing of the paths, people or faith practices.
+  skill: { free: [], claude: ['commitments', 'dayRecord', 'notes'] },
+  progress: { free: [], claude: ['commitments', 'dayRecord', 'notes'] },
 }
 
 /** The governing rules that sit above every switch. */

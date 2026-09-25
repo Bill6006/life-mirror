@@ -640,7 +640,10 @@ export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[
   const cadence = factById(sheet, 'cadence')
   if (cadence && (num(cadence, 'w0') ?? 0) < (num(cadence, 'w1') ?? 0) / 2) missed.push(fill(c.missedCadence, { now: s(num(cadence, 'w0')), before: s(num(cadence, 'w1')) }))
   // The week's one change comes only from a pattern over days; a fact of one day (a reading at the last check-in, last night) is never the week's change.
-  const change = chooseLine(sheet, [], feedback, isWeekScoped)
-  if (!t.length) return { held: c.noCommitments, didNot: missed.length ? missed.join(' ') : c.nothingYet, change: change?.text ?? c.noChange }
-  return { held: held.length ? held.join(' ') : c.noneHeld, didNot: missed.length ? missed.join(' ') : c.noneMissed, change: change?.text ?? c.noChange }
+  const chosen = chooseLine(sheet, [], feedback, isWeekScoped)
+  // Part 41's one line, once its gate is open: a progression review waiting for your answer is the week's change to make.
+  const waiting = factsWhere(sheet, 'aim.').find((f) => str(f, 'review') === 'open')
+  const change = waiting ? fill(c.reviewWaits, { name: s(str(waiting, 'name')), skill: s(str(waiting, 'skill')) }) : (chosen?.text ?? c.noChange)
+  if (!t.length) return { held: c.noCommitments, didNot: missed.length ? missed.join(' ') : c.nothingYet, change }
+  return { held: held.length ? held.join(' ') : c.noneHeld, didNot: missed.length ? missed.join(' ') : c.noneMissed, change }
 }

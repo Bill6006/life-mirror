@@ -1,5 +1,6 @@
 import { compareSlots } from './blocks'
 import { type DayContext, type KnownPlace, type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
@@ -71,6 +72,9 @@ export interface AimsData {
   marks: readonly RungMark[]
   /** One tap says when: the cue planned for a step each day, and whether the step was started. */
   intentions?: readonly Intention[]
+  /** The skill coach (Parts 40 and 41): what was asked, what you decided, and what Claude proposed. */
+  coachAsks?: readonly CoachAsk[]
+  coachProposals?: readonly CoachProposal[]
 }
 
 export interface ExportBundle {
@@ -161,7 +165,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ? {
             offers: offers.map((o) => {
               const x = records.outcomes.find((y) => y.offerId === o.id)
-              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null }
+              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null }
             }),
             cards: records.cards.map((c) => ({ id: c.id, createdAt: c.createdAt, situation: c.situationKey, target: c.target, move: c.moveId, alternative: c.alternativeId, window: c.window, worthwhile: c.worthwhile, origin: c.origin ?? 'app', weights: c.weights ?? null })),
             declarations: records.declarations.map((d) => ({ cardId: d.cardId, at: d.at, diff: d.diff, lo: d.lo, hi: d.hi, level: d.level, nDone: d.nDone, nAlternative: d.nAlternative })),
@@ -201,10 +205,18 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       ...(aims
         ? {
             aims: {
-              commitments: aims.aims.filter((a) => partner || !partnerAims.has(a.id)).map((a) => ({ id: a.id, kind: a.kind, name: a.name ?? null, path: a.path ?? null, ladder: a.kind === 'certification' ? (a.ladder ?? 'technical') : null, step: a.stepMoveId, pausedAt: a.pausedAt ?? null, convertedFrom: a.convertedFrom ?? null, createdAt: a.createdAt, archivedAt: a.archivedAt })),
-              skills: aims.skills.map((s) => ({ id: s.id, name: s.name, subject: s.subject ?? null, ladder: s.ladder ?? 'technical', order: s.order, createdAt: s.createdAt, archivedAt: s.archivedAt })),
+              commitments: aims.aims.filter((a) => partner || !partnerAims.has(a.id)).map((a) => ({ id: a.id, kind: a.kind, name: a.name ?? null, path: a.path ?? null, ladder: a.kind === 'certification' ? (a.ladder ?? 'technical') : null, step: a.stepMoveId, about: a.about ?? null, method: a.method ?? null, currentSkill: a.currentSkillId ?? null, rhythm: a.rhythm ?? null, schedule: a.schedule ?? null, pausedAt: a.pausedAt ?? null, finishedAt: a.finishedAt ?? null, convertedFrom: a.convertedFrom ?? null, createdAt: a.createdAt, archivedAt: a.archivedAt })),
+              skills: aims.skills.map((s) => ({ id: s.id, aim: s.aimId ?? null, name: s.name, subject: s.subject ?? null, ladder: s.ladder ?? 'technical', method: s.method ?? null, how: s.how ?? null, minutes: s.minutes ?? null, source: s.source ?? null, safety: s.safety ?? null, likelyNext: s.likelyNext ?? null, order: s.order, startedAt: s.startedAt ?? null, endedAt: s.endedAt ?? null, createdAt: s.createdAt, archivedAt: s.archivedAt })),
               ladderMarks: aims.marks.map((m) => ({ skill: m.skillId, rung: m.rung, at: m.at, via: m.via })),
               plans: (aims.intentions ?? []).filter((i) => partner || !partnerAims.has(i.aimId)).map((i) => ({ aim: i.aimId, day: i.day, cue: i.cue, time: i.time, setAt: i.setAt, started: i.offerId !== null })),
+              ...(aims.coachAsks?.length || aims.coachProposals?.length
+                ? {
+                    coach: {
+                      asks: (aims.coachAsks ?? []).map((a) => ({ id: a.id, aim: a.aimId, kind: a.kind, day: a.day, at: a.at, claudeAsked: a.claude, skill: a.skillId ?? null, days: a.days ?? null, reason: a.reason ?? null, care: a.care ?? null, anotherAfter: a.after ?? null, decision: a.decision ?? null, decidedAt: a.decidedAt ?? null })),
+                      proposals: (aims.coachProposals ?? []).map((p) => ({ ask: p.askId, aim: p.aimId, kind: p.kind, day: p.day, at: p.at, model: p.model, suggestion: p.suggestion ?? null, review: p.review ?? null })),
+                    },
+                  }
+                : {}),
             },
           }
         : {}),
@@ -257,10 +269,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
   ])
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
 
-  const offerHeader = ['id', 'kind', 'day', 'block', 'situation', 'target', 'move', 'coin_flip', 'passive', 'skipped', 'card_id', 'outcome', 'why', 'passive_outcome']
+  const offerHeader = ['id', 'kind', 'day', 'block', 'situation', 'target', 'move', 'coin_flip', 'passive', 'skipped', 'card_id', 'outcome', 'why', 'passive_outcome', 'ease', 'note']
   const offerRows = offers.map((o) => {
     const x = records?.outcomes.find((y) => y.offerId === o.id)
-    return [String(o.id ?? ''), o.kind, o.day, o.block, o.situationKey, o.target, o.moveId, yesNo(o.coinFlip), o.passiveId ?? '', yesNo(o.skippedAt !== null), String(o.cardId ?? ''), x?.outcome ?? '', x?.why ?? '', x?.passiveOutcome ?? '']
+    return [String(o.id ?? ''), o.kind, o.day, o.block, o.situationKey, o.target, o.moveId, yesNo(o.coinFlip), o.passiveId ?? '', yesNo(o.skippedAt !== null), String(o.cardId ?? ''), x?.outcome ?? '', x?.why ?? '', x?.passiveOutcome ?? '', x?.ease ?? '', x?.note ?? '']
   })
   const offersCsv = [offerHeader, ...offerRows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
 

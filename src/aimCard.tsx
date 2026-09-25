@@ -9,6 +9,8 @@ import type { Aim, Cue, DayContext, Ease, Intention, Offer, Skill } from './db'
 import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon, type IconName } from './icons'
 import type { Sitting } from './ladder'
+import { AskCoach, ReviewCoach, SetupCoach, type SetupHandlers } from './coachCards'
+import type { AimCoach, ReviewAnswer } from './coachFlow'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { MAX_PER_WEEK, MAX_REST_DAYS, quiet, type Due, type Rhythm } from './rhythm'
 import type { Weekday } from './settings'
@@ -248,6 +250,19 @@ export interface LearningView {
   onMakeCurrent: (skillId: number) => void
   onPause: (paused: boolean) => void
   onFinish: () => void
+  /** Skip ahead: the likely next skill named with the current one becomes current (Part 40). */
+  onTakeNext: () => void
+  /** Parts 40 and 41, once their gate opens: the skill coach on this card. Absent while it is closed, and the card is as it was. */
+  coach?: CoachView
+}
+
+/** The skill coach for one learning card: its state and the taps that decide. */
+export interface CoachView {
+  state: AimCoach
+  setup: SetupHandlers
+  onAsk: (care?: string) => void
+  onReview: (askId: number, a: ReviewAnswer) => void
+  rhythm: Rhythm | null
 }
 
 /** "With an audio course": how it is practised, in a sentence; a leading A, An or The from your words reads lower case there, and nothing else changes. */
@@ -432,6 +447,17 @@ export function AimCard({
           {fill(c.easeLine, { hard: String(learning.practice.ease.hard), right: String(learning.practice.ease.right), easy: String(learning.practice.ease.easy) })}
         </p>
       )}
+      {learning?.current?.safety && (
+        <p class="calc-line" data-testid="aim-safety">
+          {learning.current.safety} <span class="faint">{copy.coach.notMedical}</span>
+        </p>
+      )}
+      {learning?.coach && learning.current && !paused && (
+        <>
+          <SetupCoach coach={learning.coach.state} h={learning.coach.setup} />
+          <ReviewCoach coach={learning.coach.state} current={learning.current} rhythm={learning.coach.rhythm} earlier={learning.earlier} onAnswer={learning.coach.onReview} />
+        </>
+      )}
 
       {paused ? (
         <p class="note" data-testid="aim-paused">
@@ -439,8 +465,14 @@ export function AimCard({
         </p>
       ) : unnamed ? (
         <div class="calc" data-testid="aim-no-skill">
-          <p class="calc-line">{c.noSkillNote}</p>
-          <SkillForm initial={{ name: '', method: aim.method }} submit={c.setSkill} onSubmit={(w) => learning?.onSetSkill(w)} testid="aim-skill-set" full={false} />
+          {learning?.coach && <SetupCoach coach={learning.coach.state} h={learning.coach.setup} />}
+          {learning?.coach?.state.mayAsk && !learning.coach.state.setup && <AskCoach onAsk={learning.coach.onAsk} physical={learning.coach.state.physical} last={learning.coach.state.care} />}
+          {!learning?.coach?.state.setup?.proposal && (
+            <>
+              <p class="calc-line">{c.noSkillNote}</p>
+              <SkillForm initial={{ name: '', method: aim.method }} submit={c.setSkill} onSubmit={(w) => learning?.onSetSkill(w)} testid="aim-skill-set" full={false} />
+            </>
+          )}
         </div>
       ) : open && openOffer ? (
         <>
@@ -590,6 +622,15 @@ export function AimCard({
                 ))}
               </div>
             )}
+            {learning.current?.likelyNext && !paused && (
+              <div class="history-row" data-testid="aim-likely-next">
+                <p class="calc-line">{fill(copy.coach.likelyNext, { next: learning.current.likelyNext })}</p>
+                <button type="button" class="textbtn" data-testid="aim-take-next" onClick={learning.onTakeNext}>
+                  {c.makeCurrent}
+                </button>
+              </div>
+            )}
+            {learning.coach?.state.mayAsk && learning.current && !learning.coach.state.setup && !paused && <AskCoach onAsk={learning.coach.onAsk} physical={learning.coach.state.physical} last={learning.coach.state.care} />}
             {aim.about && (
               <p class="note faint" data-testid="aim-about">
                 {fill(c.aboutSaid, { about: aim.about })}
@@ -699,7 +740,7 @@ export function RowFrame({
  * Something to learn with no skill named shows where to name it and nothing to start. Several fit
  * without a scroll; the rest lives on Aims.
  */
-export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0 }: Shared & { unnamed?: boolean; index?: number }) {
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0, reviewOpen = false }: Shared & { unnamed?: boolean; index?: number; reviewOpen?: boolean }) {
   const c = copy.aims
   const [planOpen, setPlanOpen] = useState(false)
   const [justDone, setJustDone] = useState<number | null>(null)
@@ -751,8 +792,8 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
               : open && openOffer
                 ? [<span data-testid="aim-started">{startedWhen(openOffer)}</span>, minutes]
                 : done && today.done
-                  ? [formatTime(today.done.at), last && <span data-testid="aim-last">{last}</span>]
-                  : [minutes, last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>, today.partly && <span data-testid="aim-partly">{c.partlyToday}</span>, blocked && unblock && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]
+                  ? [formatTime(today.done.at), reviewOpen && <span class="ink" data-testid="aim-review-mark">{copy.coach.reviewMark}</span>, last && <span data-testid="aim-last">{last}</span>]
+                  : [reviewOpen && <span class="ink" data-testid="aim-review-mark">{copy.coach.reviewMark}</span>, minutes, last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>, today.partly && <span data-testid="aim-partly">{c.partlyToday}</span>, blocked && unblock && fill(c.blockedShort, { why: c.blockedWhy[blocked], unblock: unblock.name })]
           }
         />
       }

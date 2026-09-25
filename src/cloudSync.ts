@@ -1,5 +1,6 @@
 import { dayKey } from './blocks'
 import { lackedOf } from './brainShared'
+import type { CoachProposal } from './coachShared'
 import type { BrainBrief, BrainRead, CoachPick, OutsideDay } from './db'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
@@ -89,6 +90,56 @@ const BRAIN_STORE = 'briefs'
 const READS_STORE = 'reads'
 /** The coach's pick for the day (Part 32). */
 const COACH_STORE = 'coach'
+/** The skill coach's proposals (Parts 40 and 41): one per ask. None is written while their gate is closed. */
+const PROPOSALS_STORE = 'proposals'
+
+const texts = (v: unknown, n: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null)
+const rhythmIn = (v: unknown): { perWeek: number; restDays: number } | null => {
+  const r = v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+  return r && Number.isInteger(r.perWeek) && Number.isInteger(r.restDays ?? 0) ? { perWeek: r.perWeek as number, restDays: (r.restDays ?? 0) as number } : null
+}
+
+/**
+ * What a proposal row says, or null for one that is not a whole proposal: its ask, its commitment and
+ * the revision it was written for, and either a suggestion for the current skill or a review. The
+ * Worker checked it before storing it; the phone reads only the fields it shows.
+ */
+export function coachProposalOf(id: string, body: string): CoachProposal | null {
+  try {
+    const r = JSON.parse(body) as Record<string, unknown>
+    if (typeof r.askId !== 'number' || typeof r.aimId !== 'number' || typeof r.revision !== 'string' || typeof r.day !== 'string' || (r.kind !== 'setup' && r.kind !== 'review')) return null
+    const base = { id, askId: r.askId, aimId: r.aimId, kind: r.kind, revision: r.revision, day: r.day, at: typeof r.at === 'string' ? r.at : '', model: typeof r.model === 'string' ? r.model : '', askedModel: typeof r.askedModel === 'string' ? r.askedModel : '' } as const
+    if (r.kind === 'setup') {
+      const s = r.suggestion && typeof r.suggestion === 'object' ? (r.suggestion as Record<string, unknown>) : null
+      const skill = texts(s?.skill, 80)
+      const how = texts(s?.how, 240)
+      const why = texts(s?.why, 200)
+      if (!s || !skill || !how || !why) return null
+      const minutes = Number.isInteger(s.minutes) && (s.minutes as number) >= 1 && (s.minutes as number) <= 240 ? (s.minutes as number) : null
+      return { ...base, suggestion: { skill, method: texts(s.method, 60), how, minutes, rhythm: rhythmIn(s.rhythm), why, physical: s.physical === true, safety: texts(s.safety, 240), likelyNext: texts(s.likelyNext, 80) } }
+    }
+    const v = r.review && typeof r.review === 'object' ? (r.review as Record<string, unknown>) : null
+    const verdict = v?.verdict
+    const why = texts(v?.why, 200)
+    const evidence = Array.isArray(v?.evidence) ? (v.evidence as unknown[]).map((e) => texts(e, 160)).filter((e): e is string => e !== null).slice(0, 3) : []
+    if (!v || (verdict !== 'keep' && verdict !== 'adjust' && verdict !== 'progress' && verdict !== 'simplify') || !why || !evidence.length) return null
+    const c = v.change && typeof v.change === 'object' ? (v.change as Record<string, unknown>) : null
+    const change = c
+      ? {
+          ...(texts(c.skill, 80) ? { skill: texts(c.skill, 80) as string } : {}),
+          ...(texts(c.method, 60) ? { method: texts(c.method, 60) as string } : {}),
+          ...(texts(c.how, 240) ? { how: texts(c.how, 240) as string } : {}),
+          ...(Number.isInteger(c.minutes) ? { minutes: c.minutes as number } : {}),
+          ...('rhythm' in c ? { rhythm: rhythmIn(c.rhythm) } : {}),
+          ...(texts(c.safety, 240) ? { safety: texts(c.safety, 240) as string } : {}),
+        }
+      : null
+    if (verdict !== 'keep' && (!change || !Object.keys(change).length)) return null
+    return { ...base, review: { verdict, evidence, why, change: verdict === 'keep' ? null : change } }
+  } catch {
+    return null
+  }
+}
 
 /** What a coach row says, or null for one that is not a whole pick: up to two reps, a path, a block and one line. */
 export function coachPickOf(id: string, body: string): CoachPick | null {
@@ -126,7 +177,7 @@ export function brainBriefOf(id: string, body: string): BrainBrief | null {
 export function brainReadOf(id: string, body: string): BrainRead | null {
   try {
     const r = JSON.parse(body) as Partial<BrainRead>
-    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review' && r.task !== 'coach')) return null
+    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review' && r.task !== 'coach' && r.task !== 'skill' && r.task !== 'progress')) return null
     const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
     return { id, day: r.day, at: r.at, task: r.task, category: r.category, count: n(r.count), bytes: n(r.bytes), via: r.via === 'context' ? 'context' : 'briefing', ...(r.dry === true ? { dry: true } : {}) }
   } catch {
@@ -406,8 +457,14 @@ async function pullBrain(store: CloudStore): Promise<number> {
     const meta = await getBrainMeta()
     const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
     if (!rows.length) break
-    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.cloudMeta], async () => {
       for (const row of rows) {
+        if (row.store === PROPOSALS_STORE) {
+          const p = row.deleted || !row.body ? null : coachProposalOf(row.id, row.body)
+          if (p) await db.coachProposals.put(p)
+          else await db.coachProposals.delete(row.id)
+          continue
+        }
         if (row.store === COACH_STORE) {
           const pick = row.deleted || !row.body ? null : coachPickOf(row.id, row.body)
           if (pick) await db.coachPicks.put(pick)

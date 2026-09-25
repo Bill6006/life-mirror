@@ -1,0 +1,84 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated > names the commitment, its skill, its sessions and its plan exactly as before 1`] = `
+[
+  {
+    "id": "aim.1",
+    "tags": [
+      "study",
+      "cue",
+      "plan",
+    ],
+    "text": "Learn French (learning): the current skill is “Ten words” with An audio course; 5 sessions on it on 5 different days since 2026-09-20; last practised 3 days ago; rhythm 3 a week; planned today after her bedtime at 20:00, not started; cues: after her bedtime started 0 of 1.",
+    "values": {
+      "blocked": null,
+      "cue_afterBedtime_n": 1,
+      "cue_afterBedtime_started": 0,
+      "doneToday": 0,
+      "due": "planned",
+      "easy": 2,
+      "faith": 0,
+      "fixed": null,
+      "gapDays": 3,
+      "hard": 1,
+      "kind": "certification",
+      "method": "An audio course",
+      "minutes": 0,
+      "name": "Learn French",
+      "open": 0,
+      "perWeek": 3,
+      "plan": "afterBedtime",
+      "planStarted": 0,
+      "planTime": "20:00",
+      "practiceDays": 5,
+      "restDays": 0,
+      "right": 2,
+      "sessions": 5,
+      "since": "2026-09-20",
+      "skill": "Ten words",
+      "skills": 1,
+      "step": "Ten words",
+    },
+  },
+  {
+    "id": "trajectory.1",
+    "n": 5,
+    "tags": [
+      "study",
+      "habit",
+      "lapse",
+    ],
+    "text": "Learn French: steps started per week over the last four weeks, oldest first: 0, 0, 3, 2; marked done: 0, 0, 3, 2; the commitment is 14 days old.",
+    "values": {
+      "ageDays": 14,
+      "aimId": 1,
+      "d0": 2,
+      "d1": 3,
+      "d2": 0,
+      "d3": 0,
+      "name": "Learn French",
+      "w0": 2,
+      "w1": 3,
+      "w2": 0,
+      "w3": 0,
+    },
+  },
+  {
+    "id": "becoming",
+    "tags": [
+      "monitoring",
+    ],
+    "text": "Under the direction: 5 study sessions, 0 conversations started, 0 faith practices, 0 times with her.",
+    "values": {
+      "conversations": 0,
+      "faith": 0,
+      "her": 0,
+      "study": 5,
+    },
+  },
+]
+`;
+
+exports[`the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated > names the commitment, its skill, its sessions and its plan exactly as before 2`] = `[]`;
+
+exports[`the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated > writes the same coach block 1`] = `null`;

@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { AimCard, AimRow, type Cadence, type LearningView } from './aimCard'
 import { activeAims, addAim, addLearning, aimRecords, allIntentions, editSkill, finishAim, finishedAims, liveSkills, logSession, makeCurrent, openAimOffers, pauseAim, planAim, removeAim, reopenAim, resumeAim, rungMarks, setAimStep, setCurrentSkill, setRhythm, setSchedule, type AimRecords } from './aimFlow'
 import { BECOMING_KEYS, becoming, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
@@ -19,6 +19,8 @@ import { hasMove, moveById } from './catalogue'
 import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf } from './ladder'
 import { useLive } from './live'
 import { todaysLine } from './brainFlow'
+import { anotherSuggestion, answerReview, askSuggestion, coachStates, editedSuggestion, ensureReviews, skillCoachOpen, takeLikelyNext, useSuggestion, writeOwnSkill, type AimCoach } from './coachFlow'
+import { isPhysical } from './coachShared'
 import { ScreenHead, SectionLabel } from './ui'
 
 // The Aims tab: the commitments you chose with their protected steps, and the doors to the
@@ -44,12 +46,14 @@ function useAims() {
   // The coach's pick for today, when the brain wrote one (Part 32); the row uses it only while it holds, and never on the Partner path while the monthly check shows its help.
   const coach = useLive(() => db.coachPicks.where('day').equals(today).toArray(), [today])
   const checks = useLive(monthlyChecks, [])
-  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks) return null
-  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today) }
+  // Parts 40 and 41: each learning commitment's skill coach; null while their gate is closed.
+  const skillCoach = useLive(() => coachStates(today), [today])
+  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks || skillCoach === undefined) return null
+  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach }
 }
 
 /** A learning commitment's own view: the practice on its current skill, the skills before it newest first with their sessions, the proofs the retired ladder recorded (read only), and the taps only you make. */
-function learningView(aim: Aim, current: Skill | null, skills: readonly Skill[], marks: readonly RungMark[], records: AimRecords, studyAims: readonly Aim[]): LearningView {
+function learningView(aim: Aim, current: Skill | null, skills: readonly Skill[], marks: readonly RungMark[], records: AimRecords, studyAims: readonly Aim[], coach: AimCoach | null = null): LearningView {
   const own = skillsOfAim(aim, skills, studyAims)
   const earlier = own
     .filter((sk) => sk.id !== current?.id)
@@ -71,6 +75,18 @@ function learningView(aim: Aim, current: Skill | null, skills: readonly Skill[],
     onMakeCurrent: (skillId) => void makeCurrent(id, skillId),
     onPause: (paused) => void pauseAim(id, paused),
     onFinish: () => void finishAim(id),
+    onTakeNext: () => void takeLikelyNext(id),
+    ...(coach
+      ? {
+          coach: {
+            state: coach,
+            setup: { onUse: (askId) => void useSuggestion(askId), onEdited: (askId, w, r) => void editedSuggestion(askId, w, r), onAnother: (askId) => void anotherSuggestion(askId), onOwn: (askId) => void writeOwnSkill(askId) },
+            onAsk: (care) => void askSuggestion(id, undefined, undefined, undefined, care),
+            onReview: (askId, a) => void answerReview(askId, a),
+            rhythm: rhythmOf(aim.rhythm),
+          },
+        }
+      : {}),
   }
 }
 
@@ -85,8 +101,13 @@ function planLabel(pt: PathToday): string {
 /** Every commitment with its protected step: full cards on Aims, or one row each on Now so several fit without a scroll. A paused path has no row on Now. */
 export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, compact = false, dueAimId = null }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; onPartnerNotes?: () => void; compact?: boolean; dueAimId?: number | null }) {
   const data = useAims()
+  // Parts 40 and 41: a review due on a current skill is put in place when the screen opens or a session is answered; nothing while their gate is closed.
+  const answered = data?.records.outcomes.length ?? 0
+  useEffect(() => {
+    if (data && skillCoachOpen()) void ensureReviews(data.today)
+  }, [data?.today, answered])
   if (!data) return null
-  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, coach } = data
+  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, coach, skillCoach } = data
   const easeOff = easeRetired(records.offers, records.outcomes, settings.easeBack ?? null)
   const aims = compact ? data.aims.filter((a) => !a.pausedAt) : data.aims
   if (aims.length === 0) return null
@@ -210,7 +231,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       pos,
       render: (index) =>
         compact ? (
-          <AimRow key={aim.id} {...shared} unnamed={study && current === null} index={index} />
+          <AimRow key={aim.id} {...shared} unnamed={study && current === null} index={index} reviewOpen={Boolean(skillCoach?.get(aim.id as number)?.review)} />
         ) : (
           <AimCard
             key={aim.id}
@@ -219,7 +240,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
             onRemove={onRemove ? () => onRemove(aim) : undefined}
             onChangeStep={onChangeStep && !study && aim.kind !== 'person' ? () => onChangeStep(aim) : undefined}
             onConvert={aim.kind === 'person' && !socialOn ? () => void convertToSocial(aim.id as number) : undefined}
-            learning={study ? learningView(aim, current, skills, marks, records, studyAims) : undefined}
+            learning={study ? learningView(aim, current, skills, marks, records, studyAims, skillCoach?.get(aim.id as number) ?? null) : undefined}
           />
         ),
     })
@@ -425,7 +446,16 @@ export function AddAimScreen({ onClose }: { onClose: () => void }) {
           </div>
         </>
       ) : kind === 'certification' ? (
-        <LearningForm onAdd={(goal, method, skill, about) => void addLearning(goal, method, skill, about).then(onClose)} />
+        <LearningForm
+          onAdd={(goal, method, skill, about) =>
+            void addLearning(goal, method, skill, about).then((id) => {
+              // Parts 40 and 41: with no skill named, Claude is asked for a first suggestion, once their gate is open and it may be asked;
+              // a physical goal waits for its one safety question, on the card.
+              if (id !== null && !skill.trim() && skillCoachOpen() && !isPhysical([goal, method, about])) void askSuggestion(id)
+              onClose()
+            })
+          }
+        />
       ) : (
         <StepPicker kind={kind} onPick={(id) => void addAim(kind, id).then(onClose)} />
       )}

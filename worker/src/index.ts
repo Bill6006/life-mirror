@@ -6,6 +6,8 @@ import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore } from './turso'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
+import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
+import { SKILL_COACH } from '../../src/coachShared'
 import { localTime } from './time'
 
 // The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
@@ -36,9 +38,11 @@ function sender(env: Env): Sender | null {
   }
 }
 
-type Job = 'brief' | 'review' | 'cues' | 'coach'
+type Job = 'brief' | 'review' | 'cues' | 'coach' | 'commitments'
 
-async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free', dry = false): Promise<unknown> {
+async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free', dry = false, coach?: { reason: string }): Promise<unknown> {
+  // Parts 40 and 41: closed, the skill coach's job returns before anything is opened or read, by hand or by schedule, and logs nothing.
+  if (job === 'commitments' && SKILL_COACH !== 'open') return { job, ran: false, reason: 'gated' }
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
   if (job === 'cues') {
@@ -49,6 +53,11 @@ async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: '
   }
   if (job === 'coach') {
     const result = await runCoach(env, store, now, { force, dry })
+    console.log(JSON.stringify({ job, ...result }))
+    return { job, ...result }
+  }
+  if (job === 'commitments') {
+    const result = await runCommitments(env, store, now, { force, dry, ...(coach ? { coach } : {}) })
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
@@ -64,12 +73,20 @@ const handler: ExportedHandler<Env> = {
     // In turn, and each on its own: a failure in one never stops the next. Each decides for itself whether its moment has come.
     ctx.waitUntil(
       (async () => {
+        let coach: { reason: string } | undefined
         for (const job of ['cues', 'brief', 'review', 'coach'] as const) {
           try {
-            await dispatch(job, env, now)
+            const r = (await dispatch(job, env, now)) as { reason?: unknown }
+            if (job === 'coach') coach = { reason: String(r?.reason ?? '') }
           } catch (e) {
             console.log(JSON.stringify({ job, error: e instanceof Error ? e.message : String(e) }))
           }
+        }
+        // Parts 40 and 41: the skill coach last, after the coach has said whether it runs today. Closed, it does nothing.
+        try {
+          await dispatch('commitments', env, now, false, undefined, false, coach)
+        } catch (e) {
+          console.log(JSON.stringify({ job: 'commitments', error: e instanceof Error ? e.message : String(e) }))
         }
       })(),
     )
@@ -78,7 +95,7 @@ const handler: ExportedHandler<Env> = {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/health') return json({ ok: true, app: BRAIN_APP })
-    const m = /^\/run\/(brief|review|cues|coach)$/.exec(url.pathname)
+    const m = /^\/run\/(brief|review|cues|coach|commitments)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       const w = url.searchParams.get('writer')
       if (w !== null && w !== 'claude' && w !== 'free') return json({ reason: 'writer must be claude or free' }, 400)
@@ -106,7 +123,9 @@ const handler: ExportedHandler<Env> = {
       const deps = { env, store: tursoStore(env.TURSO_URL, env.TURSO_TOKEN), now: new Date() }
       try {
         if (url.pathname === '/claude/briefing' && request.method === 'GET') {
-          const r = await handleBriefing(deps, url)
+          // Parts 40 and 41: a skill coach run's briefing, refused while their gate is closed.
+          const task = url.searchParams.get('task')
+          const r = task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : await handleBriefing(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/context' && request.method === 'GET') {
@@ -122,7 +141,8 @@ const handler: ExportedHandler<Env> = {
           } catch {
             return json({ error: 'the body is not JSON' }, 400)
           }
-          const r = await handleLine(deps, body)
+          const task = body && typeof body === 'object' ? (body as { task?: unknown }).task : undefined
+          const r = task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : await handleLine(deps, body)
           return json(r.body, r.status)
         }
         return json({ error: 'not found' }, 404)

@@ -13,7 +13,7 @@ import type { ReadRow, RecordRow, Store } from './turso'
 // count and size, never content. There is no person to query by, so no request can gather
 // several people.
 
-export type ReadTask = 'line' | 'review' | 'coach'
+export type ReadTask = 'line' | 'review' | 'coach' | 'skill' | 'progress'
 
 /** A line of the record as Claude reads it: its day, and the words. */
 export interface Item {
@@ -418,7 +418,7 @@ export function itemLines(items: readonly Item[]): string {
 }
 
 /** Logs one read, never its content; a read by a coach run made by hand to test the path is marked as one. */
-async function logRead(store: Store, run: string, seq: number, task: ReadTask, day: string, category: Category, items: readonly Item[], text: string, via: ReadRow['via'], now: Date, dry = false): Promise<void> {
+export async function logRead(store: Store, run: string, seq: number, task: ReadTask, day: string, category: Category, items: readonly Item[], text: string, via: ReadRow['via'], now: Date, dry = false): Promise<void> {
   const at = now.toISOString()
   await store.writeRead({ id: `read:${run}:${at}:${seq}`, day, at, task, category, count: items.length, bytes: bytesOf(text), via, ...(dry ? { dry: true } : {}) })
 }
@@ -435,7 +435,7 @@ export async function logUsageOnSheet(store: Store, run: string, task: ReadTask,
 }
 
 /** How much private context each task's briefing may carry (engineering judgment). */
-export const CONTEXT_BUDGET: Record<ReadTask, number> = { line: 12 * 1024, review: 24 * 1024, coach: 12 * 1024 }
+export const CONTEXT_BUDGET: Record<ReadTask, number> = { line: 12 * 1024, review: 24 * 1024, coach: 12 * 1024, skill: 12 * 1024, progress: 16 * 1024 }
 
 interface Section {
   category: Category

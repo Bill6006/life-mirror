@@ -131,10 +131,13 @@ export function isUsageFact(id: string): boolean {
  * its own taps, plans, skips and check-ins; the weekly review reads them all; the coach reads what
  * bears on the People row.
  */
-export const USAGE_FOR: Readonly<Record<'line' | 'review' | 'coach', readonly string[]>> = {
+export const USAGE_FOR: Readonly<Record<'line' | 'review' | 'coach' | 'skill' | 'progress', readonly string[]>> = {
   line: ['usage.line', 'usage.plans', 'usage.skips', 'usage.checkins'],
   review: ['usage.opened', 'usage.screens', 'usage.line', 'usage.checkins', 'usage.notifications', 'usage.change', 'usage.coach', 'usage.plans', 'usage.skips', 'usage.setup'],
   coach: ['usage.change', 'usage.coach'],
+  // Parts 40 and 41: the skill coach reads no usage.
+  skill: [],
+  progress: [],
 }
 
 /** A raw slice of events, read only when the order of events matters: the weekly review's alone, a week at most, from the last fourteen days, forty events at most. */

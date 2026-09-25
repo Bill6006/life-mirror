@@ -62,6 +62,8 @@ export interface FactInput {
   pathMarks?: PathMark[]
   /** Follow-up F1: how Life Mirror is used, and what its counts are set against. Absent, no usage fact is written. */
   use?: { rows: UseRow[]; coachPicks: CoachPick[]; allAims: Aim[] }
+  /** Parts 40 and 41, once their gate is open: the progression review open on a learning commitment's current skill, by commitment. Absent, the sheet is as it was. */
+  reviews?: ReadonlyMap<number, { days: number; reason: 'ordinary' | 'struggle' }>
 }
 
 /**
@@ -559,7 +561,11 @@ export function buildFactSheet(i: FactInput): FactSheet {
         : pt && !pt.pick
           ? `no rep of its stage fits this ${block} by today’s shape`
           : `the step is “${step.title}”, ${step.minutes} min`
-    facts.push(fact(`aim.${id}`, study ? ['study', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'learning' : aim.kind}): ${stepText}; ${gapText}${doneToday ? '; a session is done today' : ''}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${cadenceText}${planText}${cueText}.`, values))
+    // Part 41: a progression review waiting for your answer, once its gate is open; never a verdict, only that it waits.
+    const review = study && current ? i.reviews?.get(id) : undefined
+    if (review) Object.assign(values, { review: 'open', reviewDays: review.days, reviewReason: review.reason })
+    const reviewText = review ? (review.reason === 'struggle' ? '; after three hard sessions in a row, a progression review waits for your answer' : `; after ${review.days} practice days on it, a progression review waits for your answer`) : ''
+    facts.push(fact(`aim.${id}`, study ? ['study', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'learning' : aim.kind}): ${stepText}; ${gapText}${doneToday ? '; a session is done today' : ''}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${cadenceText}${planText}${cueText}${reviewText}.`, values))
 
     // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by tier 1 alone.
     if (pt) {

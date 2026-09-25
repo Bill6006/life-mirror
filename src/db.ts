@@ -1,4 +1,5 @@
 import type { BrainPrefsBody, Lacked, LineAction } from './brainShared'
+import type { CoachAsk, CoachProposal } from './coachShared'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
@@ -441,6 +442,10 @@ export interface Skill {
   minutes?: number
   /** Who named it: you, or a suggestion you accepted. */
   source?: 'you' | 'claude'
+  /** For a physical skill taken from a suggestion (Part 40): what to watch for, and rest. Not medical advice. */
+  safety?: string
+  /** A suggestion's provisional next skill, kept with the one you took. */
+  likelyNext?: string
   /** When it last became the commitment's current skill, and when it stopped being current. */
   startedAt?: string
   endedAt?: string
@@ -592,7 +597,7 @@ export interface BrainRead {
   id: string
   day: string
   at: string
-  task: 'line' | 'review' | 'coach'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress'
   category: string
   count: number
   bytes: number
@@ -721,6 +726,8 @@ class LifeMirrorDB extends Dexie {
   places!: Table<KnownPlace, number>
   placeCandidates!: Table<PlaceCandidate, number>
   placeMeta!: Table<PlaceMeta, string>
+  coachAsks!: Table<CoachAsk, number>
+  coachProposals!: Table<CoachProposal, string>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -913,6 +920,11 @@ class LifeMirrorDB extends Dexie {
       places: '++id, kind',
       placeCandidates: '++id, lastDay',
       placeMeta: 'key',
+    })
+    // Parts 40 and 41: what you asked the skill coach, synced; what it proposed, read from the brain's rows. Empty while their gate is closed.
+    this.version(18).stores({
+      coachAsks: '++id, aimId, kind, day',
+      coachProposals: 'id, aimId, askId',
     })
     installOutbox(this)
   }

@@ -516,6 +516,23 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
   { w: 300, zoom: 1.3, label: '390 at 130%' },
 ]
 
+/** Each state, reloaded, reached and audited at one width; what it breaks is added to found. */
+async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typeof WIDTHS)[number], found: string[]): Promise<void> {
+  for (const s of states) {
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    // WIDE_FONT=1 stands in a wide system face (Verdana, as wide as the runner's fallback) for the phone's own
+    // type, which Instrument alone uses; Nocturne and Signal carry their fonts with them.
+    if (process.env.WIDE_FONT && theme === 'instrument') await page.addStyleTag({ content: ':root, [data-theme] { --font: Verdana, "DejaVu Sans", sans-serif }' })
+    await tab(page, s.tab)
+    if (s.open) await s.open(page)
+    await page.waitForTimeout(250)
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
+    const issues = await page.evaluate(audit, { zoom: width.zoom })
+    for (const i of issues) found.push(`${width.label} · ${s.name} · ${i}`)
+  }
+}
+
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
     // Seeding walks a whole evening check-in; the walk through forty-three states at three widths follows. One limit for all of it.
@@ -526,19 +543,113 @@ for (const theme of THEMES) {
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
       // The other screens at the phone's width and at zoomed text; the narrower phone adds nothing they do not already meet.
-      for (const s of width.w === 360 ? STATES : [...STATES, ...MORE]) {
-        await page.reload()
-        await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
-        // WIDE_FONT=1 stands in a wide system face (Verdana, as wide as the runner's fallback) for the phone's own
-        // type, which Instrument alone uses; Nocturne and Signal carry their fonts with them.
-        if (process.env.WIDE_FONT && theme === 'instrument') await page.addStyleTag({ content: ':root, [data-theme] { --font: Verdana, "DejaVu Sans", sans-serif }' })
-        await tab(page, s.tab)
-        if (s.open) await s.open(page)
-        await page.waitForTimeout(250)
-        await page.evaluate(() => document.fonts.ready.then(() => undefined))
-        const issues = await page.evaluate(audit, { zoom: width.zoom })
-        for (const i of issues) found.push(`${width.label} · ${s.name} · ${i}`)
+      await walk(page, theme, width.w === 360 ? STATES : [...STATES, ...MORE], width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+/**
+ * The skill coach (Parts 40 and 41), previewed as a test browser alone may (their gate stays
+ * closed): Watercolour asked for a first skill and answered; a physical goal's one question; Cello's
+ * review with Claude's view and Guitar's asked neutrally, both after six practice days; Yoga with a
+ * suggestion taken, its safety line and likely next kept.
+ */
+async function seedCoach(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.skillCoach', '1'))
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['aims', 'skills', 'offers', 'outcomes'], 'readwrite')
+    const aims = tx.objectStore('aims')
+    const skills = tx.objectStore('skills')
+    const at = (d: number, h = 18) => new Date(2026, 8, d, h, 0).toISOString()
+    const aim = (id: number, name: string, method: string, currentSkillId: number | null, extra: Record<string, unknown> = {}) => aims.put({ id, kind: 'certification', stepMoveId: null, name, method, currentSkillId, createdAt: at(10, 9), archivedAt: null, ...extra })
+    const skill = (id: number, aimId: number, name: string, method: string, order: number, extra: Record<string, unknown> = {}) => skills.put({ id, aimId, name, method, source: 'you', startedAt: at(10, 9), order, createdAt: at(10, 9), archivedAt: null, ...extra })
+    aim(80, 'Cello', 'A teacher', 81)
+    skill(81, 80, 'Scale of C', 'A teacher', 1, { how: 'Hands separately, slowly, then together.', minutes: 20 })
+    aim(82, 'Guitar', 'A book', 83, { rhythm: { perWeek: 4, restDays: 0 } })
+    skill(84, 82, 'Tuning by ear', 'A book', 2, { startedAt: at(1, 9), endedAt: at(10, 9) })
+    skill(83, 82, 'Open chords', 'A book', 3)
+    aim(85, 'Headstand', 'A video course', null)
+    aim(86, 'Yoga', 'A class', 87, { rhythm: { perWeek: 3, restDays: 1 } })
+    skill(87, 86, 'Sun salutations', 'A class', 4, { source: 'claude', how: 'Five slow rounds, breath leading each move.', minutes: 15, safety: 'Warm up first, keep the knees soft, and stop at sharp pain in the back or wrists.', likelyNext: 'Longer standing holds' })
+    aim(88, 'Watercolour', '', null)
+    // Six practice days on Cello's and Guitar's current skills, a week and more behind them.
+    let id = 800
+    for (const sk of [81, 83])
+      for (let d = 12; d <= 17; d++) {
+        const offer = { id: ++id, kind: 'step', day: `2026-09-${d}`, block: 'evening', at: at(d), situationKey: `aim:certification:${sk === 81 ? 80 : 82}`, target: 'focus', stance: '', band: '', reading: 0, moveId: `skill:${sk}`, label: '', cardId: null, candidates: [`skill:${sk}`], coinFlip: false, passiveId: null, whyNot: null, logged: true, skippedAt: null, closedAt: at(d) }
+        tx.objectStore('offers').put(offer)
+        tx.objectStore('outcomes').put({ id, offerId: id, moveId: offer.moveId, day: offer.day, block: 'evening', at: at(d), outcome: 'done', why: null, passiveOutcome: null, ease: d % 3 === 0 ? 'hard' : 'easy' })
       }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  // Opened: the two reviews fall due. Watercolour asks for its first skill.
+  await page.reload()
+  await tab(page, 'Aims')
+  await expect(page.getByTestId('coach-review')).toHaveCount(2)
+  await page.getByTestId('aim-card').filter({ hasText: 'Watercolour' }).getByTestId('coach-ask').click()
+  await expect(page.getByTestId('coach-pending')).toBeVisible()
+  // Claude's answers, as the brain's pull writes them: Watercolour's suggestion and Cello's review; Guitar's stays neutral.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const asks = await new Promise<{ id: number; aimId: number; kind: string; revision: string; day: string }[]>((res) => {
+      const q = dbx.transaction(['coachAsks'], 'readonly').objectStore('coachAsks').getAll()
+      q.onsuccess = () => res(q.result)
+    })
+    const tx = dbx.transaction(['coachProposals'], 'readwrite')
+    const put = (aimId: number, kind: string, answer: Record<string, unknown>) => {
+      const a = asks.find((x) => x.aimId === aimId && x.kind === kind)
+      if (!a) throw new Error(`no ${kind} ask for ${aimId}`)
+      tx.objectStore('coachProposals').put({ id: `ask:${a.id}`, askId: a.id, aimId, kind, revision: a.revision, day: a.day, at: `${a.day}T21:00:00.000Z`, model: 'claude-opus-5-5', askedModel: 'opus', ...answer })
+    }
+    put(88, 'setup', { suggestion: { skill: 'Flat washes in one colour', method: 'A pad and three brushes', how: 'Lay one colour evenly across a small square, keeping the edge wet.', minutes: 15, rhythm: { perWeek: 4, restDays: 0 }, why: 'Control of water comes before mixing colours.', physical: false, safety: null, likelyNext: 'Graded washes' } })
+    put(80, 'review', { review: { verdict: 'progress', evidence: ['6 sessions on 6 different days.', '4 of the 6 marked Easy.'], why: 'The scale of C holds; the next scale builds on it.', change: { skill: 'Scale of G', how: 'Hands separately, then together, slowly.', minutes: 20 } } })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+/** The skill coach's states: each card, and each form its taps open. */
+const COACH: typeof STATES = [
+  { name: 'Aims, the skill coach', tab: 'Aims' },
+  { name: 'Aims, Claude’s suggestion, Edit first open', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Watercolour' }).getByTestId('coach-edit').click() },
+  { name: 'Aims, Claude’s review, Edit first open', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Cello' }).getByTestId('coach-review-edit').click() },
+  { name: 'Aims, a review asked neutrally, Earlier skills open', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Guitar' }).getByTestId('coach-review-earlier').click() },
+  { name: 'Aims, a review asked neutrally, Write the next open', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Guitar' }).getByTestId('coach-review-write').click() },
+  { name: 'Aims, a kept safety line and the likely next', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Yoga' }).getByTestId('aim-details').click() },
+  { name: 'Now, reviews marked on their rows', tab: 'Now' },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the skill coach’s cards read, fit and can be tapped, at three widths (Parts 40–41, previewed)`, async ({ page }, info) => {
+    test.setTimeout(600_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedCoach(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, COACH, width, found)
     }
     writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
     expect(found, found.join('\n')).toEqual([])

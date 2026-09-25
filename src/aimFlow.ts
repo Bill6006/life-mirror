@@ -1,5 +1,6 @@
 import { blockAt } from './blocks'
 import { db, type Aim, type AimKind, type Cue, type Ease, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
+import type { CoachAsk, CoachProposal } from './coachShared'
 import { AIM_KINDS, keyFor, planFor, unblockKeyFor } from './aims'
 import { ladderOf, nextStep, orphanSubjects, skillsOf, type Sitting } from './ladder'
 import { rhythmOf, scheduleOf, type Rhythm } from './rhythm'
@@ -412,7 +413,8 @@ export function adoptCurrentSkills(): Promise<void> {
   })
 }
 
-/** Everything the aims hold, for the export. */
-export async function aimsSnapshot(): Promise<{ aims: Aim[]; skills: Skill[]; marks: RungMark[]; intentions: Intention[] }> {
-  return { aims: await db.aims.toArray(), skills: await db.skills.toArray(), marks: await db.rungMarks.toArray(), intentions: await db.intentions.toArray() }
+/** Everything the aims hold, for the export: the skill coach's asks and proposals too (Parts 40 and 41). */
+export async function aimsSnapshot(): Promise<{ aims: Aim[]; skills: Skill[]; marks: RungMark[]; intentions: Intention[]; coachAsks: CoachAsk[]; coachProposals: CoachProposal[] }> {
+  const [aims, skills, marks, intentions, coachAsks, coachProposals] = await Promise.all([db.aims.toArray(), db.skills.toArray(), db.rungMarks.toArray(), db.intentions.toArray(), db.coachAsks.toArray(), db.coachProposals.toArray()])
+  return { aims, skills, marks, intentions, coachAsks, coachProposals }
 }
