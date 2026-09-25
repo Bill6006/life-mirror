@@ -18,7 +18,7 @@ const sheet: FactSheet = {
   direction: 'One line, mine',
   said: [{ day: '2026-09-16', source: 'phone', situationId: 'say-when', text: 'Said before.', feedback: 'useful' }],
   facts: [
-    { id: 'aim.1', tags: ['study', 'cue', 'plan'], text: 'French: planned after her bedtime at 20:00.', values: { name: 'French' }, n: 5 },
+    { id: 'aim.1', tags: ['study', 'cue', 'plan'], text: 'Veltish: planned after her bedtime at 20:00.', values: { name: 'Veltish' }, n: 5 },
     { id: 'assoc.napped', tags: ['nap'], text: 'Mornings after a nap read +7, 5 naps.', values: { diff: 7, times: 5 }, n: 5, tier: 'unclear' },
   ],
 }
@@ -34,7 +34,7 @@ function brief(s: FactSheet, cardList: ClaimCard[], said: Said[], forDay = s.day
 describe('what the model is asked', () => {
   it('lists the facts by id and the cards by id, names the day, and asks for JSON alone', () => {
     const lines = sheetLines(sheet)
-    expect(lines).toContain('[aim.1] French: planned after her bedtime at 20:00. (n=5)')
+    expect(lines).toContain('[aim.1] Veltish: planned after her bedtime at 20:00. (n=5)')
     expect(lines).toContain('Direction, in the person\'s own words: One line, mine')
     const messages = buildMessages(brief(withDay, retrieve(library, withDay), [{ day: '2026-09-16', text: 'Said before.', feedback: 'useful' }]))
     expect(messages[0].role).toBe('system')

@@ -17,7 +17,7 @@ describe('the sheet the monitored prompts are built from, held fixed while Parts
     await db.delete()
     await db.open()
     await ensureDayContext(DAY, await getSettings())
-    await addLearning('Learn French', 'An audio course', 'Ten words', 'I can read a little', new Date(2026, 8, 20, 9, 0))
+    await addLearning('Learn Veltish', 'A phrasebook', 'Ten words', 'I can read a little', new Date(2026, 8, 20, 9, 0))
     const [aim] = await studyAims()
     await setRhythm(aim.id as number, { perWeek: 3, restDays: 0 })
     const skills = await db.skills.toArray()

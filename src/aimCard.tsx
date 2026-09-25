@@ -265,7 +265,7 @@ export interface CoachView {
   rhythm: Rhythm | null
 }
 
-/** "With an audio course": how it is practised, in a sentence; a leading A, An or The from your words reads lower case there, and nothing else changes. */
+/** "With a phrasebook": how it is practised, in a sentence; a leading A, An or The from your words reads lower case there, and nothing else changes. */
 export function withMethod(method: string): string {
   return fill(copy.aims.withMethod, { method: method.replace(/^(A|An|The) /, (w) => w.toLowerCase()) })
 }

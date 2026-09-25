@@ -53,11 +53,11 @@ function sheetFor(day: string): FactSheet {
     direction: 'One line, mine',
     said: [{ day: '2026-10-03', source: 'phone', situationId: 'say-when', text: 'A plan tied to a moment is kept more often than a wish is.', feedback: 'useful' }],
     checkedIn: { morning: `${day}T11:40:00.000Z` },
-    shortlist: [{ situationId: 'say-when', mode: 'recommendation', text: 'French: the step is Ten words. Say when, one tap.', factIds: ['aim.1'], cardIds: ['plan-a-cue'], score: 0.6 }],
+    shortlist: [{ situationId: 'say-when', mode: 'recommendation', text: 'Veltish: the step is Ten words. Say when, one tap.', factIds: ['aim.1'], cardIds: ['plan-a-cue'], score: 0.6 }],
     facts: [
       { id: 'week.today', tags: ['cue'], text: 'Today is Sunday; not a daycare day; at home; her bedtime 20:00; the hour is 7.', values: { weekday: 'Sunday', daycare: 0, pickup: null, office: 0, church: 0, studyNight: 0, bedtime: '20:00', hour: 7 } },
       { id: 'week.tomorrow', tags: ['cue'], text: 'Tomorrow is Monday; a daycare day with pickup at 17:30; at home; her bedtime 20:00.', values: { day: '2026-10-05', weekday: 'Monday', daycare: 1, pickup: '17:30', office: 0, church: 0, studyNight: 0 } },
-      { id: 'aim.1', tags: ['study', 'cue'], text: 'French (learning): the current skill is “Ten words”; 5 sessions on it over 4 days since Sep 28; no plan today.', values: { kind: 'certification', name: 'French', skill: 'Ten words', sessions: 5, practiceDays: 4, plan: null }, n: 5 },
+      { id: 'aim.1', tags: ['study', 'cue'], text: 'Veltish (learning): the current skill is “Ten words”; 5 sessions on it over 4 days since Sep 28; no plan today.', values: { kind: 'certification', name: 'Veltish', skill: 'Ten words', sessions: 5, practiceDays: 4, plan: null }, n: 5 },
       { id: 'note.2026-10-03.evening', tags: ['writing'], text: 'On 2026-10-03, at the evening check-in, you wrote: “long week”.', values: { day: '2026-10-03', block: 'evening', note: 'long week' } },
       { id: 'workout.last', tags: ['workout', 'morning'], text: 'The last workout: Saturday morning, 42 minutes.', values: { day: '2026-10-03', block: 'morning', minutes: 42 } },
     ],
@@ -82,8 +82,8 @@ function record(): Store {
   const sheet = sheetFor(DAY)
   put(store, 'facts', DAY, DAY, { day: DAY, builtAt: sheet.builtAt, updatedAt: sheet.builtAt, sheet, coach: COACH }, sheet.builtAt)
   put(store, 'settings', '1', null, { id: 1, hideFaith: false, showPrivate: false, privateInSelection: false })
-  put(store, 'aims', '1', null, { id: 1, kind: 'certification', stepMoveId: null, name: 'French', currentSkillId: 2, rhythm: { perWeek: 3, restDays: 0 }, createdAt: '2026-09-20T12:00:00.000Z', archivedAt: null })
-  put(store, 'skills', '2', null, { id: 2, name: 'Ten words', aimId: 1, method: 'An audio course', how: 'One lesson, then say the ten words aloud.', minutes: 30, source: 'you', startedAt: '2026-09-28T12:00:00.000Z', order: 2, createdAt: '2026-09-28T12:00:00.000Z', archivedAt: null })
+  put(store, 'aims', '1', null, { id: 1, kind: 'certification', stepMoveId: null, name: 'Veltish', currentSkillId: 2, rhythm: { perWeek: 3, restDays: 0 }, createdAt: '2026-09-20T12:00:00.000Z', archivedAt: null })
+  put(store, 'skills', '2', null, { id: 2, name: 'Ten words', aimId: 1, method: 'A phrasebook', how: 'One page, then say the ten words aloud.', minutes: 30, source: 'you', startedAt: '2026-09-28T12:00:00.000Z', order: 2, createdAt: '2026-09-28T12:00:00.000Z', archivedAt: null })
   put(store, 'intentions', '7', DAY, { id: 7, aimId: 1, day: DAY, cue: 'afterBedtime', time: '20:00', setAt: `${DAY}T12:00:00.000Z`, offerId: null, step: 'Ten words' })
   put(store, 'checkins', '40', '2026-10-03', { id: 40, day: '2026-10-03', block: 'evening', answers: { mood: 3, energy: 2 }, extras: { note: 'long week' } })
   for (const [id, day] of [[31, '2026-09-29'], [32, '2026-10-01'], [33, '2026-10-02'], [34, '2026-10-03']] as const) {
@@ -151,7 +151,7 @@ describe('a saved How firm choice, while its gate is closed (Pass 2)', () => {
     return store
   }
   const noClaude = { ...env, CLAUDE_WRITER: 'off' }
-  const candidate = { mode: 'recommendation', text: 'French: the current skill is Ten words. Pin it to a moment today.', factIds: ['aim.1'], cardIds: ['plan-a-cue'], action: null, firmness: 'hardCoach' }
+  const candidate = { mode: 'recommendation', text: 'Veltish: the current skill is Ten words. Pin it to a moment today.', factIds: ['aim.1'], cardIds: ['plan-a-cue'], action: null, firmness: 'hardCoach' }
   const freeRunner = async () => ({ response: JSON.stringify({ candidates: [candidate] }) })
 
   it('serves Claude the same line, review and coach, with the same reads, whatever was chosen', async () => {

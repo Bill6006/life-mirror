@@ -5,7 +5,7 @@ import { checkReview, checkSuggestion, coachTextRefusal, HARD_RUN, isPhysical, M
 // phone may show it, the revision a proposal is written for, and when a progression review is due.
 
 const ctx = (extra: Partial<CoachContext> = {}): CoachContext => ({ goal: 'Learn Italian', physical: false, faithHidden: false, names: [], numbers: new Set(['5', '6', '4', '12', '20']), ...extra })
-const italian = { skill: 'Understand everyday spoken Italian', method: 'An audio course', how: 'One lesson a session, answering aloud before the speaker does.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest of the course leans on.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
+const italian = { skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest of the course leans on.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
 
 describe('the gate', () => {
   it('stays closed until the monitoring completes and the owner approves (2026-09-25)', () => {
@@ -16,11 +16,11 @@ describe('the gate', () => {
 })
 
 describe('what makes a goal physical', () => {
-  it('knows a headstand, yoga and a 10k, and not Italian, shell scripts that run, the cello or watercolour', () => {
-    expect(isPhysical(['Learn a headstand'])).toBe(true)
+  it('knows a cartwheel, yoga and a 10k, and not Italian, macros that run, the cello or watercolour', () => {
+    expect(isPhysical(['Learn a cartwheel'])).toBe(true)
     expect(isPhysical(['Yoga at home'])).toBe(true)
     expect(isPhysical(['Run a 10k'])).toBe(true)
-    for (const g of ['Learn Italian', 'Shell scripting: run scripts on a schedule', 'Cello', 'Watercolour faces']) expect(isPhysical([g])).toBe(false)
+    for (const g of ['Learn Italian', 'Spreadsheet macros: run them on a schedule', 'Cello', 'Watercolour faces']) expect(isPhysical([g])).toBe(false)
     // Claude may say so of a goal the words miss.
     expect(isPhysical(['Ride a unicycle'])).toBe(false)
     expect(isPhysical(['Ride a unicycle'], true)).toBe(true)
@@ -34,9 +34,9 @@ describe('a suggestion for the current skill (Part 40)', () => {
   })
 
   it('always carries a safety line for a physical skill, whatever Claude calls it', () => {
-    const hand = { ...italian, skill: 'Wall-supported headstand holds', method: null, how: 'Kick up facing the wall, hold, come down with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Holding against the wall builds the shoulders and the line first.', physical: false, safety: null, likelyNext: 'Chest-to-wall headstand' }
-    expect(checkSuggestion(hand, ctx({ goal: 'Learn a headstand', numbers: new Set() }))).toEqual({ ok: false, reason: 'a physical skill needs its safety line' })
-    const safe = checkSuggestion({ ...hand, safety: 'Warm up the wrists first; stop if a wrist or the neck hurts; skip inversions with raised blood pressure. Not medical advice.' }, ctx({ goal: 'Learn a headstand', numbers: new Set() }))
+    const hand = { ...italian, skill: 'Cartwheels along a line', method: null, how: 'Kick over along a line, land with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Holding against the wall builds the shoulders and the line first.', physical: false, safety: null, likelyNext: 'Chest-to-wall cartwheel' }
+    expect(checkSuggestion(hand, ctx({ goal: 'Learn a cartwheel', numbers: new Set() }))).toEqual({ ok: false, reason: 'a physical skill needs its safety line' })
+    const safe = checkSuggestion({ ...hand, safety: 'Warm up the wrists first; stop if a wrist or the neck hurts; skip inversions with raised blood pressure. Not medical advice.' }, ctx({ goal: 'Learn a cartwheel', numbers: new Set() }))
     expect(safe.ok && safe.value.physical).toBe(true)
   })
 
@@ -108,7 +108,7 @@ describe('a progression review (Part 41)', () => {
     expect(checkReview({ verdict: 'keep', evidence: [], why: 'x', change: null }, rc())).toMatchObject({ ok: false, reason: 'one to three pieces of evidence' })
     expect(checkReview({ verdict: 'keep', evidence: ['a', 'b', 'c', 'd'], why: 'x', change: null }, rc())).toMatchObject({ ok: false })
     expect(checkReview({ verdict: 'keep', evidence: ['7 of the last 9 sessions marked Easy.'], why: 'x', change: null }, rc())).toMatchObject({ ok: false, reason: 'the number 7 is not in the briefing' })
-    const hand = rc({ goal: 'Learn a headstand', currentSkill: 'Wall-supported holds', numbers: new Set(['6']) })
+    const hand = rc({ goal: 'Learn a cartwheel', currentSkill: 'Cartwheels along a line', numbers: new Set(['6']) })
     expect(checkReview({ verdict: 'progress', evidence: ['6 practice days on wall holds.'], why: 'The holds read easy.', change: { skill: 'Chest-to-wall holds' } }, hand)).toEqual({ ok: false, reason: 'a new physical skill needs its safety line' })
     expect(checkReview({ verdict: 'progress', evidence: ['6 practice days on wall holds.'], why: 'The holds read easy.', change: { skill: 'Chest-to-wall holds', safety: 'Warm the wrists first; stop on any wrist or neck pain. Not medical advice.' } }, hand)).toMatchObject({ ok: true })
   })
@@ -121,7 +121,7 @@ describe('a progression review (Part 41)', () => {
 
 describe('the revision a proposal is written for', () => {
   const aim = { id: 1, name: 'Learn Italian', about: 'I can read a little', rhythm: { perWeek: 3, restDays: 0 }, schedule: [], currentSkillId: 2 }
-  const skill = { id: 2, name: 'Ten words', method: 'An audio course', how: 'One lesson', minutes: 30 }
+  const skill = { id: 2, name: 'Ten words', method: 'A phrasebook', how: 'One page', minutes: 30 }
   it('is the same for the same commitment, and changes with its skill, the skill’s practice, its rhythm, its fixed days or a pause', () => {
     const r = revisionOf(aim, skill)
     expect(revisionOf({ ...aim }, { ...skill })).toBe(r)

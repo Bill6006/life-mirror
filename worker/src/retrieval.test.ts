@@ -34,12 +34,12 @@ const sheet: FactSheet = {
     f('note.2026-09-17.evening', ['writing'], 'You wrote: “work was heavy”.'),
     f('note.2026-09-16.evening', ['writing'], 'You wrote: “church ran long”.'),
     f('private.3', ['evening'], 'Mornings after the item read higher.'),
-    f('aim.1', ['study'], 'French.'),
+    f('aim.1', ['study'], 'Veltish.'),
     f('aim.2', ['social'], 'The Partner path.'),
     f('path.2', ['social', 'people'], 'The Partner path: Dating.', { path: 'partner' }),
     f('aim.3', ['plan', 'faith'], 'A faith practice.'),
     f('partner.dateDay', ['dating'], 'A date is declared for today.'),
-    f('followup', ['monitoring'], 'Yesterday’s line was about French.'),
+    f('followup', ['monitoring'], 'Yesterday’s line was about Veltish.'),
     f('becoming', ['monitoring'], 'Under the direction: 2 faith practices, 3 times with her.'),
     f('people.seen', ['social'], 'Weekend afternoons have carried an in-person rep 3 times.'),
   ],
@@ -211,11 +211,11 @@ describe('the commitments reader (Workstream 6)', () => {
     const store = record()
     put(store, 'aims', '1', null, { id: 1, kind: 'certification', name: 'Learn a language', currentSkillId: 7, stepMoveId: null, archivedAt: null })
     put(store, 'aims', '2', null, { id: 2, kind: 'certification', name: 'Learn an instrument', currentSkillId: null, stepMoveId: null, archivedAt: null, pausedAt: '2026-09-15T10:00:00.000Z' })
-    put(store, 'skills', '7', null, { id: 7, name: 'Understand what is said', method: 'An audio course', archivedAt: null })
+    put(store, 'skills', '7', null, { id: 7, name: 'Understand what is said', method: 'A phrasebook', archivedAt: null })
     put(store, 'rungMarks', '9', null, { id: 9, skillId: 7, rung: 3, at: '2026-09-10T10:00:00.000Z' })
     const a = accessFor('line', OPEN, readBrainPrefs({}))
     const texts = ((await readCategory({ store, catalogue, a }, 'commitments', week)) ?? []).map((i) => i.text)
-    expect(texts).toContain('a commitment: Learn a language (something to learn, current skill “Understand what is said” with An audio course)')
+    expect(texts).toContain('a commitment: Learn a language (something to learn, current skill “Understand what is said” with A phrasebook)')
     expect(texts).toContain('a commitment: Learn an instrument (something to learn, no current skill named yet, paused)')
     expect(texts.join(' ')).not.toMatch(/certification|rung|ladder/i)
   })

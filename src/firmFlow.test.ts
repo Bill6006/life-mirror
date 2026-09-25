@@ -20,7 +20,7 @@ async function fresh(): Promise<void> {
   await db.open()
   await ensureDayContext(DAY, await getSettings())
   // Something to learn with no skill named yet: the phone's line says so, with delivery choices.
-  await addLearning('Learn Italian', 'An audio course', '', '', new Date(2026, 8, 20, 9, 0))
+  await addLearning('Learn Italian', 'A phrasebook', '', '', new Date(2026, 8, 20, 9, 0))
 }
 
 describe('the How firm setting', () => {

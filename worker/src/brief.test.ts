@@ -36,8 +36,8 @@ function sheetFor(day: string, patch: Partial<FactSheet> = {}, daycare = { today
     facts: [
       { id: 'week.today', tags: ['cue'], text: shape('Today is', day, daycare.today), values: { weekday: weekdayOf(day), daycare: daycare.today ? 1 : 0, pickup: daycare.today ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
       { id: 'week.tomorrow', tags: ['cue'], text: shape('Tomorrow is', next(day), daycare.tomorrow), values: { day: next(day), weekday: weekdayOf(next(day)), daycare: daycare.tomorrow ? 1 : 0, pickup: daycare.tomorrow ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
-      { id: 'aim.1', tags: ['study', 'cue'], text: 'French: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.', values: { name: 'French', cue_afterBedtime_n: 4, cue_afterBedtime_started: 1 }, n: 4 },
-      { id: 'trajectory.1', tags: ['study', 'habit'], text: 'French: steps started per week over the last four weeks, oldest first: 3, 2, 0, 0.', values: { name: 'French', aimId: 1, w3: 3, w2: 2, w1: 0, w0: 0 }, n: 5 },
+      { id: 'aim.1', tags: ['study', 'cue'], text: 'Veltish: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.', values: { name: 'Veltish', cue_afterBedtime_n: 4, cue_afterBedtime_started: 1 }, n: 4 },
+      { id: 'trajectory.1', tags: ['study', 'habit'], text: 'Veltish: steps started per week over the last four weeks, oldest first: 3, 2, 0, 0.', values: { name: 'Veltish', aimId: 1, w3: 3, w2: 2, w1: 0, w0: 0 }, n: 5 },
       { id: 'note.2026-09-16.evening', tags: ['writing'], text: 'On 2026-09-16, at the evening check-in, you wrote: “work was heavy”.', values: { day: '2026-09-16', block: 'evening', note: 'work was heavy' } },
     ],
     ...patch,
@@ -56,7 +56,7 @@ const afterCheckIn = (store: Store = yesterday()) => putFacts(store, sheetFor('2
 
 const line = (text: string, extra: Record<string, unknown> = {}) => ({ mode: 'strategy', text, factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null, ...extra })
 const good = JSON.stringify(line('After her bedtime held 1 of 4 plans. Try the next check-in as the cue this week.', { action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' } }))
-const review = JSON.stringify({ held: 'Nothing on French held this week: 0 steps started.', didNot: 'French went from 3 and 2 sittings to 0 and 0.', change: 'Pin one short sitting to the next check-in instead of after her bedtime, which held 1 of 4.', factIds: ['aim.1', 'trajectory.1'], cardIds: ['implementation-intentions'] })
+const review = JSON.stringify({ held: 'Nothing on Veltish held this week: 0 steps started.', didNot: 'Veltish went from 3 and 2 sittings to 0 and 0.', change: 'Pin one short sitting to the next check-in instead of after her bedtime, which held 1 of 4.', factIds: ['aim.1', 'trajectory.1'], cardIds: ['implementation-intentions'] })
 const bodyOf = (store: Store, id: string) => JSON.parse(store.rows.get(`${BRAIN_APP}|briefs|${id}`)?.body ?? '{}')
 
 describe('when the day’s line is written', () => {
@@ -122,7 +122,7 @@ describe('when the day’s line is written', () => {
     const store = afterCheckIn()
     const a = line('Plans held 1 of 9 times after her bedtime.')
     const b = line('After her bedtime held 1 of 4 plans; try the next check-in instead this week.')
-    const c = line('French went from 3 sittings to 0; one short sitting today restarts it.', { factIds: ['trajectory.1'] })
+    const c = line('Veltish went from 3 sittings to 0; one short sitting today restarts it.', { factIds: ['trajectory.1'] })
     const seen: Message[][] = []
     const run = async (_model: string, messages: Message[]) => {
       seen.push(messages)
@@ -132,7 +132,7 @@ describe('when the day’s line is written', () => {
     const r = await runBrief(env, store, run, at('07:45'), { fetcher })
     expect(r).toMatchObject({ wrote: true, candidates: 2, attempts: ['model-a: the number 9 is not in the cited facts'], neurons: 44.8, text: c.text })
     expect(seen[1][1].content).toContain('CANDIDATES\n1. (strategy) After her bedtime held 1 of 4 plans')
-    expect(seen[1][1].content).toContain('2. (strategy) French went from 3 sittings to 0')
+    expect(seen[1][1].content).toContain('2. (strategy) Veltish went from 3 sittings to 0')
     expect(bodyOf(store, '2026-09-18:brief')).toMatchObject({ candidates: 2, refusals: ['model-a: the number 9 is not in the cited facts'], neurons: 44.8, calls: 2, trigger: 'checkin' })
     const logged = await store.readBriefs(5)
     expect(logged[0]).toMatchObject({ id: '2026-09-18:brief', forDay: '2026-09-18', factsDay: '2026-09-18', trigger: 'checkin' })
@@ -141,7 +141,7 @@ describe('when the day’s line is written', () => {
   it('keeps the first candidate that passed when the choice names none, and says so', async () => {
     const store = afterCheckIn()
     const b = line('After her bedtime held 1 of 4 plans; try the next check-in instead this week.')
-    const c = line('French went from 3 sittings to 0; one short sitting today restarts it.', { factIds: ['trajectory.1'] })
+    const c = line('Veltish went from 3 sittings to 0; one short sitting today restarts it.', { factIds: ['trajectory.1'] })
     let n = 0
     const run = async () => (++n === 1 ? { response: JSON.stringify({ candidates: [b, c] }) } : { response: 'The second, I think.' })
     const r = await runBrief(env, store, run, at('07:45'), { fetcher })
@@ -152,7 +152,7 @@ describe('when the day’s line is written', () => {
     const store = afterCheckIn()
     store.put({ app: BRAIN_APP, store: 'briefs', id: '2026-09-17:brief', day: '2026-09-17', body: JSON.stringify({ day: '2026-09-17', text: 'After her bedtime held 1 of 4 plans. Try the next check-in as the cue this week.' }), updated_at: '2026-09-17T13:00:00.000Z', deleted: 0, synced_at: '2026-09-17T13:00:00.000Z' })
     const echo = line('After her bedtime held only 1 of 4 plans. Try the next check-in as your cue this week.')
-    const fresh = line('French went from 3 sittings to 0; one short sitting today restarts it.', { factIds: ['trajectory.1'] })
+    const fresh = line('Veltish went from 3 sittings to 0; one short sitting today restarts it.', { factIds: ['trajectory.1'] })
     const run = async (_model: string, messages: Message[]) => {
       if (messages.length === 2) return { response: JSON.stringify(echo) }
       expect(messages[messages.length - 1].content).toContain('nearly repeats the line said on 2026-09-17')

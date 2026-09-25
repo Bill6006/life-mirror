@@ -25,22 +25,22 @@ describe('something to learn', () => {
   })
 
   it('is set up in your words: the goal, how you practise it, the one thing to work on now, and what would change the advice; no cadence is assumed', async () => {
-    const id = await addLearning('Learn French', 'Pimsleur', 'Understand and respond to spoken French', 'I can read a little', T(9))
+    const id = await addLearning('Learn Veltish', 'A phrasebook', 'Understand and respond to spoken Veltish', 'I can read a little', T(9))
     const aim = await learning()
-    expect(aim).toMatchObject({ id, kind: 'certification', name: 'Learn French', about: 'I can read a little', currentSkillId: 1 })
+    expect(aim).toMatchObject({ id, kind: 'certification', name: 'Learn Veltish', about: 'I can read a little', currentSkillId: 1 })
     expect(aim).not.toHaveProperty('rhythm')
     const skills = await db.skills.toArray()
-    expect(skills).toMatchObject([{ id: 1, name: 'Understand and respond to spoken French', method: 'Pimsleur', aimId: id, source: 'you', startedAt: T(9).toISOString() }])
+    expect(skills).toMatchObject([{ id: 1, name: 'Understand and respond to spoken Veltish', method: 'A phrasebook', aimId: id, source: 'you', startedAt: T(9).toISOString() }])
     expect(skills[0]).not.toHaveProperty('minutes')
-    expect(stepFor(aim, skills, [])).toMatchObject({ id: 'skill:1', name: 'Understand and respond to spoken French', method: 'Pimsleur', minutes: 0 })
+    expect(stepFor(aim, skills, [])).toMatchObject({ id: 'skill:1', name: 'Understand and respond to spoken Veltish', method: 'A phrasebook', minutes: 0 })
     // The same goal twice changes nothing; an empty goal adds nothing.
-    expect(await addLearning('learn french')).toBeNull()
+    expect(await addLearning('learn veltish')).toBeNull()
     expect(await addLearning('  ')).toBeNull()
     expect(await activeAims()).toHaveLength(1)
   })
 
   it('without a skill named, has nothing to start, keeps the method for the skill you name later', async () => {
-    await addLearning('Learn piano', 'A teacher', '', '', T(9))
+    await addLearning('Learn ocarina', 'A teacher', '', '', T(9))
     let aim = await learning()
     expect(aim).toMatchObject({ currentSkillId: null, method: 'A teacher' })
     expect(stepFor(aim, [], []).id).toBe('skill:none')
@@ -52,7 +52,7 @@ describe('something to learn', () => {
   })
 
   it('changes its current skill only when you do: the one it replaces is kept with its sessions, and you can go back to it', async () => {
-    await addLearning('Learn French', 'Pimsleur', 'Understand spoken French', '', T(9))
+    await addLearning('Learn Veltish', 'A phrasebook', 'Understand spoken Veltish', '', T(9))
     const aim = await learning()
     const first = stepFor(aim, await db.skills.toArray(), [])
     const s1 = await resumeAim(aim, first, 'step', T(9, 30))
@@ -62,7 +62,7 @@ describe('something to learn', () => {
     let skills = await db.skills.toArray()
     expect(currentSkillOf(now, skills, [])).toMatchObject({ id: 2, name: 'Read short stories', minutes: 20, startedAt: T(12).toISOString() })
     expect(skills.find((sk) => sk.id === 1)).toMatchObject({ endedAt: T(12).toISOString() })
-    expect(skillsOfAim(now, skills).map((sk) => sk.name)).toEqual(['Understand spoken French', 'Read short stories'])
+    expect(skillsOfAim(now, skills).map((sk) => sk.name)).toEqual(['Understand spoken Veltish', 'Read short stories'])
     // Back to the earlier one: current from now, its old sessions still its own.
     await makeCurrent(now.id as number, 1, T(15))
     now = await learning()
@@ -71,12 +71,12 @@ describe('something to learn', () => {
     expect(skills.find((sk) => sk.id === 2)).toMatchObject({ endedAt: T(15).toISOString() })
     expect(practiceOn({ ...skills[0], startedAt: undefined }, await db.offers.toArray(), await db.outcomes.toArray())).toMatchObject({ sessions: 1, ease: { right: 1, hard: 0, easy: 0 } })
     // Its words can change; its sessions stay its own.
-    await editSkill(1, { name: 'Understand and answer spoken French', method: 'Pimsleur', minutes: 30 })
-    expect(await db.skills.get(1)).toMatchObject({ name: 'Understand and answer spoken French', minutes: 30 })
+    await editSkill(1, { name: 'Understand and answer spoken Veltish', method: 'A phrasebook', minutes: 30 })
+    expect(await db.skills.get(1)).toMatchObject({ name: 'Understand and answer spoken Veltish', minutes: 30 })
   })
 
   it('pauses and takes up again, and finishes apart from Remove, reopened by a tap', async () => {
-    await addLearning('Learn French', '', 'Understand spoken French', '', T(9))
+    await addLearning('Learn Veltish', '', 'Understand spoken Veltish', '', T(9))
     const aim = await learning()
     await pauseAim(aim.id as number, true)
     expect((await learning()).pausedAt).toBeTruthy()
@@ -91,7 +91,7 @@ describe('something to learn', () => {
   })
 
   it('keeps how a session went, one optional tap, and one line with it; a No keeps none', async () => {
-    await addLearning('Learn French', '', 'Understand spoken French', '', T(9))
+    await addLearning('Learn Veltish', '', 'Understand spoken Veltish', '', T(9))
     const aim = await learning()
     const step = stepFor(aim, await db.skills.toArray(), [])
     const id = await logSession(aim, step, T(10))
@@ -113,9 +113,9 @@ describe('an older study commitment, adopted once (D2)', () => {
   })
 
   it('takes the skill its step named as its current skill, files its skills under it, keeps every mark, and changes nothing the second time', async () => {
-    await addAim('certification', null, 'Networking', 'technical')
-    await addSkill('Subnetting', 'Networking')
-    await addSkill('Routing', 'Networking')
+    await addAim('certification', null, 'Clockwork', 'technical')
+    await addSkill('Gear trains', 'Clockwork')
+    await addSkill('Escapements', 'Clockwork')
     await db.rungMarks.bulkAdd([
       { skillId: 2, rung: 1, at: '2026-09-10T20:00:00.000Z', via: 'tap' },
       { skillId: 2, rung: 2, at: '2026-09-12T20:00:00.000Z', via: 'step' },
@@ -127,14 +127,14 @@ describe('an older study commitment, adopted once (D2)', () => {
     expect(skills.every((sk) => sk.aimId === aim.id)).toBe(true)
     expect(skills.find((sk) => sk.id === 2)?.startedAt).toBe('2026-09-12T20:00:00.000Z')
     expect(await db.rungMarks.count()).toBe(2)
-    expect(stepFor(aim, skills, await db.rungMarks.toArray())).toMatchObject({ id: 'skill:2', name: 'Routing' })
+    expect(stepFor(aim, skills, await db.rungMarks.toArray())).toMatchObject({ id: 'skill:2', name: 'Escapements' })
     const before = { aims: await db.aims.toArray(), skills }
     await adoptCurrentSkills()
     expect({ aims: await db.aims.toArray(), skills: await db.skills.toArray() }).toEqual(before)
   })
 
   it('with no skill yet, adopts none and waits for one to be named', async () => {
-    await addAim('certification', null, 'Piano', 'craft')
+    await addAim('certification', null, 'Ocarina', 'craft')
     await adoptCurrentSkills()
     expect((await learning()).currentSkillId).toBeNull()
   })

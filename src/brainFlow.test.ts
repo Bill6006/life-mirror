@@ -26,27 +26,27 @@ describe('the brain on the phone', () => {
   })
 
   it('builds the sheet from the record: the day, the commitment, its current skill and its plan', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     const [aim] = await studyAims()
-    await addSkill('Ten words', 'French')
-    await planAim(aim, 'afterBedtime', '20:00', NOW, 'French · Ten words · hear or read it')
+    await addSkill('Ten words', 'Veltish')
+    await planAim(aim, 'afterBedtime', '20:00', NOW, 'Veltish · Ten words · hear or read it')
     const sheet = await factSheet(DAY, NOW)
     expect(sheet.day).toBe(DAY)
     expect(sheet.hour).toBe(8)
     expect(factById(sheet, 'record')?.values.checkins).toBe(0)
     expect(factById(sheet, 'week.today')?.values).toMatchObject({ weekday: 'Friday', bedtime: '20:00', hour: 8 })
     const a = factById(sheet, `aim.${aim.id}`)
-    expect(a?.values).toMatchObject({ kind: 'certification', name: 'French', skill: 'Ten words', skills: 1, sessions: 0, practiceDays: 0, doneToday: 0, plan: 'afterBedtime', planTime: '20:00', planStarted: 0, gapDays: null })
-    expect(a?.text).toContain('French (learning): the current skill is “Ten words”; no session on it yet; not practised yet; no rhythm set, so no count makes it due; planned today after her bedtime at 20:00, not started')
+    expect(a?.values).toMatchObject({ kind: 'certification', name: 'Veltish', skill: 'Ten words', skills: 1, sessions: 0, practiceDays: 0, doneToday: 0, plan: 'afterBedtime', planTime: '20:00', planStarted: 0, gapDays: null })
+    expect(a?.text).toContain('Veltish (learning): the current skill is “Ten words”; no session on it yet; not practised yet; no rhythm set, so no count makes it due; planned today after her bedtime at 20:00, not started')
     expect(a?.values).toMatchObject({ due: 'planned', perWeek: null, fixed: null, faith: 0 })
     // The retired ladder is not a fact of today (Workstream 6, D2).
     expect(a?.values).not.toHaveProperty('highRungs')
     expect(factById(sheet, 'follow')).toBeDefined()
-    expect((await db.intentions.toArray())[0].step).toBe('French · Ten words · hear or read it')
+    expect((await db.intentions.toArray())[0].step).toBe('Veltish · Ten words · hear or read it')
   })
 
   it('marks the phone’s own line once it is on screen, and keeps the first time (Part 33)', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     await chooseAndLog(DAY, NOW)
     const line = (await todaysLine(DAY))!
     const id = Number(line.key.split(':')[2])
@@ -91,12 +91,12 @@ describe('the brain on the phone', () => {
   })
 
   it('chooses the day’s line once, logs it, takes one tap, and reads the Worker’s line first when there is one', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     expect(await todaysLine(DAY, NOW)).toBeNull()
     await chooseAndLog(DAY, NOW)
     const line = await todaysLine(DAY, NOW)
     expect(line).toMatchObject({ source: 'phone', situationId: 'first-skill' })
-    expect(line?.text).toContain('French has no current skill yet')
+    expect(line?.text).toContain('Veltish has no current skill yet')
     // Kept while its situation holds: a second run changes nothing.
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 0))
     expect(await db.briefLog.count()).toBe(1)
@@ -108,7 +108,7 @@ describe('the brain on the phone', () => {
     expect((await feedbackFor(line!.key))?.answer).toBe('useful')
     expect(await db.briefFeedback.count()).toBe(1)
     // Withdrawn once its facts no longer hold: a skill added, and the next true situation takes its place.
-    await addSkill('Ten words', 'French')
+    await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 30))
     expect((await todaysLine(DAY, new Date(2026, 8, 18, 9, 30)))?.situationId).toBe('say-when')
     // Withdrawn, not deleted: it was said, so the row stays, marked, and its tap stays filed under it.
@@ -127,7 +127,7 @@ describe('the brain on the phone', () => {
     expect(await db.briefLog.count()).toBe(1)
     expect(await writeFactsRow(DAY, NOW)).toBe(true)
     expect(await writeFactsRow(DAY, new Date(2026, 8, 18, 8, 5))).toBe(false)
-    await addAim('certification', null, 'Piano', 'craft')
+    await addAim('certification', null, 'Ocarina', 'craft')
     await chooseAndLog(DAY, new Date(2026, 8, 18, 9, 0))
     expect((await todaysLine(DAY))?.situationId).toBe('first-skill')
     expect(await db.briefLog.count()).toBe(1)
@@ -192,7 +192,7 @@ describe('what the sheet learned to carry', () => {
   })
 
   it('carries the engine’s ranked shortlist and the time of each check-in completed today (Part 28)', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     const before = await factSheet(DAY, NOW)
     expect(before.checkedIn).toEqual({})
     expect(before.shortlist?.length).toBeGreaterThan(0)
@@ -224,12 +224,12 @@ describe('what the sheet learned to carry', () => {
   })
 
   it('carries last week’s one change and what the record shows since, so the review can close its loop (Part 36)', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     const [aim] = await studyAims()
-    await db.brainBriefs.put({ id: '2026-09-13:review', day: '2026-09-13', kind: 'review', text: 'H D C', mode: 'strategy', factIds: [`aim.${aim.id}`], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-13T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'Pin French to after her bedtime.' }, writer: 'claude' })
-    await planAim(aim, 'afterBedtime', '20:00', NOW, 'French · Ten words · hear or read it')
+    await db.brainBriefs.put({ id: '2026-09-13:review', day: '2026-09-13', kind: 'review', text: 'H D C', mode: 'strategy', factIds: [`aim.${aim.id}`], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-13T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'Pin Veltish to after her bedtime.' }, writer: 'claude' })
+    await planAim(aim, 'afterBedtime', '20:00', NOW, 'Veltish · Ten words · hear or read it')
     const f = factById(await factSheet(DAY, NOW), 'review.change')
-    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin French to after her bedtime.” Since then the record shows, for French, 1 plans made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the current skill changed 0 times.')
+    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin Veltish to after her bedtime.” Since then the record shows, for Veltish, 1 plans made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the current skill changed 0 times.')
     expect(f?.values).toMatchObject({ day: '2026-09-13', aimId: aim.id, planned: 1 })
     // A change about no commitment: what the record shows in general since.
     await db.brainBriefs.put({ id: '2026-09-14:review', day: '2026-09-14', kind: 'review', text: 'H D C', mode: 'strategy', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-14T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'One small move a day.' }, writer: 'claude' })
@@ -254,16 +254,16 @@ describe('what the sheet learned to carry', () => {
   })
 
   it('carries your own words, the trajectory of a commitment, and what happened since the last line', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     const [aim] = await studyAims()
-    await addSkill('Ten words', 'French')
+    await addSkill('Ten words', 'Veltish')
     await db.checkins.add({ day: '2026-09-17', block: 'evening', asked: ['mood'], startedAt: '2026-09-17T23:00:00.000Z', completedAt: '2026-09-17T23:01:00.000Z', updatedAt: '2026-09-17T23:01:00.000Z', answers: { mood: 3 }, activeMs: 0, extras: { note: 'work was heavy' } })
     await db.briefLog.add({ day: '2026-09-17', situationId: 'say-when', mode: 'recommendation', text: 'Said yesterday.', factIds: ['aim.1'], cardIds: [], at: '2026-09-17T12:00:00.000Z' })
-    await planAim(aim, 'afterBedtime', '20:00', NOW, 'French · Ten words · hear or read it')
+    await planAim(aim, 'afterBedtime', '20:00', NOW, 'Veltish · Ten words · hear or read it')
     const sheet = await factSheet(DAY, NOW)
     expect(factById(sheet, 'note.2026-09-17.evening')?.values.note).toBe('work was heavy')
-    expect(factById(sheet, 'trajectory.1')?.values).toMatchObject({ name: 'French', w0: 0, w1: 0 })
-    expect(factById(sheet, 'followup')?.values).toMatchObject({ day: '2026-09-17', about: 'French', aimId: 1, planned: 1, missed: 0, started: 0, received: 'untapped' })
+    expect(factById(sheet, 'trajectory.1')?.values).toMatchObject({ name: 'Veltish', w0: 0, w1: 0 })
+    expect(factById(sheet, 'followup')?.values).toMatchObject({ day: '2026-09-17', about: 'Veltish', aimId: 1, planned: 1, missed: 0, started: 0, received: 'untapped' })
     expect(factById(sheet, 'cadence')).toBeUndefined()
   })
 })
@@ -322,7 +322,7 @@ describe('a line whose moment is gone (truth audit, 2026-09-24)', () => {
   })
 
   it('gives way at 22:33 to the phone’s own line when that is still true, since it names no moment', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     await chooseAndLog(DAY, at(10, 5))
     await db.brainBriefs.put(pickupLine)
     expect((await todaysLine(DAY, at(18, 0)))?.source).toBe('worker')
@@ -343,8 +343,8 @@ describe('a line whose moment is gone (truth audit, 2026-09-24)', () => {
 
   it('withdraws the phone’s own line once its moment is gone, even while its situation still holds', async () => {
     // A step last taken nine days ago: the stalled line holds at any hour, and pins the step to her bedtime, 20:00.
-    await addAim('certification', null, 'French', 'language')
-    await addSkill('Ten words', 'French')
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
     const [aim] = await studyAims()
     const session = await resumeAim(aim, stepFor(aim, await db.skills.toArray(), [], [aim]), 'step', new Date(2026, 8, 9, 20, 0))
     await recordDoneNow(session, new Date(2026, 8, 9, 20, 20))
@@ -359,8 +359,8 @@ describe('a line whose moment is gone (truth audit, 2026-09-24)', () => {
   })
 
   it('withdraws the phone’s own line once its moment is gone, and chooses none whose moment is already gone', async () => {
-    await addAim('certification', null, 'French', 'language')
-    await addSkill('Ten words', 'French')
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, at(9, 0))
     expect(await todaysLine(DAY, at(9, 0))).toMatchObject({ situationId: 'say-when', action: { kind: 'plan', cue: 'afterBedtime' } })
     // Her bedtime is 20:00: at 22:30 the line is two hours past it.
@@ -381,8 +381,8 @@ describe('the line, acted on', () => {
   })
 
   it('takes its plan tap away once that commitment’s session is started or done today: nothing is left to plan (Workstream 6)', async () => {
-    await addAim('certification', null, 'French', 'language')
-    await addSkill('Ten words', 'French')
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, NOW)
     const line = await todaysLine(DAY, NOW)
     expect(line?.action).toMatchObject({ kind: 'plan', aimId: 1 })
@@ -396,8 +396,8 @@ describe('the line, acted on', () => {
   })
 
   it('does what it says in one tap, says why it said it, sets a test once, and makes the check-in lighter', async () => {
-    await addAim('certification', null, 'French', 'language')
-    await addSkill('Ten words', 'French')
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, NOW)
     const line = await todaysLine(DAY, NOW)
     expect(line?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
@@ -412,7 +412,7 @@ describe('the line, acted on', () => {
 
     await writeFactsRow(DAY, NOW)
     const why = await whyFor(line!, DAY)
-    expect(why.facts[0].text).toContain('French (learning)')
+    expect(why.facts[0].text).toContain('Veltish (learning)')
     expect(why.cards.map((c) => c.id)).toEqual(['implementation-intentions'])
 
     expect((await lineActionState(DAY, { kind: 'test', moveId: 'walk-ten' }, NOW))?.state).toBe('open')
@@ -427,7 +427,7 @@ describe('the line, acted on', () => {
   })
 
   it('titles the line by when it is meant to be acted on, from its action alone (owner, 2026-09-23)', async () => {
-    await addAim('certification', null, 'French', 'language')
+    await addAim('certification', null, 'Veltish', 'language')
     const at = (h: number, m = 0) => new Date(2026, 8, 18, h, m)
     const timing = async (action: LineAction | null, now: Date) => lineTiming(action, await lineActionState(DAY, action, now), now)
     const plan: LineAction = { kind: 'plan', aimId: 1, cue: 'afterBedtime' }
@@ -458,8 +458,8 @@ describe('the line, acted on', () => {
   })
 
   it('keeps a line that was answered for the day, and the next morning closes the loop on it', async () => {
-    await addAim('certification', null, 'French', 'language')
-    await addSkill('Ten words', 'French')
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, NOW)
     const line = await todaysLine(DAY, NOW)
     expect(line?.situationId).toBe('say-when')
@@ -473,17 +473,17 @@ describe('the line, acted on', () => {
     const morning = new Date(2026, 8, 19, 8, 0)
     await ensureDayContext(next, await getSettings())
     const sheet = await factSheet(next, morning)
-    expect(factById(sheet, 'followup')?.values).toMatchObject({ day: DAY, about: 'French', aimId: 1, planned: 1, missed: 1, started: 0, received: 'untapped' })
+    expect(factById(sheet, 'followup')?.values).toMatchObject({ day: DAY, about: 'Veltish', aimId: 1, planned: 1, missed: 1, started: 0, received: 'untapped' })
     await chooseAndLog(next, morning)
     const after = await todaysLine(next, morning)
     expect(after?.situationId).toBe('loop-planned')
-    expect(after?.text).toContain('Yesterday’s line was about French: a plan was made, and its moment passed without a start.')
+    expect(after?.text).toContain('Yesterday’s line was about Veltish: a plan was made, and its moment passed without a start.')
     expect(after?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
   })
 
   it('reviews the week from the record when the Worker has not, and takes the Worker’s three parts when it has', async () => {
-    await addAim('certification', null, 'French', 'language')
-    expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'phone', didNot: 'French: added today, no step started yet.' })
+    await addAim('certification', null, 'Veltish', 'language')
+    expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'phone', didNot: 'Veltish: added today, no step started yet.' })
     await db.brainBriefs.put({ id: 'r1', day: DAY, kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', parts: { held: 'a', didNot: 'b', change: 'c' } })
     expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'worker', held: 'a', didNot: 'b', change: 'c', model: 'm' })
   })

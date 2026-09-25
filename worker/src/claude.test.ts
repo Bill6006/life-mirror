@@ -49,7 +49,7 @@ function sheetFor(day: string, extra: FactSheet['facts'] = [], patch: Partial<Fa
     facts: [
       { id: 'week.today', tags: ['cue'], text: shape('Today is', day), values: { weekday: weekdayOf(day), daycare: daycare(day) ? 1 : 0, pickup: daycare(day) ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
       { id: 'week.tomorrow', tags: ['cue'], text: shape('Tomorrow is', next(day)), values: { day: next(day), weekday: weekdayOf(next(day)), daycare: daycare(next(day)) ? 1 : 0, pickup: daycare(next(day)) ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
-      { id: 'aim.1', tags: ['study', 'cue'], text: 'French: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.', values: { name: 'French', cue_afterBedtime_n: 4, cue_afterBedtime_started: 1 }, n: 4 },
+      { id: 'aim.1', tags: ['study', 'cue'], text: 'Veltish: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.', values: { name: 'Veltish', cue_afterBedtime_n: 4, cue_afterBedtime_started: 1 }, n: 4 },
       { id: 'note.2026-09-17.evening', tags: ['writing'], text: 'On 2026-09-17, at the evening check-in, you wrote: “work was heavy”.', values: { day: '2026-09-17', block: 'evening', note: 'work was heavy' } },
       ...extra,
     ],
@@ -76,7 +76,7 @@ function routine(store: Store, status = 200, extra: Record<string, string> = {})
 }
 
 const good = { mode: 'strategy', text: 'After her bedtime held 1 of 4 plans. Try the next check-in as the cue today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' } }
-const freeLine = JSON.stringify({ candidates: [{ mode: 'strategy', text: 'French waits after her bedtime; a smaller step at the next check-in may land better today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null }] })
+const freeLine = JSON.stringify({ candidates: [{ mode: 'strategy', text: 'Veltish waits after her bedtime; a smaller step at the next check-in may land better today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null }] })
 const freeRun = async () => ({ response: freeLine })
 const briefOf = (store: Store, id: string) => JSON.parse(store.rows.get(`${BRAIN_APP}|briefs|${id}`)?.body ?? 'null')
 const deps = (store: Store, now: Date) => ({ env, store, now, fetcher })
@@ -98,7 +98,7 @@ describe('the fire', () => {
     expect(r.calls[0].taskStatus).toBe('firing')
     expect(r.calls[0].auth).toBe('Bearer fire-token')
     expect(r.calls[0].body.text).toBe(fireText('line', DAY, 'opus'))
-    expect(r.calls[0].body.text).not.toMatch(/French|heavy|bedtime/)
+    expect(r.calls[0].body.text).not.toMatch(/Veltish|heavy|bedtime/)
     expect(await store.readTask(taskIdOf('line', DAY))).toMatchObject({ status: 'fired', askedModel: 'opus', trigger: 'checkin', factsDay: DAY, sessionUrl: 'https://claude.ai/code/session_x' })
     expect(await runBrief(env, store, freeRun, at('07:50'), { fetcher, fireFetcher: r.f })).toMatchObject({ wrote: false, reason: 'waiting for Claude' })
     expect(r.calls).toHaveLength(1)
@@ -193,7 +193,7 @@ describe('the briefing', () => {
     expect(b.askedModel).toBe('opus')
     expect(b.attemptsLeft).toBe(MAX_POSTS)
     expect(b.instructions).toContain('Reading is not showing')
-    expect(b.briefing).toContain('[aim.1] French')
+    expect(b.briefing).toContain('[aim.1] Veltish')
     expect(b.briefing).toContain('A long talk with a neighbour.')
     expect(b.briefing).toContain('slept badly again')
     expect(b.briefing).toContain("private items' names may not be shown")
@@ -276,9 +276,9 @@ describe('the line Claude posts back', () => {
   it('refuses an invalid line with its reason, allows one corrected retry, and after two refusals the free chain writes', async () => {
     const store = withSheet()
     await fired(store)
-    const bad = { ...good, text: 'You failed again at French.' }
+    const bad = { ...good, text: 'You failed again at Veltish.' }
     expect(await post(store, at('07:48'), bad)).toEqual({ status: 422, body: { ok: false, reason: 'uses the word "failed"', retry: true } })
-    expect(await post(store, at('07:49'), { ...good, text: 'French: 99 plans.' })).toEqual({ status: 422, body: { ok: false, reason: 'the number 99 is not in the cited facts', retry: false } })
+    expect(await post(store, at('07:49'), { ...good, text: 'Veltish: 99 plans.' })).toEqual({ status: 422, body: { ok: false, reason: 'the number 99 is not in the cited facts', retry: false } })
     expect(await store.readTask(taskIdOf('line', DAY))).toMatchObject({ status: 'refused', posts: 2 })
     expect((await post(store, at('07:50'), good)).status).toBe(409)
     expect(await runBrief(env, store, freeRun, at('08:00'), { fetcher })).toMatchObject({ wrote: true, writer: 'free', fallback: 'Claude’s line was refused twice' })
@@ -292,7 +292,7 @@ describe('the line Claude posts back', () => {
     await runBrief(env, store, freeRun, at('11:00', sat), { fetcher, fireFetcher: r.f })
     const t = await store.readTask(taskIdOf('line', sat))
     expect(t).toMatchObject({ status: 'fired', trigger: 'fallback', factsDay: DAY })
-    const out = await handleLine(deps(store, at('11:02', sat)), { task: 'line', day: sat, answer: { ...good, text: 'After pickup, give French ten minutes.', action: null } })
+    const out = await handleLine(deps(store, at('11:02', sat)), { task: 'line', day: sat, answer: { ...good, text: 'After pickup, give Veltish ten minutes.', action: null } })
     expect(out).toMatchObject({ status: 422, body: { ok: false, retry: true } })
     expect((out.body as { reason: string }).reason).toMatch(/speaks of pickup or daycare, which Saturday 2026-09-19 does not hold/)
   })
@@ -302,7 +302,7 @@ describe('the line Claude posts back', () => {
     put(store, APP, 'privateItems', '3', null, { id: 3, name: 'Pottery', createdAt: '', archived: 0 })
     await fired(store)
     expect(await post(store, at('07:48'), { ...good, text: 'Pottery waits after her bedtime; try the next check-in today, 1 of 4 so far.' })).toMatchObject({ status: 422, body: { reason: 'names a private item while "Show private items by name outside this screen" is off' } })
-    expect(await post(store, at('07:49'), { ...good, text: 'Before your date tonight, French at the next check-in held 1 of 4.' })).toMatchObject({ status: 422, body: { reason: 'speaks of dating or a partner when nothing on the Partner path bears on it' } })
+    expect(await post(store, at('07:49'), { ...good, text: 'Before your date tonight, Veltish at the next check-in held 1 of 4.' })).toMatchObject({ status: 422, body: { reason: 'speaks of dating or a partner when nothing on the Partner path bears on it' } })
     expect(surfaceGuard('Enjoy your date; after her bedtime held 1 of 4.', { names: [], bears: true })).toBeNull()
     expect(surfaceGuard('No dates this week, and that is fine.', { names: [], bears: true })).toBe('speaks of dating from what did not happen')
   })
@@ -311,7 +311,7 @@ describe('the line Claude posts back', () => {
     const store = withSheet()
     put(store, APP, 'pathMarks', '9', DAY, { id: 9, path: 'partner', kind: 'date', day: DAY, at: '' })
     await fired(store)
-    expect((await post(store, at('07:48'), { ...good, text: 'Before your date tonight, French at the next check-in held 1 of 4; keep it short.' })).status).toBe(200)
+    expect((await post(store, at('07:48'), { ...good, text: 'Before your date tonight, Veltish at the next check-in held 1 of 4; keep it short.' })).status).toBe(200)
   })
 })
 
@@ -347,7 +347,7 @@ describe('reading on demand', () => {
 
 describe('the Sunday review through the same bridge (Part 31)', () => {
   const SUN = '2026-09-20'
-  const reviewAnswer = { held: 'French held 1 of 4 plans after her bedtime.', didNot: 'Most plans after her bedtime did not start.', change: 'Try the next check-in as the cue this week.', factIds: ['aim.1'], cardIds: ['implementation-intentions'] }
+  const reviewAnswer = { held: 'Veltish held 1 of 4 plans after her bedtime.', didNot: 'Most plans after her bedtime did not start.', change: 'Try the next check-in as the cue this week.', factIds: ['aim.1'], cardIds: ['implementation-intentions'] }
 
   it('fires at the hour, reads the week, keeps the Partner path to acts done and the monthly check out, and stores Claude’s three parts', async () => {
     const store = withSheet(sheetFor('2026-09-19', [], { builtAt: '2026-09-20T01:00:00.000Z' }))

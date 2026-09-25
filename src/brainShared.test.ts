@@ -17,7 +17,7 @@ const sheet: FactSheet = {
   said: [],
   facts: [
     { id: 'reading.2026-09-17.evening', tags: ['mood'], text: 'Yesterday evening read 62, Solid.', values: { value: 62, band: 'Solid' } },
-    { id: 'aim.1', tags: ['study'], text: 'French: planned after her bedtime at 20:00.', values: { name: 'French', planTime: '20:00', gapDays: 3 } },
+    { id: 'aim.1', tags: ['study'], text: 'Veltish: planned after her bedtime at 20:00.', values: { name: 'Veltish', planTime: '20:00', gapDays: 3 } },
     { id: 'assoc.napped', tags: ['nap'], text: 'Mornings after a nap read +7, 5 naps.', values: { diff: 7, times: 5 }, n: 5, tier: 'unclear' },
   ],
 }
@@ -29,7 +29,7 @@ describe('the repeat check (Part 28)', () => {
     expect(nearRepeat('After her bedtime held 1 of 4 plans. Try the next check-in as the cue this week.', said)).toBe('2026-09-17')
   })
   it('lets the same subject through from a new angle, and says nothing of an empty line', () => {
-    expect(nearRepeat('French went from 3 sittings to 0; one short sitting after her bedtime restarts it.', said)).toBeNull()
+    expect(nearRepeat('Veltish went from 3 sittings to 0; one short sitting after her bedtime restarts it.', said)).toBeNull()
     expect(nearRepeat('The next check-in held 3 of 3 plans; after her bedtime held 1 of 4. Keep the one that works.', said)).toBeNull()
     expect(nearRepeat('', said)).toBeNull()
     expect(nearRepeat('Anything at all.', [])).toBeNull()
@@ -38,7 +38,7 @@ describe('the repeat check (Part 28)', () => {
 
 describe('what the brain may say', () => {
   it('accepts a grounded line', () => {
-    const v = validateOutput({ mode: 'observation', text: 'Yesterday evening read 62; French waited 3 days. Some evidence says naps help the afternoon.', factIds: ['reading.2026-09-17.evening', 'aim.1'], cardIds: ['naps-cognition'] }, sheet, library)
+    const v = validateOutput({ mode: 'observation', text: 'Yesterday evening read 62; Veltish waited 3 days. Some evidence says naps help the afternoon.', factIds: ['reading.2026-09-17.evening', 'aim.1'], cardIds: ['naps-cognition'] }, sheet, library)
     expect(v.ok).toBe(true)
   })
 
@@ -82,13 +82,13 @@ describe('the one tap a line may offer, and the week in three parts', () => {
     expect(validateAction({ kind: 'test', moveId: 'walk-ten' }, withMore).ok).toBe(true)
     expect(validateAction({ kind: 'test', moveId: 'nap-ten' }, withMore).ok).toBe(false)
     expect(validateAction({ kind: 'delete-everything' }, withMore).ok).toBe(false)
-    const v = validateOutput({ mode: 'strategy', text: 'French waited 3 days. Pin it to a moment today.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } }, withMore, library)
+    const v = validateOutput({ mode: 'strategy', text: 'Veltish waited 3 days. Pin it to a moment today.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } }, withMore, library)
     expect(v).toMatchObject({ ok: true, value: { action: { kind: 'plan', aimId: 1 } } })
     expect(validateOutput({ mode: 'strategy', text: 'Pin it.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 9, cue: 'afterBedtime' } }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('aim.9') })
   })
 
   it('holds each part of the review to the rules of a line', () => {
-    expect(validateReview({ held: 'French waited 3 days and then moved.', didNot: 'Nothing else stalled.', change: 'Keep the cue at 20:00.', factIds: ['aim.1'], cardIds: [] }, withMore, library).ok).toBe(true)
+    expect(validateReview({ held: 'Veltish waited 3 days and then moved.', didNot: 'Nothing else stalled.', change: 'Keep the cue at 20:00.', factIds: ['aim.1'], cardIds: [] }, withMore, library).ok).toBe(true)
     expect(validateReview({ held: 'Fine.', didNot: 'A lazy week.', change: 'Fine.', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('didNot') })
     expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: '', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: 'change: no text' })
     expect(validateReview({ held: 'Read 99.', didNot: 'Fine.', change: 'Fine.', factIds: ['aim.1'], cardIds: [] }, withMore, library)).toMatchObject({ ok: false, reason: expect.stringContaining('99') })

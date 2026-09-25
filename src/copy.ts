@@ -677,7 +677,7 @@ export const copy = {
     yourAims: 'Your aims',
     kinds: { certification: 'Something to learn', person: 'A person', path: 'A path', practice: 'A practice' },
     kindNotes: {
-      certification: 'French, piano, a handstand, PowerShell, drawing: you name the goal and the one thing to work on now, and it stays until you change it.',
+      certification: 'A language, an instrument, a physical skill, a certification: you name the goal and the one thing to work on now, and it stays until you change it.',
       person: 'Its step is one move from the people family, yours to keep or change.',
       path: 'A staged curriculum of reps, one a day, picked for who is around.',
       practice: 'Its step is one practice from faith, movement or steadying, yours to keep or change.',
@@ -688,7 +688,7 @@ export const copy = {
     addNote: 'Something to learn is named by you, with the one thing to work on now; a practice picks a step from the catalogue; the Social path picks one rep a day for who is around.',
     studyName: 'Something to learn',
     goalLabel: 'What are you trying to accomplish?',
-    goalPlaceholder: 'Learn French, play a piece, a handstand',
+    goalPlaceholder: 'Learn a language, play a piece, a cartwheel',
     methodLabel: 'What are you using to learn or practise it?',
     methodPlaceholder: 'A class, an app, a book, a teacher',
     notSure: 'Not sure yet',

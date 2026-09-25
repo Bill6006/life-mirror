@@ -10,7 +10,7 @@ function sheetOf(facts: Fact[], hour = 8): FactSheet {
   return { version: 1, day: '2026-09-18', builtAt: '', hour, weeks: 3, days: 22, direction: null, said: [], facts }
 }
 const today: Fact = { id: 'week.today', tags: [], text: 'Today is Friday.', values: { weekday: 'Friday', bedtime: '20:00', hour: 8 } }
-const aim = (id: number, values: Record<string, number | string | null>): Fact => ({ id: `aim.${id}`, tags: ['study'], text: '', values: { kind: 'certification', name: 'French', step: 'Ten words', skill: 'Ten words', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, doneToday: 0, skills: 1, ...values } })
+const aim = (id: number, values: Record<string, number | string | null>): Fact => ({ id: `aim.${id}`, tags: ['study'], text: '', values: { kind: 'certification', name: 'Veltish', step: 'Ten words', skill: 'Ten words', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, doneToday: 0, skills: 1, ...values } })
 
 describe('the ranking the sheet carries (Part 28)', () => {
   it('ranks every true situation best first, the phone’s own line at the head, a resting one left out', () => {
@@ -37,14 +37,14 @@ describe('the judgment engine', () => {
   it('says the first skill is missing, with the commitment’s name', () => {
     const c = chooseLine(sheetOf([today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' })]), [], [])
     expect(c?.situationId).toBe('first-skill')
-    expect(c?.text).toBe('French has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.')
+    expect(c?.text).toBe('Veltish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.')
     expect(c?.factIds).toEqual(['aim.1'])
   })
 
   it('asks for a cue before her bedtime and not after, naming the step', () => {
     const c = chooseLine(sheetOf([today, aim(1, {})]), [], [])
     expect(c?.situationId).toBe('say-when')
-    expect(c?.text).toContain('French: the step is Ten words.')
+    expect(c?.text).toContain('Veltish: the step is Ten words.')
     expect(chooseLine(sheetOf([today, aim(1, {})], 21), [], [])).toBeNull()
   })
 
@@ -104,7 +104,7 @@ describe('the judgment engine', () => {
 })
 
 describe('what the engine sees early, and the one tap it offers', () => {
-  const fading: Fact = { id: 'trajectory.1', tags: [], text: '', values: { name: 'French', aimId: 1, w3: 3, w2: 2, w1: 0, w0: 0, d3: 2, d2: 1, d1: 0, d0: 0, ageDays: 40 }, n: 5 }
+  const fading: Fact = { id: 'trajectory.1', tags: [], text: '', values: { name: 'Veltish', aimId: 1, w3: 3, w2: 2, w1: 0, w0: 0, d3: 2, d2: 1, d1: 0, d0: 0, ageDays: 40 }, n: 5 }
   const planned = aim(1, { gapDays: 3, plan: 'afterBedtime' })
 
   it('offers the tap that does what the line says, on the cue with the best record', () => {
@@ -117,7 +117,7 @@ describe('what the engine sees early, and the one tap it offers', () => {
   it('sees a commitment fading before anything else does, and offers to pin it', () => {
     const c = chooseLine(sheetOf([today, planned, fading]), [], [])
     expect(c?.situationId).toBe('commitment-fading')
-    expect(c?.text).toContain('French: 5 sittings in the two weeks before, none in the last two.')
+    expect(c?.text).toContain('Veltish: 5 sittings in the two weeks before, none in the last two.')
     expect(c?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
     const thinning: Fact = { ...fading, values: { ...fading.values, w3: 0, w2: 0, w1: 3, w0: 0 } }
     expect(chooseLine(sheetOf([today, planned, thinning]), [], [])?.situationId).toBe('commitment-thinning')
@@ -136,10 +136,10 @@ describe('what the engine sees early, and the one tap it offers', () => {
   })
 
   it('closes the loop on what it said yesterday, either way, and lets Not useful end it', () => {
-    const done: Fact = { id: 'followup', tags: [], text: '', values: { day: '2026-09-17', about: 'French', aimId: 1, planned: 1, started: 1, done: 1, changed: 1, received: 'useful', text: 'x' } }
+    const done: Fact = { id: 'followup', tags: [], text: '', values: { day: '2026-09-17', about: 'Veltish', aimId: 1, planned: 1, started: 1, done: 1, changed: 1, received: 'useful', text: 'x' } }
     const closed = chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 0 }), done]), [], [])
     expect(closed?.situationId).toBe('loop-closed')
-    expect(closed?.text).toBe('Yesterday’s line was about French; since then the record shows 1 step started, 1 marked done, the current skill changed once. That is the loop closing.')
+    expect(closed?.text).toBe('Yesterday’s line was about Veltish; since then the record shows 1 step started, 1 marked done, the current skill changed once. That is the loop closing.')
     const open: Fact = { ...done, values: { ...done.values, planned: 0, started: 0, done: 0, changed: 0, received: 'untapped' } }
     const o = chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 2 }), open]), [], [])
     expect(o?.situationId).toBe('loop-open')
@@ -175,17 +175,17 @@ describe('what the engine sees early, and the one tap it offers', () => {
   })
 
   it('reviews the week from the record alone: what held, what did not, one change', () => {
-    const held: Fact = { id: 'trajectory.1', tags: [], text: '', values: { name: 'French', aimId: 1, w3: 1, w2: 2, w1: 2, w0: 3, d3: 1, d2: 1, d1: 2, d0: 2, ageDays: 40 }, n: 8 }
-    const gone: Fact = { id: 'trajectory.2', tags: [], text: '', values: { name: 'Piano', aimId: 2, w3: 2, w2: 1, w1: 0, w0: 0, d3: 1, d2: 0, d1: 0, d0: 0, ageDays: 40 }, n: 3 }
-    const r = phoneReview(sheetOf([held, gone, aim(2, { name: 'Piano', plan: 'afterBedtime', gapDays: 3 })]), [])
-    expect(r.held).toBe('French: 3 started, 2 done.')
-    expect(r.didNot).toBe('Piano: none in the last seven days.')
-    expect(r.change).toContain('Piano: 3 sittings in the two weeks before')
+    const held: Fact = { id: 'trajectory.1', tags: [], text: '', values: { name: 'Veltish', aimId: 1, w3: 1, w2: 2, w1: 2, w0: 3, d3: 1, d2: 1, d1: 2, d0: 2, ageDays: 40 }, n: 8 }
+    const gone: Fact = { id: 'trajectory.2', tags: [], text: '', values: { name: 'Ocarina', aimId: 2, w3: 2, w2: 1, w1: 0, w0: 0, d3: 1, d2: 0, d1: 0, d0: 0, ageDays: 40 }, n: 3 }
+    const r = phoneReview(sheetOf([held, gone, aim(2, { name: 'Ocarina', plan: 'afterBedtime', gapDays: 3 })]), [])
+    expect(r.held).toBe('Veltish: 3 started, 2 done.')
+    expect(r.didNot).toBe('Ocarina: none in the last seven days.')
+    expect(r.change).toContain('Ocarina: 3 sittings in the two weeks before')
     const quiet = phoneReview(sheetOf([]), [])
     expect(quiet).toEqual({ held: 'No commitment is on the record yet.', didNot: 'Nothing to set against the week yet.', change: 'Nothing the record supports changing; keep the cues that hold.' })
     // A commitment younger than the week is not set against a week it did not have.
     const young: Fact = { ...gone, values: { ...gone.values, w3: 0, w2: 0, ageDays: 2 } }
-    expect(phoneReview(sheetOf([young]), [])).toMatchObject({ held: 'No commitment had a step started in the last seven days.', didNot: 'Piano: added 2 days ago, no step started yet.' })
+    expect(phoneReview(sheetOf([young]), [])).toMatchObject({ held: 'No commitment had a step started in the last seven days.', didNot: 'Ocarina: added 2 days ago, no step started yet.' })
   })
 })
 

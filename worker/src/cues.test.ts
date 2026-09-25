@@ -9,7 +9,7 @@ const env = { TIMEZONE: 'America/New_York' }
 const AT_2005 = new Date('2026-09-19T00:05:00Z')
 
 function plan(id: string, body: Record<string, unknown>, day = '2026-09-18') {
-  return { app: APP, store: 'intentions', id, day, body: JSON.stringify({ aimId: 1, cue: 'afterBedtime', time: '20:00', setAt: '2026-09-18T13:00:00.000Z', offerId: null, step: 'French · Ten words · say it', ...body }), updated_at: '2026-09-18T13:00:00.000Z', deleted: 0 as const, synced_at: '2026-09-18T13:00:00.000Z' }
+  return { app: APP, store: 'intentions', id, day, body: JSON.stringify({ aimId: 1, cue: 'afterBedtime', time: '20:00', setAt: '2026-09-18T13:00:00.000Z', offerId: null, step: 'Veltish · Ten words · say it', ...body }), updated_at: '2026-09-18T13:00:00.000Z', deleted: 0 as const, synced_at: '2026-09-18T13:00:00.000Z' }
 }
 
 describe('the cue reminder', () => {

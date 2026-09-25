@@ -26,15 +26,15 @@ type Mem = ReturnType<typeof memoryStore>
 const put = (store: Mem, s: string, id: string, day: string | null, body: unknown, when = `${DAY}T12:00:00.000Z`) => store.put({ app: APP, store: s, id, day, body: JSON.stringify(body), updated_at: when, deleted: 0, synced_at: when })
 
 const ITALIAN = { id: 1, kind: 'certification', stepMoveId: null, name: 'Learn Italian', about: 'I can read a little', currentSkillId: 2, rhythm: { perWeek: 3, restDays: 0 }, createdAt: '2026-09-20T12:00:00.000Z', archivedAt: null }
-const TEN = { id: 2, name: 'Ten words', aimId: 1, method: 'An audio course', how: 'One lesson, then the ten words aloud.', minutes: 30, source: 'you', startedAt: '2026-09-28T16:00:00.000Z', order: 2, createdAt: '2026-09-28T16:00:00.000Z', archivedAt: null }
-const NUMBERS = { id: 1, name: 'Numbers', aimId: 1, method: 'An audio course', source: 'you', startedAt: '2026-09-20T16:00:00.000Z', endedAt: '2026-09-28T16:00:00.000Z', order: 1, createdAt: '2026-09-20T16:00:00.000Z', archivedAt: null }
-const HAND = { id: 3, kind: 'certification', stepMoveId: null, name: 'Learn a headstand', currentSkillId: null, createdAt: '2026-10-01T12:00:00.000Z', archivedAt: null }
+const TEN = { id: 2, name: 'Ten words', aimId: 1, method: 'A phrasebook', how: 'One page, then the ten words aloud.', minutes: 30, source: 'you', startedAt: '2026-09-28T16:00:00.000Z', order: 2, createdAt: '2026-09-28T16:00:00.000Z', archivedAt: null }
+const NUMBERS = { id: 1, name: 'Numbers', aimId: 1, method: 'A phrasebook', source: 'you', startedAt: '2026-09-20T16:00:00.000Z', endedAt: '2026-09-28T16:00:00.000Z', order: 1, createdAt: '2026-09-20T16:00:00.000Z', archivedAt: null }
+const HAND = { id: 3, kind: 'certification', stepMoveId: null, name: 'Learn a cartwheel', currentSkillId: null, createdAt: '2026-10-01T12:00:00.000Z', archivedAt: null }
 
 function sheet(day: string): FactSheet {
   return { version: 1, day, builtAt: `${day}T11:41:00.000Z`, hour: 7, weeks: 3, days: 20, direction: null, said: [], checkedIn: { morning: `${day}T11:40:00.000Z` }, facts: [{ id: 'week.today', tags: ['cue'], text: 'Today is Tuesday; a daycare day.', values: {} }, { id: 'outside.7d', tags: ['workout'], text: 'Workout days in the last seven: 2 (Saturday, Monday).', values: { n: 2 } }, { id: 'workout.last', tags: ['workout', 'evening'], text: 'The last workout: Monday evening, 40 minutes.', values: {} }] }
 }
 
-/** A day after monitoring: the line stored, the coach done, Italian with a current skill and its sessions, and a headstand with none. */
+/** A day after monitoring: the line stored, the coach done, Italian with a current skill and its sessions, and a cartwheel with none. */
 function record(extra: (s: Mem) => void = () => {}): Mem {
   const store = memoryStore()
   const sh = sheet(DAY)
@@ -83,7 +83,7 @@ const deps = (store: Mem, now: Date, gate: 'gated' | 'open' = 'open') => ({ env,
 const url = (q: Record<string, string>) => new URL(`https://w.test/claude/briefing?${new URLSearchParams(q)}`)
 const post = (store: Mem, now: Date, task: 'skill' | 'progress', answer: unknown, gate: 'gated' | 'open' = 'open') => handleCoachLine(deps(store, now, gate), { task, day: DAY, answer, askedModel: 'opus', writtenModel: 'claude-opus-5-5', runnerModel: 'claude-haiku-4-5-20251001' })
 const proposal = (store: Mem, askId: number) => JSON.parse(store.rows.get(`${BRAIN_APP}|proposals|${proposalIdOf(askId)}`)?.body ?? 'null')
-const suggestion = (askId: number, extra: Record<string, unknown> = {}) => ({ proposals: [{ askId, skill: 'Understand everyday spoken Italian', method: 'An audio course', how: 'One lesson a session, answering aloud.', minutes: 30, rhythm: { perWeek: 3, restDays: 0 }, why: 'Listening first builds the ear.', physical: false, safety: null, likelyNext: 'Short spoken answers', ...extra }] })
+const suggestion = (askId: number, extra: Record<string, unknown> = {}) => ({ proposals: [{ askId, skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, read aloud.', minutes: 30, rhythm: { perWeek: 3, restDays: 0 }, why: 'Listening first builds the ear.', physical: false, safety: null, likelyNext: 'Short spoken answers', ...extra }] })
 
 /** A store that refuses to be touched: any method call is recorded, and the call throws. */
 function untouchable(): { store: Store; touched: string[] } {
@@ -227,7 +227,7 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
     const body = r.body as { instructions: string; briefing: string; answer: unknown; attemptsLeft: number }
     expect(body.instructions).toBe(coachInstructions('skill'))
     expect(body.briefing).toContain(`[ask ${id}] SUGGEST the current skill for this commitment.`)
-    for (const s of ['Goal: Learn Italian.', 'What would change the advice, in their words: I can read a little.', 'How it is learned or practised: An audio course.', 'Current skill: “Ten words” since 2026-09-28', 'Rhythm: 3 sessions a week, no rest day between.', '4 sessions on 4 different days; marked Hard 1, About right 1, Easy 2', '2026-10-03 done, Easy, “the numbers stuck”', 'Not done lately, and why when said: 2026-10-01 (no time)', 'Skills before it: “Numbers”', 'wrist a bit sore']) expect(body.briefing).toContain(s)
+    for (const s of ['Goal: Learn Italian.', 'What would change the advice, in their words: I can read a little.', 'How it is learned or practised: A phrasebook.', 'Current skill: “Ten words” since 2026-09-28', 'Rhythm: 3 sessions a week, no rest day between.', '4 sessions on 4 different days; marked Hard 1, About right 1, Easy 2', '2026-10-03 done, Easy, “the numbers stuck”', 'Not done lately, and why when said: 2026-10-01 (no time)', 'Skills before it: “Numbers”', 'wrist a bit sore']) expect(body.briefing).toContain(s)
     // Italian is not physical: no workouts read for it.
     expect(body.briefing).not.toContain('Workout days')
     const reads = (await store.readReads(20)).map((x) => [x.task, x.category, x.count]).sort()
@@ -258,7 +258,7 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
     const safety = 'Warm the wrists and ankles first, stop at sharp pain, and keep the rest day. Not medical advice.'
     const both = {
       proposals: [
-        { askId: hand, skill: 'Wall-supported holds', method: null, how: 'Kick up facing the wall and hold, wrists warmed first.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Wall holds build the line while the wrist is minded.', physical: true, safety, likelyNext: 'Freestanding kick-ups' },
+        { askId: hand, skill: 'Cartwheels along a line', method: null, how: 'Kick up facing the wall and hold, wrists warmed first.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Wall holds build the line while the wrist is minded.', physical: true, safety, likelyNext: 'Freestanding kick-ups' },
         { askId: run, skill: 'Run-walk intervals', method: null, how: 'Alternate a minute of running with two of walking.', minutes: 25, rhythm: { perWeek: 3, restDays: 1 }, why: 'Intervals build toward the 5k without strain.', physical: true, safety, likelyNext: null },
       ],
     }
@@ -285,7 +285,7 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
     const store = record()
     const id = ask(store, { aimId: 3, kind: 'setup' }, HAND, null)
     await opened(store)
-    const noSafety = { proposals: [{ askId: id, skill: 'Wall-supported holds', method: null, how: 'Kick up facing the wall and hold.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'The line first.', physical: true, safety: null, likelyNext: null }] }
+    const noSafety = { proposals: [{ askId: id, skill: 'Cartwheels along a line', method: null, how: 'Kick up facing the wall and hold.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'The line first.', physical: true, safety: null, likelyNext: null }] }
     expect(await post(store, at('12:03'), 'skill', noSafety)).toEqual({ status: 422, body: { ok: false, reason: `ask ${id}: a physical skill needs its safety line`, retry: true } })
     expect(await post(store, at('12:04'), 'skill', { proposals: [{ ...noSafety.proposals[0], safety: 'Warm up.', why: 'You will be 80% there.' }] })).toMatchObject({ status: 422, body: { retry: false } })
     expect(await store.readTask(skillTaskIds(DAY)[0])).toMatchObject({ status: 'refused', fallbackReason: 'Claude’s answer was refused twice; nothing was suggested, and the commitment works by hand' })

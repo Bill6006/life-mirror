@@ -27,7 +27,7 @@ describe('rhythm on the sheet', () => {
   })
 
   it('says a rest day, a due day and a met week in counts, and fixed days with the next one', async () => {
-    await addLearning('Learn a handstand', 'Wall drills', 'Hold against the wall', '', new Date(2026, 8, 20, 9, 0))
+    await addLearning('Learn a cartwheel', 'Line drills', 'Land on the line', '', new Date(2026, 8, 20, 9, 0))
     const aim = await learning()
     const id = aim.id as number
     await setRhythm(id, { perWeek: 3, restDays: 1 })

@@ -376,7 +376,7 @@ test('the brief card: the line, its action and the taps by default; the readings
   await expect(card.getByTestId('brief-when')).toHaveText('For today')
   // A step pinned to her bedtime is later today, before the plan is made and after it, and for today once the moment passes.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await addLearning(page, 'Networking')
+  await addLearning(page, 'Clockwork')
   await expect(page.getByTestId('aim-card')).toHaveCount(1)
   await putBrief(page, { ...workerLine, action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } })
   await page.reload()
@@ -410,12 +410,12 @@ test('every screen shows a clock time as 5:30 PM, never 17:30, while the record 
   await page.clock.setFixedTime(new Date(2026, 8, 18, 16, 0))
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await addLearning(page, 'Networking', 'Small talk')
+  await addLearning(page, 'Clockwork', 'Small talk')
   await expect(page.getByTestId('aim-card')).toHaveCount(1)
   // The brain's line and review, in the words the facts keep: 17:30 and 20:00.
   const at = new Date(2026, 8, 18, 10, 0).toISOString()
   await putBrief(page, { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'After pickup at 17:30, one short sitting; her bedtime is 20:00.', mode: 'recommendation', factIds: ['week.today'], cardIds: ['post-lunch-dip'], model: '@cf/test/model', at, factsDay: '2026-09-18', action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } })
-  await putBrief(page, { id: '2026-09-18:review', day: '2026-09-18', kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: '@cf/test/model', at, parts: { held: 'Networking held at 20:00 twice.', didNot: 'Nothing after 21:30.', change: 'Try 19:45 on Monday.' } })
+  await putBrief(page, { id: '2026-09-18:review', day: '2026-09-18', kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: '@cf/test/model', at, parts: { held: 'Clockwork held at 20:00 twice.', didNot: 'Nothing after 21:30.', change: 'Try 19:45 on Monday.' } })
   await page.reload()
   const found: string[] = []
   const sweep = async (name: string) => {
@@ -452,7 +452,7 @@ test('every screen shows a clock time as 5:30 PM, never 17:30, while the record 
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await sweep('Mirror')
   await page.getByRole('button', { name: /^The weekly view/ }).click()
-  await expect(page.getByTestId('week-review-held')).toHaveText('Networking held at 8:00 PM twice.')
+  await expect(page.getByTestId('week-review-held')).toHaveText('Clockwork held at 8:00 PM twice.')
   await sweep('The weekly view')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
@@ -740,7 +740,7 @@ test('aims: something to learn in its own words, held above the move, Start aske
 
   // Aims → something to learn, named by you with no skill yet: the card keeps a place for it, and nothing to start.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await addLearning(page, 'Networking')
+  await addLearning(page, 'Clockwork')
   await expect(page.getByTestId('aim-step')).toHaveText('No current skill yet')
   await expect(page.getByTestId('aim-no-skill')).toBeVisible()
   await expect(page.getByTestId('aim-start')).toHaveCount(0)
@@ -754,9 +754,9 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await tapThrough(page, 0)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('your-aims')).toBeVisible()
-  await expect(page.getByTestId('aim-card')).toContainText('Networking')
+  await expect(page.getByTestId('aim-card')).toContainText('Clockwork')
   // The brief's line: the judgment engine speaks from the record, and one tap says how it landed.
-  await expect(page.getByTestId('brief-line')).toContainText('Networking has no current skill yet')
+  await expect(page.getByTestId('brief-line')).toContainText('Clockwork has no current skill yet')
   await page.getByTestId('brief-useful').click()
   await expect(page.getByTestId('brief-noted')).toBeVisible()
   await expect(page.getByTestId('tonight')).toHaveCount(0)
@@ -766,10 +766,10 @@ test('aims: something to learn in its own words, held above the move, Start aske
 
   // The one thing to work on now, named on the card; how it is practised, in your words.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await page.getByTestId('aim-skill-set-name').fill('Subnetting')
+  await page.getByTestId('aim-skill-set-name').fill('Gear trains')
   await page.getByTestId('aim-skill-set-method').fill('A book')
   await page.getByTestId('aim-skill-set-save').click()
-  await expect(page.getByTestId('aim-step')).toHaveText('Subnetting')
+  await expect(page.getByTestId('aim-step')).toHaveText('Gear trains')
   await expect(page.getByTestId('aim-card')).toContainText('With a book')
 
   // Start is one tap on Now; the session stays resolvable after the block ends, and the evening check-in asks about it.
@@ -785,7 +785,7 @@ test('aims: something to learn in its own words, held above the move, Start aske
     await expect(ask.or(page.getByTestId('anchor').first()).first()).toBeVisible()
     if (!(await ask.isVisible())) break
     const title = (await ask.locator('h1').textContent()) ?? ''
-    if (title.includes('Subnetting')) {
+    if (title.includes('Gear trains')) {
       await page.getByTestId('outcome').first().click()
       // One optional tap on how it went, never a grade.
       await page.getByTestId('ease').nth(1).click()
@@ -795,7 +795,7 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await tapThrough(page)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   // Done today: the row says so, nothing asks again, and another is a quiet tap.
-  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Networking' })
+  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Clockwork' })
   await expect(row.getByTestId('aim-done-today')).toHaveText('Done today ✓')
   await expect(row.getByTestId('aim-start')).toHaveCount(0)
   await expect(row.getByTestId('aim-resume')).toHaveCount(0)
@@ -1256,14 +1256,14 @@ test('the line does what it says in one tap, shows why it said it, and the week 
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await addLearning(page, 'French', 'Ten words')
+  await addLearning(page, 'Veltish', 'Ten words')
   // A commitment with a step and no moment for it: the line says so, and offers the moment itself.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
-  await expect(page.getByTestId('brief-line')).toContainText('French: the step is Ten words.')
+  await expect(page.getByTestId('brief-line')).toContainText('Veltish: the step is Ten words.')
   await expect(page.getByTestId('brief-action')).toHaveText('Plan it: after her bedtime, 8:00 PM')
   // Why it said this: the fact as the record words it, and the card with its grade and its source.
   await page.getByTestId('brief-why').click()
-  await expect(page.getByTestId('brief-why-panel')).toContainText('French (learning): the current skill is “Ten words”')
+  await expect(page.getByTestId('brief-why-panel')).toContainText('Veltish (learning): the current skill is “Ten words”')
   await expect(page.getByTestId('brief-why-panel')).toContainText('Gollwitzer')
   await page.getByTestId('brief-why').click()
   await expect(page.getByTestId('brief-why-panel')).toHaveCount(0)
@@ -1273,7 +1273,7 @@ test('the line does what it says in one tap, shows why it said it, and the week 
   await expect(page.getByTestId('brief-action')).toHaveCount(0)
   await expect(page.getByTestId('aim-plan')).toContainText('After her bedtime, 8:00 PM')
   await page.reload()
-  await expect(page.getByTestId('brief-line')).toContainText('French: the step is Ten words')
+  await expect(page.getByTestId('brief-line')).toContainText('Veltish: the step is Ten words')
   await expect(page.getByTestId('brief-acted')).toHaveText('Planned for today.')
   // The week reviewed sits under the week ahead, from the record alone until the Worker writes one.
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
@@ -1282,7 +1282,7 @@ test('the line does what it says in one tap, shows why it said it, and the week 
   const order = await page.getByTestId('weekly').locator('h2.section').allInnerTexts()
   expect(order.slice(0, 2).map((t) => t.toLowerCase())).toEqual(['the week ahead, as you usually are', 'the week, reviewed'])
   await expect(page.getByTestId('week-review-held')).toHaveText('No commitment had a step started in the last seven days.')
-  await expect(page.getByTestId('week-review-did-not')).toHaveText('French: added today, no step started yet.')
+  await expect(page.getByTestId('week-review-did-not')).toHaveText('Veltish: added today, no step started yet.')
   await expect(page.getByTestId('week-review-change')).not.toBeEmpty()
 })
 
@@ -1292,26 +1292,26 @@ test('something to learn: a language and an instrument sit beside each other, ea
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await addLearning(page, 'French', 'Ten words', 'A class')
-  await addLearning(page, 'Piano', 'Scale of C', 'A teacher')
+  await addLearning(page, 'Veltish', 'Ten words', 'A class')
+  await addLearning(page, 'Ocarina', 'Scale of C', 'A teacher')
   await expect(page.getByTestId('aim-card')).toHaveCount(2)
   await expect(page.getByTestId('aim-step').first()).toHaveText('Ten words')
   await expect(page.getByTestId('aim-step').last()).toHaveText('Scale of C')
   // A new current skill replaces the old one only when you name it; the old one stays in the history and can come back.
-  const french = page.getByTestId('aim-card').filter({ hasText: 'French' })
-  await french.getByTestId('aim-details').click()
-  await french.getByTestId('aim-skill-new-open').click()
-  await french.getByTestId('aim-skill-new-name').fill('Twenty words')
-  await french.getByTestId('aim-skill-new-save').click()
-  await expect(french.getByTestId('aim-step')).toHaveText('Twenty words')
-  await expect(french.getByTestId('aim-history-earlier')).toContainText('Ten words')
-  await french.getByTestId('aim-make-current').click()
-  await expect(french.getByTestId('aim-step')).toHaveText('Ten words')
+  const veltish = page.getByTestId('aim-card').filter({ hasText: 'Veltish' })
+  await veltish.getByTestId('aim-details').click()
+  await veltish.getByTestId('aim-skill-new-open').click()
+  await veltish.getByTestId('aim-skill-new-name').fill('Twenty words')
+  await veltish.getByTestId('aim-skill-new-save').click()
+  await expect(veltish.getByTestId('aim-step')).toHaveText('Twenty words')
+  await expect(veltish.getByTestId('aim-history-earlier')).toContainText('Ten words')
+  await veltish.getByTestId('aim-make-current').click()
+  await expect(veltish.getByTestId('aim-step')).toHaveText('Ten words')
 
   // On Now, one row each; one tap says when, then Start; the plan is kept and counted.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.locator('li[data-testid="aim-card"]')).toHaveCount(2)
-  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'French' })
+  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Veltish' })
   await row.getByTestId('aim-plan-open').click()
   await row.getByTestId('aim-cue-afterBedtime').click()
   await expect(row.getByTestId('aim-plan')).toContainText('After her bedtime, 8:00 PM')
@@ -1325,9 +1325,9 @@ test('something to learn: a language and an instrument sit beside each other, ea
   await expect(row.getByTestId('aim-ease')).toBeVisible()
   await row.getByTestId('aim-ease-easy').click()
   // The other, done away from the app: one tap records it, and today's row says so.
-  const piano = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Piano' })
-  await piano.getByTestId('aim-log').click()
-  await expect(piano.getByTestId('aim-done-today')).toHaveText('Done today ✓')
+  const ocarina = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Ocarina' })
+  await ocarina.getByTestId('aim-log').click()
+  await expect(ocarina.getByTestId('aim-done-today')).toHaveText('Done today ✓')
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(page.getByTestId('aim-cue-count').first()).toContainText('After her bedtime · started 1 of 1 planned')
 })
@@ -1863,7 +1863,7 @@ test('the skill coach stays dark while its gate is closed: commitments are set u
   await startWithDirection(page)
   // A goal with no skill, and a physical one: neither asks Claude, no safety question shows, and each card asks for the one thing to work on now.
   await addLearning(page, 'Italian')
-  await addLearning(page, 'Headstand')
+  await addLearning(page, 'Cartwheel')
   for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
   await expect(page.getByTestId('aim-skill-set-name')).toHaveCount(2)
   const italian = page.getByTestId('aim-card').filter({ hasText: 'Italian' })
@@ -1887,7 +1887,7 @@ test('the skill coach stays dark while its gate is closed: commitments are set u
 test('the skill coach, previewed (Part 40): a first skill asked for at once; Claude’s suggestion changes nothing until you choose; Another suggestion, Edit first, and the likely next on your tap', async ({ page }) => {
   await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
   await startWithDirection(page)
-  await addLearning(page, 'Italian', '', 'An audio course')
+  await addLearning(page, 'Italian', '', 'A phrasebook')
   const card = page.getByTestId('aim-card').filter({ hasText: 'Italian' })
   // Asked at once; meanwhile the one thing to work on now can be yours.
   await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for a first skill')
@@ -1895,13 +1895,13 @@ test('the skill coach, previewed (Part 40): a first skill asked for at once; Cla
   const [first] = await rowsOf<Ask>(page, 'coachAsks')
   expect(first).toMatchObject({ kind: 'setup', claude: true, day: '2026-09-07' })
   expect(first).not.toHaveProperty('care')
-  await answerAsk(page, first.id, { suggestion: { skill: 'Understand everyday spoken Italian', method: 'An audio course', how: 'One lesson a session, answering aloud before the speaker does.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest stands on.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
+  await answerAsk(page, first.id, { suggestion: { skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest stands on.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   const s = card.getByTestId('coach-suggestion')
   await expect(s).toContainText('Claude suggests')
   await expect(card.getByTestId('coach-suggestion-skill')).toHaveText('Understand everyday spoken Italian')
-  await expect(s).toContainText('With an audio course · 30 minutes a session · 5 a week')
+  await expect(s).toContainText('With a phrasebook · 30 minutes a session · 5 a week')
   await expect(s).toContainText('Why: Listening first builds the ear the rest stands on.')
   await expect(s).toContainText('Likely next: Short spoken answers')
   await expect(card.getByTestId('coach-safety')).toHaveCount(0)
@@ -1916,7 +1916,7 @@ test('the skill coach, previewed (Part 40): a first skill asked for at once; Cla
   expect(asks).toHaveLength(2)
   expect(asks[0]).toMatchObject({ decision: 'another' })
   expect(asks[1]).toMatchObject({ kind: 'setup', after: `ask:${first.id}` })
-  await answerAsk(page, asks[1].id, { suggestion: { skill: 'Hear and repeat core phrases', method: 'An audio course', how: 'Pause after each phrase and say it back aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Saying it back fixes the sounds early.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
+  await answerAsk(page, asks[1].id, { suggestion: { skill: 'Hear and repeat core phrases', method: 'A phrasebook', how: 'Pause after each phrase and say it back aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Saying it back fixes the sounds early.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   // Edit first: the suggestion in your words, then used.
@@ -1943,8 +1943,8 @@ test('the skill coach, previewed (Part 40): a first skill asked for at once; Cla
 test('the skill coach, previewed (Part 40): a physical goal asks one safety question first; Write my own sets a suggestion aside; Use this keeps its safety line and rest days', async ({ page }) => {
   await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
   await startWithDirection(page)
-  await addLearning(page, 'Headstand')
-  const card = page.getByTestId('aim-card').filter({ hasText: 'Headstand' })
+  await addLearning(page, 'Cartwheel')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Cartwheel' })
   // Nothing is asked until the one question is answered or left empty.
   await expect(card.getByTestId('coach-care')).toBeVisible()
   await expect(card.getByTestId('coach-pending')).toHaveCount(0)
@@ -1954,7 +1954,7 @@ test('the skill coach, previewed (Part 40): a physical goal asks one safety ques
   await expect(card.getByTestId('coach-pending')).toBeVisible()
   const [ask] = await rowsOf<Ask>(page, 'coachAsks')
   expect(ask).toMatchObject({ kind: 'setup', care: 'A sore left wrist' })
-  const hold = { skill: 'Wall-supported holds', method: null, how: 'Kick up facing the wall and hold, coming down with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Wall holds build the line while the wrist is minded.', physical: true, safety: 'Warm the wrists first; stop at sharp pain in the wrist or neck.', likelyNext: 'Chest-to-wall holds' }
+  const hold = { skill: 'Cartwheels along a line', method: null, how: 'Kick up facing the wall and hold, coming down with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Wall holds build the line while the wrist is minded.', physical: true, safety: 'Warm the wrists first; stop at sharp pain in the wrist or neck.', likelyNext: 'Chest-to-wall holds' }
   await answerAsk(page, ask.id, { suggestion: hold })
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
@@ -1979,14 +1979,14 @@ test('the skill coach, previewed (Part 40): a physical goal asks one safety ques
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await card.getByTestId('coach-use').click()
-  await expect(card.getByTestId('aim-step')).toHaveText('Wall-supported holds')
+  await expect(card.getByTestId('aim-step')).toHaveText('Cartwheels along a line')
   await expect(card.getByTestId('aim-safety')).toHaveText('Warm the wrists first; stop at sharp pain in the wrist or neck. Not medical advice.')
   expect((await rowsOf<{ rhythm?: unknown }>(page, 'aims'))[0].rhythm).toEqual({ perWeek: 3, restDays: 1 })
   await card.getByTestId('aim-details').click()
   await expect(card.getByTestId('aim-history-earlier')).toContainText('Wrist warm-ups')
   // The app keeps the rest day: after a session, no second that day, and the next day rests.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
-  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Headstand' })
+  const row = page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Cartwheel' })
   await row.getByTestId('aim-log').click()
   await expect(row.getByTestId('aim-done-today')).toBeVisible()
   await expect(row.getByTestId('aim-another')).toHaveCount(0)

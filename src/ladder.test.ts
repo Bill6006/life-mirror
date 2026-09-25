@@ -35,9 +35,9 @@ describe('the proof ladder', () => {
   })
 
   it('sizes each rung to one sitting and names it from the skill', () => {
-    const s = rungStep(skill(7, 'Subnetting'), 2)
-    expect(s).toMatchObject({ id: 'rung:7:2', name: 'Subnetting · practise it', minutes: 25, kind: 'rung' })
-    expect(rungStep(skill(7, 'Subnetting'), 6).minutes).toBe(5)
+    const s = rungStep(skill(7, 'Gear trains'), 2)
+    expect(s).toMatchObject({ id: 'rung:7:2', name: 'Gear trains · practise it', minutes: 25, kind: 'rung' })
+    expect(rungStep(skill(7, 'Gear trains'), 6).minutes).toBe(5)
     expect(parseRungId(rungId(7, 2))).toEqual({ skillId: 7, rung: 2 })
     expect(parseRungId('focused-block')).toBeNull()
     expect(parseRungId('rung:7:9')).toBeNull()
@@ -64,13 +64,13 @@ describe('the proof ladder with more than one subject', () => {
   const skill = (id: number, name: string, order: number, subject?: string): Skill => ({ id, name, order, createdAt: '', archivedAt: null, ...(subject ? { subject } : {}) })
 
   it('names a step with its subject when the skill has one', () => {
-    expect(rungStep(skill(1, 'Subnetting', 1), 1).name).toBe('Subnetting · watch or read it')
+    expect(rungStep(skill(1, 'Gear trains', 1), 1).name).toBe('Gear trains · watch or read it')
     expect(rungStep(skill(2, 'Past tense', 2, 'Language'), 2).name).toBe('Language · Past tense · practise it')
   })
 
   it('groups skills by subject, the ones without a subject first, in your order within each', () => {
-    const groups = groupBySubject([skill(3, 'Verbs', 3, 'Language'), skill(1, 'Subnetting', 1), skill(2, 'Routing', 2, 'Networking'), skill(4, 'Nouns', 4, 'Language')])
-    expect(groups.map((g) => g.subject)).toEqual([null, 'Networking', 'Language'])
+    const groups = groupBySubject([skill(3, 'Verbs', 3, 'Language'), skill(1, 'Gear trains', 1), skill(2, 'Escapements', 2, 'Clockwork'), skill(4, 'Nouns', 4, 'Language')])
+    expect(groups.map((g) => g.subject)).toEqual([null, 'Clockwork', 'Language'])
     expect(groups[2].skills.map((s) => s.name)).toEqual(['Verbs', 'Nouns'])
   })
 })
@@ -80,21 +80,21 @@ describe('a step’s title beside its subject', () => {
     const s = rungStep({ id: 2, name: 'Past tense', order: 2, createdAt: '', archivedAt: null, subject: 'Language' }, 2)
     expect(s.title).toBe('Past tense · practise it')
     expect(s.subject).toBe('Language')
-    const plain = rungStep({ id: 1, name: 'Subnetting', order: 1, createdAt: '', archivedAt: null }, 1)
+    const plain = rungStep({ id: 1, name: 'Gear trains', order: 1, createdAt: '', archivedAt: null }, 1)
     expect(plain.title).toBe(plain.name)
     expect(plain.subject).toBeUndefined()
   })
 })
 
 describe('a subject’s own six proofs', () => {
-  const lang = (id: number, name: string, order: number): Skill => ({ id, name, order, createdAt: '', archivedAt: null, subject: 'French', ladder: 'language' })
+  const lang = (id: number, name: string, order: number): Skill => ({ id, name, order, createdAt: '', archivedAt: null, subject: 'Veltish', ladder: 'language' })
 
   it('names a language skill’s rungs and steps in its own words, in ten-minute sittings', () => {
     expect(rungName(1, 'language')).toBe('Heard or read')
     expect(rungName(6, 'language')).toBe('Used with someone')
     expect(rungName(2)).toBe('Practiced')
     const s = rungStep(lang(9, 'Ten words', 1), 2)
-    expect(s.name).toBe('French · Ten words · say it')
+    expect(s.name).toBe('Veltish · Ten words · say it')
     expect(s.minutes).toBe(10)
     expect(s.what).toContain('Say it out loud')
     expect(ladderOf(lang(9, 'Ten words', 1))).toBe('language')
@@ -102,13 +102,13 @@ describe('a subject’s own six proofs', () => {
   })
 
   it('counts each ladder on its own, and a group carries its kind', () => {
-    const skills = [lang(9, 'Ten words', 1), { id: 1, name: 'Subnetting', order: 2, createdAt: '', archivedAt: null } as Skill]
+    const skills = [lang(9, 'Ten words', 1), { id: 1, name: 'Gear trains', order: 2, createdAt: '', archivedAt: null } as Skill]
     expect(ladderCounts(skills, [], 'language')[0]).toBe(1)
     expect(ladderCounts(skills, [], 'technical')[0]).toBe(1)
     expect(ladderCounts(skills, [])[0]).toBe(2)
     expect(groupBySubject(skills).map((g) => [g.subject, g.kind])).toEqual([
       [null, 'technical'],
-      ['French', 'language'],
+      ['Veltish', 'language'],
     ])
   })
 })
@@ -117,19 +117,19 @@ describe('a skill learned by doing', () => {
   it('climbs its own six proofs in ten-minute sittings', () => {
     expect(rungName(1, 'craft')).toBe('Watched or listened')
     expect(rungName(6, 'craft')).toBe('Done for someone')
-    const s = rungStep({ id: 4, name: 'Scale of C', order: 1, createdAt: '', archivedAt: null, subject: 'Piano', ladder: 'craft' }, 3)
-    expect(s.name).toBe('Piano · Scale of C · do it with the material')
+    const s = rungStep({ id: 4, name: 'Scale of C', order: 1, createdAt: '', archivedAt: null, subject: 'Ocarina', ladder: 'craft' }, 3)
+    expect(s.name).toBe('Ocarina · Scale of C · do it with the material')
     expect(s.minutes).toBe(10)
   })
 })
 
 describe('the ladder a commitment chose', () => {
   it('carries onto its skills whatever they were filed under, and dates the last mark among them', () => {
-    const a: Aim = { id: 1, kind: 'certification', stepMoveId: null, name: 'French', ladder: 'language', createdAt: '', archivedAt: null }
-    const filed = [{ id: 1, name: 'Ten words', order: 1, createdAt: '', archivedAt: null, subject: 'French' } as Skill]
+    const a: Aim = { id: 1, kind: 'certification', stepMoveId: null, name: 'Veltish', ladder: 'language', createdAt: '', archivedAt: null }
+    const filed = [{ id: 1, name: 'Ten words', order: 1, createdAt: '', archivedAt: null, subject: 'Veltish' } as Skill]
     expect(skillsOf(a, filed, [a]).map((s) => ladderOf(s))).toEqual(['language'])
-    expect(rungStep(skillsOf(a, filed, [a])[0], 2).name).toBe('French · Ten words · say it')
-    expect(rungStep(filed[0], 2).name).toBe('French · Ten words · practise it')
+    expect(rungStep(skillsOf(a, filed, [a])[0], 2).name).toBe('Veltish · Ten words · say it')
+    expect(rungStep(filed[0], 2).name).toBe('Veltish · Ten words · practise it')
     expect(lastMarkDay(filed, [])).toBeNull()
     const at = new Date(2026, 8, 6, 23, 30).toISOString()
     expect(lastMarkDay(filed, [{ skillId: 1, rung: 1, at, via: 'step' }, { skillId: 2, rung: 3, at: new Date(2026, 8, 9, 8, 0).toISOString(), via: 'tap' }])).toBe(dayKey(new Date(at)))
@@ -151,7 +151,7 @@ describe('the ladder a commitment chose', () => {
 describe('subjects no commitment is named for', () => {
   it('lists each once, and none that a commitment carries', () => {
     const sk = (id: number, subject?: string): Skill => ({ id, name: 'x' + id, order: id, createdAt: '', archivedAt: null, ...(subject ? { subject } : {}) })
-    expect(orphanSubjects([sk(1, 'French'), sk(2, 'french'), sk(3), sk(4, 'Piano')], [{ name: 'Piano' }])).toEqual(['French'])
-    expect(orphanSubjects([sk(1, 'French')], [{ name: 'French' }])).toEqual([])
+    expect(orphanSubjects([sk(1, 'Veltish'), sk(2, 'veltish'), sk(3), sk(4, 'Ocarina')], [{ name: 'Ocarina' }])).toEqual(['Veltish'])
+    expect(orphanSubjects([sk(1, 'Veltish')], [{ name: 'Veltish' }])).toEqual([])
   })
 })
