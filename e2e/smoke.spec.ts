@@ -1332,7 +1332,7 @@ test('something to learn: a language and an instrument sit beside each other, ea
   await expect(page.getByTestId('aim-cue-count').first()).toContainText('After her bedtime · started 1 of 1 planned')
 })
 
-test('the Social path: added under Aims, one People row on Now with its stage in words, Done today and no second rep that day; at home the next evening no in-person rep is the day’s, and Change still reaches one', async ({ page }) => {
+test('the Social path: added under Aims, one People row on Now with its stage in words, Done today and no second rep that day; working from home the next day the rep is still offered, as one that would mean going out, and Change reaches the rest (Pass 3)', async ({ page }) => {
   // A Monday morning marked at the office on its summary: people are around by today's shape (Part 20's tier 1).
   await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
   await page.goto('./')
@@ -1390,15 +1390,25 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await expect(page.locator('[data-kind="path"]').getByTestId('aim-done-today')).toBeVisible()
   await expect(page.locator('[data-kind="path"]').getByTestId('aim-start')).toHaveCount(0)
 
-  // The next evening at home: nobody around by today's shape, so no in-person rep is the day's rep.
+  // The next day, working from home (Pass 3): context, never a blocker. At lunch the stage's rep is
+  // offered, and the row says what it would ask: going out, never that you are out.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 12, 30))
+  await page.reload()
+  const lunch = page.locator('[data-kind="path"]')
+  await expect(lunch.getByTestId('aim-step')).toBeVisible()
+  await expect(lunch.getByTestId('path-none')).toHaveCount(0)
+  await expect(lunch.getByTestId('path-would-go-out')).toHaveText('Working from home: this one would mean going out, at lunch, on an errand or to something later.')
+  // The evening at home: still offered, said the same way for the evening.
   await page.clock.setFixedTime(new Date(2026, 8, 8, 19, 5))
   await page.reload()
   const evening = page.locator('[data-kind="path"]')
-  await expect(evening.getByTestId('path-none')).toHaveText('No people rep fits tonight.')
-  await expect(evening.getByTestId('aim-start')).toHaveCount(0)
-  // Change still lists every rep of the stage, and one you pick is today's, whatever the shape says.
+  await expect(evening.getByTestId('path-none')).toHaveCount(0)
+  await expect(evening.getByTestId('aim-start')).toBeVisible()
+  await expect(evening.getByTestId('path-would-go-out')).toHaveText('Nobody around by today’s shape: this one would mean going out, or someone coming by.')
+  // Change lists every rep of the stage with no "nobody around" mark, and one you pick is today's.
   await evening.getByTestId('path-change').click()
-  await expect(page.getByTestId('path-change-screen')).toContainText('Nobody around by today’s shape')
+  await expect(page.getByTestId('path-change-screen')).toBeVisible()
+  await expect(page.getByTestId('path-change-screen')).not.toContainText('Nobody around')
   const other = Object.entries(ids).find(([name]) => name !== rep)?.[1] as string
   await page.getByTestId(`path-choice-${other}`).click()
   const picked = page.locator('[data-kind="path"]')
@@ -1519,7 +1529,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await page.getByRole('button', { name: 'Now', exact: true }).click()
   await expect(page.locator('[data-kind="path"]')).toHaveCount(1)
   await expect(page.locator('[data-kind="path"]').getByTestId('path-stage')).toContainText('The Partner path · Stage 4 of 7 · Dating')
-  expect(['On time, phone away', 'Ask, then follow what they say', 'Share something real in turn', 'End the date clearly and kindly', 'Talk about a good ordinary week', 'Talk about what you are each working toward', 'Talk about the people in your lives', 'Thank them for one specific thing', 'Reappraise a disagreement']).toContain(((await page.locator('[data-kind="path"]').getByTestId('aim-step').textContent()) ?? '').trim())
+  expect(['On time, phone away', 'Ask, then follow what they say', 'Share something real in turn', 'End the date clearly and kindly', 'Greet them as someone you are glad to see', 'Ask before a first kiss', 'Suggest a date with something to do together', 'Talk about a good ordinary week', 'Talk about what you are each working toward', 'Talk about the people in your lives', 'Thank them for one specific thing', 'Reappraise a disagreement']).toContain(((await page.locator('[data-kind="path"]').getByTestId('aim-step').textContent()) ?? '').trim())
   // A rep with a guardrail says it on the row: their answer is final.
   await page.locator('[data-kind="path"]').getByTestId('path-change').click()
   await page.getByTestId('path-choice-date-end-clearly').click()
@@ -2149,4 +2159,62 @@ test('How firm, previewed (Pass 2): four settings under Brain, Adaptive until ch
     expect({ id: live[0].id, situationId: live[0].situationId, factIds: live[0].factIds, cardIds: live[0].cardIds }).toEqual({ id: first.id, situationId: 'first-skill', factIds: first.factIds, cardIds: first.cardIds })
   }
   await expect(page.locator('#main')).not.toContainText('!')
+})
+
+// ─── Private items at the Morning and the Afternoon (Pass 3) ───────────────────────────────────
+
+test('private items at the check-ins they are placed in: one placed in the morning is asked on the morning summary, marked shown and logged there, and is not in the evening’s extras (Pass 3)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await settingsSection(page, 'moves')
+  await page.getByTestId('settings-private').click()
+  await page.getByPlaceholder('Name it').fill('Item one')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const row = page.getByTestId('private-item-row')
+  await expect(row).toContainText('Item one')
+  // The evening until placed; placed in the morning alone; the last check-in chosen stays chosen.
+  await expect(row.getByTestId('private-place-evening')).toHaveAttribute('aria-pressed', 'true')
+  await row.getByTestId('private-place-morning').click()
+  await row.getByTestId('private-place-evening').click()
+  await expect(row.getByTestId('private-place-morning')).toHaveAttribute('aria-pressed', 'true')
+  await expect(row.getByTestId('private-place-evening')).toHaveAttribute('aria-pressed', 'false')
+  await row.getByTestId('private-place-morning').click()
+  await expect(row.getByTestId('private-place-morning')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('private-unasked')).toHaveCount(0)
+  const [item] = await rowsOf<{ id: number; blocks?: string[] }>(page, 'privateItems')
+  expect(item.blocks).toEqual(['morning'])
+
+  // The morning check-in: its summary holds the private log, names out of sight until opened.
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  const card = page.getByTestId('private-log-card')
+  await expect(card).toBeVisible()
+  await expect(card).not.toContainText('Item one')
+  await card.getByTestId('private-log').click()
+  await expect(card.getByTestId(`private-item-${item.id}`)).toContainText('Item one')
+  await card.getByTestId(`private-item-${item.id}`).click()
+  await expect(card.getByTestId(`private-item-${item.id}`)).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => extrasOf(page, '2026-09-07', 'morning')).toMatchObject({ private: { [String(item.id)]: true }, privateShown: { [String(item.id)]: true } })
+
+  // The evening: the item is placed elsewhere, so the extras hold no private log.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  const ask = page.getByTestId('outcome-ask')
+  for (let i = 0; i < 30; i++) {
+    await expect(extras.or(ask).or(anchor).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    // The morning's move asks how it went first: not now.
+    if (await ask.isVisible()) {
+      await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      await expect(ask).toBeHidden()
+      continue
+    }
+    await tapAnchor(page)
+  }
+  await expect(extras).toBeVisible()
+  await expect(page.getByTestId('private-log')).toHaveCount(0)
 })

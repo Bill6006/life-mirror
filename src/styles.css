@@ -1003,6 +1003,12 @@ button.ctx {
   list-style: none;
 }
 
+/* A private item: its name and Remove, then the check-ins it is asked at (Pass 3). */
+.private-item .private-blocks,
+.private-item .private-unasked {
+  padding-bottom: 14px;
+}
+
 .chip {
   display: inline-flex;
   align-items: baseline;

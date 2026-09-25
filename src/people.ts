@@ -8,15 +8,17 @@ import { minutesOf } from './settings'
 
 // People around (Part 20). Two tiers that never merge.
 //
-// Tier 1 is the only authority over whether a rep that needs another adult in person may be
-// offered: today's own day record, exceptions included. The three chips on every summary rewrite
-// today alone, both ways, so an office day worked from home has nobody around and a home day
-// marked at the office has. A rep the owner picks himself outranks all of it.
+// Tier 1 is today's own day record, exceptions included: the two chips on the summaries rewrite
+// today alone, both ways, so an office day worked from home has no one at the office and a home day
+// marked at the office has. Since Pass 3 (the owner's word) it is context for a path's reps, never
+// a gate: where it puts no one around, an in-person rep still fits and would mean going out, at lunch,
+// on an errand or to something later. The day's draw with no path on still reads it as a gate.
 //
 // Tier 2 is evidence and never authority: how many in-person reps were marked Done in each kind
-// of day and block over the last eight weeks. It may order a picker, say one counted line, ride
-// the fact sheet as an observation and send the owner to correct tier 1. The draw never reads it,
-// so history can neither widen nor narrow what is offered.
+// of day and block over the last eight weeks: the owner's own acts, marked done. It may order a picker, say
+// one counted line, ride the fact sheet as an observation and send the owner to correct tier 1,
+// which still gates the draw and shapes a path's context. The draw never reads it, so history can
+// neither widen nor narrow what is offered.
 
 type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'>
 
@@ -28,7 +30,7 @@ export function blockOfTime(hhmm: string): Block {
   return 'morning'
 }
 
-/** Tier 1: whether today's shape puts other adults around in a block. Anything the record does not say is not around. */
+/** Tier 1: whether today's shape puts other adults around in a block. Anything the record does not say is not around; for a path's reps that would mean going out, never out of reach (Pass 3). */
 export function peopleAround(ctx: Shape | null | undefined, block: Block): boolean {
   if (!ctx) return false
   if (ctx.atOffice && (block === 'morning' || block === 'afternoon')) return true
@@ -98,8 +100,11 @@ export function carriedLine(kind: DayKind, block: Block, carried: ReadonlyMap<st
 
 /**
  * Tier 2, use four: contexts the record shows carrying in-person reps that the week's shape never
- * counts as people around, so the owner can correct tier 1 (a Settings constant, a chip, or a
- * pick by hand). The week's shape is read for each of the next seven days.
+ * counts as people around, so the owner can correct tier 1 (a Settings constant, a chip, or a pick
+ * by hand). Still worth it since Pass 3: tier 1 no longer keeps a path's reps out, but it still
+ * gates the day's draw when no path is on, and it decides whether a path's rep is marked as one that
+ * would mean going out and which kind of setting is suggested. The week's shape is read for each of
+ * the next seven days.
  */
 export function uncoveredContexts(carried: ReadonlyMap<string, number>, week: readonly (Shape & { day: string })[]): { kind: DayKind; block: Block; n: number }[] {
   const covered = new Set<string>()

@@ -217,8 +217,8 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
         ) : (
           <div class="calc">
             {ev.privates.map((p) => (
-              <p key={p.itemId} class="calc-line" data-testid="private-association">
-                {fill(c.privateLine, { name: p.name, with: pct(p.association.withEvent.mean), without: pct(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: nameOf(p.alternativeId) })}
+              <p key={`${p.itemId}|${p.block}`} class="calc-line" data-testid="private-association">
+                {fill(c.privateLine[p.block], { name: p.name, with: pct(p.association.withEvent.mean), without: pct(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: nameOf(p.alternativeId) })}
               </p>
             ))}
             <p class="calc-line">{c.associationNote}</p>

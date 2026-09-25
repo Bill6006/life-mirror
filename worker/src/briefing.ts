@@ -249,7 +249,7 @@ export function lineBriefing(i: LineBriefingInput): { ok: true; briefing: LineBr
  * the path module writes (Parts 24 and 27): exactly these keys and nothing else, so tier 2 and
  * anything unnamed can never reach it. `row` is the People row's own path and candidates.
  */
-export const COACH_CORE_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row'] as const
+export const COACH_CORE_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row', 'requiresGoingOut'] as const
 export type CoachCoreKey = (typeof COACH_CORE_KEYS)[number]
 
 /** The decision core, as the coach may read it: the coach block's named keys and nothing else. */

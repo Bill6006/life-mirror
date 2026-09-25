@@ -112,3 +112,20 @@ describe('last night’s workout (Part 33)', () => {
     expect([...days].sort()).toEqual(['2026-09-21', '2026-09-22'])
   })
 })
+
+describe('the weekly view’s People around card (Pass 3)', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+
+  it('knows whether a path is on, so the card says a rep there would mean going out rather than that none is offered', async () => {
+    expect((await weeklyData(TODAY)).pathOn).toBe(false)
+    const { addPathAim, pausePath } = await import('./pathFlow')
+    await addPathAim('social')
+    expect((await weeklyData(TODAY)).pathOn).toBe(true)
+    const aim = (await db.aims.toArray()).find((a) => a.kind === 'path')
+    await pausePath(aim?.id as number, true)
+    expect((await weeklyData(TODAY)).pathOn).toBe(false)
+  })
+})

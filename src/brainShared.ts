@@ -354,28 +354,29 @@ export function shapeFor(sheet: FactSheet, forDay: string): DayShape | null {
   return { day: forDay, weekday: typeof v.weekday === 'string' ? v.weekday : forDay, daycare: Number(v.daycare) === 1, pickup: typeof v.pickup === 'string' ? v.pickup : null, office: Number(v.office) === 1, church: Number(v.church) === 1, studyNight: Number(v.studyNight) === 1 }
 }
 
-/** Whether the day's shape puts other adults around in some block of it: the office, the church morning, a daycare day's drop-off and pickup (Part 20's tier 1, at the scale of a day). */
-export function peopleAroundThatDay(shape: DayShape): boolean {
-  return shape.office || shape.church || shape.daycare
-}
-
-/** Words that put another adult in the same place as him: the day guard's people-around class, and the coach's in-person guard (Part 32). */
+/** Words that put another adult in the same place as him: the coach's in-person guard, when the phone says something keeps in-person reps out (Part 32). */
 export const PEOPLE_AROUND_WORDS = /\b(?:in person|face to face|people around|someone nearby|talk to someone|say hello to someone|strike up a conversation|a stranger|other parents?)\b/i
 
+/**
+ * What a line may speak of only on a day whose shape holds it. Seeing someone in person is not
+ * among them since Pass 3 (the owner's word): working from home, or a day at home, leaves going out
+ * possible, so the shape is context there, never a bar. The places the shape does place people stay
+ * bound to it: the office and colleagues, church, and pickup, daycare and the other parents there.
+ */
 const SCHEDULE_WORDS: readonly { what: string; re: RegExp; holds: (s: DayShape) => boolean }[] = [
-  { what: 'pickup or daycare', re: /\b(?:pickup|pick-up|daycare|drop-?off)\b|\bpick(?:ing|ed)?\s+up\s+(?:your|her|the)\s+(?:child|daughter|kid|little one)\b|\bafter\s+pick(?:ing)?\s*up\b/i, holds: (s) => s.daycare },
+  { what: 'pickup or daycare', re: /\b(?:pickup|pick-up|daycare|drop-?off|other parents?)\b|\bpick(?:ing|ed)?\s+up\s+(?:your|her|the)\s+(?:child|daughter|kid|little one)\b|\bafter\s+pick(?:ing)?\s*up\b/i, holds: (s) => s.daycare },
   { what: 'the office', re: /\b(?:office|at work|colleagues?|co-?workers?)\b/i, holds: (s) => s.office },
   { what: 'church', re: /\b(?:church|congregation)\b/i, holds: (s) => s.church },
   // Study Night is retired as an engine (Workstream 6, D5): no day holds one, so no line may speak of one.
   { what: 'a study night', re: /\bstudy night\b/i, holds: () => false },
-  { what: 'people around', re: PEOPLE_AROUND_WORDS, holds: peopleAroundThatDay },
 ]
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /**
  * The guard every writer inherits (Part 19): a line may not speak of pickup, daycare, the office,
- * church, a study night or people around on a day whose shape does not hold them, nor, when the
+ * church or a study night on a day whose shape does not hold them (seeing someone in person is
+ * context since Pass 3, never barred by the shape), nor, when the
  * sheet does not know that day's shape, speak of them at all; and it may not name a private item
  * while "Show private items by name outside this screen" is off (Rule 11). Lexical, so it catches
  * the words, not every paraphrase; the reason goes back to the writer for its retry.

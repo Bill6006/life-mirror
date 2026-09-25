@@ -4,12 +4,12 @@ import { moveById, pathReps, paths, type Path, type SettingKind } from './catalo
 import type { CheckIn, Offer } from './db'
 import { COACH_BLOCK_KEYS } from './factTypes'
 import { isComparable, repComparisons } from './pathLearning'
-import { CHANCE_CEILING, CHANCE_FLOOR, clipChances, coachBlock, countsByRep, drawChances, eligibility, meetsRule, pathEntries, pathToday, pickRep, refusalsInARow, seeded, settingFor, stageOf, whyThisRep, type PathEntry, type RepAnswer } from './pathStage'
+import { CHANCE_CEILING, CHANCE_FLOOR, clipChances, coachBlock, countsByRep, drawChances, eligibility, GOING_OUT_KINDS, meetsRule, pathEntries, type PathEntry, pathToday, pickRep, refusalsInARow, type RepAnswer, repPrerequisite, seeded, settingFor, stageOf, whyThisRep } from './pathStage'
 
 // The path's stage and its pick (Parts 24 and 25), against fixtures: the stage moves on coverage
 // and on nothing less, a deleted answer recomputes it, two refusals bring the smallest version, a
-// quiet stretch brings the stage below back while the stage stands, and today's shape alone
-// decides whether an in-person rep may be the day's. The pick is a draw whose chances are kept,
+// quiet stretch brings the stage below back while the stage stands, and a rep's own prerequisites
+// decide whether it may be the day's, with today's shape as context (Pass 3). The pick is a draw whose chances are kept,
 // lean only after ten draws in the stage, stay between 0.1 and 0.8 and sum to one; only what
 // chance decided is compared.
 
@@ -76,7 +76,7 @@ describe('the stage, from the record alone', () => {
     expect(stageOf(social, met, '2026-10-12')).toMatchObject({ stage: 2, reentry: false })
     const quiet = stageOf(social, met, '2026-10-13')
     expect(quiet).toMatchObject({ stage: 2, reentry: true, lastDone: '2026-09-15' })
-    const e = eligibility({ path: social, state: quiet, around: true, yesterday: null, doneToday: new Set() })
+    const e = eligibility({ path: social, state: quiet, around: true, block: 'morning', yesterday: null, doneToday: new Set() })
     expect(e.stage).toBe(1)
     expect(e.stageReps.map((m) => m.id).sort()).toEqual(pathReps('social', 1).map((m) => m.id).sort())
   })
@@ -87,29 +87,53 @@ describe('the stage, from the record alone', () => {
   })
 })
 
-describe('what fits now, by today’s shape alone', () => {
+describe('what fits now: each rep’s own prerequisites, with today’s shape as context (Pass 3)', () => {
   const state = stageOf(social, [], '2026-09-20')
+  const ids = (e: { eligible: { id: string }[] }) => e.eligible.map((m) => m.id).sort()
 
-  it('offers no in-person rep in a block nobody is around for, and still lists every rep of the stage for Change', () => {
-    const home = eligibility({ path: social, state, around: false, yesterday: null, doneToday: new Set() })
-    expect(home.eligible).toEqual([])
-    expect(home.nobodyAround).toBe(true)
+  it('keeps every in-person rep in a block the shape puts no one around in: working from home, doing it would mean going out', () => {
+    const home = eligibility({ path: social, state, around: false, block: 'afternoon', yesterday: null, doneToday: new Set() })
+    expect(ids(home)).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
+    expect(home.requiresGoingOut).toBe(true)
     expect(home.stageReps.map((m) => m.id).sort()).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
-    expect(pickRep(social, home.eligible, [], '2026-09-20', 0.5)).toBeNull()
-    const office = eligibility({ path: social, state, around: true, yesterday: null, doneToday: new Set() })
-    expect(office.eligible.map((m) => m.id).sort()).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
+    const office = eligibility({ path: social, state, around: true, block: 'afternoon', yesterday: null, doneToday: new Set() })
+    expect(ids(office)).toEqual(ids(home))
+    expect(office.requiresGoingOut).toBe(false)
   })
 
-  it('offers a warm-up when only reps with nobody around fit, and it moves no stage', () => {
+  it('picks a going-out kind of setting where the shape puts no one around, and rotates as before where it puts people', () => {
+    const home = eligibility({ path: social, state, around: false, block: 'afternoon', yesterday: null, doneToday: new Set() })
+    for (const draw of [0.1, 0.5, 0.9]) {
+      const pick = pickRep(social, home.eligible, [], '2026-09-20', draw, 1, true)
+      expect(GOING_OUT_KINDS).toContain(pick?.setting)
+    }
+    // greet-by-name happens at a recurring place or on an errand: going out, the errand.
+    expect(settingFor(moveById('greet-by-name'), social, [], '2026-09-20', true)).toBe('errand')
+    expect(settingFor(moveById('greet-by-name'), social, [], '2026-09-20', false)).toBe('recurring')
+  })
+
+  it('keeps a rep out only when its own part of the day has passed, or the church morning has no church: never by who else is around', () => {
+    const second = { stage: 2, reached: [], reentry: false, lastDone: null }
+    const at = (block: 'morning' | 'afternoon' | 'evening', churchDay: boolean, around = false) => ids(eligibility({ path: social, state: second, around, block, ctx: { churchDay }, yesterday: null, doneToday: new Set() }))
+    expect(at('morning', true, true)).toContain('church-early')
+    expect(at('morning', false)).not.toContain('church-early')
+    // A church day's afternoon: the church morning has passed.
+    expect(at('afternoon', true, true)).not.toContain('church-early')
+    expect(repPrerequisite(moveById('church-early'), 'afternoon', { churchDay: true })).toBe('past')
+    expect(repPrerequisite(moveById('church-early'), 'morning', { churchDay: false })).toBe('church')
+    // A rep written for the afternoon and evening is the day's rep in the morning too: a plan can put it later today.
+    expect(repPrerequisite(moveById('call-not-text'), 'morning', null)).toBeNull()
+    expect(repPrerequisite(moveById('reappraise-a-conflict'), 'afternoon', null)).toBeNull()
+  })
+
+  it('offers the stage’s warm-ups beside its in-person reps at home, in any block', () => {
     const third = { stage: 3, reached: [], reentry: false, lastDone: null }
-    const home = eligibility({ path: social, state: third, around: false, yesterday: null, doneToday: new Set() })
-    expect(home.eligible.map((m) => m.id).sort()).toEqual(['call-not-text', 'liking-gap-note', 'message-a-friend', 'thank-you-note'])
-    const pick = pickRep(social, home.eligible, [], '2026-09-20', 0.1)
-    expect(pick && moveById(pick.moveId).path?.social?.advances).toBe(false)
+    const all = ['call-not-text', 'liking-gap-note', 'matched-disclosure', 'message-a-friend', 'say-the-thing', 'share-what-made-you-laugh', 'ten-seconds-past', 'thank-you-note']
+    for (const block of ['morning', 'afternoon', 'evening'] as const) expect(ids(eligibility({ path: social, state: third, around: false, block, yesterday: null, doneToday: new Set() })), block).toEqual(all)
   })
 
   it('leaves out yesterday’s rep and a rep done today', () => {
-    const e = eligibility({ path: social, state, around: true, yesterday: 'greet-by-name', doneToday: new Set(['eye-contact-stranger']) })
+    const e = eligibility({ path: social, state, around: true, block: 'morning', yesterday: 'greet-by-name', doneToday: new Set(['eye-contact-stranger']) })
     expect(e.eligible.map((m) => m.id)).toEqual(['attention-outward'])
   })
 })
@@ -180,10 +204,16 @@ describe('the record, the card’s counts and the coach block', () => {
     const ctx = { atOffice: false, churchDay: false, pickupTime: null, withHer: true }
     const view = pathToday({ aim, offers: [], outcomes: [], ctx, day: '2026-09-20', block: 'evening' })
     const block = coachBlock([view], ctx, '2026-09-20', 'evening')
+    // An evening at home: the in-person reps still fit, and the block says they would require going out (Pass 3).
     expect(Object.keys(block ?? {})).toEqual([...COACH_BLOCK_KEYS])
     for (const k of Object.keys(block ?? {})) expect(k).not.toMatch(/tier|carried|context|seen|history|reading/i)
-    expect(block).toMatchObject({ day: '2026-09-20', block: 'evening', ineligibleReason: expect.stringContaining('Nobody is around'), stages: [{ path: 'social', stage: 1, name: 'Presence', reentry: false }], eligible: [{ path: 'social', ids: [] }], dateDay: false })
+    expect(block).toMatchObject({ day: '2026-09-20', block: 'evening', ineligibleReason: null, requiresGoingOut: true, stages: [{ path: 'social', stage: 1, name: 'Presence', reentry: false }], dateDay: false })
+    expect(block?.eligible[0].ids.sort()).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
     expect(block?.perRep.map((r) => r.id).sort()).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
+    // An office morning puts people around: no requiresGoingOut key at all, so the Worker's briefing reads as before.
+    const office = { ...ctx, atOffice: true }
+    const atWork = coachBlock([pathToday({ aim, offers: [], outcomes: [], ctx: office, day: '2026-09-21', block: 'morning' })], office, '2026-09-21', 'morning')
+    expect(Object.keys(atWork ?? {})).toEqual(COACH_BLOCK_KEYS.filter((k) => k !== 'requiresGoingOut'))
     expect(coachBlock([], ctx, '2026-09-20', 'evening')).toBeNull()
   })
 })

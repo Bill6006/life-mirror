@@ -201,6 +201,8 @@ export interface Weekly {
   health: FamilyHealth[]
   /** Part 20's tier 2, use four: contexts the record shows carrying in-person reps that the week's shape never counts as people around. */
   people: { kind: DayKind; block: Block; n: number }[]
+  /** Whether a path is on: then tier 1 marks a rep as one that would mean going out, where with none it keeps the draw's in-person moves out (Pass 3). */
+  pathOn: boolean
   prompt: string
   weekAhead: AheadRow[]
   weekAheadReady: boolean
@@ -213,7 +215,7 @@ export interface Weekly {
 
 /** Everything the weekly view shows, from the records at the moment of asking. */
 export async function weeklyData(today: string): Promise<Weekly> {
-  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings, outside] = await Promise.all([
+  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings, outside, aims] = await Promise.all([
     allCheckIns(),
     db.offers.toArray(),
     db.outcomes.toArray(),
@@ -224,6 +226,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     db.forecastScores.toArray(),
     getSettings(),
     db.outside.toArray(),
+    db.aims.toArray(),
   ])
   const obs = observations(checkins, offers, outcomes)
   const effectCards = cards.filter((c) => c.origin !== 'weight')
@@ -245,6 +248,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     lasts: whatLasts(obs, checkins),
     health,
     people,
+    pathOn: aims.some((a) => a.kind === 'path' && a.archivedAt === null && !a.pausedAt),
     prompt: extensionPromptText({ situations, offers, outcomes, health, stats, cardMoves }, extensionPrompt.template),
     weekAhead,
     weekAheadReady: weekAhead.some((w) => w.expected !== null),

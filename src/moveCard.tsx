@@ -42,7 +42,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
   const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
   const whyNot = reasonText(offer)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
-  const privates = useLive(() => (offer.block === 'evening' ? privateAssociationsToday(offer.day) : Promise.resolve([])), [offer.day, offer.block])
+  // Pass 3: a private item's line on the card of the check-in it is placed in.
+  const privates = useLive(() => privateAssociationsToday(offer.day).then((all) => all.filter((p) => p.block === offer.block)), [offer.day, offer.block])
   const round = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
   // The outcome logged for this offer: from the card at the moment, or at the next check-in.
@@ -144,7 +145,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
           {shownPrivates.map((p) => (
             <div key={p.itemId} class="ev">
               <span class="calc-line" data-testid="private-line">
-                {fill(c.privateInline, { name: p.name, with: round(p.association.withEvent.mean), without: round(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: moveById(p.alternativeId).name })}
+                {fill(c.privateInline[p.block], { name: p.name, with: round(p.association.withEvent.mean), without: round(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: moveById(p.alternativeId).name })}
               </span>
             </div>
           ))}

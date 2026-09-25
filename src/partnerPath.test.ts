@@ -108,8 +108,9 @@ describe('what fits on the Partner path', () => {
   })
 
   it('offers a rep about your conduct on a date on a declared date day, and on no other; the rest of Dating fits any day', () => {
-    const DATE_REPS = ['date-ask-and-listen', 'date-attention', 'date-end-clearly', 'date-share-something-real']
-    const ANY_DAY = ['reappraise-a-conflict', 'talk-ordinary-week', 'talk-working-toward', 'talk-your-people', 'thank-them-specifically']
+    // Pass 3 (R1): greeting them as someone you are glad to see and asking before a first kiss join the date reps; suggesting a playful date fits any day.
+    const DATE_REPS = ['date-ask-and-listen', 'date-ask-before-a-kiss', 'date-attention', 'date-end-clearly', 'date-glad-to-see-you', 'date-share-something-real']
+    const ANY_DAY = ['reappraise-a-conflict', 'suggest-a-playful-date', 'talk-ordinary-week', 'talk-working-toward', 'talk-your-people', 'thank-them-specifically']
     const dated = [mark('date', addDays(DAY, -3))]
     const off = view(partnerAim, [], { marks: dated, ctx: null, block: 'evening' })
     expect(off.state.stage).toBe(4)
@@ -176,8 +177,8 @@ describe('what fits on the Partner path', () => {
   it('does not place the reps you do with a partner by who else is around', () => {
     const building = view(partnerAim, [], { marks: [mark('stage', '2026-09-20', { stage: 6 })], ctx: null, block: 'evening' })
     expect(building.state.stage).toBe(6)
-    expect(building.elig.eligible.map((m) => m.id).sort()).toEqual(['reappraise-a-conflict', 'respond-to-good-news', 'something-new-together', 'thank-them-specifically'])
-    expect(building.elig.nobodyAround).toBe(false)
+    expect(building.elig.eligible.map((m) => m.id).sort()).toEqual(['reappraise-a-conflict', 'respond-to-good-news', 'retell-a-shared-laugh', 'something-new-together', 'thank-them-specifically'])
+    expect(building.elig.requiresGoingOut).toBe(false)
   })
 
   it('offers the online channel’s reps only while it is on, and no more than two in seven days', () => {

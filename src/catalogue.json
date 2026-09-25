@@ -5973,6 +5973,90 @@
       "doneWhen": "Done when you have said it, however they take it."
     },
     {
+      "id": "share-what-made-you-laugh",
+      "name": "Share one thing that made you laugh",
+      "family": "charisma",
+      "what": "In a conversation with someone you would like to know better, tell one short, true thing from your week that made you laugh: about you or the moment, never at anyone’s expense.",
+      "source": {
+        "who": "Treger, Sprecher and Erber",
+        "what": "In two experiments with strangers, humour in a first conversation went with liking and closeness for both sexes",
+        "year": 2013,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "be funny",
+        "be more playful"
+      ],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection",
+          "pleasure"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.1,
+        "note": "Treger 2013: humour went with liking in first meetings; the cause runs both ways; a tenth of a step"
+      },
+      "status": "path",
+      "path": {
+        "social": {
+          "stage": 3,
+          "advances": true
+        },
+        "partner": {
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring",
+        "group"
+      ],
+      "cue": "Something that happened to you, told in a few sentences.",
+      "crutch": "Keeping to safe facts so nothing can fall flat.",
+      "doneWhen": "Done when you have told it, however it landed.",
+      "guardrail": "Laugh at the moment or at yourself, never at them or anyone else."
+    },
+    {
       "id": "return-to-last-time",
       "name": "Return to something they said last time",
       "family": "charisma",
@@ -6802,11 +6886,11 @@
       "id": "say-interest-plainly",
       "name": "Say your interest plainly",
       "family": "partner",
-      "what": "To someone you have come to like, say it in one plain sentence: you have enjoyed talking and would like to do it again.",
+      "what": "To someone you have come to like, say it in one plain sentence that leaves no doubt it is romantic: you like them, and you would like to take them on a date.",
       "source": {
-        "who": "Vorauer, Cameron, Holmes and Pearce",
-        "what": "People who fear rejection believe their overtures show more interest than they do; a plain sentence closes that gap",
-        "year": 2003,
+        "who": "Birnbaum, Kanat-Maymon, Mizrahi and colleagues",
+        "what": "A partner who said their romantic interest plainly was more appealing than one who stayed vague, because it ended the uncertainty",
+        "year": 2018,
         "strength": "moderate"
       },
       "minutes": 1,
@@ -6868,16 +6952,16 @@
         "oneToOne",
         "recurring"
       ],
-      "cue": "One plain sentence, then let them answer.",
-      "crutch": "Hinting and waiting for them to guess.",
+      "cue": "One plain sentence that says you like them and names a date, then let them answer.",
+      "crutch": "Wording it so it could pass as friendly.",
       "doneWhen": "Done when you have said it, whatever the answer.",
-      "guardrail": "Say it once. Anything other than a yes is final: thank them and let it be."
+      "guardrail": "Say it once. To a friend, add that the friendship stands whatever they answer. Anything other than a yes is final: thank them and let it be."
     },
     {
       "id": "partner-invite",
       "name": "Make one specific, short, public invitation",
       "family": "partner",
-      "what": "A coffee or a walk, somewhere public, an hour at most, with a day named. One ask; take the answer graciously, whatever it is.",
+      "what": "A coffee, a walk or something light to do together, somewhere public, an hour at most, with a day named and said as a date. One ask; take the answer graciously, whatever it is.",
       "source": {
         "who": "Joel, Teper and MacDonald",
         "what": "People are less willing to turn someone down in person than they predict, out of concern for the asker: a clear, easy-to-decline ask is the kind one",
@@ -6943,10 +7027,88 @@
         "oneToOne",
         "recurring"
       ],
-      "cue": "A day, an hour, a public place.",
+      "cue": "A day, an hour, a public place, and that it is a date.",
       "crutch": "We should hang out sometime.",
       "doneWhen": "Done when you have asked, whatever the answer.",
       "guardrail": "One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered."
+    },
+    {
+      "id": "say-what-you-like-about-them",
+      "name": "Tell them one specific thing you like about them",
+      "family": "partner",
+      "what": "To someone you have come to like, name one thing you like about them: something they said, did or care about, and what it showed you.",
+      "source": {
+        "who": "Zhao and Epley",
+        "what": "In nine experiments, people underestimated how good a genuine compliment made the other person feel and overestimated how awkward it would be",
+        "year": 2021,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "give more compliments",
+        "show interest"
+      ],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0.2,
+        "note": "Zhao and Epley 2021: compliments land better than expected; a fifth of a step on confidence"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring"
+      ],
+      "cue": "The moment they said or did it.",
+      "crutch": "A general compliment that could fit anyone.",
+      "doneWhen": "Done when you have said it, however they take it.",
+      "guardrail": "Once, and about who they are rather than how they look."
     },
     {
       "id": "online-honest-profile",
@@ -7475,6 +7637,217 @@
       "crutch": "Leaving it vague so nobody has to answer.",
       "doneWhen": "Done when you have said it, whatever the answer.",
       "guardrail": "Their answer is final. A second ask after a no is never offered."
+    },
+    {
+      "id": "date-glad-to-see-you",
+      "name": "Greet them as someone you are glad to see",
+      "family": "partner",
+      "what": "On a date day, when you meet: face them, say their name, and say plainly that you are glad to see them. The warmth is in the words and your attention, not a practised smile.",
+      "source": {
+        "who": "Gunnery and Ruben",
+        "what": "A meta-analysis found genuine smiles judged more positively than posed ones, most of all in video and when the smile came naturally",
+        "year": 2016,
+        "strength": "weak"
+      },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "be warm",
+        "smile more"
+      ],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Gunnery and Ruben 2016: genuine warmth is read as genuine; thin for dating, a tenth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false,
+          "onDate": true
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "Their face as you meet.",
+      "crutch": "A quick hello and straight into plans or the menu.",
+      "doneWhen": "Done when you did it, however the date went."
+    },
+    {
+      "id": "date-ask-before-a-kiss",
+      "name": "Ask before a first kiss",
+      "family": "partner",
+      "what": "If you would like to kiss them, ask in plain words first, and take their answer as it is. A clear yes is the only yes.",
+      "source": {
+        "who": "Jozkowski, Peterson, Sanders, Dennis and Reece",
+        "what": "Men gave and read consent more through nonverbal cues, women more through words, which is where misreadings begin",
+        "year": 2014,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "high",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "read the moment",
+        "go for the kiss"
+      ],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "high"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0.1,
+        "note": "Jozkowski 2014: words close the gap nonverbal cues leave; a tenth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false,
+          "onDate": true
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "Their answer in words, not the moment.",
+      "crutch": "Leaning in to see what happens.",
+      "doneWhen": "Done when you have asked, whatever the answer.",
+      "guardrail": "Anything other than a clear yes is final: after a no or a not yet, leave the next move to them."
+    },
+    {
+      "id": "suggest-a-playful-date",
+      "name": "Suggest a date with something to do together",
+      "family": "partner",
+      "what": "For a next date, suggest something you can do side by side and laugh about: a game, a class, a market, somewhere new to you both. Short and public while you are still getting to know each other.",
+      "source": {
+        "who": "Fraley and Aron",
+        "what": "Strangers given a shared humorous experience felt closer afterwards than those given the same tasks without it",
+        "year": 2004,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "plan a fun date"
+      ],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection",
+          "pleasure"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Fraley and Aron 2004: shared humour raised closeness between strangers; a tenth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 4,
+          "advances": false
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "remote"
+      ],
+      "cue": "Something neither of you has tried, light enough to laugh at.",
+      "crutch": "Another evening of sitting across a table asking questions.",
+      "doneWhen": "Done when you have suggested it, whatever the answer.",
+      "guardrail": "Their answer is final; if they would rather do something else, go with theirs."
     },
     {
       "id": "talk-ordinary-week",
@@ -8342,6 +8715,76 @@
       "doneWhen": "Done when you did it together."
     },
     {
+      "id": "retell-a-shared-laugh",
+      "name": "Bring back a moment you laughed about together",
+      "family": "partner",
+      "what": "Retell a moment the two of you laughed about, from the start, and let them add their side of it.",
+      "source": {
+        "who": "Hall",
+        "what": "A meta-analysis of 43 samples found shared humour went with satisfaction most of all, and most kinds of negative humour with less",
+        "year": 2017,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "mood",
+          "direction": "up",
+          "window": "evening"
+        },
+        {
+          "reading": "loneliness",
+          "direction": "down",
+          "window": "evening"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [
+        "keep things fun"
+      ],
+      "countsToward": [],
+      "when": [
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short",
+          "lowEffort"
+        ],
+        "reward": [
+          "connection",
+          "pleasure"
+        ],
+        "intensity": "low"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0.1,
+        "note": "Hall 2017: shared humour and satisfaction go together; correlational, a tenth of a step"
+      },
+      "status": "path",
+      "path": {
+        "partner": {
+          "stage": 6,
+          "advances": false,
+          "through": 7
+        }
+      },
+      "settings": [
+        "oneToOne"
+      ],
+      "cue": "A moment you both remember.",
+      "crutch": "Talking only about what needs doing.",
+      "doneWhen": "Done when you did it."
+    },
+    {
       "id": "reappraise-a-conflict",
       "name": "Reappraise a disagreement",
       "family": "partner",
@@ -8611,7 +9054,7 @@
     {
       "id": "needs",
       "name": "Needs",
-      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days. Another person, when the move needs an adult there in person, is filtered by today’s shape: an office day’s morning and afternoon, the church morning, a daycare day’s drop-off and the block of the pickup, as today’s chips set them; a call or a message is offered any time, and her moves keep their own gates. In-person reps you did elsewhere are shown as counts, never as a reason to offer one. Kit, outdoors and a free hour are stated on the card so you can judge them."
+      "what": "Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days. Another person, when the move needs an adult there in person, is filtered by today’s shape in the day’s draw: an office day’s morning and afternoon, the church morning, a daycare day’s drop-off and the block of the pickup, as today’s chips set them. A path’s reps are not: where the shape puts no one around, an in-person rep still fits, and doing it would mean going out, at lunch, on an errand or to something later. A call or a message is offered any time, and her moves keep their own gates. In-person reps you did elsewhere are shown as counts, never as a reason to offer one. Kit, outdoors and a free hour are stated on the card so you can judge them."
     },
     {
       "id": "effectWindow",
@@ -8887,7 +9330,7 @@
         "errand": "A shop, a queue, a counter: variety, never the home.",
         "group": "Three or more people talking together.",
         "oneToOne": "Just the two of you.",
-        "remote": "A call or a message: fills a day with nobody around, and moves no stage.",
+        "remote": "A call or a message: it keeps a day in touch, and moves no stage.",
         "solo": "On your own: a warm-up that moves no stage."
       },
       "counted": "Reps done, by rep and by setting, with their dates. A rep is done when you did your part, however the other person answered.",
@@ -8942,7 +9385,9 @@
         "charisma-training",
         "micro-randomised-decisions",
         "power-posing-disputed",
-        "positive-self-statements-disputed"
+        "positive-self-statements-disputed",
+        "humour-and-liking",
+        "humour-kind-not-cutting"
       ]
     },
     {
@@ -9046,7 +9491,7 @@
         "errand": "A shop, a queue, a counter: variety, never the home.",
         "group": "Three or more people talking together.",
         "oneToOne": "Just the two of you.",
-        "remote": "A call or a message: fills a day with nobody around, and moves no stage.",
+        "remote": "A call or a message: it keeps a day in touch, and moves no stage.",
         "solo": "On your own: a warm-up that moves no stage."
       },
       "counted": "Reps done, by rep and by setting, with their dates, and the stages and milestones you declare. A rep is done when you did your part, whatever the answer.",
@@ -9316,7 +9761,18 @@
         "child-introduction",
         "kind-reading-limits",
         "money-together",
-        "fairness-and-appreciation"
+        "fairness-and-appreciation",
+        "humour-and-liking",
+        "humour-kind-not-cutting",
+        "stated-interest",
+        "responsiveness-and-desire",
+        "compliments-underestimated",
+        "warmth-follows-attention",
+        "overperception-projection",
+        "consent-clarity",
+        "token-resistance-disputed",
+        "hard-to-get-disputed",
+        "touch-in-courtship-disputed"
       ]
     }
   ]

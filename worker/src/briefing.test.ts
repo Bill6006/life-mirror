@@ -59,7 +59,7 @@ describe('the permission check', () => {
   })
 
   it('states the coach’s decision core as an allowlist with no tier-2 key in it', () => {
-    expect(COACH_CORE_KEYS).toEqual(['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row'])
+    expect(COACH_CORE_KEYS).toEqual(['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row', 'requiresGoingOut'])
     // The phone writes the coach block with exactly these keys (Part 24): the two lists are one contract.
     expect([...COACH_CORE_KEYS]).toEqual([...COACH_BLOCK_KEYS])
     for (const k of COACH_CORE_KEYS) expect(k).not.toMatch(/tier|carried|context|seen|history/i)

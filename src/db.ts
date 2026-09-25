@@ -7,7 +7,7 @@ import type { FactSheet } from './facts'
 import type { PickRule } from './pathStage'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
-import { blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
+import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
@@ -54,6 +54,8 @@ export interface Extras {
   note?: string
   /** Private items logged, keyed by item id. Names live only in privateItems. */
   private?: Record<string, true>
+  /** Private items on screen at this check-in, keyed by item id (Pass 3): an item never shown enters no comparison (Rule 2). */
+  privateShown?: Record<string, true>
 }
 
 /** Each day's context, written from the week's shape when the day begins; changing today never rewrites the past. */
@@ -156,6 +158,8 @@ export interface PrivateItem {
   name: string
   createdAt: string
   archived: 0 | 1
+  /** The check-ins it is asked at (Pass 3); absent means the evening, where every item began. */
+  blocks?: Block[]
 }
 
 export type OfferKind = 'block' | 'pickup' | 'study' | 'step' | 'unblock'
@@ -1078,6 +1082,21 @@ export function setNecessity(slot: Slot, asked: readonly ReadingId[], key: Neces
   })
 }
 
+/** Marks private items as on screen at a check-in, once each (Pass 3): what was shown and left is known, and silence stays silence (Rule 2). */
+export function markPrivateShown(slot: Slot, asked: readonly ReadingId[], itemIds: readonly number[]): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const rec = await getCheckIn(slot.day, slot.block)
+    const shown = rec?.extras?.privateShown ?? {}
+    const fresh = itemIds.filter((id) => !shown[String(id)])
+    if (!fresh.length) return
+    const now = new Date().toISOString()
+    const r = rec ?? newCheckIn(slot, asked, now)
+    r.extras = { ...(r.extras ?? {}), privateShown: { ...shown, ...Object.fromEntries(fresh.map((id) => [String(id), true as const])) } }
+    r.updatedAt = now
+    r.id = await db.checkins.put(r)
+  })
+}
+
 export function setPrivateLogged(slot: Slot, asked: readonly ReadingId[], itemId: number, on: boolean): Promise<void> {
   return db.transaction('rw', db.checkins, async () => {
     const now = new Date().toISOString()
@@ -1208,6 +1227,24 @@ export async function addPrivateItem(name: string): Promise<void> {
 
 export async function archivePrivateItem(id: number): Promise<void> {
   await db.privateItems.update(id, { archived: 1 })
+}
+
+/** The check-ins an item is asked at, in the day's order: the evening when none was chosen (Pass 3). */
+export function blocksOf(item: Pick<PrivateItem, 'blocks'>): Block[] {
+  const chosen = BLOCKS.filter((b) => item.blocks?.includes(b))
+  return chosen.length ? chosen : ['evening']
+}
+
+export function placedIn(item: Pick<PrivateItem, 'blocks'>, block: Block): boolean {
+  return blocksOf(item).includes(block)
+}
+
+/** Places an item at one or more check-ins; an empty or unknown choice changes nothing (Pass 3). */
+export async function setPrivateBlocks(id: number, blocks: readonly Block[]): Promise<boolean> {
+  const chosen = BLOCKS.filter((b) => blocks.includes(b))
+  if (!chosen.length || blocks.some((b) => !BLOCKS.includes(b))) return false
+  await db.privateItems.update(id, { blocks: chosen })
+  return true
 }
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */

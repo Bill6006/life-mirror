@@ -9,6 +9,9 @@ import { expect, test, type Page } from '@playwright/test'
 // 48-by-48 target, drawn or extended, its area its own.
 // Then: switching a theme changes the look alone, at once, with nothing lost, and the choice holds.
 
+/** The Private screen's words with nothing named yet. */
+const copyNothingNamed = 'Nothing named yet.'
+
 const THEMES = ['nocturne', 'instrument', 'signal'] as const
 type Theme = (typeof THEMES)[number]
 const GROUNDS: Record<Theme, string> = { nocturne: '#0d111d', instrument: '#14171f', signal: '#0a0c0f' }
@@ -510,6 +513,25 @@ const MORE: typeof STATES = [
     open: async (p) => {
       await p.getByTestId('settings-moves').click()
       await p.getByTestId('settings-private').click()
+    },
+  },
+  // Pass 3: an item named and placed at the morning and the evening, its chips measured; run again at every width, it adds nothing twice.
+  {
+    name: 'Private items, one placed',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-moves').click()
+      await p.getByTestId('settings-private').click()
+      const row = p.getByTestId('private-item-row')
+      // The list reads its items first: count only once it shows a row or says nothing is named.
+      await expect(row.or(p.getByText(copyNothingNamed)).first()).toBeVisible()
+      if (!(await row.count())) {
+        await p.getByPlaceholder('Name it').fill('Item one')
+        await p.getByRole('button', { name: 'Add', exact: true }).click()
+        await expect(row).toHaveCount(1)
+      }
+      if ((await row.getByTestId('private-place-morning').getAttribute('aria-pressed')) !== 'true') await row.getByTestId('private-place-morning').click()
+      await expect(row.getByTestId('private-place-morning')).toHaveAttribute('aria-pressed', 'true')
     },
   },
   { name: 'Settings, your direction', tab: 'Settings', open: async (p) => p.getByTestId('settings-direction').click() },

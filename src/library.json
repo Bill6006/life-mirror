@@ -4143,5 +4143,371 @@
     "app": "A hard session’s day is set against the next morning’s energy, mood, focus and stress like for like: an association in your record, never the session’s effect.",
     "reviewed": "2026-09-24",
     "status": "admitted"
+  },
+  {
+    "id": "humour-and-liking",
+    "claim": "Humour in a first meeting goes with liking and closeness for both sexes, and pairs who laugh at the same moment tend to be the ones both interested. Interest also makes people joke more.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "humour went with liking and closeness in two experiments with strangers; a shared humorous experience raised closeness among 96 strangers; among 102 pairs, laughing at the same moment went with both partners’ interest",
+    "population": "students and strangers meeting in laboratory conversations",
+    "sources": [
+      {
+        "cite": "Treger, Sprecher & Erber (2013). Laughing and liking: Exploring the interpersonal effects of humor use in initial social interactions. European Journal of Social Psychology, 43(6), 532–543.",
+        "doi": "10.1002/ejsp.1962"
+      },
+      {
+        "cite": "Fraley & Aron (2004). The effect of a shared humorous experience on closeness in initial encounters. Personal Relationships, 11(1), 61–78.",
+        "doi": "10.1111/j.1475-6811.2004.00071.x"
+      },
+      {
+        "cite": "Li et al. (2009). An Evolutionary Perspective on Humor: Sexual Selection or Interest Indication? Personality and Social Psychology Bulletin, 35(7), 923–936.",
+        "doi": "10.1177/0146167209334786"
+      },
+      {
+        "cite": "Hall (2015). Sexual Selection and Humor in Courtship. Evolutionary Psychology, 13(3), 1474704915598918.",
+        "doi": "10.1177/1474704915598918"
+      }
+    ],
+    "caveats": "Small student samples, and the cause runs both ways.",
+    "app": "Behind two reps: sharing one thing that made you laugh, and suggesting a date with something to do together. Laughter is never read or counted.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "humour-kind-not-cutting",
+    "claim": "Kind, shared humour goes with happier relationships and cutting humour with less happy ones, and people prefer an affiliative humour style in a long-term partner.",
+    "domain": "social",
+    "tags": [
+      "relationship",
+      "conversation"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "across 43 samples (15,177 people), positive humour went with satisfaction and shared humour most of all; most negative kinds went against it",
+    "population": "couples, and adults rating vignettes of partners",
+    "sources": [
+      {
+        "cite": "Hall (2017). Humor in romantic relationships: A meta‐analysis. Personal Relationships, 24(2), 306–322.",
+        "doi": "10.1111/pere.12183"
+      },
+      {
+        "cite": "Kurtz & Algoe (2015). Putting laughter in context: Shared laughter as behavioral indicator of relationship well‐being. Personal Relationships, 22(4), 573–590.",
+        "doi": "10.1111/pere.12095"
+      },
+      {
+        "cite": "DiDonato, Bedminster & Machel (2013). My funny valentine: How humor styles affect romantic interest. Personal Relationships, 20(2), 374–390.",
+        "doi": "10.1111/j.1475-6811.2012.01410.x"
+      },
+      {
+        "cite": "Keltner et al. (2001). Just teasing: A conceptual analysis and empirical review. Psychological Bulletin, 127(2), 229–248.",
+        "doi": "10.1037/0033-2909.127.2.229"
+      }
+    ],
+    "caveats": "The findings in couples are correlational.",
+    "app": "Behind the humour guardrail, at the moment or at yourself and never at anyone’s expense, and the rep that brings back a shared laugh.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "stated-interest",
+    "claim": "A plain statement of romantic interest made someone more appealing than vague signals. Expressed liking reads as good intentions, and unclear endings hurt both sides.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "in six studies with online confederates, a plain statement of interest raised appeal by ending the uncertainty; expressed attraction was read as good intentions, and liking came back",
+    "population": "adults in online encounters with confederates; recalled accounts of unrequited love",
+    "sources": [
+      {
+        "cite": "Birnbaum et al. (2018). Are you into me? Uncertainty and sexual desire in online encounters and established relationships. Computers in Human Behavior, 85, 372–384.",
+        "doi": "10.1016/j.chb.2018.04.023"
+      },
+      {
+        "cite": "Montoya & Insko (2008). Toward a more complete understanding of the reciprocity of liking effect. European Journal of Social Psychology, 38(3), 477–498.",
+        "doi": "10.1002/ejsp.431"
+      },
+      {
+        "cite": "Baumeister, Wotman & Stillwell (1993). Unrequited love: On heartbreak, anger, guilt, scriptlessness, and humiliation. Journal of Personality and Social Psychology, 64(3), 377–394.",
+        "doi": "10.1037/0022-3514.64.3.377"
+      },
+      {
+        "cite": "Clark, Shaver & Abrahams (1999). Strategic Behaviors in Romantic Relationship Initiation. Personality and Social Psychology Bulletin, 25(6), 709–722.",
+        "doi": "10.1177/0146167299025006006"
+      }
+    ],
+    "caveats": "The partners were online confederates, and the love stories were recalled.",
+    "app": "Behind saying your interest plainly and the specific, public invitation said as a date.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "responsiveness-and-desire",
+    "claim": "Feeling responded to raises sexual interest in the person, both with strangers and in couples, where it works through feeling special.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "a responsive stranger raised sexual interest, mainly among less avoidant people, in three studies; in couples, responsiveness raised desire through feeling special, more so in women",
+    "population": "students with laboratory confederates, and couples",
+    "sources": [
+      {
+        "cite": "Birnbaum & Reis (2012). When Does Responsiveness Pique Sexual Interest? Attachment and Sexual Desire in Initial Acquaintanceships. Personality and Social Psychology Bulletin, 38(7), 946–958.",
+        "doi": "10.1177/0146167212441028"
+      },
+      {
+        "cite": "Birnbaum et al. (2016). Intimately connected: The importance of partner responsiveness for experiencing sexual desire. Journal of Personality and Social Psychology, 111(4), 530–546.",
+        "doi": "10.1037/pspi0000069"
+      },
+      {
+        "cite": "McFarland, Jurafsky & Rawlings (2013). Making the Connection: Social Bonding in Courtship Situations. American Journal of Sociology, 118(6), 1596–1649.",
+        "doi": "10.1086/670240"
+      }
+    ],
+    "caveats": "The partners were laboratory confederates, the studies measured sexual interest, and the effect varies with avoidance and sex.",
+    "app": "Behind telling them one specific thing you like about them.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "compliments-underestimated",
+    "claim": "Genuine compliments and thanks land better than people expect, and praising the other person’s qualities is what makes them feel understood and loved.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "kindness",
+      "gratitude"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "in nine experiments, people underestimated how good a genuine compliment felt to receive and overestimated how awkward it would be; the same held for thanks; among 370 partners, praise of qualities predicted feeling understood and loved",
+    "population": "adults complimenting strangers and friends, and partners in couples",
+    "sources": [
+      {
+        "cite": "Zhao & Epley (2021). Insufficiently complimentary?: Underestimating the positive impact of compliments creates a barrier to expressing them. Journal of Personality and Social Psychology, 121(2), 239–256.",
+        "doi": "10.1037/pspa0000277"
+      },
+      {
+        "cite": "Kumar & Epley (2018). Undervaluing Gratitude: Expressers Misunderstand the Consequences of Showing Appreciation. Psychological Science, 29(9), 1423–1435.",
+        "doi": "10.1177/0956797618772506"
+      },
+      {
+        "cite": "Algoe, Kurtz & Hilaire (2016). Putting the “You” in “Thank You”. Social Psychological and Personality Science, 7(7), 658–666.",
+        "doi": "10.1177/1948550616651681"
+      }
+    ],
+    "caveats": "The recipients were mostly strangers and friends.",
+    "app": "Behind telling them one specific thing you like about them, and greeting them as someone you are glad to see.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "warmth-follows-attention",
+    "claim": "Nonverbal warmth follows engagement: genuine smiles are judged better than posed ones, eye contact comes as attention is shared, and mimicry backfires when it is noticed.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "conversation"
+    ],
+    "grade": "C",
+    "replication": "mixed",
+    "effect": "a meta-analysis found genuine smiles judged more positively than posed ones; eye contact rose as shared attention peaked; strong or noticed mimicry lowered liking and trust",
+    "population": "observers of photos and videos, and partners in conversation",
+    "sources": [
+      {
+        "cite": "Gunnery & Ruben (2016). Perceptions of Duchenne and non-Duchenne smiles: A meta-analysis. Cognition and Emotion, 30(3), 501–515.",
+        "doi": "10.1080/02699931.2015.1018817"
+      },
+      {
+        "cite": "Wohltjen & Wheatley (2021). Eye contact marks the rise and fall of shared attention in conversation. Proceedings of the National Academy of Sciences, 118(37), e2106645118.",
+        "doi": "10.1073/pnas.2106645118"
+      },
+      {
+        "cite": "Salazar Kämpf et al. (2018). Disentangling the Sources of Mimicry: Social Relations Analyses of the Link Between Mimicry and Liking. Psychological Science, 29(1), 131–138.",
+        "doi": "10.1177/0956797617727121"
+      },
+      {
+        "cite": "Wessler et al. (2024). The Too-Much-Mimicry Effect: Strong (vs. Subtle) Mimicry Impairs Liking and Trust in Distributive Negotiations. Journal of Nonverbal Behavior, 48(2), 253–276.",
+        "doi": "10.1007/s10919-023-00446-5"
+      }
+    ],
+    "caveats": "Little of this comes from dating.",
+    "app": "The rep that greets them as someone you are glad to see asks for attention and words, never a practised expression; no rep teaches posture, held eye contact or mirroring.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "overperception-projection",
+    "claim": "Reading interest is unreliable: men tend to see more sexual interest in friendliness than is there, largely by projecting their own, women’s interest is read barely above chance, and flirting is returned more often than choices are.",
+    "domain": "social",
+    "tags": [
+      "dating"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "effect": "among 1,226 speed-daters, projecting one’s own interest explained the sex difference in misperception; observers judged women’s interest just above chance",
+    "population": "students and speed-daters",
+    "sources": [
+      {
+        "cite": "Farris et al. (2008). Perceptual Mechanisms That Characterize Gender Differences in Decoding Women's Sexual Intent. Psychological Science, 19(4), 348–354.",
+        "doi": "10.1111/j.1467-9280.2008.02092.x"
+      },
+      {
+        "cite": "Perilloux, Easton & Buss (2012). The Misperception of Sexual Interest. Psychological Science, 23(2), 146–151.",
+        "doi": "10.1177/0956797611424162"
+      },
+      {
+        "cite": "Lee et al. (2020). Sex Differences in Misperceptions of Sexual Interest Can Be Explained by Sociosexual Orientation and Men Projecting Their Own Interest Onto Women. Psychological Science, 31(2), 184–192.",
+        "doi": "10.1177/0956797619900315"
+      },
+      {
+        "cite": "Place et al. (2009). The Ability to Judge the Romantic Interest of Others. Psychological Science, 20(1), 22–26.",
+        "doi": "10.1111/j.1467-9280.2008.02248.x"
+      },
+      {
+        "cite": "Back et al. (2011). Why Mate Choices are not as Reciprocal as we Assume: The Role of Personality, Flirting and Physical Attractiveness. European Journal of Personality, 25(2), 120–132.",
+        "doi": "10.1002/per.806"
+      },
+      {
+        "cite": "Bendixen (2014). Evidence of Systematic Bias in Sexual Over- and Underperception of Naturally Occurring Events: A Direct Replication of in a more Gender-Equal Culture. Evolutionary Psychology, 12(5), 1004–1021.",
+        "doi": "10.1177/147470491401200510"
+      }
+    ],
+    "caveats": "These are averages, never a verdict on anyone.",
+    "app": "No rep reads signals: interest is said, never read.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "consent-clarity",
+    "claim": "Consent is often given and read without words: men rely more on cues and read ambiguity as consent, and checking fades as a relationship goes on.",
+    "domain": "social",
+    "tags": [
+      "dating",
+      "relationship"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "effect": "among 185 students, men gave and read consent more through nonverbal cues and women more through words; consent cues fell as a couple’s sexual history grew",
+    "population": "college students",
+    "sources": [
+      {
+        "cite": "Jozkowski et al. (2014). Gender Differences in Heterosexual College Students' Conceptualizations and Indicators of Sexual Consent: Implications for Contemporary Sexual Assault Prevention Education. The Journal of Sex Research, 51(8), 904–916.",
+        "doi": "10.1080/00224499.2013.792326"
+      },
+      {
+        "cite": "Humphreys (2007). Perceptions of Sexual Consent: The Impact of Relationship History and Gender. Journal of Sex Research, 44(4), 307–315.",
+        "doi": "10.1080/00224490701586706"
+      },
+      {
+        "cite": "Willis & Jozkowski (2019). Sexual Precedent’s Effect on Sexual Consent Communication. Archives of Sexual Behavior, 48(6), 1723–1734.",
+        "doi": "10.1007/s10508-018-1348-7"
+      },
+      {
+        "cite": "Muehlenhard et al. (2016). The Complexities of Sexual Consent Among College Students: A Conceptual and Empirical Review. The Journal of Sex Research, 53(4-5), 457–487.",
+        "doi": "10.1080/00224499.2016.1146651"
+      }
+    ],
+    "caveats": "Students only, and no trial exists.",
+    "app": "Behind asking before a first kiss, in plain words: anything other than a clear yes is final.",
+    "reviewed": "2026-09-25",
+    "status": "admitted"
+  },
+  {
+    "id": "token-resistance-disputed",
+    "claim": "The belief that a no to sex often means yes is disputed: people’s own accounts mostly did not fit it, and men who hold it take refusals less seriously.",
+    "domain": "social",
+    "tags": [
+      "dating"
+    ],
+    "grade": "D",
+    "replication": "failed",
+    "effect": "in their own accounts most who said no meant no; holding the belief went with taking refusals less seriously",
+    "population": "college students",
+    "sources": [
+      {
+        "cite": "Muehlenhard & Rodgers (1998). Token Resistance to Sex. Psychology of Women Quarterly, 22(3), 443–463.",
+        "doi": "10.1111/j.1471-6402.1998.tb00167.x"
+      },
+      {
+        "cite": "Osman (2003). Predicting Men's Rape Perceptions Based on the Belief That “No” Really Means “Yes”. Journal of Applied Social Psychology, 33(4), 683–692.",
+        "doi": "10.1111/j.1559-1816.2003.tb01919.x"
+      }
+    ],
+    "caveats": "The original claim and its test both come from surveys.",
+    "app": "Excluded: anything other than a clear yes is final.",
+    "reviewed": "2026-09-25",
+    "status": "disputed"
+  },
+  {
+    "id": "hard-to-get-disputed",
+    "claim": "The advice to seem uninterested or keep someone guessing is disputed: the results conflict, playing hard to get lowered liking even where it raised wanting, and stated interest raised appeal.",
+    "domain": "social",
+    "tags": [
+      "dating"
+    ],
+    "grade": "D",
+    "replication": "mixed",
+    "effect": "a review of 18 studies found the effect conditional; playing hard to get raised wanting but lowered liking, and only in committed pursuers",
+    "population": "students and adults in profile and interaction studies",
+    "sources": [
+      {
+        "cite": "Whitchurch, Wilson & Gilbert (2011). “He Loves Me, He Loves Me Not . . . ”. Psychological Science, 22(2), 172–175.",
+        "doi": "10.1177/0956797610393745"
+      },
+      {
+        "cite": "Dai, Dong & Jia (2014). When does playing hard to get increase romantic attraction? Journal of Experimental Psychology: General, 143(2), 521–526.",
+        "doi": "10.1037/a0032989"
+      },
+      {
+        "cite": "Birnbaum et al. (2018). Are you into me? Uncertainty and sexual desire in online encounters and established relationships. Computers in Human Behavior, 85, 372–384.",
+        "doi": "10.1016/j.chb.2018.04.023"
+      },
+      {
+        "cite": "Birnbaum, Zholtack & Reis (2020). No pain, no gain: Perceived partner mate value mediates the desire-inducing effect of being hard to get during online and face-to-face encounters. Journal of Social and Personal Relationships, 37(8-9), 2510–2528.",
+        "doi": "10.1177/0265407520927469"
+      },
+      {
+        "cite": "Hazel, Barker & Pronin (2023). Playing Hard-to-Get: A New Look at an Old Strategy. The Journal of Sex Research, 60(3), 368–383.",
+        "doi": "10.1080/00224499.2022.2070117"
+      }
+    ],
+    "caveats": "Mixed designs and small samples.",
+    "app": "Excluded: interest is said plainly, never performed as unavailability.",
+    "reviewed": "2026-09-25",
+    "status": "disputed"
+  },
+  {
+    "id": "touch-in-courtship-disputed",
+    "claim": "The claim that a light touch makes someone more receptive is disputed, because its best-known field study was retracted in 2024.",
+    "domain": "social",
+    "tags": [
+      "dating"
+    ],
+    "grade": "D",
+    "replication": "untested",
+    "effect": "the key field study was retracted; no replacement evidence was found",
+    "population": "passers-by in a field experiment",
+    "sources": [
+      {
+        "cite": "Guéguen (2007). Courtship compliance: The effect of touch on women's behavior. Social Influence, 2(2), 81–97. Retracted in 2024.",
+        "doi": "10.1080/15534510701316177"
+      }
+    ],
+    "caveats": "Retracted.",
+    "app": "Excluded: no rep involves touch.",
+    "reviewed": "2026-09-25",
+    "status": "disputed"
   }
 ]

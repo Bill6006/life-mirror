@@ -12,8 +12,8 @@ import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { setPathPick } from './pathFlow'
-import { countsByRep, opensNow, pathById, pathName, pathToday, stageWords, whyThisRep, type PathToday } from './pathStage'
-import { carriedByContext, carriedLine, dayKindOf, inPerson, orderByEvidence } from './people'
+import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, stageWords, whyThisRep, type PathToday } from './pathStage'
+import { carriedByContext, carriedLine, dayKindOf, orderByEvidence } from './people'
 
 // A path on the screen (Part 24). On Now, one People row: the rep, its one line, its minutes and
 // the stage in words, Resume, Done, Change and the cue chips every commitment has. On Aims, the
@@ -27,7 +27,7 @@ export interface PathShared {
   block: Block
   open: boolean
   openOffer: Offer | null
-  ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null
+  ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil' | 'atOffice' | 'weekday'> | null
   plan: Intention | null
   /** Tier 2's one counted line for this context, shown only under "no people rep fits". */
   carried: string | null
@@ -105,6 +105,22 @@ function nextStage(path: Path, stage: number): string | null {
   return path.stages.find((s) => s.n === stage + 1)?.name ?? null
 }
 
+/**
+ * Pass 3: what an in-person rep would ask where today's shape puts no one around: going out, said
+ * once under the rep, as a requirement of the rep and never as where you are. A weekday's daytime at
+ * home says working from home, as the owner put it.
+ */
+function wouldMeanGoingOutWords(ctx: PathShared['ctx'], block: Block): string {
+  const c = copy.path
+  return ctx && ctx.atOffice !== true && ctx.weekday >= 1 && ctx.weekday <= 5 && block !== 'evening' ? c.wouldMeanGoingOutWork : c.wouldMeanGoingOut[block]
+}
+
+/** On Change, why the app would not pick a rep now by its own prerequisites; yours to pick all the same. */
+function prerequisiteNote(why: ReturnType<typeof repPrerequisite>): string {
+  const c = copy.path
+  return why === 'past' ? ` · ${c.notPast}` : why === 'church' ? ` · ${c.notChurchDay}` : ''
+}
+
 /** On Now: the path's one People row, the same frame as every commitment's. */
 export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
   const c = copy.path
@@ -151,6 +167,11 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
           {rep?.guardrail && (
             <span class="sub ink" data-testid="path-guardrail">
               {rep.guardrail}
+            </span>
+          )}
+          {rep && !p.open && !done && repRequiresGoingOut(p.pt, rep) && (
+            <span class="sub" data-testid="path-would-go-out">
+              {wouldMeanGoingOutWords(p.ctx, p.block)}
             </span>
           )}
           {!rep && p.carried && (
@@ -283,6 +304,11 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               {rep.guardrail && (
                 <p class="calc-line ink" data-testid="path-guardrail">
                   {rep.guardrail}
+                </p>
+              )}
+              {!p.open && !done && repRequiresGoingOut(p.pt, rep) && (
+                <p class="calc-line" data-testid="path-would-go-out">
+                  {wouldMeanGoingOutWords(p.ctx, p.block)}
                 </p>
               )}
               <p class="aim-facts">
@@ -455,8 +481,6 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
   }
   const c = copy.path
   const pt = pathToday({ aim, offers, outcomes, ctx, day, block, marks, online: settings.partnerOnline, faithHidden: settings.hideFaith })
-  // A rep with a partner, in the stages you declare, is not placed by who else is around (Part 27).
-  const declared = new Set(pt.path.stages.filter((s) => s.advance === 'declared').map((s) => s.n))
   const carried = carriedByContext(offers, outcomes, contexts, day)
   const list = orderByEvidence(pt.elig.stageReps, dayKindOf(day, ctx), block, carried)
   return (
@@ -493,7 +517,7 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
                   {m.name}
                   <span class="sub">
                     {fill(copy.catalogue.minutes, { n: String(m.minutes) })} · {m.path?.[pt.path.id]?.advances ? c.movesStage : copy.catalogue.paths.movesNothing}
-                    {m.path?.[pt.path.id]?.onDate && !pt.dateDay ? ` · ${c.notDateDay}` : inPerson(m) && !pt.around && !declared.has(m.path?.[pt.path.id]?.stage ?? 0) ? ` · ${c.notAround}` : ''}
+                    {m.path?.[pt.path.id]?.onDate && !pt.dateDay ? ` · ${c.notDateDay}` : prerequisiteNote(repPrerequisite(m, block, ctx))}
                     {!opensNow(m, pt.path.id, pt.doneEver) ? ` · ${c.opensAfter}` : ''}
                   </span>
                 </span>

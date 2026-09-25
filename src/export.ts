@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type DayContext, type KnownPlace, type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import { type Aim, type AnchorSwap, askedOf, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
@@ -128,7 +128,13 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       caffeineShown: Boolean(c.extras?.caffeineShown),
       necessitiesMissed: Object.keys(c.extras?.necessities ?? {}),
       note: c.extras?.note ?? null,
-      ...(opts.includePrivate ? { private: Object.keys(c.extras?.private ?? {}).map((id) => names.get(id) ?? `item ${id}`) } : {}),
+      ...(opts.includePrivate
+        ? {
+            private: Object.keys(c.extras?.private ?? {}).map((id) => names.get(id) ?? `item ${id}`),
+            // Pass 3: the items on screen at this check-in, so what was seen and left is kept apart from what was never shown.
+            privateShown: Object.keys(c.extras?.privateShown ?? {}).map((id) => names.get(id) ?? `item ${id}`),
+          }
+        : {}),
     },
   }))
 
@@ -201,7 +207,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         extras: settings.extras,
         ...(partner ? { partnerOnline: settings.partnerOnline } : {}),
       },
-      ...(opts.includePrivate ? { privateItems: items.map((it) => it.name) } : {}),
+      ...(opts.includePrivate ? { privateItems: items.map((it) => it.name), privateAskedAt: items.map((it) => ({ name: it.name, blocks: blocksOf(it) })) } : {}),
       ...(aims
         ? {
             aims: {

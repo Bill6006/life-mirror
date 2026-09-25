@@ -191,7 +191,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
           {w.people.length === 0 && <p class="calc-line">{copy.people.healthNone}</p>}
           {w.people.map((p) => (
             <p key={`${p.kind}|${p.block}`} class="calc-line">
-              {fill(copy.people.uncovered, { context: contextWords(p.kind, p.block), times: p.n === 1 ? copy.people.once : fill(copy.people.times, { n: String(p.n) }) })}
+              {fill(w.pathOn ? copy.people.uncoveredPath : copy.people.uncovered, { context: contextWords(p.kind, p.block), times: p.n === 1 ? copy.people.once : fill(copy.people.times, { n: String(p.n) }) })}
             </p>
           ))}
         </div>

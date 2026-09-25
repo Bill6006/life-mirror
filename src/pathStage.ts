@@ -8,8 +8,8 @@ import { heldPickup } from './dayShape'
 import { inPerson, peopleAround } from './people'
 
 // The path commitment (Part 24), the pure part: the stage a path stands on, derived from the
-// record and never stored; the reps that fit this block by Part 20's tier 1 alone; the app's pick
-// among them and where it is meant to happen; the counts a card shows; and the coach block. A rep
+// record and never stored; the reps that fit this block by their own prerequisites (Pass 3); the
+// app's pick among them and where it is meant to happen; the counts a card shows; and the coach block. A rep
 // is done when he did his part: no answer anyone else gives is read, counted or kept here.
 
 /** The key a path's step offers carry. */
@@ -144,8 +144,11 @@ export function offerable(m: Move): boolean {
 export interface EligibilityInput {
   path: Path
   state: StageState
-  /** Part 20's tier 1: whether today's shape puts other adults around in this block. */
+  /** Part 20's tier 1: whether today's shape puts other adults around in this block. Context since Pass 3, never a gate: an in-person rep where it puts no one would mean going out. */
   around: boolean
+  /** Pass 3: the block, and as much of the day's shape as a rep's own prerequisites read. */
+  block: Block
+  ctx?: Pick<DayContext, 'churchDay'> | null
   /** The path's rep yesterday, if any. */
   yesterday: string | null
   /** Reps done or partly done today, from any offer. */
@@ -177,8 +180,20 @@ export interface Eligibility {
   stageReps: Move[]
   /** The reps that fit this block. */
   eligible: Move[]
-  /** Tier 1 kept at least one in-person rep out of this block. */
-  nobodyAround: boolean
+  /** Pass 3: an in-person rep fits this block though today's shape puts no one around in it, so doing it would require going out. A property of the reps on offer, never a record that anyone went out: nothing stores it as a place or an event. */
+  requiresGoingOut: boolean
+}
+
+/**
+ * Why a rep cannot happen today by its own prerequisites, or null (Pass 3). The row holds the day's
+ * one People rep, which a plan can put later in the day, so a rep fits while one of its own blocks
+ * is still ahead today; the church morning needs a church day. The day's shape keeps nothing else
+ * out: working from home, or an evening at home, leaves going out possible.
+ */
+export function repPrerequisite(m: Move, block: Block, ctx: Pick<DayContext, 'churchDay'> | null | undefined): 'past' | 'church' | null {
+  if (!m.when.some((b) => blockIndex(b) >= blockIndex(block))) return 'past'
+  if (m.id === 'church-early' && ctx?.churchDay !== true) return 'church'
+  return null
 }
 
 /** The first stage a path moves by declaration alone: on the Partner path, Dating, whose reps are about his own conduct on a date. */
@@ -188,33 +203,43 @@ export function dateStageOf(path: Path): number | null {
 
 /**
  * The reps that fit now: the stage's (or the re-entry set's), not yesterday's rep, not done today.
- * In person only when tier 1 says someone is around; a rep about your conduct on a date only on a
- * declared date day, which is the Partner path's tier 1; a rep with a partner in the declared
- * stages is not placed by who else is around (the day record does not place a partner). The
- * online channel's reps only while it is on and under its weekly bound; on a day the record reads
- * high stress or overwhelm, light reps alone (Part 27). A rep that waits for others joins the
- * app's picks once they are done, and a faith talk is hidden with the faith family (2026-09-23).
+ * Each is kept out only by its own prerequisites (Pass 3, the owner's word): a block of its own
+ * still ahead today, and a church day for the church morning. Working from home is context,
+ * never a blocker: where today's shape puts no one around, an in-person rep still fits, and doing it
+ * would mean going out, at lunch, on an errand or to something later. A rep about your conduct on a date
+ * only on a declared date day, which is the Partner path's tier 1. The online channel's reps only
+ * while it is on and under its weekly bound; on a day the record reads high stress or overwhelm,
+ * light reps alone (Part 27). A rep that waits for others joins the app's picks once they are
+ * done, and a faith talk is hidden with the faith family (2026-09-23).
  */
 export function eligibility(i: EligibilityInput): Eligibility {
   const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
   const channel = i.path.channels?.find((c) => c.id === 'online')
   const stageReps = pathReps(i.path.id, stage).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
-  const declared = new Set(i.path.stages.filter((st) => st.advance === 'declared').map((st) => st.n))
-  let nobodyAround = false
   const eligible = stageReps.filter((m) => {
-    const place = m.path?.[i.path.id]
-    if (place?.onDate) {
-      if (!i.dateDay) return false
-    } else if (!(place && declared.has(place.stage)) && inPerson(m) && !i.around) {
-      nobodyAround = true
-      return false
-    }
+    if (m.path?.[i.path.id]?.onDate && !i.dateDay) return false
+    if (repPrerequisite(m, i.block, i.ctx) !== null) return false
     if (m.channel === 'online' && (i.onlineThisWeek ?? 0) >= (channel?.maxRepsPerWeek ?? 0)) return false
     if (i.lightOnly && m.effort !== 'low') return false
     if (!opensNow(m, i.path.id, i.doneEver)) return false
     return m.id !== i.yesterday && !i.doneToday.has(m.id)
   })
-  return { stage, stageReps, eligible, nobodyAround }
+  return { stage, stageReps, eligible, requiresGoingOut: !i.around && eligible.some((m) => placedByShape(i.path, m)) }
+}
+
+/**
+ * Whether a rep is one today's shape places (Pass 3): in person, and neither with a partner in the
+ * declared stages nor on a date, which the day record does not place. Where the shape puts no one
+ * around, such a rep would require going out.
+ */
+function placedByShape(path: Path, m: Move): boolean {
+  const place = m.path?.[path.id]
+  return inPerson(m) && !place?.onDate && !path.stages.some((st) => st.advance === 'declared' && st.n === place?.stage)
+}
+
+/** Whether doing this rep now would require going out: one the shape places, in a block it puts no one around in (Pass 3). What the rep would ask, never where anyone is. */
+export function repRequiresGoingOut(pt: Pick<PathToday, 'around' | 'path'>, m: Move): boolean {
+  return !pt.around && placedByShape(pt.path, m)
 }
 
 /**
@@ -262,11 +287,19 @@ export function refusalsInARow(entries: readonly PathEntry[]): number {
   return n
 }
 
-/** Where a rep is meant to happen: among its own kinds of setting that fit, the one the path's done reps used least within the rule's weeks. */
-export function settingFor(m: Move, path: Path, entries: readonly PathEntry[], today: string): SettingKind {
+/** Kinds of setting that mean going out (Pass 3): an errand, one person, a group. */
+export const GOING_OUT_KINDS: readonly SettingKind[] = ['errand', 'oneToOne', 'group']
+
+/**
+ * Where a rep is meant to happen: among its own kinds of setting that fit, the one the path's done
+ * reps used least within the rule's weeks. Where today's shape puts no one around (out), an
+ * in-person rep's going-out kinds come first, when it has any (Pass 3).
+ */
+export function settingFor(m: Move, path: Path, entries: readonly PathEntry[], today: string, out = false): SettingKind {
   const own = m.settings?.length ? m.settings : [defaultSetting(m)]
   const fits = inPerson(m) ? own.filter((k) => IN_PERSON_KINDS.includes(k)) : own
-  const kinds = fits.length ? fits : own
+  const outing = out && inPerson(m) ? fits.filter((k) => GOING_OUT_KINDS.includes(k)) : []
+  const kinds = outing.length ? outing : fits.length ? fits : own
   const from = addDays(today, -(path.rule.withinWeeks * 7 - 1))
   const used = new Map<SettingKind, number>()
   for (const e of entries) if (e.outcome === 'done' && e.day >= from && e.day <= today) used.set(e.setting, (used.get(e.setting) ?? 0) + 1)
@@ -351,10 +384,10 @@ export function drawChances(eligible: readonly Move[], entries: readonly PathEnt
  * the comparisons read only what chance decided. Then where it is meant to happen: the kind of
  * setting used least lately.
  */
-export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number, stage = 1): RepPick | null {
+export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number, stage = 1, out = false): RepPick | null {
   if (!eligible.length) return null
   const candidates = eligible.map((m) => m.id)
-  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 }, leaning: false })
+  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today, out), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 }, leaning: false })
   if (refusalsInARow(entries) >= path.rule.smallerAfterRefusals) {
     const order = new Map(candidates.map((id, k) => [id, k]))
     return one([...eligible].sort((a, b) => EFFORT_ORDER[a.effort] - EFFORT_ORDER[b.effort] || a.minutes - b.minutes || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))[0], 'smaller')
@@ -370,7 +403,7 @@ export function pickRep(path: Path, eligible: readonly Move[], entries: readonly
       break
     }
   }
-  return { moveId: m.id, setting: settingFor(m, path, entries, today), rule: 'draw', chosenBy: 'app', candidates, propensities: chances, leaning }
+  return { moveId: m.id, setting: settingFor(m, path, entries, today, out), rule: 'draw', chosenBy: 'app', candidates, propensities: chances, leaning }
 }
 
 /** Why this rep, in one line: the rule that chose it, and where, when the rep can happen in more than one kind of setting. */
@@ -517,20 +550,20 @@ export function pathToday(i: PathTodayInput): PathToday {
   const doneEver = new Set(entries.filter((e) => e.outcome === 'done' || e.outcome === 'partly').map((e) => e.moveId))
   const faithHidden = i.faithHidden === true
   // Light reps only on a hard day is the Partner path's rule (Part 27).
-  const elig = eligibility({ path, state, around, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true, doneEver, faithHidden })
+  const elig = eligibility({ path, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true, doneEver, faithHidden })
   // One People rep a day across both paths (Part 24; Workstream 6, D4): once today's is done, no other is offered today; after a Partly, only that rep, to finish.
   const today = peopleRepToday(i.offers, i.outcomes, i.day)
   const picked = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
   // Your pick stands whatever the shape says, but never a faith talk while the faith family is hidden.
   const mine = picked && !(faithHidden && picked.hiddenWith === 'faith') ? picked : null
-  const yours = (m: Move): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, i.day), rule: 'you', chosenBy: 'you', candidates: [m.id], propensities: { [m.id]: 1 }, leaning: false })
+  const yours = (m: Move): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, i.day, !around), rule: 'you', chosenBy: 'you', candidates: [m.id], propensities: { [m.id]: 1 }, leaning: false })
   const pick: RepPick | null = today.done
     ? null
     : today.partly && hasMove(today.partly)
       ? yours(moveById(today.partly))
       : mine
         ? yours(mine)
-        : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage)
+        : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage, !around)
   return { aim: i.aim, path, entries, state, elig, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly }
 }
 
@@ -603,7 +636,7 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
     const days = new Set(partner.entries.filter((e) => e.day >= weekAgo && e.day <= today && partnerOnly(e.moveId)).map((e) => e.day))
     const only = partner.elig.eligible.filter((m) => partnerOnly(m.id))
     const turn = (reps: readonly Move[], t: 'own' | 'shared') => {
-      const pick = pickRep(partner.path, reps, partner.entries, today, draw, partner.elig.stage)
+      const pick = pickRep(partner.path, reps, partner.entries, today, draw, partner.elig.stage, !partner.around)
       return pick ? { ...pick, turn: t } : null
     }
     if (days.size < PARTNER_ONLY_DAYS && only.length) return row(partner, turn(only, 'own'))
@@ -621,17 +654,18 @@ export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pic
 }
 
 /**
- * The coach block (Parts 24 and 32): per path on, the stage, the reps that fit this block with
- * tier 1's reason when in-person reps are out, and per-rep evidence. Built by allowlist from the
- * same computation the row shows; tier 2 is never read here.
+ * The coach block (Parts 24 and 32): per path on, the stage, the reps that fit this block, and
+ * per-rep evidence. Since Pass 3 the day's shape keeps no in-person rep out; where it puts no one
+ * around, the block says an in-person rep would require going out (requiresGoingOut). Built by allowlist from the same
+ * computation the row shows; tier 2 is never read here.
  */
 export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx'], day: string, block: Block, dateDay = false, row: CoachBlock['row'] = null): CoachBlock | null {
   if (!views.length) return null
-  const out = views.some((v) => v.elig.nobodyAround)
+  const requiresGoingOut = views.some((v) => v.elig.requiresGoingOut)
   return {
     // Once today’s People rep is done, nothing more is offerable today (D4).
     eligible: views.map((v) => ({ path: v.path.id, ids: v.repDone ? [] : v.elig.eligible.map((m) => m.id) })),
-    ineligibleReason: out ? copy.path.shape.outReason : null,
+    ineligibleReason: null,
     day,
     block,
     shape: shapeWords(ctx, block),
@@ -645,6 +679,7 @@ export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx
       })
     }),
     row,
+    ...(requiresGoingOut ? { requiresGoingOut: true as const } : {}),
   }
 }
 
@@ -662,7 +697,7 @@ export function coachPickFor(row: PeopleRow, coach: CoachPick | null, today: str
   const chosen = ids.length === 2 ? (seeded(`coach|${today}|${coach.id}`) < 0.5 ? ids[0] : ids[1]) : ids[0]
   return {
     moveId: chosen,
-    setting: settingFor(moveById(chosen), row.view.path, row.view.entries, today),
+    setting: settingFor(moveById(chosen), row.view.path, row.view.entries, today, !row.view.around),
     rule: ids.length === 2 ? 'coach+draw' : 'coach',
     chosenBy: 'coach',
     candidates: ids,

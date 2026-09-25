@@ -1,4 +1,4 @@
-import { addDays, daysBetween } from './blocks'
+import { addDays, daysBetween, type Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
 import { forecast, indexCheckIns, slotKey } from './learning'
@@ -103,11 +103,11 @@ export function associationBy(checkins: readonly CheckIn[], today: string, isEve
   return likeForLike(eveningPointsBy(checkins, today, isEvent, measure))
 }
 
-/** Every morning before today as a point: whether it carried the event, its band, and what that afternoon read. */
-export function morningPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): DayPoint[] {
+/** Every morning before today as a point: whether it carried the event, its band, and what that afternoon read. A morning the record knows nothing about for this event (include says no) enters neither side. */
+export function morningPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include: (c: CheckIn) => boolean = () => true): DayPoint[] {
   const byKey = indexCheckIns(checkins)
   return checkins
-    .filter((c) => c.block === 'morning' && c.day < today)
+    .filter((c) => c.block === 'morning' && c.day < today && include(c))
     .map((c) => {
       const r = readingOf(c)
       const a = byKey.get(slotKey(c.day, 'afternoon'))
@@ -179,37 +179,78 @@ export function passiveAssociation(checkins: readonly CheckIn[], offers: readonl
   return likeForLike(points)
 }
 
-/** A named private item: logged on the evening or not. */
+/** Every afternoon before today as a point: whether it carried the event, its band, and what that evening read (Pass 3). */
+export function afternoonPoints(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include: (c: CheckIn) => boolean = () => true): DayPoint[] {
+  const byKey = indexCheckIns(checkins)
+  return checkins
+    .filter((c) => c.block === 'afternoon' && c.day < today && include(c))
+    .map((c) => {
+      const r = readingOf(c)
+      const e = byKey.get(slotKey(c.day, 'evening'))
+      const er = e ? readingOf(e) : null
+      return { day: c.day, band: r ? bandOf(r.value) : null, event: isEvent(c), outcome: er ? er.value : null }
+    })
+}
+
+/** A named private item: logged at a check-in or not. */
 export function privateIsLogged(itemId: number): (c: CheckIn) => boolean {
   return (c) => Boolean(c.extras?.private?.[String(itemId)])
+}
+
+/**
+ * Whether a private item was on screen at a check-in (Pass 3, Rule 2): an item never shown enters
+ * no comparison, so silence is never read as without. Logged means shown; the shown mark says the
+ * rest. Before the mark existed the evening log was the only one, and an evening with any private
+ * item logged had the list open, so each item that existed then was shown; any other evening says
+ * nothing either way.
+ */
+export function privateShownAt(item: { id?: number; createdAt?: string }, c: CheckIn): boolean {
+  const key = String(item.id)
+  const ex = c.extras
+  if (ex?.private?.[key]) return true
+  if (ex?.privateShown) return Boolean(ex.privateShown[key])
+  if (c.block !== 'evening' || !ex?.private || Object.keys(ex.private).length === 0) return false
+  return !item.createdAt || (c.completedAt ?? c.updatedAt) >= item.createdAt
 }
 
 export interface PrivateAssociation {
   itemId: number
   name: string
+  /** The check-in it is asked at, and so the window read: the evening to the next morning, the morning to that afternoon, the afternoon to that evening (Pass 3). */
+  block: Block
   association: Association
   /** A move from the ending or rest families the record can offer in its place: never "don't". */
   alternativeId: string
 }
 
-export const PRIVATE_ALTERNATIVES: readonly string[] = ['warm-shower-bath', 'book-page', 'screen-free-half-hour', 'music-on-purpose']
+/** The moves offered in an item's place, each one the part of the day allows: the evening's list as it always was. */
+export const PRIVATE_ALTERNATIVES: Readonly<Record<Block, readonly string[]>> = {
+  morning: ['walk-ten', 'stretch-five', 'sit-outside-five', 'glass-of-water'],
+  afternoon: ['screen-free-half-hour', 'music-on-purpose', 'walk-ten', 'stretch-five'],
+  evening: ['warm-shower-bath', 'book-page', 'screen-free-half-hour', 'music-on-purpose'],
+}
+
+const PRIVATE_POINTS: Readonly<Record<Block, typeof eveningPoints>> = { morning: morningPoints, afternoon: afternoonPoints, evening: eveningPoints }
 
 /**
- * Private items in selection, only when you turn that on: like-for-like against evenings that
- * started the same, the window that night's sleep and the next morning; each carries an
- * alternative. Off, this returns nothing at all.
+ * Private items in selection, only when you turn that on: like for like at each check-in an item
+ * is placed in, against check-ins that started the same, each over its own window (Pass 3); only
+ * check-ins where the item was on screen enter either side (Rule 2). Each carries an alternative
+ * the part of the day allows. Off, this returns nothing at all.
  */
-export function privateAssociations(on: boolean, items: readonly { id?: number; name: string }[], checkins: readonly CheckIn[], today: string): PrivateAssociation[] {
+export function privateAssociations(on: boolean, items: readonly { id?: number; name: string; createdAt?: string; blocks?: Block[] }[], checkins: readonly CheckIn[], today: string): PrivateAssociation[] {
   if (!on) return []
-  return items
-    .filter((it) => it.id !== undefined)
-    .map((it, i) => ({
-      itemId: it.id as number,
-      name: it.name,
-      association: associationFor(checkins, today, privateIsLogged(it.id as number)),
-      alternativeId: PRIVATE_ALTERNATIVES.filter(hasMove)[i % PRIVATE_ALTERNATIVES.filter(hasMove).length],
-    }))
-    .filter((a) => a.association.times > 0)
+  const out: PrivateAssociation[] = []
+  items.forEach((it, i) => {
+    if (it.id === undefined) return
+    const placed = (['morning', 'afternoon', 'evening'] as const).filter((b) => (it.blocks?.length ? it.blocks : ['evening']).includes(b))
+    for (const block of placed) {
+      const alternatives = PRIVATE_ALTERNATIVES[block].filter(hasMove)
+      const association = likeForLike(PRIVATE_POINTS[block](checkins, today, privateIsLogged(it.id), (c) => privateShownAt(it, c)))
+      if (association.times > 0) out.push({ itemId: it.id, name: it.name, block, association, alternativeId: alternatives[i % alternatives.length] })
+    }
+  })
+  return out
 }
 
 /**

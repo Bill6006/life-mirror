@@ -56,11 +56,10 @@ describe('the coach’s pick in the People row', () => {
   it('is ignored when stale, for the other path, naming a rep the row may not offer now or more than two, and never stands over your own pick', () => {
     const ignored = [coach(candidates.slice(0, 2), { day: '2026-09-22' }), coach(candidates.slice(0, 2), { path: 'partner' }), coach(['ask-one-question']), coach(candidates.slice(0, 3))]
     for (const c of ignored) expect(peopleRowOf([view()], [], DAY, 'morning', c)?.pick, JSON.stringify(c.ids) + c.day + c.path).toEqual(base?.pick)
-    // At home in the evening an in-person rep no longer fits: the coach naming one is ignored at the tap.
+    // At home in the evening an in-person rep still fits, and would mean going out (Pass 3): the coach naming one stands.
     const evening = view(aim, [], [], home, 'evening')
-    const inPerson = candidates.find((id) => !(evening.pick?.candidates ?? []).includes(id)) as string
-    expect(inPerson).toBeTruthy()
-    expect(peopleRowOf([evening], [], DAY, 'evening', coach([inPerson]))?.pick?.chosenBy).not.toBe('coach')
+    expect(evening.elig.requiresGoingOut).toBe(true)
+    expect(peopleRowOf([evening], [], DAY, 'evening', coach([candidates[0]]))?.pick).toMatchObject({ moveId: candidates[0], chosenBy: 'coach' })
     // A real rep of a later stage is no candidate now, whatever the coach says.
     expect(peopleRowOf([view()], [], DAY, 'morning', coach(['ask-one-question']))?.pick?.chosenBy).not.toBe('coach')
     // Your own pick stands, even when the coach names the very rep you picked.

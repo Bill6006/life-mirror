@@ -111,7 +111,7 @@ describe('what the paths say', () => {
         if (m.guardrail && /final/.test(m.guardrail)) expect(m.doneWhen, m.id).toMatch(/whatever the answer|whatever they say/)
       }
     }
-    for (const id of ['partner-invite', 'say-interest-plainly', 'swap-numbers', 'online-propose-meeting', 'date-end-clearly']) {
+    for (const id of ['partner-invite', 'say-interest-plainly', 'swap-numbers', 'online-propose-meeting', 'date-end-clearly', 'suggest-a-playful-date', 'date-ask-before-a-kiss']) {
       const m = moves.find((x) => x.id === id) as Move
       expect(m.guardrail, id).toMatch(/final/)
     }
@@ -209,8 +209,28 @@ describe('the Partner revision: learning fit and choosing deliberately (owner, 2
     for (const st of partner.stages) expect(st.what, st.name).not.toMatch(/faith/i)
   })
 
+  it('wires the romantic register (Pass 3, R1): your own acts, said plainly, never a read signal, a touch or a tactic; a kiss asked for in words on a declared date day alone', () => {
+    const R1 = ['share-what-made-you-laugh', 'say-what-you-like-about-them', 'suggest-a-playful-date', 'date-glad-to-see-you', 'date-ask-before-a-kiss', 'retell-a-shared-laugh']
+    for (const id of R1) {
+      const m = rep(id)
+      expect(m.status, id).toBe('path')
+      expect(m.with, id).toBe('adult')
+      // What the rep asks: never a signal to read, a touch, a line or a game (the crutch names the habit it replaces, so it is not read here).
+      const asks = [m.name, m.what, m.cue, m.doneWhen, m.guardrail ?? ''].join(' ')
+      expect(asks, id).not.toMatch(/\b(?:touch\w*|hand on|lean in|signals?|body language|read (?:her|him|them|their)|negg\w*|hard to get|jealous|pick-?up line|opener)\b/i)
+    }
+    expect(rep('share-what-made-you-laugh').path).toMatchObject({ social: { stage: 3, advances: true }, partner: { stage: 2, advances: true } })
+    expect(rep('date-ask-before-a-kiss').path?.partner).toMatchObject({ stage: 4, onDate: true })
+    expect(rep('date-ask-before-a-kiss').guardrail).toBe('Anything other than a clear yes is final: after a no or a not yet, leave the next move to them.')
+    expect(rep('say-interest-plainly').what).toContain('leaves no doubt it is romantic')
+    expect(rep('partner-invite').what).toContain('said as a date')
+    // The cards behind them: verified and admitted; the three ideas the research refuted, disputed.
+    for (const id of ['humour-and-liking', 'humour-kind-not-cutting', 'stated-interest', 'responsiveness-and-desire', 'compliments-underestimated', 'warmth-follows-attention', 'overperception-projection', 'consent-clarity']) expect(cardById(id)?.status, id).toBe('admitted')
+    for (const id of ['token-resistance-disputed', 'hard-to-get-disputed', 'touch-in-courtship-disputed']) expect(cardById(id)?.status, id).toBe('disputed')
+  })
+
   it('offers a rep about a date on a declared date day, and the rest of Dating on any day', () => {
-    expect(pathReps('partner', 4).filter((m) => m.path?.partner?.onDate).map((m) => m.id).sort()).toEqual(['date-ask-and-listen', 'date-attention', 'date-end-clearly', 'date-share-something-real'])
+    expect(pathReps('partner', 4).filter((m) => m.path?.partner?.onDate).map((m) => m.id).sort()).toEqual(['date-ask-and-listen', 'date-ask-before-a-kiss', 'date-attention', 'date-end-clearly', 'date-glad-to-see-you', 'date-share-something-real'])
     for (const id of [...LIGHTER, ...WEIGHTIER, 'thank-them-specifically', 'reappraise-a-conflict']) expect(rep(id).path?.partner?.onDate, id).toBeUndefined()
   })
 
@@ -256,9 +276,10 @@ describe('the day’s draw unchanged, and the evidence admitted once each path i
   it('keeps every new rep out of the day’s draw: each path’s own reps offered through its row alone, the Social path’s since Part 24 and the Partner path’s since Part 27', () => {
     const wired = moves.filter((m) => m.path && isPathOnly(m))
     const proposed = moves.filter((m) => m.path && isProposed(m))
-    expect(wired.length).toBe(38)
+    // Pass 3 (R1): six reps wired, one shared with the Social path and five the Partner path's alone.
+    expect(wired.length).toBe(44)
     expect(proposed.map((m) => m.id)).toEqual([])
-    expect(wired.filter((m) => !m.path?.social).length).toBe(27)
+    expect(wired.filter((m) => !m.path?.social).length).toBe(32)
     for (const m of wired) expect(m.path?.social ?? m.path?.partner, m.id).toBeDefined()
     const fresh = wired
     const live = new Set(liveMoves.map((m) => m.id))
@@ -284,7 +305,7 @@ describe('the day’s draw unchanged, and the evidence admitted once each path i
       }
     }
     const disputed = paths.flatMap((p) => p.cards).filter((id) => cardById(id)?.status === 'disputed')
-    expect(disputed.sort()).toEqual(['divorce-prediction-disputed', 'love-languages-disputed', 'matching-algorithms-disputed', 'positive-self-statements-disputed', 'power-posing-disputed'])
+    expect(disputed.sort()).toEqual(['divorce-prediction-disputed', 'hard-to-get-disputed', 'love-languages-disputed', 'matching-algorithms-disputed', 'positive-self-statements-disputed', 'power-posing-disputed', 'token-resistance-disputed', 'touch-in-courtship-disputed'])
     // The follow-up-question card and rep, lowered for their contested source.
     expect(cardById('asking-questions-liking')).toMatchObject({ grade: 'D', replication: 'mixed', status: 'admitted' })
     expect(moves.find((m) => m.id === 'ask-follow-up')?.source.strength).toBe('weak')

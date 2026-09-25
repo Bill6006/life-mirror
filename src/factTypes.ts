@@ -38,9 +38,9 @@ export interface RankedLine {
  * names (COACH_CORE_KEYS) and nothing else: no tier-2 count, no reading, no note.
  */
 export interface CoachBlock {
-  /** Per path on, the reps that fit this block by tier 1 alone. */
+  /** Per path on, the reps that fit this block by their own prerequisites (Pass 3). */
   eligible: { path: string; ids: string[] }[]
-  /** Why in-person reps are out of this block, when tier 1 keeps them out; else null. */
+  /** Why in-person reps are out of this block, when something keeps them out; else null. Since Pass 3 the day's shape never does. */
   ineligibleReason: string | null
   day: string
   block: 'morning' | 'afternoon' | 'evening'
@@ -57,10 +57,12 @@ export interface CoachBlock {
    * reps it may offer. Empty while a step is started or the pick is yours. The coach names only these.
    */
   row: { path: string; candidates: string[] } | null
+  /** Pass 3: an in-person rep fits though today's shape puts no one around in this block, so it would require going out. What the reps on offer would ask, never a record of where anyone is. Present only when true. */
+  requiresGoingOut?: true
 }
 
 /** The coach block's keys, in the contract's order: the Worker's COACH_CORE_KEYS must equal these. */
-export const COACH_BLOCK_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row'] as const
+export const COACH_BLOCK_KEYS = ['eligible', 'ineligibleReason', 'day', 'block', 'shape', 'stages', 'dateDay', 'perRep', 'row', 'requiresGoingOut'] as const
 
 export interface FactSheet {
   version: 1

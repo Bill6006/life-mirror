@@ -427,7 +427,8 @@ describe('the coach briefing', () => {
     const r = await handleBriefing(deps(store, at('07:52', TODAY)), url('/claude/briefing', { task: 'coach', day: TODAY }))
     expect(r.status).toBe(200)
     const body = r.body as { core: Record<string, unknown>; briefing: string; instructions: string; context: { categories: string[] } }
-    expect(Object.keys(body.core).sort()).toEqual([...COACH_CORE_KEYS].sort())
+    // requiresGoingOut is written only on a block where an in-person rep would require going out (Pass 3); this one is an office morning.
+    expect(Object.keys(body.core).sort()).toEqual(COACH_CORE_KEYS.filter((k) => k !== 'requiresGoingOut').sort())
     for (const k of Object.keys(body.core)) expect(k).not.toMatch(/tier|carried|seen|invented/i)
     expect(JSON.stringify(body)).not.toMatch(/has carried|carried an in-person|peopleSeen|invented/)
     expect(body.briefing).toContain('- [greet-by-name] Greet someone by name: drawn 4, done 3, partly 0, no 1')
@@ -515,6 +516,31 @@ describe('the coach’s answer', () => {
     expect(await post(store, at('07:53', TODAY), { picks: [{ id: 'text-a-friend', version: 'Talk to someone face to face today.' }] })).toMatchObject({ status: 422, body: { retry: false } })
     expect(coachRow(store)).toBeNull()
     expect(await store.readTask(taskIdOf('coach', TODAY))).toMatchObject({ status: 'refused' })
+  })
+
+  it('tells the coach an in-person rep would mean going out when the phone says so, and lets it say so: working from home is context (Pass 3)', async () => {
+    // A day at home: no office, no church, no daycare.
+    const atHome = () => {
+      const block = coachBlock({ shape: 'Nobody around by today’s shape', requiresGoingOut: true })
+      const store = ready(block)
+      const sheet = sheetFor(TODAY)
+      const home = { ...sheet, facts: sheet.facts.map((f) => (f.id === 'week.today' ? { ...f, text: 'Today is Monday; at home; not a study night.', values: { ...f.values, daycare: 0, pickup: null, office: 0 } } : f)) }
+      put(store, APP, 'facts', TODAY, TODAY, { day: TODAY, builtAt: home.builtAt, updatedAt: home.builtAt, sheet: home, coach: block }, home.builtAt)
+      return store
+    }
+    const store = atHome()
+    await opened(store)
+    const r = await handleBriefing(deps(store, at('07:52', TODAY)), url('/claude/briefing', { task: 'coach', day: TODAY }))
+    expect((r.body as { briefing: string }).briefing).toContain('IN PERSON: today’s shape holds no office, church or pickup in this block, so an in-person rep here would mean going out')
+    // The owner's own example stands now.
+    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Send the message, then go talk to someone in person at lunch.' }] })).toEqual({ status: 200, body: { ok: true } })
+    // The office on a day without it, and the other parents on a day without daycare, still do not.
+    const office = atHome()
+    await opened(office)
+    expect(await post(office, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one colleague by name at lunch.' }] })).toMatchObject({ status: 422, body: { reason: `speaks of the office, which Monday ${TODAY} does not hold` } })
+    const parents = atHome()
+    await opened(parents)
+    expect(await post(parents, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one of the other parents by name.' }] })).toMatchObject({ status: 422, body: { reason: `speaks of pickup or daycare, which Monday ${TODAY} does not hold` } })
   })
 
   it('stores two reps, each with its own line, where the phone reads them; a dry run by hand is checked and never stored there', async () => {

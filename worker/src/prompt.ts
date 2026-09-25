@@ -113,6 +113,14 @@ Answer with JSON only, nothing before or after: {"picks": [{"id": "...", "versio
 const FIRM_NAMES: Record<FirmnessPref, string> = { adaptive: 'Adaptive', supportive: 'Supportive', balanced: 'Balanced', hardCoach: 'Hard Coach' }
 
 /**
+ * The coach's IN PERSON line when an in-person rep fits a block today's shape puts no one around in
+ * (Pass 3, the owner's word): working from home or an evening at home is context, never a blocker.
+ * It says what a rep would ask, never where anyone is. Said only when the phone says so, so every
+ * other briefing reads as before.
+ */
+const REQUIRES_GOING_OUT = 'today’s shape holds no office, church or pickup in this block, so an in-person rep here would mean going out: at lunch, on an errand or to something later. That is what the rep would ask, never a record: never say anyone is out, went out or met someone. Never the office or colleagues unless the day holds the office.'
+
+/**
  * How firm (Pass 2), as a writer is told once its gate is open: the person's setting, what it
  * changes and what it never changes, the one natural voice, the three approved deliveries, and
  * under Adaptive the rule the app's own lines follow. Nothing is added while the gate is closed.
@@ -188,7 +196,7 @@ export function coachBriefingText(core: Partial<Record<CoachCoreKey, unknown>>, 
   return [
     `THE DAY, ${String(core.day)}, the ${String(core.block)}: ${String(core.shape ?? '')}`,
     `THE PEOPLE ROW: the ${path} path, stage ${stage?.stage ?? '?'}, ${stage?.name ?? ''}${stage?.reentry ? ', with reps from the stage below after a quiet stretch' : ''}${core.dateDay === true ? '; a date is declared for today' : ''}.`,
-    `IN PERSON: ${typeof core.ineligibleReason === 'string' && core.ineligibleReason ? core.ineligibleReason : 'people are around in this block by today’s shape.'}`,
+    `IN PERSON: ${typeof core.ineligibleReason === 'string' && core.ineligibleReason ? core.ineligibleReason : core.requiresGoingOut === true ? REQUIRES_GOING_OUT : 'people are around in this block by today’s shape.'}`,
     `ELIGIBLE NOW (the ids you may name, each with its own evidence)\n${eligible.join('\n')}`,
     // Pass 2: the firmness the app sets for each rep, only once How firm's gate is open.
     ...(firmByRep ? [`HOW FIRM, BY REP (say each version at its rep's firmness)\n${row.candidates.map((id) => `- [${id}] ${FIRM_NAMES[firmByRep[id] ?? 'balanced']}`).join('\n')}`] : []),

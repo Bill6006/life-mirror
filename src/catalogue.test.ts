@@ -12,7 +12,7 @@ const ids = new Set(moves.map((m) => m.id))
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
 
 describe('the catalogue of moves', () => {
-  it('offers between sixty and a hundred live moves, across the fourteen families of the plan and the Partner family awaiting Green', () => {
+  it('offers between sixty and a hundred live moves, across the fourteen families of the plan and the Partner family', () => {
     expect(liveMoves.length).toBeGreaterThanOrEqual(60)
     expect(liveMoves.length).toBeLessThanOrEqual(100)
     expect(families.map((f) => f.id)).toEqual(['ending', 'movement', 'steadying', 'food', 'study', 'house', 'people', 'rest', 'money', 'charisma', 'faith', 'finishing', 'setup', 'fatherhood', 'partner'])

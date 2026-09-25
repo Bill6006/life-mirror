@@ -277,6 +277,13 @@ function mean(xs: readonly number[]): number {
 /** From this moment the phone marks its own line when it is on screen; lines logged before then are judged by the rule below (Part 33). */
 const SHOWN_MARKED_FROM = '2026-09-25T00:00:00.000Z'
 
+/** A private item's fact per check-in it is placed in: its tags and the window its label names (Pass 3). */
+const PRIVATE_FACTS = {
+  morning: { tags: ['morning', 'afternoon'], label: 'Afternoons after' },
+  afternoon: { tags: ['afternoon', 'evening'], label: 'Evenings after' },
+  evening: { tags: ['evening', 'sleep'], label: 'Mornings after' },
+} as const
+
 /**
  * Whether the phone's own line was on screen, and so was said: marked when shown; before the mark
  * existed, a line logged while the brain's own line already stood that day was never shown, since
@@ -437,9 +444,11 @@ export function buildFactSheet(i: FactInput): FactSheet {
   chip('assoc.napped', ['nap', 'sleep'], 'a nap', associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped)), 'Mornings after')
   // Sleep is answered every full morning and is the largest lever on the day: short nights set against the afternoons that follow, like for like.
   chip('assoc.shortSleep', ['sleep', 'afternoon', 'energy'], 'a short night (under six hours)', morningAssociation(i.checkins, today, (c) => (c.answers.sleepHours ?? 9) <= SHORT_SLEEP), 'Afternoons after')
+  // Pass 3: an item is compared at each check-in it is placed in, over that check-in's own window; the evening's fact keeps its id.
   for (const p of privateAssociations(true, i.items, i.checkins, today)) {
-    const f = assocFact(`private.${p.itemId}`, ['evening', 'sleep'], p.name, p.association, 'Mornings after')
-    if (f) facts.push({ ...f, values: { ...f.values, name: p.name, alternative: nameOfMove(p.alternativeId) } })
+    const at = PRIVATE_FACTS[p.block]
+    const f = assocFact(p.block === 'evening' ? `private.${p.itemId}` : `private.${p.itemId}.${p.block}`, [...at.tags], p.name, p.association, at.label)
+    if (f) facts.push({ ...f, values: { ...f.values, name: p.name, alternative: nameOfMove(p.alternativeId), ...(p.block === 'evening' ? {} : { block: p.block }) } })
   }
 
   // Cards: what is being tested, and where each stands.
@@ -559,7 +568,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
       : pt?.repDone
         ? `today’s People rep is done: “${moveById(pt.repDone.moveId).name}”`
         : pt && !pt.pick
-          ? `no rep of its stage fits this ${block} by today’s shape`
+          ? `no rep of its stage fits this ${block}`
           : `the step is “${step.title}”, ${step.minutes} min`
     // Part 41: a progression review waiting for your answer, once its gate is open; never a verdict, only that it waits.
     const review = study && current ? i.reviews?.get(id) : undefined
@@ -567,7 +576,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const reviewText = review ? (review.reason === 'struggle' ? '; after three hard sessions in a row, a progression review waits for your answer' : `; after ${review.days} practice days on it, a progression review waits for your answer`) : ''
     facts.push(fact(`aim.${id}`, study ? ['study', 'cue', 'plan'] : ['plan', 'cue', aim.kind === 'person' || aim.kind === 'path' ? 'social' : 'faith'], `${name} (${study ? 'learning' : aim.kind}): ${stepText}; ${gapText}${doneToday ? '; a session is done today' : ''}${blocked ? `; last time ended in ${copy.aims.blockedWhy[blocked]}` : ''}${open ? '; started, not yet answered' : ''}${cadenceText}${planText}${cueText}${reviewText}.`, values))
 
-    // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by tier 1 alone.
+    // A path (Part 24): the stage in words, the reps done by setting within the rule's weeks, and the reps that fit this block by their own prerequisites; where the shape puts no one around, an in-person rep would require going out: what it would ask, never a record (Pass 3).
     if (pt) {
       const bySetting = doneBySetting(pt.path, pt.entries, today)
       const done = Object.values(bySetting).reduce<number>((a, b) => a + (b ?? 0), 0)
@@ -578,8 +587,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
         fact(
           `path.${id}`,
           ['social', 'people'],
-          `${pathName(pt.path)}: ${stageWords(pt.path, pt.state.stage)}${pt.state.reentry ? ', with reps from the stage below after a quiet stretch' : ''}; reps done in the last ${pt.path.rule.withinWeeks} weeks by setting: ${settingsText || 'none yet'}; ${pt.repDone ? 'today’s one People rep is done, so none is offered again today' : `fitting this ${block}: ${fitting.length ? fitting.join(', ') : pt.elig.nobodyAround ? 'none, nobody around by today’s shape' : 'none'}`}.`,
-          { path: pt.path.id, stage: pt.state.stage, stages: pt.path.stages.length, stageName, reentry: pt.state.reentry ? 1 : 0, done, ...Object.fromEntries(Object.entries(bySetting)), eligible: pt.repDone ? '' : pt.elig.eligible.map((m) => m.id).join(','), nobodyAround: pt.elig.nobodyAround ? 1 : 0, repDone: pt.repDone ? 1 : 0 },
+          `${pathName(pt.path)}: ${stageWords(pt.path, pt.state.stage)}${pt.state.reentry ? ', with reps from the stage below after a quiet stretch' : ''}; reps done in the last ${pt.path.rule.withinWeeks} weeks by setting: ${settingsText || 'none yet'}; ${pt.repDone ? 'today’s one People rep is done, so none is offered again today' : `fitting this ${block}: ${fitting.length ? `${fitting.join(', ')}${pt.elig.requiresGoingOut ? `; an in-person rep this ${block} would mean going out, since today’s shape puts no one around then (what the rep would ask, never a record of being out)` : ''}` : 'none'}`}.`,
+          { path: pt.path.id, stage: pt.state.stage, stages: pt.path.stages.length, stageName, reentry: pt.state.reentry ? 1 : 0, done, ...Object.fromEntries(Object.entries(bySetting)), eligible: pt.repDone ? '' : pt.elig.eligible.map((m) => m.id).join(','), requiresGoingOut: pt.elig.requiresGoingOut ? 1 : 0, repDone: pt.repDone ? 1 : 0 },
           { n: done },
         ),
       )

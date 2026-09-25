@@ -121,9 +121,13 @@ describe('the guard every writer inherits: the day a line is for, and names kept
     expect(dayGuard('Ten minutes of the current skill, whenever it suits.', preferred, '2026-09-18')).toBeNull()
   })
 
-  it('refuses a claim that people are around on a day whose shape puts nobody there', () => {
-    expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-19')).toBe('speaks of people around, which Saturday 2026-09-19 does not hold')
+  it('lets a line speak of seeing someone in person on any day, and keeps the office and the other parents to the days that hold them (Pass 3)', () => {
+    // Working from home is context, never a bar: going out at lunch stays possible whatever the shape.
+    expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-19')).toBeNull()
+    expect(dayGuard('Send the message, then go talk to someone in person at lunch.', base, '2026-09-19')).toBeNull()
     expect(dayGuard('Talk to someone in person this afternoon.', base, '2026-09-18')).toBeNull()
+    expect(dayGuard('Say hello to one of the other parents.', base, '2026-09-19')).toBe('speaks of pickup or daycare, which Saturday 2026-09-19 does not hold')
+    expect(dayGuard('Say hello to one of the other parents.', base, '2026-09-18')).toBeNull()
     expect(dayGuard('Ask a colleague one question.', base, '2026-09-18')).toBe('speaks of the office, which Friday 2026-09-18 does not hold')
     expect(dayGuard('Message one friend now.', base, '2026-09-19')).toBeNull()
   })
@@ -137,7 +141,8 @@ describe('the guard every writer inherits: the day a line is for, and names kept
   it('holds the line and each part of the review to it, and says why for the retry', () => {
     expect(validateOutput({ mode: 'recommendation', text: 'After pickup, one short sitting.', factIds: ['week.today'], cardIds: [] }, base, library, 60, '2026-09-19')).toMatchObject({ ok: false, reason: 'speaks of pickup or daycare, which Saturday 2026-09-19 does not hold' })
     expect(validateOutput({ mode: 'recommendation', text: 'After pickup, one short sitting.', factIds: ['week.today'], cardIds: [] }, base, library, 60, '2026-09-18').ok).toBe(true)
-    expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Talk to someone in person on Saturday.', factIds: ['week.today'], cardIds: [] }, base, library, '2026-09-19')).toMatchObject({ ok: false, reason: 'change: speaks of people around, which Saturday 2026-09-19 does not hold' })
+    expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Ask a colleague over on Saturday.', factIds: ['week.today'], cardIds: [] }, base, library, '2026-09-19')).toMatchObject({ ok: false, reason: 'change: speaks of the office, which Saturday 2026-09-19 does not hold' })
+    expect(validateReview({ held: 'Fine.', didNot: 'Fine.', change: 'Talk to someone in person on Saturday.', factIds: ['week.today'], cardIds: [] }, base, library, '2026-09-19').ok).toBe(true)
   })
 })
 

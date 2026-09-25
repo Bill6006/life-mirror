@@ -10,6 +10,7 @@ import { candidatesFor, type Situation } from './offers'
 import { todayState } from './offerFlow'
 import { addPathAim, convertToSocial, pathOn, pausePath, resumePath, setPathPick } from './pathFlow'
 import { pathKey, pathToday } from './pathStage'
+import { carriedByContext } from './people'
 
 // The path commitment on the phone (Part 24): added once, converted from A person with its whole
 // record, paused, a rep picked through Change, Resume recording who chose and where, the one
@@ -77,17 +78,40 @@ describe('the path commitment', () => {
     expect((await db.intentions.toArray())[0].offerId).toBe(offer.id)
   })
 
+  it('says what a rep would ask, never where anyone is: going out is on no stored record, place or evidence (Pass 3)', async () => {
+    // A Friday at home with no pickup: no one around all day by the shape.
+    await addPathAim('social')
+    const at = new Date(2026, 8, 18, 12, 30)
+    const view = pathToday({ aim: await socialAim(), offers: [], outcomes: [], ctx: (await db.days.get(DAY)) ?? null, day: DAY, block: 'afternoon' })
+    expect(view.elig.requiresGoingOut).toBe(true)
+    // On the sheet the flag rides the path fact alone, worded as what a rep would ask; no place fact comes of it.
+    const sheet = await factSheet(DAY, at)
+    const f = factById(sheet, `path.${(await socialAim()).id}`)
+    expect(f?.values.requiresGoingOut).toBe(1)
+    expect(f?.text).toContain('would mean going out')
+    expect(f?.text).toContain('never a record of being out')
+    expect(sheet.facts.some((x) => x.id.startsWith('location.'))).toBe(false)
+    // Started: the offer keeps where the rep is meant to happen, a kind of setting as always, and nothing says anyone went out.
+    const offer = await resumePath(await socialAim(), view.pick!, view.state.stage, at)
+    expect(JSON.stringify(await db.offers.get(offer.id as number))).not.toMatch(/going ?out/i)
+    // The day's record of places (Location Context) is untouched, and tier 2 counts only reps marked done.
+    expect((await db.days.get(DAY))?.where).toBeUndefined()
+    expect(carriedByContext(await db.offers.toArray(), await db.outcomes.toArray(), await db.days.toArray(), DAY).size).toBe(0)
+  })
+
   it('offers your pick through Change whatever the shape says, as your pick', async () => {
     await addPathAim('social')
     const aim = await socialAim()
     await setPathPick(aim.id as number, 'greet-by-name', DAY)
     const view = pathToday({ aim: await socialAim(), offers: [], outcomes: [], ctx: (await db.days.get(DAY)) ?? null, day: DAY, block: 'evening' })
-    expect(view.elig.eligible).toEqual([])
+    // An evening at home: the stage's in-person reps still fit, each one that would mean going out (Pass 3); your pick is the day's.
+    expect(view.elig.eligible.map((m) => m.id).sort()).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
+    expect(view.elig.requiresGoingOut).toBe(true)
     expect(view.pick).toMatchObject({ moveId: 'greet-by-name', chosenBy: 'you', rule: 'you' })
     const offer: Offer = await resumePath(await socialAim(), view.pick!, view.state.stage, new Date(2026, 8, 18, 19, 0))
     expect(offer.chosenBy).toBe('you')
     // Tomorrow the pick is the app's again.
-    expect(pathToday({ aim: await socialAim(), offers: [], outcomes: [], ctx: null, day: '2026-09-19', block: 'evening' }).pick).toBeNull()
+    expect(pathToday({ aim: await socialAim(), offers: [], outcomes: [], ctx: null, day: '2026-09-19', block: 'evening' }).pick).toMatchObject({ chosenBy: 'app' })
   })
 
   it('holds one people rep a day: with a path on, the draw offers no in-person people or charisma rep, and paused it does again', async () => {
@@ -114,7 +138,7 @@ describe('the path commitment', () => {
     const sheet = await factSheet(DAY, MORNING)
     const f = factById(sheet, `path.${aim.id}`)
     expect(f?.text).toContain('The Social path: Stage 1 of 6 · Presence')
-    expect(f?.values).toMatchObject({ path: 'social', stage: 1, stages: 6, nobodyAround: 0 })
+    expect(f?.values).toMatchObject({ path: 'social', stage: 1, stages: 6, requiresGoingOut: 0 })
     expect(String(f?.values.eligible).split(',').sort()).toEqual(['attention-outward', 'eye-contact-stranger', 'greet-by-name'])
     expect(factById(sheet, `aim.${aim.id}`)?.text).toContain('The Social path (path)')
     expect(await writeFactsRow(DAY, MORNING)).toBe(true)

@@ -11,6 +11,7 @@ import {
   getCheckIn,
   getSettings,
   isComplete,
+  placedIn,
   previousCompleted,
   privateItems,
   saveAnswer,
@@ -20,7 +21,7 @@ import {
 import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
-import { TodayChips } from './extras'
+import { PrivateLog, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { isSession, offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
@@ -236,6 +237,8 @@ export function SummaryScreen({
   const glanceBlocks = BLOCKS.filter((b) => activeBlocks(settings.frequency).includes(b) || all.some((c) => c.day === day && c.block === b))
   const ex = record.extras ?? {}
   const privateLogged = items.filter((it) => ex.private?.[String(it.id)])
+  // Pass 3: the items placed at this check-in: the morning and afternoon ask them here, the evening in its extras.
+  const placed = items.filter((it) => placedIn(it, block))
 
   function remove() {
     if (!confirm) return setConfirm(true)
@@ -292,6 +295,13 @@ export function SummaryScreen({
       </div>
 
       {block !== 'evening' && <CaffeineCard day={day} block={block} />}
+      {block !== 'evening' && settings.extras.privateLog && placed.length > 0 && (
+        <div class="card" data-testid="private-log-card">
+          <ul class="rows">
+            <PrivateLog slot={{ day, block }} asked={askedOf(record)} items={placed} logged={ex.private} />
+          </ul>
+        </div>
+      )}
       {block !== 'evening' && <TodayChips day={day} />}
 
       {block === 'evening' && (
@@ -302,7 +312,7 @@ export function SummaryScreen({
               {(settings.extras.caffeine || caffeineWords(record)) && <Fact label={copy.caffeine.factLabel} value={caffeineWords(record)} />}
               {settings.extras.dinner && <Fact label={copy.extras.dinner} value={ex.dinner ? copy.extras.yes : null} />}
               {(settings.extras.faith || ex.closeToGod) && <Fact label={copy.extras.faith} value={ex.closeToGod ? copy.extras.yes : null} />}
-              {(settings.extras.privateLog || privateLogged.length > 0) && items.length > 0 && (
+              {(settings.extras.privateLog || privateLogged.length > 0) && (placed.length > 0 || privateLogged.length > 0) && (
                 <Fact
                   label={copy.extras.private}
                   value={

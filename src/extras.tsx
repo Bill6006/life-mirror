@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { addDays, parseDay, type Block } from './blocks'
+import { addDays, parseDay, type Block, type Slot } from './blocks'
 import { coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
 import { CaffeineCard } from './caffeine'
@@ -14,6 +14,8 @@ import {
   getCheckIn,
   getDayContext,
   getSettings,
+  markPrivateShown,
+  placedIn,
   privateItems,
   setDayContext,
   setExtra,
@@ -24,10 +26,12 @@ import {
   updateSettings,
   winFor,
   type ExtraKey,
+  type PrivateItem,
   type WinOutcome,
 } from './db'
 import { fill } from './format'
 import { useLive } from './live'
+import type { ReadingId } from './readings'
 import { askedReadings, type Weekday } from './settings'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
@@ -49,7 +53,6 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
     if (settings) void ensureDayContext(day, settings)
   }, [settings?.updatedAt, day])
   const contexts = useLive(() => db.days.toArray(), [])
-  const [showPrivate, setShowPrivate] = useState(false)
 
   if (record === undefined || !settings || !items || !all || !contexts || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
   // Phase 12: a chip untapped across thirty logged evenings stops appearing; Settings brings it back.
@@ -60,7 +63,8 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
   const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings)
   const ex = record?.extras ?? {}
   const toggle = (key: ExtraKey) => void setExtra(slot, asked, key, !ex[key])
-  const loggedPrivate = items.filter((it) => ex.private?.[String(it.id)]).length
+  // Pass 3: the items placed at this check-in, and only those.
+  const placed = items.filter((it) => placedIn(it, block))
 
   return (
     <section class="screen" data-testid="extras">
@@ -97,27 +101,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         <ul class="rows">
           {settings.extras.dinner && <ExtraRow label={copy.extras.dinner} on={Boolean(ex.dinner)} onLabel={copy.extras.yes} onClick={() => toggle('dinner')} />}
           {settings.extras.faith && <ExtraRow label={copy.extras.faith} on={Boolean(ex.closeToGod)} onLabel={copy.extras.yes} onClick={() => toggle('closeToGod')} />}
-          {settings.extras.privateLog && items.length > 0 && (
-            <li>
-              <button type="button" class="row" onClick={() => setShowPrivate((s) => !s)} aria-expanded={showPrivate}>
-                <span class="row-main">{copy.extras.private}</span>
-                <span class="row-side">{loggedPrivate > 0 ? fill(copy.extras.privateLogged, { n: String(loggedPrivate) }) : ''}</span>
-                <span class="chev" aria-hidden="true">{showPrivate ? '⌄' : '›'}</span>
-              </button>
-            </li>
-          )}
-          {showPrivate &&
-            settings.extras.privateLog &&
-            items.map((it) => (
-              <ExtraRow
-                key={it.id}
-                label={it.name}
-                on={Boolean(ex.private?.[String(it.id)])}
-                onLabel={copy.extras.logged}
-                indent
-                onClick={() => void setPrivateLogged(slot, asked, it.id as number, !ex.private?.[String(it.id)])}
-              />
-            ))}
+          {settings.extras.privateLog && placed.length > 0 && <PrivateLog slot={slot} asked={asked} items={placed} logged={ex.private} />}
         </ul>
       </div>
 
@@ -230,6 +214,46 @@ export function TodayChips({ day }: { day: string }) {
         </ul>
       </div>
       <p class="note faint">{copy.today.note}</p>
+    </>
+  )
+}
+
+/**
+ * The private log at one check-in (Pass 3): the items placed there, one tap each, behind one row so
+ * their names stay out of sight until you open it. Opening it marks them shown, so an item left
+ * untapped is known to have been seen and left, and one never shown enters no comparison (Rule 2).
+ */
+export function PrivateLog({ slot, asked, items, logged }: { slot: Slot; asked: readonly ReadingId[]; items: readonly PrivateItem[]; logged: Record<string, true> | undefined }) {
+  const [open, setOpen] = useState(false)
+  const n = items.filter((it) => logged?.[String(it.id)]).length
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    if (next) void markPrivateShown(slot, asked, items.map((it) => it.id as number))
+  }
+  return (
+    <>
+      <li>
+        <button type="button" class="row" onClick={toggle} aria-expanded={open} data-testid="private-log">
+          <span class="row-main">{copy.extras.private}</span>
+          <span class="row-side">{n > 0 ? fill(copy.extras.privateLogged, { n: String(n) }) : ''}</span>
+          <span class="chev" aria-hidden="true">
+            {open ? '⌄' : '›'}
+          </span>
+        </button>
+      </li>
+      {open &&
+        items.map((it) => (
+          <ExtraRow
+            key={it.id}
+            label={it.name}
+            on={Boolean(logged?.[String(it.id)])}
+            onLabel={copy.extras.logged}
+            indent
+            testid={`private-item-${it.id}`}
+            onClick={() => void setPrivateLogged(slot, asked, it.id as number, !logged?.[String(it.id)])}
+          />
+        ))}
     </>
   )
 }

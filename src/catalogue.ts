@@ -219,7 +219,7 @@ export interface PathAct {
   considerations?: readonly PathConsideration[]
 }
 
-/** A staged curriculum the app owns (Parts 23 and 26): content to read and veto; nothing is wired until Green. */
+/** A staged curriculum the app owns (Parts 23 and 26): its stages, rule, reps and the evidence behind them, each wired once the owner gave it Green. */
 export interface Path {
   id: PathId
   name: string
@@ -230,7 +230,7 @@ export interface Path {
   counted: string
   neverCounted: readonly string[]
   excluded: readonly { what: string; why: string }[]
-  /** The library cards behind it, drafts until Green and disputed ones never cited. */
+  /** The library cards behind it: admitted, or disputed and never cited as support. */
   cards: readonly string[]
   channels?: readonly PathChannel[]
   acts?: readonly PathAct[]

@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-137 moves across 15 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+143 moves across 15 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -48,6 +48,7 @@ Stay a little past the urge to leave, answer a disclosure with one of your own, 
 - **Say the thing** (moves the stage · where: one to one, a group, a recurring place). Attention on: The sentence you notice yourself swallowing. Drop: Waiting for a better moment. Done when you have said it, however it lands.
 - **Write one line on how the last conversation went, then the liking gap** (moves no stage · where: on your own). Attention on: One honest line, then the liking gap. Drop: Replaying what you should have said. Done when it is written.
 - **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
+- **Share one thing that made you laugh** (moves the stage · where: one to one, a recurring place, a group). Attention on: Something that happened to you, told in a few sentences. Drop: Keeping to safe facts so nothing can fall flat. Done when you have told it, however it landed. Laugh at the moment or at yourself, never at them or anyone else.
 
 #### Stage 4 · Voice in a group
 
@@ -101,7 +102,7 @@ Kinds of setting:
 - an errand: A shop, a queue, a counter: variety, never the home.
 - a group: Three or more people talking together.
 - one to one: Just the two of you.
-- a call or a message: A call or a message: fills a day with nobody around, and moves no stage.
+- a call or a message: A call or a message: it keeps a day in touch, and moves no stage.
 - on your own: On your own: a warm-up that moves no stage.
 
 #### Counted, and never counted
@@ -139,6 +140,8 @@ Claim cards, each source verified at Crossref, admitted once their path was wire
 - **good evidence** (admitted). Randomising between acceptable options at each decision point gives honest short-term estimates of what helps, and the probabilities should be kept away from zero and one and logged. Nahum-Shani et al. (2018). Just-in-time adaptive interventions (JITAIs) in mobile health: key components and design principles for ongoing health behavior support. Annals of Behavioral Medicine, 52(6), 446–462. Klasnja et al. (2015). Microrandomized trials: an experimental design for developing just-in-time adaptive interventions. Health Psychology, 34(Suppl), 1220–1228. Klasnja et al. (2019). Efficacy of contextually tailored suggestions for physical activity: a micro-randomized optimization trial of HeartSteps. Annals of Behavioral Medicine, 53(6), 573–582. Liao, Greenewald, Klasnja & Murphy (2020). Personalized HeartSteps: a reinforcement learning algorithm for optimizing physical activity. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(1), 18.
 - **thin evidence** (disputed, never cited). The claim that expansive “power poses” change hormones and confident behaviour is disputed: the hormone effects did not replicate, and what remains is small and comes from not slumping. Ranehill et al. (2015). Assessing the robustness of power posing: no effect on hormones and risk tolerance in a large sample of men and women. Psychological Science, 26(5), 653–656. Elkjær et al. (2020). Expansive and contractive postures and movement: a systematic review and meta-analysis of the effect of motor displays on affective and behavioral responses. Perspectives on Psychological Science, 17(1), 276–304. Körner, Röseler & Schütz (2022). Dominance and prestige: meta-analytic review of experimentally induced body position effects on behavioral, self-report, and physiological dependent variables. Psychological Bulletin, 148(1–2), 67–85.
 - **thin evidence** (disputed, never cited). The advice to repeat positive self-statements is disputed: in two experiments people with low self-esteem who repeated one felt worse, and the finding stands unreplicated. Wood, Perunovic & Lee (2009). Positive self-statements: power for some, peril for others. Psychological Science, 20(7), 860–866.
+- **some evidence** (admitted). Humour in a first meeting goes with liking and closeness for both sexes, and pairs who laugh at the same moment tend to be the ones both interested. Interest also makes people joke more. Treger, Sprecher & Erber (2013). Laughing and liking: Exploring the interpersonal effects of humor use in initial social interactions. European Journal of Social Psychology, 43(6), 532–543. Fraley & Aron (2004). The effect of a shared humorous experience on closeness in initial encounters. Personal Relationships, 11(1), 61–78. Li et al. (2009). An Evolutionary Perspective on Humor: Sexual Selection or Interest Indication? Personality and Social Psychology Bulletin, 35(7), 923–936. Hall (2015). Sexual Selection and Humor in Courtship. Evolutionary Psychology, 13(3), 1474704915598918.
+- **good evidence** (admitted). Kind, shared humour goes with happier relationships and cutting humour with less happy ones, and people prefer an affiliative humour style in a long-term partner. Hall (2017). Humor in romantic relationships: A meta‐analysis. Personal Relationships, 24(2), 306–322. Kurtz & Algoe (2015). Putting laughter in context: Shared laughter as behavioral indicator of relationship well‐being. Personal Relationships, 22(4), 573–590. DiDonato, Bedminster & Machel (2013). My funny valentine: How humor styles affect romantic interest. Personal Relationships, 20(2), 374–390. Keltner et al. (2001). Just teasing: A conceptual analysis and empirical review. Psychological Bulletin, 127(2), 229–248.
 
 ### Partner
 
@@ -169,6 +172,7 @@ Start and carry a light conversation with someone you might like to know: past h
 - **One low-pressure conversation with a woman** (moves the stage · where: an errand, a recurring place, one to one). Attention on: Something about the place or the moment. Drop: Treating it as an audition. Done when you have talked, however it went.
 - **Ask one follow-up question** (moves the stage · where: one to one, a recurring place, an errand). Attention on: The last thing they said, and one question about it. Drop: A new topic whenever there is a silence. Done when you have asked, however they answer.
 - **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it.
+- **Share one thing that made you laugh** (moves the stage · where: one to one, a recurring place, a group). Attention on: Something that happened to you, told in a few sentences. Drop: Keeping to safe facts so nothing can fall flat. Done when you have told it, however it landed. Laugh at the moment or at yourself, never at them or anyone else.
 - **Return to something they said last time** (moves the stage · where: a recurring place). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
 - **Send one specific message** (moves no stage · where: a call or a message · channel: online). Attention on: One thing in their words that you would like to hear more about. Drop: The same opener to everyone. Done when it is sent, whatever the reply.
 
@@ -179,8 +183,9 @@ Say plainly that you would like to see them again, offer your number, and make o
 - Not progress: Hints in place of a plain sentence; a second ask after a no, which is never offered.
 - How it moves: moves by the rule, or when you say you have a date
 - **Offer your number to stay in touch** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence: I have enjoyed this, can I give you my number? Drop: Hoping you will run into them again. Done when you have offered, whatever the answer. One offer. Anything other than a yes is final.
-- **Say your interest plainly** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence, then let them answer. Drop: Hinting and waiting for them to guess. Done when you have said it, whatever the answer. Say it once. Anything other than a yes is final: thank them and let it be.
-- **Make one specific, short, public invitation** (moves the stage · where: one to one, a recurring place). Attention on: A day, an hour, a public place. Drop: We should hang out sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered.
+- **Say your interest plainly** (moves the stage · where: one to one, a recurring place). Attention on: One plain sentence that says you like them and names a date, then let them answer. Drop: Wording it so it could pass as friendly. Done when you have said it, whatever the answer. Say it once. To a friend, add that the friendship stands whatever they answer. Anything other than a yes is final: thank them and let it be.
+- **Make one specific, short, public invitation** (moves the stage · where: one to one, a recurring place). Attention on: A day, an hour, a public place, and that it is a date. Drop: We should hang out sometime. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final: thank them and let it be. A second ask after a no is never offered.
+- **Tell them one specific thing you like about them** (moves the stage · where: one to one, a recurring place). Attention on: The moment they said or did it. Drop: A general compliment that could fit anyone. Done when you have said it, however they take it. Once, and about who they are rather than how they look.
 - **Propose a short meeting in person** (moves no stage · where: a call or a message · channel: online). Attention on: A day, an hour, a public place. Drop: Another week of messages. Done when you have asked, whatever the answer. One ask. Anything other than a yes is final.
 
 #### Stage 4 · Dating
@@ -193,6 +198,9 @@ Your own conduct on a date, and learning whether your lives fit: there on time w
 - **Ask, then follow what they say** (moves no stage · where: one to one · on a declared date day). Attention on: The last thing they said. Drop: Waiting for your turn to talk. Done when you did it, however the date went.
 - **Share something real in turn** (moves no stage · where: one to one · on a declared date day). Attention on: What they just shared, and what you have of the same size. Drop: Keeping it all light so nothing can go wrong. Done when you did it, however the date went.
 - **End the date clearly and kindly** (moves no stage · where: one to one · on a declared date day). Attention on: One plain sentence about what you would like next. Drop: Leaving it vague so nobody has to answer. Done when you have said it, whatever the answer. Their answer is final. A second ask after a no is never offered.
+- **Greet them as someone you are glad to see** (moves no stage · where: one to one · on a declared date day). Attention on: Their face as you meet. Drop: A quick hello and straight into plans or the menu. Done when you did it, however the date went.
+- **Ask before a first kiss** (moves no stage · where: one to one · on a declared date day). Attention on: Their answer in words, not the moment. Drop: Leaning in to see what happens. Done when you have asked, whatever the answer. Anything other than a clear yes is final: after a no or a not yet, leave the next move to them.
+- **Suggest a date with something to do together** (moves no stage · where: one to one, a call or a message). Attention on: Something neither of you has tried, light enough to laugh at. Drop: Another evening of sitting across a table asking questions. Done when you have suggested it, whatever the answer. Their answer is final; if they would rather do something else, go with theirs.
 - **Talk about a good ordinary week** (moves no stage · where: one to one, a call or a message). Attention on: What makes a week good for them, in their words. Drop: Turning it into an interview, or talking only about yourself. Done when you have asked, listened and said your own, whatever was said.
 - **Talk about what you are each working toward** (moves no stage · where: one to one, a call or a message). Attention on: Their plans, and where yours meet or pull apart. Drop: Keeping your own plans vague so nothing clashes. Done when you have asked, listened and said your own, whatever was said.
 - **Talk about the people in your lives** (moves no stage · where: one to one, a call or a message). Attention on: Who they are close to, and how those people fit into their week. Drop: Staying on safe small talk. Done when you have asked, listened and said your own, whatever was said.
@@ -226,6 +234,7 @@ The small acts that build a relationship: meet good news with interest, thank sp
 - How it moves: moves only when you declare it
 - **Meet their good news with real interest** (moves no stage · where: one to one). Attention on: Their face when they tell it. Drop: Topping it with news of your own. Done when you did it.
 - **Do one new thing together** (moves no stage · where: one to one). Attention on: Something neither of you would plan alone. Drop: The same evening as always. Done when you did it together.
+- **Bring back a moment you laughed about together** (moves no stage · where: one to one · from Building through Keeping). Attention on: A moment you both remember. Drop: Talking only about what needs doing. Done when you did it.
 
 #### Stage 7 · Keeping
 
@@ -251,7 +260,7 @@ Kinds of setting:
 - an errand: A shop, a queue, a counter: variety, never the home.
 - a group: Three or more people talking together.
 - one to one: Just the two of you.
-- a call or a message: A call or a message: fills a day with nobody around, and moves no stage.
+- a call or a message: A call or a message: it keeps a day in touch, and moves no stage.
 - on your own: On your own: a warm-up that moves no stage.
 
 #### Channel: Online
@@ -333,6 +342,17 @@ Claim cards, each source verified at Crossref, admitted once their path was wire
 - **some evidence** (admitted). Reading a partner’s behaviour kindly helped healthy marriages and was followed by steeper declines in troubled ones. McNulty et al. (2008). Benevolent cognitions as a strategy of relationship maintenance: "Don't sweat the small stuff"....But it is not all small stuff. Journal of Personality and Social Psychology, 94(4), 631–646.
 - **some evidence** (admitted). Couples assigned to pool their money kept their relationship quality over two years while other couples’ declined, and pooling goes with satisfaction across many studies. Olson et al. (2023). Common Cents: Bank Account Structure and Couples’ Relationship Dynamics. Journal of Consumer Research, 50(4), 704–721. Gladstone et al. (2022). Pooling finances and relationship satisfaction. Journal of Personality and Social Psychology, 123(6), 1293–1314.
 - **some evidence** (admitted). Seeing the split of housework as unfair lowers both partners’ happiness, feeling appreciated removes much of that, and unmet expectations about sharing childcare lower satisfaction after a birth. Frisco and Williams (2003). Perceived Housework Equity, Marital Happiness, and Divorce in Dual-Earner Households. Journal of Family Issues, 24(1), 51–73. Gordon et al. (2022). Feeling Appreciated Buffers Against the Negative Effects of Unequal Division of Household Labor on Relationship Satisfaction. Psychological Science, 33(8), 1313–1327. Biehle and Mickelson (2012). First-time parents' expectations about the division of childcare and play. Journal of Family Psychology, 26(1), 36–45.
+- **some evidence** (admitted). Humour in a first meeting goes with liking and closeness for both sexes, and pairs who laugh at the same moment tend to be the ones both interested. Interest also makes people joke more. Treger, Sprecher & Erber (2013). Laughing and liking: Exploring the interpersonal effects of humor use in initial social interactions. European Journal of Social Psychology, 43(6), 532–543. Fraley & Aron (2004). The effect of a shared humorous experience on closeness in initial encounters. Personal Relationships, 11(1), 61–78. Li et al. (2009). An Evolutionary Perspective on Humor: Sexual Selection or Interest Indication? Personality and Social Psychology Bulletin, 35(7), 923–936. Hall (2015). Sexual Selection and Humor in Courtship. Evolutionary Psychology, 13(3), 1474704915598918.
+- **good evidence** (admitted). Kind, shared humour goes with happier relationships and cutting humour with less happy ones, and people prefer an affiliative humour style in a long-term partner. Hall (2017). Humor in romantic relationships: A meta‐analysis. Personal Relationships, 24(2), 306–322. Kurtz & Algoe (2015). Putting laughter in context: Shared laughter as behavioral indicator of relationship well‐being. Personal Relationships, 22(4), 573–590. DiDonato, Bedminster & Machel (2013). My funny valentine: How humor styles affect romantic interest. Personal Relationships, 20(2), 374–390. Keltner et al. (2001). Just teasing: A conceptual analysis and empirical review. Psychological Bulletin, 127(2), 229–248.
+- **some evidence** (admitted). A plain statement of romantic interest made someone more appealing than vague signals. Expressed liking reads as good intentions, and unclear endings hurt both sides. Birnbaum et al. (2018). Are you into me? Uncertainty and sexual desire in online encounters and established relationships. Computers in Human Behavior, 85, 372–384. Montoya & Insko (2008). Toward a more complete understanding of the reciprocity of liking effect. European Journal of Social Psychology, 38(3), 477–498. Baumeister, Wotman & Stillwell (1993). Unrequited love: On heartbreak, anger, guilt, scriptlessness, and humiliation. Journal of Personality and Social Psychology, 64(3), 377–394. Clark, Shaver & Abrahams (1999). Strategic Behaviors in Romantic Relationship Initiation. Personality and Social Psychology Bulletin, 25(6), 709–722.
+- **good evidence** (admitted). Feeling responded to raises sexual interest in the person, both with strangers and in couples, where it works through feeling special. Birnbaum & Reis (2012). When Does Responsiveness Pique Sexual Interest? Attachment and Sexual Desire in Initial Acquaintanceships. Personality and Social Psychology Bulletin, 38(7), 946–958. Birnbaum et al. (2016). Intimately connected: The importance of partner responsiveness for experiencing sexual desire. Journal of Personality and Social Psychology, 111(4), 530–546. McFarland, Jurafsky & Rawlings (2013). Making the Connection: Social Bonding in Courtship Situations. American Journal of Sociology, 118(6), 1596–1649.
+- **good evidence** (admitted). Genuine compliments and thanks land better than people expect, and praising the other person’s qualities is what makes them feel understood and loved. Zhao & Epley (2021). Insufficiently complimentary?: Underestimating the positive impact of compliments creates a barrier to expressing them. Journal of Personality and Social Psychology, 121(2), 239–256. Kumar & Epley (2018). Undervaluing Gratitude: Expressers Misunderstand the Consequences of Showing Appreciation. Psychological Science, 29(9), 1423–1435. Algoe, Kurtz & Hilaire (2016). Putting the “You” in “Thank You”. Social Psychological and Personality Science, 7(7), 658–666.
+- **some evidence** (admitted). Nonverbal warmth follows engagement: genuine smiles are judged better than posed ones, eye contact comes as attention is shared, and mimicry backfires when it is noticed. Gunnery & Ruben (2016). Perceptions of Duchenne and non-Duchenne smiles: A meta-analysis. Cognition and Emotion, 30(3), 501–515. Wohltjen & Wheatley (2021). Eye contact marks the rise and fall of shared attention in conversation. Proceedings of the National Academy of Sciences, 118(37), e2106645118. Salazar Kämpf et al. (2018). Disentangling the Sources of Mimicry: Social Relations Analyses of the Link Between Mimicry and Liking. Psychological Science, 29(1), 131–138. Wessler et al. (2024). The Too-Much-Mimicry Effect: Strong (vs. Subtle) Mimicry Impairs Liking and Trust in Distributive Negotiations. Journal of Nonverbal Behavior, 48(2), 253–276.
+- **good evidence** (admitted). Reading interest is unreliable: men tend to see more sexual interest in friendliness than is there, largely by projecting their own, women’s interest is read barely above chance, and flirting is returned more often than choices are. Farris et al. (2008). Perceptual Mechanisms That Characterize Gender Differences in Decoding Women's Sexual Intent. Psychological Science, 19(4), 348–354. Perilloux, Easton & Buss (2012). The Misperception of Sexual Interest. Psychological Science, 23(2), 146–151. Lee et al. (2020). Sex Differences in Misperceptions of Sexual Interest Can Be Explained by Sociosexual Orientation and Men Projecting Their Own Interest Onto Women. Psychological Science, 31(2), 184–192. Place et al. (2009). The Ability to Judge the Romantic Interest of Others. Psychological Science, 20(1), 22–26. Back et al. (2011). Why Mate Choices are not as Reciprocal as we Assume: The Role of Personality, Flirting and Physical Attractiveness. European Journal of Personality, 25(2), 120–132. Bendixen (2014). Evidence of Systematic Bias in Sexual Over- and Underperception of Naturally Occurring Events: A Direct Replication of in a more Gender-Equal Culture. Evolutionary Psychology, 12(5), 1004–1021.
+- **some evidence** (admitted). Consent is often given and read without words: men rely more on cues and read ambiguity as consent, and checking fades as a relationship goes on. Jozkowski et al. (2014). Gender Differences in Heterosexual College Students' Conceptualizations and Indicators of Sexual Consent: Implications for Contemporary Sexual Assault Prevention Education. The Journal of Sex Research, 51(8), 904–916. Humphreys (2007). Perceptions of Sexual Consent: The Impact of Relationship History and Gender. Journal of Sex Research, 44(4), 307–315. Willis & Jozkowski (2019). Sexual Precedent’s Effect on Sexual Consent Communication. Archives of Sexual Behavior, 48(6), 1723–1734. Muehlenhard et al. (2016). The Complexities of Sexual Consent Among College Students: A Conceptual and Empirical Review. The Journal of Sex Research, 53(4-5), 457–487.
+- **thin evidence** (disputed, never cited). The belief that a no to sex often means yes is disputed: people’s own accounts mostly did not fit it, and men who hold it take refusals less seriously. Muehlenhard & Rodgers (1998). Token Resistance to Sex. Psychology of Women Quarterly, 22(3), 443–463. Osman (2003). Predicting Men's Rape Perceptions Based on the Belief That “No” Really Means “Yes”. Journal of Applied Social Psychology, 33(4), 683–692.
+- **thin evidence** (disputed, never cited). The advice to seem uninterested or keep someone guessing is disputed: the results conflict, playing hard to get lowered liking even where it raised wanting, and stated interest raised appeal. Whitchurch, Wilson & Gilbert (2011). “He Loves Me, He Loves Me Not . . . ”. Psychological Science, 22(2), 172–175. Dai, Dong & Jia (2014). When does playing hard to get increase romantic attraction? Journal of Experimental Psychology: General, 143(2), 521–526. Birnbaum et al. (2018). Are you into me? Uncertainty and sexual desire in online encounters and established relationships. Computers in Human Behavior, 85, 372–384. Birnbaum, Zholtack & Reis (2020). No pain, no gain: Perceived partner mate value mediates the desire-inducing effect of being hard to get during online and face-to-face encounters. Journal of Social and Personal Relationships, 37(8-9), 2510–2528. Hazel, Barker & Pronin (2023). Playing Hard-to-Get: A New Look at an Old Strategy. The Journal of Sex Research, 60(3), 368–383.
+- **thin evidence** (disputed, never cited). The claim that a light touch makes someone more receptive is disputed, because its best-known field study was retracted in 2024. Guéguen (2007). Courtship compliance: The effect of touch on women's behavior. Social Influence, 2(2), 81–97. Retracted in 2024.
 
 ## Learned tags and their starting beliefs
 
@@ -400,7 +420,7 @@ These only select. They are never learned.
 
 - **Cost to assign.** What being given this move costs you in time, energy, money or social risk: low, medium or high. Everything the app might assign carries one (Rule 16). Shown here; not yet used in selection.
 - **Starting effort.** The effort to begin: low, medium or high. The top selection field.
-- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days. Another person, when the move needs an adult there in person, is filtered by today’s shape: an office day’s morning and afternoon, the church morning, a daycare day’s drop-off and the block of the pickup, as today’s chips set them; a call or a message is offered any time, and her moves keep their own gates. In-person reps you did elsewhere are shown as counts, never as a reason to offer one. Kit, outdoors and a free hour are stated on the card so you can judge them.
+- **Needs.** Outdoors, kit, another person, a free hour, daylight, quiet. Daylight is filtered by your daylight hours and quiet by your office days. Another person, when the move needs an adult there in person, is filtered by today’s shape in the day’s draw: an office day’s morning and afternoon, the church morning, a daycare day’s drop-off and the block of the pickup, as today’s chips set them. A path’s reps are not: where the shape puts no one around, an in-person rep still fits, and doing it would mean going out, at lunch, on an errand or to something later. A call or a message is offered any time, and her moves keep their own gates. In-person reps you did elsewhere are shown as counts, never as a reason to offer one. Kit, outdoors and a free hour are stated on the card so you can judge them.
 - **Effect window.** When the effect should show: next block, later that day, this evening, next morning, seven days. Later that day is new in this phase.
 
 ## Ending the day well
@@ -1545,6 +1565,21 @@ When someone tells you something real about themselves, tell them something of a
 - When: morning, afternoon, evening
 - Counts toward: conversations
 
+### Share one thing that made you laugh
+
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage_
+
+In a conversation with someone you would like to know better, tell one short, true thing from your week that made you laugh: about you or the moment, never at anyone’s expense.
+
+- Source: Treger, Sprecher and Erber (2013). In two experiments with strangers, humour in a first conversation went with liking and closeness for both sexes. Evidence: thin.
+- Takes: 2 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, connection, pleasure · intensity medium
+- Should move: Social energy ↑ (next block), Confidence ↑ (next block), Mood ↑ (next block)
+- Starting belief: Social energy ↑ by about a tenth of a step over the next block · Treger 2013: humour went with liking in first meetings; the cause runs both ways; a tenth of a step.
+- When: morning, afternoon, evening
+- Stands in for: be funny, be more playful
+- Counts toward: conversations
+
 ### Return to something they said last time
 
 _Offered through its path’s row alone, never by the day’s draw · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
@@ -1976,9 +2011,9 @@ Tell one friend you are open to meeting someone, and ask whether they know anyon
 
 _Offered through its path’s row alone, never by the day’s draw · Partner path, stage 3, moves the stage_
 
-To someone you have come to like, say it in one plain sentence: you have enjoyed talking and would like to do it again.
+To someone you have come to like, say it in one plain sentence that leaves no doubt it is romantic: you like them, and you would like to take them on a date.
 
-- Source: Vorauer, Cameron, Holmes and Pearce (2003). People who fear rejection believe their overtures show more interest than they do; a plain sentence closes that gap. Evidence: moderate.
+- Source: Birnbaum, Kanat-Maymon, Mizrahi and colleagues (2018). A partner who said their romantic interest plainly was more appealing than one who stayed vague, because it ended the uncertainty. Evidence: moderate.
 - Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
 - Tags: with people, short, connection · intensity medium
 - Should move: Social energy ↑ (next block), Confidence ↑ (next block), Mood ↑ (next block)
@@ -1990,7 +2025,7 @@ To someone you have come to like, say it in one plain sentence: you have enjoyed
 
 _Offered through its path’s row alone, never by the day’s draw · Partner path, stage 3, moves the stage_
 
-A coffee or a walk, somewhere public, an hour at most, with a day named. One ask; take the answer graciously, whatever it is.
+A coffee, a walk or something light to do together, somewhere public, an hour at most, with a day named and said as a date. One ask; take the answer graciously, whatever it is.
 
 - Source: Joel, Teper and MacDonald (2014). People are less willing to turn someone down in person than they predict, out of concern for the asker: a clear, easy-to-decline ask is the kind one. Evidence: moderate.
 - Takes: 2 min · effort to start: medium · cost to assign: medium · needs: another person
@@ -1998,6 +2033,21 @@ A coffee or a walk, somewhere public, an hour at most, with a day named. One ask
 - Should move: Social energy ↑ (next block), Confidence ↑ (next block), Mood ↑ (next block)
 - Starting belief: Social energy ↑ by about a fifth of a step over the next block · Joel 2014: people find refusing harder than they expect; a plain ask with an easy way out; a fifth of a step.
 - When: morning, afternoon, evening
+- Counts toward: conversations
+
+### Tell them one specific thing you like about them
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 3, moves the stage_
+
+To someone you have come to like, name one thing you like about them: something they said, did or care about, and what it showed you.
+
+- Source: Zhao and Epley (2021). In nine experiments, people underestimated how good a genuine compliment made the other person feel and overestimated how awkward it would be. Evidence: moderate.
+- Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, connection · intensity medium
+- Should move: Social energy ↑ (next block), Confidence ↑ (next block), Mood ↑ (next block)
+- Starting belief: Social energy ↑ by about a fifth of a step over the next block · Zhao and Epley 2021: compliments land better than expected; a fifth of a step on confidence.
+- When: morning, afternoon, evening
+- Stands in for: give more compliments, show interest
 - Counts toward: conversations
 
 ### Write or update one profile, honestly
@@ -2105,6 +2155,48 @@ At the end, say plainly whether you would like to meet again, and make it easy f
 - Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
 - Starting belief: Mood ↑ by about a tenth of a step over the this evening · Joel 2014: refusing is harder than people expect; a plain ending with an easy no; a tenth of a step.
 - When: afternoon, evening
+
+### Greet them as someone you are glad to see
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+On a date day, when you meet: face them, say their name, and say plainly that you are glad to see them. The warmth is in the words and your attention, not a practised smile.
+
+- Source: Gunnery and Ruben (2016). A meta-analysis found genuine smiles judged more positively than posed ones, most of all in video and when the smile came naturally. Evidence: thin.
+- Takes: 1 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, short, low effort, connection · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
+- Starting belief: Mood ↑ by about a tenth of a step over the this evening · Gunnery and Ruben 2016: genuine warmth is read as genuine; thin for dating, a tenth of a step.
+- When: afternoon, evening
+- Stands in for: be warm, smile more
+
+### Ask before a first kiss
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+If you would like to kiss them, ask in plain words first, and take their answer as it is. A clear yes is the only yes.
+
+- Source: Jozkowski, Peterson, Sanders, Dennis and Reece (2014). Men gave and read consent more through nonverbal cues, women more through words, which is where misreadings begin. Evidence: moderate.
+- Takes: 1 min · effort to start: high · cost to assign: high · needs: another person
+- Tags: with people, short, connection · intensity high
+- Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
+- Starting belief: Mood ↑ by about a tenth of a step over the this evening · Jozkowski 2014: words close the gap nonverbal cues leave; a tenth of a step.
+- When: afternoon, evening
+- Stands in for: read the moment, go for the kiss
+
+### Suggest a date with something to do together
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 4, moves no stage_
+
+For a next date, suggest something you can do side by side and laugh about: a game, a class, a market, somewhere new to you both. Short and public while you are still getting to know each other.
+
+- Source: Fraley and Aron (2004). Strangers given a shared humorous experience felt closer afterwards than those given the same tasks without it. Evidence: thin.
+- Takes: 2 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, short, low effort, connection, pleasure · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
+- Starting belief: Mood ↑ by about a tenth of a step over the this evening · Fraley and Aron 2004: shared humour raised closeness between strangers; a tenth of a step.
+- When: afternoon, evening
+- Stands in for: plan a fun date
 
 ### Talk about a good ordinary week
 
@@ -2274,6 +2366,20 @@ This week, do one thing together that neither of you has done before. Small is f
 - Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
 - Starting belief: Mood ↑ by about a tenth of a step over the this evening · Aron 2000; a randomised four-week programme agreed (Coulter and Malouff 2013); a tenth of a step.
 - When: afternoon, evening
+
+### Bring back a moment you laughed about together
+
+_Offered through its path’s row alone, never by the day’s draw · Partner path, stage 6, moves no stage_
+
+Retell a moment the two of you laughed about, from the start, and let them add their side of it.
+
+- Source: Hall (2017). A meta-analysis of 43 samples found shared humour went with satisfaction most of all, and most kinds of negative humour with less. Evidence: thin.
+- Takes: 5 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, short, low effort, connection, pleasure · intensity low
+- Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
+- Starting belief: Mood ↑ by about a tenth of a step over the this evening · Hall 2017: shared humour and satisfaction go together; correlational, a tenth of a step.
+- When: afternoon, evening
+- Stands in for: keep things fun
 
 ### Reappraise a disagreement
 
