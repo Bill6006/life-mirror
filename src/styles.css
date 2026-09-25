@@ -667,6 +667,8 @@ code,
 }
 
 /* ---------- Facts joined by a dot: a line breaks between facts, never leaving a dot at either end ---------- */
+/* A fact moves whole to the next line; only one too long for a whole line of its own wraps inside
+   itself, where it would otherwise lose its end to the clipping that hides a line's leading dot. */
 .dots {
   display: inline-flex;
   flex-wrap: wrap;
@@ -677,7 +679,6 @@ code,
 
 .dots > span {
   position: relative;
-  white-space: nowrap;
 }
 
 .dots > span + span::before {
@@ -1113,7 +1114,11 @@ button.ctx {
   color: var(--faint);
 }
 
+/* A logged block's time keeps its word's line wherever it fits inside the block, using the block's
+   own inner margin (--w-pad, each theme's right padding); only where it would cross the block's edge
+   does it move under its word. */
 .window.is-logged .w-state {
+  margin-right: calc(-1 * var(--w-pad, 13px));
   color: var(--ink-2);
 }
 
@@ -2951,6 +2956,7 @@ button.chip {
 }
 
 [data-theme="nocturne"] .window {
+  --w-pad: 11px;
   gap: 1px;
   min-height: 88px;
   padding: 11px 11px 10px;
@@ -3412,6 +3418,7 @@ button.chip {
 }
 
 [data-theme="signal"] .window {
+  --w-pad: 0px;
   gap: 2px;
   min-height: 0;
   padding: 0;

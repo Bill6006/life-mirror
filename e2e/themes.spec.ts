@@ -5,8 +5,8 @@ import { expect, test, type Page } from '@playwright/test'
 // states its taps open, at the phone's width, a narrower phone, and a width that stands for text
 // zoomed to 130 percent. Every run of text must read at 4.8 to 1 or better against what is behind
 // it and be at least 11.5 pixels as seen; no two runs of text may collide; nothing may run past the
-// phone's edge or truncate a label; every control must be a 48-by-48 target, drawn or extended, its
-// area its own.
+// phone's edge, be cut off at a container's side, or truncate a label; every control must be a
+// 48-by-48 target, drawn or extended, its area its own.
 // Then: switching a theme changes the look alone, at once, with nothing lost, and the choice holds.
 
 const THEMES = ['nocturne', 'instrument', 'signal'] as const
@@ -256,6 +256,26 @@ function audit(opts: { zoom: number }) {
     }
     return right - left > 0.5 && bottom - top > 0.5 ? { x: left, y: top + scrollY, w: right - left, h: bottom - top } : null
   }
+  // What cuts a run at its side: a container that hides past its sides (main itself does), with the
+  // run partly inside it. The run has lost words the screen never shows, the same fault as running
+  // past the edge, which the clipping would otherwise hide. A run moved wholly out of sight is hidden
+  // on purpose, not cut.
+  const cutBy = (el: Element, r: DOMRect): Element | null => {
+    if (r.width <= 0.5) return null
+    for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) {
+      const cs = getComputedStyle(e)
+      if (cs.overflowX !== 'hidden' && cs.overflowX !== 'clip') continue
+      const b = e.getBoundingClientRect()
+      if ((r.right > b.right + 0.5 && r.left < b.right) || (r.left < b.left - 0.5 && r.right > b.left)) return e
+    }
+    return null
+  }
+  const named = (e: Element) => e.tagName.toLowerCase() + [...e.classList].map((c) => `.${c}`).join('')
+  // A label cut with an ellipsis is the truncation rule's to judge, with its exemptions.
+  const ellipsised = (el: Element) => {
+    for (let e: Element | null = el; e && e !== document.body; e = e.parentElement) if (getComputedStyle(e).textOverflow === 'ellipsis') return true
+    return false
+  }
   const issues: string[] = []
   const runs: { s: string; t: Node; box: Element; bar: boolean; x: number; y: number; w: number; h: number }[] = []
   // The box a run of text is laid out in: its nearest ancestor that is not an inline span of the same line.
@@ -274,7 +294,10 @@ function audit(opts: { zoom: number }) {
     if (cs.visibility === 'hidden') continue
     const range = document.createRange()
     range.selectNodeContents(t)
-    const rects = [...range.getClientRects()].map((r) => clipTo(el, r)).filter((r): r is NonNullable<typeof r> => r !== null)
+    const raw = [...range.getClientRects()]
+    const cut = ellipsised(el) ? null : (raw.map((r) => cutBy(el, r)).find((e) => e !== null) ?? null)
+    if (cut) issues.push(`cut off at the side of ${named(cut)}: "${s.slice(0, 40)}"`)
+    const rects = raw.map((r) => clipTo(el, r)).filter((r): r is NonNullable<typeof r> => r !== null)
     if (!rects.length) continue
     // A disabled control is exempt from contrast, as the guidelines exempt it; its text still may not be tiny.
     const disabled = Boolean(el.closest('button:disabled, input:disabled'))

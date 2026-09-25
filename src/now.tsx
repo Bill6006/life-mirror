@@ -68,7 +68,8 @@ function Status({ windows, today, onOpen, onCheckIn }: { windows: readonly Today
               <span class="w-name">{copy.blocks[w.block]}</span>
               <span class="w-state">
                 {w.text}
-                {w.time && <span class="w-time"> {w.time}</span>}
+                {/* The space before the time is outside it: the time stays whole, and may move to its own line. */}
+                {w.time && <> <span class="w-time">{w.time}</span></>}
               </span>
             </>
           )
