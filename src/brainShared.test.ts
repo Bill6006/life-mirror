@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BRAIN_SWITCHES, dayGuard, lackedOf, nearRepeat, numberGrounded, numbersIn, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
+import { BRAIN_SWITCHES, dayGuard, isLocationFact, LOCATION_TO_CLAUDE, lackedOf, nearRepeat, numberGrounded, numbersIn, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -197,5 +197,35 @@ describe('how Life Mirror is used, as evidence and never an explanation (Follow-
     expect(usageTalkRefusal('Since you keep opening Change without choosing, this one is short.')).not.toBeNull()
     expect(usageTalkRefusal('Opened Change 3 times; this one may suit the afternoon better.')).toBeNull()
     expect(usageTalkRefusal('A short hello, because the afternoon is busy.')).toBeNull()
+  })
+})
+
+describe('a place is context, never a cause (Part 43)', () => {
+  const where: FactSheet = {
+    ...sheet,
+    facts: [...sheet.facts, { id: 'location.today', tags: [], text: 'Where today has been so far, as Life Mirror saw it while open: the morning at Home, then at Work.', values: { day: '2026-09-18', morning: 'home,work' } }],
+  }
+  const line = (text: string, factIds = ['location.today']) => validateOutput({ mode: 'observation', text, factIds, cardIds: [] }, where, library)
+
+  it('keeps its own switch and its own gate, closed while the reliability checks run', () => {
+    expect(BRAIN_SWITCHES).toContain('location')
+    expect(LOCATION_TO_CLAUDE).toBe('gated')
+    expect(isLocationFact('location.today')).toBe(true)
+    expect(isLocationFact('context.loneliness')).toBe(false)
+  })
+
+  it('lets a line say what went with a place, and a reason only as a possibility', () => {
+    expect(line('The morning moved from Home to Work; a short walk fits the gap.').ok).toBe(true)
+    expect(line('Afternoons at Work may go with lower energy; worth watching.').ok).toBe(true)
+  })
+
+  it('refuses a place said to cause a reading', () => {
+    expect(line('Work drains your energy in the afternoon.')).toMatchObject({ ok: false, reason: 'speaks of a place as the cause of a reading; say what went with it' })
+    expect(line('Mood was lower because you were at work.').ok).toBe(false)
+    expect(line('Being at Home caused the calmer evening.').ok).toBe(false)
+  })
+
+  it('leaves every line that cites no location fact as it was', () => {
+    expect(validateOutput({ mode: 'observation', text: 'Yesterday evening read 62 because the day was calm.', factIds: ['reading.2026-09-17.evening'], cardIds: [] }, where, library).ok).toBe(true)
   })
 })

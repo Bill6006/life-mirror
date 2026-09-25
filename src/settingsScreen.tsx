@@ -1,3 +1,5 @@
+import { LocationSection } from './locationScreen'
+import { namedPlaces } from './locationFlow'
 import { useEffect, useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { build } from './build'
@@ -7,7 +9,7 @@ import { getSettings, updateSettings } from './db'
 import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
 import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
-import { activeBlocks, applyLowDemand, daylightFor, type Settings, type Weekday } from './settings'
+import { activeBlocks, applyLowDemand, daylightFor, type Settings, type Weekday, sunPlace } from './settings'
 import { parsePlace, placeText, sunLocal, type Place } from './sun'
 import { setTheme, THEMES, useTheme, type ThemeId } from './theme'
 import { Disclosure, LinkRow, SectionLabel, SubHead } from './ui'
@@ -16,7 +18,7 @@ import { Disclosure, LinkRow, SectionLabel, SubHead } from './ui'
 // is set in one line, and opens its own screen with the same controls as before. Nothing was
 // removed; every control moved into the section it belongs to.
 
-export type SettingsSection = 'week' | 'checkins' | 'extras' | 'moves' | 'direction' | 'theme' | 'about'
+export type SettingsSection = 'week' | 'location' | 'checkins' | 'extras' | 'moves' | 'direction' | 'theme' | 'about'
 
 type Permission = NotificationPermission | 'unsupported'
 
@@ -42,6 +44,7 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
   const tests = build.unitTests === null ? n.aboutNoTests : fill(n.aboutTests, { n: String(build.unitTests) })
   return {
     week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: w.pickupTime }), fill(s.place ? n.daylightSun : n.daylight, daylightFor(s, blockAt(new Date()).day))].join(' · '),
+    location: s.location.on ? fill(n.locationOn, { known: n.locationKnownNone }) : n.locationOff,
     checkins: [...(s.lowDemand ? [n.lowDemandOn] : []), freq, s.depth === 'full' ? n.depthFull : n.depthShort, fill(n.quiet, { from: s.quietStart, to: s.quietEnd }), s.reminders.enabled ? n.remindersOn : n.remindersOff].join(' · '),
     extras: fill(n.extrasOn, { n: String(extrasOn), of: String(EXTRA_KEYS.length) }),
     moves: [s.hideFaith ? n.faithOff : n.faithOn, s.privateInSelection ? n.privateIn : n.privateOut].join(' · '),
@@ -60,11 +63,15 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
 /** The Settings tab: the sections, grouped, each with its one line. */
 export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings, onWording, onLegend }: { onSection: (s: SettingsSection) => void; onData: () => void; onCloud: () => void; onBrain: () => void; onReadings: () => void; onWording: () => void; onLegend: () => void }) {
   const settings = useLive(getSettings, [])
+  const places = useLive(namedPlaces, [])
   const theme = useTheme()
-  if (!settings) return <section class="screen" />
+  if (!settings || !places) return <section class="screen" />
   const n = copy.settingsNav
   const g = n.groups
   const line = summaries(settings, theme)
+  // Part 43: the places it knows are in their own table on this phone; counted here.
+  const known = places.filter((p) => p.kind !== 'none').length
+  if (settings.location.on) line.location = fill(n.locationOn, { known: known === 0 ? n.locationKnownNone : known === 1 ? n.locationKnownOne : fill(n.locationKnown, { n: String(known) }) })
   let i = 0
   const row = (label: string, note: string, icon: Parameters<typeof LinkRow>[0]['icon'], onClick: () => void, testid: string) => <LinkRow key={testid} label={label} note={note} icon={icon} onClick={onClick} testid={testid} index={i++} />
   return (
@@ -77,6 +84,7 @@ export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings
       <div class="card">
         <ul class="rows">
           {row(n.week, line.week, 'week', () => onSection('week'), 'settings-week')}
+          {row(n.location, line.location, 'pin', () => onSection('location'), 'settings-location')}
           {row(n.checkins, line.checkins, 'bell', () => onSection('checkins'), 'settings-checkins')}
           {row(n.extras, line.extras, 'extras', () => onSection('extras'), 'settings-extras')}
         </ul>
@@ -179,6 +187,18 @@ function PlaceRow({ place, onSave }: { place: Place | null; onSave: (p: Place | 
   )
 }
 
+/** Part 43: while Location Context gives the sun its area, the place typed above only stands in; says so, with today's sun. */
+function AutoPlaceNote({ settings }: { settings: Settings }) {
+  const where = sunPlace(settings)
+  if (where?.from !== 'auto') return null
+  const sun = sunLocal(blockAt(new Date()).day, where.place)
+  return sun ? (
+    <p class="note faint" data-testid="place-auto">
+      {fill(copy.week.placeAuto, { rise: formatHHMM(sun.rise), set: formatHHMM(sun.set) })}
+    </p>
+  ) : null
+}
+
 /** Your direction, one line, kept on this phone; saved when you leave the field. */
 function DirectionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [text, setText] = useState(value)
@@ -279,7 +299,7 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
     set((s) => ({ ...s, push: { subscription: null, subscribedAt: null, changed: false } }))
   }
 
-  const titles: Record<SettingsSection, string> = { week: n.week, checkins: n.checkins, extras: n.extras, moves: n.moves, direction: n.direction, theme: copy.appearance.theme, about: n.about }
+  const titles: Record<SettingsSection, string> = { week: n.week, location: n.location, checkins: n.checkins, extras: n.extras, moves: n.moves, direction: n.direction, theme: copy.appearance.theme, about: n.about }
   const cur: Settings = settings
   const w = cur.week
   const sub = cur.push.subscription
@@ -312,6 +332,7 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
               <p class="note faint in-card" data-testid="study-days-note">{copy.week.studyNote}</p>
               <DayChips label={copy.week.officeDays} value={w.officeDays} onChange={(officeDays) => setWeek((week) => ({ ...week, officeDays }))} testid="office-days" />
               <PlaceRow place={cur.place} onSave={(place) => set((s) => ({ ...s, place }))} />
+              <AutoPlaceNote settings={cur} />
               {!cur.place && <TimeRow label={copy.week.daylightFrom} value={cur.daylight.from} onChange={(from) => set((s) => ({ ...s, daylight: { ...s.daylight, from } }))} />}
               {!cur.place && <TimeRow label={copy.week.daylightTo} value={cur.daylight.to} onChange={(to) => set((s) => ({ ...s, daylight: { ...s.daylight, to } }))} />}
               <SwitchRow label={copy.week.pickupOn} on={w.pickupTime !== null} onChange={(on) => setWeek((week) => ({ ...week, pickupTime: on ? '17:00' : null }))} testid="pickup-on" />
@@ -455,6 +476,8 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
         )
       case 'theme':
         return <ThemePicker />
+      case 'location':
+        return <LocationSection />
       case 'about': {
         const tests =
           build.unitTests === null

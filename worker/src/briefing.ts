@@ -1,4 +1,4 @@
-import { isWriterModel, WRITER_MODELS, type WriterModel } from '../../src/brainShared'
+import { isLocationFact, isWriterModel, WRITER_MODELS, type WriterModel } from '../../src/brainShared'
 import { isUsageFact } from '../../src/useShared'
 import type { FactSheet, RankedLine } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
@@ -42,6 +42,8 @@ export const CATEGORIES = [
   // Follow-up F1: how Life Mirror is used, as counts; and, for the weekly review alone, a short slice of its events in order.
   'usage',
   'usageEvents',
+  // Part 43: where the day's parts were spent, as kinds of place, from the day's sheet.
+  'location',
 ] as const
 export type Category = (typeof CATEGORIES)[number]
 
@@ -53,11 +55,11 @@ export type Category = (typeof CATEGORIES)[number]
 export const PROFILES: Readonly<Record<Task, Readonly<Record<Writer, readonly Category[]>>>> = {
   line: {
     free: ['factSheet'],
-    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage'],
+    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'location'],
   },
   review: {
     free: ['factSheet'],
-    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'usageEvents'],
+    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'usageEvents', 'location'],
   },
   coach: {
     free: [],
@@ -75,9 +77,11 @@ export interface Gates {
   claudeMayRead: boolean
   /** Follow-up F1: Claude may be given how Life Mirror is used. Gated while the reliability monitoring runs; absent is closed. */
   usageOpen?: boolean
+  /** Part 43: Claude may be given where the day's parts were spent. Gated while the reliability monitoring runs; absent is closed. */
+  locationOpen?: boolean
 }
 
-export const CLOSED_GATES: Gates = { faithHidden: true, privateInSelection: false, claudeMayRead: false, usageOpen: false }
+export const CLOSED_GATES: Gates = { faithHidden: true, privateInSelection: false, claudeMayRead: false, usageOpen: false, locationOpen: false }
 
 /** The owner's category switches (Settings → Brain, Part 30). Absent means on, once the gates allow it. */
 export type Switches = Partial<Record<Category, boolean>>
@@ -94,6 +98,8 @@ export function permitted(task: Task, writer: Writer, category: string, gates: G
   if (writer === 'claude' && cat !== 'factSheet' && !gates.claudeMayRead) return false
   // Follow-up F1: how the app is used opens to Claude only when its gate does.
   if ((cat === 'usage' || cat === 'usageEvents') && gates.usageOpen !== true) return false
+  // Part 43: and where the day was spent, only when its own gate does.
+  if (cat === 'location' && gates.locationOpen !== true) return false
   // 2. His switches. One switch governs how the app is used, its counts and its events alike.
   if (switches[cat === 'usageEvents' ? 'usage' : cat] === false) return false
   // 3. The task's profile.
@@ -139,8 +145,18 @@ export function sheetLines(sheet: FactSheet, forDay: string = sheet.day): string
  * phone's ranking never rests on a usage fact; one that did would go with it.
  */
 export function withoutUsage(sheet: FactSheet): FactSheet {
-  if (!sheet.facts.some((f) => isUsageFact(f.id))) return sheet
-  return { ...sheet, facts: sheet.facts.filter((f) => !isUsageFact(f.id)), ...(sheet.shortlist ? { shortlist: sheet.shortlist.filter((r) => !r.factIds.some(isUsageFact)) } : {}) }
+  return without(sheet, isUsageFact)
+}
+
+/** The sheet without the facts `drop` names, and without any ranked line that rests on one. */
+export function without(sheet: FactSheet, drop: (id: string) => boolean): FactSheet {
+  if (!sheet.facts.some((f) => drop(f.id))) return sheet
+  return { ...sheet, facts: sheet.facts.filter((f) => !drop(f.id)), ...(sheet.shortlist ? { shortlist: sheet.shortlist.filter((r) => !r.factIds.some(drop)) } : {}) }
+}
+
+/** What the free chain reads: the fact sheet approved on 2026-09-18, never how Life Mirror is used (F1) or where the day was spent (Part 43). */
+export function forFreeChain(sheet: FactSheet): FactSheet {
+  return without(sheet, (id) => isUsageFact(id) || isLocationFact(id))
 }
 
 /** The payload for the writer that describes the record: a decision core, plus (for Claude, from Part 30) permitted private context. */
@@ -198,7 +214,8 @@ export function lineBriefing(i: LineBriefingInput): { ok: true; briefing: LineBr
   if (!shape) return { ok: false, reason: `the sheet for ${sheetDay} does not say what ${i.forDay} holds` }
   if (i.writer === 'free' && i.context) return { ok: false, reason: 'the free chain reads the fact sheet alone' }
   // Follow-up F1: usage facts reach Claude alone, only through an open gate; the retrieval layer has already applied the switch and the task's relevance.
-  const sheet = i.writer === 'claude' && i.gates?.usageOpen === true ? i.sheet : withoutUsage(i.sheet)
+  const claude = i.writer === 'claude'
+  const sheet = without(i.sheet, (id) => (isUsageFact(id) && !(claude && i.gates?.usageOpen === true)) || (isLocationFact(id) && !(claude && i.gates?.locationOpen === true)))
   return {
     ok: true,
     briefing: {

@@ -18,6 +18,7 @@ import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
 import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, INGREDIENTS, readingOf } from './score'
 import { usageFacts } from './usageFacts'
+import type { Where } from './location'
 import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
 
 // The fact sheet: everything the app knows about the day, as facts with ids and values, built by
@@ -97,6 +98,25 @@ function fact(id: string, tags: string[], text: string, values: Record<string, n
 function nameOfMove(id: string, label?: string): string {
   if (id === NOTHING) return copy.move.nothing
   return hasMove(id) ? moveById(id).name : (label ?? id)
+}
+
+/** How a kind of place is said (Part 43): a kind, never a coordinate or an address. */
+const WHERE_WORDS: Record<Where, string> = { home: 'at Home', work: 'at Work', church: 'at Church', regular: 'at a regular place', out: 'out, at no place you named', away: 'away from home, in a different area' }
+
+/**
+ * Where a day's parts were spent, as Location Context saw them while Life Mirror was open, in order:
+ * "the morning at Home; the afternoon at Work, then at Home". Null for a day it saw nothing of.
+ */
+export function whereWords(where: DayContext['where']): { text: string; values: Record<string, string> } | null {
+  const parts: string[] = []
+  const values: Record<string, string> = {}
+  for (const b of BLOCKS) {
+    const list = where?.[b] ?? []
+    if (!list.length) continue
+    parts.push(`the ${b} ${list.map((w) => WHERE_WORDS[w]).join(', then ')}`)
+    values[b] = list.join(',')
+  }
+  return parts.length ? { text: parts.join('; '), values } : null
 }
 
 /** A reading by name, with what it measures where it is easily misread (Part 42): Loneliness is missing closeness, not a wish for company. */
@@ -702,6 +722,15 @@ export function buildFactSheet(i: FactInput): FactSheet {
       ? `Since then the record shows, for ${s.name}, ${s.planned} plans made, ${s.missed} of them past their day with no step started, ${s.started} steps started, ${s.done} marked done, and the current skill changed ${s.changed} times.`
       : `Since then ${checkins} check-ins were completed and ${moves} moves marked done.`
     facts.push(fact('review.change', ['monitoring'], `The last review, on ${review.day}, proposed one change: ${quoted(review.parts.change)} ${since}`, { day: review.day, change: review.parts.change, aimId: s && ref ? Number(ref[1]) : null, checkins, moves, planned: s?.planned ?? null, started: s?.started ?? null, done: s?.done ?? null, changed: s?.changed ?? null }))
+  }
+
+  // Part 43: where today and yesterday were spent, as kinds of place; context, never a cause, and Claude's to read only through its gate.
+  for (const [id, d, head] of [
+    ['location.today', today, 'Where today has been so far, as Life Mirror saw it while open'],
+    ['location.yesterday', addDays(today, -1), 'Where yesterday was, as Life Mirror saw it while open'],
+  ] as const) {
+    const w = whereWords(i.contexts.find((c) => c.day === d)?.where)
+    if (w) facts.push(fact(id, [], `${head}: ${w.text}.`, { day: d, ...w.values }))
   }
 
   // Follow-up F1: how Life Mirror is used, as counts over windows ending yesterday; observations, never reasons.

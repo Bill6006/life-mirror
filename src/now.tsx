@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { AimsOnNow } from './aimsScreen'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { Brief } from './brief'
+import { PlaceQuestion } from './locationScreen'
 import { lineActionState, todaysLine } from './brainFlow'
 import { copy } from './copy'
 import { allCheckIns, answeredCount, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
@@ -234,6 +235,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
 
       <ReadingHero all={all} today={today} />
       <Brief day={today.day} version={all.length} primary={briefPrimary} />
+      <PlaceQuestion />
 
       <Status windows={windows} today={today} onOpen={onOpen} onCheckIn={onCheckIn} />
       {action && (

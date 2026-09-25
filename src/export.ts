@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import { type DayContext, type KnownPlace, type HerSkill, type Moment, askedOf, type Aim, type AnchorSwap, type Card, type CheckIn, type Declaration, type BrainBrief, type BriefFeedback, type BriefLog, type Forecast, type ForecastScore, type Intention, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
@@ -39,6 +39,9 @@ export interface RecordsData {
   useLog?: readonly UseRow[]
   /** The usage facts the day's sheet carries: what Claude may be given, word for word (Follow-up F1). */
   usage?: readonly Fact[]
+  /** Part 43: each day's record, for where its parts were spent; and the places you named. Never a fingerprint or a coordinate. */
+  days?: readonly DayContext[]
+  places?: readonly KnownPlace[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -141,6 +144,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         weights: settings.weights,
         caffeine: 'caffeineBand is the band reported for the window from caffeineSince (null: since waking) to caffeineAt: 1 under 100 mg, 2 100 to 199, 3 200 to 299, 4 300 or more. caffeineShown without a band means the item was seen and none was reported, never a confirmed none. caffeineAfterMidday and heavyCaffeineThisMorning are the older yes/no records: some caffeine, amount unknown.',
         events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday'],
+        location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
         useLog: 'How Life Mirror was used, in its own words: appOpened (launch, or return after five minutes away), screen (which one), checkinOpened and checkinLeft (the block), lineAction, lineWhy, notification (its kind) and changePicked, each with its day and time. Never content, never anything outside the app. The Partner path’s own screens are left out unless the Partner path is included. usage is what Claude may be given of it: counts over windows ending the day before, what was observed and never why.',
       },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
@@ -149,6 +153,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
       useLog: (records?.useLog ?? []).filter((r) => partner || !PARTNER_SCREENS.includes(r.what ?? '')).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),
       usage: (records?.usage ?? []).map((f) => ({ id: f.id, text: f.text })),
+      location: {
+        named: (records?.places ?? []).filter((p) => p.kind !== 'none').map((p) => ({ kind: p.kind, label: p.label ?? null, namedAt: p.learnedAt })),
+        days: (records?.days ?? []).filter((d) => d.where && Object.keys(d.where).length).map((d) => ({ day: d.day, where: d.where })),
+      },
       ...(records
         ? {
             offers: offers.map((o) => {

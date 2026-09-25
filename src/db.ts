@@ -8,9 +8,10 @@ import type { HelpLevel, HerRung } from './her'
 import { blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { remindedKey, withDefaults, type Settings, type Weekday } from './settings'
+import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
 import type { UseKind } from './useShared'
+import type { Area, PlaceKind, Where } from './location'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
@@ -66,9 +67,57 @@ export interface DayContext {
   soloUntil: string
   /** Part 35: the day's sunrise and sunset where you are, HH:MM, when a place was set as the day began: its light, kept for the record. */
   light?: { rise: string; set: string }
+  /**
+   * Part 43: where each part of the day was spent, as Life Mirror saw it while it was open: kinds of
+   * place only (Home, Work, Church, a regular place, out nearby, away in a different area), never a
+   * coordinate, an address or a time of arrival. Absent while Location Context is off.
+   */
+  where?: Partial<Record<Block, Where[]>>
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string
+}
+
+/**
+ * Part 43: a place you named, recognised again by keyed fingerprints of the map cells around it,
+ * made with this phone's own key; kept on this phone alone. `none` is a place you said not to note:
+ * never asked about again. `area` is its area to a tenth of a degree, for telling away from out.
+ */
+export interface KnownPlace {
+  id?: number
+  kind: PlaceKind | 'none'
+  /** Your own word for a regular place, if you gave one; never shown to Claude. */
+  label?: string
+  cells: string[]
+  area?: Area
+  learnedAt: string
+}
+
+/**
+ * Part 43: a place seen again and again but not yet named: its cell block's fingerprints, how many
+ * different days it was seen, and in which parts of them. No time, no coordinate. Forgotten when
+ * unseen for three weeks; asked about once, after three days.
+ */
+export interface PlaceCandidate {
+  id?: number
+  cells: string[]
+  area?: Area
+  firstDay: string
+  lastDay: string
+  days: number
+  morning: number
+  afternoon: number
+  evening: number
+  office: number
+  church: number
+  /** After "Not now": not asked again before this day. */
+  askAfter?: string
+}
+
+/** Part 43: this phone's own values for place recognition: the fingerprint key, the area for the sun, the day a place was last asked about. */
+export interface PlaceMeta {
+  key: 'secret' | 'area' | 'askedOn'
+  value: string
 }
 
 export interface CheckIn {
@@ -669,6 +718,9 @@ class LifeMirrorDB extends Dexie {
   reflections!: Table<Reflection, number>
   monthlyChecks!: Table<MonthlyCheck, number>
   useLog!: Table<UseRow, number>
+  places!: Table<KnownPlace, number>
+  placeCandidates!: Table<PlaceCandidate, number>
+  placeMeta!: Table<PlaceMeta, string>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -852,9 +904,15 @@ class LifeMirrorDB extends Dexie {
     this.version(15).stores({
       coachPicks: 'id, day',
     })
-    // Part 34: how the app is used, on this phone alone and never synced.
+    // Part 34: how the app is used; synced with the record since Follow-up F1.
     this.version(16).stores({
       useLog: '++id, day, kind',
+    })
+    // Part 43: places you named and places being learned, and this phone's key for them: on this phone alone, never synced.
+    this.version(17).stores({
+      places: '++id, kind',
+      placeCandidates: '++id, lastDay',
+      placeMeta: 'key',
     })
     installOutbox(this)
   }
@@ -1045,7 +1103,8 @@ export async function getDayContext(day: string): Promise<DayContext | null> {
 export function contextFromWeek(day: string, settings: Settings, createdAt: string = new Date().toISOString()): DayContext {
   const weekday = parseDay(day).getDay() as Weekday
   const w = settings.week
-  const light = settings.place ? sunLocal(day, settings.place) : null
+  const where = sunPlace(settings)
+  const light = where ? sunLocal(day, where.place) : null
   return {
     day,
     weekday,
@@ -1134,7 +1193,7 @@ export async function archivePrivateItem(id: number): Promise<void> {
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
 export function wipeEverything(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks, db.useLog], async () => {
+  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks, db.useLog, db.places, db.placeCandidates, db.placeMeta], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
     await Promise.all([
@@ -1175,6 +1234,9 @@ export function wipeEverything(): Promise<void> {
       db.brainReads.clear(),
       db.coachPicks.clear(),
       db.useLog.clear(),
+      db.places.clear(),
+      db.placeCandidates.clear(),
+      db.placeMeta.clear(),
     ])
   })
 }

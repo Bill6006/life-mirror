@@ -35,6 +35,7 @@ import { SettingsScreen, SettingsSectionScreen, type SettingsSection } from './s
 import { Icon } from './icons'
 import { logUse, pruneUseLog, queueUseRowsForCloud } from './useLog'
 import { watchAppOpens } from './appOpens'
+import { sample as sampleLocation, watchLocation } from './locationFlow'
 import { WordingScreen } from './wording'
 
 type Tab = keyof typeof copy.tabs
@@ -97,7 +98,11 @@ export function App() {
   useEffect(() => {
     const prev = before.current
     before.current = view
-    if (view.kind === 'checkin' && !view.only && !(prev.kind === 'checkin' && prev.day === view.day && prev.block === view.block)) void logUse('checkinOpened', view.block)
+    if (view.kind === 'checkin' && !view.only && !(prev.kind === 'checkin' && prev.day === view.day && prev.block === view.block)) {
+      void logUse('checkinOpened', view.block)
+      // Part 43: a check-in opening is a moment the app is surely open: where you are is noted, if Location Context is on.
+      void sampleLocation(new Date(), 2)
+    }
     if (prev.kind === 'checkin' && !prev.only && view.kind === 'tabs') void logUse('checkinLeft', prev.block)
   }, [view])
   const settings = useLive(getSettings, [])
@@ -108,6 +113,9 @@ export function App() {
   useEffect(() => startCloud(), [])
   // Follow-up F1: Life Mirror opened, at launch and on coming back after five minutes away; nothing about the rest of the phone.
   useEffect(() => watchAppOpens(), [])
+  // Part 43: Location Context, only while the app is open and only once you turned it on: at launch, on return, every twenty minutes in view.
+  const locationOn = settings?.location.on === true
+  useEffect(() => (locationOn ? watchLocation() : undefined), [locationOn])
   // Phase 10: beliefs update once a day, on open.
   useEffect(() => {
     const day = blockAt(new Date()).day

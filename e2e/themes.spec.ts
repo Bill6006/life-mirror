@@ -113,6 +113,28 @@ async function seedUse(page: Page): Promise<void> {
   })
 }
 
+/** Location Context on (Part 43), with an area for the sun, one place named and one asked about on Now. No position is ever read: the audit's browser gives none. */
+async function seedLocation(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['settings', 'places', 'placeCandidates'], 'readwrite')
+    const settings = tx.objectStore('settings')
+    const get = settings.get(1)
+    get.onsuccess = () => settings.put({ ...get.result, location: { on: true, area: { lat: 40.7, lon: -74, at: '2026-09-22T12:00:00.000Z' } } })
+    tx.objectStore('places').put({ id: 1, kind: 'home', cells: ['seeded-home'], area: { lat: 40.7, lon: -74 }, learnedAt: '2026-09-20T12:00:00.000Z' })
+    tx.objectStore('placeCandidates').put({ id: 1, cells: ['seeded-candidate'], area: { lat: 40.7, lon: -74 }, firstDay: '2026-09-20', lastDay: '2026-09-22', days: 3, morning: 0, afternoon: 3, evening: 0, office: 3, church: 0 })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
 /** The generic profile through the app's own screens: something to learn in its own words, one with no skill named, an older study, a practice, both paths, the evening's check-in. */
 async function seedProfile(page: Page): Promise<void> {
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
@@ -122,6 +144,7 @@ async function seedProfile(page: Page): Promise<void> {
   await seedRecord(page)
   await seedOlderStudy(page)
   await seedUse(page)
+  await seedLocation(page)
   await page.reload()
   await tab(page, 'Aims')
   const add = () => page.getByRole('button', { name: /^Add a commitment/ }).click()
@@ -470,6 +493,7 @@ const MORE: typeof STATES = [
   { name: 'Brain', tab: 'Settings', open: async (p) => p.getByTestId('settings-brain').click() },
   { name: 'Cloud copy', tab: 'Settings', open: async (p) => p.getByTestId('settings-cloud').click() },
   { name: 'Data and privacy', tab: 'Settings', open: async (p) => p.getByTestId('settings-data').click() },
+  { name: 'Settings, Location Context', tab: 'Settings', open: async (p) => p.getByTestId('settings-location').click() },
   {
     name: 'Data and privacy, what Claude may be given',
     tab: 'Settings',
@@ -494,7 +518,7 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
-    // Seeding walks a whole evening check-in; the walk through forty-two states at three widths follows. One limit for all of it.
+    // Seeding walks a whole evening check-in; the walk through forty-three states at three widths follows. One limit for all of it.
     test.setTimeout(1_200_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedProfile(page)

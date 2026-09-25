@@ -246,7 +246,11 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await screen.getByTestId('brain-model-sonnet').click()
   await expect(screen.getByTestId('brain-model-sonnet')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-model-opus')).toHaveAttribute('aria-pressed', 'false')
-  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(12)
+  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(13)
+  // Part 43: where the day was spent has its own switch, on, and says Claude reads none of it yet.
+  await expect(screen.getByTestId('brain-switch-location')).toHaveAttribute('aria-pressed', 'true')
+  await expect(screen.getByTestId('brain-switch-location')).toContainText('Never a coordinate, an address or a trail; context, never a cause.')
+  await expect(screen.getByTestId('brain-switch-location')).toContainText('Claude reads none of it yet')
   // Follow-up F1: how the app is used has a switch of its own, on, and says Claude reads none of it yet.
   await expect(screen.getByTestId('brain-switch-usage')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-switch-usage')).toContainText('What was observed, never why; nothing outside the app, no keystrokes, nothing you type.')
@@ -1505,6 +1509,86 @@ test('Loneliness asks how much meaningful closeness feels missing, never whether
   await expect(page.getByTestId('reading-help')).toHaveText('Not whether you want company right now, or how many people are around.')
   await expect(page.getByTestId('anchor').nth(2)).toContainText('Distant')
   await expect(page.getByTestId('anchor').nth(2)).toContainText('a fair bit feels missing')
+})
+
+/** Everything the phone's store holds, as text: where a search for a coordinate must find nothing. */
+async function storeDump(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      new Promise<string>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => {
+          const names = Array.from(r.result.objectStoreNames)
+          const tx = r.result.transaction(names, 'readonly')
+          const out: string[] = []
+          for (const n of names) {
+            const q = tx.objectStore(n).getAll()
+            q.onsuccess = () => out.push(JSON.stringify(q.result))
+          }
+          tx.oncomplete = () => res(out.join('\n'))
+          tx.onerror = () => rej(tx.error)
+        }
+      }),
+  )
+}
+
+test('Location Context: off until turned on, kinds of place only, the sun where you are, one question after three days (Part 43)', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 51.50722, longitude: -0.1275, accuracy: 25 })
+  await page.clock.setFixedTime(new Date(2026, 9, 20, 14, 0))
+  await page.goto('./')
+  await settingsSection(page, 'location')
+  await expect(page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('location-status')).toHaveText('Off. Nothing is read.')
+  await page.getByTestId('location-switch').click()
+  await expect(page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('location-status')).toHaveText('On. Last noted: out, at no place you named in the afternoon.')
+  await expect(page.getByTestId('location-daylight')).toContainText(/^Sunrise \d{1,2}:\d{2} [ap]m, sunset \d{1,2}:\d{2} [ap]m, where you are\.$/)
+  // Named once, where you are.
+  await page.getByTestId('location-name-home').click()
+  await expect(page.getByTestId('location-name-here')).toContainText('Named. It is known from now on.')
+  await expect(page.getByTestId('location-place')).toContainText('Home')
+  await expect(page.getByTestId('location-kept')).toContainText('Never a coordinate, a street address or a trail of where you went.')
+  // Somewhere else, three afternoons running: counted, then asked about once.
+  await context.setGeolocation({ latitude: 51.51391, longitude: -0.09875, accuracy: 25 })
+  for (const d of [21, 22]) {
+    await page.clock.setFixedTime(new Date(2026, 9, d, 14, 0))
+    await page.reload()
+    await page.waitForTimeout(1200)
+    await expect(page.getByTestId('place-question')).toHaveCount(0)
+  }
+  // The third day's afternoon: asked, once.
+  await page.clock.setFixedTime(new Date(2026, 9, 23, 14, 0))
+  await page.reload()
+  const q = page.getByTestId('place-question')
+  await expect(q).toContainText('Life Mirror has been open here on 3 different days.')
+  await q.getByTestId('place-answer-regular').click()
+  await expect(q).toHaveCount(0)
+  await settingsSection(page, 'location')
+  await expect(page.getByTestId('location-place')).toHaveCount(2)
+  await expect(page.getByTestId('location-places')).toContainText('A regular place')
+  // Nothing in the phone's store holds a coordinate or a map cell of either place.
+  const dump = await storeDump(page)
+  expect(dump).not.toMatch(/51\.507|51\.513|-0\.127|-0\.098|gcpvj|gcpvn/)
+})
+
+test('Location Context refused by the phone: said plainly, nothing read, the sun at the place you typed (Part 43)', async ({ page, context }) => {
+  // The phone's own refusal: a location read fails at once, as after "Don't allow".
+  await context.grantPermissions(['geolocation'])
+  await context.clearPermissions()
+  await page.clock.setFixedTime(new Date(2026, 9, 20, 14, 0))
+  await page.goto('./')
+  await settingsSection(page, 'location')
+  await page.getByTestId('location-switch').click()
+  await expect(page.getByTestId('location-status')).toHaveText('Blocked for Life Mirror in your phone’s settings. Daylight uses the place you typed under The week, or the hours you set.')
+  await expect(page.getByTestId('location-name-here')).toHaveCount(0)
+  await expect(page.getByTestId('location-daylight')).toHaveText('From 7:00 am to 7:00 pm: the hours you set under The week.')
+  await backToSettings(page)
+  await page.getByTestId('settings-week').click()
+  await page.getByTestId('place-field').fill('40.7, -74.0')
+  await page.getByTestId('place-field').press('Enter')
+  await expect(page.getByTestId('place-note')).toContainText('Today: sunrise')
+  await expect(page.getByTestId('place-auto')).toHaveCount(0)
 })
 
 test('daylight from where you are: a place typed once, the sun shown back, the fixed hours standing in until then (Part 35)', async ({ page }) => {

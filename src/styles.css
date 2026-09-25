@@ -3884,3 +3884,20 @@ a {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* Part 43: Location Context — the places it knows, renaming one, and the one question on Now. */
+.place-row + .place-row,
+.place-row + .place-edit,
+.place-edit + .place-row {
+  margin-top: 14px;
+}
+.place-row .actions,
+.place-edit .actions {
+  margin-top: 4px;
+}
+.place-edit .input {
+  margin-top: 10px;
+}
+.place-question .chips {
+  margin-top: 8px;
+}

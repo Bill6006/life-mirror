@@ -1,4 +1,4 @@
-import { USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
+import { LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
 import type { Fact, FactSheet } from '../../src/factTypes'
 import { readingById } from '../../src/readings'
 import { isUsageFact, useEventText, USAGE_FOR, USAGE_SLICE } from '../../src/useShared'
@@ -56,11 +56,12 @@ export const FAITH_WORDS = /\b(faith|church|god|pray(?:s|ed|ing|er|ers)?|bible|s
  * The governing rules as the owner's own settings row states them; with no settings row, closed.
  * Rule 21's amendment names Anthropic (2026-09-23), so Claude may read what the rest allows.
  */
-export function gatesFrom(settings: unknown, usage: 'gated' | 'open' = USAGE_TO_CLAUDE): Gates {
+export function gatesFrom(settings: unknown, usage: 'gated' | 'open' = USAGE_TO_CLAUDE, location: 'gated' | 'open' = LOCATION_TO_CLAUDE): Gates {
   const usageOpen = usage === 'open'
-  if (!settings || typeof settings !== 'object') return { faithHidden: true, privateInSelection: false, claudeMayRead: true, usageOpen }
+  const locationOpen = location === 'open'
+  if (!settings || typeof settings !== 'object') return { faithHidden: true, privateInSelection: false, claudeMayRead: true, usageOpen, locationOpen }
   const s = settings as Record<string, unknown>
-  return { faithHidden: s.hideFaith === true, privateInSelection: s.privateInSelection === true, claudeMayRead: true, usageOpen }
+  return { faithHidden: s.hideFaith === true, privateInSelection: s.privateInSelection === true, claudeMayRead: true, usageOpen, locationOpen }
 }
 
 /** What one Claude task may read: the one check, fixed for the run. */
@@ -85,6 +86,8 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
   const own: Category[] =
     head === 'usage'
       ? ['usage']
+      : head === 'location'
+      ? ['location']
       : head === 'note'
       ? ['notes']
       : head === 'private'

@@ -95,6 +95,12 @@ export interface Settings {
   daylight: { from: string; to: string }
   /** Part 35: where you are, roughly (one decimal of latitude and longitude), typed once; the day's sunrise and sunset then set the daylight hours. Null until set. */
   place: Place | null
+  /**
+   * Part 43: Location Context, on this phone alone (never synced): whether it is on, and the area you
+   * were last in to a tenth of a degree, read while Life Mirror was open, which sets the daylight
+   * hours ahead of the place you typed. Off until you turn it on.
+   */
+  location: { on: boolean; area: (Place & { at: string }) | null }
   /** One-time setups you said came undone, by the day you said so; each is offered again after that day. */
   setupUndone: Record<string, string>
   /** The Partner path's optional online channel (Part 27): off until you turn it on; off, none of its reps is offered. */
@@ -134,6 +140,7 @@ export const DEFAULT_SETTINGS: Settings = {
   easeBack: null,
   daylight: { from: '07:00', to: '19:00' },
   place: null,
+  location: { on: false, area: null },
   setupUndone: {},
   weights: null,
   partnerOnline: false,
@@ -166,6 +173,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     weights: stored.weights ?? null,
     daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
     place: placeOf(stored.place),
+    location: locationOf(stored.location),
     setupUndone: stored.setupUndone ?? {},
     partnerOnline: stored.partnerOnline === true,
   }
@@ -201,12 +209,31 @@ function placeOf(v: unknown): Place | null {
   return p && typeof p.lat === 'number' && typeof p.lon === 'number' && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180 ? { lat: p.lat, lon: p.lon } : null
 }
 
+/** Location Context as stored: on only when it says so; an area only when both numbers are in range. */
+function locationOf(v: unknown): Settings['location'] {
+  const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
+  const area = placeOf(o.area)
+  const at = o.area && typeof (o.area as Record<string, unknown>).at === 'string' ? ((o.area as Record<string, unknown>).at as string) : ''
+  return { on: o.on === true, area: area && at ? { ...area, at } : null }
+}
+
 /**
- * The daylight hours for a day (Part 35): sunrise to sunset where you are, once a place is set;
- * else, and on a day the sun neither rises nor sets there, the hours you set.
+ * Where the sun is reckoned from (Part 43): the area Location Context last read, while it is on;
+ * else the place you typed (Part 35); else none, and the hours you set stand.
  */
-export function daylightFor(settings: Pick<Settings, 'daylight' | 'place'>, day: string): { from: string; to: string } {
-  const sun = settings.place ? sunLocal(day, settings.place) : null
+export function sunPlace(settings: Pick<Settings, 'place'> & Partial<Pick<Settings, 'location'>>): { place: Place; from: 'auto' | 'typed' } | null {
+  const auto = settings.location?.on ? settings.location.area : null
+  if (auto) return { place: { lat: auto.lat, lon: auto.lon }, from: 'auto' }
+  return settings.place ? { place: settings.place, from: 'typed' } : null
+}
+
+/**
+ * The daylight hours for a day (Part 35): sunrise to sunset where you are, from Location Context's
+ * area or the place you typed; else, and on a day the sun neither rises nor sets there, the hours you set.
+ */
+export function daylightFor(settings: Pick<Settings, 'daylight' | 'place'> & Partial<Pick<Settings, 'location'>>, day: string): { from: string; to: string } {
+  const where = sunPlace(settings)
+  const sun = where ? sunLocal(day, where.place) : null
   return sun ? { from: sun.rise, to: sun.set } : settings.daylight
 }
 

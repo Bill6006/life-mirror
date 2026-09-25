@@ -320,9 +320,9 @@ async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): 
   } else if (row.body) {
     const body = JSON.parse(row.body) as Record<string, unknown>
     if (row.store === 'settings') {
-      // The settings record comes back without its device credentials; this phone keeps its own.
+      // The settings record comes back without what belongs to this phone alone; this phone keeps its own.
       const mine = local as Settings | undefined
-      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {} }
+      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {}, location: mine?.location ?? withDefaults(undefined).location }
       await db.settings.put(merged)
     } else {
       await table.put(body)

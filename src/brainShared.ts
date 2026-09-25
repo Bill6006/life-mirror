@@ -119,9 +119,10 @@ export function isWriterModel(v: unknown): v is WriterModel {
  * screen, every one on by default and each the owner's to turn off. The retrieval layer's other
  * categories are not switches: the fact sheet's frame, the coach's decision core, and tier 2.
  * `usage` (Follow-up F1) governs how Life Mirror is used: its counts and, for the weekly review
- * alone, a short slice of its events.
+ * alone, a short slice of its events. `location` (Part 43) governs where the day's parts were spent,
+ * as kinds of place.
  */
-export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage'] as const
+export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage', 'location'] as const
 export type BrainSwitch = (typeof BRAIN_SWITCHES)[number]
 
 /**
@@ -131,6 +132,18 @@ export type BrainSwitch = (typeof BRAIN_SWITCHES)[number]
  * only at the owner's word once monitoring is complete; the phone and the Worker read this one value.
  */
 export const USAGE_TO_CLAUDE: 'gated' | 'open' = 'gated'
+
+/**
+ * Part 43 (2026-09-24): whether Claude may be given where the day's parts were spent (kinds of place,
+ * never coordinates). Gated for the same reason and on the same terms as usage: it would change the
+ * monitored prompts. Location Context still records on the phone, for you and for the sun.
+ */
+export const LOCATION_TO_CLAUDE: 'gated' | 'open' = 'gated'
+
+/** Location facts on the sheet: all of them are the location category's, and nothing else is. */
+export function isLocationFact(id: string): boolean {
+  return id.startsWith('location.')
+}
 
 /** The Brain settings, as the phone syncs them in the one row `brainPrefs`. */
 export interface BrainPrefsBody {
@@ -201,6 +214,16 @@ export function usageRefusal(text: string): string | null {
   return null
 }
 
+/**
+ * A place is context, never a cause (Part 43): a line citing where the day was spent may say what went
+ * with it, and a reason only as a possibility; a place said to cause a reading is refused.
+ */
+export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:work|home|church|the office|a regular place|away)|(?:work|home|church|the office|being away) (?:makes?|made|causes?|caused|drains?|drained|lifts?|lifted|gives?|gave)|caus(?:e|es|ed|ing)|affect(?:s|ed|ing)?)\b/i
+
+export function placeRefusal(text: string): string | null {
+  return PLACE_CAUSE.test(text) && !USAGE_HEDGE.test(text) ? 'speaks of a place as the cause of a reading; say what went with it' : null
+}
+
 /** Words that speak of using the app itself. */
 export const USAGE_TALK = /\b(open(?:ed|s|ing)?|tapp(?:ed|ing)|taps?|skipp(?:ed|ing)|the app|life mirror|screens?|notifications?)\b/i
 
@@ -248,6 +271,11 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   // Follow-up F1: a line citing how the app was used says what was observed; a reason stays a possibility.
   if (factIds.some(isUsageFact)) {
     const why = usageRefusal(text)
+    if (why) return why
+  }
+  // Part 43: a line citing where the day was spent keeps the place as context, never the cause.
+  if (factIds.some(isLocationFact)) {
+    const why = placeRefusal(text)
     if (why) return why
   }
   for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`

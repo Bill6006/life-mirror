@@ -1,5 +1,5 @@
 import { addDays, blockAt } from './blocks'
-import { BRAIN_SWITCHES, USAGE_TO_CLAUDE, WRITER_MODELS, type Lacked, type WriterModel } from './brainShared'
+import { BRAIN_SWITCHES, LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, WRITER_MODELS, type Lacked, type WriterModel } from './brainShared'
 import { getBrainPrefs, setBrainSwitch, setWriterModel } from './brainPrefs'
 import { hasMove, moveById } from './catalogue'
 import { SwitchRow } from './controls'
@@ -94,7 +94,7 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
               </span>
             </div>
           ) : (
-            <SwitchRow key={k} label={c.switches[k].label} note={k === 'usage' && USAGE_TO_CLAUDE === 'gated' ? `${c.switches[k].note} ${c.usageGated}` : c.switches[k].note} on={prefs.switches[k] !== false} onChange={(on) => void setBrainSwitch(k, on)} testid={`brain-switch-${k}`} />
+            <SwitchRow key={k} label={c.switches[k].label} note={k === 'usage' && USAGE_TO_CLAUDE === 'gated' ? `${c.switches[k].note} ${c.usageGated}` : k === 'location' && LOCATION_TO_CLAUDE === 'gated' ? `${c.switches[k].note} ${c.locationGated}` : c.switches[k].note} on={prefs.switches[k] !== false} onChange={(on) => void setBrainSwitch(k, on)} testid={`brain-switch-${k}`} />
           ),
         )}
       </div>
