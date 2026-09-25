@@ -4,7 +4,8 @@ import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { factById, factsWhere, num, str, type Fact, type FactSheet } from './facts'
 import { fill } from './format'
-import { admitted, bestGrade, gradeWeight, gradeWord } from './library'
+import { deliver, deliverySignals, firmnessFor, type Firmness, type FirmnessPref } from './firmness'
+import { admitted, bestGrade, cardById, gradeWeight, gradeWord } from './library'
 
 // The judgment engine on the phone: situations worth speaking to, each a test over the fact
 // sheet, linked to claim cards, carrying a mode and a line with slots. Every morning the ones
@@ -42,6 +43,8 @@ export interface Choice {
   cardIds: string[]
   score: number
   action: LineAction | null
+  /** How firmly it is said (Pass 2): set only when a How firm setting is passed, once its gate is open. */
+  firmness?: Firmness
 }
 
 export interface SaidBefore {
@@ -575,12 +578,26 @@ export function isWeekScoped(sit: Situation): boolean {
   return sit.weekly === true
 }
 
+/**
+ * A situation's words at a firmness (Pass 2): its template with each delivery choice resolved,
+ * then its facts filled in. With no setting (the gate closed) it is said balanced, the line as it
+ * has always read. The setting changes the delivery alone: the facts, the cards, the action and
+ * the score come from the same match whatever it is.
+ */
+function said(sit: Situation, m: Match, cards: readonly string[], sheet: FactSheet, firm: FirmnessPref | null | undefined): { text: string; firmness?: Firmness } {
+  if (!firm) return { text: fill(deliver(LINES[sit.id] ?? '', 'balanced'), m.vars) }
+  const grades = cards.map((id) => cardById(id)).flatMap((c) => (c && c.status === 'admitted' ? [c.grade] : []))
+  const firmness = firmnessFor(firm, deliverySignals(sit.mode, m.factIds, grades, sheet))
+  return { text: fill(deliver(LINES[sit.id] ?? '', firmness), m.vars), firmness }
+}
+
 /** What one situation says of the sheet now, if it still holds: the same rendering the choice gives it, without cooldown or scoring. */
-export function lineFor(sheet: FactSheet, situationId: string): Omit<Choice, 'score'> | null {
+export function lineFor(sheet: FactSheet, situationId: string, firm?: FirmnessPref | null): Omit<Choice, 'score'> | null {
   const sit = SITUATIONS.find((x) => x.id === situationId)
   const m = sit?.test(sheet)
   if (!sit || !m) return null
-  return { situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: m.cardIds ?? [...sit.cards], action: m.action ?? null }
+  const cards = m.cardIds ?? [...sit.cards]
+  return { situationId: sit.id, mode: sit.mode, ...said(sit, m, cards, sheet, firm), factIds: m.factIds, cardIds: cards, action: m.action ?? null }
 }
 
 /**
@@ -588,13 +605,13 @@ export function lineFor(sheet: FactSheet, situationId: string): Omit<Choice, 'sc
  * of its facts, the grade of its evidence, novelty, and how it was received before. The phone's
  * line is the first; the sheet carries the first few for a writer to read before the pile.
  */
-export function rankLines(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice[] {
+export function rankLines(sheet: FactSheet, before: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean, firm?: FirmnessPref | null): Choice[] {
   const out: Choice[] = []
   for (const sit of SITUATIONS) {
     if (only && !only(sit)) continue
     const m = sit.test(sheet)
     if (!m) continue
-    const last = said
+    const last = before
       .filter((x) => x.situationId === sit.id && x.day < sheet.day)
       .map((x) => x.day)
       .sort()
@@ -604,15 +621,16 @@ export function rankLines(sheet: FactSheet, said: readonly SaidBefore[], feedbac
     const novelty = since !== null && since < 30 ? 0.8 : 1
     const cards = m.cardIds ?? [...sit.cards]
     const score = m.strength * gradeWeight(bestGrade(cards)) * novelty * usefulness(sit.id, feedback, m.factIds)
-    out.push({ situationId: sit.id, mode: sit.mode, text: fill(LINES[sit.id] ?? '', m.vars), factIds: m.factIds, cardIds: cards, score, action: m.action ?? null })
+    const words = said(sit, m, cards, sheet, firm)
+    out.push({ situationId: sit.id, mode: sit.mode, text: words.text, factIds: m.factIds, cardIds: cards, score, action: m.action ?? null, ...(words.firmness ? { firmness: words.firmness } : {}) })
   }
   // Stable: among equal scores the situation listed first wins, as it always has.
   return out.map((c, i) => ({ c, i })).sort((a, b) => b.c.score - a.c.score || a.i - b.i).map((x) => x.c)
 }
 
 /** The one line for the day: the true situation with the highest score, or null when none is true or all are resting. */
-export function chooseLine(sheet: FactSheet, said: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean): Choice | null {
-  return rankLines(sheet, said, feedback, only)[0] ?? null
+export function chooseLine(sheet: FactSheet, before: readonly SaidBefore[], feedback: readonly FeedbackBefore[], only?: (s: Situation) => boolean, firm?: FirmnessPref | null): Choice | null {
+  return rankLines(sheet, before, feedback, only, firm)[0] ?? null
 }
 
 export interface ReviewParts {
@@ -627,7 +645,7 @@ export interface ReviewParts {
  * and the check-ins when they fell), and one change, the strongest strategy, challenge or
  * recommendation the sheet supports, whatever was said lately.
  */
-export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[]): ReviewParts {
+export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[], firm?: FirmnessPref | null): ReviewParts {
   const c = copy.brain.review
   const t = factsWhere(sheet, 'trajectory.')
   const held = t.filter((f) => (num(f, 'w0') ?? 0) > 0).map((f) => fill(c.heldItem, { name: s(str(f, 'name')), n: s(num(f, 'w0')), done: s(num(f, 'd0')) }))
@@ -640,7 +658,7 @@ export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[
   const cadence = factById(sheet, 'cadence')
   if (cadence && (num(cadence, 'w0') ?? 0) < (num(cadence, 'w1') ?? 0) / 2) missed.push(fill(c.missedCadence, { now: s(num(cadence, 'w0')), before: s(num(cadence, 'w1')) }))
   // The week's one change comes only from a pattern over days; a fact of one day (a reading at the last check-in, last night) is never the week's change.
-  const chosen = chooseLine(sheet, [], feedback, isWeekScoped)
+  const chosen = chooseLine(sheet, [], feedback, isWeekScoped, firm)
   // Part 41's one line, once its gate is open: a progression review waiting for your answer is the week's change to make.
   const waiting = factsWhere(sheet, 'aim.').find((f) => str(f, 'review') === 'open')
   const change = waiting ? fill(c.reviewWaits, { name: s(str(waiting, 'name')), skill: s(str(waiting, 'skill')) }) : (chosen?.text ?? c.noChange)

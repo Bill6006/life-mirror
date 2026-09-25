@@ -1,4 +1,5 @@
 import type { FactSheet } from './factTypes'
+import { allowedFirmness, deliverySignals, firmnessRefusal, isFirmness, isFirmnessPref, isPatternFact, type DeliverySignals, type Firmness, type FirmnessPref } from './firmness'
 import type { ClaimCard, Grade } from './libraryTypes'
 import { isUsageFact } from './useShared'
 
@@ -150,6 +151,8 @@ export interface BrainPrefsBody {
   writerModel: WriterModel
   /** Only switches turned off are kept; a switch not named is on. */
   switches: Partial<Record<BrainSwitch, false>>
+  /** How firm (Pass 2): kept only once chosen; unset reads as Adaptive. Nothing reads it while its gate is closed. */
+  firmness?: FirmnessPref
 }
 
 /** The Brain settings read the same way on the phone and in the Worker: an unknown or missing model is Opus, a switch is off only when it says so, anything else is dropped. */
@@ -158,7 +161,7 @@ export function readBrainPrefs(raw: unknown): BrainPrefsBody {
   const s = o.switches && typeof o.switches === 'object' ? (o.switches as Record<string, unknown>) : {}
   const switches: Partial<Record<BrainSwitch, false>> = {}
   for (const k of BRAIN_SWITCHES) if (s[k] === false) switches[k] = false
-  return { writerModel: isWriterModel(o.writerModel) ? o.writerModel : 'opus', switches }
+  return { writerModel: isWriterModel(o.writerModel) ? o.writerModel : 'opus', switches, ...(isFirmnessPref(o.firmness) ? { firmness: o.firmness } : {}) }
 }
 
 /**
@@ -174,6 +177,8 @@ export interface BrainOutput {
   factIds: string[]
   cardIds: string[]
   action: LineAction | null
+  /** How firmly it was said (Pass 2), once its gate is open. */
+  firmness?: Firmness
 }
 
 export interface ReviewOutput {
@@ -182,6 +187,12 @@ export interface ReviewOutput {
   change: string
   factIds: string[]
   cardIds: string[]
+  firmness?: Firmness
+}
+
+/** How firm (Pass 2): the check a writer's answer passes once the gate is open. Absent while it is closed, and nothing is checked. */
+export interface FirmCheck {
+  pref: FirmnessPref
 }
 
 export type Validation = { ok: true; value: BrainOutput } | { ok: false; reason: string }
@@ -386,7 +397,42 @@ export function dayGuard(text: string, sheet: FactSheet, forDay: string): string
   return null
 }
 
-export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS, forDay?: string): Validation {
+/** Whether a text says a real pattern with one of its own counts: Supportive may be gentle about it, never silent. */
+function statesPattern(text: string, sheet: FactSheet, factIds: readonly string[]): boolean {
+  const pattern = sheet.facts.filter((f) => factIds.includes(f.id) && isPatternFact(f)).map((f) => f.id)
+  return numbersIn(text).some((n) => numberGrounded(n, sheet, pattern))
+}
+
+const FIRM_NAMES: Record<Firmness, string> = { supportive: 'Supportive', balanced: 'Balanced', hardCoach: 'Hard Coach' }
+
+/** Words that keep a tentative finding tentative: an association stays one, a guess stays a guess. */
+const TENTATIVE = /\b(association|associated|linked|went with|goes with|not a cause|not yet a finding|so far|may|might|could|a guess|range|usually)\b/i
+
+/** Why a delivery is not allowed for a line under a setting. */
+function firmReason(pref: FirmnessPref, f: Firmness, x: DeliverySignals): string {
+  if (pref !== 'adaptive') return `How firm is set to ${FIRM_NAMES[pref]}: say it that way, and put "${pref}" in firmness`
+  if (f === 'hardCoach') return 'Hard Coach needs a real pattern over days, or a serious warning on strong evidence; this line rests on something more tentative, so say it Balanced'
+  return x.pattern && x.serious ? 'this line rests on a real pattern that matters, and Adaptive never softens one: say it Balanced or Hard Coach' : 'Supportive is for good news or tentative evidence; say this one Balanced'
+}
+
+/** The How firm check (Pass 2) on a text already valid: the delivery the setting allows for what it rests on, and the floor under every firmness. */
+function firmVerdict(raw: unknown, texts: readonly string[], x: DeliverySignals, firm: FirmCheck, sheet: FactSheet, factIds: readonly string[]): { ok: true; firmness: Firmness } | { ok: false; reason: string } {
+  if (!isFirmness(raw)) return { ok: false, reason: 'firmness must be supportive, balanced or hardCoach' }
+  if (!allowedFirmness(firm.pref, x).includes(raw)) return { ok: false, reason: firmReason(firm.pref, raw, x) }
+  for (const t of texts) {
+    const why = firmnessRefusal(t)
+    if (why) return { ok: false, reason: why }
+  }
+  if (raw === 'supportive' && x.pattern && x.serious && !statesPattern(texts.join(' '), sheet, factIds)) return { ok: false, reason: 'Supportive may be gentle about a real pattern, never silent: say it with its count' }
+  // Hard Coach is firm about what the evidence shows, never more certain than it: an association or a guess is still said as one.
+  if (raw === 'hardCoach' && x.uncertain) {
+    const all = texts.join(' ')
+    if (CAUSAL_WORDS.test(all.replace(/\bnot a cause\b/gi, '')) || !TENTATIVE.test(all)) return { ok: false, reason: 'Hard Coach is firm about what the evidence shows, never more certain: this rests on an association or a guess, so say it as one, with no cause' }
+  }
+  return { ok: true, firmness: raw }
+}
+
+export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS, forDay?: string, firm?: FirmCheck): Validation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const mode = o.mode
@@ -402,11 +448,19 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   if (guarded) return { ok: false, reason: guarded }
   const action = validateAction(o.action, sheet)
   if (!action.ok) return { ok: false, reason: action.reason }
-  return { ok: true, value: { mode: mode as Mode, text, factIds: cited.factIds, cardIds: cited.cardIds, action: action.value } }
+  const value: BrainOutput = { mode: mode as Mode, text, factIds: cited.factIds, cardIds: cited.cardIds, action: action.value }
+  // How firm (Pass 2): checked only once its gate is open; every check above is the same at every firmness.
+  if (firm) {
+    const x = deliverySignals(value.mode, cited.factIds, cited.cardIds.map((id) => (cited.admitted.get(id) as ClaimCard).grade), sheet)
+    const f = firmVerdict(o.firmness, [text], x, firm, sheet, cited.factIds)
+    if (!f.ok) return { ok: false, reason: f.reason }
+    value.firmness = f.firmness
+  }
+  return { ok: true, value }
 }
 
 /** The weekly review: what held, what did not, one change; each part held to the rules of a line. */
-export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string): ReviewValidation {
+export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string, firm?: FirmCheck): ReviewValidation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const cited = citations(o, sheet, cards)
@@ -418,5 +472,13 @@ export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly C
     if (why) return { ok: false, reason: `${key}: ${why}` }
     parts[key] = text
   }
-  return { ok: true, value: { ...parts, factIds: cited.factIds, cardIds: cited.cardIds } }
+  const value: ReviewOutput = { ...parts, factIds: cited.factIds, cardIds: cited.cardIds }
+  // How firm (Pass 2): one delivery for the week's three parts, checked only once its gate is open.
+  if (firm) {
+    const x = deliverySignals('strategy', cited.factIds, cited.cardIds.map((id) => (cited.admitted.get(id) as ClaimCard).grade), sheet)
+    const f = firmVerdict(o.firmness, [parts.held, parts.didNot, parts.change], x, firm, sheet, cited.factIds)
+    if (!f.ok) return { ok: false, reason: f.reason }
+    value.firmness = f.firmness
+  }
+  return { ok: true, value }
 }

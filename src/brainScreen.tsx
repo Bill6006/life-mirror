@@ -1,6 +1,8 @@
 import { addDays, blockAt } from './blocks'
 import { BRAIN_SWITCHES, LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, WRITER_MODELS, type Lacked, type WriterModel } from './brainShared'
-import { getBrainPrefs, setBrainSwitch, setWriterModel } from './brainPrefs'
+import { getBrainPrefs, setBrainSwitch, setFirmness, setWriterModel } from './brainPrefs'
+import { firmOn } from './firmFlow'
+import { DEFAULT_FIRMNESS, FIRMNESS_PREFS } from './firmness'
 import { hasMove, moveById } from './catalogue'
 import { SwitchRow } from './controls'
 import { copy } from './copy'
@@ -81,6 +83,26 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
         </div>
         <p class="note faint no-gap">{c.writerNote}</p>
       </div>
+
+      {/* Pass 2: How firm, shown once its gate is open. Closed, the page is as it was. */}
+      {firmOn() && (
+        <>
+          <h2 class="section">{c.firm}</h2>
+          <div class="card pad" data-testid="brain-firm">
+            <div class="chips" role="group" aria-label={c.firm}>
+              {FIRMNESS_PREFS.map((f) => (
+                <button key={f} type="button" class={(prefs.firmness ?? DEFAULT_FIRMNESS) === f ? 'when-chip is-on' : 'when-chip'} aria-pressed={(prefs.firmness ?? DEFAULT_FIRMNESS) === f} data-testid={`brain-firm-${f}`} onClick={() => void setFirmness(f)}>
+                  {c.firmOptions[f]}
+                </button>
+              ))}
+            </div>
+            <p class="note no-gap" data-testid="brain-firm-means">
+              {c.firmMeans[prefs.firmness ?? DEFAULT_FIRMNESS]}
+            </p>
+            <p class="note faint no-gap">{c.firmNote}</p>
+          </div>
+        </>
+      )}
 
       <h2 class="section">{c.reads}</h2>
       <p class="note faint">{c.readsNote}</p>

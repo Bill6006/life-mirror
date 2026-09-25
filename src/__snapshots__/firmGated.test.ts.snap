@@ -1,0 +1,508 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the phone’s own lines, held fixed while How firm is gated > keeps every template’s balanced words as they were 1`] = `
+{
+  "afternoon-walk": "The afternoon usually reads {point} here. A ten-minute walk at midday lifts mood at once, whatever you expect of it.",
+  "cadence-dropping": "Check-ins went from about {usual} a week to {now}. Before the record goes quiet, make it lighter: short depth asks three readings and keeps everything else working.",
+  "caffeine-late": "{when}, {band} was reported at the {block} check-in, {time}. A meta-analysis of trials put the point where about {mg} mg stops shortening sleep at {hours} hours before bed; counted from {time}, that runs past midnight.",
+  "caffeine-sleep-even": "Next nights show no difference yet between days with {low} and days with {high} of caffeine reported ({n} and {m} days). Self-reported sleep is known to miss caffeine’s effect.",
+  "caffeine-sleep-shorter": "After days with {high} of caffeine reported, {what} the next night than after days with {low} ({m} and {n} days, like for like on the sleep the day began with). An association in your record, not a verdict.",
+  "card-long-unclear": "{move} against {alt}: {n} observations and no clear difference. Change the alternative or retire the card; the tries already made are no reason to keep it.",
+  "card-promising": "{move} against {alt}: {tier}, {n} observations. Worth one more week before believing it.",
+  "church-morning": "Mornings after church read {with} against {without} on other mornings, {n} times. The recovery gap is a fact of the day, not of you.",
+  "commitment-fading": "{name}: {before} sittings in the two weeks before, none in the last two. This is where a commitment is usually let go, and it is the cue that goes first, not the will. Pin the smallest sitting to a moment today.",
+  "commitment-thinning": "{name}: none in the last seven days, after {before} the week before. One short sitting keeps the thread; pin it to a moment today.",
+  "cue-holds": "{cue} has held {started} of {n} times. Keep that cue; it is doing the work.",
+  "cue-switch": "{cue} kept {started} of {n} plans. Plans stall on the cue, not on the will: try {other}.",
+  "direction-counts": "Your direction: “{direction}”. So far {study} study sessions, {conversations} conversations started, {faith} practices, {her} times with her. Counts, not a verdict.",
+  "first-skill": "{name} has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.",
+  "forecast-wide": "The model’s range for the {block} runs {lo} to {hi}: a guess. Your own reading at the check-in is the better guide today.",
+  "fresh-start": "A {weekday}. Fresh starts are measurably easier to begin on, and {name}, {d} days still, is the one to restart.",
+  "loneliness-high": "Loneliness read “{word}” at the last check-in. One small contact today, a message or a question to someone: small ones move it.",
+  "loop-closed": "Yesterday’s line was about {name}; since then the record shows {what}. That is the loop closing.",
+  "loop-open": "Yesterday’s line was about {name}, and the record shows nothing on it since. If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.",
+  "loop-planned": "Yesterday’s line was about {name}: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
+  "nap-read": "Mornings after a nap read {diff} against the mornings without, {n} naps. Short naps help the afternoon; long ones cost the night.",
+  "necessities-missed": "{n} necessities missed in three days. That is the earliest sign of a stretch; the smallest one first, before any move.",
+  "nothing-holds": "Nothing extra was kept {done} of the {offered} times it was offered. Rest is a move; the mornings after say what it does.",
+  "partly-honest": "Partly, {n} times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
+  "propose-test": "The library holds {grade} for {move}, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
+  "say-when": "{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
+  "short-night-today": "Sleep read “{word}” this morning. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
+  "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings. Regular hours count for more than long ones.",
+  "social-recovery": "Mornings after a big social event read {diff} under the others, {n} times: an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
+  "steady-moving": "Steady, {inside} of {of} blocks inside the usual, and {name} moved this week. Progress that is recorded carries part of the effect by itself.",
+  "step-stalled": "{name}: no session recorded in {d} days. The smaller version today counts, and a gap does not undo what was built.",
+  "stretch": "{under} of the last {of} blocks read under their usual low. A stretch is starting. One easy move a day, kept, is what turns these; the mood follows the doing.",
+  "workout-evenings": "Evenings of workout days read {diff} above the others so far, {n} days: an association in your record, not yet a finding. Exercise is one of the best-supported levers there is for mood.",
+  "workout-flat": "Evenings of workout days read {diff} against the others, {n} days. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
+}
+`;
+
+exports[`the phone’s own lines, held fixed while How firm is gated > says every situation exactly as before: its words, mode, citations, action and score 1`] = `
+{
+  "afternoon-walk": {
+    "action": null,
+    "cardIds": [
+      "short-walk-mood",
+      "post-lunch-dip",
+    ],
+    "factIds": [
+      "usual.afternoon",
+    ],
+    "mode": "recommendation",
+    "score": 0.42,
+    "text": "The afternoon usually reads 40 here. A ten-minute walk at midday lifts mood at once, whatever you expect of it.",
+  },
+  "cadence-dropping": {
+    "action": {
+      "kind": "depth",
+      "value": "short",
+    },
+    "cardIds": [
+      "monitoring-progress",
+      "habit-formation-time",
+    ],
+    "factIds": [
+      "cadence",
+    ],
+    "mode": "strategy",
+    "score": 0.85,
+    "text": "Check-ins went from about 12 a week to 4. Before the record goes quiet, make it lighter: short depth asks three readings and keeps everything else working.",
+  },
+  "caffeine-late": {
+    "action": null,
+    "cardIds": [
+      "caffeine-sleep-cutoffs",
+      "caffeine-six-hours",
+    ],
+    "factIds": [
+      "caffeine.late",
+    ],
+    "mode": "warning",
+    "score": 0.51,
+    "text": "Today, 200 mg or more was reported at the afternoon check-in, 3:10 PM. A meta-analysis of trials put the point where about 400 mg stops shortening sleep at 6 hours before bed; counted from 3:10 PM, that runs past midnight.",
+  },
+  "caffeine-sleep-even": {
+    "action": null,
+    "cardIds": [
+      "caffeine-diary-understates-sleep",
+    ],
+    "factIds": [
+      "assoc.caffeine.bands",
+    ],
+    "mode": "observation",
+    "score": 0.27999999999999997,
+    "text": "Next nights show no difference yet between days with none and days with 200 mg or more of caffeine reported (6 and 5 days). Self-reported sleep is known to miss caffeine’s effect.",
+  },
+  "caffeine-sleep-shorter": {
+    "action": null,
+    "cardIds": [
+      "caffeine-sleep-cutoffs",
+      "caffeine-half-life",
+    ],
+    "factIds": [
+      "assoc.caffeine.bands",
+    ],
+    "mode": "warning",
+    "score": 0.68,
+    "text": "After days with 200 mg or more of caffeine reported, sleep read about 40 minutes shorter the next night than after days with none (5 and 6 days, like for like on the sleep the day began with). An association in your record, not a verdict.",
+  },
+  "card-long-unclear": {
+    "action": null,
+    "cardIds": [
+      "sunk-cost",
+    ],
+    "factIds": [
+      "test.1",
+    ],
+    "mode": "challenge",
+    "score": 0.42,
+    "text": "A short walk against nothing extra: 12 observations and no clear difference. Change the alternative or retire the card; the tries already made are no reason to keep it.",
+  },
+  "card-promising": {
+    "action": null,
+    "cardIds": [],
+    "factIds": [
+      "test.2",
+    ],
+    "mode": "observation",
+    "score": 0.36,
+    "text": "A short walk against nothing extra: promising, 8 observations. Worth one more week before believing it.",
+  },
+  "church-morning": {
+    "action": null,
+    "cardIds": [
+      "religious-attendance-and-health",
+      "acting-extraverted-costs-later",
+    ],
+    "factIds": [
+      "lastNight",
+    ],
+    "mode": "perspective",
+    "score": 0.425,
+    "text": "Mornings after church read 48 against 60 on other mornings, 4 times. The recovery gap is a fact of the day, not of you.",
+  },
+  "commitment-fading": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "implementation-intentions",
+      "self-compassion-after-lapse",
+    ],
+    "factIds": [
+      "trajectory.1",
+      "aim.1",
+    ],
+    "mode": "challenge",
+    "score": 0.85,
+    "text": "Italian: 3 sittings in the two weeks before, none in the last two. This is where a commitment is usually let go, and it is the cue that goes first, not the will. Pin the smallest sitting to a moment today.",
+  },
+  "commitment-thinning": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "habit-formation-time",
+      "implementation-intentions",
+    ],
+    "factIds": [
+      "trajectory.1",
+      "aim.1",
+    ],
+    "mode": "strategy",
+    "score": 0.7,
+    "text": "Italian: none in the last seven days, after 3 the week before. One short sitting keeps the thread; pin it to a moment today.",
+  },
+  "cue-holds": {
+    "action": null,
+    "cardIds": [
+      "implementation-intentions",
+      "monitoring-progress",
+    ],
+    "factIds": [
+      "aim.1",
+    ],
+    "mode": "encouragement",
+    "score": 0.6,
+    "text": "After her bedtime has held 4 of 4 times. Keep that cue; it is doing the work.",
+  },
+  "cue-switch": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "implementation-intentions",
+      "habit-formation-time",
+    ],
+    "factIds": [
+      "aim.1",
+    ],
+    "mode": "strategy",
+    "score": 0.9,
+    "text": "After pickup kept 1 of 4 plans. Plans stall on the cue, not on the will: try after her bedtime.",
+  },
+  "direction-counts": {
+    "action": null,
+    "cardIds": [
+      "monitoring-progress",
+    ],
+    "factIds": [
+      "direction",
+      "becoming",
+    ],
+    "mode": "perspective",
+    "score": 0.5,
+    "text": "Your direction: “One line, mine”. So far 4 study sessions, 2 conversations started, 1 practices, 5 times with her. Counts, not a verdict.",
+  },
+  "first-skill": {
+    "action": null,
+    "cardIds": [],
+    "factIds": [
+      "aim.1",
+    ],
+    "mode": "recommendation",
+    "score": 0.54,
+    "text": "Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.",
+  },
+  "forecast-wide": {
+    "action": null,
+    "cardIds": [],
+    "factIds": [
+      "forecast.afternoon",
+    ],
+    "mode": "perspective",
+    "score": 0.24,
+    "text": "The model’s range for the afternoon runs 30 to 62: a guess. Your own reading at the check-in is the better guide today.",
+  },
+  "fresh-start": {
+    "action": null,
+    "cardIds": [
+      "fresh-start-effect",
+    ],
+    "factIds": [
+      "week.today",
+      "aim.1",
+    ],
+    "mode": "encouragement",
+    "score": 0.35,
+    "text": "A Monday. Fresh starts are measurably easier to begin on, and Italian, 6 days still, is the one to restart.",
+  },
+  "loneliness-high": {
+    "action": null,
+    "cardIds": [
+      "weak-ties-and-belonging",
+      "talking-to-strangers",
+      "loneliness-and-mortality",
+    ],
+    "factIds": [
+      "context.loneliness",
+    ],
+    "mode": "recommendation",
+    "score": 0.9,
+    "text": "Loneliness read “Lonely” at the last check-in. One small contact today, a message or a question to someone: small ones move it.",
+  },
+  "loop-closed": {
+    "action": null,
+    "cardIds": [
+      "monitoring-progress",
+    ],
+    "factIds": [
+      "followup",
+    ],
+    "mode": "encouragement",
+    "score": 0.55,
+    "text": "Yesterday’s line was about Italian; since then the record shows 1 step started. That is the loop closing.",
+  },
+  "loop-open": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "intention-behaviour-gap",
+    ],
+    "factIds": [
+      "followup",
+      "aim.1",
+    ],
+    "mode": "perspective",
+    "score": 0.6,
+    "text": "Yesterday’s line was about Italian, and the record shows nothing on it since. If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.",
+  },
+  "loop-planned": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "intention-behaviour-gap",
+      "implementation-intentions",
+    ],
+    "factIds": [
+      "followup",
+      "aim.1",
+    ],
+    "mode": "perspective",
+    "score": 0.65,
+    "text": "Yesterday’s line was about Italian: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
+  },
+  "nap-read": {
+    "action": null,
+    "cardIds": [
+      "naps-cognition",
+      "sleep-inertia-after-naps",
+    ],
+    "factIds": [
+      "assoc.napped",
+    ],
+    "mode": "observation",
+    "score": 0.68,
+    "text": "Mornings after a nap read -6 against the mornings without, 5 naps. Short naps help the afternoon; long ones cost the night.",
+  },
+  "necessities-missed": {
+    "action": null,
+    "cardIds": [
+      "behavioural-activation",
+    ],
+    "factIds": [
+      "necessities.3d",
+    ],
+    "mode": "warning",
+    "score": 0.8,
+    "text": "2 necessities missed in three days. That is the earliest sign of a stretch; the smallest one first, before any move.",
+  },
+  "nothing-holds": {
+    "action": null,
+    "cardIds": [
+      "micro-breaks",
+    ],
+    "factIds": [
+      "nothing",
+    ],
+    "mode": "perspective",
+    "score": 0.425,
+    "text": "Nothing extra was kept 3 of the 5 times it was offered. Rest is a move; the mornings after say what it does.",
+  },
+  "partly-honest": {
+    "action": null,
+    "cardIds": [
+      "small-wins-progress",
+      "goal-setting-specific",
+    ],
+    "factIds": [
+      "offers.7d",
+    ],
+    "mode": "perspective",
+    "score": 0.6,
+    "text": "Partly, 3 times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
+  },
+  "propose-test": {
+    "action": {
+      "kind": "test",
+      "moveId": "spaced-review",
+    },
+    "cardIds": [
+      "spacing-effect",
+    ],
+    "factIds": [
+      "untested",
+    ],
+    "mode": "recommendation",
+    "score": 0.45,
+    "text": "The library holds strong evidence for Review last week's topic for ten minutes, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
+  },
+  "say-when": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "implementation-intentions",
+    ],
+    "factIds": [
+      "aim.1",
+      "week.today",
+    ],
+    "mode": "recommendation",
+    "score": 0.6,
+    "text": "Italian: the step is Twenty words. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
+  },
+  "short-night-today": {
+    "action": null,
+    "cardIds": [
+      "sleep-loss-mood",
+      "naps-cognition",
+      "sleep-inertia-after-naps",
+    ],
+    "factIds": [
+      "today.shortSleep",
+    ],
+    "mode": "perspective",
+    "score": 0.7,
+    "text": "Sleep read “Short” this morning. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
+  },
+  "short-sleep-afternoons": {
+    "action": null,
+    "cardIds": [
+      "sleep-loss-mood",
+      "sleep-regularity",
+    ],
+    "factIds": [
+      "assoc.shortSleep",
+    ],
+    "mode": "observation",
+    "score": 0.55,
+    "text": "Afternoons after short nights read -5 against the others, 4 mornings. Regular hours count for more than long ones.",
+  },
+  "social-recovery": {
+    "action": null,
+    "cardIds": [
+      "acting-extraverted-costs-later",
+    ],
+    "factIds": [
+      "assoc.bigSocial",
+    ],
+    "mode": "perspective",
+    "score": 0.48999999999999994,
+    "text": "Mornings after a big social event read 5 under the others, 3 times: an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
+  },
+  "steady-moving": {
+    "action": null,
+    "cardIds": [
+      "monitoring-progress",
+    ],
+    "factIds": [
+      "steady",
+      "aim.1",
+    ],
+    "mode": "encouragement",
+    "score": 0.5,
+    "text": "Steady, 5 of 6 blocks inside the usual, and Italian moved this week. Progress that is recorded carries part of the effect by itself.",
+  },
+  "step-stalled": {
+    "action": {
+      "aimId": 1,
+      "cue": "afterBedtime",
+      "kind": "plan",
+    },
+    "cardIds": [
+      "self-compassion-after-lapse",
+      "habit-formation-time",
+    ],
+    "factIds": [
+      "aim.1",
+    ],
+    "mode": "challenge",
+    "score": 0.45,
+    "text": "Italian: no session recorded in 9 days. The smaller version today counts, and a gap does not undo what was built.",
+  },
+  "stretch": {
+    "action": null,
+    "cardIds": [
+      "behavioural-activation",
+    ],
+    "factIds": [
+      "stretch",
+    ],
+    "mode": "warning",
+    "score": 1,
+    "text": "4 of the last 6 blocks read under their usual low. A stretch is starting. One easy move a day, kept, is what turns these; the mood follows the doing.",
+  },
+  "workout-evenings": {
+    "action": null,
+    "cardIds": [
+      "exercise-depression",
+      "exercise-and-sleep",
+    ],
+    "factIds": [
+      "assoc.workouts",
+    ],
+    "mode": "encouragement",
+    "score": 0.7,
+    "text": "Evenings of workout days read +7 above the others so far, 4 days: an association in your record, not yet a finding. Exercise is one of the best-supported levers there is for mood.",
+  },
+  "workout-flat": {
+    "action": null,
+    "cardIds": [
+      "exercise-depression",
+    ],
+    "factIds": [
+      "assoc.workouts",
+    ],
+    "mode": "observation",
+    "score": 0.4,
+    "text": "Evenings of workout days read -2 against the others, 4 days. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
+  },
+}
+`;

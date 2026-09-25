@@ -580,7 +580,11 @@ for (const theme of THEMES) {
  * suggestion taken, its safety line and likely next kept.
  */
 async function seedCoach(page: Page): Promise<void> {
-  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.skillCoach', '1'))
+  await page.addInitScript(() => {
+    localStorage.setItem('life-mirror.preview.skillCoach', '1')
+    // How firm (Pass 2), previewed the same way: its setting under Brain.
+    localStorage.setItem('life-mirror.preview.howFirm', '1')
+  })
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
@@ -662,10 +666,31 @@ const COACH: typeof STATES = [
   { name: 'Aims, a review asked neutrally, Write the next open', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Guitar' }).getByTestId('coach-review-write').click() },
   { name: 'Aims, a kept safety line and the likely next', tab: 'Aims', open: async (p) => p.getByTestId('aim-card').filter({ hasText: 'Yoga' }).getByTestId('aim-details').click() },
   { name: 'Now, reviews marked on their rows', tab: 'Now' },
+  // How firm under Settings → Brain, each setting chosen so each description is measured; Adaptive last, as the line's Why reads it next.
+  ...(['supportive', 'balanced', 'hardCoach', 'adaptive'] as const).map((f) => ({
+    name: `Brain, How firm (${f})`,
+    tab: 'Settings',
+    open: async (p: Page) => {
+      await p.getByTestId('settings-brain').click()
+      await p.getByTestId(`brain-firm-${f}`).click()
+      await expect(p.getByTestId(`brain-firm-${f}`)).toHaveAttribute('aria-pressed', 'true')
+    },
+  })),
+  // The line's Why, which names how firmly the line was said: under Adaptive (chosen just before), its longest form.
+  {
+    name: 'Now, the line’s Why open, how firmly it was said',
+    tab: 'Now',
+    open: async (p) => {
+      const card = p.getByTestId('brief')
+      await expect(card.getByTestId('brief-line')).toBeVisible({ timeout: 15_000 })
+      await card.getByTestId('brief-why').click()
+      await expect(card.getByTestId('brief-firmness')).toContainText('as Adaptive chose for this line')
+    },
+  },
 ]
 
 for (const theme of THEMES) {
-  test(`${theme}: the skill coach’s cards read, fit and can be tapped, at three widths (Parts 40–41, previewed)`, async ({ page }, info) => {
+  test(`${theme}: the dormant features read, fit and can be tapped, at three widths (Parts 40–41 and How firm, previewed)`, async ({ page }, info) => {
     test.setTimeout(600_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedCoach(page)

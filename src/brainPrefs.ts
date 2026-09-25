@@ -1,5 +1,6 @@
 import { readBrainPrefs, WRITER_MODELS, type BrainSwitch, type WriterModel } from './brainShared'
 import { db, type BrainPrefs } from './db'
+import { isFirmnessPref } from './firmness'
 
 // The Brain settings (Part 30): which model writes the line, and what Claude may read. One row,
 // synced, so the Worker reads it at every request and a switch turned off applies from the next
@@ -16,6 +17,16 @@ export async function setWriterModel(model: string): Promise<boolean> {
   await db.transaction('rw', db.brainPrefs, async () => {
     const cur = await getBrainPrefs()
     await db.brainPrefs.put({ ...cur, writerModel: model as WriterModel, updatedAt: new Date().toISOString() })
+  })
+  return true
+}
+
+/** How firm (Pass 2): Adaptive, Supportive, Balanced or Hard Coach; anything else refused. Kept in the same synced row; nothing reads it while its gate is closed. */
+export async function setFirmness(pref: string): Promise<boolean> {
+  if (!isFirmnessPref(pref)) return false
+  await db.transaction('rw', db.brainPrefs, async () => {
+    const cur = await getBrainPrefs()
+    await db.brainPrefs.put({ ...cur, firmness: pref, updatedAt: new Date().toISOString() })
   })
   return true
 }

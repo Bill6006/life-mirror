@@ -1,6 +1,7 @@
 import { createClient } from '@libsql/client/web'
 import type { LineAction } from '../../src/brainShared'
 import type { CoachProposal } from '../../src/coachShared'
+import type { Firmness } from '../../src/firmness'
 import type { CoachBlock, FactSheet } from '../../src/factTypes'
 
 // The same database the phone syncs to, through the same generic `records` table. The Worker
@@ -46,6 +47,9 @@ export interface BriefRow {
   trigger?: 'checkin' | 'fallback' | 'sunday' | 'forced' | 'ask'
   /** The target day's shape as the briefing named it. */
   shape?: string
+  /** How firmly it was said (Pass 2), once How firm's gate is open; adaptive when Adaptive chose it. */
+  firmness?: Firmness
+  adaptive?: true
   /** Every refusal on the way, by model and reason, in order: the validator's, the day guard's and the repeat check's. */
   refusals?: string[]
   /** How many candidates passed every check. */
@@ -130,6 +134,8 @@ export interface CoachRow {
   ids: string[]
   /** Today's version of each rep named, by its id. */
   versions: Record<string, string>
+  /** How firmly each version was said (Pass 2), by its id, once How firm's gate is open. */
+  firmness?: Record<string, Firmness>
   model: string
   askedModel: string
   runnerModel: string | null

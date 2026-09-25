@@ -155,6 +155,11 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
       <p class="calc-line" data-testid="brief-writer">
         {writtenBy(line, c)}
       </p>
+      {line.firmness && (
+        <p class="calc-line" data-testid="brief-firmness">
+          {fill(line.adaptive ? c.whyFirmAdaptive : c.whyFirm, { firm: copy.brainScreen.firmOptions[line.firmness] })}
+        </p>
+      )}
     </div>
   )
 }

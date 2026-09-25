@@ -7,6 +7,7 @@ import { surfaceGuard, type Surface } from './surface'
 import type { Env } from './env'
 import { loadLibrary, retrieve } from './library'
 import { claudeBriefingText, claudeInstructions, coachBriefingText, parseOutput } from './prompt'
+import { coachFirmness, DEFAULT_FIRMNESS, HOW_FIRM, type Firmness, type FirmnessPref } from '../../src/firmness'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, logUsageOnSheet, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
 import { addDays } from './time'
 import type { FactSheet } from '../../src/factTypes'
@@ -130,6 +131,13 @@ export interface Deps {
   store: Store
   now: Date
   fetcher?: typeof fetch
+  /** For the tests: How firm's gate (Pass 2); the deployed Worker reads the shared constant. */
+  howFirm?: 'gated' | 'open'
+}
+
+/** How firm for a run from the prefs row already read (Pass 2): the setting once the gate is open, Adaptive until one is chosen; null while it is closed. */
+function firmOf(deps: Deps, prefs: unknown): FirmnessPref | null {
+  return (deps.howFirm ?? HOW_FIRM) === 'open' ? (readBrainPrefs(prefs).firmness ?? DEFAULT_FIRMNESS) : null
 }
 
 export interface Reply {
@@ -170,7 +178,7 @@ async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } 
   const sheet = sheetForClaude(facts.sheet, access)
   const said = await saidLately(deps.store, facts.sheet)
   const task = t.task === 'review' ? 'review' : 'line'
-  const built = lineBriefing({ task, writer: 'claude', sheet, forDay: t.day, cards: retrieve(library, sheet, task === 'review' ? 16 : 12), said: access.allowed('brainHistory') ? said : [], writerModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', gates: access.gates })
+  const built = lineBriefing({ task, writer: 'claude', sheet, forDay: t.day, cards: retrieve(library, sheet, task === 'review' ? 16 : 12), said: access.allowed('brainHistory') ? said : [], writerModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', gates: access.gates, firm: firmOf(deps, prefs) })
   if (!built.ok) return { ok: false, reply: reply(409, { error: built.reason }) }
   return { ok: true, run: { t, b: built.briefing, access, catalogue, said } }
 }
@@ -181,6 +189,9 @@ interface CoachRun {
   sheet: FactSheet
   access: Access
   catalogue: Catalogue
+  /** How firm (Pass 2): the setting, and the firmness the app sets for each rep; null while the gate is closed. */
+  firm: FirmnessPref | null
+  firmByRep: Record<string, Firmness> | null
 }
 
 /**
@@ -197,24 +208,27 @@ async function coachRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: CoachR
   const row = rowOf(core)
   if (!row || !row.candidates.length) return { ok: false, reply: reply(409, { error: 'the row has nothing to choose' }) }
   const [settings, prefs, catalogue] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)])
-  return { ok: true, run: { core, row, sheet: facts.sheet, access: accessFor('coach', gatesFrom(settings), readBrainPrefs(prefs)), catalogue } }
+  const firm = firmOf(deps, prefs)
+  const per = (Array.isArray(core.perRep) ? core.perRep : []) as { path: string; id: string; last: (string | null)[] }[]
+  const firmByRep = firm ? Object.fromEntries(row.candidates.map((id) => [id, coachFirmness(firm, row.path, (per.find((r) => r.path === row.path && r.id === id)?.last ?? []).filter((x): x is string => typeof x === 'string'))])) : null
+  return { ok: true, run: { core, row, sheet: facts.sheet, access: accessFor('coach', gatesFrom(settings), readBrainPrefs(prefs)), catalogue, firm, firmByRep } }
 }
 
 async function coachBriefing(deps: Deps, t: TaskRow): Promise<Reply> {
   const built = await coachRun(deps, t)
   if (!built.ok) return built.reply
-  const { core, row, sheet, access, catalogue } = built.run
+  const { core, row, sheet, access, catalogue, firm, firmByRep } = built.run
   const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, new Set(), row.path === 'partner' ? 'partner' : 'social', t.dry === true)
-  const text = coachBriefingText(core, new Map([...catalogue].map(([id, m]) => [id, m.name])), ctx.text, sheet.showPrivate === true)
+  const text = coachBriefingText(core, new Map([...catalogue].map(([id, m]) => [id, m.name])), ctx.text, sheet.showPrivate === true, firmByRep)
   await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
   return reply(200, {
     task: t.task,
     day: t.day,
     askedModel: t.askedModel,
-    instructions: claudeInstructions('coach'),
+    instructions: claudeInstructions('coach', firm),
     briefing: text,
     core,
-    answer: { picks: [{ id: 'an id from ELIGIBLE NOW', version: 'one line of today’s version of that rep, at most 25 words' }] },
+    answer: { picks: [{ id: 'an id from ELIGIBLE NOW', version: 'one line of today’s version of that rep, at most 25 words', ...(firm ? { firmness: 'the firmness HOW FIRM, BY REP names for that rep' } : {}) }] },
     post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
     context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, tag, q, limit', categories: READABLE.filter((c) => access.allowed(c)), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: t.contextCalls, bytes: t.contextBytes } },
     attemptsLeft: MAX_POSTS - t.posts,
@@ -228,7 +242,7 @@ async function coachLine(deps: Deps, t: TaskRow, o: Record<string, unknown>): Pr
   const { core, row, sheet } = built.run
   const answer = typeof o.answer === 'string' ? parseOutput(o.answer) : o.answer
   const names = sheet.showPrivate === true ? [] : await privateNames(deps.store)
-  const verdict = checkCoach(answer, core, sheet, t.day, { names, bears: row.path === 'partner' || core.dateDay === true, usage: built.run.access.allowed('usage') })
+  const verdict = checkCoach(answer, core, sheet, t.day, { names, bears: row.path === 'partner' || core.dateDay === true, usage: built.run.access.allowed('usage') }, built.run.firmByRep)
   const posts = t.posts + 1
   if (!verdict.ok) {
     await deps.store.writeTask({ ...t, posts, refusals: [...t.refusals, verdict.reason].slice(-10), ...(posts >= MAX_POSTS ? { status: 'refused' as const } : {}) })
@@ -237,7 +251,7 @@ async function coachLine(deps: Deps, t: TaskRow, o: Record<string, unknown>): Pr
   const at = deps.now.toISOString()
   const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'
   const runnerModel = clip(o.runnerModel, 100)
-  if (!t.dry) await deps.store.writeCoach({ id: rowIdOf('coach', t.day), day: t.day, block: String(core.block ?? ''), path: row.path, ids: verdict.value.ids, versions: verdict.value.versions, model: writtenModel, askedModel: t.askedModel, runnerModel, at }, at)
+  if (!t.dry) await deps.store.writeCoach({ id: rowIdOf('coach', t.day), day: t.day, block: String(core.block ?? ''), path: row.path, ids: verdict.value.ids, versions: verdict.value.versions, ...(verdict.value.firmness ? { firmness: verdict.value.firmness } : {}), model: writtenModel, askedModel: t.askedModel, runnerModel, at }, at)
   await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at) })
   return reply(200, { ok: true, ...(t.dry ? { dry: true } : {}) })
 }
@@ -256,15 +270,17 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
   await logUsageOnSheet(deps.store, t.id, t.task === 'review' ? 'review' : 'line', t.day, b.sheet, deps.now, t.dry === true)
   const text = claudeBriefingText({ ...b, context: ctx.text })
   await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
+  // Pass 2: How firm's field only once its gate is open.
+  const firmField = b.firm ? { firmness: 'supportive, balanced or hardCoach, as HOW FIRM says' } : {}
   const answer =
     t.task === 'line'
-      ? { mode: 'one of the modes named in the instructions', text: 'the line', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null, lacked: ['ids from the instructions’ list, or none'] }
-      : { held: 'what held', didNot: 'what did not', change: 'one change', factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], lacked: ['ids from the instructions’ list, or none'] }
+      ? { mode: 'one of the modes named in the instructions', text: 'the line', ...firmField, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null, lacked: ['ids from the instructions’ list, or none'] }
+      : { held: 'what held', didNot: 'what did not', change: 'one change', ...firmField, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], lacked: ['ids from the instructions’ list, or none'] }
   return reply(200, {
     task: t.task,
     day: t.day,
     askedModel: t.askedModel,
-    instructions: claudeInstructions(t.task as 'line' | 'review'),
+    instructions: claudeInstructions(t.task as 'line' | 'review', b.firm),
     briefing: text,
     answer,
     post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
@@ -305,7 +321,7 @@ export function checkClaudeLine(b: LineBriefing, said: readonly Said[], raw: unk
 
 /** A review Claude wrote: the review validator and the day guard, then the surface rules on each part. */
 export function checkClaudeReview(b: LineBriefing, raw: unknown, s: Surface): Verdict<ReviewOutput> {
-  const v = validateReview(raw, b.sheet, b.cards, b.forDay)
+  const v = validateReview(raw, b.sheet, b.cards, b.forDay, b.firm ? { pref: b.firm } : undefined)
   if (!v.ok) return v
   for (const part of [v.value.held, v.value.didNot, v.value.change]) {
     const g = surfaceGuard(part, s)
@@ -343,7 +359,8 @@ export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
   const latencyMs = deps.now.getTime() - Date.parse(t.firedAt ?? t.at)
   // Part 34: what Claude said it lacked, known ids only; never a reason to refuse.
   const lacked = lackedOf(answer && typeof answer === 'object' ? (answer as Record<string, unknown>).lacked : undefined)
-  const common = { day: t.day, model: writtenModel, at, factsDay: b.factsDay, forDay: t.day, trigger: t.trigger, shape: b.shape, refusals: t.refusals, calls: posts, latencyMs, writer: 'claude' as const, askedModel: t.askedModel, runnerModel, ...(lacked.length ? { lacked } : {}) }
+  const firmness = (verdict.value as { firmness?: Firmness }).firmness
+  const common = { day: t.day, model: writtenModel, at, factsDay: b.factsDay, forDay: t.day, trigger: t.trigger, shape: b.shape, refusals: t.refusals, calls: posts, latencyMs, writer: 'claude' as const, askedModel: t.askedModel, runnerModel, ...(lacked.length ? { lacked } : {}), ...(firmness ? { firmness, ...(b.firm === 'adaptive' ? { adaptive: true as const } : {}) } : {}) }
   let row: BriefRow
   if (t.task === 'line') {
     const v = verdict.value as BrainOutput

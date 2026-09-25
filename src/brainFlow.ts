@@ -5,10 +5,12 @@ import { heldBedtime, heldPickup } from './dayShape'
 import type { CoachBlock } from './factTypes'
 import { coachRow, pathOn, peopleRowOf } from './pathFlow'
 import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
-import type { LineAction, LineCue, WriterModel } from './brainShared'
+import { readBrainPrefs, type LineAction, type LineCue, type WriterModel } from './brainShared'
 import { copy } from './copy'
 import { clockTimesIn, fill } from './format'
 import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
+import { firmMode, firmOn, firmPrefNow, firmPrefOf, type FirmMode } from './firmFlow'
+import type { Firmness } from './firmness'
 import { hasMove, moveById } from './catalogue'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
@@ -25,7 +27,7 @@ import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts 
 // landed; the one tap that does what the line says; why it said it; and the week reviewed. The
 // Worker's line, when there is one, is read from the rows it wrote.
 
-export async function factSheet(day: string, now: Date = new Date(), coach: CoachMode = coachMode()): Promise<FactSheet> {
+export async function factSheet(day: string, now: Date = new Date(), coach: CoachMode = coachMode(), firm: FirmMode = firmMode()): Promise<FactSheet> {
   const [checkins, contexts, brief, ev, aims, skills, marks, records, intentions, wins, outside, items, settings, log, feedback, brainBriefs] = await Promise.all([
     allCheckIns(),
     db.days.toArray(),
@@ -45,7 +47,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
     db.brainBriefs.toArray(),
   ])
   // Parts 40 and 41: the reviews waiting for an answer, read only while their gate is open; closed, the sheet is as it was.
-  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([])])
+  // Pass 2: How firm is read only while its gate is open; closed, the ranking is said as it always was.
+  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined)])
+  const firmPref = firmPrefOf(firmOn(firm) ? readBrainPrefs(prefsRow) : undefined, firm)
   const reviews = new Map<number, { days: number; reason: 'ordinary' | 'struggle' }>()
   for (const a of asks) {
     const aim = aims.find((x) => x.id === a.aimId)
@@ -57,9 +61,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
-  sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs))
+  sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs), undefined, firmPref)
     .slice(0, SHORTLIST)
-    .map((c) => ({ situationId: c.situationId, mode: c.mode, text: c.text, factIds: c.factIds, cardIds: c.cardIds, score: Math.round(c.score * 100) / 100 }))
+    .map((c) => ({ situationId: c.situationId, mode: c.mode, text: c.text, factIds: c.factIds, cardIds: c.cardIds, score: Math.round(c.score * 100) / 100, ...(c.firmness ? { firmness: c.firmness } : {}) }))
   return sheet
 }
 
@@ -181,6 +185,9 @@ export interface BriefLine {
   fallback?: string
   /** When the line was written: the Worker's row, or the phone's choice. A clock time its words name counts as a moment it points to only if still ahead then. */
   at?: string
+  /** How firmly it was said (Pass 2), once How firm's gate is open; adaptive when Adaptive chose it. */
+  firmness?: Firmness
+  adaptive?: true
 }
 
 /** Who wrote a line or a review, in the words its screen uses (Part 30): Claude with the model asked for and the one that wrote, the free chain and why it stood in for Claude, or the phone. */
@@ -203,10 +210,10 @@ export async function todaysLine(day: string, now: Date = new Date()): Promise<B
   const off = offOf(record, day, now)
   const live = (l: { text: string; action?: LineAction | null; at?: string }) => !momentGone(lineMoment({ text: l.text, action: l.action ?? null, at: l.at }, day, ctx, planOf(intentions, l.action ?? null, day)), day, now)
   const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off) && live(b)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
+  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}), ...(worker.firmness ? { firmness: worker.firmness, ...(worker.adaptive ? { adaptive: true as const } : {}) } : {}) }
   const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off) && live(l)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
   if (!own) return null
-  return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day, at: own.at }
+  return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day, at: own.at, ...(own.firmness ? { firmness: own.firmness, ...(own.adaptive ? { adaptive: true as const } : {}) } : {}) }
 }
 
 /** Today's plan for the commitment a line's action names, if it names one and a plan was made. */
@@ -224,34 +231,41 @@ function planOf(intentions: readonly Intention[], action: LineAction | null, day
  * never chosen, and one already said is withdrawn (Part 27). A line whose moment is gone is withdrawn
  * too, and none is chosen whose moment is already gone (truth audit, 2026-09-24).
  */
-export async function chooseAndLog(day: string, now: Date = new Date()): Promise<void> {
+export async function chooseAndLog(day: string, now: Date = new Date(), firmGate: FirmMode = firmMode()): Promise<void> {
   const existing = await db.briefLog.where('day').equals(day).toArray()
   await ensureDayContext(day, await getSettings())
   const [sheet, off, ctx, intentions] = await Promise.all([factSheet(day, now), offTheRow(day, now), getDayContext(day), allIntentions()])
   const live = (l: { text: string; action?: LineAction | null; at?: string }) => !momentGone(lineMoment({ text: l.text, action: l.action ?? null, at: l.at }, day, ctx, planOf(intentions, l.action ?? null, day)), day, now)
   const current = existing.find((e) => e.situationId !== null && !e.withdrawnAt)
+  // Pass 2: said at the How firm setting while its gate is open; null (balanced, as always) while it is closed.
+  const firm = await firmPrefNow(firmGate)
+  // A new line carries the delivery it was said with, marked when Adaptive chose it; nothing while the gate is closed.
+  const firmOf = (c: { firmness?: Firmness }) => (c.firmness ? { firmness: c.firmness, ...(firm === 'adaptive' ? { adaptive: true as const } : {}) } : {})
+  // A kept line said again carries only the delivery it is said with now: a mark or a firmness it no longer has is cleared (undefined deletes it), so a closed gate leaves it as it always read.
+  const refirm = (c: { firmness?: Firmness }) => ({ firmness: c.firmness, adaptive: c.firmness && firm === 'adaptive' ? (true as const) : undefined })
+  const firmMoved = (c: BriefLog, m: { firmness?: Firmness }) => c.firmness !== m.firmness || Boolean(c.adaptive) !== (firm === 'adaptive' && m.firmness !== undefined)
   if (current && live(current)) {
-    const match = lineFor(sheet, current.situationId as string)
+    const match = lineFor(sheet, current.situationId as string, firm)
     // Kept while its situation holds and it does not compete with the People row (Part 27).
     if (match && onTheRow(match, off)) {
       // Kept while its situation holds, and said as the record now stands: the same row, so a tap stays filed under it.
       // A line already answered, by a tap on it or its one action taken, keeps the words it was answered in.
       const answered = (await feedbackFor(`phone:${day}:${current.id}`)) !== null || (current.action ? (await lineActionState(day, current.action, now))?.state === 'done' : false)
-      if (!answered && !sameLine(current, match)) await db.briefLog.update(current.id as number, { text: match.text, factIds: match.factIds, cardIds: match.cardIds, action: match.action ?? undefined })
+      if (!answered && (!sameLine(current, match) || firmMoved(current, match))) await db.briefLog.update(current.id as number, { text: match.text, factIds: match.factIds, cardIds: match.cardIds, action: match.action ?? undefined, ...refirm(match) })
       return
     }
     if (current.action && onTheRow(current, off) && (await lineActionState(day, current.action, now))?.state === 'done') return
   }
   const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
   const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
-  const choice = rankLines(sheet, said, feedback).find((c) => onTheRow(c, off) && live({ text: c.text, action: c.action ?? null, at: now.toISOString() })) ?? null
+  const choice = rankLines(sheet, said, feedback, undefined, firm).find((c) => onTheRow(c, off) && live({ text: c.text, action: c.action ?? null, at: now.toISOString() })) ?? null
   const empty = existing.filter((e) => e.situationId === null)
   if (!choice && !current && empty.length) return
   await db.transaction('rw', db.briefLog, async () => {
     if (current) await db.briefLog.update(current.id as number, { withdrawnAt: now.toISOString() })
     if (choice) {
       for (const e of empty) await db.briefLog.delete(e.id as number)
-      await db.briefLog.add({ day, situationId: choice.situationId, mode: choice.mode, text: choice.text, factIds: choice.factIds, cardIds: choice.cardIds, ...(choice.action ? { action: choice.action } : {}), at: now.toISOString() })
+      await db.briefLog.add({ day, situationId: choice.situationId, mode: choice.mode, text: choice.text, factIds: choice.factIds, cardIds: choice.cardIds, ...(choice.action ? { action: choice.action } : {}), at: now.toISOString(), ...firmOf(choice) })
     } else if (!empty.length) {
       await db.briefLog.add({ day, situationId: null, mode: 'observation', text: '', factIds: [], cardIds: [], at: now.toISOString() })
     }
@@ -434,12 +448,12 @@ export interface WeekReview extends ReviewParts {
 }
 
 /** The week reviewed: the Worker's three parts when it wrote them in the last week, else the record's own. */
-export async function weekReview(day: string, now: Date = new Date()): Promise<WeekReview> {
+export async function weekReview(day: string, now: Date = new Date(), firmGate: FirmMode = firmMode()): Promise<WeekReview> {
   const since = addDays(day, -6)
   const worker = (await db.brainBriefs.toArray()).filter((b) => b.kind === 'review' && b.parts && b.day >= since && b.day <= day).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
   if (worker?.parts) return { source: 'worker', model: worker.model, day: worker.day, ...worker.parts, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
   const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
-  return { source: 'phone', model: null, day, ...phoneReview(await factSheet(day, now), feedback) }
+  return { source: 'phone', model: null, day, ...phoneReview(await factSheet(day, now), feedback, await firmPrefNow(firmGate)) }
 }
 
 /** What the brain last wrote, for the Cloud screen. */

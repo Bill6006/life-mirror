@@ -6,7 +6,7 @@ import { runBrief, runReview } from './brief'
 import { handleBriefing, taskIdOf } from './claude'
 import { runCoach } from './coach'
 import { buildMessages, buildReviewMessages, claudeInstructions } from './prompt'
-import { APP, memoryStore } from './turso'
+import { APP, BRAIN_APP, memoryStore } from './turso'
 
 // What Claude and the free chain are given for the day's line, the Sunday review and the coach,
 // recorded before Parts 40 and 41 were built and held fixed while their gate is closed: the
@@ -141,5 +141,47 @@ describe('the monitored prompts, held fixed while Parts 40 and 41 are gated', ()
     expect(buildMessages(line.briefing)).toMatchSnapshot()
     expect(buildReviewMessages(review.briefing)).toMatchSnapshot()
     expect({ line: claudeInstructions('line'), review: claudeInstructions('review'), coach: claudeInstructions('coach') }).toMatchSnapshot()
+  })
+})
+
+describe('a saved How firm choice, while its gate is closed (Pass 2)', () => {
+  const withChoice = (firmness: string) => {
+    const store = record()
+    put(store, 'brainPrefs', 'prefs', null, { id: 'prefs', writerModel: 'opus', switches: {}, firmness })
+    return store
+  }
+  const noClaude = { ...env, CLAUDE_WRITER: 'off' }
+  const candidate = { mode: 'recommendation', text: 'French: the current skill is Ten words. Pin it to a moment today.', factIds: ['aim.1'], cardIds: ['plan-a-cue'], action: null, firmness: 'hardCoach' }
+  const freeRunner = async () => ({ response: JSON.stringify({ candidates: [candidate] }) })
+
+  it('serves Claude the same line, review and coach, with the same reads, whatever was chosen', async () => {
+    for (const firmness of ['hardCoach', 'supportive', 'adaptive']) {
+      const [plain, chosen] = [record(), withChoice(firmness)]
+      for (const s of [plain, chosen]) await runBrief(env, s, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })
+      expect(await handleBriefing(deps(chosen, at('07:46', DAY)), url({ task: 'line', day: DAY })), firmness).toEqual(await handleBriefing(deps(plain, at('07:46', DAY)), url({ task: 'line', day: DAY })))
+      expect(await readsOf(chosen)).toEqual(await readsOf(plain))
+
+      const [plainR, chosenR] = [record(), withChoice(firmness)]
+      for (const s of [plainR, chosenR]) await runReview(env, s, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine() })
+      expect(await handleBriefing(deps(chosenR, at('05:01', DAY)), url({ task: 'review', day: DAY })), firmness).toEqual(await handleBriefing(deps(plainR, at('05:01', DAY)), url({ task: 'review', day: DAY })))
+
+      const [plainC, chosenC] = [record(), withChoice(firmness)]
+      for (const s of [plainC, chosenC]) {
+        await s.writeSpot({ id: `spot:${DAY}`, kind: 'spotcheck', day: DAY, at: `${DAY}T11:00:00.000Z`, runs: 3, clean: true })
+        await s.writeBrief({ id: `${DAY}:brief`, day: DAY, kind: 'brief', text: 'x', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: at('07:48', DAY).toISOString(), writer: 'claude', forDay: DAY }, at('07:48', DAY).toISOString())
+        await runCoach(env, s, at('07:50', DAY), { fireFetcher: routine() })
+      }
+      expect(await handleBriefing(deps(chosenC, at('07:51', DAY)), url({ task: 'coach', day: DAY })), firmness).toEqual(await handleBriefing(deps(plainC, at('07:51', DAY)), url({ task: 'coach', day: DAY })))
+    }
+  })
+
+  it('lets the free chain write as before: its answer is checked without a delivery, and none is stored', async () => {
+    const store = withChoice('hardCoach')
+    const r = await runBrief(noClaude, store, freeRunner, at('07:45', DAY), { fetcher })
+    expect(r).toMatchObject({ wrote: true, writer: 'free', text: candidate.text })
+    const row = store.rows.get(`${BRAIN_APP}|briefs|${DAY}:brief`)
+    expect(row).toBeDefined()
+    expect(JSON.parse(row?.body ?? '{}')).toMatchObject({ text: candidate.text, writer: 'free' })
+    expect(JSON.parse(row?.body ?? '{}')).not.toHaveProperty('firmness')
   })
 })

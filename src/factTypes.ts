@@ -28,6 +28,8 @@ export interface RankedLine {
   factIds: string[]
   cardIds: string[]
   score: number
+  /** How firmly the phone says it (Pass 2), once How firm's gate is open. */
+  firmness?: string
 }
 
 /**

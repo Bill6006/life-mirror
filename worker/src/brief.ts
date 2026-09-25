@@ -2,7 +2,7 @@ import { validateReview } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import { generateCandidates, generateValid, newUsage, neuronsOf, textOf, type Runner } from './ai'
 import { forFreeChain, lineBriefing } from './briefing'
-import { lineCheck, saidLately } from './checks'
+import { firmFor, lineCheck, saidLately } from './checks'
 import { claudeOn, fallbackReason, rowIdOf, startTask, taskIdOf, timeoutMinutes, type ClaudeTask } from './claude'
 import type { Env } from './env'
 import { loadLibrary, retrieve } from './library'
@@ -53,6 +53,8 @@ export interface BriefOptions {
   fetcher?: typeof fetch
   /** For the routine's fire. */
   fireFetcher?: typeof fetch
+  /** For the tests: How firm's gate (Pass 2); the deployed Worker reads the shared constant. */
+  howFirm?: 'gated' | 'open'
 }
 
 type JobEnv = Pick<Env, 'TIMEZONE' | 'BRIEF_HOUR' | 'MODELS' | 'LIBRARY_URL' | 'FALLBACK_TIME' | 'CLAUDE_WRITER' | 'CLAUDE_FIRE_URL' | 'CLAUDE_FIRE_TOKEN' | 'CLAUDE_TIMEOUT_MINUTES' | 'CATALOGUE_URL'>
@@ -96,7 +98,8 @@ async function writeFreeLine(env: JobEnv, store: Store, run: Runner, now: Date, 
   const sheet = forFreeChain(due.sheet)
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), sheet)
   // The one path to a prompt: the briefing, for today, relabelled when the sheet is yesterday's; refused when it cannot say what today holds.
-  const built = lineBriefing({ task: 'line', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet) })
+  const firm = await firmFor(store, opts.howFirm)
+  const built = lineBriefing({ task: 'line', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet), firm })
   if (!built.ok) return { wrote: false, reason: built.reason, day, ...(fallback ? { fallback } : {}) }
   const b = built.briefing
 
@@ -144,6 +147,7 @@ async function writeFreeLine(env: JobEnv, store: Store, run: Runner, now: Date, 
     latencyMs: Date.now() - started,
     writer: 'free',
     ...(fallback ? { fallback } : {}),
+    ...(out.firmness ? { firmness: out.firmness, ...(firm === 'adaptive' ? { adaptive: true as const } : {}) } : {}),
   }
   // Standing in for Claude: a line Claude posted while the chain was writing stands, and this one is dropped.
   if (fallback && !opts.force && (await store.hasBrief(row.id))) return { wrote: false, reason: 'written already', day }
@@ -213,17 +217,18 @@ async function writeFreeReview(env: JobEnv, store: Store, run: Runner, now: Date
   // The free chain reads the fact sheet alone: never how Life Mirror is used (Follow-up F1), never where the day was spent (Part 43).
   const sheet = forFreeChain(whole)
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), sheet, 16)
-  const built = lineBriefing({ task: 'review', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet) })
+  const firm = await firmFor(store, opts.howFirm)
+  const built = lineBriefing({ task: 'review', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet), firm })
   if (!built.ok) return { wrote: false, reason: built.reason, day, ...(fallback ? { fallback } : {}) }
   const b = built.briefing
   const attempts: string[] = []
   const usage = newUsage()
-  const generated = await generateValid(modelsOf(env), run, buildReviewMessages(b), (raw) => validateReview(raw, b.sheet, b.cards, day), 4000, attempts, usage)
+  const generated = await generateValid(modelsOf(env), run, buildReviewMessages(b), (raw) => validateReview(raw, b.sheet, b.cards, day, b.firm ? { pref: b.firm } : undefined), 4000, attempts, usage)
   if (!generated) return { wrote: false, reason: 'no model produced a review that passed', day, attempts, neurons: round1(usage.neurons), ...(fallback ? { fallback } : {}) }
 
   const at = now.toISOString()
-  const { held, didNot, change, factIds, cardIds } = generated.output
-  const row: BriefRow = { id: `${day}:review`, day, kind: 'review', text: `${held} ${didNot} ${change}`, mode: 'strategy', factIds, cardIds, action: null, parts: { held, didNot, change }, model: generated.model, at, factsDay: b.factsDay, forDay: day, trigger, shape: b.shape, refusals: attempts, neurons: round1(usage.neurons), calls: usage.calls, latencyMs: Date.now() - started, writer: 'free', ...(fallback ? { fallback } : {}) }
+  const { held, didNot, change, factIds, cardIds, firmness } = generated.output
+  const row: BriefRow = { id: `${day}:review`, day, kind: 'review', text: `${held} ${didNot} ${change}`, mode: 'strategy', factIds, cardIds, action: null, parts: { held, didNot, change }, model: generated.model, at, factsDay: b.factsDay, forDay: day, trigger, shape: b.shape, refusals: attempts, neurons: round1(usage.neurons), calls: usage.calls, latencyMs: Date.now() - started, writer: 'free', ...(fallback ? { fallback } : {}), ...(firmness ? { firmness, ...(firm === 'adaptive' ? { adaptive: true as const } : {}) } : {}) }
   if (fallback && !opts.force && (await store.hasBrief(row.id))) return { wrote: false, reason: 'written already', day }
   await store.writeBrief(row, at)
   return { wrote: true, reason: 'review', day, forDay: day, factsDay: b.factsDay, trigger, writer: 'free', model: generated.model, attempts, neurons: row.neurons, text: row.text, mode: row.mode, cardIds, ...(fallback ? { fallback } : {}) }

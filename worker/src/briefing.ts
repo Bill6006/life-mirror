@@ -1,4 +1,5 @@
 import { isLocationFact, isWriterModel, WRITER_MODELS, type WriterModel } from '../../src/brainShared'
+import type { FirmnessPref } from '../../src/firmness'
 import { isUsageFact } from '../../src/useShared'
 import type { FactSheet, RankedLine } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
@@ -183,6 +184,8 @@ export interface LineBriefing {
   writerModel: WriterModel | null
   /** Claude's private context from the retrieval layer (Part 30), as dated lines; empty for the free chain, which reads the fact sheet alone. */
   context: string
+  /** How firm (Pass 2): the person's setting, only once its gate is open; absent while it is closed, and nothing about it is said or checked. */
+  firm?: FirmnessPref
 }
 
 export interface LineBriefingInput {
@@ -196,6 +199,8 @@ export interface LineBriefingInput {
   gates?: Gates
   /** Claude's private context, read through the retrieval layer; refused for the free chain. */
   context?: string
+  /** How firm (Pass 2), once its gate is open. */
+  firm?: FirmnessPref | null
 }
 
 /**
@@ -234,6 +239,7 @@ export function lineBriefing(i: LineBriefingInput): { ok: true; briefing: LineBr
       said: i.said,
       writerModel: model,
       context: i.context ?? '',
+      ...(i.firm ? { firm: i.firm } : {}),
     },
   }
 }

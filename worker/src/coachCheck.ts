@@ -1,4 +1,5 @@
 import { BANNED_WORDS, dayGuard, PEOPLE_AROUND_WORDS, speaksOfOutcomes } from '../../src/brainShared'
+import { firmnessRefusal, type Firmness } from '../../src/firmness'
 import type { FactSheet } from '../../src/factTypes'
 import type { CoachCoreKey } from './briefing'
 import { surfaceGuard, type Surface } from './surface'
@@ -23,6 +24,8 @@ export interface CoachAnswer {
   ids: string[]
   /** Today's version of each rep named, by its id: the phone shows the drawn rep's own line. */
   versions: Record<string, string>
+  /** How firmly each was said (Pass 2), once How firm's gate is open. */
+  firmness?: Record<string, Firmness>
 }
 
 type Verdict<T> = { ok: true; value: T } | { ok: false; reason: string }
@@ -47,7 +50,7 @@ function versionRefusal(version: string, core: Partial<Record<CoachCoreKey, unkn
 }
 
 /** The coach's answer, checked: one or two of the row's own candidates, each with its own line of today's version, every line held to the rules. */
-export function checkCoach(raw: unknown, core: Partial<Record<CoachCoreKey, unknown>>, sheet: FactSheet, forDay: string, surface: Surface): Verdict<CoachAnswer> {
+export function checkCoach(raw: unknown, core: Partial<Record<CoachCoreKey, unknown>>, sheet: FactSheet, forDay: string, surface: Surface, firmByRep?: Readonly<Record<string, Firmness>> | null): Verdict<CoachAnswer> {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const row = rowOf(core)
@@ -58,11 +61,20 @@ export function checkCoach(raw: unknown, core: Partial<Record<CoachCoreKey, unkn
   if (new Set(ids).size !== ids.length) return { ok: false, reason: 'the same rep named twice' }
   for (const id of ids) if (!row.candidates.includes(id)) return { ok: false, reason: `"${id}" is not one of the reps the row may offer now` }
   const versions: Record<string, string> = {}
-  for (const p of picks as { id: string; version?: unknown }[]) {
+  const firmness: Record<string, Firmness> = {}
+  for (const p of picks as { id: string; version?: unknown; firmness?: unknown }[]) {
     const version = typeof p.version === 'string' ? p.version.trim() : ''
     const why = versionRefusal(version, core, sheet, forDay, surface)
     if (why) return { ok: false, reason: ids.length > 1 ? `${p.id}: ${why}` : why }
+    // Pass 2: once How firm's gate is open, each version at the firmness the app set for its rep, and the floor under every firmness.
+    if (firmByRep) {
+      const want = firmByRep[p.id] ?? 'balanced'
+      if (p.firmness !== want) return { ok: false, reason: `${p.id}: say this version at ${want}, and put "${want}" in its firmness` }
+      const floor = firmnessRefusal(version)
+      if (floor) return { ok: false, reason: ids.length > 1 ? `${p.id}: ${floor}` : floor }
+      firmness[p.id] = want
+    }
     versions[p.id] = version
   }
-  return { ok: true, value: { ids, versions } }
+  return { ok: true, value: { ids, versions, ...(firmByRep ? { firmness } : {}) } }
 }

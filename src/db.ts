@@ -1,5 +1,6 @@
 import type { BrainPrefsBody, Lacked, LineAction } from './brainShared'
 import type { CoachAsk, CoachProposal } from './coachShared'
+import type { Firmness } from './firmness'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
@@ -510,6 +511,9 @@ export interface BriefLog {
   withdrawnAt?: string
   /** Set the first time the line was on screen. A line logged while the brain's own line stood was never shown, so it was never said (Part 33). */
   shownAt?: string
+  /** How firmly it was said (Pass 2), once How firm's gate is open; with adaptive set when Adaptive chose it. */
+  firmness?: Firmness
+  adaptive?: true
 }
 
 /**
@@ -567,6 +571,9 @@ export interface BrainBrief {
   fallback?: string
   /** What Claude said it lacked for this line or review (Part 34): ids from a fixed list, counted only. */
   lacked?: Lacked[]
+  /** How firmly it was said (Pass 2), once How firm's gate is open; with adaptive set when Adaptive chose it. */
+  firmness?: Firmness
+  adaptive?: true
 }
 
 /** The Brain settings (Part 30): which model writes, and what Claude may read. One row, synced, so the Worker reads it at every request. */

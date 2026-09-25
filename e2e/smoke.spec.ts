@@ -2050,3 +2050,103 @@ test('a progression review, previewed (Part 41): six different practice days wit
   expect((await rowsOf<{ name: string }>(page, 'aims')).map((a) => a.name)).toEqual(['Cello', 'Guitar'])
   await expect(page.locator('#main')).not.toContainText('%')
 })
+
+// ─── How firm (Pass 2) ──────────────────────────────────────────────────────────────────────────
+// Built behind its gate: as the build ships, nothing shows and every line reads as it always has.
+// A test browser alone may preview it; the Worker's gate stays closed, so a preview reaches only
+// this phone's own screen.
+
+const FIRM_PREVIEW = 'life-mirror.preview.howFirm'
+const NO_SKILL = {
+  balanced: 'Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.',
+  supportive: 'Italian has no current skill yet. Naming one is the first step: the one thing to work on now, on its card under Aims; it stays until you change it.',
+  hardCoach: 'Italian has no current skill yet. Name the one thing to work on now, on its card under Aims.',
+}
+
+/** Settings → Brain closes with its own Done, back to the tabs. */
+async function leaveBrain(page: Page): Promise<void> {
+  await page.getByTestId('brain-screen').getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.locator('nav.tabs')).toBeVisible()
+}
+
+/** A check-in through the lowest phrase, so the phone’s own line speaks on Now. */
+async function checkInForTheLine(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page, 0)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+}
+
+/** Why, opened on the brief card whatever its state. */
+async function openWhy(page: Page): Promise<void> {
+  const card = page.getByTestId('brief')
+  if (!(await card.getByTestId('brief-why-panel').isVisible())) await card.getByTestId('brief-why').click()
+  await expect(card.getByTestId('brief-why-panel')).toBeVisible()
+}
+
+test('How firm stays dark while its gate is closed: nothing under Brain, and the phone’s own line reads as it always has (Pass 2)', async ({ page }) => {
+  await startWithDirection(page)
+  await addLearning(page, 'Italian')
+  await checkInForTheLine(page)
+  await expect(page.getByTestId('brief').getByTestId('brief-line')).toHaveText(NO_SKILL.balanced)
+  await openWhy(page)
+  await expect(page.getByTestId('brief-firmness')).toHaveCount(0)
+  await settingsSection(page, 'brain')
+  await expect(page.getByTestId('brain-screen')).toBeVisible()
+  await expect(page.getByTestId('brain-firm')).toHaveCount(0)
+  expect((await rowsOf<{ firmness?: string }>(page, 'briefLog')).every((l) => l.firmness === undefined)).toBe(true)
+  expect((await rowsOf<{ firmness?: string }>(page, 'brainPrefs')).every((p) => p.firmness === undefined)).toBe(true)
+})
+
+test('How firm, previewed (Pass 2): four settings under Brain, Adaptive until chosen, the choice kept; the phone’s own line said at each, its facts unchanged', async ({ page }) => {
+  await page.addInitScript((k) => localStorage.setItem(k, '1'), FIRM_PREVIEW)
+  await startWithDirection(page)
+  await addLearning(page, 'Italian')
+
+  // Settings → Brain: How firm sits right under who writes the line, Adaptive first and chosen.
+  await settingsSection(page, 'brain')
+  const firm = page.getByTestId('brain-firm')
+  await expect(firm.getByRole('button')).toHaveText(['Adaptive', 'Supportive', 'Balanced', 'Hard Coach'])
+  await expect(page.getByTestId('brain-firm-adaptive')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('brain-firm-means')).toContainText('Chosen for each line from what it rests on')
+  await expect(firm).toContainText('never what it says')
+  const [model, how, reads] = await Promise.all([page.getByTestId('brain-model-opus').boundingBox(), firm.boundingBox(), page.getByTestId('brain-switch-dayRecord').boundingBox()])
+  expect(model && how && reads && model.y < how.y && how.y < reads.y).toBe(true)
+  await page.getByTestId('brain-firm-hardCoach').click()
+  await expect(page.getByTestId('brain-firm-hardCoach')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('brain-firm-adaptive')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('brain-firm-means')).toContainText('Firm about the evidence, never about you.')
+
+  // The choice holds across a relaunch.
+  await page.reload()
+  await settingsSection(page, 'brain')
+  await expect(page.getByTestId('brain-firm-hardCoach')).toHaveAttribute('aria-pressed', 'true')
+  await leaveBrain(page)
+
+  // The phone's own line, said Hard Coach, and Why says so.
+  await checkInForTheLine(page)
+  const line = page.getByTestId('brief').getByTestId('brief-line')
+  await expect(line).toHaveText(NO_SKILL.hardCoach)
+  await openWhy(page)
+  await expect(page.getByTestId('brief-firmness')).toHaveText('How firm: Hard Coach.')
+  const [first] = (await rowsOf<{ id: number; situationId: string; factIds: string[]; cardIds: string[]; withdrawnAt?: string; firmness?: string }>(page, 'briefLog')).filter((l) => !l.withdrawnAt)
+
+  // Changed under Brain, the same line is said again at once, warmer, then as Adaptive chooses: the same row, the same facts and citations.
+  for (const [pref, text, why] of [
+    ['supportive', NO_SKILL.supportive, 'How firm: Supportive.'],
+    ['adaptive', NO_SKILL.balanced, 'How firm: Balanced, as Adaptive chose for this line.'],
+  ] as const) {
+    await settingsSection(page, 'brain')
+    await page.getByTestId(`brain-firm-${pref}`).click()
+    await expect(page.getByTestId(`brain-firm-${pref}`)).toHaveAttribute('aria-pressed', 'true')
+    await leaveBrain(page)
+    await page.getByRole('button', { name: 'Now', exact: true }).click()
+    await expect(line).toHaveText(text)
+    await openWhy(page)
+    await expect(page.getByTestId('brief-firmness')).toHaveText(why)
+    const live = (await rowsOf<{ id: number; situationId: string; factIds: string[]; cardIds: string[]; withdrawnAt?: string }>(page, 'briefLog')).filter((l) => !l.withdrawnAt)
+    expect(live).toHaveLength(1)
+    expect({ id: live[0].id, situationId: live[0].situationId, factIds: live[0].factIds, cardIds: live[0].cardIds }).toEqual({ id: first.id, situationId: 'first-skill', factIds: first.factIds, cardIds: first.cardIds })
+  }
+  await expect(page.locator('#main')).not.toContainText('!')
+})
