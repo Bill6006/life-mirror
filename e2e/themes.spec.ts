@@ -475,6 +475,17 @@ const MORE: typeof STATES = [
   },
   { name: 'Change the rep', tab: 'Now', open: async (p) => p.getByTestId('path-change').first().click() },
   { name: 'The weekly view', tab: 'Mirror', open: click(/^The weekly view/) },
+  // The deeper diagnostics are closed until opened (final UI polish, 2026-09-26): audited opened, every one.
+  {
+    name: 'The weekly view, every diagnostic open',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^The weekly view/ }).click()
+      for (const id of ['weekly-best', 'weekly-scorecard', 'weekly-lasts', 'weekly-health', 'weekly-people', 'weekly-extension']) await p.getByTestId(id).click()
+      await expect(p.getByTestId('weekly-prompt')).toBeVisible()
+      await expect(p.getByTestId('family-health').first()).toBeVisible()
+    },
+  },
   { name: 'Evidence', tab: 'Moves', open: click(/^Evidence/) },
   { name: 'History', tab: 'Moves', open: click(/^History/) },
   { name: 'The catalogue', tab: 'Moves', open: click(/^Read the catalogue/) },

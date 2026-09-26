@@ -895,11 +895,25 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await expect(page.getByTestId('weekly')).toBeVisible()
   // The week ahead is the first thing on the screen, and says what it is waiting for.
   await expect(page.getByTestId('week-ahead')).toContainText('The week ahead appears once fourteen days each have a complete check-in')
-  const order = await page.getByTestId('weekly').locator('h2.section').allInnerTexts()
-  expect(order[0].toLowerCase()).toBe('the week ahead, as you usually are')
+  // The week first (final UI polish, 2026-09-26): the week ahead, the week reviewed, what moved, the baseline and the
+  // gap; then the deeper diagnostics, each closed until opened, and everything in each one tap away.
+  const order = (await page.getByTestId('weekly').locator('h2.section').allInnerTexts()).map((t) => t.toLowerCase())
+  expect(order).toEqual(['the week ahead, as you usually are', 'the week, reviewed', 'what moved this week', 'baseline', 'the gap', 'deeper diagnostics'])
+  for (const id of ['weekly-best', 'weekly-scorecard', 'weekly-lasts', 'weekly-health', 'weekly-people', 'weekly-extension']) {
+    await expect(page.getByTestId(id)).toHaveAttribute('aria-expanded', 'false')
+  }
+  await expect(page.getByTestId('hit-rate')).toHaveCount(0)
+  await page.getByTestId('weekly-scorecard').click()
   await expect(page.getByTestId('hit-rate')).toContainText('No day-ahead forecasts scored yet')
+  await page.getByTestId('weekly-best').click()
   await expect(page.getByTestId('best-silent')).toContainText('0 so far')
+  await page.getByTestId('weekly-lasts').click()
+  await expect(page.getByTestId('weekly-lasts').locator('xpath=..')).toContainText('it takes three runs of three days')
+  await page.getByTestId('weekly-health').click()
   await expect(page.getByTestId('family-health')).toHaveCount(14)
+  await page.getByTestId('weekly-people').click()
+  await expect(page.getByTestId('people-health')).toBeVisible()
+  await page.getByTestId('weekly-extension').click()
   await expect(page.getByTestId('weekly-prompt')).toContainText('THE RULES')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
@@ -927,13 +941,18 @@ test('the week ahead: a model blind to weekdays says the days come out alike and
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   const ahead = page.getByTestId('week-ahead')
-  // The final checklist, item 3: seven alike days said as one level, the range near and far, the chart a tap away.
+  // Seven alike days said as one level (the final checklist, item 3), and the graph shown with no tap: the line first,
+  // then the graph, then the week reviewed; the range in plain words, never said to widen (final UI polish, 2026-09-26).
   await expect(page.getByTestId('week-ahead-summary')).toHaveText('No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around 75.')
-  await expect(page.getByTestId('week-ahead-range')).toHaveText('Its range each day: 75 to 75.')
-  await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
-  await expect(ahead.getByTestId('ahead-value')).toHaveCount(0)
-  await page.getByTestId('week-ahead-detail').click()
   await expect(ahead.getByTestId('ahead-value')).toHaveCount(7)
+  // The review is read on its own; measure the order only once it is drawn.
+  await expect(page.getByTestId('week-review')).toBeVisible()
+  const tops = await page.evaluate(() => ['[data-testid="week-ahead-summary"]', '[data-testid="week-ahead"] .week-chart', '[data-testid="week-review"]'].map((s) => (document.querySelector(s) as HTMLElement).getBoundingClientRect().top))
+  expect(tops[0]).toBeLessThan(tops[1])
+  expect(tops[1]).toBeLessThan(tops[2])
+  await expect(page.getByTestId('week-ahead-range')).toHaveText('Expected range: 75–75 each day.')
+  await expect(page.getByTestId('weekly')).not.toContainText('widen')
+  await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
   expect(new Set(await ahead.getByTestId('ahead-value').allTextContents())).toEqual(new Set(['75']))
   await expect(ahead.locator('.is-low')).toHaveCount(0)
 })

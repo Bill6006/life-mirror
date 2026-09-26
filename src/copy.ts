@@ -559,9 +559,11 @@ export const copy = {
     aheadAlike: 'It does not tell one weekday from another, so the days ahead come out alike.',
     aheadFlatBlind: 'No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around {level}.',
     aheadFlatNone: 'No meaningful difference between days detected. Your expected level this week is around {level}.',
-    aheadFlatRange: 'Its range widens with distance: {lo} to {hi} tomorrow, {lo2} to {hi2} a week out.',
-    aheadFlatRangeSame: 'Its range each day: {lo} to {hi}.',
-    aheadDetail: 'Day by day',
+    // Said plainly, whichever way the ranges run: a later range can be wider, narrower or only shifted (final UI polish, 2026-09-26).
+    aheadFlatRange: 'Expected range: {lo}–{hi} tomorrow and {lo2}–{hi2} a week out.',
+    aheadFlatRangeSame: 'Expected range: {lo}–{hi} each day.',
+    /** The analytical sections below the week, each closed until opened, nothing in them left out (final UI polish, 2026-09-26). */
+    deeper: 'Deeper diagnostics',
     best: 'Best-days',
     bestSilent: 'Silent until twenty days with two logged blocks: {days} so far.',
     bestNote: 'Your top tenth of days, {k} of {days}, and what was different.',
