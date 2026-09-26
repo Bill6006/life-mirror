@@ -155,7 +155,7 @@ function PathSection({ path }: { path: Path }) {
   return (
     <div id={`path-${path.id}`} class="family" data-testid="path">
       <h2 class="section">
-        {path.name} · {path.stages.length}
+        {fill(c.name, { path: path.name })} · {path.stages.length}
       </h2>
       <p class="note">{path.what}</p>
       {path.stages.map((st) => {
@@ -282,7 +282,7 @@ export function CatalogueScreen({ onClose }: { onClose: () => void }) {
         {paths.map((p) => (
           <li key={p.id}>
             <a class="chip" href={`#path-${p.id}`}>
-              {p.name}
+              {fill(c.paths.name, { path: p.name })}
             </a>
           </li>
         ))}

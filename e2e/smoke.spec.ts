@@ -544,16 +544,30 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
 
   // Now shows it and the honest line; Skip says it shows another, and does, at once: a real move, never Nothing today (D6).
   const first = await page.getByTestId('move-card').getByTestId('move-name').innerText()
+  // The block's own move is live: the whole card, never the waiting one (final UI polish, 2026-09-26).
+  await expect(page.locator('[data-testid="move-card"][data-waiting]')).toHaveCount(0)
+  await expect(page.getByTestId('move-card').locator('.move-what')).toBeVisible()
   await expect(page.getByTestId('knows')).toContainText(/weeks? of record/)
   await expect(page.getByTestId('move-skip')).toHaveText('Skip · show another')
   await page.getByTestId('move-skip').click()
   await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText(first)
   await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText('Nothing today')
+  const kept = await page.getByTestId('move-card').getByTestId('move-name').innerText()
   // Later, before the next check-in, the card waits for that check-in's question: no Skip promises what it cannot give.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 17, 40))
   await page.reload()
   await expect(page.getByTestId('move-card')).toBeVisible()
   await expect(page.getByTestId('move-skip')).toHaveCount(0)
+  // With nothing on it to tap, it keeps to its name and when it was offered, so it never reads as the move to do
+  // now; what it is, why and the test are one tap away, none of it lost (final UI polish, 2026-09-26).
+  const waiting = page.locator('[data-testid="move-card"][data-waiting]')
+  await expect(waiting.getByTestId('move-name')).toHaveText(kept)
+  await expect(waiting.getByTestId('move-waiting')).toHaveText('Offered this afternoon. Asked at your next check-in.')
+  await expect(waiting.locator('.move-what')).toHaveCount(0)
+  await expect(page.getByTestId('move-done')).toHaveCount(0)
+  await waiting.getByTestId('move-why').click()
+  await expect(waiting.locator('.move-what')).toBeVisible()
+  await expect(waiting.getByTestId('move-evidence')).toContainText('Why this')
 
   // The constant lives in Settings; nothing about her appears on Now.
   await settingsSection(page, 'week')
@@ -668,6 +682,17 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await expect(page.locator('#move-ask-one-question')).toBeVisible()
   await expect(page.locator('#move-ask-one-question .move-status')).toContainText('rung 1 of the participation ladder')
   await expect(page.locator('#move-ask-one-question .move-status')).toContainText('Social path, stage 4, moves the stage')
+
+  // The paths are named as paths, beside the families they share a word with: no two choices read alike (owner, 2026-09-26).
+  const chips = page.locator('.family-chips .chip')
+  const labels = (await chips.allTextContents()).map((t) => t.trim())
+  expect(labels.slice(0, 2)).toEqual(['Social path', 'Partner path'])
+  expect(labels).toContain('People')
+  expect(labels).toContain('Partner')
+  expect(new Set(labels).size).toBe(labels.length)
+  await expect(page.getByTestId('path').first().locator('h2')).toHaveText(/^Social path · [0-9]+$/)
+  await expect(page.getByTestId('path').nth(1).locator('h2')).toHaveText(/^Partner path · [0-9]+$/)
+  await expect(page.locator('#family-partner h2').first()).toHaveText(/^Partner\b(?! path)/)
 
   // Parts 23 and 26: both paths readable in full; since Parts 24 and 27 their reps are offered through their rows alone.
   await expect(page.getByTestId('path')).toHaveCount(2)

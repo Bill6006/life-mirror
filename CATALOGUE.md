@@ -10,7 +10,7 @@ Proposed entries, tags, beliefs and trades are content to read and veto. Yellow 
 
 Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.
 
-### Social
+### Social path
 
 From being present where people are to hosting and deepening: small reps in the places your week already holds, each your own act. What anyone else says or does is never the measure.
 
@@ -143,7 +143,7 @@ Claim cards, each source verified at Crossref, admitted once their path was wire
 - **some evidence** (admitted). Humour in a first meeting goes with liking and closeness for both sexes, and pairs who laugh at the same moment tend to be the ones both interested. Interest also makes people joke more. Treger, Sprecher & Erber (2013). Laughing and liking: Exploring the interpersonal effects of humor use in initial social interactions. European Journal of Social Psychology, 43(6), 532–543. Fraley & Aron (2004). The effect of a shared humorous experience on closeness in initial encounters. Personal Relationships, 11(1), 61–78. Li et al. (2009). An Evolutionary Perspective on Humor: Sexual Selection or Interest Indication? Personality and Social Psychology Bulletin, 35(7), 923–936. Hall (2015). Sexual Selection and Humor in Courtship. Evolutionary Psychology, 13(3), 1474704915598918.
 - **good evidence** (admitted). Kind, shared humour goes with happier relationships and cutting humour with less happy ones, and people prefer an affiliative humour style in a long-term partner. Hall (2017). Humor in romantic relationships: A meta‐analysis. Personal Relationships, 24(2), 306–322. Kurtz & Algoe (2015). Putting laughter in context: Shared laughter as behavioral indicator of relationship well‐being. Personal Relationships, 22(4), 573–590. DiDonato, Bedminster & Machel (2013). My funny valentine: How humor styles affect romantic interest. Personal Relationships, 20(2), 374–390. Keltner et al. (2001). Just teasing: A conceptual analysis and empirical review. Psychological Bulletin, 127(2), 229–248.
 
-### Partner
+### Partner path
 
 From meeting someone to keeping a partner: your own acts, never another person’s answer. Each rep is done when you have done your part. It starts only when you start it, and pauses whenever you pause it.
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'preact/hooks'
+import { addDays, blockAt, type Block } from './blocks'
 import { moveById } from './catalogue'
 import { copy } from './copy'
 import { updateSettings, type Offer, type Outcome } from './db'
-import { fill, formatTime, formatWhen } from './format'
+import { fill, formatDayShort, formatTime, formatWhen } from './format'
 import { useLive } from './live'
 import { privateAssociationsToday, tierOfCard } from './learningFlow'
 import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow, replacementsFor } from './offerFlow'
@@ -25,12 +26,23 @@ function reasonText(offer: Offer): string | null {
   return fill(copy.move.whyNotLine, { move: nameOf(offer.whyNot.moveId, copy.move.nothing), reason: r })
 }
 
+/** When a move waiting for the next check-in was offered, in words from today: this morning, yesterday evening, or its day (final UI polish, 2026-09-26). */
+export function offeredWhen(offer: { day: string; block: Block }, now: Date = new Date()): string {
+  const today = blockAt(now).day
+  const block = copy.blocks[offer.block].toLowerCase()
+  const w = copy.move.waitingWhen
+  if (offer.day === today) return fill(w.today, { block })
+  if (offer.day === addDays(today, -1)) return fill(w.yesterday, { block })
+  return fill(w.day, { day: formatDayShort(offer.day), block })
+}
+
 /**
  * One small move: what to do, why this (a calculation from your record, with its counts),
  * why not the move you might have expected, and what it is testing: the card, written first,
- * visible and never loud.
+ * visible and never loud. A move left from an earlier check-in has nothing to tap until the next
+ * check-in asks about it, so it waits: its name and when it was offered, the rest one tap away.
  */
-export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: Offer; outcome?: Outcome | null; onSkip?: () => void; compact?: boolean }) {
+export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = false }: { offer: Offer; outcome?: Outcome | null; onSkip?: () => void; compact?: boolean; waiting?: boolean }) {
   const c = copy.move
   const nothing = offer.moveId === NOTHING
   const move = nothing ? null : moveById(offer.moveId)
@@ -99,15 +111,20 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
         : fill(c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })
   const shownPrivates = (privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
 
-  return (
-    <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind}>
-      <div class="move-head">
-        <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
-        {card && <Tag>{c.testing}</Tag>}
-      </div>
-      <h2 class="move-title" data-testid="move-name">
-        {nothing ? c.nothing : move?.name}
-      </h2>
+  const head = (
+    <div class="move-head">
+      <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
+      {card && <Tag>{c.testing}</Tag>}
+    </div>
+  )
+  const title = (
+    <h2 class="move-title" data-testid="move-name">
+      {nothing ? c.nothing : move?.name}
+    </h2>
+  )
+  // What the move is: its words, its minutes, effort and needs, and what rides alongside it.
+  const about = (
+    <>
       <p class="move-what">{nothing ? c.nothingWhat : move?.what}</p>
       {move && (
         <ul class="move-facts" data-testid="move-facts">
@@ -122,52 +139,88 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
           <span class="ink">{passive.name}</span>
         </p>
       )}
+    </>
+  )
+  // Why this, the evidence, why not that, what the record says of a private item, and the test.
+  const evidence = (
+    <div class="calc evidence" data-testid="move-evidence">
+      <div class="ev">
+        <span class="calc-key">{c.why}</span>
+        <span class="calc-line">{whyText}</span>
+      </div>
+      <div class="ev">
+        <span class="calc-key">{c.evidence}</span>
+        <span class="calc-line">
+          <span class="tier" data-testid="move-tier">{copy.evidence.tiers[tier ?? 'little']}</span> {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
+        </span>
+      </div>
+      {whyNot && (
+        <div class="ev">
+          <span class="calc-key">{c.whyNot}</span>
+          <span class="calc-line">{whyNot}</span>
+        </div>
+      )}
+      {shownPrivates.map((p) => (
+        <div key={p.itemId} class="ev">
+          <span class="calc-line" data-testid="private-line">
+            {fill(c.privateInline[p.block], { name: p.name, with: round(p.association.withEvent.mean), without: round(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: moveById(p.alternativeId).name })}
+          </span>
+        </div>
+      ))}
+      <div class="ev test">
+        <span class="calc-key">{c.testing}</span>
+        <span class="calc-line testing">
+          {card === undefined
+            ? '…'
+            : card === null
+              ? c.testingNone
+              : fill(c.testingLine, {
+                  move: move?.name ?? c.nothing,
+                  alternative: moveById(card.alternativeId).name,
+                  target: target.name.toLowerCase(),
+                  window: windowOf(card.window),
+                  id: String(card.id),
+                  date: formatWhen(card.createdAt),
+                })}
+          {offer.coinFlip && ` ${c.coinFlip}`}
+        </span>
+      </div>
+    </div>
+  )
+  const hideFaith = move?.family === 'faith' && (
+    <button type="button" class="textbtn faint" onClick={() => void updateSettings((s) => ({ ...s, hideFaith: true }))}>
+      {c.hideFaith}
+    </button>
+  )
+
+  // Waiting for the next check-in's question (final UI polish, 2026-09-26): its block is over and nothing on
+  // it can be tapped, so it keeps to its name and when it was offered; what it is, why and the test stay one tap away.
+  if (waiting && !compact && !known) {
+    return (
+      <div class="card pad move-card compact is-waiting" data-testid="move-card" data-kind={offer.kind} data-waiting="">
+        {head}
+        {title}
+        <p class="move-state muted" data-testid="move-waiting">
+          {fill(c.waiting, { when: offeredWhen(offer) })}
+        </p>
+        <Disclosure label={copy.disclose.moveWaiting} testid="move-why">
+          {about}
+          {evidence}
+        </Disclosure>
+        {hideFaith && offer.closedAt === null && <div class="actions">{hideFaith}</div>}
+      </div>
+    )
+  }
+
+  return (
+    <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind}>
+      {head}
+      {title}
+      {about}
 
       {/* Why this, the evidence, why not that, what the record says of a private item, and the test: one tap away, in the same words. */}
       <Disclosure label={copy.disclose.moveWhy} testid="move-why">
-        <div class="calc evidence" data-testid="move-evidence">
-          <div class="ev">
-            <span class="calc-key">{c.why}</span>
-            <span class="calc-line">{whyText}</span>
-          </div>
-          <div class="ev">
-            <span class="calc-key">{c.evidence}</span>
-            <span class="calc-line">
-              <span class="tier" data-testid="move-tier">{copy.evidence.tiers[tier ?? 'little']}</span> {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
-            </span>
-          </div>
-          {whyNot && (
-            <div class="ev">
-              <span class="calc-key">{c.whyNot}</span>
-              <span class="calc-line">{whyNot}</span>
-            </div>
-          )}
-          {shownPrivates.map((p) => (
-            <div key={p.itemId} class="ev">
-              <span class="calc-line" data-testid="private-line">
-                {fill(c.privateInline[p.block], { name: p.name, with: round(p.association.withEvent.mean), without: round(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: moveById(p.alternativeId).name })}
-              </span>
-            </div>
-          ))}
-          <div class="ev test">
-            <span class="calc-key">{c.testing}</span>
-            <span class="calc-line testing">
-              {card === undefined
-                ? '…'
-                : card === null
-                  ? c.testingNone
-                  : fill(c.testingLine, {
-                      move: move?.name ?? c.nothing,
-                      alternative: moveById(card.alternativeId).name,
-                      target: target.name.toLowerCase(),
-                      window: windowOf(card.window),
-                      id: String(card.id),
-                      date: formatWhen(card.createdAt),
-                    })}
-              {offer.coinFlip && ` ${c.coinFlip}`}
-            </span>
-          </div>
-        </div>
+        {evidence}
       </Disclosure>
 
       {known && known.outcome && (
@@ -179,7 +232,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
       {known && !known.outcome && <p class="move-state muted">{c.passedOver}</p>}
       {!known && offer.closedAt === null && !compact && <p class="move-state muted">{c.pending}</p>}
 
-      {(canDone || onSkip || move?.family === 'faith') && offer.closedAt === null && !known && (
+      {(canDone || onSkip || hideFaith) && offer.closedAt === null && !known && (
         <div class="actions">
           {canDone && (
             <button type="button" class="textbtn ink" data-testid="move-done" onClick={() => void recordDoneNow(offer)}>
@@ -191,11 +244,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false }: { offer: O
               {others > 0 ? c.skip : c.skipOnly}
             </button>
           )}
-          {move?.family === 'faith' && (
-            <button type="button" class="textbtn faint" onClick={() => void updateSettings((s) => ({ ...s, hideFaith: true }))}>
-              {c.hideFaith}
-            </button>
-          )}
+          {hideFaith}
         </div>
       )}
     </div>

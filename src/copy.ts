@@ -276,6 +276,8 @@ export const copy = {
   catalogue: {
     paths: {
       title: 'Paths',
+      /** A path's chip and heading: named as a path, so the Partner path never reads as the Partner family's twin (owner, 2026-09-26). */
+      name: '{path} path',
       note: 'Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.',
       stage: 'Stage {n} · {name}',
       notProgress: 'Not progress',
@@ -422,6 +424,9 @@ export const copy = {
     doneLine: '{name} · {state} · {time}',
     hideFaith: 'Hide faith moves',
     pending: 'Asked at your next check-in.',
+    /** A move left from an earlier check-in, on Now until the next check-in asks about it: its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */
+    waiting: 'Offered {when}. Asked at your next check-in.',
+    waitingWhen: { today: 'this {block}', yesterday: 'yesterday {block}', day: '{day}, {block}' },
     happened: 'What happened',
     passedOver: 'Passed over at the next check-in.',
     none: 'Log a check-in and one small move follows.',
@@ -1630,6 +1635,7 @@ export const copy = {
   // What each disclosure row says it holds.
   disclose: {
     moveWhy: 'Why this · evidence · the test',
+    moveWaiting: 'The move · why · evidence · the test',
     knowsMore: 'How it picks',
     plan: 'Plan',
     planWhen: 'Plan when',

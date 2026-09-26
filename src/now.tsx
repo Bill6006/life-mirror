@@ -247,8 +247,9 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
       <AimsOnNow onChangeRep={onChangeRep} dueAimId={dueAimId} />
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
-      {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6). */}
-      {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? () => void skipOffer(offer) : undefined} />}
+      {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6),
+          and with nothing to tap it keeps to its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */}
+      {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? () => void skipOffer(offer) : undefined} waiting={offer !== here} />}
       {!settings.hideMoves && <Knows weeks={weeks ?? 0} />}
 
       <ContextChips all={all} today={today.day} index={1} />

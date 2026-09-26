@@ -42,7 +42,7 @@ md += 'Proposed entries, tags, beliefs and trades are content to read and veto. 
 md += '## Paths\n\n'
 md += 'Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.\n\n'
 for (const p of data.paths) {
-  md += `### ${p.name}\n\n${p.what}\n\n`
+  md += `### ${p.name} path\n\n${p.what}\n\n`
   for (const st of p.stages) {
     md += `#### Stage ${st.n} · ${st.name}\n\n${st.what}\n\n- Not progress: ${st.notProgress}\n- How it moves: ${ADVANCE[st.advance ?? 'counts']}\n`
     const reps = data.moves.filter((m) => m.path?.[p.id]?.stage === st.n)
