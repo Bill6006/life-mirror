@@ -1,13 +1,13 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db, type CheckIn, type Offer } from './db'
-import { beliefsFor, evidence, recoveryGapDue, runLearning, tierOfCard } from './learningFlow'
+import { beliefsFor, bigSocialToday, evidence, runLearning, tierOfCard } from './learningFlow'
 import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
 // The daily run on the phone: the null offer earns a belief in its situation once it was kept
-// to, so the draw can learn to pick it; and the recovery gap is due after a marked big social
-// evening or after the church day, from the day's own context.
+// to, so the draw can learn to pick it; and a big social day is known only from that day's own
+// mark, so the recovery gap never states its premise on another day (the final checklist).
 
 const allAt = (ids: readonly ReadingId[], p: Position): Answers => Object.fromEntries(ids.map((id) => [id, p]))
 const ci = (day: string, block: CheckIn['block'], p: Position, over: Partial<Answers> = {}): CheckIn => ({ day, block, answers: { ...allAt(blockReadings(block), p), ...over }, startedAt: '', completedAt: 'x', updatedAt: '', activeMs: 30_000 })
@@ -42,12 +42,15 @@ describe('the daily run and the null offer', () => {
     expect(await tierOfCard(id + 99, '2026-09-11')).toBeNull()
   })
 
-  it('assigns the recovery gap the evening after a marked big social day, and after the church day', async () => {
-    expect(await recoveryGapDue('2026-09-12')).toBe(false)
+  it('knows a big social day only from that day’s own mark: never the day after, and never a church day by itself (the final checklist)', async () => {
+    expect(await bigSocialToday('2026-09-12')).toBe(false)
+    // A church day is asked about at the evening's chips, never taken for a big social day.
     await db.days.put({ day: '2026-09-11', weekday: 5, withHer: true, studyNight: false, churchDay: true, pickupTime: null, soloUntil: '20:00', changed: false, createdAt: '' })
-    expect(await recoveryGapDue('2026-09-12')).toBe(true)
+    expect(await bigSocialToday('2026-09-11')).toBe(false)
+    expect(await bigSocialToday('2026-09-12')).toBe(false)
+    // Marked on the 13th: that day is one; the day after is not.
     await db.checkins.add({ ...ci('2026-09-13', 'evening', 3), extras: { bigSocial: true } })
-    expect(await recoveryGapDue('2026-09-14')).toBe(true)
-    expect(await recoveryGapDue('2026-09-15')).toBe(false)
+    expect(await bigSocialToday('2026-09-13')).toBe(true)
+    expect(await bigSocialToday('2026-09-14')).toBe(false)
   })
 })

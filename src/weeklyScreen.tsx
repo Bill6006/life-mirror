@@ -2,12 +2,14 @@ import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { contextWords } from './people'
 import { WeekAhead } from './charts'
+import { flatWeek } from './forecast'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { daysAgoWords, fill, formatDayShort } from './format'
 import { weeklyData } from './forecastFlow'
 import { useLive } from './live'
 import { WeekReviewCard } from './weekReview'
+import { Disclosure } from './ui'
 import { readingById } from './readings'
 
 // Mirror → The weekly view: the scorecard, the week ahead, best-days, the gap, what moved, what
@@ -25,6 +27,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
   const c = copy.weekly
   if (!w) return <section class="screen" />
   const sc = w.scorecard
+  const flat = w.weekAheadReady ? flatWeek(w.weekAhead, w.model) : null
   const seconds = (ms: number | null) => (ms === null ? c.none : fill(c.seconds, { s: String(Math.round(ms / 1000)) }))
 
   return (
@@ -35,7 +38,30 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
 
       <h2 class="section">{c.ahead}</h2>
       <div class="card pad" data-testid="week-ahead">
-        {w.weekAheadReady ? (
+        {w.weekAheadReady && flat ? (
+          <>
+            {/* The final checklist, item 3: days with no meaningful difference said as one level, the chart a tap away. */}
+            <p class="ink no-gap" data-testid="week-ahead-summary">
+              {fill(flat.why === 'blind' ? c.aheadFlatBlind : c.aheadFlatNone, { level: String(flat.level) })}
+            </p>
+            <p class="note" data-testid="week-ahead-range">
+              {flat.near.lo === flat.far.lo && flat.near.hi === flat.far.hi
+                ? fill(c.aheadFlatRangeSame, { lo: String(flat.near.lo), hi: String(flat.near.hi) })
+                : fill(c.aheadFlatRange, { lo: String(flat.near.lo), hi: String(flat.near.hi), lo2: String(flat.far.lo), hi2: String(flat.far.hi) })}
+            </p>
+            {w.model && (
+              <p class="note faint no-gap" data-testid="week-ahead-model">
+                {fill(c.model, { model: copy.brief.models[w.model] })}
+              </p>
+            )}
+            <Disclosure label={c.aheadDetail} testid="week-ahead-detail">
+              <div class="week-chart">
+                <WeekAhead rows={w.weekAhead} low={w.weekAheadLow} />
+              </div>
+              <p class="note no-gap">{c.aheadCaption}</p>
+            </Disclosure>
+          </>
+        ) : w.weekAheadReady ? (
           <>
             <div class="week-chart">
               <WeekAhead rows={w.weekAhead} low={w.weekAheadLow} />

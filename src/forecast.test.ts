@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, daysBetween } from './blocks'
 import type { CheckIn, Forecast } from './db'
-import { BACKTEST_DAYS, backtest, chooseModel, dayBeside, earlyWarning, errorBand, forecastsDue, horizonBand, loggedDays, lowestAhead, predict, scoresDue, tellsWeekdaysApart, valuesByKey, visibleBefore, weekAheadRows } from './forecast'
+import { BACKTEST_DAYS, backtest, chooseModel, dayBeside, earlyWarning, errorBand, flatWeek, forecastsDue, horizonBand, loggedDays, lowestAhead, predict, scoresDue, tellsWeekdaysApart, valuesByKey, visibleBefore, weekAheadRows } from './forecast'
 import { slotKey } from './learning'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -184,6 +184,11 @@ describe('why the week ahead can read the same seven times (truth audit, 2026-09
     expect(values.every((v) => v !== null)).toBe(true)
     expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1)
     expect(lowestAhead(rows, chosen.model)).toEqual([])
+    // Said as one level, from the days' own values, with their own ranges near and far (the final checklist, item 3).
+    const flat = flatWeek(rows, chosen.model)
+    expect(flat).toMatchObject({ why: 'blind', level: Math.round(values.reduce((s, v) => s + v, 0) / values.length) })
+    expect(flat?.near).toEqual({ lo: rows[0].lo, hi: rows[0].hi })
+    expect(flat?.far).toEqual({ lo: rows[6].lo, hi: rows[6].hi })
   })
 
   it('shares one baseline: each day’s forecast differs from tomorrow’s only by the oldest days its four weeks drop, under a point', () => {
@@ -275,5 +280,19 @@ describe('ranges by horizon, and the week ahead', () => {
     expect(rows[1]).toEqual({ day: addDays(TODAY, 2), expected: null, lo: null, hi: null })
     expect(rows[2]).toMatchObject({ expected: 55, lo: 45, hi: 65 })
     expect(rows[6].expected).toBeNull()
+  })
+})
+
+describe('the week ahead said as one level when its days carry no meaningful difference (the final checklist, item 3)', () => {
+  const row = (expected: number | null, lo = 60, hi = 76) => ({ expected, lo: expected === null ? null : lo, hi: expected === null ? null : hi })
+  it('says one level for a weekday-blind model, and for a weekday model whose days sit within a point', () => {
+    expect(flatWeek([row(68), row(68), row(69, 58, 78)], 'sameBlock')).toEqual({ why: 'blind', level: 68, near: { lo: 60, hi: 76 }, far: { lo: 58, hi: 78 } })
+    expect(flatWeek([row(68), row(69), row(68)], 'weekdayBlock')).toMatchObject({ why: 'none', level: 68 })
+  })
+  it('keeps the day-by-day chart when a weekday model sees days that differ, and says nothing without a model or days', () => {
+    expect(flatWeek([row(75), row(25), row(75)], 'weekdayBlock')).toBeNull()
+    expect(flatWeek([row(68), row(70), row(68)], 'blend')).toBeNull()
+    expect(flatWeek([row(68), row(68)], null)).toBeNull()
+    expect(flatWeek([row(null), row(68)], 'sameBlock')).toBeNull()
   })
 })

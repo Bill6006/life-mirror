@@ -4,7 +4,7 @@ import { activeAims, addAim, addSkill, liveSkills, logSession, planAim, resumeAi
 import { sessionsToday, stepFor } from './aims'
 import { blockReadings } from './readings'
 import { db, ensureDayContext, getSettings, saveAnswer, updateSettings, type Aim, type Offer } from './db'
-import { doneOpen, ensureOffer, ensurePickupOffer, recordDoneNow, recordOutcome, replacementsFor, skipOffer } from './offerFlow'
+import { doneOpen, ensureOffer, ensurePickupOffer, pickupOfferNow, recordDoneNow, recordOutcome, replacementsFor, skipOffer } from './offerFlow'
 import { NOTHING } from './offers'
 import { addPathAim } from './pathFlow'
 import { pathKey, pathToday, peopleRepToday, peopleRow } from './pathStage'
@@ -197,5 +197,24 @@ describe('Skip shows another only where one fits (D6)', () => {
     expect(next.moveId).not.toBe(first.moveId)
     // After pickup, nothing more is promised.
     expect(await replacementsFor(next, new Date(2026, 8, 18, 17, 5))).toBe(0)
+  })
+
+  it('keeps the move before pickup on Now across 17:00 while its window is open, and not after (the final checklist, item 2)', async () => {
+    await updateSettings((s) => ({ ...s, week: { ...s.week, pickupTime: '17:30' } }))
+    await db.days.clear()
+    await ensureDayContext(DAY, await getSettings())
+    // Drawn at 16:30, in the afternoon block, for a 17:30 pickup.
+    const drawn = (await ensurePickupOffer(new Date(2026, 8, 18, 16, 30), rng)) as Offer
+    expect(drawn.block).toBe('afternoon')
+    expect((await pickupOfferNow(new Date(2026, 8, 18, 16, 45)))?.id).toBe(drawn.id)
+    // The evening block begins at 17:00; the window before pickup does not end there.
+    expect((await pickupOfferNow(new Date(2026, 8, 18, 17, 10)))?.id).toBe(drawn.id)
+    // After pickup it is the next check-in's to ask about, as before.
+    expect(await pickupOfferNow(new Date(2026, 8, 18, 17, 35))).toBeNull()
+    // One drawn in the evening block stays in its block, as it always did.
+    await db.offers.update(drawn.id as number, { skippedAt: new Date(2026, 8, 18, 17, 1).toISOString() })
+    const late = (await ensurePickupOffer(new Date(2026, 8, 18, 17, 5), rng)) as Offer
+    expect(late.block).toBe('evening')
+    expect((await pickupOfferNow(new Date(2026, 8, 18, 21, 43)))?.id).toBe(late.id)
   })
 })

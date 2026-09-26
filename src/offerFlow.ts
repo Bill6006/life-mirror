@@ -3,7 +3,7 @@ import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
 import { propensities } from './adaptive'
 import type { Rng } from './bandit'
-import { hasMove, LADDERS, moveById } from './catalogue'
+import { hasMove, LADDERS, moveById, RECOVERY_GAP } from './catalogue'
 import {
   db,
   ensureDayContext,
@@ -23,7 +23,7 @@ import type { ReadingId } from './readings'
 import { parseRungId, RUNG_MINUTES } from './ladder'
 import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from './learning'
 import { pathOn } from './pathFlow'
-import { beliefsFor, recoveryGapDue } from './learningFlow'
+import { beliefsFor, bigSocialToday } from './learningFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'
 import { hasItsEight } from './tiers'
 
@@ -143,6 +143,24 @@ export async function offerForSlot(day: string, block: Block, kind: 'block' | 'p
     .toArray()
   here.sort((a, b) => (a.at < b.at ? 1 : -1))
   return here[0] ?? null
+}
+
+/**
+ * The move before pickup that Now shows: the one drawn in this block; or, while the window before
+ * pickup is still open, the day's own from the block before, since the window can cross 17:00 (drawn
+ * at 16:30 for a 17:30 pickup, it stays until 17:30). The final checklist, item 2, 2026-09-25.
+ */
+export async function pickupOfferNow(now: Date): Promise<Offer | null> {
+  const { day, block } = blockAt(now)
+  const here = await offerForSlot(day, block, 'pickup')
+  if (here) return here
+  const ctx = await db.days.get(day)
+  if (!ctx?.withHer || ctx.pickupTime === null) return null
+  const minutes = now.getHours() * 60 + now.getMinutes()
+  const pickup = minutesOf(ctx.pickupTime)
+  if (minutes < pickup - PICKUP_WINDOW_MIN || minutes >= pickup) return null
+  const today = await db.offers.where('day').equals(day).filter((o) => o.kind === 'pickup' && o.skippedAt === null).toArray()
+  return today.sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null
 }
 
 export async function cardById(id: number | null): Promise<Card | null> {
@@ -295,8 +313,8 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     }
 
     const passiveHistory = await db.offers.filter((o) => o.passiveId !== null).toArray()
-    // The recovery gap is assigned the evening after an unplanned big social day; otherwise the least-offered passive item rides along.
-    const assigned = block === 'evening' && (await recoveryGapDue(day)) && !t.offeredToday.includes('recovery-gap') ? moveById('recovery-gap') : null
+    // The recovery gap rides along only on the evening of a day marked a big social day (today's own chip); otherwise the least-offered passive item does.
+    const assigned = block === 'evening' && (await bigSocialToday(day)) && !t.offeredToday.includes(RECOVERY_GAP) ? moveById(RECOVERY_GAP) : null
     const passive = assigned ?? pickPassive(block, t, passiveHistory.map((o) => ({ moveId: o.passiveId as string, at: o.at })))
     // A passive item is its own experiment, in the same moment but on another target: its card is written too.
     if (passive) {
@@ -329,6 +347,37 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     }
     offer.id = await db.offers.add(offer)
     return offer
+  })
+}
+
+/**
+ * Today marked a big social day at the evening's chips, or the mark taken back (the final checklist,
+ * 2026-09-25). The evening's move is drawn before its chips, so the recovery gap joins it from the
+ * moment of the mark, while nothing has been answered about what rides alongside; taken back, it
+ * comes off again. Never onto a move it conflicts with. True when the evening's move carries it.
+ */
+export async function syncRecoveryGap(day: string, marked: boolean): Promise<boolean> {
+  return db.transaction('rw', [db.offers, db.outcomes, db.cards], async () => {
+    const evenings = await db.offers.where('day').equals(day).filter((o) => o.kind === 'block' && o.block === 'evening' && o.skippedAt === null).toArray()
+    const evening = evenings.sort((a, b) => (a.at < b.at ? 1 : -1))[0]
+    if (!evening || evening.id === undefined) return false
+    const carries = evening.passiveId === RECOVERY_GAP
+    // Once what rides alongside was answered, it stays as it was answered.
+    const answered = await db.outcomes.where('offerId').equals(evening.id).first()
+    if (answered && answered.passiveOutcome !== null) return carries
+    if (marked && !carries) {
+      const gap = moveById(RECOVERY_GAP)
+      if (gap.conflicts.includes(evening.moveId)) return false
+      await db.offers.update(evening.id, { passiveId: RECOVERY_GAP })
+      const has = await db.cards.where('situationKey').equals('passive:evening').filter((c) => c.moveId === RECOVERY_GAP).first()
+      if (!has) await db.cards.add({ createdAt: new Date().toISOString(), situationKey: 'passive:evening', block: 'evening', target: gap.targets[0].reading, moveId: RECOVERY_GAP, alternativeId: NOTHING, window: gap.targets[0].window, worthwhile: 1, origin: 'passive' })
+      return true
+    }
+    if (!marked && carries) {
+      await db.offers.update(evening.id, { passiveId: null })
+      return false
+    }
+    return carries
   })
 }
 

@@ -462,7 +462,7 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    // Logging less is the earliest sign of letting the whole record go; a lighter check-in keeps it alive.
+    // Logging less can be an early sign of letting the whole record go; a lighter check-in keeps it alive.
     id: 'cadence-dropping',
     weekly: true,
     mode: 'strategy',

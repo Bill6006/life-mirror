@@ -253,6 +253,35 @@ export function tellsWeekdaysApart(model: ModelId): boolean {
   return model === 'weekdayBlock' || model === 'blend'
 }
 
+/** Days ahead within this many points of each other carry no meaningful difference: whole numbers already round a smaller one away. */
+export const FLAT_POINTS = 1
+
+export interface FlatWeek {
+  /** Why the days carry no difference: the model cannot tell weekdays apart, or it can and found none. */
+  why: 'blind' | 'none'
+  level: number
+  /** The range a day out and the range at the far end of the week: it widens with distance. */
+  near: { lo: number; hi: number }
+  far: { lo: number; hi: number }
+}
+
+/**
+ * The week ahead said as one level when its days carry no meaningful difference (the final
+ * checklist, item 3): the model has no weekday term, or its days sit within a point of each other.
+ * Null when the days differ, so the day-by-day chart says what it knows. Nothing is invented: the
+ * level is the mean of the days' own values, and the ranges are their own.
+ */
+export function flatWeek(rows: readonly { expected: number | null; lo: number | null; hi: number | null }[], model: ModelId | null): FlatWeek | null {
+  const known = rows.filter((r): r is { expected: number; lo: number; hi: number } => r.expected !== null && r.lo !== null && r.hi !== null)
+  if (model === null || known.length < 2) return null
+  const values = known.map((r) => r.expected)
+  const blind = !tellsWeekdaysApart(model)
+  if (!blind && Math.max(...values) - Math.min(...values) > FLAT_POINTS) return null
+  const first = known[0]
+  const last = known[known.length - 1]
+  return { why: blind ? 'blind' : 'none', level: Math.round(values.reduce((s, v) => s + v, 0) / values.length), near: { lo: first.lo, hi: first.hi }, far: { lo: last.lo, hi: last.hi } }
+}
+
 /**
  * The days ahead worth planning around: every day at the lowest expected reading. None when no day
  * reads lower than another, or when the model cannot tell weekdays apart, since then any difference

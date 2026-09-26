@@ -3,12 +3,14 @@ import { runBrief, runReview } from './brief'
 import { runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
-import { BRAIN_APP, tursoStore } from './turso'
+import { BRAIN_APP, tursoStore, type BriefRow } from './turso'
+import { clockTimesIn } from '../../src/format'
+import { workoutReport } from './workoutReport'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
 import { SKILL_COACH } from '../../src/coachShared'
-import { localTime } from './time'
+import { addDays, localTime } from './time'
 
 // The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
 // ping whose moment has come; starts the day's line once the morning check-in is on a sheet (or
@@ -165,7 +167,15 @@ const handler: ExportedHandler<Env> = {
     if (url.pathname === '/run/brief-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
       const rows = await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readBriefs(30)
-      return json({ rows: rows.map((r) => ({ id: r.id, kind: r.kind, day: r.day, forDay: r.forDay ?? null, factsDay: r.factsDay, trigger: r.trigger ?? null, writer: r.writer ?? null, model: r.model, askedModel: r.askedModel ?? null, runnerModel: r.runnerModel ?? null, fallback: r.fallback ?? null, at: r.at, candidates: r.candidates ?? null, refusals: r.refusals ?? [], neurons: r.neurons ?? null, calls: r.calls ?? null, latencyMs: r.latencyMs ?? null, shape: r.shape ?? null })) })
+      return json({ rows: rows.map(briefReportRow) })
+    }
+    // With the run key: the other app's latest sessions as this app reads them, and the workout facts on the newest sheet: dates, fields and counts (the final checklist, item 4).
+    if (url.pathname === '/run/workout-report' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      const today = localTime(new Date(), env.TIMEZONE).day
+      const facts = (await store.readFacts(today)) ?? (await store.readFacts(addDays(today, -1)))
+      return json(workoutReport(await store.readOutsideWorkouts(40), facts?.sheet ?? null))
     }
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
@@ -190,6 +200,16 @@ const handler: ExportedHandler<Env> = {
     }
     return new Response('Not found', { status: 404 })
   },
+}
+
+/**
+ * One line or review as the brief report shows it: how it was written, and what decides how long
+ * it stays on Now (the final checklist, 2026-09-25): the facts it cites, its one tap, and the clock
+ * times its words name. Never its words.
+ */
+export function briefReportRow(r: BriefRow) {
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  return { id: r.id, kind: r.kind, day: r.day, forDay: r.forDay ?? null, factsDay: r.factsDay, trigger: r.trigger ?? null, writer: r.writer ?? null, model: r.model, askedModel: r.askedModel ?? null, runnerModel: r.runnerModel ?? null, fallback: r.fallback ?? null, at: r.at, candidates: r.candidates ?? null, refusals: r.refusals ?? [], neurons: r.neurons ?? null, calls: r.calls ?? null, latencyMs: r.latencyMs ?? null, shape: r.shape ?? null, factIds: r.factIds ?? [], action: r.action ?? null, timesNamed: clockTimesIn(r.text ?? '').map(hhmm) }
 }
 
 export default handler

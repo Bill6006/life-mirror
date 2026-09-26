@@ -1,4 +1,5 @@
 import { createClient } from '@libsql/client/web'
+import { OUTSIDE_APP, OUTSIDE_STORE } from '../../src/outsideRow'
 import type { LineAction } from '../../src/brainShared'
 import type { CoachProposal } from '../../src/coachShared'
 import type { Firmness } from '../../src/firmness'
@@ -242,6 +243,8 @@ export interface Store {
   readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
   /** One of the phone's own rows by id, or null. */
   readRecord(store: string, id: string): Promise<unknown | null>
+  /** The other app's finished workouts, newest written first, read-only: the final checklist's sanity report (item 4). */
+  readOutsideWorkouts(limit?: number): Promise<{ id: string; body: string | null }[]>
   /** The skill coach's proposals (Parts 40 and 41): one per ask, the ids of those stored, and one written. */
   proposalIds(): Promise<Set<string>>
   readProposals(): Promise<CoachProposal[]>
@@ -364,6 +367,10 @@ export function tursoStore(url: string, token: string): Store {
         lines.push({ id: String(r.id), kind: r.kind as 'brief' | 'review', day: String(r.day), at: String(r.at), ...(writer ? { writer } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}) })
       }
       return { rows: out, lines }
+    },
+    async readOutsideWorkouts(limit = 40) {
+      const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = ? AND deleted = 0 ORDER BY updated_at DESC LIMIT ?`, [OUTSIDE_APP, OUTSIDE_STORE, limit])
+      return r.map((row) => ({ id: String(row.id), body: row.body === null || row.body === undefined ? null : String(row.body) }))
     },
     async readRecords(store, range = {}, limit = 500) {
       const where = ['app = ?', 'store = ?', 'deleted = 0']
@@ -524,6 +531,12 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
           .map((r) => parse<BriefRow>(r.body))
           .filter((b): b is BriefRow => b !== null && (b.kind === 'brief' || b.kind === 'review')),
       }
+    },
+    async readOutsideWorkouts(limit = 40) {
+      return live(OUTSIDE_APP, OUTSIDE_STORE)
+        .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
+        .slice(0, limit)
+        .map((r) => ({ id: r.id, body: r.body }))
     },
     async readRecords(store, range = {}, limit = 500) {
       return live(APP, store)

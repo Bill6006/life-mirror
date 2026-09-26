@@ -1,11 +1,11 @@
-import { dayKey } from './blocks'
 import { lackedOf } from './brainShared'
 import type { CoachProposal } from './coachShared'
 import { isFirmness } from './firmness'
-import type { BrainBrief, BrainRead, CoachPick, OutsideDay } from './db'
+import type { BrainBrief, BrainRead, CoachPick } from './db'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
+import { OUTSIDE_APP, OUTSIDE_STORE, outsideDayOf } from './outsideRow'
 import { copy } from './copy'
 import { db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
@@ -75,9 +75,7 @@ function setLive(s: SyncState): void {
 
 const DEFAULT_META: CloudMeta = { key: 'state', watermark: '', lastSyncAt: null, lastError: null }
 
-/** The other app of yours that writes to the same database; this app reads its finished workouts and writes none of its rows. */
-export const OUTSIDE_APP = 'workout-conductor'
-const OUTSIDE_STORE = 'workouts'
+export { OUTSIDE_APP }
 const DEFAULT_OUTSIDE: CloudMeta = { key: 'outside', watermark: '', lastSyncAt: null, lastError: null }
 
 export async function getOutsideMeta(): Promise<CloudMeta> {
@@ -189,43 +187,8 @@ export function brainReadOf(id: string, body: string): BrainRead | null {
 /** Which reading of the other app's rows this app keeps: 2 adds each session's detail (Part 35). */
 export const OUTSIDE_DETAIL = 2
 
-/**
- * What an outside workout row says: its local day from the completion time, its minutes, and since
- * Part 35 the detail the other app keeps: when it began, its type, whether it ended early, the
- * working sets done, your rating afterwards and the reps in reserve. Anything a row lacks or holds
- * in another shape is left out, never guessed; a row that cannot be read at all is no session.
- */
-export function outsideDayOf(body: string): Omit<OutsideDay, 'id'> | null {
-  try {
-    const r = JSON.parse(body) as Record<string, unknown>
-    if (typeof r.completedAt !== 'string' || !r.completedAt) return null
-    const at = new Date(r.completedAt)
-    if (Number.isNaN(at.getTime())) return null
-    const minutes = typeof r.elapsedSeconds === 'number' && r.elapsedSeconds > 0 ? Math.round(r.elapsedSeconds / 60) : null
-    const sets = (Array.isArray(r.entries) ? r.entries : []).flatMap((e) => (e && typeof e === 'object' && Array.isArray((e as { sets?: unknown }).sets) ? ((e as { sets: unknown[] }).sets as Record<string, unknown>[]) : []))
-    const working = sets.filter((s) => s && s.kind === 'working' && s.completed !== false)
-    const rirs = working.map((s) => s.rir).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-    const rating = r.rating && typeof r.rating === 'object' ? (r.rating as Record<string, unknown>) : null
-    const effort = rating && (rating.effort === 'too-easy' || rating.effort === 'right' || rating.effort === 'too-hard') ? rating.effort : null
-    const energy = rating && typeof rating.energyAfter === 'number' && rating.energyAfter >= 1 && rating.energyAfter <= 5 ? rating.energyAfter : null
-    return {
-      day: dayKey(at),
-      minutes,
-      at: r.completedAt,
-      source: 'workout',
-      ...(typeof r.startedAt === 'string' && Number.isFinite(Date.parse(r.startedAt)) ? { startedAt: r.startedAt } : {}),
-      ...(typeof r.title === 'string' && r.title.trim() ? { title: r.title.trim().slice(0, 60) } : {}),
-      ...(typeof r.endedEarly === 'boolean' ? { endedEarly: r.endedEarly } : {}),
-      ...(Array.isArray(r.entries) ? { workingSets: working.length } : {}),
-      ...(effort ? { effort } : {}),
-      ...(energy !== null ? { energyAfter: energy } : {}),
-      ...(rirs.length ? { avgRir: Math.round((rirs.reduce((a, b) => a + b, 0) / rirs.length) * 10) / 10 } : {}),
-      ...(r.source === 'legacy-import' ? { imported: true } : {}),
-    }
-  } catch {
-    return null
-  }
-}
+// The row reader moved to outsideRow.ts, shared with the Worker's sanity report (the final checklist, item 4).
+export { outsideDayOf } from './outsideRow'
 
 export async function getMeta(): Promise<CloudMeta> {
   return (await db.cloudMeta.get('state')) ?? DEFAULT_META

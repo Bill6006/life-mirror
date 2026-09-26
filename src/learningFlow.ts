@@ -1,5 +1,4 @@
 import { anchorSwapDue } from './audit'
-import { addDays } from './blocks'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
 import { associationBy, associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
@@ -253,13 +252,15 @@ export async function importHypothesis(text: string, now: string = new Date().to
  * The recovery gap is assigned the evening after a big social day: one marked unplanned on the
  * evening chip, or the church day, known from the day's own context and never from a draw.
  */
-export async function recoveryGapDue(day: string): Promise<boolean> {
+/**
+ * Whether today was marked a big social day: its own evening check-in carries the chip (the final
+ * checklist, 2026-09-25). Today's record alone: no other day's chip leaks into it, and no church
+ * day is taken for one; on a church day the evening's chips ask instead.
+ */
+export async function bigSocialToday(day: string): Promise<boolean> {
   if (!PASSIVE.has('recovery-gap')) return false
-  const yesterday = addDays(day, -1)
-  const c = await db.checkins.where('[day+block]').equals([yesterday, 'evening']).first()
-  if (c?.extras?.bigSocial) return true
-  const ctx = await db.days.get(yesterday)
-  return Boolean(ctx?.churchDay)
+  const c = await db.checkins.where('[day+block]').equals([day, 'evening']).first()
+  return Boolean(c?.extras?.bigSocial)
 }
 
 /** Private items in selection, for the evening card: only when you turned that on. */

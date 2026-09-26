@@ -6,7 +6,7 @@ import { getSettings } from './db'
 import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
-import { deleteOutcome, offerForSlot, offerHistory, pendingOffers, skipOffer } from './offerFlow'
+import { deleteOutcome, offerForSlot, offerHistory, pendingOffers, pickupOfferNow, skipOffer } from './offerFlow'
 import { readingById } from './readings'
 import { ScreenHead } from './ui'
 
@@ -15,7 +15,7 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
   const today = blockAt(new Date())
   const settings = useLive(getSettings, [])
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block])
-  const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block])
+  const pickup = useLive(() => pickupOfferNow(new Date()), [today.day, today.block])
   const pending = useLive(pendingOffers, [])
   if (!settings || here === undefined || pickup === undefined || pending === undefined) return <section class="screen" />
   const offer = here ?? pending.find((o) => o.kind === 'block') ?? null

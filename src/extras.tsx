@@ -4,6 +4,7 @@ import { coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
 import { CaffeineCard } from './caffeine'
 import { chipAnswer, type ChipKey } from './chips'
+import { RECOVERY_GAP } from './catalogue'
 import { copy } from './copy'
 import {
   allCheckIns,
@@ -30,6 +31,7 @@ import {
   type WinOutcome,
 } from './db'
 import { fill } from './format'
+import { syncRecoveryGap } from './offerFlow'
 import { useLive } from './live'
 import type { ReadingId } from './readings'
 import { askedReadings, type Weekday } from './settings'
@@ -53,6 +55,9 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
     if (settings) void ensureDayContext(day, settings)
   }, [settings?.updatedAt, day])
   const contexts = useLive(() => db.days.toArray(), [])
+  // The final checklist: whether this evening's move carries the recovery gap, and whether today is a church day to ask about.
+  const gapTonight = useLive(() => db.offers.where('day').equals(day).filter((o) => o.kind === 'block' && o.block === 'evening' && o.skippedAt === null && o.passiveId === RECOVERY_GAP).count(), [day])
+  const churchToday = contexts?.some((c) => c.day === day && c.churchDay === true) ?? false
 
   if (record === undefined || !settings || !items || !all || !contexts || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
   // Phase 12: a chip untapped across thirty logged evenings stops appearing; Settings brings it back.
@@ -62,7 +67,10 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
   const slot = { day, block }
   const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings)
   const ex = record?.extras ?? {}
-  const toggle = (key: ExtraKey) => void setExtra(slot, asked, key, !ex[key])
+  const toggle = (key: ExtraKey) => {
+    // Today marked a big social day, or the mark taken back: this evening's move carries the recovery gap from now, or no longer.
+    void setExtra(slot, asked, key, !ex[key]).then(() => (key === 'bigSocial' ? syncRecoveryGap(day, !ex[key]) : undefined))
+  }
   // Pass 3: the items placed at this check-in, and only those.
   const placed = items.filter((it) => placedIn(it, block))
 
@@ -133,11 +141,20 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
                   <span class="anchor-mark" aria-hidden="true" />
                   <span class="row-main">{copy.extras[key]}</span>
                 </button>
+                {key === 'bigSocial' && !on && churchToday && (
+                  <p class="note faint no-gap church-ask" data-testid="church-ask">
+                    {copy.extras.churchAsk}
+                  </p>
+                )}
                 {on && (
                   <div class="calc chip-answer" data-testid="chip-answer">
                     <p class="calc-line">{answer}</p>
                     {cooling && <p class="calc-line">{fill(copy.extras.coolingAnswer, { blocks: String(cooling.blocks), events: String(cooling.events) })}</p>}
-                    {key === 'bigSocial' && <p class="calc-line">{copy.extras.recoveryNote}</p>}
+                    {key === 'bigSocial' && (gapTonight ?? 0) > 0 && (
+                      <p class="calc-line" data-testid="recovery-note">
+                        {copy.extras.recoveryNote}
+                      </p>
+                    )}
                     {(key === 'nothingLanded' || key === 'hardToSeePoint') && settings.direction && <p class="calc-line ink">{fill(copy.extras.chipDirection, { line: settings.direction })}</p>}
                   </div>
                 )}

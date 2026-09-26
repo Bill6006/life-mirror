@@ -1,5 +1,5 @@
 import { BLOCKS, blockStart, type Block } from './blocks'
-import { hasMove, isParked, isPathOnly, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, isParked, isPathOnly, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, RECOVERY_GAP, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import { inPerson } from './people'
 import type { Position, ReadingId } from './readings'
@@ -266,13 +266,13 @@ export function whyNotThat(expected: string | null, choice: Choice, set: Candida
   return { moveId, reason: choice.coinFlip ? 'coinFlip' : 'draw' }
 }
 
-/** A passive item to ride alongside: fits the block, not offered or done today, least offered so far. */
+/** A passive item to ride alongside: fits the block, not offered or done today, least offered so far. Never the recovery gap, which only its rule assigns. */
 export function pickPassive(block: Block, t: TodayState, history: readonly OfferLike[]): Move | null {
   let best: Move | null = null
   let bestCount = Infinity
   for (const id of PASSIVE) {
     const m = moveById(id)
-    if (isParked(m) || !m.when.includes(block) || t.hiddenFamilies.has(m.family)) continue
+    if (id === RECOVERY_GAP || isParked(m) || !m.when.includes(block) || t.hiddenFamilies.has(m.family)) continue
     if (t.offeredToday.includes(id) || t.doneToday.includes(id)) continue
     if (m.conflicts.some((c) => t.doneToday.includes(c) || t.offeredToday.includes(c))) continue
     const count = history.filter((o) => o.moveId === id).length

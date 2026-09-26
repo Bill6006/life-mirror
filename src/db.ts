@@ -1,4 +1,5 @@
 import type { BrainPrefsBody, Lacked, LineAction } from './brainShared'
+import type { OutsideSession } from './outsideRow'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Firmness } from './firmness'
 import type { PathId, SettingKind } from './catalogue'
@@ -342,29 +343,9 @@ export interface Derived {
  * a move, never a count: a fact the record can set against the others. Read from the cloud again
  * after a wipe or on a fresh install; never synced from here.
  */
-export interface OutsideDay {
+export interface OutsideDay extends OutsideSession {
   /** The other app's record id. */
   id: string
-  day: string
-  /** Minutes the session ran, when the record says. */
-  minutes: number | null
-  /** When it finished. */
-  at: string
-  source: 'workout'
-  /** Part 35, read from the same row, each only when the row holds it: when it began. */
-  startedAt?: string
-  /** Its type, as the other app titles it: Push + arms, Lower body and so on. */
-  title?: string
-  endedEarly?: boolean
-  /** Working sets done: warm-ups and sets left undone are not counted. */
-  workingSets?: number
-  /** Your rating afterwards, when you gave one: the effort, and your energy from 1 to 5. */
-  effort?: 'too-easy' | 'right' | 'too-hard'
-  energyAfter?: number
-  /** Reps in reserve, averaged over the working sets that logged one. */
-  avgRir?: number
-  /** An older session brought in by the other app's import, not logged live. */
-  imported?: boolean
 }
 
 /** What HAPPENED: the one-tap answer at the next check-in. Null means the question was passed over. */

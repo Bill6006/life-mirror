@@ -660,7 +660,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     facts.push(fact('today.shortSleep', ['sleep', 'morning', 'mood'], `Sleep hours read “${word}” this morning.`, { position: slept, word }))
   }
 
-  // The cadence of the record itself: check-ins completed per week. Logging less is the earliest sign of letting the whole thing go.
+  // The cadence of the record itself: check-ins completed per week. Logging less can be an early sign of letting the whole thing go.
   if (days >= 14) {
     const w = weekBuckets(i.checkins.filter((c) => c.completedAt !== null).map((c) => c.day), today)
     facts.push(fact('cadence', ['monitoring', 'habit'], `Check-ins completed per week over the last four weeks, oldest first: ${w.join(', ')}; the check-in depth is ${i.depth}${i.lowDemand ? ', with low-demand mode on' : ''}.`, { w3: w[0], w2: w[1], w1: w[2], w0: w[3], depth: i.depth, lowDemand: i.lowDemand ? 1 : 0 }, { n: w.reduce((a, b) => a + b, 0) }))

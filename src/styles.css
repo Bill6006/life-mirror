@@ -1725,6 +1725,11 @@ a.chip {
   margin: 0 0 12px;
 }
 
+/* The church day's ask under the big-social chip, set in line with the chip's words: past its mark and gap (the final checklist, item 1). */
+.church-ask {
+  padding: 0 0 12px 22px;
+}
+
 .calc-line.ink {
   color: var(--ink);
 }

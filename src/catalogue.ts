@@ -348,5 +348,8 @@ export const OBSERVED_ONLY: ReadonlySet<string> = new Set(['early-night', 'fixed
 /** Passive items: decisions that ride alongside the active move in the same block. */
 export const PASSIVE: ReadonlySet<string> = new Set(['caffeine-cutoff', 'phone-out-of-bedroom', 'dim-lights-hour', 'dinner-early-light', 'no-alcohol-tonight', 'no-spend-day', 'recovery-gap', 'warm-shower-bath'])
 
+/** The passive item whose name states a premise (a big social day): it rides alongside only when today's record makes the premise true, never by rotation (the final checklist, 2026-09-25). */
+export const RECOVERY_GAP = 'recovery-gap'
+
 /** "Nothing today": the null offer, a candidate the bandit can learn to pick. Never a catalogue move; named here so the learning engine can see it. */
 export const NOTHING = 'nothing'

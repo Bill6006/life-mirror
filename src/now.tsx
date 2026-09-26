@@ -10,7 +10,7 @@ import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon } from './icons'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
-import { ensurePickupOffer, offerForSlot, pendingOffers, skipOffer, weeksOfRecord } from './offerFlow'
+import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
 import { activeBlocks } from './settings'
 import { Disclosure, Facts, ScreenHead, SectionLabel } from './ui'
@@ -186,7 +186,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
   }, [settings?.updatedAt, today.day])
   const win = useLive(() => winFor(today.day), [today.day])
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
-  const pickup = useLive(() => offerForSlot(today.day, today.block, 'pickup'), [today.day, today.block, tick])
+  const pickup = useLive(() => pickupOfferNow(new Date()), [today.day, today.block, tick])
   const pending = useLive(pendingOffers, [])
   const weeks = useLive(() => weeksOfRecord(today.day), [today.day])
   // The Brain's line and its action, read here too, to decide which one thing carries the accent. Read again each minute: a line whose moment is gone leaves.

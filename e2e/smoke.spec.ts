@@ -902,11 +902,15 @@ test('the week ahead: a model blind to weekdays says the days come out alike and
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   const ahead = page.getByTestId('week-ahead')
+  // The final checklist, item 3: seven alike days said as one level, the range near and far, the chart a tap away.
+  await expect(page.getByTestId('week-ahead-summary')).toHaveText('No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around 75.')
+  await expect(page.getByTestId('week-ahead-range')).toHaveText('Its range each day: 75 to 75.')
+  await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
+  await expect(ahead.getByTestId('ahead-value')).toHaveCount(0)
+  await page.getByTestId('week-ahead-detail').click()
   await expect(ahead.getByTestId('ahead-value')).toHaveCount(7)
   expect(new Set(await ahead.getByTestId('ahead-value').allTextContents())).toEqual(new Set(['75']))
   await expect(ahead.locator('.is-low')).toHaveCount(0)
-  await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
-  await expect(page.getByTestId('week-ahead-model')).toContainText('It does not tell one weekday from another, so the days ahead come out alike.')
 })
 
 test('the week ahead: a Monday dip in the record is forecast, and the Monday alone is drawn as the lowest (truth audit, 2026-09-24)', async ({ page }) => {
@@ -2162,6 +2166,91 @@ test('How firm, previewed (Pass 2): four settings under Brain, Adaptive until ch
 })
 
 // ─── Private items at the Morning and the Afternoon (Pass 3) ───────────────────────────────────
+
+test('the move before pickup stays on Now across 17:00 while its window is open, and leaves at pickup (the final checklist, item 2)', async ({ page }) => {
+  // The day before, the week is set: a pickup at 17:30 on the daycare days.
+  await page.clock.setFixedTime(new Date(2026, 8, 17, 12, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await settingsSection(page, 'week')
+  await page.getByTestId('pickup-on').click()
+  await page.getByLabel('Pickup time').fill('17:30')
+  await backToSettings(page)
+  // Friday 18 September at 16:30, the afternoon: the move before pickup is drawn and shown.
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 16, 30))
+  await page.reload()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const pickup = page.locator('[data-testid="move-card"][data-kind="pickup"]')
+  await expect(pickup).toBeVisible()
+  const name = ((await pickup.getByTestId('move-name').textContent()) ?? '').trim()
+  // 17:10, the evening block: the window before pickup is still open, so the same move stays.
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 17, 10))
+  await page.reload()
+  await expect(pickup).toBeVisible()
+  await expect(pickup.getByTestId('move-name')).toHaveText(name)
+  // 17:35, after pickup: it is the next check-in's to ask about.
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 17, 35))
+  await page.reload()
+  await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
+  await expect(pickup).toHaveCount(0)
+})
+
+test('a big social day is asked, never assumed: on a church day the chip asks; marked, the recovery gap joins this evening’s move; taken back, it comes off (the final checklist, item 1)', async ({ page }) => {
+  // A Saturday: the church day in a fresh week's shape.
+  await page.clock.setFixedTime(new Date(2026, 8, 19, 19, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  for (let i = 0; i < 30; i++) {
+    await expect(extras.or(anchor).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    await tapAnchor(page)
+  }
+  const chip = page.getByTestId('chip-bigSocial')
+  await expect(chip).toContainText('A big social day today')
+  await expect(page.getByTestId('church-ask')).toBeVisible()
+  await expect(page.getByTestId('recovery-note')).toHaveCount(0)
+  // Marked: the ask gives way to what the mark does, this evening.
+  await chip.click()
+  await expect(page.getByTestId('church-ask')).toHaveCount(0)
+  await expect(page.getByTestId('recovery-note')).toContainText('this evening')
+  // Taken back: the gap comes off again, and the ask returns.
+  await chip.click()
+  await expect(page.getByTestId('recovery-note')).toHaveCount(0)
+  await expect(page.getByTestId('church-ask')).toBeVisible()
+  // Marked again, and on to Now: this evening's move carries the gap alongside.
+  await chip.click()
+  await expect(page.getByTestId('recovery-note')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('give-back')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.locator('.move-passive')).toContainText('Keep the evening after a big social day empty')
+})
+
+test('a big social day marked with no move this evening says nothing of a gap it could not attach (the final checklist, item 1)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 12, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  // Moves hidden: the evening check-in draws no move, so nothing can carry the gap.
+  const [settings] = await rowsOf<Record<string, unknown>>(page, 'settings')
+  await putInto(page, 'settings', { ...settings, hideMoves: true })
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  for (let i = 0; i < 30; i++) {
+    await expect(extras.or(anchor).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    await tapAnchor(page)
+  }
+  await page.getByTestId('chip-bigSocial').click()
+  await expect(page.getByTestId('chip-answer').first()).toBeVisible()
+  await expect(page.getByTestId('recovery-note')).toHaveCount(0)
+})
 
 test('private items at the check-ins they are placed in: one placed in the morning is asked on the morning summary, marked shown and logged there, and is not in the evening’s extras (Pass 3)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
