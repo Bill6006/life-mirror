@@ -85,6 +85,9 @@ export const copy = {
     firing: 'Firing',
   },
   now: {
+    /** The cue above the tab bar while a move on Now is still lower down, unseen (final UI polish, 2026-09-26). */
+    cueOne: 'Move below',
+    cueMany: '{n} moves below',
     notLogged: 'Not logged yet',
     checkIn: 'Check in',
     continue: 'Continue',

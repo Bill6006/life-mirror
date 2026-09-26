@@ -213,7 +213,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   }
 
   return (
-    <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind}>
+    <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind} data-move-key={compact ? undefined : `${offer.id}:${offer.at}`}>
       {head}
       {title}
       {about}

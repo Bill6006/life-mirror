@@ -3926,3 +3926,84 @@ a {
 .place-question .chips {
   margin-top: 8px;
 }
+
+/* ---------- The move cue (final UI polish, 2026-09-26) ---------- */
+/* A quiet pill just above the tab bar while a move on Now is still lower down and unseen: outlined and
+   lit so it never merges into the card behind it. It rises into place and never fades, so it always reads. */
+.move-cue {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transform: translateX(-50%);
+  animation: cue-rise 160ms ease-out;
+}
+
+.move-cue.is-held {
+  visibility: hidden;
+  pointer-events: none;
+  animation: none;
+}
+
+.move-cue-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid var(--analysis);
+  border-radius: 999px;
+  /* Frosted: what scrolls beneath blurs to a wash, so no letters show through the words. */
+  background: rgba(20, 23, 31, 0.9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 14px rgba(161, 168, 181, 0.28), 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.move-cue-arrow {
+  font-size: 15px;
+  line-height: 1;
+}
+
+@keyframes cue-rise {
+  from {
+    transform: translate(-50%, 4px);
+  }
+  to {
+    transform: translate(-50%, 0);
+  }
+}
+
+/* While the cue shows, the end of Now can scroll clear of it. */
+main.has-move-cue {
+  padding-bottom: 104px;
+}
+
+/* Nocturne's bar floats inside a backdrop 14 px tall: the cue sits the same 10 px above the bar as in the others. */
+[data-theme="nocturne"] .move-cue {
+  bottom: calc(100% - 10px);
+}
+
+[data-theme="nocturne"] .move-cue-pill {
+  background: rgba(13, 17, 29, 0.9);
+  box-shadow: 0 0 16px rgba(163, 182, 255, 0.35), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="signal"] .move-cue-pill {
+  background: rgba(10, 12, 15, 0.9);
+  box-shadow: 0 0 14px rgba(79, 209, 197, 0.3), 0 6px 18px rgba(0, 0, 0, 0.5);
+}

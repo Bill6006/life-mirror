@@ -37,6 +37,7 @@ import { logUse, pruneUseLog, queueUseRowsForCloud } from './useLog'
 import { watchAppOpens } from './appOpens'
 import { sample as sampleLocation, watchLocation } from './locationFlow'
 import { WordingScreen } from './wording'
+import { MoveCue } from './moveCue'
 
 type Tab = keyof typeof copy.tabs
 const order: Tab[] = ['now', 'mirror', 'moves', 'aims', 'settings']
@@ -314,6 +315,8 @@ export function App() {
       <main id="main">{content()}</main>
       {view.kind === 'tabs' && (
         <nav class="tabs" aria-label="Sections">
+          {/* A move still lower on Now, unseen: a cue above the bar (final UI polish, 2026-09-26). */}
+          {tab === 'now' && <MoveCue />}
           <div class="tabs-inner">
           {order.map((t) => (
             <button

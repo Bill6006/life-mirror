@@ -2240,6 +2240,135 @@ test('the move before pickup stays on Now across 17:00 while its window is open,
   await expect(pickup).toHaveCount(0)
 })
 
+/** Where the cue sits: its gap above the bar, how far from centre, and whether it meets any of the Brain's words or taps. */
+async function cueGeometry(page: Page): Promise<{ gap: number; off: number; onWords: boolean }> {
+  return page.evaluate(() => {
+    const p = (document.querySelector('.move-cue-pill') as HTMLElement).getBoundingClientRect()
+    const bar = (document.querySelector('nav.tabs .tabs-inner') as HTMLElement).getBoundingClientRect()
+    const words = [...document.querySelectorAll('section.screen.now [data-testid="brief"] :is(p, h2, button, a, li)')].map((e) => e.getBoundingClientRect())
+    return { gap: bar.top - p.bottom, off: (p.left + p.right) / 2 - document.documentElement.clientWidth / 2, onWords: words.some((w) => w.width > 0 && p.left < w.right && p.right > w.left && p.top < w.bottom && p.bottom > w.top) }
+  })
+}
+
+test('a move lower on Now is cued once: a tap goes to it and marks it seen, it is not cued again after a reload, and a new move later is (final UI polish, 2026-09-26)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 })
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  const cue = page.getByTestId('move-cue')
+  const one = page.getByRole('button', { name: 'Move below', exact: true })
+  await expect(one).toBeVisible()
+  await expect(cue.locator('.move-cue-arrow')).toHaveText('↓')
+  // Just above the tab bar, centred, and never on the Brain's words.
+  const at = await cueGeometry(page)
+  expect(at.gap).toBeGreaterThanOrEqual(4)
+  expect(at.gap).toBeLessThanOrEqual(24)
+  expect(Math.abs(at.off)).toBeLessThan(2)
+  expect(at.onWords).toBe(false)
+  // A tap marks it seen at once and goes to it.
+  await one.click()
+  expect(await page.evaluate(() => localStorage.getItem('life-mirror.movesSeen'))).toMatch(/^\["[0-9]+:/)
+  await expect(cue).toHaveCount(0)
+  await expect.poll(() => page.getByTestId('move-card').evaluate((e) => Math.round(e.getBoundingClientRect().top))).toBeLessThan(60)
+  // Seen, it is not cued again, even after a reload.
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.reload()
+  await expect(page.getByTestId('move-card')).toBeVisible()
+  await page.waitForTimeout(800)
+  await expect(cue).toHaveCount(0)
+  // A genuinely new move later, from the evening's check-in, is cued again.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await expect(page.getByTestId('outcome-ask')).toBeVisible()
+  await page.getByTestId('outcome').first().click()
+  const passive = page.getByTestId('passive-done')
+  if (await passive.isVisible()) await passive.click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await expect(one).toBeVisible()
+})
+
+test('two moves lower on Now are cued as two; one seen leaves the cue for the other; both seen clear it, and a reload keeps it clear (final UI polish, 2026-09-26)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 })
+  await page.clock.setFixedTime(new Date(2026, 8, 17, 12, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await settingsSection(page, 'week')
+  await page.getByTestId('pickup-on').click()
+  await page.getByLabel('Pickup time').fill('17:30')
+  await backToSettings(page)
+  // Friday: the afternoon's check-in; then 16:40, when the move before pickup is drawn beside it.
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 14, 10))
+  await page.reload()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 16, 40))
+  await page.reload()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  const live = page.locator('[data-testid="move-card"][data-move-key]')
+  await expect(live).toHaveCount(2)
+  const two = page.getByRole('button', { name: '2 moves below', exact: true })
+  await expect(two).toBeVisible()
+  // The tap goes to the first; the second, still lower down, keeps the cue.
+  await two.click()
+  await expect(page.getByRole('button', { name: 'Move below', exact: true })).toBeVisible()
+  // On the screen, the second clears the cue; kept there for a moment, it is recorded as seen.
+  await live.nth(1).evaluate((e) => window.scrollTo(0, window.scrollY + e.getBoundingClientRect().top - 16))
+  await expect(page.getByTestId('move-cue')).toHaveCount(0, { timeout: 4000 })
+  await expect.poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('life-mirror.movesSeen') ?? '[]') as string[]).length)).toBe(2)
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.reload()
+  await expect(live).toHaveCount(2)
+  await page.waitForTimeout(800)
+  await expect(page.getByTestId('move-cue')).toHaveCount(0)
+})
+
+test('a move with nothing to do yet is never cued (final UI polish, 2026-09-26)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 })
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Move below', exact: true })).toBeVisible()
+  // After its block, still unseen, it waits for the next check-in: nothing to do now, so nothing to cue.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 17, 40))
+  await page.reload()
+  await expect(page.locator('[data-testid="move-card"][data-waiting]')).toBeVisible()
+  await page.waitForTimeout(800)
+  await expect(page.getByTestId('move-cue')).toHaveCount(0)
+})
+
+test('the cue never sits on the Brain’s words: held while they are under it, shown once they are clear (final UI polish, 2026-09-26)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 560 })
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 14, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await putBrief(page, { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'The morning read steady and the afternoon lower, as it has on most Fridays this month. The step you planned is still open, and the record says the evenings after a short walk read steadier than the rest. Take the walk before the step rather than after it, and keep it short enough to finish.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:48:00.000Z', factsDay: '2026-09-18', writer: 'claude', askedModel: 'opus' })
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const cue = page.getByTestId('move-cue')
+  // A move is lower down, so the cue is drawn; the Brain's words are under it, so it is held.
+  await expect(cue).toHaveCount(1)
+  await expect.poll(async () => (await cueGeometry(page)).onWords).toBe(true)
+  await expect(cue).toBeHidden()
+  // Once the words have scrolled clear, it shows, clear of them.
+  await page.evaluate(() => window.scrollBy(0, 360))
+  await expect(cue).toBeVisible()
+  expect((await cueGeometry(page)).onWords).toBe(false)
+})
+
 test('a big social day is asked, never assumed: on a church day the chip asks; marked, the recovery gap joins this evening’s move; taken back, it comes off (the final checklist, item 1)', async ({ page }) => {
   // A Saturday: the church day in a fresh week's shape.
   await page.clock.setFixedTime(new Date(2026, 8, 19, 19, 5))

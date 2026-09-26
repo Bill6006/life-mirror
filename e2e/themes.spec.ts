@@ -781,6 +781,40 @@ for (const theme of THEMES) {
   })
 }
 
+/** The cue above the tab bar while a move lower on Now is unseen (final UI polish, 2026-09-26). */
+const CUED: typeof STATES = [
+  {
+    name: 'Now, a move below, cued',
+    tab: 'Now',
+    open: async (p) => {
+      await expect(p.getByTestId('move-cue')).toBeVisible()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the cue for a move below reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await page.clock.setFixedTime(new Date(2026, 8, 24, 14, 10))
+    await page.goto('./')
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedRecord(page)
+    await page.reload()
+    await page.getByRole('button', { name: /Check in/ }).first().click()
+    await tapThrough(page)
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, CUED, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
 test('a theme switch changes the look alone: at once, no reload, the same screen, the same record', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
   await page.goto('./')
