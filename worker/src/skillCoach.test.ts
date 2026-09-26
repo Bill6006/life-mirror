@@ -25,7 +25,7 @@ const OPEN = { gate: 'open' as const }
 type Mem = ReturnType<typeof memoryStore>
 const put = (store: Mem, s: string, id: string, day: string | null, body: unknown, when = `${DAY}T12:00:00.000Z`) => store.put({ app: APP, store: s, id, day, body: JSON.stringify(body), updated_at: when, deleted: 0, synced_at: when })
 
-const ITALIAN = { id: 1, kind: 'certification', stepMoveId: null, name: 'Learn Italian', about: 'I can read a little', currentSkillId: 2, rhythm: { perWeek: 3, restDays: 0 }, createdAt: '2026-09-20T12:00:00.000Z', archivedAt: null }
+const ORRISH = { id: 1, kind: 'certification', stepMoveId: null, name: 'Learn Orrish', about: 'I can read a little', currentSkillId: 2, rhythm: { perWeek: 3, restDays: 0 }, createdAt: '2026-09-20T12:00:00.000Z', archivedAt: null }
 const TEN = { id: 2, name: 'Ten words', aimId: 1, method: 'A phrasebook', how: 'One page, then the ten words aloud.', minutes: 30, source: 'you', startedAt: '2026-09-28T16:00:00.000Z', order: 2, createdAt: '2026-09-28T16:00:00.000Z', archivedAt: null }
 const NUMBERS = { id: 1, name: 'Numbers', aimId: 1, method: 'A phrasebook', source: 'you', startedAt: '2026-09-20T16:00:00.000Z', endedAt: '2026-09-28T16:00:00.000Z', order: 1, createdAt: '2026-09-20T16:00:00.000Z', archivedAt: null }
 const HAND = { id: 3, kind: 'certification', stepMoveId: null, name: 'Learn a cartwheel', currentSkillId: null, createdAt: '2026-10-01T12:00:00.000Z', archivedAt: null }
@@ -34,13 +34,13 @@ function sheet(day: string): FactSheet {
   return { version: 1, day, builtAt: `${day}T11:41:00.000Z`, hour: 7, weeks: 3, days: 20, direction: null, said: [], checkedIn: { morning: `${day}T11:40:00.000Z` }, facts: [{ id: 'week.today', tags: ['cue'], text: 'Today is Tuesday; a daycare day.', values: {} }, { id: 'outside.7d', tags: ['workout'], text: 'Workout days in the last seven: 2 (Saturday, Monday).', values: { n: 2 } }, { id: 'workout.last', tags: ['workout', 'evening'], text: 'The last workout: Monday evening, 40 minutes.', values: {} }] }
 }
 
-/** A day after monitoring: the line stored, the coach done, Italian with a current skill and its sessions, and a cartwheel with none. */
+/** A day after monitoring: the line stored, the coach done, Orrish with a current skill and its sessions, and a cartwheel with none. */
 function record(extra: (s: Mem) => void = () => {}): Mem {
   const store = memoryStore()
   const sh = sheet(DAY)
   put(store, 'facts', DAY, DAY, { day: DAY, builtAt: sh.builtAt, updatedAt: sh.builtAt, sheet: sh }, sh.builtAt)
   put(store, 'settings', '1', null, { id: 1, hideFaith: false, showPrivate: false, privateInSelection: false })
-  put(store, 'aims', '1', null, ITALIAN)
+  put(store, 'aims', '1', null, ORRISH)
   put(store, 'aims', '3', null, HAND)
   put(store, 'skills', '1', null, NUMBERS)
   put(store, 'skills', '2', null, TEN)
@@ -64,7 +64,7 @@ function record(extra: (s: Mem) => void = () => {}): Mem {
 
 let askSeq = 100
 /** The phone's ask, as its outbox would sync it. */
-function ask(store: Mem, a: Partial<CoachAsk> & { aimId: number; kind: CoachAsk['kind'] }, aim: Record<string, unknown> = ITALIAN, skill: Record<string, unknown> | null = TEN): number {
+function ask(store: Mem, a: Partial<CoachAsk> & { aimId: number; kind: CoachAsk['kind'] }, aim: Record<string, unknown> = ORRISH, skill: Record<string, unknown> | null = TEN): number {
   const id = askSeq++
   const body: CoachAsk = { id, revision: revisionOf(aim as Parameters<typeof revisionOf>[0], skill as Parameters<typeof revisionOf>[1]), day: DAY, at: at('09:00').toISOString(), claude: true, ...a }
   put(store, 'coachAsks', String(id), DAY, body)
@@ -83,7 +83,7 @@ const deps = (store: Mem, now: Date, gate: 'gated' | 'open' = 'open') => ({ env,
 const url = (q: Record<string, string>) => new URL(`https://w.test/claude/briefing?${new URLSearchParams(q)}`)
 const post = (store: Mem, now: Date, task: 'skill' | 'progress', answer: unknown, gate: 'gated' | 'open' = 'open') => handleCoachLine(deps(store, now, gate), { task, day: DAY, answer, askedModel: 'opus', writtenModel: 'claude-opus-5-5', runnerModel: 'claude-haiku-4-5-20251001' })
 const proposal = (store: Mem, askId: number) => JSON.parse(store.rows.get(`${BRAIN_APP}|proposals|${proposalIdOf(askId)}`)?.body ?? 'null')
-const suggestion = (askId: number, extra: Record<string, unknown> = {}) => ({ proposals: [{ askId, skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, read aloud.', minutes: 30, rhythm: { perWeek: 3, restDays: 0 }, why: 'Listening first builds the ear.', physical: false, safety: null, likelyNext: 'Short spoken answers', ...extra }] })
+const suggestion = (askId: number, extra: Record<string, unknown> = {}) => ({ proposals: [{ askId, skill: 'Understand everyday spoken Orrish', method: 'A phrasebook', how: 'One page a session, read aloud.', minutes: 30, rhythm: { perWeek: 3, restDays: 0 }, why: 'Listening first builds the ear.', physical: false, safety: null, likelyNext: 'Short spoken answers', ...extra }] })
 
 /** A store that refuses to be touched: any method call is recorded, and the call throws. */
 function untouchable(): { store: Store; touched: string[] } {
@@ -191,7 +191,7 @@ describe('the skill coach’s job, opened in these tests', () => {
     const store = record()
     const r = routine()
     for (const [k, when] of [[0, '12:00'], [1, '14:00']] as const) {
-      const id = ask(store, { aimId: k === 0 ? 1 : 3, kind: 'setup', at: at(when).toISOString() }, k === 0 ? ITALIAN : HAND, k === 0 ? TEN : null)
+      const id = ask(store, { aimId: k === 0 ? 1 : 3, kind: 'setup', at: at(when).toISOString() }, k === 0 ? ORRISH : HAND, k === 0 ? TEN : null)
       expect(await runCommitments(env, store, at(when), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, task: skillTaskIds(DAY)[k], asks: [id] })
       const t = (await store.readTask(skillTaskIds(DAY)[k])) as TaskRow
       await store.writeTask({ ...t, status: 'written' })
@@ -227,8 +227,8 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
     const body = r.body as { instructions: string; briefing: string; answer: unknown; attemptsLeft: number }
     expect(body.instructions).toBe(coachInstructions('skill'))
     expect(body.briefing).toContain(`[ask ${id}] SUGGEST the current skill for this commitment.`)
-    for (const s of ['Goal: Learn Italian.', 'What would change the advice, in their words: I can read a little.', 'How it is learned or practised: A phrasebook.', 'Current skill: “Ten words” since 2026-09-28', 'Rhythm: 3 sessions a week, no rest day between.', '4 sessions on 4 different days; marked Hard 1, About right 1, Easy 2', '2026-10-03 done, Easy, “the numbers stuck”', 'Not done lately, and why when said: 2026-10-01 (no time)', 'Skills before it: “Numbers”', 'wrist a bit sore']) expect(body.briefing).toContain(s)
-    // Italian is not physical: no workouts read for it.
+    for (const s of ['Goal: Learn Orrish.', 'What would change the advice, in their words: I can read a little.', 'How it is learned or practised: A phrasebook.', 'Current skill: “Ten words” since 2026-09-28', 'Rhythm: 3 sessions a week, no rest day between.', '4 sessions on 4 different days; marked Hard 1, About right 1, Easy 2', '2026-10-03 done, Easy, “the numbers stuck”', 'Not done lately, and why when said: 2026-10-01 (no time)', 'Skills before it: “Numbers”', 'wrist a bit sore']) expect(body.briefing).toContain(s)
+    // Orrish is not physical: no workouts read for it.
     expect(body.briefing).not.toContain('Workout days')
     const reads = (await store.readReads(20)).map((x) => [x.task, x.category, x.count]).sort()
     expect(reads).toEqual([['skill', 'commitments', 1], ['skill', 'notes', 1]])
@@ -263,7 +263,7 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
       ],
     }
     expect(await post(store, at('12:03'), 'skill', both)).toEqual({ status: 200, body: { ok: true, answered: [hand, run] } })
-    // Italian, never asked the question, says nothing of it.
+    // Orrish, never asked the question, says nothing of it.
     const other = record()
     ask(other, { aimId: 1, kind: 'setup' })
     await opened(other)
@@ -275,7 +275,7 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
     const id = ask(store, { aimId: 1, kind: 'setup' })
     await opened(store)
     expect(await post(store, at('12:03'), 'skill', suggestion(id))).toEqual({ status: 200, body: { ok: true, answered: [id] } })
-    expect(proposal(store, id)).toMatchObject({ id: proposalIdOf(id), askId: id, aimId: 1, kind: 'setup', revision: revisionOf(ITALIAN as never, TEN as never), model: 'claude-opus-5-5', askedModel: 'opus', suggestion: { skill: 'Understand everyday spoken Italian', physical: false } })
+    expect(proposal(store, id)).toMatchObject({ id: proposalIdOf(id), askId: id, aimId: 1, kind: 'setup', revision: revisionOf(ORRISH as never, TEN as never), model: 'claude-opus-5-5', askedModel: 'opus', suggestion: { skill: 'Understand everyday spoken Orrish', physical: false } })
     expect(await store.readTask(skillTaskIds(DAY)[0])).toMatchObject({ status: 'written', writer: 'claude' })
     // Answered: nothing more to ask for it.
     expect(await runCommitments(env, store, at('13:00'), OPEN)).toMatchObject({ reason: 'nothing asked' })
@@ -294,7 +294,7 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
 
   it('does not answer an ask made before the commitment changed, nor one about faith while faith is hidden', async () => {
     const stale = record()
-    ask(stale, { aimId: 1, kind: 'setup' }, { ...ITALIAN, currentSkillId: 1 }, NUMBERS)
+    ask(stale, { aimId: 1, kind: 'setup' }, { ...ORRISH, currentSkillId: 1 }, NUMBERS)
     await opened(stale)
     expect(await handleCoachBriefing(deps(stale, at('12:01')), url({ task: 'skill', day: DAY }))).toEqual({ status: 409, body: { error: 'no ask of this run still stands' } })
     const hidden = record((s) => {

@@ -1490,8 +1490,8 @@
       },
       "costToAssign": "low",
       "prior": {
-        "effect": 0.3,
-        "note": "Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation"
+        "effect": 0.1,
+        "note": "Set from Sheeran, Listrom and Gollwitzer 2025 (d = .27 on behaviour, about .15 allowing for publication bias), scaled as the 2006 figure once was (d about .65 to 0.3); about a tenth of a step on motivation"
       }
     },
     {
@@ -1613,7 +1613,7 @@
       "what": "Not today's topic, an older one, for ten minutes from memory and notes.",
       "source": {
         "who": "Cepeda, Pashler, Vul, Wixted and Rohrer",
-        "what": "Meta-analysis of 254 studies: study spread over time is remembered far better than the same study massed together",
+        "what": "Meta-analysis of 254 studies: study spread over time is remembered better than the same study massed together, in the large majority of studies",
         "year": 2006,
         "strength": "strong"
       },
@@ -1665,7 +1665,7 @@
       "what": "To the wall, to the mirror or to her, in your own words, until it is clear.",
       "source": {
         "who": "Bisra, Liu, Nesbit, Salimi and Winne",
-        "what": "Meta-analysis of 64 studies: prompting learners to explain material to themselves improved learning by a medium effect",
+        "what": "Meta-analysis of 64 studies: prompting learners to explain material to themselves improved learning, by about half a standard deviation",
         "year": 2018,
         "strength": "strong"
       },
@@ -1758,8 +1758,8 @@
       },
       "costToAssign": "low",
       "prior": {
-        "effect": 0.3,
-        "note": "Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation next morning"
+        "effect": 0.1,
+        "note": "Set from Sheeran, Listrom and Gollwitzer 2025 (d = .27 on behaviour, about .15 allowing for publication bias), scaled as the 2006 figure once was (d about .65 to 0.3); about a tenth of a step on motivation next morning"
       }
     },
     {
@@ -1928,7 +1928,7 @@
       "what": "Washed, dried and put away today, the whole loop closed.",
       "source": {
         "who": "Amabile and Kramer",
-        "what": "Diary study of 12,000 workday entries: visible progress, even small, was the strongest lift to the inner working day",
+        "what": "Diary study of 12,000 workday entries: visible progress, even small, was the most common event on the best workdays",
         "year": 2011,
         "strength": "weak"
       },
@@ -1982,7 +1982,7 @@
       "what": "Every window, ten minutes, fresh air through the place.",
       "source": {
         "who": "Allen, MacNaughton, Satish, Santanam, Vallarino and Spengler",
-        "what": "Cognitive scores fell as indoor carbon dioxide rose in a controlled office study of 24 people; fresh air reversed it",
+        "what": "In a controlled office study of 24 people, cognitive scores fell as indoor carbon dioxide rose, and were highest on the best-ventilated days",
         "year": 2016,
         "strength": "moderate"
       },
@@ -2022,7 +2022,7 @@
       "costToAssign": "low",
       "prior": {
         "effect": 0.2,
-        "note": "Allen 2016: lower CO2 doubled cognitive scores in a lab; at home about a fifth of a step on focus"
+        "note": "Allen 2016: in one lab study of 24 people, scores at the highest carbon dioxide level were about half those at the lowest; at home about a fifth of a step on focus"
       },
       "span": 10
     },
@@ -2894,7 +2894,7 @@
       "what": "Bank, card and cash, one look each, the total written on one line.",
       "source": {
         "who": "Netemeyer, Warmath, Fernandes and Lynch",
-        "what": "Survey work with thousands of adults: stress about managing money today is a large, separate part of overall wellbeing",
+        "what": "Surveys of thousands of adults: money stress today is one of two separate parts of financial wellbeing, which predicted overall wellbeing about as strongly as work, health and relationships together",
         "year": 2018,
         "strength": "moderate"
       },
@@ -2952,7 +2952,7 @@
       "what": "The one you have been avoiding, done in one sitting today.",
       "source": {
         "who": "Amabile and Kramer",
-        "what": "Diary study of 12,000 workday entries: small, visible progress on a real task was the strongest lift to the day",
+        "what": "Diary study of 12,000 workday entries: small, visible progress on a real task was the most common event on the best workdays",
         "year": 2011,
         "strength": "weak"
       },
@@ -3925,7 +3925,7 @@
       "what": "Pick the task closest to finished and close it, in twenty minutes or less.",
       "source": {
         "who": "Amabile and Kramer",
-        "what": "Diary study of 12,000 workday entries: making progress on meaningful work, even small, was the strongest lift to motivation and mood",
+        "what": "Diary study of 12,000 workday entries: making progress on meaningful work, even small, was the most common event on the days motivation and mood were best",
         "year": 2011,
         "strength": "moderate"
       },
@@ -3969,7 +3969,7 @@
       "costToAssign": "medium",
       "prior": {
         "effect": 0.3,
-        "note": "Amabile and Kramer 2011: progress on meaningful work is the strongest daily lift; about a third of a step on mood"
+        "note": "Amabile and Kramer 2011: progress on meaningful work was the most common event on the best days; about a third of a step on mood"
       }
     },
     {
@@ -4129,8 +4129,8 @@
       },
       "costToAssign": "low",
       "prior": {
-        "effect": 0.3,
-        "note": "Set from Gollwitzer and Sheeran 2006 (d about 0.65), above the 2025 estimate for behaviour (d = .27); about a third of a step on motivation"
+        "effect": 0.1,
+        "note": "Set from Sheeran, Listrom and Gollwitzer 2025 (d = .27 on behaviour, about .15 allowing for publication bias), scaled as the 2006 figure once was (d about .65 to 0.3); about a tenth of a step on motivation"
       }
     },
     {
@@ -4245,8 +4245,8 @@
       },
       "costToAssign": "low",
       "prior": {
-        "effect": 0.3,
-        "note": "A leaving cue is an if-then plan; about a third of a step on stress later that day"
+        "effect": 0.2,
+        "note": "A leaving cue is an if-then plan with a time; plans naming a time and a place did best in the 2025 meta-analysis (d about .46), scaled as the 2006 figure once was; about a fifth of a step on stress later that day"
       },
       "setup": {
         "kind": "lateness"
@@ -4412,8 +4412,8 @@
       },
       "costToAssign": "medium",
       "prior": {
-        "effect": 0.3,
-        "note": "One avoided task closed; about a third of a step on overwhelm over seven days"
+        "effect": 0.2,
+        "note": "One avoided task closed; if-then plans did better on screening and medication than on average in the 2025 meta-analysis, scaled as the 2006 figure once was; about a fifth of a step on overwhelm over seven days"
       },
       "setup": {
         "kind": "appointment"

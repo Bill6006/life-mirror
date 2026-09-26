@@ -13,7 +13,7 @@ export function sheetOf(facts: Fact[], hour = 8, day = DAY, days = 22): FactShee
 }
 
 const today = (weekday = 'Friday'): Fact => ({ id: 'week.today', tags: [], text: `Today is ${weekday}.`, values: { weekday, bedtime: '20:00', hour: 8 } })
-const aim = (values: Record<string, number | string | null> = {}): Fact => ({ id: 'aim.1', tags: ['study'], text: '', values: { kind: 'certification', name: 'Italian', step: 'Twenty words', skill: 'Twenty words', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, doneToday: 0, skills: 1, ...values } })
+const aim = (values: Record<string, number | string | null> = {}): Fact => ({ id: 'aim.1', tags: ['study'], text: '', values: { kind: 'certification', name: 'Orrish', step: 'Twenty words', skill: 'Twenty words', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, doneToday: 0, skills: 1, ...values } })
 const fact = (id: string, values: Record<string, number | string | null>, extra: Partial<Fact> = {}): Fact => ({ id, tags: [], text: '', values, ...extra })
 
 /** A move an admitted card names and the catalogue holds: the propose-test situation needs one. */
@@ -49,12 +49,12 @@ export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
   'direction-counts': () => sheetOf([today(), fact('direction', { direction: 'One line, mine' }), fact('becoming', { study: 4, conversations: 2, faith: 1, her: 5 })]),
   'forecast-wide': () => sheetOf([today(), fact('forecast.afternoon', { width: 32, actual: null, block: 'afternoon', lo: 30, hi: 62 })]),
   'caffeine-sleep-even': () => sheetOf([today(), fact('assoc.caffeine.bands', { groups: 2, none: 1, low: 'none', high: '200 mg or more', n: 6, m: 5 })]),
-  'commitment-fading': () => sheetOf([today(), aim(), fact('trajectory.1', { aimId: 1, name: 'Italian', w3: 2, w2: 1, w1: 0, w0: 0, ageDays: 30 })]),
-  'commitment-thinning': () => sheetOf([today(), aim(), fact('trajectory.1', { aimId: 1, name: 'Italian', w3: 1, w2: 2, w1: 3, w0: 0, ageDays: 20 })]),
+  'commitment-fading': () => sheetOf([today(), aim(), fact('trajectory.1', { aimId: 1, name: 'Orrish', w3: 2, w2: 1, w1: 0, w0: 0, ageDays: 30 })]),
+  'commitment-thinning': () => sheetOf([today(), aim(), fact('trajectory.1', { aimId: 1, name: 'Orrish', w3: 1, w2: 2, w1: 3, w0: 0, ageDays: 20 })]),
   'cadence-dropping': () => sheetOf([today(), fact('cadence', { depth: 'full', lowDemand: 0, w2: 12, w1: 12, w0: 4 })]),
-  'loop-closed': () => sheetOf([today(), fact('followup', { aimId: 1, about: 'Italian', started: 1, done: 0, changed: 0 })]),
-  'loop-planned': () => sheetOf([today(), aim(), fact('followup', { aimId: 1, about: 'Italian', planned: 1, missed: 1, started: 0, done: 0, changed: 0 })]),
-  'loop-open': () => sheetOf([today(), aim(), fact('followup', { aimId: 1, about: 'Italian', planned: 0, started: 0, done: 0, changed: 0 })]),
+  'loop-closed': () => sheetOf([today(), fact('followup', { aimId: 1, about: 'Orrish', started: 1, done: 0, changed: 0 })]),
+  'loop-planned': () => sheetOf([today(), aim(), fact('followup', { aimId: 1, about: 'Orrish', planned: 1, missed: 1, started: 0, done: 0, changed: 0 })]),
+  'loop-open': () => sheetOf([today(), aim(), fact('followup', { aimId: 1, about: 'Orrish', planned: 0, started: 0, done: 0, changed: 0 })]),
   'short-night-today': () => sheetOf([today(), fact('today.shortSleep', { word: 'Short' })]),
   'short-sleep-afternoons': () => sheetOf([today(), fact('assoc.shortSleep', { times: 4, diff: -5 })]),
   'propose-test': () => sheetOf([today(), fact('untested', { moves: testableMove() })]),

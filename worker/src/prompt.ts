@@ -1,5 +1,5 @@
 import { isUsageFact } from '../../src/useShared'
-import { GRADE_PHRASES, isLocationFact, LACKED, LACKED_MEANS, LINE_CUES, MAX_LACKED, MAX_WORDS, MODES, REVIEW_PART_WORDS } from '../../src/brainShared'
+import { EVIDENCE_WORDING, GRADE_PHRASES, isLocationFact, LACKED, LACKED_MEANS, LINE_CUES, MAX_LACKED, MAX_WORDS, MODES, REVIEW_PART_WORDS } from '../../src/brainShared'
 import type { RankedLine } from '../../src/factTypes'
 import type { Firmness, FirmnessPref } from '../../src/firmness'
 import type { CoachCoreKey, LineBriefing, Said } from './briefing'
@@ -151,20 +151,29 @@ const TEXT_FIELD = ['"text": "...", ', '"text": "...", "firmness": "...", '] as 
 const CHANGE_FIELD = ['"change": "...", ', '"change": "...", "firmness": "...", '] as const
 const PICK_FIELD = ['"version": "..."}', '"version": "...", "firmness": "..."}'] as const
 
-/** The free chain's system prompts: as they were, or with How firm once its gate is open. */
+/** Pass 4: the rule every writer of a line or a review is told once the evidence gate is open. */
+export const EVIDENCE_RULE = `- Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.`
+const LAST_RULE = '- Plain words, second person, no headings, no lists, no emoji.'
+
+/** A system text with the evidence rule, once its gate is open; exactly as before while it is closed. */
+export function withEvidenceRule(system: string, gate: 'gated' | 'open' = EVIDENCE_WORDING): string {
+  return gate === 'open' ? system.replace(LAST_RULE, () => `${EVIDENCE_RULE}\n${LAST_RULE}`) : system
+}
+
+/** The free chain's system prompts: as they were, or with How firm once its gate is open, and the evidence rule once its own is. */
 export function lineSystem(firm?: FirmnessPref | null): string {
-  return firm ? firmed(SYSTEM, firmBlock(firm, 'candidates'), ...TEXT_FIELD) : SYSTEM
+  return withEvidenceRule(firm ? firmed(SYSTEM, firmBlock(firm, 'candidates'), ...TEXT_FIELD) : SYSTEM)
 }
 
 export function reviewSystem(firm?: FirmnessPref | null): string {
-  return firm ? firmed(REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD) : REVIEW_SYSTEM
+  return withEvidenceRule(firm ? firmed(REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD) : REVIEW_SYSTEM)
 }
 
-/** Claude's instructions for a task, served with the briefing (Parts 30 to 32); with How firm once its gate is open (Pass 2). */
+/** Claude's instructions for a task, served with the briefing (Parts 30 to 32); with How firm once its gate is open (Pass 2), and the evidence rule for a line or a review once its own is (Pass 4). */
 export function claudeInstructions(task: 'line' | 'review' | 'coach', firm?: FirmnessPref | null): string {
-  if (!firm) return task === 'line' ? CLAUDE_LINE_SYSTEM : task === 'review' ? CLAUDE_REVIEW_SYSTEM : CLAUDE_COACH_SYSTEM
-  if (task === 'line') return firmed(CLAUDE_LINE_SYSTEM, firmBlock(firm, 'line'), ...TEXT_FIELD)
-  if (task === 'review') return firmed(CLAUDE_REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD)
+  if (!firm) return task === 'line' ? withEvidenceRule(CLAUDE_LINE_SYSTEM) : task === 'review' ? withEvidenceRule(CLAUDE_REVIEW_SYSTEM) : CLAUDE_COACH_SYSTEM
+  if (task === 'line') return withEvidenceRule(firmed(CLAUDE_LINE_SYSTEM, firmBlock(firm, 'line'), ...TEXT_FIELD))
+  if (task === 'review') return withEvidenceRule(firmed(CLAUDE_REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD))
   return firmed(CLAUDE_COACH_SYSTEM, firmBlock(firm, 'coach'), ...PICK_FIELD)
 }
 

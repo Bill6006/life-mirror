@@ -153,7 +153,7 @@ async function seedProfile(page: Page): Promise<void> {
   const add = () => page.getByRole('button', { name: /^Add a commitment/ }).click()
   await add()
   await page.getByTestId('aim-kind-certification').click()
-  await page.getByTestId('aim-goal-input').fill('Spanish')
+  await page.getByTestId('aim-goal-input').fill('Tamlic')
   await page.getByTestId('aim-method-input').fill('A class')
   await page.getByTestId('aim-skill-now-input').fill('Ordering at a café')
   await page.getByTestId('aim-learn-add').click()
@@ -415,7 +415,7 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
     name: 'Aims, something to learn open',
     tab: 'Aims',
     open: async (p) => {
-      const card = p.getByTestId('aim-card').filter({ hasText: 'Spanish' })
+      const card = p.getByTestId('aim-card').filter({ hasText: 'Tamlic' })
       await card.getByTestId('aim-details').click()
       await card.getByTestId('aim-rhythm-3').click()
       await card.getByTestId('aim-skill-edit-open').click()
@@ -430,7 +430,7 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
     name: 'Now, a session started',
     tab: 'Now',
     open: async (p) => {
-      const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Spanish' })
+      const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Tamlic' })
       await row.getByTestId('aim-start').or(row.getByTestId('aim-another')).or(row.getByTestId('aim-done')).first().click()
       await expect(row.getByTestId('aim-started').or(row.getByTestId('aim-ease')).first()).toBeVisible()
     },
@@ -439,7 +439,7 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
     name: 'Now, done today with how it went',
     tab: 'Now',
     open: async (p) => {
-      const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Spanish' })
+      const row = p.locator('li[data-testid="aim-card"]').filter({ hasText: 'Tamlic' })
       // Wait for the row to draw before reading its state: started (Done), or fresh or done today (Start or Do another).
       await row.getByTestId('aim-done').or(row.getByTestId('aim-start')).or(row.getByTestId('aim-another')).first().waitFor()
       if (await row.getByTestId('aim-done').count()) await row.getByTestId('aim-done').click()

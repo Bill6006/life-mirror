@@ -28,6 +28,12 @@ export interface ClaimCard {
   app: string
   /** Catalogue moves the claim speaks for, by id: what the brain may propose testing when the record never has. */
   moves?: string[]
+  /**
+   * The size of the card's main effect when it is medium or large (a standardized difference of about
+   * .5 or more, a correlation of about .3 or more, or its equal); absent when small, mixed or
+   * unmeasured. Words that say an effect is big need a cited card this size (Pass 4).
+   */
+  size?: 'medium' | 'large'
   reviewed: string
   status: CardStatus
 }

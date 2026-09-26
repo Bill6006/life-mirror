@@ -79,7 +79,7 @@
   },
   {
     "id": "intention-behaviour-gap",
-    "claim": "A large change in intention produces only a small-to-medium change in behaviour; wanting to is not the bottleneck.",
+    "claim": "A medium-to-large change in intention produces only a small-to-medium change in behaviour; wanting to is not the bottleneck.",
     "domain": "behaviour-change",
     "tags": [
       "plan",
@@ -89,6 +89,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "a medium-to-large change in intention (d = 0.66) led to a small-to-medium change in behaviour (d = 0.36) across 47 experiments",
+    "size": "medium",
     "population": "adults; health and everyday behaviours",
     "sources": [
       {
@@ -201,7 +202,7 @@
   },
   {
     "id": "default-effects",
-    "claim": "What happens by default is done far more often than what needs a choice; setting the default is a stronger lever than deciding each time.",
+    "claim": "What happens by default is done more often than what needs a choice, by a medium-to-large margin on average; setting the default is a stronger lever than deciding each time.",
     "domain": "decision",
     "tags": [
       "choice",
@@ -211,6 +212,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "d = 0.68 across 58 studies; larger for consumer and environmental domains, smaller for health",
+    "size": "medium",
     "population": "adults; policy, consumer and health choices",
     "sources": [
       {
@@ -407,6 +409,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "g = 0.50 for testing over restudy across 159 effect sizes; g = 0.61 in a second meta-analysis of 118 studies",
+    "size": "medium",
     "population": "students and adults; classroom and laboratory",
     "sources": [
       {
@@ -537,6 +540,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "d = 0.53 overall across 35 studies; weaker than physical practice, stronger than none",
+    "size": "medium",
     "population": "adults learning motor and cognitive tasks",
     "sources": [
       {
@@ -659,6 +663,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "meta-analyses of interaction studies: medium-to-large effects on immediate and delayed measures (d around 0.75 in one synthesis)",
+    "size": "medium",
     "population": "adult second-language learners in classroom and laboratory studies",
     "sources": [
       {
@@ -688,6 +693,7 @@
     "grade": "C",
     "replication": "replicated",
     "effect": "400 mg at 0, 3 or 6 hours before bed cut objective sleep by more than an hour; the 6-hour dose was not noticed subjectively",
+    "size": "large",
     "population": "twelve healthy adults, double-blind crossover",
     "sources": [
       {
@@ -741,6 +747,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "meta-analysis of 24 studies: total sleep 45 minutes shorter, sleep efficiency 7% lower, 9 more minutes to fall asleep, 12 more minutes awake after sleep onset, less deep sleep",
+    "size": "medium",
     "population": "adults in controlled studies of caffeine taken before night-time sleep",
     "sources": [
       {
@@ -923,6 +930,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "meta-analysis of 19 studies: mood was the most affected outcome, with effects larger than for cognitive and motor performance",
+    "size": "large",
     "population": "adults under partial and total sleep deprivation",
     "sources": [
       {
@@ -1078,6 +1086,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "d = 0.87 against control conditions across 16 studies of behavioural activation for depression",
+    "size": "large",
     "population": "adults with depressive symptoms",
     "sources": [
       {
@@ -1102,6 +1111,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "SMD = 1.11 in 25 trials of exercise for depression, after adjustment for publication bias",
+    "size": "large",
     "population": "adults with depression",
     "sources": [
       {
@@ -1187,6 +1197,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "meta-analysis of 42 studies: working memory d ≈ 0.5, cognitive flexibility and attentional control small-to-medium",
+    "size": "medium",
     "population": "adults and children in experimental studies",
     "sources": [
       {
@@ -1224,7 +1235,7 @@
       }
     ],
     "caveats": "Short follow-ups; longer breaks may be needed for creative tasks.",
-    "app": "Nothing extra is a real offer; a short break is one of the smallest moves and one of the best supported for energy.",
+    "app": "Nothing extra is a real offer; a short break is one of the smallest moves, with good evidence for energy.",
     "reviewed": "2026-09-18",
     "status": "admitted",
     "moves": [
@@ -1233,7 +1244,7 @@
   },
   {
     "id": "reappraisal",
-    "claim": "Reinterpreting a situation changes the feeling it produces; reappraisal is among the most effective regulation strategies, and suppression among the least.",
+    "claim": "Reinterpreting a situation changes the feeling it produces, by a small-to-medium amount on average, the largest of the families of strategy compared; distraction worked too, and suppressing the feeling itself did not.",
     "domain": "mood",
     "tags": [
       "stress",
@@ -1242,7 +1253,7 @@
     ],
     "grade": "A",
     "replication": "replicated",
-    "effect": "meta-analysis of 306 effect sizes: reappraisal small-to-medium, distraction effective, suppression of expression small, suppression of the feeling ineffective",
+    "effect": "meta-analysis of 306 experimental comparisons: cognitive change (reappraisal) d = 0.36, the largest family; distraction d = 0.27; suppressing the expression d = 0.32; suppressing the feeling itself about zero (d = −0.04)",
     "population": "adults in laboratory emotion tasks",
     "sources": [
       {
@@ -1252,7 +1263,7 @@
     ],
     "caveats": "Laboratory inductions; real-life intensity may reduce what reappraisal can do in the moment.",
     "app": "Cooling off after a clash is a chip; the steadying moves are reappraisal and distraction, never suppression.",
-    "reviewed": "2026-09-18",
+    "reviewed": "2026-09-25",
     "status": "admitted"
   },
   {
@@ -1432,6 +1443,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "meta-analysis of 104 randomised trials: small-to-medium effects on physiological stress and medium on psychological stress",
+    "size": "medium",
     "population": "adults in medical and everyday settings",
     "sources": [
       {
@@ -1533,7 +1545,7 @@
   },
   {
     "id": "social-ties-and-survival",
-    "claim": "Stronger social relationships predict substantially longer survival, an association comparable to well-known health risks.",
+    "claim": "Stronger social relationships predict longer survival, about 50 percent greater odds across studies, an association comparable to well-known health risks.",
     "domain": "social",
     "tags": [
       "social",
@@ -1588,6 +1600,7 @@
     "grade": "A",
     "replication": "replicated",
     "effect": "randomised trials addressing maladaptive social cognition had the largest effect (mean d ≈ −0.6); social-support and contact interventions smaller",
+    "size": "medium",
     "population": "adults and older adults in 50 studies",
     "sources": [
       {
@@ -1714,7 +1727,7 @@
   },
   {
     "id": "acting-extraverted-costs-later",
-    "claim": "Behaving in an outgoing way lifts mood at the time and is followed by more fatigue some hours later.",
+    "claim": "Behaving in an outgoing way goes with higher mood at the time and is followed by more fatigue some hours later.",
     "domain": "social",
     "tags": [
       "social-event",
@@ -2066,7 +2079,7 @@
   },
   {
     "id": "small-wins-progress",
-    "claim": "Of the everyday events that lift mood and motivation at work, making progress on meaningful work, even small progress, was the most common.",
+    "claim": "On the days when mood and motivation at work were best, the most common event was making progress on meaningful work, even small progress.",
     "domain": "behaviour-change",
     "tags": [
       "small-step",
@@ -2171,7 +2184,7 @@
   },
   {
     "id": "green-exercise-dose",
-    "claim": "Short bouts of activity in green settings improve self-esteem and mood, with the largest gains in the first five minutes.",
+    "claim": "Short bouts of activity in green settings are followed by better self-esteem and mood, most after five-minute doses of light activity.",
     "domain": "movement",
     "tags": [
       "nature",
@@ -2233,6 +2246,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "network meta-analysis of 101 trials, 13,164 people: against a waiting list, individual CBT SMD −1.19, exposure and social skills −0.86, supported self-help −0.86; individual CBT was the psychological class to beat a psychological placebo",
+    "size": "large",
     "population": "adults with social anxiety disorder in randomised trials",
     "sources": [
       {
@@ -2620,6 +2634,7 @@
     "grade": "C",
     "replication": "untested",
     "effect": "training raised ratings of charisma, mean d = .62, in a field study of managers and a laboratory study of 41 MBA students (Antonakis 2011); everyday charisma splits into influence and affability, measurable and observable (Tskhay 2018)",
+    "size": "medium",
     "population": "managers and MBA students; adults in scale validation",
     "sources": [
       {
@@ -2918,7 +2933,7 @@
   },
   {
     "id": "flirting-detection",
-    "claim": "People detect flirting poorly, and those who fear rejection believe their own overtures show far more interest than they do.",
+    "claim": "People detect flirting poorly, and those who fear rejection believe their own overtures show more interest than they do.",
     "domain": "social",
     "tags": [
       "dating",
@@ -3469,6 +3484,7 @@
     "grade": "B",
     "replication": "replicated",
     "effect": "a meta-analysis of 93 studies, 38,499 people: r = .37 with relationship satisfaction and .43 with sexual satisfaction; the quality of the communication mattered more than its frequency",
+    "size": "medium",
     "population": "adults in current relationships",
     "sources": [
       {
@@ -3483,7 +3499,7 @@
   },
   {
     "id": "forgiveness-and-sacrifice",
-    "claim": "Forgiveness and sacrifice help a relationship in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly cost the one who made them.",
+    "claim": "Forgiveness and sacrifice go with better relationships in context, not unconditionally: forgiving a partner who is often negative went with worse outcomes over time, and sacrifices made reluctantly went with slightly lower well-being for the one who made them.",
     "domain": "social",
     "tags": [
       "relationship",
@@ -3575,6 +3591,7 @@
     "grade": "C",
     "replication": "replicated",
     "effect": "a meta-analysis of 49 samples: goal congruence r = .43 with satisfaction, goal support .28, goal conflict −.29 (Toma 2022); in 245 dating people and 78 diary couples, perceived mutuality of relationship goals predicted quality through a sense of progress (Avivi 2009); newly dating partners who gave up clashing goals grew more committed, but women were less satisfied when the partner was the one giving ground (Gere and Impett 2017)",
+    "size": "medium",
     "population": "couples of all kinds; dating samples in two studies",
     "sources": [
       {
@@ -3783,7 +3800,7 @@
   },
   {
     "id": "relationship-over-time",
-    "claim": "Whether a dating relationship lasts is predicted by how it works, commitment, love and closeness, far more than by personality, and swings in satisfaction or in how committed the partner seems predict breakup beyond their average.",
+    "claim": "Whether a dating relationship lasts is predicted by how it works, commitment, love and closeness, more than by personality, and swings in satisfaction or in how committed the partner seems predict breakup beyond their average.",
     "domain": "social",
     "tags": [
       "relationship",
@@ -3942,7 +3959,7 @@
   },
   {
     "id": "kind-reading-limits",
-    "claim": "Reading a partner’s behaviour kindly helped healthy marriages and was followed by steeper declines in troubled ones.",
+    "claim": "Reading a partner’s behaviour kindly went with better outcomes in healthy marriages and was followed by steeper declines in troubled ones.",
     "domain": "social",
     "tags": [
       "relationship"
@@ -3991,7 +4008,7 @@
   },
   {
     "id": "fairness-and-appreciation",
-    "claim": "Seeing the split of housework as unfair lowers both partners’ happiness, feeling appreciated removes much of that, and unmet expectations about sharing childcare lower satisfaction after a birth.",
+    "claim": "Seeing the split of housework as unfair goes with lower happiness for both partners; an unequal split no longer went with lower satisfaction among people who felt appreciated; and unmet expectations about sharing childcare predicted lower satisfaction after a birth.",
     "domain": "social",
     "tags": [
       "relationship",
@@ -4216,7 +4233,7 @@
   },
   {
     "id": "stated-interest",
-    "claim": "A plain statement of romantic interest made someone more appealing than vague signals. Expressed liking reads as good intentions, and unclear endings hurt both sides.",
+    "claim": "A plain statement of romantic interest made someone more appealing than vague signals. Expressed liking reads as good intentions, and in accounts of unrequited love both sides suffered, the one saying no often without a way to say it clearly.",
     "domain": "social",
     "tags": [
       "dating",
@@ -4282,7 +4299,7 @@
   },
   {
     "id": "compliments-underestimated",
-    "claim": "Genuine compliments and thanks land better than people expect, and praising the other person’s qualities is what makes them feel understood and loved.",
+    "claim": "Genuine compliments and thanks land better than people expect, and praise of the other person’s qualities went with them feeling understood and loved.",
     "domain": "social",
     "tags": [
       "dating",

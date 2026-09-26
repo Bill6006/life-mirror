@@ -32,14 +32,14 @@ const signalsOf = (id: string): DeliverySignals => {
 /** What each situation must keep saying at every firmness: its facts, its evidence and causal status, and its advice. */
 const KEEP: Record<string, string[]> = {
   stretch: ['a stretch is starting', 'one easy move a day, kept', 'the mood follows the doing'],
-  'necessities-missed': ['necessities missed in three days', 'the earliest sign of a stretch', 'the smallest one first, before any move'],
-  'loneliness-high': ['loneliness read', 'one small contact today', 'a message or a question to someone', 'small ones move it'],
+  'necessities-missed': ['necessities missed in three days', 'an early sign of a stretch', 'the smallest one first, before any move'],
+  'loneliness-high': ['loneliness read', 'one small contact today', 'a message or a question to someone', 'better than', 'expect'],
   'cue-switch': ['kept 1 of 4 plans', 'plans stall on the cue, not on the will', 'after her bedtime'],
   'first-skill': ['has no current skill yet', 'the one thing to work on now', 'on its card under aims'],
   'caffeine-sleep-shorter': ['after days with', 'like for like', 'an association in your record'],
   'step-stalled': ['no session recorded in 9 days', 'the smaller version today'],
-  'nap-read': ['mornings after a nap', 'short naps help the afternoon; long ones cost the night'],
-  'workout-evenings': ['an association in your record, not yet a finding', 'one of the best-supported levers there is for mood'],
+  'nap-read': ['mornings after a nap', 'short naps help the afternoon; long ones bring more grogginess after'],
+  'workout-evenings': ['an association in your record, not yet a finding', 'the evidence for exercise and mood is strong'],
   'workout-flat': ['the evidence for exercise and mood is strong', 'timing may be why'],
   'social-recovery': ['an association, not a cause', 'a quieter day after a lot of company is common'],
   'cue-holds': ['has held 4 of 4 times', 'keep that cue'],
@@ -51,7 +51,7 @@ const KEEP: Record<string, string[]> = {
   'caffeine-late': ['a meta-analysis of trials', 'that runs past midnight'],
   'church-morning': ['mornings after church read 48 against 60', 'the recovery gap is a fact of the day'],
   'steady-moving': ['steady, 5 of 6 blocks inside the usual', 'progress that is recorded carries part of the effect by itself'],
-  'fresh-start': ['fresh starts are measurably easier to begin on', 'is the one to restart'],
+  'fresh-start': ['people begin goals more often right after a fresh start', 'is the one to restart'],
   'nothing-holds': ['rest is a move'],
   'direction-counts': ['your direction', 'counts, not a verdict'],
   'forecast-wide': ['a guess', 'your own reading at the check-in is the better guide today'],
@@ -63,7 +63,7 @@ const KEEP: Record<string, string[]> = {
   'loop-planned': ['its moment passed without a start', 'the step, or a smaller one, to a moment that has held before'],
   'loop-open': ['nothing on it since', 'not useful', 'smaller version to a moment today'],
   'short-night-today': ['lowers mood more than it lowers thinking', 'a nap under half an hour before mid-afternoon', 'supported repair'],
-  'short-sleep-afternoons': ['afternoons after short nights', 'regular hours count for more than long ones'],
+  'short-sleep-afternoons': ['afternoons after short nights', 'regular sleep times went with better health than long sleep did'],
   'propose-test': ['never tested it', 'one tap', 'against nothing extra', 'its card will say what your record finds'],
 }
 
@@ -182,8 +182,8 @@ describe('the phone’s lines, said at each firmness (all 34 situations, all sev
     // The phone's week review says what held and what did not the same at every firmness; only its one change is delivered.
     const sheet = sheetOf([
       { id: 'week.today', tags: [], text: '', values: { weekday: 'Sunday', bedtime: '20:00', hour: 9 } },
-      { id: 'aim.1', tags: [], text: '', values: { kind: 'certification', name: 'Italian', skill: 'Twenty words' } },
-      { id: 'trajectory.1', tags: [], text: '', values: { aimId: 1, name: 'Italian', w3: 2, w2: 1, w1: 0, w0: 0, d0: 0, ageDays: 30 } },
+      { id: 'aim.1', tags: [], text: '', values: { kind: 'certification', name: 'Orrish', skill: 'Twenty words' } },
+      { id: 'trajectory.1', tags: [], text: '', values: { aimId: 1, name: 'Orrish', w3: 2, w2: 1, w1: 0, w0: 0, d0: 0, ageDays: 30 } },
       { id: 'trajectory.2', tags: [], text: '', values: { aimId: 2, name: 'A walk', w3: 2, w2: 2, w1: 2, w0: 3, d0: 3, ageDays: 30 } },
     ] as Fact[])
     const parts = FIRMNESS_PREFS.map((f) => phoneReview(sheet, [], f))
@@ -264,7 +264,7 @@ describe('the floor under every firmness', () => {
     for (const t of ['No excuses: pin it today.', 'You never follow through on this.', 'I am disappointed in how this week went.', 'Shame on you for skipping it.', 'Come on, get it together.', 'Beast mode: crush it today.', 'Don’t worry, everything will be fine.', 'You’ve got this.', 'Be gentle with yourself today.', 'Hold space for that feeling.', 'Pin it today!']) expect(firmnessRefusal(t), t).not.toBeNull()
     expect(FIRM_FLOOR.test('Pin the smallest sitting to a moment today.')).toBe(false)
     expect(THERAPY_SPEAK.test('Read today’s numbers kindly.')).toBe(false)
-    expect(firmnessRefusal('Italian: none in the last two weeks. Pin the smallest sitting to a moment today.')).toBeNull()
+    expect(firmnessRefusal('Orrish: none in the last two weeks. Pin the smallest sitting to a moment today.')).toBeNull()
   })
 })
 
@@ -275,14 +275,14 @@ describe('a model’s line, held to How firm once its gate is open', () => {
   ] as Fact[])
   const fadeSheet = sheetOf([
     { id: 'week.today', tags: [], text: '', values: { weekday: 'Friday', bedtime: '20:00', hour: 8 } },
-    { id: 'aim.1', tags: [], text: '', values: { kind: 'certification', name: 'Italian', skill: 'Twenty words' } },
-    { id: 'trajectory.1', tags: [], text: '', values: { aimId: 1, name: 'Italian', w3: 3, w2: 0, w1: 0, w0: 0, ageDays: 30 } },
+    { id: 'aim.1', tags: [], text: '', values: { kind: 'certification', name: 'Orrish', skill: 'Twenty words' } },
+    { id: 'trajectory.1', tags: [], text: '', values: { aimId: 1, name: 'Orrish', w3: 3, w2: 0, w1: 0, w0: 0, ageDays: 30 } },
   ] as Fact[])
   const cards = admitted()
   const nap = (text: string, firmness?: string) => ({ mode: 'observation', text, factIds: ['assoc.napped'], cardIds: ['naps-cognition'], action: null, ...(firmness ? { firmness } : {}) })
   const fade = (text: string, firmness?: string) => ({ mode: 'challenge', text, factIds: ['trajectory.1', 'aim.1'], cardIds: ['implementation-intentions'], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' }, ...(firmness ? { firmness } : {}) })
   const NAP = 'Mornings after a nap read 6 lower than the others, 5 naps: an association in your record.'
-  const FADE = 'Italian: 3 sittings three weeks ago, none since. Pin the smallest sitting to a moment today.'
+  const FADE = 'Orrish: 3 sittings three weeks ago, none since. Pin the smallest sitting to a moment today.'
 
   it('checks nothing while the gate is closed: the same answer passes, and no delivery is recorded', () => {
     const v = validateOutput(nap(NAP, 'hardCoach'), napSheet, cards)
@@ -313,22 +313,22 @@ describe('a model’s line, held to How firm once its gate is open', () => {
     expect(validateOutput(fade(FADE, 'supportive'), fadeSheet, cards, 60, undefined, { pref: 'adaptive' })).toMatchObject({ ok: false, reason: expect.stringContaining('never softens') })
     expect(validateOutput(fade(FADE, 'hardCoach'), fadeSheet, cards, 60, undefined, { pref: 'adaptive' })).toMatchObject({ ok: true, value: { firmness: 'hardCoach' } })
     expect(validateOutput(fade(FADE, 'balanced'), fadeSheet, cards, 60, undefined, { pref: 'adaptive' })).toMatchObject({ ok: true })
-    expect(validateOutput(fade('Italian has gone quiet lately; the smallest sitting is enough to pick it back up. Pin it to a moment today.', 'supportive'), fadeSheet, cards, 60, undefined, { pref: 'supportive' })).toMatchObject({ ok: false, reason: expect.stringContaining('never silent') })
-    expect(validateOutput(fade('Italian: 3 sittings three weeks ago, and it has gone quiet since; the smallest sitting picks it back up. Pin it to a moment today.', 'supportive'), fadeSheet, cards, 60, undefined, { pref: 'supportive' })).toMatchObject({ ok: true })
+    expect(validateOutput(fade('Orrish has gone quiet lately; the smallest sitting is enough to pick it back up. Pin it to a moment today.', 'supportive'), fadeSheet, cards, 60, undefined, { pref: 'supportive' })).toMatchObject({ ok: false, reason: expect.stringContaining('never silent') })
+    expect(validateOutput(fade('Orrish: 3 sittings three weeks ago, and it has gone quiet since; the smallest sitting picks it back up. Pin it to a moment today.', 'supportive'), fadeSheet, cards, 60, undefined, { pref: 'supportive' })).toMatchObject({ ok: true })
   })
 
   it('refuses the person turned on at every firmness, the same words that pass otherwise', () => {
     for (const f of FIRMNESSES) {
-      expect(validateOutput(fade('No excuses. Italian: 3 sittings three weeks ago, none since. Pin the smallest sitting to a moment today.', f), fadeSheet, cards, 60, undefined, { pref: f })).toMatchObject({ ok: false, reason: expect.stringContaining('never the person') })
-      expect(validateOutput(fade('You never keep this up. Italian: 3 sittings three weeks ago, none since.', f), fadeSheet, cards, 60, undefined, { pref: f })).toMatchObject({ ok: false })
+      expect(validateOutput(fade('No excuses. Orrish: 3 sittings three weeks ago, none since. Pin the smallest sitting to a moment today.', f), fadeSheet, cards, 60, undefined, { pref: f })).toMatchObject({ ok: false, reason: expect.stringContaining('never the person') })
+      expect(validateOutput(fade('You never keep this up. Orrish: 3 sittings three weeks ago, none since.', f), fadeSheet, cards, 60, undefined, { pref: f })).toMatchObject({ ok: false })
     }
   })
 
   it('checks the week’s review the same way: one delivery for its three parts', () => {
-    const review = (firmness: string, held = 'Italian had 3 sittings three weeks ago.') => ({ held, didNot: 'None in the last two weeks.', change: 'Pin the smallest sitting to a moment each evening.', factIds: ['trajectory.1'], cardIds: [], firmness })
+    const review = (firmness: string, held = 'Orrish had 3 sittings three weeks ago.') => ({ held, didNot: 'None in the last two weeks.', change: 'Pin the smallest sitting to a moment each evening.', factIds: ['trajectory.1'], cardIds: [], firmness })
     expect(validateReview(review('supportive'), fadeSheet, cards, undefined, { pref: 'adaptive' })).toMatchObject({ ok: false, reason: expect.stringContaining('never softens') })
     expect(validateReview(review('hardCoach'), fadeSheet, cards, undefined, { pref: 'adaptive' })).toMatchObject({ ok: true, value: { firmness: 'hardCoach' } })
-    expect(validateReview(review('balanced', 'You should know better. Italian had 3 sittings three weeks ago.'), fadeSheet, cards, undefined, { pref: 'balanced' })).toMatchObject({ ok: false })
+    expect(validateReview(review('balanced', 'You should know better. Orrish had 3 sittings three weeks ago.'), fadeSheet, cards, undefined, { pref: 'balanced' })).toMatchObject({ ok: false })
     expect(validateReview(review('hardCoach'), fadeSheet, cards)).toMatchObject({ ok: true })
   })
 })

@@ -29,6 +29,7 @@ for (const c of cards) {
   if (!REPLICATION.includes(c.replication)) problems.push(`${where}: replication "${c.replication}"`)
   if (!STATUS.includes(c.status)) problems.push(`${where}: status "${c.status}"`)
   if (typeof c.effect !== 'string' || !c.effect) problems.push(`${where}: effect missing`)
+  if (c.size !== undefined && c.size !== 'medium' && c.size !== 'large') problems.push(`${where}: size "${c.size}" is neither medium nor large`)
   if (typeof c.population !== 'string' || !c.population) problems.push(`${where}: population missing`)
   if (typeof c.caveats !== 'string') problems.push(`${where}: caveats missing`)
   if (typeof c.app !== 'string' || !c.app) problems.push(`${where}: app mapping missing`)

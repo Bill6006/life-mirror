@@ -1,3 +1,4 @@
+import { EVIDENCE_WORDING } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard, Grade } from '../../src/libraryTypes'
 
@@ -47,6 +48,7 @@ export function retrieve(cards: readonly ClaimCard[], sheet: FactSheet, limit = 
   return picked
 }
 
-export function cardLines(cards: readonly ClaimCard[]): string {
-  return cards.map((c) => `[${c.id}] grade ${c.grade}, ${c.replication}: ${c.claim} Effect: ${c.effect}. Caveats: ${c.caveats} In this app: ${c.app}`).join('\n')
+/** The cards as the prompt lists them; once the evidence gate is open (Pass 4), each medium or large one says its size. */
+export function cardLines(cards: readonly ClaimCard[], gate: 'gated' | 'open' = EVIDENCE_WORDING): string {
+  return cards.map((c) => `[${c.id}] grade ${c.grade}, ${c.replication}: ${c.claim} Effect: ${c.effect}. Caveats: ${c.caveats} In this app: ${c.app}${gate === 'open' && c.size ? ` Size: ${c.size}.` : ''}`).join('\n')
 }

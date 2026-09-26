@@ -174,11 +174,16 @@ describe('what the moves resting on if-then plans say of them (truth audit, 2026
     }
   })
 
-  it('keeps each starting belief, and says it was set from the larger 2006 estimate', () => {
-    for (const id of ['two-minute-start', 'study-plan-next', 'smallest-next-step']) {
-      const m = moves.find((x) => x.id === id)
-      expect(m?.prior.effect, id).toBe(0.3)
-      expect(m?.prior.note, id).toMatch(/^Set from Gollwitzer and Sheeran 2006 \(d about 0\.65\), above the 2025 estimate for behaviour \(d = \.27\)/)
+  it('sets each starting belief from the 2025 estimate, scaled as the 2006 figure once was (Pass 4)', () => {
+    // The 2006 figure (d about .65) had been scaled to 0.3 steps; the 2025 estimate (d = .27 on behaviour,
+    // about .15 allowing for bias) scales to a tenth, and a timed cue or a screening-like act (larger) to a fifth.
+    const want: Record<string, number> = { 'two-minute-start': 0.1, 'study-plan-next': 0.1, 'smallest-next-step': 0.1, 'leaving-alarm': 0.2, 'book-the-appointment': 0.2 }
+    const resting = moves.filter((m) => m.source.who === 'Sheeran, Listrom and Gollwitzer')
+    expect(resting.map((m) => m.id).sort()).toEqual(Object.keys(want).sort())
+    for (const m of resting) {
+      expect(m.prior.effect, m.id).toBe(want[m.id])
+      expect(m.prior.note, m.id).toMatch(/2025/)
+      expect(m.prior.note, m.id).not.toMatch(/a third of a step/)
     }
   })
 })

@@ -20,7 +20,7 @@ async function fresh(): Promise<void> {
   await db.open()
   await ensureDayContext(DAY, await getSettings())
   // Something to learn with no skill named yet: the phone's line says so, with delivery choices.
-  await addLearning('Learn Italian', 'A phrasebook', '', '', new Date(2026, 8, 20, 9, 0))
+  await addLearning('Learn Orrish', 'A phrasebook', '', '', new Date(2026, 8, 20, 9, 0))
 }
 
 describe('the How firm setting', () => {
@@ -72,7 +72,7 @@ describe('a saved choice while the gate is closed', () => {
     }
     expect(before.shortlist?.[0]?.situationId).toBe('first-skill')
     expect(before.shortlist?.every((r) => r.firmness === undefined)).toBe(true)
-    expect(lineBefore?.text).toBe('Learn Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.')
+    expect(lineBefore?.text).toBe('Learn Orrish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.')
     expect(lineBefore?.firmness).toBeUndefined()
     // Not even an empty key: the rows are stored as they always were.
     expect((await db.briefLog.toArray()).every((l) => !('firmness' in l) && !('adaptive' in l))).toBe(true)
@@ -86,17 +86,17 @@ describe('once the gate is open (as a preview or at the owner’s word)', () => 
     await setFirmness('hardCoach')
     await chooseAndLog(DAY, NOW, 'open')
     const hard = await todaysLine(DAY, NOW)
-    expect(hard).toMatchObject({ situationId: 'first-skill', firmness: 'hardCoach', text: 'Learn Italian has no current skill yet. Name the one thing to work on now, on its card under Aims.' })
+    expect(hard).toMatchObject({ situationId: 'first-skill', firmness: 'hardCoach', text: 'Learn Orrish has no current skill yet. Name the one thing to work on now, on its card under Aims.' })
     expect(hard?.adaptive).toBeUndefined()
     await setFirmness('supportive')
     await chooseAndLog(DAY, NOW, 'open')
     const warm = await todaysLine(DAY, NOW)
-    expect(warm).toMatchObject({ key: hard?.key, firmness: 'supportive', text: 'Learn Italian has no current skill yet. Naming one is the first step: the one thing to work on now, on its card under Aims; it stays until you change it.' })
+    expect(warm).toMatchObject({ key: hard?.key, firmness: 'supportive', text: 'Learn Orrish has no current skill yet. Naming one is the first step: the one thing to work on now, on its card under Aims; it stays until you change it.' })
     expect({ factIds: warm?.factIds, cardIds: warm?.cardIds, action: warm?.action }).toEqual({ factIds: hard?.factIds, cardIds: hard?.cardIds, action: hard?.action })
     await setFirmness('adaptive')
     await chooseAndLog(DAY, NOW, 'open')
     // Nothing firm to say about a missing skill: Adaptive says it even-handedly, and says it chose.
-    expect(await todaysLine(DAY, NOW)).toMatchObject({ firmness: 'balanced', adaptive: true, text: 'Learn Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.' })
+    expect(await todaysLine(DAY, NOW)).toMatchObject({ firmness: 'balanced', adaptive: true, text: 'Learn Orrish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.' })
   })
 
   it('keeps Why honest when only the chooser changes: the same words, marked Adaptive or not as the setting now says', async () => {
@@ -125,7 +125,7 @@ describe('once the gate is open (as a preview or at the owner’s word)', () => 
     expect(hard).toMatchObject({ firmness: 'hardCoach' })
     await chooseAndLog(DAY, NOW, 'gated')
     const closed = await todaysLine(DAY, NOW)
-    expect(closed).toMatchObject({ key: hard?.key, text: 'Learn Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.' })
+    expect(closed).toMatchObject({ key: hard?.key, text: 'Learn Orrish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.' })
     expect(closed?.firmness).toBeUndefined()
     expect(closed?.adaptive).toBeUndefined()
     expect((await db.briefLog.toArray()).every((l) => !('firmness' in l) && !('adaptive' in l))).toBe(true)
@@ -134,6 +134,6 @@ describe('once the gate is open (as a preview or at the owner’s word)', () => 
   it('writes the ranking the Worker reads at the setting, each line with the delivery it used', async () => {
     await setFirmness('hardCoach')
     const sheet = await factSheet(DAY, NOW, coachMode(), 'open')
-    expect(sheet.shortlist?.[0]).toMatchObject({ situationId: 'first-skill', firmness: 'hardCoach', text: 'Learn Italian has no current skill yet. Name the one thing to work on now, on its card under Aims.' })
+    expect(sheet.shortlist?.[0]).toMatchObject({ situationId: 'first-skill', firmness: 'hardCoach', text: 'Learn Orrish has no current skill yet. Name the one thing to work on now, on its card under Aims.' })
   })
 })

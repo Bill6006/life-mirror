@@ -231,6 +231,41 @@ export function usageRefusal(text: string): string | null {
  */
 export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:work|home|church|the office|a regular place|away)|(?:work|home|church|the office|being away) (?:makes?|made|causes?|caused|drains?|drained|lifts?|lifted|gives?|gave)|caus(?:e|es|ed|ing)|affect(?:s|ed|ing)?)\b/i
 
+/**
+ * Pass 4: how big a line says an effect is may not outrun its cards, and the record's own
+ * comparisons are never said to have caused what happened. Gated, since it changes what the
+ * monitored lines are refused for: it opens with the owner's word after the 2026-10-04 report.
+ */
+export const EVIDENCE_WORDING: 'gated' | 'open' = 'gated'
+
+/** Words that say an effect is large: a cited card whose effect is large must stand under them. */
+export const LARGE_WORDS = /\b(greatly|dramatic(?:ally)?|huge(?:ly)?|massive(?:ly)?|vast(?:ly)?|enormous(?:ly)?|far (?:more|less|better|worse|fewer|higher|lower|greater)|much (?:more|less|better|worse|fewer|higher|lower|greater)|a lot (?:more|less|better|worse)|doubl(?:e|es|ed|ing)|tripl(?:e|es|ed|ing)|halv(?:e|es|ed|ing)|twice as|several times|(?<!(?:more|less|most|as) )strongly|a (?:large|big|huge|major|dramatic|powerful|strong) (?:effect|difference|change|gain|drop|boost|improvement|lift|benefit))\b/i
+/** Words that say an effect is at least medium: a cited card whose effect is medium or large must stand under them. */
+export const MEDIUM_WORDS = /\b(considerabl[ey]|marked(?:ly)?|substantial(?:ly)?|significantly|sizeable|a (?:moderate|medium|sizeable|marked|clear) (?:effect|difference|change|gain|drop|improvement|lift|benefit))\b/i
+/** A claim that something in the record caused what happened: a past cause aimed at you, a because about you, or a why. */
+export const RECORD_CAUSE = /\b(?:(?:made|kept|left|gave|cost|drained|sapped|lifted|raised|lowered|improved|boosted|hurt|harmed|helped|cut|pushed|dragged|ruined|wrecked|fixed|caused|affected|reduced|increased|worsened|spoiled|brought) (?:you|your)\b|because (?:you|your)\b|(?:that|this|which|it)(?:'s|’s| is| was) why\b|is why (?:you|your)\b|(?:led|due|thanks) to (?:you|your)\b)/i
+
+/** The record's own comparisons, like for like and never randomised: an association, never a cause. The owner's test cards are randomised, and are not among them. */
+export function isAssociationFact(id: string): boolean {
+  return id.startsWith('assoc.') || id.startsWith('private.')
+}
+
+const SIZE_RANK: Record<NonNullable<ClaimCard['size']>, number> = { medium: 1, large: 2 }
+
+/** Why a text's size or cause words outrun its evidence, or null (Pass 4). */
+export function evidenceWordingRefusal(text: string, factIds: readonly string[], cards: readonly Pick<ClaimCard, 'size'>[]): string | null {
+  const best = cards.reduce((m, c) => Math.max(m, c.size ? SIZE_RANK[c.size] : 0), 0)
+  const large = LARGE_WORDS.exec(text)
+  if (large && best < SIZE_RANK.large) return `says "${large[0]}", which needs a cited card whose effect is large`
+  const medium = MEDIUM_WORDS.exec(text)
+  if (medium && best < SIZE_RANK.medium) return `says "${medium[0]}", which needs a cited card whose effect is at least medium`
+  if (factIds.some(isAssociationFact)) {
+    const cause = RECORD_CAUSE.exec(text)
+    if (cause) return `says "${cause[0]}" of an association in the record: it went with what followed, and is never said to have caused it`
+  }
+  return null
+}
+
 export function placeRefusal(text: string): string | null {
   return PLACE_CAUSE.test(text) && !USAGE_HEDGE.test(text) ? 'speaks of a place as the cause of a reading; say what went with it' : null
 }
@@ -271,7 +306,7 @@ function strings(v: unknown): string[] {
 }
 
 /** The reason a text is refused, or null when it may be said. */
-function refusal(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number): string | null {
+function refusal(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number, evidence = false): string | null {
   if (!text) return 'no text'
   if (words(text) > maxWords) return `${words(text)} words; at most ${maxWords}`
   for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return `uses the word "${w}"`
@@ -297,6 +332,8 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   // Follow-up F1: a line citing how the app was used may name the Evidence screen; that name is not a claim.
   const claims = factIds.some(isUsageFact) ? text.replace(/\b[Tt]he Evidence screen\b/g, '') : text
   if (cardIds.length === 0 && EVIDENCE_WORDS.test(claims)) return 'speaks of evidence without citing a card'
+  // Pass 4, once its gate is open: size words within the cards' sizes, and no cause read into the record's own comparisons.
+  if (evidence) return evidenceWordingRefusal(text, factIds, cardIds.map((id) => admitted.get(id) as ClaimCard))
   return null
 }
 
@@ -433,7 +470,7 @@ function firmVerdict(raw: unknown, texts: readonly string[], x: DeliverySignals,
   return { ok: true, firmness: raw }
 }
 
-export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS, forDay?: string, firm?: FirmCheck): Validation {
+export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords = MAX_WORDS, forDay?: string, firm?: FirmCheck, evidence = EVIDENCE_WORDING === 'open'): Validation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const mode = o.mode
@@ -443,7 +480,7 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   if (words(text) > maxWords) return { ok: false, reason: `${words(text)} words; at most ${maxWords}` }
   const cited = citations(o, sheet, cards)
   if (typeof cited === 'string') return { ok: false, reason: cited }
-  const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords)
+  const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords, evidence)
   if (why) return { ok: false, reason: why }
   const guarded = forDay ? dayGuard(text, sheet, forDay) : null
   if (guarded) return { ok: false, reason: guarded }
@@ -461,7 +498,7 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
 }
 
 /** The weekly review: what held, what did not, one change; each part held to the rules of a line. */
-export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string, firm?: FirmCheck): ReviewValidation {
+export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string, firm?: FirmCheck, evidence = EVIDENCE_WORDING === 'open'): ReviewValidation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const cited = citations(o, sheet, cards)
@@ -469,7 +506,7 @@ export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly C
   const parts: Record<'held' | 'didNot' | 'change', string> = { held: '', didNot: '', change: '' }
   for (const key of ['held', 'didNot', 'change'] as const) {
     const text = typeof o[key] === 'string' ? (o[key] as string).trim() : ''
-    const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, REVIEW_PART_WORDS) ?? (forDay ? dayGuard(text, sheet, forDay) : null)
+    const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, REVIEW_PART_WORDS, evidence) ?? (forDay ? dayGuard(text, sheet, forDay) : null)
     if (why) return { ok: false, reason: `${key}: ${why}` }
     parts[key] = text
   }

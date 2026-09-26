@@ -1,6 +1,7 @@
 import { render } from 'preact'
 import { registerSW } from 'virtual:pwa-register'
 import { App } from './app'
+import { reloadWhenSafe } from './swUpdate'
 import { applyTheme, currentTheme, followOtherWindows } from './theme'
 import './styles.css'
 
@@ -8,7 +9,8 @@ import './styles.css'
 applyTheme(currentTheme())
 followOtherWindows()
 
-// Register the service worker at once so the app opens offline after its first load.
-registerSW({ immediate: true })
+// Register the service worker at once so the app opens offline after its first load. A new build
+// reloads the page, but never under someone's typing (Pass 4).
+registerSW({ immediate: true, onNeedReload: () => reloadWhenSafe() })
 
 render(<App />, document.getElementById('app')!)

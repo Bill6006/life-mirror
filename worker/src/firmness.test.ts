@@ -34,11 +34,11 @@ function sheetFor(day: string): FactSheet {
     direction: null,
     said: [],
     checkedIn: { morning: `${day}T11:40:00.000Z` },
-    shortlist: [{ situationId: 'commitment-fading', mode: 'challenge', text: 'Italian: 3 sittings in the two weeks before, none in the last two. This is where a commitment is usually let go. Pin the smallest sitting to a moment today.', factIds: ['trajectory.1', 'aim.1'], cardIds: ['plan-a-cue'], score: 0.85, firmness: 'hardCoach' }],
+    shortlist: [{ situationId: 'commitment-fading', mode: 'challenge', text: 'Orrish: 3 sittings in the two weeks before, none in the last two. This is where a commitment is usually let go. Pin the smallest sitting to a moment today.', factIds: ['trajectory.1', 'aim.1'], cardIds: ['plan-a-cue'], score: 0.85, firmness: 'hardCoach' }],
     facts: [
       { id: 'week.today', tags: ['cue'], text: 'Today is Sunday; at home; her bedtime 20:00.', values: { weekday: 'Sunday', daycare: 0, pickup: null, office: 0, church: 0, studyNight: 0, bedtime: '20:00', hour: 7 } },
-      { id: 'aim.1', tags: ['study', 'cue'], text: 'Italian (learning): the current skill is “Twenty words”; no session in the last two weeks.', values: { kind: 'certification', name: 'Italian', skill: 'Twenty words' } },
-      { id: 'trajectory.1', tags: ['study'], text: 'Italian: 3 sittings three weeks ago, none since.', values: { aimId: 1, name: 'Italian', w3: 3, w2: 0, w1: 0, w0: 0, d0: 0, ageDays: 30 } },
+      { id: 'aim.1', tags: ['study', 'cue'], text: 'Orrish (learning): the current skill is “Twenty words”; no session in the last two weeks.', values: { kind: 'certification', name: 'Orrish', skill: 'Twenty words' } },
+      { id: 'trajectory.1', tags: ['study'], text: 'Orrish: 3 sittings three weeks ago, none since.', values: { aimId: 1, name: 'Orrish', w3: 3, w2: 0, w1: 0, w0: 0, d0: 0, ageDays: 30 } },
       { id: 'assoc.napped', tags: ['sleep'], text: 'Mornings after a nap read 6 lower, 5 naps.', values: { times: 5, diff: -6 }, tier: 'promising' },
     ],
   }
@@ -69,7 +69,7 @@ const open = (store: Store, now: Date) => ({ env, store, now, fetcher, howFirm: 
 const url = (q: Record<string, string>) => new URL(`https://w.test/claude/briefing?${new URLSearchParams(q)}`)
 const briefRow = (store: Store, id: string) => JSON.parse(store.rows.get(`${BRAIN_APP}|briefs|${id}`)?.body ?? 'null')
 const answer = (store: Store, task: 'line' | 'review' | 'coach', a: unknown, now: Date) => handleLine(open(store, now), { task, day: DAY, answer: a, askedModel: 'opus', writtenModel: 'claude-opus-5-5', runnerModel: 'claude-haiku-4-5-20251001', subagentError: null })
-const FADE = { mode: 'challenge', text: 'Italian: 3 sittings three weeks ago, none since. Pin the smallest sitting to a moment today.', factIds: ['trajectory.1', 'aim.1'], cardIds: ['plan-a-cue'], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' }, lacked: [] }
+const FADE = { mode: 'challenge', text: 'Orrish: 3 sittings three weeks ago, none since. Pin the smallest sitting to a moment today.', factIds: ['trajectory.1', 'aim.1'], cardIds: ['plan-a-cue'], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' }, lacked: [] }
 const stripFirm = (s: string) => s.replace(/\n\nHOW FIRM: [\s\S]*?(?=\n\nAnswer with JSON only)/, '').replace('"firmness": "...", ', '').replace(', "firmness": "..."', '')
 
 describe('what each writer is told once How firm’s gate is open', () => {
@@ -141,7 +141,7 @@ describe('Claude’s line and Sunday review, once How firm’s gate is open', ()
     await runReview(env, store, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine() })
     const r = (await handleBriefing(open(store, at('05:01', DAY)), url({ task: 'review', day: DAY }))).body as { instructions: string; answer: Record<string, unknown> }
     expect(r.instructions).toContain('Say all three parts Supportive.')
-    const review = { held: 'Italian had 3 sittings three weeks ago.', didNot: 'None in the last two weeks.', change: 'Pin the smallest sitting to a moment each evening.', factIds: ['trajectory.1'], cardIds: [], lacked: [] }
+    const review = { held: 'Orrish had 3 sittings three weeks ago.', didNot: 'None in the last two weeks.', change: 'Pin the smallest sitting to a moment each evening.', factIds: ['trajectory.1'], cardIds: [], lacked: [] }
     // Supportive may be gentle about a real pattern, never silent: this one says its count.
     expect(await answer(store, 'review', { ...review, firmness: 'supportive' }, at('05:05', DAY))).toMatchObject({ status: 200 })
     expect(briefRow(store, `${DAY}:review`)).toMatchObject({ firmness: 'supportive' })

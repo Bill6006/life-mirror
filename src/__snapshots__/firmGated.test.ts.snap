@@ -17,24 +17,24 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "direction-counts": "Your direction: “{direction}”. So far {study} study sessions, {conversations} conversations started, {faith} practices, {her} times with her. Counts, not a verdict.",
   "first-skill": "{name} has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.",
   "forecast-wide": "The model’s range for the {block} runs {lo} to {hi}: a guess. Your own reading at the check-in is the better guide today.",
-  "fresh-start": "A {weekday}. Fresh starts are measurably easier to begin on, and {name}, {d} days still, is the one to restart.",
-  "loneliness-high": "Loneliness read “{word}” at the last check-in. One small contact today, a message or a question to someone: small ones move it.",
+  "fresh-start": "A {weekday}. People begin goals more often right after a fresh start like this, and {name}, {d} days still, is the one to restart.",
+  "loneliness-high": "Loneliness read “{word}” at the last check-in. One small contact today, a message or a question to someone: these usually go better than people expect.",
   "loop-closed": "Yesterday’s line was about {name}; since then the record shows {what}. That is the loop closing.",
   "loop-open": "Yesterday’s line was about {name}, and the record shows nothing on it since. If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.",
   "loop-planned": "Yesterday’s line was about {name}: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
-  "nap-read": "Mornings after a nap read {diff} against the mornings without, {n} naps. Short naps help the afternoon; long ones cost the night.",
-  "necessities-missed": "{n} necessities missed in three days. That is the earliest sign of a stretch; the smallest one first, before any move.",
+  "nap-read": "Mornings after a nap read {diff} against the mornings without, {n} naps. Short naps help the afternoon; long ones bring more grogginess after.",
+  "necessities-missed": "{n} necessities missed in three days. That can be an early sign of a stretch; the smallest one first, before any move.",
   "nothing-holds": "Nothing extra was kept {done} of the {offered} times it was offered. Rest is a move; the mornings after say what it does.",
   "partly-honest": "Partly, {n} times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
   "propose-test": "The library holds {grade} for {move}, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
   "say-when": "{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
   "short-night-today": "Sleep read “{word}” this morning. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
-  "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings. Regular hours count for more than long ones.",
+  "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
   "social-recovery": "Mornings after a big social event read {diff} under the others, {n} times: an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
   "steady-moving": "Steady, {inside} of {of} blocks inside the usual, and {name} moved this week. Progress that is recorded carries part of the effect by itself.",
   "step-stalled": "{name}: no session recorded in {d} days. The smaller version today counts, and a gap does not undo what was built.",
   "stretch": "{under} of the last {of} blocks read under their usual low. A stretch is starting. One easy move a day, kept, is what turns these; the mood follows the doing.",
-  "workout-evenings": "Evenings of workout days read {diff} above the others so far, {n} days: an association in your record, not yet a finding. Exercise is one of the best-supported levers there is for mood.",
+  "workout-evenings": "Evenings of workout days read {diff} above the others so far, {n} days: an association in your record, not yet a finding. The evidence for exercise and mood is strong.",
   "workout-flat": "Evenings of workout days read {diff} against the others, {n} days. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
 }
 `;
@@ -159,7 +159,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "challenge",
     "score": 0.85,
-    "text": "Italian: 3 sittings in the two weeks before, none in the last two. This is where a commitment is usually let go, and it is the cue that goes first, not the will. Pin the smallest sitting to a moment today.",
+    "text": "Orrish: 3 sittings in the two weeks before, none in the last two. This is where a commitment is usually let go, and it is the cue that goes first, not the will. Pin the smallest sitting to a moment today.",
   },
   "commitment-thinning": {
     "action": {
@@ -177,7 +177,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "strategy",
     "score": 0.7,
-    "text": "Italian: none in the last seven days, after 3 the week before. One short sitting keeps the thread; pin it to a moment today.",
+    "text": "Orrish: none in the last seven days, after 3 the week before. One short sitting keeps the thread; pin it to a moment today.",
   },
   "cue-holds": {
     "action": null,
@@ -230,7 +230,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "recommendation",
     "score": 0.54,
-    "text": "Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.",
+    "text": "Orrish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.",
   },
   "forecast-wide": {
     "action": null,
@@ -253,7 +253,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "encouragement",
     "score": 0.35,
-    "text": "A Monday. Fresh starts are measurably easier to begin on, and Italian, 6 days still, is the one to restart.",
+    "text": "A Monday. People begin goals more often right after a fresh start like this, and Orrish, 6 days still, is the one to restart.",
   },
   "loneliness-high": {
     "action": null,
@@ -267,7 +267,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "recommendation",
     "score": 0.9,
-    "text": "Loneliness read “Lonely” at the last check-in. One small contact today, a message or a question to someone: small ones move it.",
+    "text": "Loneliness read “Lonely” at the last check-in. One small contact today, a message or a question to someone: these usually go better than people expect.",
   },
   "loop-closed": {
     "action": null,
@@ -279,7 +279,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "encouragement",
     "score": 0.55,
-    "text": "Yesterday’s line was about Italian; since then the record shows 1 step started. That is the loop closing.",
+    "text": "Yesterday’s line was about Orrish; since then the record shows 1 step started. That is the loop closing.",
   },
   "loop-open": {
     "action": {
@@ -296,7 +296,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "perspective",
     "score": 0.6,
-    "text": "Yesterday’s line was about Italian, and the record shows nothing on it since. If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.",
+    "text": "Yesterday’s line was about Orrish, and the record shows nothing on it since. If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.",
   },
   "loop-planned": {
     "action": {
@@ -314,7 +314,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "perspective",
     "score": 0.65,
-    "text": "Yesterday’s line was about Italian: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
+    "text": "Yesterday’s line was about Orrish: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
   },
   "nap-read": {
     "action": null,
@@ -327,7 +327,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "observation",
     "score": 0.68,
-    "text": "Mornings after a nap read -6 against the mornings without, 5 naps. Short naps help the afternoon; long ones cost the night.",
+    "text": "Mornings after a nap read -6 against the mornings without, 5 naps. Short naps help the afternoon; long ones bring more grogginess after.",
   },
   "necessities-missed": {
     "action": null,
@@ -339,7 +339,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "warning",
     "score": 0.8,
-    "text": "2 necessities missed in three days. That is the earliest sign of a stretch; the smallest one first, before any move.",
+    "text": "2 necessities missed in three days. That can be an early sign of a stretch; the smallest one first, before any move.",
   },
   "nothing-holds": {
     "action": null,
@@ -396,7 +396,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "recommendation",
     "score": 0.6,
-    "text": "Italian: the step is Twenty words. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
+    "text": "Orrish: the step is Twenty words. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
   },
   "short-night-today": {
     "action": null,
@@ -423,7 +423,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "observation",
     "score": 0.55,
-    "text": "Afternoons after short nights read -5 against the others, 4 mornings. Regular hours count for more than long ones.",
+    "text": "Afternoons after short nights read -5 against the others, 4 mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
   },
   "social-recovery": {
     "action": null,
@@ -448,7 +448,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "encouragement",
     "score": 0.5,
-    "text": "Steady, 5 of 6 blocks inside the usual, and Italian moved this week. Progress that is recorded carries part of the effect by itself.",
+    "text": "Steady, 5 of 6 blocks inside the usual, and Orrish moved this week. Progress that is recorded carries part of the effect by itself.",
   },
   "step-stalled": {
     "action": {
@@ -465,7 +465,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "challenge",
     "score": 0.45,
-    "text": "Italian: no session recorded in 9 days. The smaller version today counts, and a gap does not undo what was built.",
+    "text": "Orrish: no session recorded in 9 days. The smaller version today counts, and a gap does not undo what was built.",
   },
   "stretch": {
     "action": null,
@@ -490,7 +490,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "encouragement",
     "score": 0.7,
-    "text": "Evenings of workout days read +7 above the others so far, 4 days: an association in your record, not yet a finding. Exercise is one of the best-supported levers there is for mood.",
+    "text": "Evenings of workout days read +7 above the others so far, 4 days: an association in your record, not yet a finding. The evidence for exercise and mood is strong.",
   },
   "workout-flat": {
     "action": null,

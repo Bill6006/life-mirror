@@ -1872,23 +1872,23 @@ test('the skill coach stays dark while its gate is closed: commitments are set u
   test.setTimeout(180_000)
   await startWithDirection(page)
   // A goal with no skill, and a physical one: neither asks Claude, no safety question shows, and each card asks for the one thing to work on now.
-  await addLearning(page, 'Italian')
+  await addLearning(page, 'Orrish')
   await addLearning(page, 'Cartwheel')
   for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
   await expect(page.getByTestId('aim-skill-set-name')).toHaveCount(2)
-  const italian = page.getByTestId('aim-card').filter({ hasText: 'Italian' })
-  await italian.getByTestId('aim-skill-set-name').fill('Ten words')
-  await italian.getByTestId('aim-skill-set-save').click()
-  await expect(italian.getByTestId('aim-step')).toHaveText('Ten words')
-  await italian.getByTestId('aim-details').click()
-  await expect(italian.getByTestId('coach-ask-row')).toHaveCount(0)
+  const orrish = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
+  await orrish.getByTestId('aim-skill-set-name').fill('Ten words')
+  await orrish.getByTestId('aim-skill-set-save').click()
+  await expect(orrish.getByTestId('aim-step')).toHaveText('Ten words')
+  await orrish.getByTestId('aim-details').click()
+  await expect(orrish.getByTestId('coach-ask-row')).toHaveCount(0)
   // Six different practice days with a week behind the skill: where a review would fall due, and none does.
-  for (const d of [8, 9, 10, 11, 12, 13]) await practiseOn(page, d, ['Italian'])
+  for (const d of [8, 9, 10, 11, 12, 13]) await practiseOn(page, d, ['Orrish'])
   await page.clock.setFixedTime(new Date(2026, 8, 14, 18, 0))
   await page.reload()
-  await expect(page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Italian' })).toBeVisible()
+  await expect(page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Orrish' })).toBeVisible()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await expect(italian.getByTestId('aim-practice')).toContainText('6 sessions on 6 different days')
+  await expect(orrish.getByTestId('aim-practice')).toContainText('6 sessions on 6 different days')
   for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
   expect(await rowsOf(page, 'coachAsks')).toEqual([])
   expect(await rowsOf(page, 'coachProposals')).toEqual([])
@@ -1897,20 +1897,20 @@ test('the skill coach stays dark while its gate is closed: commitments are set u
 test('the skill coach, previewed (Part 40): a first skill asked for at once; Claude’s suggestion changes nothing until you choose; Another suggestion, Edit first, and the likely next on your tap', async ({ page }) => {
   await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
   await startWithDirection(page)
-  await addLearning(page, 'Italian', '', 'A phrasebook')
-  const card = page.getByTestId('aim-card').filter({ hasText: 'Italian' })
+  await addLearning(page, 'Orrish', '', 'A phrasebook')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
   // Asked at once; meanwhile the one thing to work on now can be yours.
   await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for a first skill')
   await expect(card.getByTestId('aim-skill-set-name')).toBeVisible()
   const [first] = await rowsOf<Ask>(page, 'coachAsks')
   expect(first).toMatchObject({ kind: 'setup', claude: true, day: '2026-09-07' })
   expect(first).not.toHaveProperty('care')
-  await answerAsk(page, first.id, { suggestion: { skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest stands on.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
+  await answerAsk(page, first.id, { suggestion: { skill: 'Understand everyday spoken Orrish', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest stands on.', physical: false, safety: null, likelyNext: 'Short spoken answers' } })
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   const s = card.getByTestId('coach-suggestion')
   await expect(s).toContainText('Claude suggests')
-  await expect(card.getByTestId('coach-suggestion-skill')).toHaveText('Understand everyday spoken Italian')
+  await expect(card.getByTestId('coach-suggestion-skill')).toHaveText('Understand everyday spoken Orrish')
   await expect(s).toContainText('With a phrasebook · 30 minutes a session · 5 a week')
   await expect(s).toContainText('Why: Listening first builds the ear the rest stands on.')
   await expect(s).toContainText('Likely next: Short spoken answers')
@@ -2068,9 +2068,9 @@ test('a progression review, previewed (Part 41): six different practice days wit
 
 const FIRM_PREVIEW = 'life-mirror.preview.howFirm'
 const NO_SKILL = {
-  balanced: 'Italian has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.',
-  supportive: 'Italian has no current skill yet. Naming one is the first step: the one thing to work on now, on its card under Aims; it stays until you change it.',
-  hardCoach: 'Italian has no current skill yet. Name the one thing to work on now, on its card under Aims.',
+  balanced: 'Orrish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.',
+  supportive: 'Orrish has no current skill yet. Naming one is the first step: the one thing to work on now, on its card under Aims; it stays until you change it.',
+  hardCoach: 'Orrish has no current skill yet. Name the one thing to work on now, on its card under Aims.',
 }
 
 /** Settings → Brain closes with its own Done, back to the tabs. */
@@ -2096,7 +2096,7 @@ async function openWhy(page: Page): Promise<void> {
 
 test('How firm stays dark while its gate is closed: nothing under Brain, and the phone’s own line reads as it always has (Pass 2)', async ({ page }) => {
   await startWithDirection(page)
-  await addLearning(page, 'Italian')
+  await addLearning(page, 'Orrish')
   await checkInForTheLine(page)
   await expect(page.getByTestId('brief').getByTestId('brief-line')).toHaveText(NO_SKILL.balanced)
   await openWhy(page)
@@ -2111,7 +2111,7 @@ test('How firm stays dark while its gate is closed: nothing under Brain, and the
 test('How firm, previewed (Pass 2): four settings under Brain, Adaptive until chosen, the choice kept; the phone’s own line said at each, its facts unchanged', async ({ page }) => {
   await page.addInitScript((k) => localStorage.setItem(k, '1'), FIRM_PREVIEW)
   await startWithDirection(page)
-  await addLearning(page, 'Italian')
+  await addLearning(page, 'Orrish')
 
   // Settings → Brain: How firm sits right under who writes the line, Adaptive first and chosen.
   await settingsSection(page, 'brain')

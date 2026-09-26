@@ -4,8 +4,8 @@ import { checkReview, checkSuggestion, coachTextRefusal, HARD_RUN, isPhysical, M
 // Parts 40 and 41's shared rules: the gate, the checks every answer from Claude passes before the
 // phone may show it, the revision a proposal is written for, and when a progression review is due.
 
-const ctx = (extra: Partial<CoachContext> = {}): CoachContext => ({ goal: 'Learn Italian', physical: false, faithHidden: false, names: [], numbers: new Set(['5', '6', '4', '12', '20']), ...extra })
-const italian = { skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest of the course leans on.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
+const ctx = (extra: Partial<CoachContext> = {}): CoachContext => ({ goal: 'Learn Orrish', physical: false, faithHidden: false, names: [], numbers: new Set(['5', '6', '4', '12', '20']), ...extra })
+const orrish = { skill: 'Understand everyday spoken Orrish', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest of the course leans on.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
 
 describe('the gate', () => {
   it('stays closed until the monitoring completes and the owner approves (2026-09-25)', () => {
@@ -16,11 +16,11 @@ describe('the gate', () => {
 })
 
 describe('what makes a goal physical', () => {
-  it('knows a cartwheel, yoga and a 10k, and not Italian, macros that run, the cello or watercolour', () => {
+  it('knows a cartwheel, yoga and a 10k, and not Orrish, macros that run, the cello or watercolour', () => {
     expect(isPhysical(['Learn a cartwheel'])).toBe(true)
     expect(isPhysical(['Yoga at home'])).toBe(true)
     expect(isPhysical(['Run a 10k'])).toBe(true)
-    for (const g of ['Learn Italian', 'Spreadsheet macros: run them on a schedule', 'Cello', 'Watercolour faces']) expect(isPhysical([g])).toBe(false)
+    for (const g of ['Learn Orrish', 'Spreadsheet macros: run them on a schedule', 'Cello', 'Watercolour faces']) expect(isPhysical([g])).toBe(false)
     // Claude may say so of a goal the words miss.
     expect(isPhysical(['Ride a unicycle'])).toBe(false)
     expect(isPhysical(['Ride a unicycle'], true)).toBe(true)
@@ -29,52 +29,52 @@ describe('what makes a goal physical', () => {
 
 describe('a suggestion for the current skill (Part 40)', () => {
   it('passes whole: the skill, method, how, minutes, rhythm, why and a likely next, with no safety line for a skill that needs none', () => {
-    const r = checkSuggestion(italian, ctx())
-    expect(r).toEqual({ ok: true, value: { ...italian, physical: false } })
+    const r = checkSuggestion(orrish, ctx())
+    expect(r).toEqual({ ok: true, value: { ...orrish, physical: false } })
   })
 
   it('always carries a safety line for a physical skill, whatever Claude calls it', () => {
-    const hand = { ...italian, skill: 'Cartwheels along a line', method: null, how: 'Kick over along a line, land with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Holding against the wall builds the shoulders and the line first.', physical: false, safety: null, likelyNext: 'Chest-to-wall cartwheel' }
+    const hand = { ...orrish, skill: 'Cartwheels along a line', method: null, how: 'Kick over along a line, land with control.', minutes: 12, rhythm: { perWeek: 3, restDays: 1 }, why: 'Holding against the wall builds the shoulders and the line first.', physical: false, safety: null, likelyNext: 'Chest-to-wall cartwheel' }
     expect(checkSuggestion(hand, ctx({ goal: 'Learn a cartwheel', numbers: new Set() }))).toEqual({ ok: false, reason: 'a physical skill needs its safety line' })
     const safe = checkSuggestion({ ...hand, safety: 'Warm up the wrists first; stop if a wrist or the neck hurts; skip inversions with raised blood pressure. Not medical advice.' }, ctx({ goal: 'Learn a cartwheel', numbers: new Set() }))
     expect(safe.ok && safe.value.physical).toBe(true)
   })
 
   it('refuses a wrong shape: too long, a session out of range, a rhythm that cannot keep its rest days', () => {
-    expect(checkSuggestion({ ...italian, skill: 'x'.repeat(81) }, ctx())).toMatchObject({ ok: false, reason: 'skill is 81 characters; at most 80' })
-    expect(checkSuggestion({ ...italian, minutes: 0 }, ctx())).toMatchObject({ ok: false, reason: 'a session is one to 240 minutes' })
-    expect(checkSuggestion({ ...italian, rhythm: { perWeek: 8, restDays: 0 } }, ctx())).toMatchObject({ ok: false })
-    expect(checkSuggestion({ ...italian, rhythm: { perWeek: 4, restDays: 1 } }, ctx())).toMatchObject({ ok: false, reason: 'that many sessions a week cannot keep that many rest days between them' })
-    expect(checkSuggestion({ ...italian, how: '' }, ctx())).toMatchObject({ ok: false, reason: 'no how' })
+    expect(checkSuggestion({ ...orrish, skill: 'x'.repeat(81) }, ctx())).toMatchObject({ ok: false, reason: 'skill is 81 characters; at most 80' })
+    expect(checkSuggestion({ ...orrish, minutes: 0 }, ctx())).toMatchObject({ ok: false, reason: 'a session is one to 240 minutes' })
+    expect(checkSuggestion({ ...orrish, rhythm: { perWeek: 8, restDays: 0 } }, ctx())).toMatchObject({ ok: false })
+    expect(checkSuggestion({ ...orrish, rhythm: { perWeek: 4, restDays: 1 } }, ctx())).toMatchObject({ ok: false, reason: 'that many sessions a week cannot keep that many rest days between them' })
+    expect(checkSuggestion({ ...orrish, how: '' }, ctx())).toMatchObject({ ok: false, reason: 'no how' })
   })
 
   it('refuses percentages, levels, points and readiness: counts in words', () => {
-    for (const why of ['You will be 80% fluent.', 'This will level up your Italian.', 'Aim for mastery of the numbers.', 'Your readiness is high.', 'Rate yourself 7/10 each time.']) expect(checkSuggestion({ ...italian, why }, ctx({ numbers: new Set(['80', '7']) }))).toMatchObject({ ok: false, reason: 'gives a percentage, level, score or readiness; say counts in words' })
+    for (const why of ['You will be 80% fluent.', 'This will level up your Orrish.', 'Aim for mastery of the numbers.', 'Your readiness is high.', 'Rate yourself 7/10 each time.']) expect(checkSuggestion({ ...orrish, why }, ctx({ numbers: new Set(['80', '7']) }))).toMatchObject({ ok: false, reason: 'gives a percentage, level, score or readiness; say counts in words' })
   })
 
   it('never reads silence or a refusal as a shortfall, and never passes a verdict on or explains the person', () => {
-    expect(checkSuggestion({ ...italian, why: 'You missed four days, so start smaller.' }, ctx())).toMatchObject({ ok: false, reason: 'reads silence or a refusal as a shortfall; say what the record holds' })
-    expect(checkSuggestion({ ...italian, why: 'Because you lack discipline, keep it short.' }, ctx())).toMatchObject({ ok: false })
-    expect(checkSuggestion({ ...italian, why: 'You are not ready for grammar yet.' }, ctx())).toMatchObject({ ok: false, reason: 'passes a verdict on the person or explains them; speak of the practice' })
+    expect(checkSuggestion({ ...orrish, why: 'You missed four days, so start smaller.' }, ctx())).toMatchObject({ ok: false, reason: 'reads silence or a refusal as a shortfall; say what the record holds' })
+    expect(checkSuggestion({ ...orrish, why: 'Because you lack discipline, keep it short.' }, ctx())).toMatchObject({ ok: false })
+    expect(checkSuggestion({ ...orrish, why: 'You are not ready for grammar yet.' }, ctx())).toMatchObject({ ok: false, reason: 'passes a verdict on the person or explains them; speak of the practice' })
   })
 
   it('leaves people, dating and a particular person to the paths', () => {
-    for (const how of ['Practise small talk with a stranger each day.', 'Ask someone out in Italian.', 'Use it on a date.']) expect(checkSuggestion({ ...italian, how }, ctx())).toMatchObject({ ok: false, reason: 'belongs to the Social or Partner path, never a commitment' })
+    for (const how of ['Practise small talk with a stranger each day.', 'Ask someone out in Orrish.', 'Use it on a date.']) expect(checkSuggestion({ ...orrish, how }, ctx())).toMatchObject({ ok: false, reason: 'belongs to the Social or Partner path, never a commitment' })
     // Performing in front of people stays a commitment.
-    expect(checkSuggestion({ ...italian, likelyNext: 'Read a short passage aloud to a class' }, ctx())).toMatchObject({ ok: true })
+    expect(checkSuggestion({ ...orrish, likelyNext: 'Read a short passage aloud to a class' }, ctx())).toMatchObject({ ok: true })
   })
 
   it('speaks of faith only while shown, and names a private item only while its name may be shown', () => {
-    const prayer = { ...italian, how: 'Read one Bible verse in Italian, aloud.' }
+    const prayer = { ...orrish, how: 'Read one Bible verse in Orrish, aloud.' }
     expect(checkSuggestion(prayer, ctx({ faithHidden: true }))).toMatchObject({ ok: false, reason: 'speaks of faith while faith is hidden' })
     expect(checkSuggestion(prayer, ctx())).toMatchObject({ ok: true })
-    expect(checkSuggestion({ ...italian, why: 'Less time on Late-night scrolling leaves room for it.' }, ctx({ names: ['Late-night scrolling'] }))).toMatchObject({ ok: false, reason: 'names a private item while its name may not be shown' })
+    expect(checkSuggestion({ ...orrish, why: 'Less time on Late-night scrolling leaves room for it.' }, ctx({ names: ['Late-night scrolling'] }))).toMatchObject({ ok: false, reason: 'names a private item while its name may not be shown' })
   })
 
   it('takes every number from the briefing or its own fields', () => {
-    expect(checkSuggestion({ ...italian, how: 'Learn 50 words a session.' }, ctx())).toMatchObject({ ok: false, reason: 'the number 50 is not in the briefing' })
+    expect(checkSuggestion({ ...orrish, how: 'Learn 50 words a session.' }, ctx())).toMatchObject({ ok: false, reason: 'the number 50 is not in the briefing' })
     // Its own minutes and rhythm may be said.
-    expect(checkSuggestion({ ...italian, how: 'One 30-minute lesson, 5 times a week.' }, ctx({ numbers: new Set() }))).toMatchObject({ ok: true })
+    expect(checkSuggestion({ ...orrish, how: 'One 30-minute lesson, 5 times a week.' }, ctx({ numbers: new Set() }))).toMatchObject({ ok: true })
   })
 })
 
@@ -94,8 +94,8 @@ describe('a progression review (Part 41)', () => {
     expect(checkReview({ ...base, verdict: 'progress', change: { skill: 'Short spoken answers', how: 'Answer each prompt aloud in a full sentence.' } }, rc())).toMatchObject({ ok: true, value: { change: { skill: 'Short spoken answers' } } })
     expect(checkReview({ ...base, verdict: 'progress', change: { skill: 'ten words' } }, rc())).toEqual({ ok: false, reason: 'Progress names the next skill' })
     expect(checkReview({ ...base, verdict: 'simplify', change: { skill: 'Five words', minutes: 15 } }, rc())).toMatchObject({ ok: true })
-    expect(checkReview({ ...base, verdict: 'simplify', change: { skill: 'Five words' }, why: 'Or drop Italian for now.' }, rc())).toEqual({ ok: false, reason: 'a review changes the skill or its practice, never the goal' })
-    expect(checkReview({ ...base, verdict: 'simplify', change: { goal: 'Learn Spanish' } }, rc())).toMatchObject({ ok: false })
+    expect(checkReview({ ...base, verdict: 'simplify', change: { skill: 'Five words' }, why: 'Or drop Orrish for now.' }, rc())).toEqual({ ok: false, reason: 'a review changes the skill or its practice, never the goal' })
+    expect(checkReview({ ...base, verdict: 'simplify', change: { goal: 'Learn Tamlic' } }, rc())).toMatchObject({ ok: false })
   })
 
   it('never proposes Progress when three Hard sessions brought the review forward', () => {
@@ -120,7 +120,7 @@ describe('a progression review (Part 41)', () => {
 })
 
 describe('the revision a proposal is written for', () => {
-  const aim = { id: 1, name: 'Learn Italian', about: 'I can read a little', rhythm: { perWeek: 3, restDays: 0 }, schedule: [], currentSkillId: 2 }
+  const aim = { id: 1, name: 'Learn Orrish', about: 'I can read a little', rhythm: { perWeek: 3, restDays: 0 }, schedule: [], currentSkillId: 2 }
   const skill = { id: 2, name: 'Ten words', method: 'A phrasebook', how: 'One page', minutes: 30 }
   it('is the same for the same commitment, and changes with its skill, the skill’s practice, its rhythm, its fixed days or a pause', () => {
     const r = revisionOf(aim, skill)

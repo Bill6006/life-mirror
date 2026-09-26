@@ -21,8 +21,8 @@ import { phoneReview } from './situations'
 const T = (d: number, h = 20, m = 0) => new Date(2026, 8, d, h, m)
 const day = (d: number) => `2026-09-${String(d).padStart(2, '0')}`
 
-async function italian(skill = ''): Promise<Aim> {
-  await addLearning('Learn Italian', 'A phrasebook', skill, 'I can read a little', T(20, 9))
+async function orrish(skill = ''): Promise<Aim> {
+  await addLearning('Learn Orrish', 'A phrasebook', skill, 'I can read a little', T(20, 9))
   const [aim] = await studyAims()
   return aim
 }
@@ -35,7 +35,7 @@ async function answer(askId: number, p: Partial<CoachProposal>): Promise<void> {
   if (!ask) throw new Error('no ask')
   await db.coachProposals.put({ id: proposalIdOf(askId), askId, aimId: ask.aimId, kind: ask.kind, revision: ask.revision, day: ask.day, at: `${ask.day}T21:00:00.000Z`, model: 'claude-opus-5-5', askedModel: 'opus', ...p })
 }
-const suggestion = { skill: 'Understand everyday spoken Italian', method: 'A phrasebook', how: 'One page a session, read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
+const suggestion = { skill: 'Understand everyday spoken Orrish', method: 'A phrasebook', how: 'One page a session, read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
 
 describe('who may see the skill coach', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -68,7 +68,7 @@ describe('with the gate closed (as it stays until the owner turns it on)', () =>
   })
 
   it('asks nothing, shows nothing and writes nothing, and the commitment is set by hand as before', async () => {
-    const aim = await italian()
+    const aim = await orrish()
     await withCloud()
     expect(await coachStates(day(20))).toBeNull()
     expect(await askSuggestion(aim.id as number, T(20))).toBeNull()
@@ -100,8 +100,8 @@ describe('a suggestion for the current skill (Part 40)', () => {
     const again = (await anotherSuggestion(ask, T(20, 21), 'open')) as number
     expect(await db.coachAsks.get(again)).toMatchObject({ care: 'A sore left wrist', after: proposalIdOf(ask) })
     // A goal that is not physical asks nothing of the kind, and keeps no answer.
-    await italian()
-    const fr = (await studyAims()).find((a) => a.name === 'Learn Italian') as Aim
+    await orrish()
+    const fr = (await studyAims()).find((a) => a.name === 'Learn Orrish') as Aim
     const plain = (await askSuggestion(fr.id as number, T(20), undefined, 'open', 'ignored')) as number
     expect((await coachStates(day(20), 'open'))?.get(fr.id as number)?.physical).toBe(false)
     expect(await db.coachAsks.get(plain)).not.toHaveProperty('care')
@@ -109,7 +109,7 @@ describe('a suggestion for the current skill (Part 40)', () => {
 
   it('writes one ask for two taps at once', async () => {
     await withCloud()
-    const aim = await italian()
+    const aim = await orrish()
     const [a, b] = await Promise.all([askSuggestion(aim.id as number, T(20), undefined, 'open'), askSuggestion(aim.id as number, T(20), undefined, 'open')])
     expect(a).not.toBeNull()
     expect(b).toBe(a)
@@ -118,7 +118,7 @@ describe('a suggestion for the current skill (Part 40)', () => {
 
   it('takes the likely next skill on your tap alone, as Claude’s, the one before kept in the history', async () => {
     await withCloud()
-    const aim = await italian()
+    const aim = await orrish()
     const id = aim.id as number
     const ask = (await askSuggestion(id, T(20), undefined, 'open')) as number
     await answer(ask, { suggestion })
@@ -126,13 +126,13 @@ describe('a suggestion for the current skill (Part 40)', () => {
     const next = await takeLikelyNext(id, T(22, 9))
     const skills = await db.skills.toArray()
     expect(skills.find((s) => s.id === next)).toMatchObject({ name: 'Short spoken answers', method: 'A phrasebook', source: 'claude' })
-    expect(skills.find((s) => s.name === 'Understand everyday spoken Italian')?.endedAt).toBeTruthy()
+    expect(skills.find((s) => s.name === 'Understand everyday spoken Orrish')?.endedAt).toBeTruthy()
     // The new skill names no likely next of its own: nothing more to take.
     expect(await takeLikelyNext(id, T(22, 10))).toBeNull()
   })
 
   it('is asked only when Claude may be: never without a cloud copy, or with the Commitments switch off', async () => {
-    const aim = await italian()
+    const aim = await orrish()
     const id = aim.id as number
     expect(await askSuggestion(id, T(20), undefined, 'open')).toBeNull()
     await withCloud()
@@ -161,7 +161,7 @@ describe('a suggestion for the current skill (Part 40)', () => {
 
   it('Use this: the suggestion becomes the current skill, Claude’s, with its rhythm, safety line and likely next; the one before stays in the history', async () => {
     await withCloud()
-    const aim = await italian('Numbers')
+    const aim = await orrish('Numbers')
     const id = aim.id as number
     const ask = (await askSuggestion(id, T(21), undefined, 'open')) as number
     expect((await coachStates(day(21), 'open'))?.get(id)?.setup).toMatchObject({ proposal: null })
@@ -180,19 +180,19 @@ describe('a suggestion for the current skill (Part 40)', () => {
 
   it('Edit first: your words become the current skill, still Claude’s if its name stands and yours if renamed, with the rhythm you leave', async () => {
     await withCloud()
-    const aim = await italian()
+    const aim = await orrish()
     const ask = (await askSuggestion(aim.id as number, T(21), undefined, 'open')) as number
     await answer(ask, { suggestion })
-    expect(await editedSuggestion(ask, { name: 'Understand spoken Italian at the café', method: 'A phrasebook', how: 'Half a page.', minutes: 15 }, null, T(21, 22))).toBe(true)
+    expect(await editedSuggestion(ask, { name: 'Understand spoken Orrish at the café', method: 'A phrasebook', how: 'Half a page.', minutes: 15 }, null, T(21, 22))).toBe(true)
     const skill = (await db.skills.toArray())[0]
-    expect(skill).toMatchObject({ name: 'Understand spoken Italian at the café', minutes: 15, source: 'you' })
+    expect(skill).toMatchObject({ name: 'Understand spoken Orrish at the café', minutes: 15, source: 'you' })
     expect((await db.aims.get(aim.id as number))?.rhythm).toBeNull()
     expect((await db.coachAsks.get(ask))?.decision).toBe('edited')
   })
 
   it('Another suggestion sets this one aside and asks again; Write my own sets it aside for your words', async () => {
     await withCloud()
-    const aim = await italian()
+    const aim = await orrish()
     const id = aim.id as number
     const first = (await askSuggestion(id, T(21), undefined, 'open')) as number
     await answer(first, { suggestion })
@@ -208,7 +208,7 @@ describe('a suggestion for the current skill (Part 40)', () => {
 
   it('drops an answer written before you changed the commitment: it replaces nothing', async () => {
     await withCloud()
-    const aim = await italian('Numbers')
+    const aim = await orrish('Numbers')
     const id = aim.id as number
     const ask = (await askSuggestion(id, T(21), undefined, 'open')) as number
     await answer(ask, { suggestion })
@@ -222,7 +222,7 @@ describe('a suggestion for the current skill (Part 40)', () => {
 
   it('lets an ask no run answered go after three days; the card is yours again', async () => {
     await withCloud()
-    const aim = await italian()
+    const aim = await orrish()
     await askSuggestion(aim.id as number, T(20), undefined, 'open')
     expect((await coachStates(day(23), 'open'))?.get(aim.id as number)?.setup).not.toBeNull()
     expect((await coachStates(day(24), 'open'))?.get(aim.id as number)?.setup).toBeNull()
@@ -260,7 +260,7 @@ describe('a progression review (Part 41)', () => {
   }
 
   it('comes at six different practice days with a week behind the skill, asks Claude when it may, and shows the question meanwhile', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24])
     expect(await ensureReviews(day(26), T(26), 'open')).toBe(0)
     await practise(aim, [25])
@@ -274,7 +274,7 @@ describe('a progression review (Part 41)', () => {
   })
 
   it('counts several sessions on one day once, and never a refusal', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 20, 20, 21, 21, 22])
     const current = (await db.aims.get(aim.id as number)) as Aim
     const offer = await resumeAim(current, stepFor(current, await db.skills.toArray(), [], [current]), 'step', T(23))
@@ -283,7 +283,7 @@ describe('a progression review (Part 41)', () => {
   })
 
   it('comes forward after three Hard sessions in a row on three different days, and not while paused', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22], 'hard')
     await pauseAim(aim.id as number, true)
     expect(await ensureReviews(day(23), T(23), 'open')).toBe(0)
@@ -294,14 +294,14 @@ describe('a progression review (Part 41)', () => {
 
   it('is asked of the phone alone when Claude may not be, the same question, neutrally', async () => {
     await setBrainSwitch('commitments', false)
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25])
     expect(await ensureReviews(day(27), T(27), 'open')).toBe(1)
     expect((await coachStates(day(27), 'open'))?.get(aim.id as number)?.review?.ask.claude).toBe(false)
   })
 
   it('puts one review in place when two checks land together', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25])
     const added = await Promise.all([ensureReviews(day(27), T(27), 'open'), ensureReviews(day(27), T(27), 'open')])
     expect(added[0] + added[1]).toBe(1)
@@ -309,7 +309,7 @@ describe('a progression review (Part 41)', () => {
   })
 
   it('changes nothing until answered: Keep restarts the count, and the next comes after six more days', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25])
     await ensureReviews(day(27), T(27), 'open')
     const ask = (await coachStates(day(27), 'open'))?.get(aim.id as number)?.review?.ask.id as number
@@ -322,7 +322,7 @@ describe('a progression review (Part 41)', () => {
   })
 
   it('takes Claude’s change only on your tap: Progress names the next skill and keeps the goal, the one before in the history', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25], 'easy')
     await ensureReviews(day(27), T(27), 'open')
     const ask = (await coachStates(day(27), 'open'))?.get(aim.id as number)?.review?.ask.id as number
@@ -330,14 +330,14 @@ describe('a progression review (Part 41)', () => {
     expect((await coachStates(day(27), 'open'))?.get(aim.id as number)?.review?.proposal?.review?.verdict).toBe('progress')
     expect(await answerReview(ask, { decision: 'progressed', change: { skill: 'Short spoken answers', how: 'Answer each prompt aloud in a full sentence.' } }, T(27, 21))).toBe(true)
     const now = (await db.aims.get(aim.id as number)) as Aim
-    expect(now.name).toBe('Learn Italian')
+    expect(now.name).toBe('Learn Orrish')
     const skills = await db.skills.toArray()
     expect(skills.find((s) => s.id === now.currentSkillId)).toMatchObject({ name: 'Short spoken answers', method: 'A phrasebook', source: 'claude' })
     expect(skills.find((s) => s.name === 'Ten words')?.endedAt).toBeTruthy()
   })
 
   it('adjusts the same skill’s practice, simplifies to a smaller skill, returns to an earlier one, or takes the one you write', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     const id = aim.id as number
     const due = async (d: number) => {
       await ensureReviews(day(d), T(d), 'open')
@@ -354,11 +354,11 @@ describe('a progression review (Part 41)', () => {
     const after = await db.aims.get(id)
     // No answer from Claude named it, so the name is yours.
     expect((await db.skills.toArray()).find((s) => s.id === after?.currentSkillId)).toMatchObject({ name: 'Five words', source: 'you' })
-    expect((await db.aims.get(id))?.name).toBe('Learn Italian')
+    expect((await db.aims.get(id))?.name).toBe('Learn Orrish')
   })
 
   it('drops Claude’s view written before you changed the skill’s practice: the review stays open, asked neutrally', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25], 'easy')
     await ensureReviews(day(27), T(27), 'open')
     const ask = (await coachStates(day(27), 'open'))?.get(aim.id as number)?.review?.ask.id as number
@@ -372,7 +372,7 @@ describe('a progression review (Part 41)', () => {
   })
 
   it('names a skill Claude’s only when its answer named it: renamed in Edit first, it is yours', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25], 'easy')
     await ensureReviews(day(27), T(27), 'open')
     const ask = (await coachStates(day(27), 'open'))?.get(aim.id as number)?.review?.ask.id as number
@@ -383,7 +383,7 @@ describe('a progression review (Part 41)', () => {
   })
 
   it('carries an open review onto the sheet and into Sunday’s review, once its gate is open; closed, the sheet says nothing of it', async () => {
-    const aim = await italian('Ten words')
+    const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25])
     await ensureReviews(day(27), T(27), 'open')
     // Closed (as the build ships): the commitment's fact is as it was.
@@ -399,7 +399,7 @@ describe('a progression review (Part 41)', () => {
 
 describe('the phone’s weekly review, once a progression review is open', () => {
   it('makes it the week’s change to decide', () => {
-    const sheet = { version: 1, day: '2026-09-27', builtAt: '', hour: 9, weeks: 1, days: 7, direction: null, said: [], checkedIn: {}, facts: [{ id: 'aim.1', tags: ['study'], text: 'x', values: { name: 'Learn Italian', skill: 'Ten words', review: 'open' } }, { id: 'trajectory.1', tags: ['study'], text: 'x', values: { name: 'Learn Italian', w0: 3, d0: 3, ageDays: 10 } }] } as unknown as Parameters<typeof phoneReview>[0]
-    expect(phoneReview(sheet, []).change).toBe('Learn Italian: the review of “Ten words” waits for your answer, on its card.')
+    const sheet = { version: 1, day: '2026-09-27', builtAt: '', hour: 9, weeks: 1, days: 7, direction: null, said: [], checkedIn: {}, facts: [{ id: 'aim.1', tags: ['study'], text: 'x', values: { name: 'Learn Orrish', skill: 'Ten words', review: 'open' } }, { id: 'trajectory.1', tags: ['study'], text: 'x', values: { name: 'Learn Orrish', w0: 3, d0: 3, ageDays: 10 } }] } as unknown as Parameters<typeof phoneReview>[0]
+    expect(phoneReview(sheet, []).change).toBe('Learn Orrish: the review of “Ten words” waits for your answer, on its card.')
   })
 })
