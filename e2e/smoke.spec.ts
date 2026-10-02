@@ -2417,6 +2417,8 @@ test('the cue shows at the top of Now with no scroll first, and never covers the
   ]) {
     await page.setViewportSize({ width, height })
     await page.evaluate(() => window.scrollTo(0, 0))
+    // What the screen shows: the browser's next frames, where the resize is handled before anything is painted.
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
     await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
     expect((await cueCovers(page)).scrollY).toBe(0)
     await expectCueClear(page)
