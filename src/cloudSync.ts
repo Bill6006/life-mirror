@@ -3,14 +3,16 @@ import type { CoachProposal } from './coachShared'
 import { isFirmness } from './firmness'
 import type { BrainBrief, BrainRead, CoachPick } from './db'
 import { useEffect, useState } from 'preact/hooks'
-import { APP, markSilent, onOutboxChange, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
+import { APP, dayOf, markSilent, onOutboxChange, outboxDelete, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
+import { captureFloors, maxIds } from './idFloors'
+import { unlinkLost } from './lostLinks'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
 import { OUTSIDE_APP, OUTSIDE_STORE, outsideDayOf } from './outsideRow'
 import { copy } from './copy'
 import { db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
 import { withDefaults, type Settings } from './settings'
-import { appendLog, clearMark, clearMirror, latestNotice, readDeviceMirror, readMark, readMirror, tokenStorage, writeDeviceMirror, writeMark, writeMirror, type TokenEvent, type TokenMark } from './tokenVault'
+import { appendLog, clearMark, clearMirror, latestNotice, raiseFloors, readDeviceMirror, readMark, readMirror, tokenStorage, writeDeviceMirror, writeMark, writeMirror, type TokenEvent, type TokenMark } from './tokenVault'
 
 // The sync worker. Pull first (rows newer than the watermark, applied only where the remote is
 // newer, silently, never re-queued), then push (the outbox, latest change per row, in batches).
@@ -36,6 +38,8 @@ export interface SyncStatus {
   pending: number
   /** The latest thing that happened to the token when it was a loss: a copy written again, or both gone. */
   notice: TokenEvent | null
+  /** Whether the browser keeps this app's storage when space runs low (sync safety, 2026-10-02). */
+  persisted: boolean | null
 }
 
 let factory: StoreFactory = libsqlStore
@@ -312,6 +316,38 @@ function keyFor(store: string, id: string): string | number {
   return store === 'days' || store === 'herSkills' || store === 'facts' ? id : Number(id)
 }
 
+/**
+ * Sync safety (2026-10-02): the stores whose records have an identity beyond their id, the index that
+ * holds it, and whether the app derives them. A record held twice under two ids (a cleared phone
+ * re-derives a forecast before the cloud's original is back, or a check-in is entered again) is made
+ * one again on a pull, never refused: a refusal (a ConstraintError) stops every later row from
+ * coming back.
+ */
+const LOGICAL: Record<string, { index: string; fields: readonly string[]; derived: boolean }> = {
+  checkins: { index: '[day+block]', fields: ['day', 'block'], derived: false },
+  wins: { index: 'forDay', fields: ['forDay'], derived: false },
+  monthlyChecks: { index: 'month', fields: ['month'], derived: false },
+  forecasts: { index: '[day+block+horizon]', fields: ['day', 'block', 'horizon'], derived: true },
+  forecastScores: { index: '[day+block+horizon]', fields: ['day', 'block', 'horizon'], derived: true },
+}
+
+/** Of two copies of one record, whether the first stays: what the app derives keeps the first made; what you entered keeps the latest. */
+export function firstStays(store: string, a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const id = (r: Record<string, unknown>) => Number(r.id) || 0
+  if (LOGICAL[store]?.derived) {
+    const made = (r: Record<string, unknown>) => String(r.madeOn ?? r.scoredOn ?? '')
+    return made(a) < made(b) || (made(a) === made(b) && id(a) <= id(b))
+  }
+  const stamp = (r: Record<string, unknown>) => String(r.updatedAt ?? r.completedAt ?? r.at ?? '')
+  return stamp(a) > stamp(b) || (stamp(a) === stamp(b) && id(a) >= id(b))
+}
+
+/** The copy that gives way: its id tombstoned in the cloud; when it is yours, its whole record kept aside first in a store nothing reads. */
+async function retire(store: string, id: string, body: Record<string, unknown>, derived: boolean, cloudHasIt: boolean, now: string): Promise<void> {
+  if (!derived) await db.outbox.add({ store: 'superseded', key: `${store}:${id}`, op: 'put', body: JSON.stringify({ store, id, body, at: now }), day: dayOf(body), updatedAt: now, at: now })
+  if (cloudHasIt) await db.outbox.add(outboxDelete(store, id, now))
+}
+
 /** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. */
 async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): Promise<void> {
   if (!SYNCED_STORES.includes(row.store)) return
@@ -340,6 +376,26 @@ async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): 
       const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {}, location: mine?.location ?? withDefaults(undefined).location }
       await db.settings.put(merged)
     } else {
+      const spec = LOGICAL[row.store]
+      const values = spec ? spec.fields.map((f) => body[f]) : []
+      const twin = spec && values.every((v) => v !== undefined && v !== null) ? ((await table.where(spec.index).equals(values.length === 1 ? (values[0] as string) : (values as string[])).first()) as Record<string, unknown> | undefined) : undefined
+      if (spec && twin && twin.id !== key) {
+        const now = new Date().toISOString()
+        const twinKey = String(twin.id)
+        const twinKnown = Boolean(await tx.cloudRows.get([row.store, twinKey]))
+        // A derived copy only this phone has came after the cloud's: the cloud's stays. Otherwise the rule decides, the same from either side.
+        const twinStays = spec.derived && !twinKnown ? false : firstStays(row.store, twin, body)
+        const meta = await getMeta()
+        await db.cloudMeta.put({ ...meta, key: 'state', merged: (meta.merged ?? 0) + 1 })
+        if (twinStays) {
+          await retire(row.store, row.id, body, spec.derived, true, now)
+          await tx.cloudRows.put({ store: row.store, key: row.id, updatedAt: row.updated_at, syncedAt: row.synced_at })
+          return
+        }
+        await table.delete(twin.id as never)
+        await db.outbox.where('[store+key]').equals([row.store, twinKey]).delete()
+        await retire(row.store, twinKey, twin, spec.derived, twinKnown, now)
+      }
       await table.put(body)
     }
   }
@@ -362,6 +418,8 @@ async function pull(store: CloudStore): Promise<number> {
       for (const row of rows) await applyRow(row, { cloudRows: db.cloudRows })
       await patchMeta({ watermark: rows[rows.length - 1].synced_at })
     })
+    // Every id the cloud holds is one this phone must never hand out again (sync safety, 2026-10-02).
+    raiseFloors(maxIds(rows))
     applied += rows.length
     if (rows.length < PAGE) break
   }
@@ -476,6 +534,7 @@ async function push(store: CloudStore, deviceId: string): Promise<number> {
     const base = Date.now()
     const rows = latest.map((r, i) => toCloudRow(r, deviceId, new Date(base + i).toISOString()))
     await store.upsert(rows)
+    raiseFloors(maxIds(rows))
     await db.transaction('rw', [db.outbox, db.cloudRows], async () => {
       const ids = batch.filter((r) => carried.has(`${r.store}|${r.key}`)).map((r) => r.id as number)
       await db.outbox.bulkDelete(ids)
@@ -498,6 +557,9 @@ function scheduleRetry(): void {
   }, backoffMs())
 }
 
+/** The one-time repair pass: on its first sync with this version, the phone walks its whole history again under the safe merge (2026-10-02). */
+export const REPAIR = '2026-10-02'
+
 async function run(): Promise<SyncOutcome> {
   const { token } = await resolveToken()
   if (!token) {
@@ -512,9 +574,32 @@ async function run(): Promise<SyncOutcome> {
   try {
     const deviceId = await ensureDeviceId()
     const store = await factory(token)
-    await pull(store)
-    await pullOutside(store)
-    await pullBrain(store)
+    if ((await getMeta()).repair !== REPAIR) await patchMeta({ watermark: '', repair: REPAIR })
+    // The phone's own rows first. The Worker's lines and the other app's workouts come back whatever
+    // happens to them (the writer history stayed empty while a failing pull blocked them),
+    // and nothing is pushed unless every pull went through: never over a cloud this phone could not read.
+    let failure: unknown = null
+    try {
+      await pull(store)
+    } catch (e) {
+      failure = e
+    }
+    try {
+      await pullOutside(store)
+    } catch (e) {
+      failure ??= e
+    }
+    try {
+      await pullBrain(store)
+    } catch (e) {
+      failure ??= e
+    }
+    if (failure) throw failure
+    // With the whole history back, the links a reused id bent are taken back, once per repair.
+    if ((await getMeta()).relinked !== REPAIR) {
+      await unlinkLost()
+      await patchMeta({ relinked: REPAIR })
+    }
     await push(store, deviceId)
     const now = new Date().toISOString()
     await store.touchDevice({ device_id: deviceId, app: APP, label: DEVICE_LABEL, at: now })
@@ -569,8 +654,29 @@ function schedulePush(): void {
   }, PUSH_DEBOUNCE_MS)
 }
 
+/** Whether the phone's browser keeps this app's storage when space runs low: true kept, false not granted, null unknown (sync safety, 2026-10-02). */
+let persisted: boolean | null = null
+
+export function storagePersisted(): boolean | null {
+  return persisted
+}
+
+/** Asks the browser to keep this app's storage rather than clear it under pressure; an installed app is usually granted it. */
+export async function requestPersistence(): Promise<boolean | null> {
+  try {
+    const storage = typeof navigator === 'undefined' ? undefined : navigator.storage
+    persisted = storage?.persist ? (await storage.persisted()) || (await storage.persist()) : null
+  } catch {
+    persisted = null
+  }
+  for (const w of watchers) w()
+  return persisted
+}
+
 /** On open, every fifteen minutes, when the network returns, and soon after any change. Returns the stop function. */
 export function startCloud(): () => void {
+  void captureFloors(db).catch(() => undefined)
+  void requestPersistence()
   void syncNow()
   const interval = setInterval(() => void syncNow(), PULL_EVERY_MS)
   const onOnline = () => void syncNow()
@@ -598,5 +704,5 @@ export function useCloudStatus(): SyncStatus | undefined {
   }, [])
   if (!settings || !meta || pending === undefined) return undefined
   const hasToken = Boolean(settings.cloud.token)
-  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending, notice: latestNotice() }
+  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending, notice: latestNotice(), persisted }
 }

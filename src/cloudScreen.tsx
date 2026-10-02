@@ -132,6 +132,9 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
         <p class="note faint" data-testid="cloud-pending">
           {pendingLine}
         </p>
+        <p class="note faint" data-testid="cloud-storage">
+          {status.persisted === true ? c.storageKept : status.persisted === false ? c.storageNotKept : c.storageUnknown}
+        </p>
         <p class="note faint">
           {c.device}: <span class="mono">{settings.cloud.deviceId || '—'}</span>
         </p>

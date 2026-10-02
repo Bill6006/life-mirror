@@ -6,6 +6,7 @@ import { sendPush, type Subscription } from './push'
 import { BRAIN_APP, tursoStore, type BriefRow } from './turso'
 import { clockTimesIn } from '../../src/format'
 import { workoutReport } from './workoutReport'
+import { recordsAudit, recordsLinks } from './recordsAudit'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
@@ -176,6 +177,38 @@ const handler: ExportedHandler<Env> = {
       const today = localTime(new Date(), env.TIMEZONE).day
       const facts = (await store.readFacts(today)) ?? (await store.readFacts(addDays(today, -1)))
       return json(workoutReport(await store.readOutsideWorkouts(40), facts?.sheet ?? null))
+    }
+    // With the run key: the storage audit (2026-10-02), read-only. The phone's records as the cloud holds them, by structure alone.
+    if (url.pathname === '/run/records-audit' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      // Without dates: the last two weeks of records, and what was written in the last week.
+      const from = url.searchParams.get('from') ?? new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10)
+      const since = url.searchParams.get('since') ?? new Date(Date.now() - 7 * 86_400_000).toISOString()
+      const stores = ['checkins', 'forecasts', 'forecastScores', 'offers', 'outcomes', 'cards', 'wins', 'days', 'intentions', 'briefLog', 'briefFeedback', 'pathMarks', 'useLog']
+      const sheets = url.searchParams.get('sheets')
+      if (sheets) {
+        // Which facts each day's sheet held, by id alone (a reading of a block is named reading.<day>.<block>): evidence of which check-ins a day had.
+        const out = []
+        for (const day of sheets.split(',').slice(0, 10)) {
+          const f = await store.readFacts(day)
+          out.push({ day, updatedAt: f?.updatedAt ?? null, readings: f ? f.sheet.facts.map((x) => x.id).filter((id) => id.startsWith('reading.')) : null, facts: f ? f.sheet.facts.length : 0 })
+        }
+        return json({ sheets: out })
+      }
+      if (url.searchParams.get('links') === '1') return json(recordsLinks(await store.readAudit(['offers', 'outcomes', 'cards', 'intentions', 'studyNights']), from))
+      if (url.searchParams.get('timeline') === '1') {
+        // When the phone wrote: each push batch, ten minutes at a time, with its stores and the ids it carried.
+        const batches = new Map<string, { at: string; rows: number; stores: Record<string, string[]> }>()
+        for (const r of await store.readSyncTimes(since)) {
+          const at = r.synced_at.slice(0, 15) + '0'
+          const b = batches.get(at) ?? batches.set(at, { at, rows: 0, stores: {} }).get(at) as { at: string; rows: number; stores: Record<string, string[]> }
+          b.rows++
+          ;(b.stores[r.store] ??= []).push(r.store === 'facts' || r.store === 'days' ? r.id : `${r.id}@${r.day ?? '-'}`)
+        }
+        return json({ since, batches: [...batches.values()] })
+      }
+      return json(recordsAudit(await store.readAudit(stores), from, since))
     }
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {

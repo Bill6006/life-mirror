@@ -10,6 +10,7 @@ import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
 import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
+import { installIdFloors } from './idFloors'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
@@ -365,6 +366,8 @@ export interface Outcome {
   ease?: Ease
   /** One optional line about the session, in your words. */
   note?: string
+  /** Sync safety (2026-10-02): the offer this answered, when a later offer took its id; offerId is then its negative, so it joins no move. */
+  lostOfferId?: number
 }
 
 /** How a session went, in your own sense of it: harder than it should be, about right, or easy now. */
@@ -465,6 +468,8 @@ export interface Intention {
   offerId: number | null
   /** The step's name when the plan was made, for a reminder that carries it. */
   step?: string
+  /** Sync safety (2026-10-02): the offer that started the plan, when an offer of another day took its id; offerId is then its negative, still started. */
+  lostOfferId?: number
 }
 
 /** The day's fact sheet as a record of its own: what the brain may speak from, written by the phone and read by the Worker. */
@@ -919,6 +924,7 @@ class LifeMirrorDB extends Dexie {
       coachProposals: 'id, aimId, askId',
     })
     installOutbox(this)
+    installIdFloors(this)
   }
 }
 

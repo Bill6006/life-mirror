@@ -168,6 +168,18 @@ export interface ReadRow {
 }
 
 /** One of the phone's own rows, as the retrieval layer reads it. */
+/** A stored row as the storage audit reads it: its place and stamps, and its body for structure alone. */
+export interface AuditRow {
+  store: string
+  id: string
+  day: string | null
+  body: string | null
+  updated_at: string
+  deleted: number
+  device_id: string | null
+  synced_at: string
+}
+
 export interface RecordRow {
   id: string
   day: string | null
@@ -245,6 +257,10 @@ export interface Store {
   readRecord(store: string, id: string): Promise<unknown | null>
   /** The other app's finished workouts, newest written first, read-only: the final checklist's sanity report (item 4). */
   readOutsideWorkouts(limit?: number): Promise<{ id: string; body: string | null }[]>
+  /** The phone's rows of the given stores as stored, deleted ones too: the storage audit's read-only view (2026-10-02). */
+  readAudit(stores: readonly string[]): Promise<AuditRow[]>
+  /** Every row of the phone's own written since a time, by place and stamp alone: the storage audit's push timeline. */
+  readSyncTimes(since: string): Promise<{ store: string; id: string; day: string | null; synced_at: string; updated_at: string }[]>
   /** The skill coach's proposals (Parts 40 and 41): one per ask, the ids of those stored, and one written. */
   proposalIds(): Promise<Set<string>>
   readProposals(): Promise<CoachProposal[]>
@@ -371,6 +387,16 @@ export function tursoStore(url: string, token: string): Store {
     async readOutsideWorkouts(limit = 40) {
       const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = ? AND deleted = 0 ORDER BY updated_at DESC LIMIT ?`, [OUTSIDE_APP, OUTSIDE_STORE, limit])
       return r.map((row) => ({ id: String(row.id), body: row.body === null || row.body === undefined ? null : String(row.body) }))
+    },
+    async readAudit(stores) {
+      if (!stores.length) return []
+      const r = await rows(`SELECT store, id, day, body, updated_at, deleted, device_id, synced_at FROM records WHERE app = ? AND store IN (${stores.map(() => '?').join(', ')})`, [APP, ...stores])
+      const text = (v: unknown) => (v === null || v === undefined ? null : String(v))
+      return r.map((row) => ({ store: String(row.store), id: String(row.id), day: text(row.day), body: text(row.body), updated_at: String(row.updated_at), deleted: Number(row.deleted), device_id: text(row.device_id), synced_at: String(row.synced_at) }))
+    },
+    async readSyncTimes(since) {
+      const r = await rows(`SELECT store, id, day, synced_at, updated_at FROM records WHERE app = ? AND synced_at >= ? ORDER BY synced_at`, [APP, since])
+      return r.map((row) => ({ store: String(row.store), id: String(row.id), day: row.day === null || row.day === undefined ? null : String(row.day), synced_at: String(row.synced_at), updated_at: String(row.updated_at) }))
     },
     async readRecords(store, range = {}, limit = 500) {
       const where = ['app = ?', 'store = ?', 'deleted = 0']
@@ -537,6 +563,12 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
         .slice(0, limit)
         .map((r) => ({ id: r.id, body: r.body }))
+    },
+    async readSyncTimes(since) {
+      return [...rows.values()].filter((r) => r.app === APP && r.synced_at >= since).sort((a, b) => (a.synced_at < b.synced_at ? -1 : 1)).map((r) => ({ store: r.store, id: r.id, day: r.day, synced_at: r.synced_at, updated_at: r.updated_at }))
+    },
+    async readAudit(stores) {
+      return [...rows.values()].filter((r) => r.app === APP && stores.includes(r.store)).map((r) => ({ store: r.store, id: r.id, day: r.day, body: r.body, updated_at: r.updated_at, deleted: r.deleted, device_id: null, synced_at: r.synced_at }))
     },
     async readRecords(store, range = {}, limit = 500) {
       return live(APP, store)

@@ -1507,6 +1507,10 @@ export const copy = {
     never: 'Not synced yet',
     pending: '{n} pending',
     pendingNone: 'nothing pending',
+    /** Whether the phone's browser keeps this app's storage when space runs low (sync safety, 2026-10-02). */
+    storageKept: 'This phone keeps the app’s storage when space runs low.',
+    storageNotKept: 'This phone may clear the app’s storage when space runs low; the cloud copy brings back what it holds.',
+    storageUnknown: 'This phone does not say whether it keeps the app’s storage; the cloud copy brings back what it holds.',
     syncing: 'Syncing…',
     offline: 'Offline; changes wait here.',
     error: 'Last attempt did not go through: {error}. It retries on its own.',

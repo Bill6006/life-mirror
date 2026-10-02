@@ -54,7 +54,8 @@ export function memoryKeyValue(): KeyValue {
 export function tokenStorage(): KeyValue | null {
   if (override) return override
   try {
-    return typeof localStorage === 'undefined' ? null : localStorage
+    // Through globalThis: the service worker shares this module and has no such storage.
+    return (globalThis as { localStorage?: KeyValue }).localStorage ?? null
   } catch {
     return null
   }
@@ -122,6 +123,35 @@ export function readMark(): TokenMark | null {
 
 export const writeMark = (mark: TokenMark): boolean => write(MARK_KEY, JSON.stringify(mark))
 export const clearMark = (): void => remove(MARK_KEY)
+
+/**
+ * Sync safety (2026-10-02): the highest id each synced store is known to have used in the cloud copy,
+ * kept here beside the token's second copy, which a cleared database leaves standing. A database that comes back emptier never hands out an id below it.
+ */
+export const FLOORS_KEY = 'lm.idFloors'
+/** Past any record count this app can reach; a floor above it is damage, and would use up the database's ids. */
+const FLOOR_LIMIT = 1_000_000_000
+
+export function readFloors(): Record<string, number> {
+  const parsed = parse(read(FLOORS_KEY))
+  if (typeof parsed !== 'object' || parsed === null) return {}
+  const out: Record<string, number> = {}
+  for (const [store, n] of Object.entries(parsed as Record<string, unknown>)) if (typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= FLOOR_LIMIT) out[store] = n
+  return out
+}
+
+/** Raises the floors to what was found, never lowers one; true when they are kept (or nothing needed keeping). */
+export function raiseFloors(found: Readonly<Record<string, number>>): boolean {
+  const current = readFloors()
+  let changed = false
+  for (const [store, n] of Object.entries(found)) {
+    if (Number.isInteger(n) && n <= FLOOR_LIMIT && n > (current[store] ?? 0)) {
+      current[store] = n
+      changed = true
+    }
+  }
+  return changed ? write(FLOORS_KEY, JSON.stringify(current)) : true
+}
 
 /** Every event the log still holds, oldest first, the newest eight. */
 export function readLog(): TokenEvent[] {
