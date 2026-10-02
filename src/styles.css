@@ -2073,6 +2073,33 @@ input[type="time"] {
   background: var(--accent);
 }
 
+/* The Private log row's words start where its neighbours' do: after their mark (10px) and the row's gap (12px). */
+.row.private-log-row {
+  padding-left: 22px;
+}
+
+/* Teeth brushed today (2026-10-02): three counts at the row's end, each at least 48 wide so no two hit areas meet. */
+.count-picks {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.count-chip {
+  min-width: 48px;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Caffeine's examples (2026-10-02): one band to a line, behind one row. */
+.caffeine-example-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .history-row .sub {
   overflow-wrap: anywhere;
 }
@@ -3939,15 +3966,18 @@ a {
   align-items: center;
   justify-content: center;
   min-width: 48px;
-  min-height: 48px;
+  /* Its tap area: 48 tall, and shorter only where a control lies within that, never shorter than its pill. */
+  height: var(--cue-h, auto);
+  min-height: var(--cue-h, 48px);
   padding: 0 4px;
   border: 0;
   background: none;
   color: var(--ink);
   font: inherit;
   cursor: pointer;
-  transform: translateX(-50%);
-  animation: cue-rise 160ms ease-out;
+  /* Its own place, centred above the bar; moved right and up only when that place would cover what it must not (2026-10-02). */
+  transform: translate(calc(-50% + var(--cue-dx, 0px)), calc(0px - var(--cue-dy, 0px)));
+  /* It appears where it stands, with no motion: a rise would pass over what lies under its place, a fade would read faint. */
 }
 
 .move-cue.is-held {
@@ -3979,14 +4009,6 @@ a {
   line-height: 1;
 }
 
-@keyframes cue-rise {
-  from {
-    transform: translate(-50%, 4px);
-  }
-  to {
-    transform: translate(-50%, 0);
-  }
-}
 
 /* While the cue shows, the end of Now can scroll clear of it. */
 main.has-move-cue {

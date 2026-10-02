@@ -11,6 +11,7 @@ import type { ReadingId } from './readings'
 import { evaluateCards } from './tiers'
 import { baselineShift, type Shift } from './shift'
 import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type Scorecard } from './weekly'
+import { necessitiesMissed } from './necessities'
 
 // Forecasts on the phone: written before their slot is logged and never rewritten; scored in
 // their own record once the slot is logged; the model named. The brief and the weekly view
@@ -79,7 +80,7 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   if (ex.napped) keys.push('napped')
   if (ex.nothingLanded) keys.push('nothingLanded')
   if (ex.hardToSeePoint) keys.push('hardToSeePoint')
-  if (Object.values(ex.necessities ?? {}).some(Boolean)) keys.push('necessity')
+  if (necessitiesMissed(ex).length) keys.push('necessity')
   if (ctx?.churchDay) keys.push('churchDay')
   if (workout) keys.push('workout')
   return keys
@@ -89,7 +90,7 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
 function eventTest(key: LastNightKey, ctxByDay: ReadonlyMap<string, DayContext>, outside: ReadonlySet<string>): (c: CheckIn) => boolean {
   switch (key) {
     case 'necessity':
-      return (c) => Object.values(c.extras?.necessities ?? {}).some(Boolean)
+      return (c) => necessitiesMissed(c.extras).length > 0
     case 'churchDay':
       return (c) => Boolean(ctxByDay.get(c.day)?.churchDay)
     case 'workout':
@@ -151,7 +152,7 @@ export async function briefData(today: string): Promise<Brief> {
   const w = earlyWarning(values, lowOf, today)
   const lastEvenings = [1, 2, 3].map((d) => checkins.find((c) => c.day === addDays(today, -d) && c.block === 'evening'))
   const chips = lastEvenings.filter((c) => c?.extras?.nothingLanded || c?.extras?.hardToSeePoint).length
-  const necessities = lastEvenings.reduce((n, c) => n + Object.values(c?.extras?.necessities ?? {}).filter(Boolean).length, 0)
+  const necessities = lastEvenings.reduce((n, c) => n + necessitiesMissed(c?.extras).length, 0)
   const evening = todays.find((t) => t.block === 'evening')?.forecast ?? null
   const yesterday = addDays(today, -1)
   const [offers, outcomes, contexts, outsideRows] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.days.toArray(), db.outside.toArray()])

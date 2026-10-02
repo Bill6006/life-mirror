@@ -6,6 +6,7 @@ import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
+import { necessitiesMissed } from './necessities'
 
 /** The record's own key: which end of each reading is good, and the phrases as they stood, dated where reworded. */
 export const REWORDED: readonly { reading: string; position: number; on: string; from: string; to: string }[] = [
@@ -126,7 +127,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       caffeineAt: c.extras?.caffeineIntake?.at ?? null,
       caffeineSince: c.extras?.caffeineIntake?.since ?? null,
       caffeineShown: Boolean(c.extras?.caffeineShown),
-      necessitiesMissed: Object.keys(c.extras?.necessities ?? {}),
+      necessitiesMissed: necessitiesMissed(c.extras),
+      teethBrushed: c.extras?.teethBrushed ?? null,
       note: c.extras?.note ?? null,
       ...(opts.includePrivate
         ? {

@@ -21,6 +21,7 @@ import {
   setDayContext,
   setExtra,
   setNecessity,
+  setTeethBrushed,
   setNote,
   setPrivateLogged,
   setWin,
@@ -33,6 +34,7 @@ import {
 import { fill } from './format'
 import { syncRecoveryGap } from './offerFlow'
 import { useLive } from './live'
+import { teethOf, TEETH_COUNTS, type TeethBrushed } from './necessities'
 import type { ReadingId } from './readings'
 import { askedReadings, type Weekday } from './settings'
 
@@ -167,12 +169,15 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
       <h2 class="section">{copy.necessities.title}</h2>
       <div class="card">
         <ul class="rows">
-          {(['shower', 'teeth', 'food'] as const).filter(showing).map((key) => (
-            <ExtraRow key={key} label={copy.necessities[key]} on={Boolean(ex.necessities?.[key])} onLabel={copy.necessities.missed} testid={`necessity-${key}`} onClick={() => void setNecessity(slot, asked, key, !ex.necessities?.[key])} />
-          ))}
+          {(['shower', 'teeth', 'food'] as const).filter(showing).map((key) =>
+            key === 'teeth' ? (
+              <CountRow key={key} label={copy.necessities.teeth} value={teethOf(ex)} testid="necessity-teeth" onPick={(n) => void setTeethBrushed(slot, asked, n)} />
+            ) : (
+              <ExtraRow key={key} label={copy.necessities[key]} on={Boolean(ex.necessities?.[key])} onLabel={copy.necessities.missed} testid={`necessity-${key}`} onClick={() => void setNecessity(slot, asked, key, !ex.necessities?.[key])} />
+            ),
+          )}
         </ul>
       </div>
-      <p class="note faint">{copy.necessities.note}</p>
 
       <TodayChips day={day} />
 
@@ -230,7 +235,6 @@ export function TodayChips({ day }: { day: string }) {
           />
         </ul>
       </div>
-      <p class="note faint">{copy.today.note}</p>
     </>
   )
 }
@@ -251,7 +255,7 @@ export function PrivateLog({ slot, asked, items, logged }: { slot: Slot; asked: 
   return (
     <>
       <li>
-        <button type="button" class="row" onClick={toggle} aria-expanded={open} data-testid="private-log">
+        <button type="button" class="row private-log-row" onClick={toggle} aria-expanded={open} data-testid="private-log">
           <span class="row-main">{copy.extras.private}</span>
           <span class="row-side">{n > 0 ? fill(copy.extras.privateLogged, { n: String(n) }) : ''}</span>
           <span class="chev" aria-hidden="true">
@@ -283,6 +287,27 @@ function ExtraRow({ label, on, onLabel, indent = false, testid, onClick }: { lab
         <span class="row-main">{label}</span>
         <span class="row-side ink">{on ? onLabel : ''}</span>
       </button>
+    </li>
+  )
+}
+
+/** A count asked as three explicit taps, 0, 1 and 2 (twice or more); a tap on the count already set takes it back to unknown. Nothing is ever set by itself. */
+function CountRow({ label, value, testid, onPick }: { label: string; value: TeethBrushed | null; testid: string; onPick: (n: TeethBrushed | null) => void }) {
+  return (
+    <li>
+      <div class={`row anchor is-static${value !== null ? ' is-picked' : ''}`} data-testid={testid}>
+        <span class="anchor-mark" aria-hidden="true" />
+        <span class="row-main" id={`${testid}-label`}>
+          {label}
+        </span>
+        <span class="count-picks" role="group" aria-labelledby={`${testid}-label`}>
+          {TEETH_COUNTS.map((n) => (
+            <button key={n} type="button" class={value === n ? 'when-chip count-chip is-on' : 'when-chip count-chip'} aria-pressed={value === n} aria-label={copy.necessities.teethCounts[n]} data-testid={`${testid}-${n}`} onClick={() => onPick(value === n ? null : n)}>
+              {n}
+            </button>
+          ))}
+        </span>
+      </div>
     </li>
   )
 }

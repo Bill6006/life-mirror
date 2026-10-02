@@ -374,7 +374,20 @@ function audit(opts: { zoom: number }) {
     right = Math.min(right, document.documentElement.clientWidth)
     const box = clipTo(el, new DOMRect(left, top, right - left, bottom - top))
     const s = (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 30)
-    if (!box || box.h < 47.5 || box.w < 47.5) issues.push(`target ${Math.round(box?.w ?? 0)}×${Math.round(box?.h ?? 0)}: "${s}"`)
+    if (box && el.matches('[data-testid="move-cue"]')) {
+      // The move cue (2026-10-02) floats over the screen, so its own rule, read where it stands on the screen: 48 tall
+      // where that meets no control, only as short as a control within that (kept a pixel clear) makes it, never shorter
+      // than its pill, and over no control at all.
+      const tap = el.getBoundingClientRect()
+      const pill = (el.querySelector('.move-cue-pill') as HTMLElement).getBoundingClientRect()
+      const under = [...document.querySelectorAll('section.screen :is(button, a[href], input, select, textarea, [role="button"], summary)')].map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0)
+      const meets = (a: { left: number; top: number; right: number; bottom: number }, r: DOMRect, m = 0) => a.left < r.right + m && a.right > r.left - m && a.top < r.bottom + m && a.bottom > r.top - m
+      if (tap.width < 47.5 || tap.height < pill.height - 0.5) issues.push(`cue target ${Math.round(tap.width)}×${Math.round(tap.height)}: "${s}"`)
+      if (under.some((r) => meets(tap, r) || meets(pill, r))) issues.push(`cue over a control: "${s}"`)
+      const mid = (pill.top + pill.bottom) / 2
+      const full = { left: tap.left, right: tap.right, top: mid - 24, bottom: mid + 24 }
+      if (tap.height < 47.5 && !under.some((r) => meets(full, r, 1))) issues.push(`cue ${Math.round(tap.height)} tall with no control within 48: "${s}"`)
+    } else if (!box || box.h < 47.5 || box.w < 47.5) issues.push(`target ${Math.round(box?.w ?? 0)}×${Math.round(box?.h ?? 0)}: "${s}"`)
     if (box) hits.push({ s, el, bar: Boolean(el.closest('nav.tabs')), ...box })
   }
   hits.sort((p, q) => p.y - q.y)

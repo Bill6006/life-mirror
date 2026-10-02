@@ -3,10 +3,11 @@ import { runBrief, runReview } from './brief'
 import { runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
-import { BRAIN_APP, tursoStore, type BriefRow } from './turso'
+import { APP, BRAIN_APP, tursoStore, type BriefRow } from './turso'
 import { clockTimesIn } from '../../src/format'
 import { workoutReport } from './workoutReport'
 import { recordsAudit, recordsLinks } from './recordsAudit'
+import { qualifyReport, runQualify, windowOf } from './qualify'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
@@ -91,6 +92,12 @@ const handler: ExportedHandler<Env> = {
         } catch (e) {
           console.log(JSON.stringify({ job: 'commitments', error: e instanceof Error ? e.message : String(e) }))
         }
+        // The clean window's report (2026-10-02), after everything else and apart from it: it only reads the day's rows, and writes its own.
+        try {
+          if (env.TURSO_TOKEN) await runQualify(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), now, sender(env))
+        } catch (e) {
+          console.log(JSON.stringify({ job: 'qualify', error: e instanceof Error ? e.message : String(e) }))
+        }
       })(),
     )
   },
@@ -111,6 +118,18 @@ const handler: ExportedHandler<Env> = {
       const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
       const watch = await watchNow(store, now, env.TIMEZONE, env.COACH_LAUNCH)
       return json({ switchedOn: env.COACH_WRITER === 'on', ...watch, today: await coachToday(store, localTime(now, env.TIMEZONE).day) })
+    }
+    // With the run key: the clean window's report, as stored once written, and as the check reads the window now.
+    if (url.pathname === '/run/qualify' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const win = windowOf(env)
+      if (!win) return json({ reason: 'no window set' })
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      const now = new Date()
+      const launch = env.COACH_LAUNCH ?? null
+      const reach = addDays(win.from, -45)
+      const { rows, lines } = await store.readWatchRows(launch && launch < reach ? launch : reach)
+      return json({ window: win, stored: await store.readReport(`qualify:${win.from}:${win.to}`), now: qualifyReport(rows, lines, env.TIMEZONE, win, now, launch) })
     }
     if (url.pathname === '/run/coach-spotcheck' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
@@ -197,6 +216,8 @@ const handler: ExportedHandler<Env> = {
         return json({ sheets: out })
       }
       if (url.searchParams.get('links') === '1') return json(recordsLinks(await store.readAudit(['offers', 'outcomes', 'cards', 'intentions', 'studyNights']), from))
+      // When each phone last finished a sync: a sync that went through pushed everything queued before it.
+      if (url.searchParams.get('devices') === '1') return json({ devices: await store.readDevices(APP), newestRow: (await store.readSyncTimes(since)).reduce((m, r) => (r.synced_at > m ? r.synced_at : m), '') })
       if (url.searchParams.get('timeline') === '1') {
         // When the phone wrote: each push batch, ten minutes at a time, with its stores and the ids it carried.
         const batches = new Map<string, { at: string; rows: number; stores: Record<string, string[]> }>()

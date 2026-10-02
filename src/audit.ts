@@ -4,6 +4,7 @@ import { indexCheckIns, slotKey } from './learning'
 import { type Position, type Reading, type ReadingId, readings } from './readings'
 import { CONTEXT_IDS, readingOf } from './score'
 import { pearson, spearman } from './stats'
+import { TEETH_COUNT_SINCE } from './necessities'
 
 // The audits, pure. The anchor swap guard: a pre-written alternate swaps in only after a long
 // stretch in which a phrase was never tapped, once per reading, never the middle, always logged
@@ -67,9 +68,11 @@ function tapped(id: ChipId, c: CheckIn, ctx: DayContext | undefined): boolean {
     case 'napped':
       return Boolean(c.extras?.[id])
     case 'shower':
-    case 'teeth':
     case 'food':
       return Boolean(c.extras?.necessities?.[id])
+    case 'teeth':
+      // Any count tapped is an answer; an older record's miss was one too.
+      return c.extras?.teethBrushed !== undefined || Boolean(c.extras?.necessities?.teeth)
     case 'away':
       return Boolean(ctx && ctx.changed && !ctx.withHer)
     case 'caffeine':
@@ -86,7 +89,8 @@ export function chipStates(checkins: readonly CheckIn[], contexts: readonly DayC
   return CHIP_IDS.map((id) => {
     const broughtBack = chipsBack[id] ?? null
     // The Caffeine item counts the check-ins it was shown in, any block; every other chip counts evenings.
-    const since = (id === 'caffeine' ? shown : evenings).filter((c) => !broughtBack || c.day >= broughtBack)
+    // Teeth brushed today is a new question (2026-10-02): its thirty evenings start with it, never with the miss it replaced.
+    const since = (id === 'caffeine' ? shown : evenings).filter((c) => (!broughtBack || c.day >= broughtBack) && (id !== 'teeth' || c.day >= TEETH_COUNT_SINCE))
     const taps = since.filter((c) => tapped(id, c, ctx.get(c.day)))
     const lastTap = taps.length ? taps[taps.length - 1].day : null
     const untapped = lastTap ? since.filter((c) => c.day > lastTap).length : since.length

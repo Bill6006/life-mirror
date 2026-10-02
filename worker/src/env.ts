@@ -26,6 +26,10 @@ export interface Env {
   COACH_WRITER?: string
   /** The coach's launch day, YYYY-MM-DD: on from then, watched every day after, and off on a failure until the clean window is re-established. Unset, the ten-day check alone switches it on. */
   COACH_LAUNCH?: string
+  /** The clean qualification window (2026-10-02): its first and last day, YYYY-MM-DD, and the local moment, YYYY-MM-DDTHH:MM, its report is written and sent to the phone. Unset, no report. */
+  QUALIFY_FROM?: string
+  QUALIFY_TO?: string
+  QUALIFY_REPORT_AT?: string
   /** The catalogue as the app ships it, for naming reps and knowing faith's in the retrieval layer. */
   CATALOGUE_URL: string
   TIMEZONE: string

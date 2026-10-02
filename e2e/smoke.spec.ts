@@ -1182,6 +1182,8 @@ test('the exception chips sit on a morning summary too, and change today alone',
   await expect(page.getByTestId('chip-heavyCaffeine')).toHaveCount(0)
   await expect(page.getByTestId('caffeine')).toBeVisible()
   await expect(page.getByTestId('chip-away')).toBeVisible()
+  // The note under the chips is gone (2026-10-02).
+  await expect(page.locator('#main')).not.toContainText('Statements, not commands')
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'false')
   await page.getByTestId('chip-office').click()
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
@@ -1221,8 +1223,22 @@ test('caffeine is one optional item: a band per window, tapped again to clear, n
   // On the morning summary: four bands, the helper text, and nothing to tap for none.
   const card = page.getByTestId('caffeine')
   await expect(page.getByRole('heading', { name: 'Caffeine so far today' })).toBeVisible()
-  await expect(card.getByRole('button')).toHaveText(['Under 100 mg', '100–199 mg', '200–299 mg', '300+ mg'])
-  await expect(page.getByTestId('caffeine-help')).toContainText('Only if you had some; with none, leave it.')
+  await expect(card.locator('.caffeine-bands').getByRole('button')).toHaveText(['Under 100 mg', '100–199 mg', '200–299 mg', '300+ mg'])
+  // One short line; the examples wait behind one row, in the words they always had (2026-10-02).
+  await expect(page.getByTestId('caffeine-help')).toHaveText('Only if you had caffeine. Pick the closest total for today.')
+  const examples = page.getByTestId('caffeine-examples')
+  await expect(examples).toHaveAttribute('aria-expanded', 'false')
+  await expect(examples).toContainText('Examples')
+  await expect(page.getByTestId('caffeine-examples-panel')).toHaveCount(0)
+  await examples.click()
+  await expect(page.getByTestId('caffeine-examples-panel').locator('li')).toHaveText([
+    'Under 100 mg: tea, a cola, one espresso, a small energy drink (8.4 oz)',
+    '100–199 mg: a regular coffee (8 to 12 oz), two espressos, a 16 oz Monster',
+    '200–299 mg: a large coffee (16 oz), cold brew, a Celsius, most pre-workouts',
+    '300+ mg: a Bang or a Reign, two large coffees',
+  ])
+  await examples.click()
+  await expect(page.getByTestId('caffeine-examples-panel')).toHaveCount(0)
   await expect(page.getByTestId('chip-heavyCaffeine')).toHaveCount(0)
   // Seen and left alone: shown is written once it is on screen, no band, and never a zero.
   await card.scrollIntoViewIfNeeded()
@@ -1260,6 +1276,8 @@ test('caffeine is one optional item: a band per window, tapped again to clear, n
   }
   await expect(extras).toBeVisible()
   await expect(extras.getByRole('heading', { name: 'Caffeine since your last check-in' })).toBeVisible()
+  // The evening's window is since the last check-in, so its line says so: a total is never counted twice.
+  await expect(extras.getByTestId('caffeine-help')).toHaveText('Only if you had caffeine. Pick the closest total since your last check-in.')
   await expect(page.getByText('Caffeine after midday')).toHaveCount(0)
   await page.getByTestId('caffeine-1').click()
   await expect(page.getByTestId('caffeine-1')).toHaveAttribute('aria-pressed', 'true')
@@ -2240,14 +2258,44 @@ test('the move before pickup stays on Now across 17:00 while its window is open,
   await expect(pickup).toHaveCount(0)
 })
 
-/** Where the cue sits: its gap above the bar, how far from centre, and whether it meets any of the Brain's words or taps. */
-async function cueGeometry(page: Page): Promise<{ gap: number; off: number; onWords: boolean }> {
+/**
+ * What the cue covers, measured here and not by the app's own rule (2026-10-02): lines of the Brain's
+ * words under its pill, controls under its pill or its tap area, whether it leaves the screen, and how
+ * tall its pill and its tap area are.
+ */
+async function cueCovers(page: Page): Promise<{ scrollY: number; brainWords: string[]; controls: string[]; offScreen: boolean; pillTall: number; tapTall: number }> {
   return page.evaluate(() => {
-    const p = (document.querySelector('.move-cue-pill') as HTMLElement).getBoundingClientRect()
-    const bar = (document.querySelector('nav.tabs .tabs-inner') as HTMLElement).getBoundingClientRect()
-    const words = [...document.querySelectorAll('section.screen.now [data-testid="brief"] :is(p, h2, button, a, li)')].map((e) => e.getBoundingClientRect())
-    return { gap: bar.top - p.bottom, off: (p.left + p.right) / 2 - document.documentElement.clientWidth / 2, onWords: words.some((w) => w.width > 0 && p.left < w.right && p.right > w.left && p.top < w.bottom && p.bottom > w.top) }
+    const cue = document.querySelector('[data-testid="move-cue"]') as HTMLElement
+    const tap = cue.getBoundingClientRect()
+    const pill = (cue.querySelector('.move-cue-pill') as HTMLElement).getBoundingClientRect()
+    const meets = (a: DOMRect, b: DOMRect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+    const now = document.querySelector('section.screen.now') as HTMLElement
+    const brief = now.querySelector('[data-testid="brief"]')
+    const brainWords: string[] = []
+    if (brief) {
+      const walker = document.createTreeWalker(brief, NodeFilter.SHOW_TEXT)
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue
+        const range = document.createRange()
+        range.selectNodeContents(n)
+        for (const r of range.getClientRects()) if (r.width > 0 && meets(pill, r)) brainWords.push(n.textContent.trim().slice(0, 24))
+      }
+    }
+    const controls = [...now.querySelectorAll('button, a[href], input, select, textarea, [role="button"], summary')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 && (meets(pill, r) || meets(tap, r))
+      })
+      .map((el) => (el.textContent ?? '').trim().slice(0, 24))
+    return { scrollY: window.scrollY, brainWords, controls, offScreen: tap.left < 0 || tap.right > document.documentElement.clientWidth || tap.top < 0, pillTall: pill.height, tapTall: tap.height }
   })
+}
+
+/** The cue keeps its rules where it stands: none of the Brain's words under it, no control under it or its tap area, on the screen, its tap area no shorter than its pill. */
+async function expectCueClear(page: Page): Promise<void> {
+  const c = await cueCovers(page)
+  expect({ brainWords: c.brainWords, controls: c.controls, offScreen: c.offScreen }).toEqual({ brainWords: [], controls: [], offScreen: false })
+  expect(c.tapTall).toBeGreaterThanOrEqual(c.pillTall - 0.5)
 }
 
 test('a move lower on Now is cued once: a tap goes to it and marks it seen, it is not cued again after a reload, and a new move later is (final UI polish, 2026-09-26)', async ({ page }) => {
@@ -2258,15 +2306,13 @@ test('a move lower on Now is cued once: a tap goes to it and marks it seen, it i
   await tapThrough(page)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   const cue = page.getByTestId('move-cue')
-  const one = page.getByRole('button', { name: 'Move below', exact: true })
+  const one = page.getByRole('button', { name: '1 move below', exact: true })
+  // At the top of Now, with no scroll first, the count said even for one (2026-10-02).
   await expect(one).toBeVisible()
   await expect(cue.locator('.move-cue-arrow')).toHaveText('↓')
-  // Just above the tab bar, centred, and never on the Brain's words.
-  const at = await cueGeometry(page)
-  expect(at.gap).toBeGreaterThanOrEqual(4)
-  expect(at.gap).toBeLessThanOrEqual(24)
-  expect(Math.abs(at.off)).toBeLessThan(2)
-  expect(at.onWords).toBe(false)
+  await expect(cue).toHaveText('↓1 move below')
+  expect((await cueCovers(page)).scrollY).toBe(0)
+  await expectCueClear(page)
   // A tap marks it seen at once and goes to it.
   await one.click()
   expect(await page.evaluate(() => localStorage.getItem('life-mirror.movesSeen'))).toMatch(/^\["[0-9]+:/)
@@ -2316,9 +2362,11 @@ test('two moves lower on Now are cued as two; one seen leaves the cue for the ot
   await expect(live).toHaveCount(2)
   const two = page.getByRole('button', { name: '2 moves below', exact: true })
   await expect(two).toBeVisible()
+  expect((await cueCovers(page)).scrollY).toBe(0)
+  await expectCueClear(page)
   // The tap goes to the first; the second, still lower down, keeps the cue.
   await two.click()
-  await expect(page.getByRole('button', { name: 'Move below', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
   // On the screen, the second clears the cue; kept there for a moment, it is recorded as seen.
   await live.nth(1).evaluate((e) => window.scrollTo(0, window.scrollY + e.getBoundingClientRect().top - 16))
   await expect(page.getByTestId('move-cue')).toHaveCount(0, { timeout: 4000 })
@@ -2337,7 +2385,7 @@ test('a move with nothing to do yet is never cued (final UI polish, 2026-09-26)'
   await page.getByRole('button', { name: /Check in/ }).click()
   await tapThrough(page)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Move below', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
   // After its block, still unseen, it waits for the next check-in: nothing to do now, so nothing to cue.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 17, 40))
   await page.reload()
@@ -2346,7 +2394,7 @@ test('a move with nothing to do yet is never cued (final UI polish, 2026-09-26)'
   await expect(page.getByTestId('move-cue')).toHaveCount(0)
 })
 
-test('the cue never sits on the Brain’s words: held while they are under it, shown once they are clear (final UI polish, 2026-09-26)', async ({ page }) => {
+test('the cue shows at the top of Now with no scroll first, and never covers the Brain’s words, Why or a control: it floats to the nearest clear place (2026-10-02)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 560 })
   await page.clock.setFixedTime(new Date(2026, 8, 18, 14, 0))
   await page.goto('./')
@@ -2359,14 +2407,41 @@ test('the cue never sits on the Brain’s words: held while they are under it, s
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.evaluate(() => window.scrollTo(0, 0))
   const cue = page.getByTestId('move-cue')
-  // A move is lower down, so the cue is drawn; the Brain's words are under it, so it is held.
-  await expect(cue).toHaveCount(1)
-  await expect.poll(async () => (await cueGeometry(page)).onWords).toBe(true)
-  await expect(cue).toBeHidden()
-  // Once the words have scrolled clear, it shows, clear of them.
-  await page.evaluate(() => window.scrollBy(0, 360))
-  await expect(cue).toBeVisible()
-  expect((await cueGeometry(page)).onWords).toBe(false)
+  await expect(page.getByTestId('brief-why')).toBeVisible()
+  // The Brain's words fill the foot of the screen, where the cue's own place is: it shows at once, elsewhere, covering none of it.
+  for (const [width, height] of [
+    [390, 560],
+    [320, 560],
+    // A 390-pixel phone with its text at 130 percent.
+    [300, 600],
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
+    expect((await cueCovers(page)).scrollY).toBe(0)
+    await expectCueClear(page)
+  }
+  // Now reflows with nothing in the page changed (as when a font finishes loading), carrying what lay above the cue down into its place: it moves clear.
+  await page.setViewportSize({ width: 390, height: 560 })
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.waitForTimeout(400)
+  await expectCueClear(page)
+  const where = () => cue.evaluate((e) => [Math.round(e.getBoundingClientRect().left), Math.round(e.getBoundingClientRect().top)])
+  const before = await where()
+  await page.addStyleTag({ content: 'section.screen.now { padding-top: 64px !important; }' })
+  await page.waitForTimeout(600)
+  const after = await where()
+  // A fresh look, forced: where it stood already is where that look puts it, and a new place.
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+  await page.waitForTimeout(600)
+  expect(after).toEqual(await where())
+  expect(after).not.toEqual(before)
+  await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
+  await expectCueClear(page)
+  // Scrolled a little and settled, wherever it stands it still covers nothing it must not.
+  await page.evaluate(() => window.scrollBy(0, 120))
+  await page.waitForTimeout(500)
+  if (await cue.isVisible()) await expectCueClear(page)
 })
 
 test('a big social day is asked, never assumed: on a church day the chip asks; marked, the recovery gap joins this evening’s move; taken back, it comes off (the final checklist, item 1)', async ({ page }) => {
@@ -2479,4 +2554,145 @@ test('private items at the check-ins they are placed in: one placed in the morni
   }
   await expect(extras).toBeVisible()
   await expect(page.getByTestId('private-log')).toHaveCount(0)
+})
+
+// ─── Final cleanup (2026-10-02) ───────────────────────────────────────────────────────────────
+
+/** From Now, the evening's check-in to its extras, the way a person gets there. */
+async function toEveningExtras(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const extras = page.getByTestId('extras')
+  const anchor = page.getByTestId('anchor').nth(2)
+  const ask = page.getByTestId('outcome-ask')
+  for (let i = 0; i < 30; i++) {
+    await expect(extras.or(anchor).or(ask).first()).toBeVisible()
+    if (await extras.isVisible()) break
+    if (await ask.isVisible()) {
+      await page.getByRole('button', { name: 'Not now', exact: true }).click()
+      await expect(ask).toBeHidden()
+      continue
+    }
+    await tapAnchor(page)
+  }
+  await expect(extras).toBeVisible()
+}
+
+/** An evening already logged: its summary, then Change the extras. */
+async function backToEveningExtras(page: Page): Promise<void> {
+  await page.getByTestId('block-row').filter({ hasText: 'Evening' }).click()
+  await page.getByRole('button', { name: 'Change the extras' }).click()
+  await expect(page.getByTestId('extras')).toBeVisible()
+}
+
+test('teeth brushed today is a count, 0, 1 or 2, from explicit taps alone; the two notes are gone, and A big social day today is as it was (final cleanup, 2026-10-02)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  await toEveningExtras(page)
+  const extras = page.getByTestId('extras')
+  const teeth = page.getByTestId('necessity-teeth')
+  await expect(teeth).toContainText('Teeth brushed today')
+  await expect(teeth.getByRole('button')).toHaveText(['0', '1', '2'])
+  for (const [n, name] of [
+    ['0', 'None'],
+    ['1', 'Once'],
+    ['2', 'Twice or more'],
+  ]) {
+    await expect(page.getByTestId(`necessity-teeth-${n}`)).toHaveAttribute('aria-label', name)
+    // Shown and untapped, it is unknown: nothing is set by itself.
+    await expect(page.getByTestId(`necessity-teeth-${n}`)).toHaveAttribute('aria-pressed', 'false')
+  }
+  expect((await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBeUndefined()
+  // One tap sets the count, another count replaces it, the same count again takes it back to unknown.
+  await page.getByTestId('necessity-teeth-2').click()
+  await expect(page.getByTestId('necessity-teeth-2')).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBe(2)
+  await page.getByTestId('necessity-teeth-1').click()
+  await expect(page.getByTestId('necessity-teeth-1')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('necessity-teeth-2')).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBe(1)
+  await page.getByTestId('necessity-teeth-1').click()
+  await expect(page.getByTestId('necessity-teeth-1')).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed ?? null).toBeNull()
+  await page.getByTestId('necessity-teeth-0').click()
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBe(0)
+  // The other two necessities are the taps they were.
+  await expect(page.getByTestId('necessity-shower')).toContainText('No shower today')
+  await page.getByTestId('necessity-shower').click()
+  await expect(page.getByTestId('necessity-shower')).toHaveAttribute('aria-pressed', 'true')
+  // The two notes are gone; the big social day reads as it did.
+  await expect(extras).not.toContainText('A tap marks a miss')
+  await expect(extras).not.toContainText('A setup move can target one')
+  await expect(extras).not.toContainText('Statements, not commands')
+  await expect(page.getByTestId('chip-bigSocial')).toContainText('A big social day today')
+  // Kept across a relaunch, and shown again as tapped.
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.reload()
+  expect((await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBe(0)
+  await backToEveningExtras(page)
+  await expect(page.getByTestId('necessity-teeth-0')).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('an evening logged before the count keeps what it said: a teeth miss shows as none, and nothing is ever filled in where nothing was tapped (final cleanup, 2026-10-02)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  await toEveningExtras(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // As an older version wrote it: the teeth miss tapped, no count.
+  const [evening] = (await rowsOf<{ day: string; block: string; extras?: Record<string, unknown> }>(page, 'checkins')).filter((c) => c.day === '2026-09-07' && c.block === 'evening')
+  await putInto(page, 'checkins', { ...evening, extras: { ...(evening.extras ?? {}), necessities: { teeth: true } } })
+  await page.reload()
+  await backToEveningExtras(page)
+  await expect(page.getByTestId('necessity-teeth-0')).toHaveAttribute('aria-pressed', 'true')
+  // The record itself is unchanged until a count is tapped: the old miss, no count written in.
+  expect(await extrasOf(page, '2026-09-07', 'evening')).toMatchObject({ necessities: { teeth: true } })
+  expect((await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBeUndefined()
+  // A count tapped now stands in its place.
+  await page.getByTestId('necessity-teeth-2').click()
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'evening'))?.teethBrushed).toBe(2)
+  expect(((await extrasOf(page, '2026-09-07', 'evening'))?.necessities as Record<string, unknown> | undefined)?.teeth).toBeUndefined()
+})
+
+test('the Private log row’s words start where the rows beside it start, its chevron at the right edge, in every theme (final cleanup, 2026-10-02)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  // One private item, placed at the evening as it is by default.
+  await settingsSection(page, 'moves')
+  await page.getByTestId('settings-private').click()
+  await page.getByPlaceholder('Name it').fill('Item one')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(page.getByTestId('private-item-row')).toContainText('Item one')
+  await page.reload()
+  await toEveningExtras(page)
+  const measure = () =>
+    page.evaluate(() => {
+      const rows = [...document.querySelectorAll('[data-testid="extras"] .row')]
+      const words = (text: string) => (rows.find((r) => r.querySelector('.row-main')?.textContent?.trim() === text)?.querySelector('.row-main') as HTMLElement | undefined)?.getBoundingClientRect().left ?? null
+      const log = document.querySelector('[data-testid="private-log"]') as HTMLElement
+      const chev = (log.querySelector('.chev') as HTMLElement).getBoundingClientRect()
+      return {
+        dinner: words('Late or heavy dinner'),
+        faith: words('Felt close to God today?'),
+        log: words('Private log'),
+        chevGap: log.getBoundingClientRect().right - chev.right,
+        order: rows.map((r) => r.querySelector('.row-main')?.textContent?.trim()).filter((t) => t === 'Late or heavy dinner' || t === 'Felt close to God today?' || t === 'Private log'),
+      }
+    })
+  for (const theme of ['nocturne', 'instrument', 'signal']) {
+    if (theme !== 'nocturne') {
+      await page.getByRole('button', { name: 'Done', exact: true }).click()
+      await page.evaluate((t) => localStorage.setItem('life-mirror.theme', t), theme)
+      await page.reload()
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+      await backToEveningExtras(page)
+    }
+    const m = await measure()
+    expect(m.order).toEqual(['Late or heavy dinner', 'Felt close to God today?', 'Private log'])
+    expect(Math.abs((m.log ?? 0) - (m.dinner ?? 99))).toBeLessThan(0.5)
+    expect(Math.abs((m.log ?? 0) - (m.faith ?? 99))).toBeLessThan(0.5)
+    expect(m.chevGap).toBeLessThan(2)
+  }
+  // Behaviour as before: names out of sight until opened.
+  await expect(page.getByTestId('extras')).not.toContainText('Item one')
+  await page.getByTestId('private-log').click()
+  await expect(page.getByTestId('extras')).toContainText('Item one')
 })

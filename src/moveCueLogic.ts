@@ -57,3 +57,84 @@ export function saveSeen(seen: ReadonlySet<string>): void {
     // A phone that keeps nothing still shows the cue; it simply may show it again after a relaunch.
   }
 }
+
+/**
+ * What lies under where the cue might float (2026-10-02): a line of the Brain's words, any other line
+ * of words, or a control (a button, a link, a field; the Brain's Why and its taps among them).
+ */
+export interface Guarded extends Box {
+  kind: 'brain' | 'words' | 'control'
+}
+
+/** Where the cue goes from its own place just above the tab bar: its pill right by dx and up by dy, and its tap area h tall, centred on the pill. */
+export interface Placement {
+  dx: number
+  dy: number
+  h: number
+}
+
+/** Within this distance of its own place, the cue would rather sit on a word or two than float far up the screen. */
+export const CUE_NEAR = 96
+const CUE_STEP = 2
+
+const meets = (a: Box, b: Box, margin: number): boolean => a.left < b.right + margin && a.right > b.left - margin && a.top < b.bottom + margin && a.bottom > b.top - margin
+
+/** A box moved right by dx and up by dy. */
+export const shifted = (b: Box, p: Pick<Placement, 'dx' | 'dy'>): Box => ({ left: b.left + p.dx, right: b.right + p.dx, top: b.top - p.dy, bottom: b.bottom - p.dy })
+
+/**
+ * Whether a place keeps the rules never broken: the pill clear of the Brain's words, and pill and tap
+ * area clear of every control, on the screen; with words, the pill also clear of every other word.
+ * A control is kept a pixel clear: the cue's own place is measured in whole pixels, its neighbours' not.
+ */
+export function keeps(tap: Box, pill: Box, boxes: readonly Guarded[], vw: number, words: boolean): boolean {
+  if (tap.left < 0 || tap.right > vw) return false
+  return boxes.every((b) => (b.kind === 'control' ? !meets(tap, b, 1) && !meets(pill, b, 1) : b.kind === 'brain' || words ? !meets(pill, b, 2) : true))
+}
+
+/**
+ * Where the cue floats (2026-10-02). Its own place is centred just above the tab bar. It never covers
+ * the Brain's words or a control, and its tap area never meets a control, so it never takes a tap meant
+ * for one: the tap area is as tall as in its own place where that fits, and no shorter than the pill
+ * where it does not. It would rather cover no words at all. The nearest place above its own that keeps
+ * every rule comes first (centred, then at the right edge, then at the left); within CUE_NEAR, a place
+ * that covers a word or two outside the Brain comes before one further up; beyond, the same order up
+ * the screen. Null when no place on the screen keeps the rules never broken: the cue waits.
+ */
+export interface CueSpace {
+  vw: number
+  top: number
+  gutter: number
+  button: Box
+  pill: Box
+  boxes: readonly Guarded[]
+}
+
+/** The cue with its pill moved right by dx and up by dy, its tap area as tall as the rules allow there, up to its own; null when even the pill's own height breaks them. */
+export function fitAt(o: CueSpace, dx: number, dy: number, words: boolean): Placement | null {
+  const tall = o.button.bottom - o.button.top
+  const short = o.pill.bottom - o.pill.top
+  const pill = shifted(o.pill, { dx, dy })
+  const mid = (pill.top + pill.bottom) / 2
+  const tap = (h: number): Box => ({ left: o.button.left + dx, right: o.button.right + dx, top: mid - h / 2, bottom: mid + h / 2 })
+  for (let h = tall; h >= short; h -= CUE_STEP) if (keeps(tap(h), pill, o.boxes, o.vw, words)) return { dx, dy, h }
+  return keeps(tap(short), pill, o.boxes, o.vw, words) ? { dx, dy, h: short } : null
+}
+
+export function placeCue(o: CueSpace): Placement | null {
+  const bw = o.button.right - o.button.left
+  const xs = [0, o.vw - o.gutter - bw - o.button.left, o.gutter - o.button.left].filter((dx, i, all) => all.indexOf(dx) === i)
+  const furthest = Math.max(0, o.pill.top - o.top)
+  const at = (dx: number, dy: number, words: boolean): Placement | null => fitAt(o, dx, dy, words)
+  const find = (from: number, to: number, words: boolean): Placement | null => {
+    for (let dy = from; dy <= to; dy += CUE_STEP) {
+      for (const dx of xs) {
+        const found = at(dx, dy, words)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  const near = Math.min(CUE_NEAR, furthest)
+  return find(0, near, true) ?? find(0, near, false) ?? find(near + CUE_STEP, furthest, true) ?? find(near + CUE_STEP, furthest, false)
+}

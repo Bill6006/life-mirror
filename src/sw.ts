@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { readPush } from './pushPayload'
 import { clientsClaim } from 'workbox-core'
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute, type PrecacheEntry } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
@@ -24,15 +25,22 @@ cleanupOutdatedCaches()
 registerRoute(new NavigationRoute(createHandlerBoundToURL(`${BASE}index.html`)))
 
 // The content-free ping, and the content-free cue from the Worker. Everything that decides happens here, on the phone, from the record.
+// The one push that carries words is the clean window's report (pushPayload.ts), shown as sent.
 self.addEventListener('push', (event) => {
-  let kind = 'ping'
+  let push = readPush(null)
   try {
-    kind = (event.data?.json() as { kind?: string } | null)?.kind ?? 'ping'
+    push = readPush(event.data?.json())
   } catch {
-    kind = 'ping'
+    push = readPush(null)
   }
-  event.waitUntil(kind === 'cue' ? onCue(false) : kind === 'cue2' ? onCue(true) : kind === 'test' ? onTest() : onPing())
+  const { kind, body } = push
+  event.waitUntil(kind === 'cue' ? onCue(false) : kind === 'cue2' ? onCue(true) : kind === 'test' ? onTest() : kind === 'report' && body ? onReport(body) : onPing())
 })
+
+/** The clean window's qualification report (2026-10-02): the Worker's words from the check's own counts, shown once. */
+async function onReport(body: string): Promise<void> {
+  await self.registration.showNotification(copy.appName, { body, tag: 'report', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+}
 
 /** A push sent by hand from the Worker to prove the path: it shows itself. */
 async function onTest(): Promise<void> {

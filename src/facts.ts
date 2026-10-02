@@ -27,6 +27,7 @@ import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } fro
 // stands behind it (a count, a tier) and that never merges with any card's grade.
 
 import type { Fact, FactSheet, SaidEntry } from './factTypes'
+import { necessitiesMissed } from './necessities'
 export type { Fact, FactSheet, SaidEntry } from './factTypes'
 
 export interface FactInput {
@@ -649,7 +650,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   facts.push(fact('outside.7d', ['workout'], `Workout days in the last seven: ${workouts.length}${workouts.length ? ` (${workouts.join(', ')})` : ''}${sessions7 > workouts.length ? `; ${sessions7} sessions` : ''}.`, { days: workouts.length, sessions: sessions7 }, { n: workouts.length }))
 
   const lastEvenings = [1, 2, 3].map((d) => i.checkins.find((c) => c.day === addDays(today, -d) && c.block === 'evening'))
-  const misses = lastEvenings.reduce((n, c) => n + Object.values(c?.extras?.necessities ?? {}).filter(Boolean).length, 0)
+  const misses = lastEvenings.reduce((n, c) => n + necessitiesMissed(c?.extras).length, 0)
   facts.push(fact('necessities.3d', ['necessities'], `Necessities marked missed over the last three evenings: ${misses}.`, { misses }, { n: 3 }))
 
   const morning = i.checkins.find((c) => c.day === today && c.block === 'morning')

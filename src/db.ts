@@ -16,6 +16,7 @@ import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from
 import { sunLocal } from './sun'
 import type { UseKind } from './useShared'
 import type { Area, PlaceKind, Where } from './location'
+import type { TeethBrushed } from './necessities'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
@@ -50,8 +51,13 @@ export interface Extras {
   heavyCaffeine?: true
   /** Napped today: the one daytime sleep the record cannot otherwise see, on the evening check-in. */
   napped?: true
-  /** Phase 11: the necessities signal. A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated. */
+  /**
+   * Phase 11: the necessities signal. A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated.
+   * Teeth left it on 2026-10-02 for teethBrushed; an older record's teeth miss stays here as it was: not brushed, and nothing about how often.
+   */
   necessities?: Necessities
+  /** How many times teeth were brushed that day, from an explicit tap (2026-10-02). Never inferred from silence; absent is unknown. */
+  teethBrushed?: TeethBrushed
   /** One optional line for anything the app has no question for. Kept for the export. */
   note?: string
   /** Private items logged, keyed by item id. Names live only in privateItems. */
@@ -1049,6 +1055,23 @@ export function setNote(slot: Slot, asked: readonly ReadingId[], text: string): 
     const trimmed = text.trim()
     if (trimmed) extras.note = trimmed
     else delete extras.note
+    rec.extras = extras
+    rec.updatedAt = now
+    rec.id = await db.checkins.put(rec)
+  })
+}
+
+/** Teeth brushed today: one explicit tap sets the count, a tap on the count already set takes it back to unknown. An older miss on the record gives way to it. */
+export function setTeethBrushed(slot: Slot, asked: readonly ReadingId[], n: TeethBrushed | null): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const now = new Date().toISOString()
+    const rec = (await getCheckIn(slot.day, slot.block)) ?? newCheckIn(slot, asked, now)
+    const extras: Extras = { ...(rec.extras ?? {}) }
+    const necessities: Necessities = { ...(extras.necessities ?? {}) }
+    delete necessities.teeth
+    extras.necessities = necessities
+    if (n === null) delete extras.teethBrushed
+    else extras.teethBrushed = n
     rec.extras = extras
     rec.updatedAt = now
     rec.id = await db.checkins.put(rec)

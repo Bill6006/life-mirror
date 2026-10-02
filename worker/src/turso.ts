@@ -1,3 +1,4 @@
+import type { QualifyReport } from './qualify'
 import { createClient } from '@libsql/client/web'
 import { OUTSIDE_APP, OUTSIDE_STORE } from '../../src/outsideRow'
 import type { LineAction } from '../../src/brainShared'
@@ -261,6 +262,11 @@ export interface Store {
   readAudit(stores: readonly string[]): Promise<AuditRow[]>
   /** Every row of the phone's own written since a time, by place and stamp alone: the storage audit's push timeline. */
   readSyncTimes(since: string): Promise<{ store: string; id: string; day: string | null; synced_at: string; updated_at: string }[]>
+  /** The clean window's qualification report (2026-10-02), kept in the brain's own rows, and read back. */
+  writeReport(row: QualifyReport): Promise<void>
+  readReport(id: string): Promise<QualifyReport | null>
+  /** The phones of an app with when each was first seen and last synced, by an id's first characters alone: the storage audit's sync view. */
+  readDevices(app: string): Promise<{ device: string; label: string; firstSeen: string; lastSync: string }[]>
   /** The skill coach's proposals (Parts 40 and 41): one per ask, the ids of those stored, and one written. */
   proposalIds(): Promise<Set<string>>
   readProposals(): Promise<CoachProposal[]>
@@ -364,6 +370,18 @@ export function tursoStore(url: string, token: string): Store {
     async writeSpot(row) {
       const now = new Date().toISOString()
       await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async writeReport(row) {
+      const now = new Date().toISOString()
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'reports', row.id, row.to, JSON.stringify(row), now, DEVICE, now] })
+    },
+    async readReport(id) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'reports' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
+      return r.length ? (JSON.parse(String(r[0].body)) as QualifyReport) : null
+    },
+    async readDevices(app) {
+      const r = await rows(`SELECT device_id, label, first_seen, last_sync FROM devices WHERE app = ? ORDER BY last_sync DESC`, [app])
+      return r.map((x) => ({ device: String(x.device_id ?? '').slice(0, 8), label: String(x.label ?? ''), firstSeen: String(x.first_seen ?? ''), lastSync: String(x.last_sync ?? '') }))
     },
     async readWatchRows(from) {
       // Only the fields the gate and the watch read, taken out by the database, so a year of days stays a small read.
@@ -546,6 +564,16 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async writeSpot(row) {
       rows.set(key(BRAIN_APP, 'bridge', row.id), { app: BRAIN_APP, store: 'bridge', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
+    },
+    async writeReport(row) {
+      rows.set(key(BRAIN_APP, 'reports', row.id), { app: BRAIN_APP, store: 'reports', id: row.id, day: row.to, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
+    },
+    async readReport(id) {
+      const r = rows.get(key(BRAIN_APP, 'reports', id))
+      return r && !r.deleted && r.body ? (JSON.parse(r.body) as QualifyReport) : null
+    },
+    async readDevices() {
+      return []
     },
     async readWatchRows(from) {
       const since = (app: string, store: string) => live(app, store).filter((r) => (r.day ?? '') >= from)

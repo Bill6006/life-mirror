@@ -7,6 +7,7 @@ import { candidatesFor, reachableAnywhere, type Situation, type TodayState } fro
 import type { ReadingId } from './readings'
 import { INGREDIENT_IDS, INGREDIENTS, readingOf, type Band } from './score'
 import type { CardStats } from './tiers'
+import { necessitiesMissed } from './necessities'
 
 // The weekly view, pure: the scorecard, best-days, the gap as numbers, what moved this week,
 // what lasts and what does not, catalogue health, and the extension prompt the app writes
@@ -143,7 +144,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   controlled.push(count('nothing landed', (d) => Boolean(evening(d)?.extras?.nothingLanded)))
   controlled.push(count('hard to see the point', (d) => Boolean(evening(d)?.extras?.hardToSeePoint)))
   controlled.push(count('a nap', (d) => Boolean(evening(d)?.extras?.napped)))
-  controlled.push(count('a necessity missed', (d) => Object.values(evening(d)?.extras?.necessities ?? {}).some(Boolean)))
+  controlled.push(count('a necessity missed', (d) => necessitiesMissed(evening(d)?.extras).length > 0))
 
   const ctx = new Map(contexts.map((c) => [c.day, c]))
   const morning = (day: string) => byDay.get(day)?.find((c) => c.block === 'morning')

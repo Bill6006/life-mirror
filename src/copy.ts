@@ -48,7 +48,17 @@ export const copy = {
       withdrawal: 'Reported on most days: part of a same-check-in difference may be withdrawal on the check-ins without it, not a lift on the ones with it.',
       note: 'Associations in your record, nothing more. Counts are shown; a group under five shows nothing and merges with the one beside it; capped at Promising, and Promising only from fifteen in each group across six weeks.',
     },
-    help: 'Only if you had some; with none, leave it. Pick the closest band: the same coffee can land in either of two. Under 100: tea, a cola, one espresso, a small energy drink (8.4 oz). 100–199: a regular coffee (8 to 12 oz), two espressos, a 16 oz Monster. 200–299: a large coffee (16 oz), cold brew, a Celsius, most pre-workouts. 300 or more: a Bang or a Reign, two large coffees.',
+    /** The morning item asks about the day so far; the later ones about the window since the last check-in, so a total is never counted twice. */
+    helpMorning: 'Only if you had caffeine. Pick the closest total for today.',
+    help: 'Only if you had caffeine. Pick the closest total since your last check-in.',
+    examples: 'Examples',
+    /** What lands in each band (Part 21's figures): the band's own words, then these. */
+    exampleLines: {
+      1: 'tea, a cola, one espresso, a small energy drink (8.4 oz)',
+      2: 'a regular coffee (8 to 12 oz), two espressos, a 16 oz Monster',
+      3: 'a large coffee (16 oz), cold brew, a Celsius, most pre-workouts',
+      4: 'a Bang or a Reign, two large coffees',
+    },
   },
   people: {
     contexts: { weekday: 'Weekday {blocks} at home', office: 'Office-day {blocks}', weekend: 'Weekend {blocks}' },
@@ -86,7 +96,7 @@ export const copy = {
   },
   now: {
     /** The cue above the tab bar while a move on Now is still lower down, unseen (final UI polish, 2026-09-26). */
-    cueOne: 'Move below',
+    cueOne: '1 move below',
     cueMany: '{n} moves below',
     notLogged: 'Not logged yet',
     checkIn: 'Check in',
@@ -107,7 +117,6 @@ export const copy = {
     notStudyNight: 'Not a study night today',
     officeToday: 'At the office today',
     homeToday: 'Working from home today',
-    note: 'Statements, not commands. Only exceptions to the week live here; they change today alone.',
   },
   study: {
     fact: 'Study night',
@@ -490,7 +499,7 @@ export const copy = {
       bigSocial: 'A big social day today',
       napped: 'Napped today',
       shower: 'No shower today',
-      teeth: 'Teeth not brushed',
+      teeth: 'Teeth brushed today',
       food: 'No proper meal today',
       away: 'She’s away today',
       caffeine: 'Caffeine',
@@ -532,9 +541,10 @@ export const copy = {
   },
   necessities: {
     title: 'Necessities today',
-    note: 'A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated. A setup move can target one.',
     shower: 'No shower today',
-    teeth: 'Teeth not brushed',
+    teeth: 'Teeth brushed today',
+    /** What each count means, read aloud: the screen shows 0, 1 and 2. */
+    teethCounts: { 0: 'None', 1: 'Once', 2: 'Twice or more' },
     food: 'No proper meal today',
     missed: 'Missed',
   },

@@ -3,7 +3,7 @@ import { blockAt, type Block } from './blocks'
 import { chipRetired, chipStates } from './audit'
 import { copy } from './copy'
 import { allCheckIns, askedOf, CAFFEINE_BANDS, db, getCheckIn, getSettings, markCaffeineShown, setCaffeine, type CaffeineBand, type CheckIn } from './db'
-import { fill } from './format'
+import { Disclosure } from './ui'
 import { useLive } from './live'
 import { askedReadings } from './settings'
 
@@ -84,8 +84,17 @@ export function CaffeineCard({ day, block }: { day: string; block: Block }) {
           </p>
         )}
         <p class="note faint no-gap" data-testid="caffeine-help">
-          {fill(c.help, {})}
+          {block === 'morning' ? c.helpMorning : c.help}
         </p>
+        <Disclosure label={c.examples} testid="caffeine-examples" class="caffeine-examples">
+          <ul class="caffeine-example-list">
+            {CAFFEINE_BANDS.map((band) => (
+              <li key={band} class="note faint no-gap">
+                {c.bands[band]}: {c.exampleLines[band]}
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
       </div>
     </>
   )
