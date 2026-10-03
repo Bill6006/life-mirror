@@ -6,9 +6,11 @@ import { useEffect, useState } from 'preact/hooks'
 import { APP, dayOf, markSilent, onOutboxChange, outboxDelete, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { captureFloors, maxIds } from './idFloors'
 import { unlinkLost } from './lostLinks'
+import { forgetPending, keepQueued, pendingRows } from './pendingCopy'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
 import { OUTSIDE_APP, OUTSIDE_STORE, outsideDayOf } from './outsideRow'
 import { copy } from './copy'
+import { fill } from './format'
 import { db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
 import { withDefaults, type Settings } from './settings'
@@ -40,6 +42,8 @@ export interface SyncStatus {
   notice: TokenEvent | null
   /** Whether the browser keeps this app's storage when space runs low (sync safety, 2026-10-02). */
   persisted: boolean | null
+  /** How many waiting changes the cloud refused on the last attempt; they stay queued, and the rest went through. */
+  refused: number
 }
 
 let factory: StoreFactory = libsqlStore
@@ -365,7 +369,29 @@ async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): 
     // A row the cloud has never seen and that carries no timestamp is the phone's to keep.
     if (basis === null && !restoringSettings) return
     if (basis !== null && !(row.updated_at > basis)) return
+  } else {
+    // Not on this phone. Deleted here and the deletion still queued: the cloud's copy from before it
+    // never brings the record back. A pull right after a push reads the phone's own rows again, and
+    // once undid a deletion made in between (2026-10-02). A record lost with no deletion still comes back.
+    const deletion = (await db.outbox.where('[store+key]').equals([row.store, row.id]).toArray()).filter((r) => r.op === 'delete').pop()
+    if (deletion && !(row.updated_at > deletion.updatedAt)) return
   }
+  const result = await applyChange(row, local, true)
+  await tx.cloudRows.put({ store: row.store, key: row.id, updatedAt: row.updated_at, syncedAt: row.synced_at })
+  if (result === 'gaveWay') return
+  // The remote won: any change still queued for this row is older than what the phone now holds.
+  await db.outbox.where('[store+key]').equals([row.store, row.id]).delete()
+}
+
+/**
+ * One row's change on this phone, as a pull makes it: a tombstone deletes; the settings record keeps
+ * what belongs to this phone alone; a record held twice is made one by the twin rule. 'gaveWay' when
+ * the copy already here stayed and this row was set aside. `cloudHasIt`: whether the cloud holds this
+ * row's id, so a row set aside is tombstoned there.
+ */
+async function applyChange(row: CloudRow, local: Record<string, unknown> | undefined, cloudHasIt: boolean): Promise<'applied' | 'gaveWay'> {
+  const table = db.table(row.store)
+  const key = keyFor(row.store, row.id)
   if (row.deleted) {
     if (local !== undefined) await table.delete(key)
   } else if (row.body) {
@@ -382,15 +408,14 @@ async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): 
       if (spec && twin && twin.id !== key) {
         const now = new Date().toISOString()
         const twinKey = String(twin.id)
-        const twinKnown = Boolean(await tx.cloudRows.get([row.store, twinKey]))
+        const twinKnown = Boolean(await db.cloudRows.get([row.store, twinKey]))
         // A derived copy only this phone has came after the cloud's: the cloud's stays. Otherwise the rule decides, the same from either side.
         const twinStays = spec.derived && !twinKnown ? false : firstStays(row.store, twin, body)
         const meta = await getMeta()
         await db.cloudMeta.put({ ...meta, key: 'state', merged: (meta.merged ?? 0) + 1 })
         if (twinStays) {
-          await retire(row.store, row.id, body, spec.derived, true, now)
-          await tx.cloudRows.put({ store: row.store, key: row.id, updatedAt: row.updated_at, syncedAt: row.synced_at })
-          return
+          await retire(row.store, row.id, body, spec.derived, cloudHasIt, now)
+          return 'gaveWay'
         }
         await table.delete(twin.id as never)
         await db.outbox.where('[store+key]').equals([row.store, twinKey]).delete()
@@ -399,9 +424,51 @@ async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): 
       await table.put(body)
     }
   }
-  await tx.cloudRows.put({ store: row.store, key: row.id, updatedAt: row.updated_at, syncedAt: row.synced_at })
-  // The remote won: any change still queued for this row is older than what the phone now holds.
-  await db.outbox.where('[store+key]').equals([row.store, row.id]).delete()
+  return 'applied'
+}
+
+/**
+ * Sync safety (2026-10-02, second part): the changes this phone queued that the cloud never received,
+ * put back after the browser cleared the database, from the second copy kept beside the token
+ * (pendingCopy.ts). Run once the whole history is pulled. A kept change comes back only when nothing
+ * for its record is queued now and the cloud holds nothing of it as new; it is applied as a pulled row
+ * is, the twin rule included, and queued again as it was. Only what this phone itself queued comes
+ * back: nothing is made up. Returns how many came back.
+ */
+export async function putBackPending(): Promise<number> {
+  const kept = pendingRows()
+  if (!kept.length) return 0
+  let back = 0
+  const held: string[] = []
+  await db.transaction('rw', ALL_TABLES(), async () => {
+    markSilent()
+    const queued = new Set((await db.outbox.toArray()).map((r) => `${r.store}|${r.key}`))
+    for (const row of kept) {
+      const k = `${row.store}|${row.key}`
+      if (queued.has(k)) continue
+      const known = await db.cloudRows.get([row.store, row.key])
+      // The cloud has it, or something newer: the copy had only missed its leaving the queue.
+      if (known && known.updatedAt >= row.updatedAt) {
+        held.push(k)
+        continue
+      }
+      const { id: _id, ...change } = row
+      if (SYNCED_STORES.includes(row.store)) {
+        const local = (await db.table(row.store).get(keyFor(row.store, row.key))) as Record<string, unknown> | undefined
+        const asPulled: CloudRow = { app: APP, store: row.store, id: row.key, day: row.day, body: row.body, updated_at: row.updatedAt, deleted: row.op === 'delete' ? 1 : 0, device_id: '', synced_at: '' }
+        // Set aside by the twin rule: kept in the superseded store, queued there by the merge.
+        if ((await applyChange(asPulled, local, Boolean(known))) === 'applied') await db.outbox.add(change)
+      } else if (row.store === 'superseded') {
+        await db.outbox.add(change)
+      } else {
+        held.push(k)
+        continue
+      }
+      back++
+    }
+  })
+  forgetPending(held)
+  return back
 }
 
 const ALL_TABLES = () => [...SYNCED_STORES.map((s) => db.table(s)), db.cloudRows, db.cloudMeta, db.outbox]
@@ -519,22 +586,44 @@ export function latestPerRow(rows: readonly OutboxRow[]): OutboxRow[] {
   return [...latest.values()]
 }
 
+/**
+ * A tombstone's body (2026-10-02): the cloud's records table refuses a NULL body ("NOT NULL constraint
+ * failed: records.body"), and a refused row once held back every upload behind it. Empty JSON carries
+ * nothing of the record, and every reader skips a row marked deleted.
+ */
+export const TOMBSTONE_BODY = '{}'
+
 export function toCloudRow(r: OutboxRow, deviceId: string, syncedAt: string): CloudRow {
-  return { app: APP, store: r.store, id: r.key, day: r.day, body: r.op === 'delete' ? null : r.body, updated_at: r.updatedAt, deleted: r.op === 'delete' ? 1 : 0, device_id: deviceId, synced_at: syncedAt }
+  return { app: APP, store: r.store, id: r.key, day: r.day, body: r.op === 'delete' ? TOMBSTONE_BODY : r.body, updated_at: r.updatedAt, deleted: r.op === 'delete' ? 1 : 0, device_id: deviceId, synced_at: syncedAt }
 }
 
-/** Drains the outbox in batches. Each pushed row gets its own synced_at, a millisecond apart, so paging never skips one. */
-async function push(store: CloudStore, deviceId: string): Promise<number> {
+/** A row the database itself will not take (an SQLite error), as against a network that is down. */
+export function refusedByCloud(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code
+  const message = e instanceof Error ? e.message : String(e)
+  return (typeof code === 'string' && code.startsWith('SQLITE_')) || /\bSQLITE_[A-Z]+/.test(message)
+}
+
+/** What a push did: how many rows went through, how many the cloud refused (kept queued), and the first refusal's words. */
+export interface PushResult {
+  pushed: number
+  refused: number
+  reason: string | null
+}
+
+/**
+ * Drains the outbox in batches. Each pushed row gets its own synced_at, a millisecond apart, so paging
+ * never skips one. The cloud takes a batch whole or not at all, so a batch it refuses is sent again
+ * one row at a time: a row it refuses stays queued with every change to its record, and never holds
+ * back the rest (2026-10-02). A network that goes down stops the push, as before.
+ */
+async function push(store: CloudStore, deviceId: string): Promise<PushResult> {
   let pushed = 0
-  for (;;) {
-    const batch = await db.outbox.orderBy('id').limit(BATCH * 4).toArray()
-    if (!batch.length) break
-    const latest = latestPerRow(batch).slice(0, BATCH)
-    const carried = new Set(latest.map((r) => `${r.store}|${r.key}`))
-    const base = Date.now()
-    const rows = latest.map((r, i) => toCloudRow(r, deviceId, new Date(base + i).toISOString()))
-    await store.upsert(rows)
+  const refused = new Map<string, string>()
+  const settle = async (batch: readonly OutboxRow[], rows: readonly CloudRow[]) => {
+    if (!rows.length) return
     raiseFloors(maxIds(rows))
+    const carried = new Set(rows.map((r) => `${r.store}|${r.id}`))
     await db.transaction('rw', [db.outbox, db.cloudRows], async () => {
       const ids = batch.filter((r) => carried.has(`${r.store}|${r.key}`)).map((r) => r.id as number)
       await db.outbox.bulkDelete(ids)
@@ -542,7 +631,39 @@ async function push(store: CloudStore, deviceId: string): Promise<number> {
     })
     pushed += rows.length
   }
-  return pushed
+  for (;;) {
+    const batch = await db.outbox
+      .orderBy('id')
+      .filter((r) => !refused.has(`${r.store}|${r.key}`))
+      .limit(BATCH * 4)
+      .toArray()
+    if (!batch.length) break
+    const latest = latestPerRow(batch).slice(0, BATCH)
+    const base = Date.now()
+    const rows = latest.map((r, i) => toCloudRow(r, deviceId, new Date(base + i).toISOString()))
+    try {
+      await store.upsert(rows)
+      await settle(batch, rows)
+      continue
+    } catch (e) {
+      if (!refusedByCloud(e)) throw e
+    }
+    const taken: CloudRow[] = []
+    for (const row of rows) {
+      try {
+        await store.upsert([row])
+        taken.push(row)
+      } catch (e) {
+        if (!refusedByCloud(e)) {
+          await settle(batch, taken)
+          throw e
+        }
+        refused.set(`${row.store}|${row.id}`, e instanceof Error ? e.message : String(e))
+      }
+    }
+    await settle(batch, taken)
+  }
+  return { pushed, refused: refused.size, reason: refused.size ? [...refused.values()][0] : null }
 }
 
 function backoffMs(): number {
@@ -600,17 +721,28 @@ async function run(): Promise<SyncOutcome> {
       await unlinkLost()
       await patchMeta({ relinked: REPAIR })
     }
-    await push(store, deviceId)
+    // With the history in: what the browser cleared before the cloud had it comes back from the second copy, and goes up with the rest.
+    const back = await putBackPending()
+    if (back) appendLog({ at: new Date().toISOString(), kind: 'restored', detail: back === 1 ? copy.cloud.logPutBackOne : fill(copy.cloud.logPutBack, { n: String(back) }) })
+    const pushed = await push(store, deviceId)
+    if (pushed.refused) {
+      // The rest went through; the refused rows wait in the queue. The phone's last sync stays the last one that left nothing behind.
+      attempts++
+      await patchMeta({ lastError: pushed.reason, refused: pushed.refused })
+      setLive('error')
+      scheduleRetry()
+      return 'failed'
+    }
     const now = new Date().toISOString()
     await store.touchDevice({ device_id: deviceId, app: APP, label: DEVICE_LABEL, at: now })
-    await patchMeta({ lastSyncAt: now, lastError: null })
+    await patchMeta({ lastSyncAt: now, lastError: null, refused: 0 })
     attempts = 0
     setLive('idle')
     return 'done'
   } catch (e) {
     attempts++
     const message = e instanceof Error ? e.message : String(e)
-    await patchMeta({ lastError: message }).catch(() => undefined)
+    await patchMeta({ lastError: message, refused: 0 }).catch(() => undefined)
     setLive(isOnline() ? 'error' : 'offline')
     scheduleRetry()
     return 'failed'
@@ -677,7 +809,10 @@ export async function requestPersistence(): Promise<boolean | null> {
 export function startCloud(): () => void {
   void captureFloors(db).catch(() => undefined)
   void requestPersistence()
-  void syncNow()
+  // The queue as it stands is kept beside the token before the first sync can take anything out of it.
+  void keepQueued(db)
+    .catch(() => 0)
+    .then(() => syncNow())
   const interval = setInterval(() => void syncNow(), PULL_EVERY_MS)
   const onOnline = () => void syncNow()
   window.addEventListener('online', onOnline)
@@ -704,5 +839,5 @@ export function useCloudStatus(): SyncStatus | undefined {
   }, [])
   if (!settings || !meta || pending === undefined) return undefined
   const hasToken = Boolean(settings.cloud.token)
-  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending, notice: latestNotice(), persisted }
+  return { state: hasToken ? live : 'off', hasToken, lastSyncAt: meta.lastSyncAt, lastError: meta.lastError, pending, notice: latestNotice(), persisted, refused: meta.refused ?? 0 }
 }

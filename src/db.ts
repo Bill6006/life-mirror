@@ -11,6 +11,7 @@ import type { HelpLevel, HerRung } from './her'
 import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { installIdFloors } from './idFloors'
+import { clearPending, installPendingCopy } from './pendingCopy'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
@@ -930,6 +931,7 @@ class LifeMirrorDB extends Dexie {
       coachProposals: 'id, aimId, askId',
     })
     installOutbox(this)
+    installPendingCopy(this)
     installIdFloors(this)
   }
 }
@@ -1257,8 +1259,12 @@ export async function setPrivateBlocks(id: number, blocks: readonly Block[]): Pr
   return true
 }
 
-/** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back. */
+/** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back, the second copy of what was queued included. */
 export function wipeEverything(): Promise<void> {
+  return wipeTables().then(clearPending)
+}
+
+function wipeTables(): Promise<void> {
   return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks, db.useLog, db.places, db.placeCandidates, db.placeMeta], async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()

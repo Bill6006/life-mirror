@@ -34,12 +34,19 @@ interface Stmt {
 const valueOf = (v: Value): string | number | null => (v.type === 'null' ? null : v.type === 'integer' ? Number(v.value) : v.type === 'blob' ? v.base64 : v.value)
 const asValue = (v: unknown): Value => (v === null || v === undefined ? { type: 'null' } : typeof v === 'number' ? (Number.isInteger(v) ? { type: 'integer', value: String(v) } : { type: 'float', value: v }) : { type: 'text', value: String(v) })
 
-/** The stand-in cloud: the records table and the devices touch, as the app's five statements use them. */
+/** The live table's refusal, as the database answers it: body is NOT NULL (seen on the phone, 2026-10-02). */
+const notNull = (): Error => Object.assign(new Error('SQLite error: NOT NULL constraint failed: records.body'), { code: 'SQLITE_CONSTRAINT' })
+
+/** The stand-in cloud: the records table and the devices touch, as the app's five statements use them, with the live table's NOT NULL body and a batch written whole or not at all. */
 class Cloud {
   rows = new Map<string, Row>()
   /** Each completed sync ends by touching its device: one count per sync that went through. */
   touches = 0
   refused: string[] = []
+  /** Unreachable: every request fails as a network that is down does. */
+  down = false
+  /** A store whose rows the table refuses, as it refused a row with no body. */
+  refuseStore: string | null = null
   private known = new Set<string>()
   private stored = new Map<number, string>()
   private held: Promise<void> | null = null
@@ -85,6 +92,7 @@ class Cloud {
     if (/^(BEGIN|COMMIT|ROLLBACK|PRAGMA)\b/i.test(sql)) return { cols: [], rows: [], affected: 0 }
     if (sql.startsWith('INSERT OR REPLACE INTO records')) {
       const r = Object.fromEntries(COLUMNS.map((c, i) => [c, args[i]])) as unknown as Row
+      if (r.body === null || r.body === undefined || r.store === this.refuseStore) throw notNull()
       this.seed({ ...r, deleted: Number(r.deleted) })
       return { cols: [], rows: [], affected: 1 }
     }
@@ -113,6 +121,7 @@ class Cloud {
   async handle(route: Route): Promise<void> {
     const req = route.request()
     const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'content-type': 'application/json' }
+    if (this.down) return route.abort('failed')
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers })
     if (!req.url().endsWith('/v2/pipeline')) return route.fulfill({ status: 404, headers, body: '{}' })
     const body = req.postDataJSON() as { requests: { type: string; stmt?: Stmt; batch?: { steps: { stmt: Stmt }[] }; sql?: string; sql_id?: number }[] }
@@ -130,11 +139,18 @@ class Cloud {
         else if (r.type === 'execute' && r.stmt) results.push({ type: 'ok', response: { type: 'execute', result: this.result(await this.run(r.stmt)) } })
         else if (r.type === 'batch' && r.batch) {
           const stepResults: unknown[] = []
-          for (const step of r.batch.steps) stepResults.push(this.result(await this.run(step.stmt)))
+          const before = new Map(this.rows)
+          try {
+            for (const step of r.batch.steps) stepResults.push(this.result(await this.run(step.stmt)))
+          } catch (e) {
+            // One step refused: the batch's transaction rolls back, and nothing of it is written.
+            this.rows = before
+            throw e
+          }
           results.push({ type: 'ok', response: { type: 'batch', result: { step_results: stepResults, step_errors: stepResults.map(() => null) } } })
         } else throw new Error(`not a request the app sends: ${r.type}`)
       } catch (e) {
-        results.push({ type: 'error', error: { message: e instanceof Error ? e.message : String(e), code: 'SQLITE_ERROR' } })
+        results.push({ type: 'error', error: { message: e instanceof Error ? e.message : String(e), code: (e as { code?: string }).code ?? 'SQLITE_ERROR' } })
       }
     }
     return route.fulfill({ status: 200, headers, body: JSON.stringify({ baton: null, base_url: null, results }) })
@@ -327,8 +343,154 @@ test('a phone whose database is cleared gets every record back, hands out no id 
   expect({ checkins: await localIds(c.page, 'checkins'), offers: await localIds(c.page, 'offers') }).toEqual(kept)
   expect(sameRecords(relaunched, cloud.identities())).toEqual([])
   await openSettings(c.page, /Cloud copy/)
-  await expect(c.page.getByTestId('token-notice')).toContainText('written again')
+  // The token's restore is in the log; a change still waiting when the database went (the last screens' use) came back with it.
+  await expect(c.page.getByTestId('token-log')).toContainText('written again')
   await shows(c.page, cloud)
   expect(c.errors).toEqual([])
   await c.context.close()
+})
+
+// Sync safety, second part (2026-10-02). On the phone one queued deletion went up with no body; the
+// table refused it and every batch with it, and hours later the browser cleared the database with
+// the day's changes still waiting: a move answered Done on its card, and what rode alongside it.
+
+/** Every record a store holds on the phone, by id, read straight from its database. */
+function localRows(page: Page, store: string): Promise<Record<string, unknown>[]> {
+  return page.evaluate(async (name) => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const rows = await new Promise<unknown[]>((res, rej) => {
+      const q = dbx.transaction([name], 'readonly').objectStore(name).getAll()
+      q.onsuccess = () => res(q.result)
+      q.onerror = () => rej(q.error)
+    })
+    dbx.close()
+    return rows as Record<string, unknown>[]
+  }, store)
+}
+
+/** The token kept on a new phone, and its first sync through. */
+async function connectPhone(p: Phone, cloud: Cloud): Promise<void> {
+  await p.page.goto('./')
+  await openSettings(p.page, /Cloud copy/)
+  await p.page.getByTestId('token-input').fill(TOKEN)
+  await p.page.getByTestId('token-keep').click()
+  await expect.poll(() => cloud.touches).toBeGreaterThan(0)
+  await p.page.goto('./')
+}
+
+/** The afternoon's check-in, then Done on its move's card later in the block; what rides alongside is left open. */
+async function moveDoneOnTheCard(page: Page): Promise<void> {
+  await checkIn(page)
+  await expect(page.getByTestId('move-card').first()).toBeVisible()
+  // Nothing today has no Done tap by design: Skip shows the next move.
+  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing today') {
+    await page.getByRole('button', { name: /^Skip/ }).click()
+    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing today')
+  }
+  await page.clock.setFixedTime(new Date(2026, 2, 8, 16, 30))
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByTestId('move-done').click()
+  await expect(page.getByTestId('move-fact')).toContainText(/Done · 4:30 PM/)
+}
+
+const byId = (rows: Record<string, unknown>[]) => new Map(rows.map((r) => [Number(r.id), r]))
+
+test('a database cleared before the cloud had the day gets back the move answered Done and what rides alongside it, under their own ids, and sends them', async ({ browser }) => {
+  test.setTimeout(180_000)
+  const cloud = new Cloud()
+  const a = await phone(browser, cloud, new Date(2026, 2, 8, 12, 5))
+  await connectPhone(a, cloud)
+  // The cloud takes nothing from here (on the phone, the refused deletion held back every batch).
+  cloud.down = true
+  await moveDoneOnTheCard(a.page)
+  const before = { offers: await localRows(a.page, 'offers'), outcomes: await localRows(a.page, 'outcomes'), checkins: await localRows(a.page, 'checkins'), cards: await localRows(a.page, 'cards') }
+  expect(before.outcomes).toHaveLength(1)
+  expect(before.outcomes[0]).toMatchObject({ outcome: 'done', passiveOutcome: null })
+  const answered = before.offers.find((o) => o.id === before.outcomes[0].offerId) as Record<string, unknown>
+  expect(cloud.live('offers')).toHaveLength(0)
+  const state = await a.context.storageState()
+  expect(a.errors).toEqual([])
+  await a.context.close()
+
+  // The browser clears the database and keeps local storage; the cloud is back.
+  cloud.down = false
+  const b = await phone(browser, cloud, new Date(2026, 2, 8, 20, 30), state)
+  const touched = cloud.touches
+  await b.page.goto('./')
+  await expect.poll(() => cloud.touches, { timeout: 30_000 }).toBeGreaterThan(touched)
+
+  // Every record of the afternoon back on the phone as it was, under its own id.
+  for (const store of ['offers', 'outcomes', 'checkins', 'cards'] as const) {
+    const now = byId(await localRows(b.page, store))
+    for (const r of before[store]) expect(now.get(Number(r.id)), `${store} ${String(r.id)}`).toEqual(r)
+  }
+  // And in the cloud, whole.
+  expect(cloud.live('outcomes').map((r) => JSON.parse(r.body as string))).toEqual(before.outcomes)
+  for (const o of before.offers) expect(JSON.parse(cloud.live('offers').find((r) => r.id === String(o.id))?.body as string)).toEqual(o)
+  expect(cloud.refused).toEqual([])
+
+  // Now shows the answered move; what rides alongside it is still asked, right there.
+  await b.page.goto('./')
+  if (answered.passiveId) {
+    await expect(b.page.getByTestId('move-fact')).toContainText('Done')
+    await expect(b.page.getByTestId('passive-inline')).toBeVisible()
+  }
+  // History shows it done; Cloud copy says what came back, and nothing waits.
+  await b.page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await b.page.getByRole('button', { name: /^History/ }).click()
+  await expect(b.page.getByTestId('history-row').filter({ hasText: `Offer ${String(answered.id)}` })).toContainText('Done')
+  await b.page.goto('./')
+  await openSettings(b.page, /Cloud copy/)
+  await expect(b.page.getByTestId('cloud-pending')).toHaveText('nothing pending')
+  await expect(b.page.getByText(/put back from the phone’s second copy/).first()).toBeVisible()
+  expect(b.errors).toEqual([])
+  await b.context.close()
+})
+
+test('an answer deleted just after it went up stays deleted and goes up as a tombstone the table takes; a row the table refuses holds back nothing else, and Cloud copy says so', async ({ browser }) => {
+  test.setTimeout(180_000)
+  const cloud = new Cloud()
+  const p = await phone(browser, cloud, new Date(2026, 2, 8, 12, 5))
+  await connectPhone(p, cloud)
+  await moveDoneOnTheCard(p.page)
+  await expect.poll(() => cloud.live('outcomes').length, { timeout: 30_000 }).toBe(1)
+  const id = cloud.live('outcomes')[0].id
+
+  // From here the table refuses the use log's rows, as it refused the deletion with no body.
+  await expect.poll(async () => (await localRows(p.page, 'outbox')).length, { timeout: 30_000 }).toBe(0)
+  const usedBefore = cloud.live('useLog').length
+  cloud.refuseStore = 'useLog'
+  // The answer deleted in History: it goes up as a tombstone while the refused rows wait.
+  await p.page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await p.page.getByRole('button', { name: /^History/ }).click()
+  await p.page.getByTestId('history-delete').first().click()
+  await p.page.getByTestId('history-delete').first().click()
+  await expect.poll(() => cloud.rows.get(`${APP}|outcomes|${id}`)?.deleted, { timeout: 30_000 }).toBe(1)
+  expect(cloud.rows.get(`${APP}|outcomes|${id}`)?.body).toBe('{}')
+  // The use rows queued since wait on the phone: none of them reached the table.
+  expect(cloud.live('useLog')).toHaveLength(usedBefore)
+
+  // Synced again after a relaunch: still deleted on the phone and in the cloud.
+  await p.page.reload()
+  await openSettings(p.page, /Cloud copy/)
+  await p.page.getByTestId('sync-now').click()
+  await expect(p.page.getByTestId('cloud-status')).toContainText('The cloud refused')
+  await expect(p.page.getByTestId('cloud-status')).toContainText('the rest went through')
+  await expect(p.page.getByTestId('cloud-pending')).toHaveText(/^\d+ pending$/)
+  expect(await localRows(p.page, 'outcomes')).toEqual([])
+  expect(cloud.rows.get(`${APP}|outcomes|${id}`)?.deleted).toBe(1)
+
+  // The table takes them again: the waiting rows go up, and nothing is pending.
+  cloud.refuseStore = null
+  await p.page.getByTestId('sync-now').click()
+  await expect(p.page.getByTestId('cloud-pending')).toHaveText('nothing pending')
+  await expect(p.page.getByTestId('cloud-status')).toContainText('Last sync')
+  expect(cloud.live('useLog').length).toBeGreaterThan(0)
+  expect(p.errors).toEqual([])
+  await p.context.close()
 })

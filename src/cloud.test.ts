@@ -408,7 +408,8 @@ describe('the other app’s finished workouts, read from the same database', () 
     expect((await getOutsideMeta()).watermark).toBe('2026-09-13T19:00:00.000Z')
     expect([...store.rows.values()].filter((r) => r.app === OUTSIDE_APP)).toHaveLength(3)
 
-    await store.upsert([outsideRow('w1', null, '2026-09-14T09:00:00.000Z', 1)])
+    // A deleted row as the live table holds one: it refuses a NULL body (2026-10-02).
+    await store.upsert([outsideRow('w1', {}, '2026-09-14T09:00:00.000Z', 1)])
     await syncNow()
     expect((await db.outside.toArray()).map((d) => d.id)).toEqual(['w3'])
   })
@@ -491,7 +492,8 @@ describe('the brain’s lines, read from the same database', () => {
     expect(rows[0]).toMatchObject({ day: '2026-09-18', kind: 'brief', text: 'One line.', model: 'm' })
     expect((await getBrainMeta()).watermark).toBe('2026-09-18T09:15:02.000Z')
     expect([...store.rows.values()].filter((r) => r.app === BRAIN_APP)).toHaveLength(2)
-    await store.upsert([brainRow('2026-09-18:brief', null, '2026-09-19T09:00:00.000Z', 1)])
+    // The Worker takes a line back by marking its row deleted; the body stays (turso.ts).
+    await store.upsert([brainRow('2026-09-18:brief', { day: '2026-09-18', kind: 'brief', text: 'One line.' }, '2026-09-19T09:00:00.000Z', 1)])
     await syncNow()
     expect(await db.brainBriefs.count()).toBe(0)
     expect(brainBriefOf('y', 'not json')).toBeNull()

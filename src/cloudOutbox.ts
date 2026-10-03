@@ -46,6 +46,8 @@ export interface CloudMeta {
   repair?: string
   /** The links a reused id bent, already taken back for this repair (lostLinks.ts). */
   relinked?: string
+  /** How many waiting changes the cloud refused on the last attempt; they stay queued (2026-10-02). */
+  refused?: number
 }
 
 const silent = new WeakSet<Transaction>()

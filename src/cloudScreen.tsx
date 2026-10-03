@@ -51,8 +51,12 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
       ? c.syncing
       : status.state === 'offline'
         ? c.offline
-        : status.state === 'error' && status.lastError
-          ? fill(c.error, { error: status.lastError })
+        : status.state === 'error' && status.lastError && status.refused > 0
+          ? status.refused === 1
+            ? fill(c.refusedOne, { error: status.lastError })
+            : fill(c.refused, { n: String(status.refused), error: status.lastError })
+          : status.state === 'error' && status.lastError
+            ? fill(c.error, { error: status.lastError })
           : status.lastSyncAt
             ? fill(c.lastSync, { when: formatWhen(status.lastSyncAt) })
             : c.never
@@ -149,8 +153,8 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
         <>
           <h2 class="section">{c.tokenLog}</h2>
           <div class="card pad" data-testid="token-log">
-            {log.map((e) => (
-              <p class="note faint" key={`${e.at}-${e.kind}`}>
+            {log.map((e, i) => (
+              <p class="note faint" key={`${i}-${e.at}-${e.kind}`}>
                 {formatWhen(e.at)} · {e.kind} · {e.detail}
               </p>
             ))}

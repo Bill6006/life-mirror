@@ -97,7 +97,12 @@ export interface MemoryStore extends CloudStore {
   failWith: Error | null
 }
 
-/** A fake store for the tests: the same contract, in memory. */
+/** The live table's refusal of a row with no body, as the libsql client reports it (seen on the phone, 2026-10-02). */
+export function notNullBody(): Error {
+  return Object.assign(new Error('SQLITE_CONSTRAINT: SQLITE_CONSTRAINT: SQLite error: NOT NULL constraint failed: records.body'), { code: 'SQLITE_CONSTRAINT' })
+}
+
+/** A fake store for the tests: the same contract, in memory, with the live table's NOT NULL body. */
 export function memoryStore(): MemoryStore {
   const keyOf = (r: Pick<CloudRow, 'app' | 'store' | 'id'>) => `${r.app}|${r.store}|${r.id}`
   const store: MemoryStore = {
@@ -108,6 +113,8 @@ export function memoryStore(): MemoryStore {
     async upsert(rows) {
       store.calls++
       if (store.failWith) throw store.failWith
+      // As the live table does: body is NOT NULL, and a batch is written whole or not at all.
+      if (rows.some((r) => r.body === null || r.body === undefined)) throw notNullBody()
       for (const r of rows) store.rows.set(keyOf(r), { ...r })
     },
     async pull(app, after, limit) {

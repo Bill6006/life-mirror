@@ -1524,6 +1524,9 @@ export const copy = {
     syncing: 'Syncing…',
     offline: 'Offline; changes wait here.',
     error: 'Last attempt did not go through: {error}. It retries on its own.',
+    /** Some waiting changes refused by the cloud, the rest sent (2026-10-02). */
+    refused: 'The cloud refused {n} of the waiting changes: {error}. They stay on this phone and are tried again on their own; the rest went through.',
+    refusedOne: 'The cloud refused one of the waiting changes: {error}. It stays on this phone and is tried again on its own; the rest went through.',
     syncNow: 'Sync now',
     device: 'This phone',
     limit: 'One phone per app for now: local ids are numbered per device. A second phone needs string ids first.',
@@ -1544,6 +1547,9 @@ export const copy = {
     logDisagreed: 'The two copies of the token disagreed; the more recently saved one was kept.',
     logMissing: 'The token is missing from both the app’s database and the phone’s second copy. Paste it again and the first sync pulls everything back.',
     logRemoved: 'Removed in Settings.',
+    /** Changes the cloud never received, put back after the app's database was cleared (2026-10-02). */
+    logPutBack: '{n} changes the cloud did not have yet were put back from the phone’s second copy.',
+    logPutBackOne: 'One change the cloud did not have yet was put back from the phone’s second copy.',
   },
   legend: {
     title: 'Legend',

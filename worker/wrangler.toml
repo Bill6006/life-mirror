@@ -47,9 +47,11 @@ COACH_WRITER = "on"
 COACH_LAUNCH = "2026-09-23"
 # The clean qualification window for Pass 1B (the owner's word, 2026-10-02): ten untouched days, read once at
 # their end by the ten-day check's own rule, the report written to the cloud and sent to the phone.
-QUALIFY_FROM = "2026-10-03"
-QUALIFY_TO = "2026-10-12"
-QUALIFY_REPORT_AT = "2026-10-13T20:07"
+# Held, with no dates, until the owner marks the sync repair of 2026-10-02 Green (their word that evening):
+# the window then begins on the first full untouched day after it. With no dates no report is written.
+QUALIFY_FROM = ""
+QUALIFY_TO = ""
+QUALIFY_REPORT_AT = ""
 VAPID_PUBLIC_KEY = "BCaIRco378dsKVVBh0-wIIWYUqrTgY2aZuJA_uxEXnyojXNoZrYlsszUH3QzecsMBdvMCzXEw9ihMnf219GCNOA"
 VAPID_SUBJECT = "https://github.com/Bill6006/life-mirror"
 # In order; every failure falls to the next. All four answer on the free plan (DeepSeek does not;
