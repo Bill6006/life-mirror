@@ -44,10 +44,7 @@ export default defineConfig(({ mode }) => ({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        // The installed app's identity, renamed once (2026-10-03): the phone's browser kept a removed
-        // install's record under the old one (BASE) and offered only to open it, which failed. Storage,
-        // the push address and shortcuts belong to the site and its scope, not to this name.
-        id: `${BASE}app`,
+        id: BASE,
         name: 'Life Mirror',
         short_name: 'Life Mirror',
         description: 'How you are, read from your own record.',

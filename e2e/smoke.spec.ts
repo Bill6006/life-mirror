@@ -2706,3 +2706,25 @@ test('the Private log row’s words start where the rows beside it start, its ch
   await page.getByTestId('private-log').click()
   await expect(page.getByTestId('extras')).toContainText('Item one')
 })
+
+test('the browser’s offer to install shows as one card at the top of Settings, opens the browser’s own dialog, and goes once used (2026-10-03)', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  // No offer from the browser: no card.
+  await expect(page.getByTestId('install-card')).toHaveCount(0)
+  await page.evaluate(() => {
+    const w = window as unknown as { prompted?: number }
+    const e = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt: async () => {
+        w.prompted = (w.prompted ?? 0) + 1
+      },
+      userChoice: Promise.resolve({ outcome: 'accepted' }),
+    })
+    window.dispatchEvent(e)
+  })
+  await expect(page.getByTestId('install-card')).toBeVisible()
+  await expect(page.getByTestId('install-card')).toContainText('without Chrome’s address bar')
+  await page.getByTestId('install-app').click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { prompted?: number }).prompted)).toBe(1)
+  await expect(page.getByTestId('install-card')).toHaveCount(0)
+})

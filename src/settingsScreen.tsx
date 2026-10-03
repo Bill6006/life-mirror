@@ -8,6 +8,7 @@ import { copy } from './copy'
 import { getSettings, updateSettings } from './db'
 import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
+import { installApp, useInstallOffer } from './installOffer'
 import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
 import { activeBlocks, applyLowDemand, daylightFor, type Settings, type Weekday, sunPlace } from './settings'
 import { parsePlace, placeText, sunLocal, type Place } from './sun'
@@ -70,6 +71,7 @@ export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings
   const settings = useLive(getSettings, [])
   const places = useLive(namedPlaces, [])
   const theme = useTheme()
+  const installable = useInstallOffer()
   if (!settings || !places) return <section class="screen" />
   const n = copy.settingsNav
   const g = n.groups
@@ -84,6 +86,18 @@ export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings
       <header class="screen-head">
         <h1 class="eyebrow screen-title">{copy.tabs.settings}</h1>
       </header>
+
+      {/* Only while the browser offers it: the app on the home screen as its own app (2026-10-03). */}
+      {installable && (
+        <div class="card pad" data-testid="install-card">
+          <p class="note no-gap">{copy.settings.installNote}</p>
+          <div class="actions">
+            <button type="button" class="pill-quiet" data-testid="install-app" onClick={() => void installApp()}>
+              {copy.settings.installButton}
+            </button>
+          </div>
+        </div>
+      )}
 
       <SectionLabel index={0}>{g.days}</SectionLabel>
       <div class="card">

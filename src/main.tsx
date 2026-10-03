@@ -2,6 +2,7 @@ import { render } from 'preact'
 import { registerSW } from 'virtual:pwa-register'
 import { App } from './app'
 import { reloadWhenSafe } from './swUpdate'
+import { watchInstallOffer } from './installOffer'
 import { applyTheme, currentTheme, followOtherWindows } from './theme'
 import './styles.css'
 
@@ -12,5 +13,8 @@ followOtherWindows()
 // Register the service worker at once so the app opens offline after its first load. A new build
 // reloads the page, but never under someone's typing (Pass 4).
 registerSW({ immediate: true, onNeedReload: () => reloadWhenSafe() })
+
+// The browser's offer to install the app, held for Settings from the first moment it comes.
+watchInstallOffer()
 
 render(<App />, document.getElementById('app')!)

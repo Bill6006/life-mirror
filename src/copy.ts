@@ -1182,6 +1182,9 @@ export const copy = {
     inAppNote: 'With the app open in the background it reminds you itself at these times. To be rung with the app closed, set up the ping.',
     remindersDenied: "Notifications are off for this app in the phone's settings.",
     remindersUnsupported: 'This browser offers no notifications here.',
+    /** Installing from the app's own page, while the browser offers it (2026-10-03). */
+    installNote: 'Life Mirror can sit on your home screen as an app of its own, without Chrome’s address bar.',
+    installButton: 'Install the app',
     pushTitle: 'The ping',
     pushSetup: 'Set up the ping',
     pushCopy: 'Copy address',
