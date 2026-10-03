@@ -494,3 +494,48 @@ test('an answer deleted just after it went up stays deleted and goes up as a tom
   expect(p.errors).toEqual([])
   await p.context.close()
 })
+
+// Sync safety (2026-10-03): the site's data cleared whole, as clearing a site's cookies and data does. The
+// app is a new install, opened and used before the token is pasted; its first sync must write nothing over
+// the cloud's records.
+test('a new install used before its token is pasted writes nothing over the cloud, and keeps what it made under its own ids', async ({ browser }) => {
+  test.setTimeout(180_000)
+  const cloud = new Cloud()
+  // The phone as it was: in step with the cloud, its morning synced.
+  const a = await phone(browser, cloud, new Date(2026, 2, 8, 9, 5))
+  await connectPhone(a, cloud)
+  await checkIn(a.page)
+  await expect.poll(() => cloud.live('checkins').length, { timeout: 30_000 }).toBe(1)
+  await expect.poll(async () => (await localRows(a.page, 'outbox')).length, { timeout: 30_000 }).toBe(0)
+  const held = new Map([...cloud.rows].filter(([, r]) => r.app === APP && r.store !== 'settings').map(([k, r]) => [k, r.body]))
+  expect(a.errors).toEqual([])
+  await a.context.close()
+
+  // Everything stored for the site gone: no database, nothing beside it. Used before the token.
+  const b = await phone(browser, cloud, new Date(2026, 2, 8, 20, 30))
+  await b.page.goto('./')
+  await checkIn(b.page)
+  const made = { checkins: await localIds(b.page, 'checkins'), useLog: await localIds(b.page, 'useLog'), offers: await localIds(b.page, 'offers') }
+  expect(made.checkins).toHaveLength(1)
+  for (const [store, ids] of Object.entries(made)) expect(ids.every((id) => id > 10_000_000), store).toBe(true)
+
+  // The token: the first sync reads the whole cloud before anything goes up.
+  const touched = cloud.touches
+  await openSettings(b.page, /Cloud copy/)
+  await b.page.getByTestId('token-input').fill(TOKEN)
+  await b.page.getByTestId('token-keep').click()
+  await expect.poll(() => cloud.touches, { timeout: 30_000 }).toBeGreaterThan(touched)
+  // Every record the cloud held is as it was. The day's fact sheet alone is made again, and only from the record read back: it knows the morning.
+  for (const [k, body] of held) {
+    if (k.startsWith(`${APP}|facts|`)) expect(cloud.rows.get(k)?.body, k).toContain('reading.2026-03-08.morning')
+    else expect(cloud.rows.get(k)?.body, k).toBe(body)
+  }
+  // What the new install made went up under its own ids, beside the morning.
+  expect(cloud.live('checkins').map((r) => Number(r.id)).sort((x, y) => x - y)).toEqual([1, made.checkins[0]])
+  for (const id of made.offers) expect(cloud.rows.get(`${APP}|offers|${id}`)).toBeDefined()
+  // And the phone holds both.
+  expect(await localIds(b.page, 'checkins')).toEqual([1, made.checkins[0]])
+  expect(cloud.refused).toEqual([])
+  expect(b.errors).toEqual([])
+  await b.context.close()
+})

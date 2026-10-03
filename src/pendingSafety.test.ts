@@ -10,6 +10,7 @@ import { answerPassive, deleteOutcome, pendingOffers, recordDoneNow } from './of
 import { clearPending, fitPending, keepQueued, PENDING_CAP, PENDING_KEY, pendingRows, readPending } from './pendingCopy'
 import { blockReadings, type Position } from './readings'
 import { memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
+import { markInStep } from './freshIds'
 
 // Sync safety (2026-10-02, second part). On a phone, one queued deletion went to the cloud with no
 // body; the cloud's table refuses that, the whole batch with it, and every upload after it waited
@@ -69,6 +70,8 @@ function offeredMove(): Offer {
 beforeEach(async () => {
   kv = memoryKeyValue()
   setTokenStorageForTests(kv)
+  // A phone that has read the cloud before (a new install is its own case, freshIds.test.ts).
+  markInStep()
   await clearDatabase()
 })
 

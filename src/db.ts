@@ -12,6 +12,7 @@ import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } fro
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { installIdFloors } from './idFloors'
 import { clearPending, installPendingCopy } from './pendingCopy'
+import { installFreshIds } from './freshIds'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
@@ -932,6 +933,7 @@ class LifeMirrorDB extends Dexie {
     })
     installOutbox(this)
     installPendingCopy(this)
+    installFreshIds(this)
     installIdFloors(this)
   }
 }

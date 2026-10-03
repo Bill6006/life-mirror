@@ -7,6 +7,7 @@ import { db, saveAnswer, updateSettings } from './db'
 import type { Block } from './blocks'
 import { blockReadings, type Position } from './readings'
 import { memoryKeyValue, raiseFloors, readFloors, setTokenStorageForTests, type KeyValue } from './tokenVault'
+import { BASE_FLOOR, IN_STEP_KEY, markInStep } from './freshIds'
 
 // Sync safety (2026-10-02). What a phone's browser can do, each part played out here: it clears the
 // database while what is kept beside it (the token's second copy, and now the id floors) stays. A cleared phone must never hand out an id the cloud holds, a
@@ -44,6 +45,8 @@ const FORECAST = { day: '2026-03-09', block: 'morning' as Block, horizon: 1, mad
 beforeEach(async () => {
   kv = memoryKeyValue()
   setTokenStorageForTests(kv)
+  // A phone that has read the cloud before: what is kept beside the token says so (a new install is its own case, freshIds.test.ts).
+  markInStep()
   await clearDatabase()
 })
 
@@ -83,6 +86,7 @@ describe('sync safety after the phone clears the database', () => {
     // Another phone: a new store of floors, the same cloud. It restores everything and creates nothing.
     kv = memoryKeyValue()
     setTokenStorageForTests(kv)
+    markInStep()
     await clearDatabase()
     await connect(store)
     expect(await syncNow()).toBe('done')
@@ -204,13 +208,14 @@ describe('sync safety after the phone clears the database', () => {
     expect((await getMeta()).repair).toBe(REPAIR)
   })
 
-  it('a forecast derived on a phone that lost its floors as well never displaces the cloud’s original, even under a smaller id', async () => {
+  it('a forecast derived on a phone that lost its floors as well never displaces the cloud’s original', async () => {
     const store = memoryStore()
-    // The cloud holds the original under id 7; the phone, cleared of everything, derives the same slot again under id 1.
+    // The cloud holds the original under id 7; the phone, cleared of everything (its mark of having read the cloud too), derives the same slot again, past the fresh base.
+    kv.removeItem(IN_STEP_KEY)
     await store.upsert([{ app: APP, store: 'forecasts', id: '7', day: FORECAST.day, body: JSON.stringify({ ...FORECAST, id: 7 }), updated_at: '2026-03-08T09:00:00.000Z', deleted: 0, device_id: 'phone', synced_at: '2026-03-08T09:00:01.000Z' }])
     await connect(store)
     await db.forecasts.add({ ...FORECAST, point: 55 })
-    expect((await db.forecasts.toArray()).map((f) => f.id)).toEqual([1])
+    expect((await db.forecasts.toArray()).every((f) => (f.id as number) > BASE_FLOOR)).toBe(true)
     expect(await syncNow()).toBe('done')
     expect((await db.forecasts.toArray()).map((f) => [f.id, f.point])).toEqual([[7, 60]])
     expect([...store.rows.values()].filter((r) => r.app === APP && r.store === 'forecasts').map((r) => [r.id, r.deleted])).toEqual([['7', 0]])

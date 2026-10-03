@@ -7,6 +7,7 @@ import { APP, dayOf, markSilent, onOutboxChange, outboxDelete, SYNCED_STORES, ty
 import { captureFloors, maxIds } from './idFloors'
 import { unlinkLost } from './lostLinks'
 import { forgetPending, keepQueued, pendingRows } from './pendingCopy'
+import { inStep, markInStep } from './freshIds'
 import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from './cloudStore'
 import { OUTSIDE_APP, OUTSIDE_STORE, outsideDayOf } from './outsideRow'
 import { copy } from './copy'
@@ -352,14 +353,37 @@ async function retire(store: string, id: string, body: Record<string, unknown>, 
   if (cloudHasIt) await db.outbox.add(outboxDelete(store, id, now))
 }
 
-/** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. */
-async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows }): Promise<void> {
+/**
+ * The stores keyed by a name or a day rather than a counted id, and whether a record this phone made
+ * before it ever read the cloud is worth keeping aside when the cloud holds its key: the day as you
+ * changed it, her skills and the Brain settings, yes; the day's fact sheet, made again from the record, no.
+ * The settings record has its own rule (its token must never leave the phone).
+ */
+const FIRST_READ: Record<string, (local: Record<string, unknown>) => boolean> = {
+  days: (local) => local.changed === true,
+  herSkills: () => true,
+  brainPrefs: () => true,
+  facts: () => false,
+}
+
+/** A record of a fixed key that gave way on this storage's first read of the cloud: kept whole in the store nothing reads, under a key of its own. */
+async function setAside(store: string, id: string, body: Record<string, unknown>): Promise<void> {
+  const now = new Date().toISOString()
+  await db.outbox.add({ store: 'superseded', key: `${store}:${id}@${now}`, op: 'put', body: JSON.stringify({ store, id, body, at: now }), day: dayOf(body), updatedAt: now, at: now })
+}
+
+/** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. `first`: this storage's first read of the cloud. */
+async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows; first?: boolean }): Promise<void> {
   if (!SYNCED_STORES.includes(row.store)) return
   const table = db.table(row.store)
   const key = keyFor(row.store, row.id)
   const known = await tx.cloudRows.get([row.store, row.id])
   const local = (await table.get(key)) as Record<string, unknown> | undefined
-  if (local !== undefined) {
+  if (local !== undefined && tx.first && !known && row.store in FIRST_READ) {
+    // A new install made this record before it read the cloud (2026-10-03): the cloud's stands, and is
+    // never written over; this phone's is kept aside whole when it holds what you entered.
+    if (FIRST_READ[row.store](local)) await setAside(row.store, row.id, local)
+  } else if (local !== undefined) {
     const localStamp = typeof local.updatedAt === 'string' && local.updatedAt ? local.updatedAt : null
     // The settings record exists on every phone from the first tap; on a fresh install, before the
     // cloud has seen this phone's copy, the cloud's is the one to restore.
@@ -476,13 +500,15 @@ const ALL_TABLES = () => [...SYNCED_STORES.map((s) => db.table(s)), db.cloudRows
 /** Pulls rows newer than the watermark, page by page, and applies each page in one silent transaction. */
 async function pull(store: CloudStore): Promise<number> {
   let applied = 0
+  // Read once: the whole of this storage's first read of the cloud runs under the first-read rule.
+  const first = !inStep()
   for (;;) {
     const meta = await getMeta()
     const rows = await store.pull(APP, meta.watermark, PAGE)
     if (!rows.length) break
     await db.transaction('rw', ALL_TABLES(), async () => {
       markSilent()
-      for (const row of rows) await applyRow(row, { cloudRows: db.cloudRows })
+      for (const row of rows) await applyRow(row, { cloudRows: db.cloudRows, first })
       await patchMeta({ watermark: rows[rows.length - 1].synced_at })
     })
     // Every id the cloud holds is one this phone must never hand out again (sync safety, 2026-10-02).
@@ -702,6 +728,8 @@ async function run(): Promise<SyncOutcome> {
     let failure: unknown = null
     try {
       await pull(store)
+      // This storage has read the whole cloud: from here its ids run on from what it holds (2026-10-03).
+      if (!inStep()) markInStep()
     } catch (e) {
       failure = e
     }
@@ -806,7 +834,14 @@ export async function requestPersistence(): Promise<boolean | null> {
 }
 
 /** On open, every fifteen minutes, when the network returns, and soon after any change. Returns the stop function. */
+/** A phone that synced before this version knew to mark it has read the cloud: it is in step. */
+export async function markInStepIfSynced(): Promise<void> {
+  if (inStep()) return
+  if ((await getMeta()).lastSyncAt) markInStep()
+}
+
 export function startCloud(): () => void {
+  void markInStepIfSynced().catch(() => undefined)
   void captureFloors(db).catch(() => undefined)
   void requestPersistence()
   // The queue as it stands is kept beside the token before the first sync can take anything out of it.

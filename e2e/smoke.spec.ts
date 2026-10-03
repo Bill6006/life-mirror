@@ -21,6 +21,14 @@ let pageErrors: string[] = []
 test.beforeEach(async ({ page }) => {
   pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(String(e)))
+  // The phone here is the owner's: it has read its cloud before, so its ids run from one (2026-10-03). A new install's ids are storage.spec.ts's case.
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('lm.inStep', '1')
+    } catch {
+      // A page without local storage counts as in step anyway.
+    }
+  })
 })
 test.afterEach(() => {
   expect(pageErrors).toEqual([])

@@ -8,6 +8,7 @@ import { answerPassive, offerHistory, pendingOffers, recordDoneNow, recordOutcom
 import { NOTHING } from './offers'
 import { pendingRows } from './pendingCopy'
 import { memoryKeyValue, setTokenStorageForTests } from './tokenVault'
+import { markInStep } from './freshIds'
 
 // What the owner asked to be sure of (2026-10-02), on made-up records: a move answered Done is kept
 // at once, in the record, in the queue for the cloud and in the copy beside the token; what rides
@@ -24,6 +25,7 @@ function offered(over: Partial<Offer> = {}): Offer {
 
 beforeEach(async () => {
   setTokenStorageForTests(memoryKeyValue())
+  markInStep()
   await db.delete()
   await db.open()
 })

@@ -8,6 +8,7 @@ import { markSilent } from './cloudOutbox'
 import { setBrainSwitch, setWriterModel } from './brainPrefs'
 import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
 import { blockReadings } from './readings'
+import { markInStep } from './freshIds'
 
 // The cloud copy, against a fake client. CI never has a token: every token here is made up and
 // never reaches a network. Rule 21: the phone is the source of truth.
@@ -243,6 +244,8 @@ describe('the token on the phone', () => {
   beforeEach(() => {
     phone = memoryKeyValue()
     setTokenStorageForTests(phone)
+    // A phone that has read the cloud before (a new install is its own case, freshIds.test.ts).
+    markInStep()
   })
   afterEach(() => setTokenStorageForTests(null))
 
