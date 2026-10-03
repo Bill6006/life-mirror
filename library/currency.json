@@ -1,0 +1,40 @@
+{
+  "checkedOn": "2026-10-03",
+  "flags": [
+    {
+      "id": "testing-effect",
+      "kind": "correction",
+      "detail": "10.3102/0034654316689306 has correction: 10.3102/0034654317700823"
+    },
+    {
+      "id": "deliberate-practice-share",
+      "kind": "correction",
+      "detail": "10.1177/0956797614535810 has correction: 10.1177/0956797618769891"
+    },
+    {
+      "id": "asking-questions-liking",
+      "kind": "correction",
+      "detail": "10.1037/pspi0000097 has correction: 10.1037/pspi0000491"
+    },
+    {
+      "id": "cold-showers",
+      "kind": "correction",
+      "detail": "10.1371/journal.pone.0161749 has correction: 10.1371/journal.pone.0201978"
+    },
+    {
+      "id": "acting-extraverted",
+      "kind": "correction",
+      "detail": "10.1037/xge0000516 has correction: 10.1037/xge0001339"
+    },
+    {
+      "id": "money-talk",
+      "kind": "correction",
+      "detail": "10.1111/j.1741-3729.2010.00641.x has erratum: 10.1111/j.1741-3729.2012.00714.x"
+    },
+    {
+      "id": "momentum-and-doubts",
+      "kind": "correction",
+      "detail": "10.1037/a0034628 has correction: 10.1037/pspp0000227"
+    }
+  ]
+}
