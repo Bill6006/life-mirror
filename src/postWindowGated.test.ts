@@ -115,7 +115,13 @@ describe('the record the monitored prompts are built from, held fixed while the 
   it('builds the same sheet: every fact, the shortlist and the day', async () => {
     const sheet = await factSheet(DAY, NOW)
     expect(sheet.facts.map((f) => f.id)).toMatchSnapshot()
-    expect(sheet).toMatchSnapshot()
+    // The sheet's two moments are this machine's local times written in UTC, so they are held to the
+    // clock here and kept out of the snapshot, which then reads the same in any time zone (the CI
+    // runner's is UTC; this machine's is New York).
+    const { builtAt, checkedIn, ...rest } = sheet
+    expect(builtAt).toBe(NOW.toISOString())
+    expect(checkedIn).toEqual({ morning: new Date(`${DAY}T07:30:00`).toISOString() })
+    expect(rest).toMatchSnapshot()
   })
 
   it('writes the same coach block', async () => {

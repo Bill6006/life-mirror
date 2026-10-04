@@ -1,4 +1,4 @@
-import type { LineAction, Mode } from './brainShared'
+import { shapeFor, type LineAction, type Mode } from './brainShared'
 import { daysBetween } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
@@ -629,6 +629,8 @@ export function rankLines(sheet: FactSheet, before: readonly SaidBefore[], feedb
     if (only && !only(sit)) continue
     const m = sit.test(sheet)
     if (!m) continue
+    // Away from home (post-window): on a trip's day nothing is due, so no line offers to plan a session; never while that gate is closed, when no sheet says so.
+    if (m.action?.kind === 'plan' && shapeFor(sheet, sheet.day)?.trip) continue
     const last = before
       .filter((x) => x.situationId === sit.id && x.day < sheet.day)
       .map((x) => x.day)

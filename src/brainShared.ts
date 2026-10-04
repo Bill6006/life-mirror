@@ -349,12 +349,17 @@ function citations(o: Record<string, unknown>, sheet: FactSheet, cards: readonly
   return { factIds, cardIds, admitted }
 }
 
-/** An action is allowed only when the sheet makes it possible: the commitment exists, the check-in is at full depth, the move is one the record has never tested. */
-export function validateAction(raw: unknown, sheet: FactSheet): ActionValidation {
+/**
+ * An action is allowed only when the sheet makes it possible: the commitment exists, the check-in is
+ * at full depth, the move is one the record has never tested; and, once Away from home is open, no
+ * plan for a day the sheet says is away from home on a trip, when nothing is due.
+ */
+export function validateAction(raw: unknown, sheet: FactSheet, forDay?: string): ActionValidation {
   if (raw === undefined || raw === null) return { ok: true, value: null }
   if (typeof raw !== 'object') return { ok: false, reason: 'action is not an object' }
   const a = raw as Record<string, unknown>
   if (a.kind === 'plan') {
+    if (forDay && shapeFor(sheet, forDay)?.trip) return { ok: false, reason: 'action plan: that day is away from home on a trip, when nothing is due; leave the action out' }
     const aimId = typeof a.aimId === 'number' ? a.aimId : Number(a.aimId)
     if (!Number.isInteger(aimId) || !sheet.facts.some((f) => f.id === `aim.${aimId}`)) return { ok: false, reason: `action plan: no commitment aim.${String(a.aimId)} on the sheet` }
     if (typeof a.cue !== 'string' || !(LINE_CUES as readonly string[]).includes(a.cue)) return { ok: false, reason: `action plan: cue must be one of ${LINE_CUES.join(', ')}` }
@@ -491,7 +496,7 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   if (why) return { ok: false, reason: why }
   const guarded = forDay ? dayGuard(text, sheet, forDay) : null
   if (guarded) return { ok: false, reason: guarded }
-  const action = validateAction(o.action, sheet)
+  const action = validateAction(o.action, sheet, forDay)
   if (!action.ok) return { ok: false, reason: action.reason }
   const value: BrainOutput = { mode: mode as Mode, text, factIds: cited.factIds, cardIds: cited.cardIds, action: action.value }
   // How firm (Pass 2): checked only once its gate is open; every check above is the same at every firmness.

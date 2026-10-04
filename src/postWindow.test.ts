@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, BLOCKS } from './blocks'
 import { awayDays, awayStatus, endAway, homeDaysOnly, setAway } from './awayFlow'
 import { factSheet } from './brainFlow'
-import { dayGuard, HOME_WORDS, shapeFor } from './brainShared'
+import { dayGuard, HOME_WORDS, shapeFor, validateAction } from './brainShared'
+import type { FactSheet } from './factTypes'
 import { liveMoves, moveById } from './catalogue'
 import { awayShaped, awayUnshaped, contextFromWeek, db, ensureDayContext, getSettings, updateSettings, type CheckIn, type DayContext, type Offer } from './db'
 import { factById, tripFact } from './facts'
@@ -16,7 +17,7 @@ import { awayMode, awayOn, homeOnlyMode, homeOnlyOn } from './postWindowFlow'
 import { blockReadings, type Answers, type Position } from './readings'
 import { dueOf, quiet } from './rhythm'
 import { SITUATION_SHEETS } from './situationFixtures'
-import { phoneReview, SITUATIONS } from './situations'
+import { phoneReview, rankLines, SITUATIONS } from './situations'
 
 // The two features agreed for after the clean window, built behind closed gates (the owner's word,
 // 2026-10-04): what each does once open, read here through the preview an automated browser alone
@@ -461,6 +462,33 @@ describe('a "Not home" skip and the record around a trip, held to their gates', 
     expect(open).not.toBeNull()
     // The trip's four days read high; once left out, what is usual is the home days' alone.
     expect((open as { point: number }).point).toBeLessThan((closed as { point: number }).point)
+  })
+})
+
+describe('no plan on a trip’s day', () => {
+  const withTrip = (sheet: FactSheet): FactSheet => ({ ...sheet, facts: sheet.facts.map((f) => (f.id === 'week.today' ? { ...f, values: { ...f.values, trip: 1 } } : f)) })
+
+  it('keeps the phone’s line from offering to plan a session, and only on a sheet that says the day is a trip’s', () => {
+    for (const id of ['cue-switch', 'loop-planned', 'loop-open']) {
+      const sheet = SITUATION_SHEETS[id]()
+      const plan = rankLines(sheet, [], []).find((c) => c.situationId === id)
+      expect(plan?.action?.kind, id).toBe('plan')
+      expect(rankLines(withTrip(sheet), [], []).some((c) => c.situationId === id), id).toBe(false)
+    }
+    // A line that offers no plan still speaks on a trip's day.
+    const quietDay = SITUATION_SHEETS['loneliness-high']?.() ?? null
+    if (quietDay) expect(rankLines(withTrip(quietDay), [], []).length).toBeGreaterThan(0)
+  })
+
+  it('refuses a model’s plan for a trip’s day, and only for a day the sheet says is one', () => {
+    const sheet = SITUATION_SHEETS['loop-open']()
+    const aim = sheet.facts.find((f) => f.id.startsWith('aim.')) as { id: string }
+    const action = { kind: 'plan', aimId: Number(aim.id.slice(4)), cue: 'afterBedtime' }
+    expect(validateAction(action, sheet, sheet.day)).toMatchObject({ ok: true })
+    expect(validateAction(action, withTrip(sheet), sheet.day)).toMatchObject({ ok: false, reason: expect.stringContaining('away from home on a trip') })
+    // No day named, or another day the sheet does not shape: as before.
+    expect(validateAction(action, withTrip(sheet))).toMatchObject({ ok: true })
+    expect(validateAction({ kind: 'depth', value: 'short' }, withTrip(sheet), sheet.day).ok).toBe(validateAction({ kind: 'depth', value: 'short' }, sheet, sheet.day).ok)
   })
 })
 
