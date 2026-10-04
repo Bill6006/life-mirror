@@ -1,6 +1,7 @@
 import { BLOCKS, blockStart, type Block } from './blocks'
 import { hasMove, isParked, isPathOnly, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, RECOVERY_GAP, rungOf, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
+import { needsHome } from './homeOnly'
 import { inPerson } from './people'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band } from './score'
@@ -83,9 +84,14 @@ export interface TodayState {
   peopleAround?: Readonly<Record<Block, boolean>>
   /** Part 24: a path is on, so its row is the day's one people rep and the draw offers no in-person people or charisma rep. Absent means none is. */
   pathOn?: boolean
+  /**
+   * Not at home (post-window, set only while its gate is open): a day away from home, or Skip's "Not
+   * home" earlier in this block; the moves that need the house wait. Absent means at home, as always.
+   */
+  homeOut?: boolean
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'pathOnly' | 'path' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'daycare' | 'asleep' | 'people'
+export type Exclusion = 'proposed' | 'parked' | 'pathOnly' | 'path' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'home' | 'daycare' | 'asleep' | 'people'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -127,6 +133,8 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   // The two needs the app can know: daylight from your daylight hours, quiet from your office days.
   if (move.needs.includes('daylight') && t.daylight === false) return 'daylight'
   if (move.needs.includes('quiet') && t.atOffice === true && s.block !== 'evening') return 'quiet'
+  // Post-window, gated: away from home, the moves that need the house wait (never set while the gate is closed).
+  if (t.homeOut === true && needsHome(move.id)) return 'home'
   // The third: an adult there in person, from today's shape alone (Part 20's tier 1). Past reps elsewhere never enter here.
   if (inPerson(move) && t.peopleAround && !t.peopleAround[s.block]) return 'people'
   // One people rep a day across the app: while a path is on, its row is it.

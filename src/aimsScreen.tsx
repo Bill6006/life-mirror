@@ -22,6 +22,7 @@ import { todaysLine } from './brainFlow'
 import { anotherSuggestion, answerReview, askSuggestion, coachStates, editedSuggestion, ensureReviews, skillCoachOpen, takeLikelyNext, useSuggestion, writeOwnSkill, type AimCoach } from './coachFlow'
 import { isPhysical } from './coachShared'
 import { ScreenHead, SectionLabel } from './ui'
+import { awayOn } from './postWindowFlow'
 
 // The Aims tab: the commitments you chose with their protected steps, and the doors to the
 // proof ladder, follow-through and who you are becoming. Nothing here grades, ranks or streaks.
@@ -199,7 +200,8 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     const rhythm = rhythmOf(aim.rhythm)
     const schedule = scheduleOf(aim.schedule)
     const faith = isFaithPractice(aim)
-    const due = dueOf({ rhythm, schedule, paused: Boolean(aim.pausedAt), started: openOffer !== null, doneToday: todaySessions.done !== null, partlyToday: todaySessions.partly, planned: plan !== null && plan.offerId === null, faith, practiceDays: practiceDaysOf(aim, records.offers, records.outcomes, skills, studyAims), today })
+    // Away from home (post-window, gated): nothing is due on a trip's day; closed, the day is read as it always was.
+    const due = dueOf({ rhythm, schedule, paused: Boolean(aim.pausedAt), started: openOffer !== null, doneToday: todaySessions.done !== null, partlyToday: todaySessions.partly, planned: plan !== null && plan.offerId === null, faith, practiceDays: practiceDaysOf(aim, records.offers, records.outcomes, skills, studyAims), today, ...(awayOn() && ctx?.awayFromHome ? { away: true } : {}) })
     const id = aim.id as number
     const cadence: Cadence = { due, rhythm, schedule, faith, ...(study ? { onRhythm: (r: Rhythm | null) => void setRhythm(id, r) } : {}), onSchedule: (days) => void setSchedule(id, days) }
     const shared = {

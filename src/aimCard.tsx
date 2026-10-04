@@ -65,6 +65,7 @@ export function cadenceWords(c: Cadence | undefined): string | null {
   const a = copy.aims
   const d = c.due
   if (d.state === 'resting') return a.resting
+  if (d.state === 'away') return a.away
   if (d.by === 'schedule') return d.state === 'due' ? a.dueFixed : d.next !== undefined ? fill(a.nextFixed, { day: copy.week.days[d.next] }) : null
   if (d.by === 'rhythm' && c.rhythm && d.week !== undefined) return fill(a.rhythmWeek, { n: String(d.week), per: String(c.rhythm.perWeek) })
   return null

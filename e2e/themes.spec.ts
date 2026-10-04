@@ -750,6 +750,126 @@ for (const theme of THEMES) {
   })
 }
 
+/**
+ * The two features agreed for after the clean window (home-only moves with Skip's "Not home", and
+ * Away from home), previewed as a test browser alone may; both gates stay closed (2026-10-04): a
+ * trip set for tomorrow, a day an earlier trip shaped with a move offered on it, and the morning's
+ * live move one that needs the house.
+ */
+async function seedPostWindow(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    localStorage.setItem('life-mirror.preview.homeOnly', '1')
+    localStorage.setItem('life-mirror.preview.away', '1')
+  })
+  await page.clock.setFixedTime(new Date(2026, 9, 14, 10, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await seedRecord(page)
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).first().click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await tab(page, 'Settings')
+  await page.getByTestId('settings-away').click()
+  await page.getByTestId('away-from').fill('2026-10-15')
+  await page.getByTestId('away-to').fill('2026-10-18')
+  await page.getByTestId('away-save').click()
+  await expect(page.getByTestId('away-status')).toBeVisible()
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const offers = await new Promise<Record<string, unknown>[]>((res) => {
+      const q = dbx.transaction(['offers'], 'readonly').objectStore('offers').getAll()
+      q.onsuccess = () => res(q.result)
+    })
+    const live = offers.find((o) => o.kind === 'block' && o.day === '2026-10-14' && o.skippedAt === null)
+    if (!live) throw new Error('no live move')
+    const settings = await new Promise<Record<string, unknown> & { extras: Record<string, boolean> }>((res) => {
+      const q = dbx.transaction(['settings'], 'readonly').objectStore('settings').get(1)
+      q.onsuccess = () => res(q.result)
+    })
+    const tx = dbx.transaction(['offers', 'days', 'settings'], 'readwrite')
+    // The caffeine item off: a morning summary's caffeine chips are measured apart (their wrapped rows' targets overlap by 4 px, before this build); this walk measures the new rows.
+    tx.objectStore('settings').put({ ...settings, extras: { ...settings.extras, caffeine: false } })
+    tx.objectStore('offers').put({ ...live, moveId: 'open-windows', cardId: null, whyNot: null, passiveId: null })
+    const at = new Date(2026, 9, 12, 19, 40).toISOString()
+    tx.objectStore('offers').put({ ...live, id: 7000, day: '2026-10-12', block: 'evening', at, moveId: 'walk-ten', cardId: null, whyNot: null, passiveId: null, closedAt: at })
+    const held = { atOffice: false, pickupTime: null, churchDay: false, studyNight: false }
+    tx.objectStore('days').put({ day: '2026-10-12', weekday: 1, withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', changed: false, createdAt: at, awayFromHome: { held } })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+const POST_WINDOW: typeof STATES = [
+  {
+    name: 'Now, a trip set for tomorrow and a move that needs the house',
+    tab: 'Now',
+    open: async (p) => {
+      await expect(p.getByTestId('away-line')).toBeVisible()
+      await expect(p.getByTestId('move-not-home')).toBeVisible()
+    },
+  },
+  { name: 'Moves, a move that needs the house', tab: 'Moves', open: async (p) => expect(p.getByTestId('move-not-home')).toBeVisible() },
+  { name: 'Settings, the trip row', tab: 'Settings', open: async (p) => expect(p.getByTestId('settings-away')).toBeVisible() },
+  {
+    name: 'Away from home, a trip set',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-away').click()
+      await expect(p.getByTestId('away-status')).toBeVisible()
+    },
+  },
+  {
+    name: 'Away from home, a problem said',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-away').click()
+      await p.getByTestId('away-to').fill('2026-12-30')
+      await p.getByTestId('away-save').click()
+      await expect(p.getByTestId('away-problem')).toBeVisible()
+    },
+  },
+  {
+    name: 'Summary, the trip row',
+    tab: 'Now',
+    open: async (p) => {
+      await click(/Logged/)(p)
+      await expect(p.getByTestId('chip-away-from-home')).toBeVisible()
+    },
+  },
+  {
+    name: 'History, a day a trip shaped',
+    tab: 'Moves',
+    open: async (p) => {
+      await click(/^History/)(p)
+      await expect(p.getByText('away from home').first()).toBeVisible()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the post-window features read, fit and can be tapped, at three widths (previewed, both gates closed)`, async ({ page }, info) => {
+    test.setTimeout(600_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedPostWindow(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, POST_WINDOW, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
 /** A move left from the afternoon's check-in, waiting for the evening's question (final UI polish, 2026-09-26): closed, and opened. */
 const WAITING: typeof STATES = [
   {

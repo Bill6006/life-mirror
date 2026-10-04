@@ -12,6 +12,7 @@ import { evaluateCards } from './tiers'
 import { baselineShift, type Shift } from './shift'
 import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type Scorecard } from './weekly'
 import { necessitiesMissed } from './necessities'
+import { awayDays, homeDaysOnly } from './awayFlow'
 
 // Forecasts on the phone: written before their slot is logged and never rewritten; scored in
 // their own record once the slot is logged; the model named. The brief and the weekly view
@@ -54,13 +55,16 @@ export function runForecasting(today: string): Promise<void> {
 }
 
 async function forecastOnce(today: string): Promise<void> {
-  const checkins = await allCheckIns()
+  const all = await allCheckIns()
+  // Away from home (post-window, gated): a trip's days stay out of what is usual, and are neither fitted on nor scored; with the gate closed, none is left out.
+  const checkins = homeDaysOnly(all, await awayDays())
   const values = valuesByKey(checkins)
+  const logged = checkins === all ? values : valuesByKey(all)
   const done = await doneSlots()
   const chosen = loggedDays(values) >= MIN_DAYS_TODAY ? chooseModel(values, today) : null
   await db.transaction('rw', [db.forecasts, db.forecastScores], async () => {
     const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
-    const due = chosen ? forecastsDue(chosen, values, existing, today, done) : []
+    const due = chosen ? forecastsDue(chosen, values, existing, today, done, logged) : []
     const scores = scoresDue(existing, values, scored, today)
     if (due.length) await db.forecasts.bulkAdd(due)
     if (scores.length) await db.forecastScores.bulkAdd(scores)

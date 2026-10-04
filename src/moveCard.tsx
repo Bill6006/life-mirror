@@ -11,6 +11,8 @@ import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
 import { INGREDIENTS } from './score'
 import { Disclosure, Tag } from './ui'
+import { needsHome } from './homeOnly'
+import { homeOnlyOn } from './postWindowFlow'
 
 function times(n: number): string {
   return n === 1 ? copy.move.once : n === 2 ? copy.move.twice : fill(copy.move.nTimes, { n: String(n) })
@@ -42,7 +44,7 @@ export function offeredWhen(offer: { day: string; block: Block }, now: Date = ne
  * visible and never loud. A move left from an earlier check-in has nothing to tap until the next
  * check-in asks about it, so it waits: its name and when it was offered, the rest one tap away.
  */
-export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = false }: { offer: Offer; outcome?: Outcome | null; onSkip?: () => void; compact?: boolean; waiting?: boolean }) {
+export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = false }: { offer: Offer; outcome?: Outcome | null; onSkip?: (reason?: 'notHome') => void; compact?: boolean; waiting?: boolean }) {
   const c = copy.move
   const nothing = offer.moveId === NOTHING
   const move = nothing ? null : moveById(offer.moveId)
@@ -54,6 +56,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
   const whyNot = reasonText(offer)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
+  // Post-window, gated: a move that needs the house says so, and Skip can say "Not home"; closed, the card is as it was.
+  const homeShown = !nothing && homeOnlyOn() && needsHome(offer.moveId)
   // Pass 3: a private item's line on the card of the check-in it is placed in.
   const privates = useLive(() => privateAssociationsToday(offer.day).then((all) => all.filter((p) => p.block === offer.block)), [offer.day, offer.block])
   const round = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
@@ -78,6 +82,16 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       live = false
     }
   }, [offer.id, offer.skippedAt, onSkip === undefined, tick])
+  // "Not home" says what it will do too: another move that does not need the house, or "Not home" alone.
+  const [othersAway, setOthersAway] = useState<number | null>(null)
+  useEffect(() => {
+    if (!onSkip || !homeShown) return
+    let live = true
+    void replacementsFor(offer, new Date(), true).then((n) => live && setOthersAway(n))
+    return () => {
+      live = false
+    }
+  }, [offer.id, offer.skippedAt, onSkip === undefined, homeShown, tick])
 
   // Once logged, the card is a fact line: no box, nothing sits there unticked.
   if (!compact && known && known.outcome) {
@@ -130,7 +144,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
         <ul class="move-facts" data-testid="move-facts">
           <li class="fact">{move.minutes === 0 ? copy.catalogue.noTime : fill(copy.catalogue.minutes, { n: String(move.minutes) })}</li>
           <li class="fact">{fill(copy.catalogue.effort, { level: copy.catalogue.efforts[move.effort] })}</li>
-          <li class="fact">{fill(copy.catalogue.needsLabel, { needs: move.needs.length ? move.needs.map((n) => copy.catalogue.needs[n]).join(', ') : copy.catalogue.needsNothing })}</li>
+          <li class="fact">{fill(copy.catalogue.needsLabel, { needs: move.needs.length || homeShown ? [...move.needs.map((n) => copy.catalogue.needs[n]), ...(homeShown ? [copy.catalogue.needsHome] : [])].join(', ') : copy.catalogue.needsNothing })}</li>
         </ul>
       )}
       {passive && (
@@ -240,8 +254,13 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
             </button>
           )}
           {onSkip && others !== null && (
-            <button type="button" class="textbtn" data-testid="move-skip" onClick={onSkip}>
+            <button type="button" class="textbtn" data-testid="move-skip" onClick={() => onSkip()}>
               {others > 0 ? c.skip : c.skipOnly}
+            </button>
+          )}
+          {onSkip && homeShown && othersAway !== null && (
+            <button type="button" class="textbtn" data-testid="move-not-home" onClick={() => onSkip('notHome')}>
+              {othersAway > 0 ? c.notHome : c.notHomeOnly}
             </button>
           )}
           {hideFaith}

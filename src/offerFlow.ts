@@ -26,6 +26,7 @@ import { pathOn } from './pathFlow'
 import { beliefsFor, bigSocialToday } from './learningFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'
 import { hasItsEight } from './tiers'
+import { awayOn, homeOnlyOn } from './postWindowFlow'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
 // card (what is being tested, written first), and the outcome (what happened).
@@ -213,7 +214,7 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
   // Part 24: with a path on, its row is the day's one people rep.
   const pathIsOn = (await db.aims.filter(pathOn).count()) > 0
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn, ...(awayOn() && ctx.awayFromHome ? { homeOut: true } : {}) }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */
@@ -221,7 +222,9 @@ async function withLearning(t: TodayState, block: Block, day: string): Promise<T
   const offers = await db.offers.filter((o) => o.block === block).toArray()
   const ids = new Set(offers.map((o) => o.id as number))
   const outcomes = await db.outcomes.filter((x) => ids.has(x.offerId)).toArray()
-  return { ...t, noTimeCeiling: noTimeCeiling(offers, outcomes, block, day) }
+  // Post-window, gated: Skip's "Not home" earlier in this block keeps the moves that need the house out of it.
+  const notHome = homeOnlyOn() && offers.some((o) => o.day === day && o.skipReason === 'notHome')
+  return { ...t, noTimeCeiling: noTimeCeiling(offers, outcomes, block, day), ...(notHome ? { homeOut: true } : {}) }
 }
 
 function withWindowPenalty(set: ReturnType<typeof candidatesFor>, target: ReadingId): ReturnType<typeof candidatesFor> {
@@ -448,10 +451,13 @@ export function studyNightsAll(): Promise<StudyNight[]> {
 
 /**
  * Records the skip, which completes nothing, and shows another at once where one fits: a move for
- * the same check-in, or another move before pickup while its window is open (D6).
+ * the same check-in, or another move before pickup while its window is open (D6). "Not home"
+ * (post-window, gated) is kept with the skip only while its gate is open; the moves that need the
+ * house then wait for the rest of the block.
  */
-export async function skipOffer(offer: Offer): Promise<Offer | null> {
-  await db.offers.update(offer.id as number, { skippedAt: new Date().toISOString() })
+export async function skipOffer(offer: Offer, reason: 'notHome' | null = null): Promise<Offer | null> {
+  const notHome = reason === 'notHome' && homeOnlyOn()
+  await db.offers.update(offer.id as number, { skippedAt: new Date().toISOString(), ...(notHome ? { skipReason: 'notHome' as const } : {}) })
   if (offer.kind === 'block') return ensureOffer(offer.day, offer.block)
   if (offer.kind === 'pickup') return ensurePickupOffer(new Date())
   return null
@@ -462,11 +468,13 @@ export async function skipOffer(offer: Offer): Promise<Offer | null> {
  * draw, with this move and everything offered today left out, and never "Nothing today". Zero
  * when a skip could show nothing, so the card says "Skip" alone rather than promise another (D6).
  */
-export async function replacementsFor(offer: Offer, now: Date = new Date()): Promise<number> {
+export async function replacementsFor(offer: Offer, now: Date = new Date(), notHome = false): Promise<number> {
   const settings = await getSettings()
   if (settings.hideMoves || offer.skippedAt !== null || offer.closedAt !== null) return 0
   const ctx = await ensureDayContext(offer.day, settings)
-  const t = await todayState(offer.day, settings, now)
+  // Asked for "Not home" (post-window, gated): what a skip given that reason could show, the moves that need the house left out.
+  const today = await todayState(offer.day, settings, now)
+  const t = notHome && homeOnlyOn() ? { ...today, homeOut: true } : today
   const left = (ids: readonly string[]) => ids.filter((id) => id !== NOTHING && id !== offer.moveId).length
   if (offer.kind === 'block') {
     const slot = blockAt(now)

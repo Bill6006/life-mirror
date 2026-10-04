@@ -7,6 +7,7 @@ import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
 import type { Settings } from './settings'
 import { necessitiesMissed } from './necessities'
+import { awayOn, homeOnlyOn } from './postWindowFlow'
 
 /** The record's own key: which end of each reading is good, and the phrases as they stood, dated where reworded. */
 export const REWORDED: readonly { reading: string; position: number; on: string; from: string; to: string }[] = [
@@ -173,8 +174,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ? {
             offers: offers.map((o) => {
               const x = records.outcomes.find((y) => y.offerId === o.id)
-              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null }
+              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null, ...(homeOnlyOn() && o.skipReason ? { skipReason: o.skipReason } : {}) }
             }),
+            // Away from home (post-window, gated): the days a trip shaped, with what the week gave them; closed, not a key.
+            ...(awayOn() ? { awayFromHome: (records.days ?? []).filter((d) => d.awayFromHome).map((d) => ({ day: d.day, held: d.awayFromHome?.held ?? null })) } : {}),
             // Answers whose move a reused id took (sync safety, 2026-10-02): kept whole, under no move.
             answersWithoutTheirMove: records.outcomes.filter((x) => x.lostOfferId !== undefined).map((x) => ({ day: x.day, block: x.block, at: x.at, move: x.moveId, outcome: x.outcome, why: x.why, passiveOutcome: x.passiveOutcome, ease: x.ease ?? null, note: x.note ?? null })),
             cards: records.cards.map((c) => ({ id: c.id, createdAt: c.createdAt, situation: c.situationKey, target: c.target, move: c.moveId, alternative: c.alternativeId, window: c.window, worthwhile: c.worthwhile, origin: c.origin ?? 'app', weights: c.weights ?? null })),
@@ -210,6 +213,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         reminders: settings.reminders,
         extras: settings.extras,
         ...(partner ? { partnerOnline: settings.partnerOnline } : {}),
+        ...(awayOn() && settings.away ? { away: { from: settings.away.from, to: settings.away.to } } : {}),
       },
       ...(opts.includePrivate ? { privateItems: items.map((it) => it.name), privateAskedAt: items.map((it) => ({ name: it.name, blocks: blocksOf(it) })) } : {}),
       ...(aims

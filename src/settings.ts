@@ -1,5 +1,6 @@
 import { BLOCKS, blockAt, type Block } from './blocks'
 import type { CheckIn } from './db'
+import type { AwayRange } from './postWindow'
 import { blockReadings, type ReadingId } from './readings'
 import { sunLocal, type Place } from './sun'
 
@@ -105,6 +106,8 @@ export interface Settings {
   setupUndone: Record<string, string>
   /** The Partner path's optional online channel (Part 27): off until you turn it on; off, none of its reps is offered. */
   partnerOnline: boolean
+  /** Away from home (post-window, gated): the trip you set, first and last day. Absent until one is set, and never set while the gate is closed. */
+  away?: AwayRange
   updatedAt: string
 }
 

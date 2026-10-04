@@ -194,6 +194,7 @@ export function SummaryScreen({
   fresh,
   onChange,
   onExtras,
+  onAway,
   onDone,
   onDeleted,
 }: {
@@ -202,6 +203,8 @@ export function SummaryScreen({
   fresh: boolean
   onChange: (id: ReadingId) => void
   onExtras: () => void
+  /** Away from home's screen (post-window, gated): its row shows only while the gate is open. */
+  onAway?: () => void
   onDone: () => void
   onDeleted: () => void
 }) {
@@ -302,7 +305,7 @@ export function SummaryScreen({
           </ul>
         </div>
       )}
-      {block !== 'evening' && <TodayChips day={day} />}
+      {block !== 'evening' && <TodayChips day={day} onAway={onAway} />}
 
       {block === 'evening' && (
         <>

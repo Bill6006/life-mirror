@@ -7,6 +7,8 @@ import { clockTimes12, fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { standingSince } from './offerFlow'
 import { readingById } from './readings'
+import { needsHome } from './homeOnly'
+import { homeOnlyOn } from './postWindowFlow'
 
 // Every move, readable in full on the phone, with its tags and its starting belief; the learned
 // tags and their priors; the research behind the layer; the extension prompt. Nothing here
@@ -55,7 +57,9 @@ function statusLine(m: Move): string | null {
 function MoveCard({ m, names }: { m: Move; names: Map<string, string> }) {
   const c = copy.catalogue
   const takes = m.minutes === 0 ? c.noTime : fill(c.minutes, { n: String(m.minutes) })
-  const needs = m.needs.length ? m.needs.map((n) => c.needs[n]).join(', ') : c.needsNothing
+  // Post-window, gated: a move that needs the house lists it with its needs; closed, as it always read.
+  const home = homeOnlyOn() && needsHome(m.id)
+  const needs = m.needs.length || home ? [...m.needs.map((n) => c.needs[n]), ...(home ? [c.needsHome] : [])].join(', ') : c.needsNothing
   const first = m.targets[0]
   const status = statusLine(m)
   // A one-time setup already made: the day it was, and the one word that brings it back (Rule 13).

@@ -38,6 +38,7 @@ import { watchAppOpens } from './appOpens'
 import { sample as sampleLocation, watchLocation } from './locationFlow'
 import { WordingScreen } from './wording'
 import { MoveCue } from './moveCue'
+import { AwayScreen } from './awayScreen'
 
 type Tab = keyof typeof copy.tabs
 const order: Tab[] = ['now', 'mirror', 'moves', 'aims', 'settings']
@@ -68,6 +69,8 @@ type View =
   | { kind: 'evidence' }
   | { kind: 'weekly' }
   | { kind: 'readings' }
+  /** Away from home (post-window, gated): reached only while its gate is open; back goes where it was opened from. */
+  | { kind: 'away'; back?: View }
 
 /** The screen a view is, for the use log: a tab, a sub-screen or a Settings section; the check-in's own steps are counted apart. */
 function screenOf(view: View, tab: Tab): string | null {
@@ -208,7 +211,7 @@ export function App() {
           />
         )
       case 'extras':
-        return <ExtrasScreen day={view.day} block={view.block} onDone={() => (view.fresh ? afterEvening(view.day, view.block, true) : setView({ kind: 'summary', day: view.day, block: view.block, fresh: false }))} />
+        return <ExtrasScreen day={view.day} block={view.block} onDone={() => (view.fresh ? afterEvening(view.day, view.block, true) : setView({ kind: 'summary', day: view.day, block: view.block, fresh: false }))} onAway={() => setView({ kind: 'away', back: view })} />
       case 'summary':
         return (
           <SummaryScreen
@@ -217,6 +220,7 @@ export function App() {
             fresh={view.fresh}
             onChange={(id) => setView({ kind: 'checkin', day: view.day, block: view.block, only: id })}
             onExtras={() => setView({ kind: 'extras', day: view.day, block: view.block, fresh: false })}
+            onAway={() => setView({ kind: 'away', back: view })}
             onDone={closeAll}
             onDeleted={closeAll}
           />
@@ -263,6 +267,8 @@ export function App() {
         return <WeeklyScreen onClose={closeAll} />
       case 'readings':
         return <ReadingsScreen onClose={closeAll} />
+      case 'away':
+        return <AwayScreen onClose={() => (view.back ? setView(view.back) : closeAll())} />
       case 'tabs':
         return screen(tab)
     }
@@ -276,6 +282,7 @@ export function App() {
             onCheckIn={(day, block) => open({ kind: 'checkin', day, block })}
             onOpen={(day, block) => open({ kind: 'summary', day, block, fresh: false })}
             onChangeRep={(aimId) => open({ kind: 'pathChange', aimId })}
+            onAway={() => open({ kind: 'away' })}
           />
         )
       case 'mirror':
@@ -305,6 +312,7 @@ export function App() {
             onCloud={() => open({ kind: 'cloud' })}
             onBrain={() => open({ kind: 'brain' })}
             onReadings={() => open({ kind: 'readings' })}
+            onAway={() => open({ kind: 'away' })}
           />
         )
     }

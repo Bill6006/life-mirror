@@ -1,4 +1,5 @@
 import { anchorSwapDue } from './audit'
+import { awayDays, homeDaysOnly } from './awayFlow'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
 import { associationBy, associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
@@ -19,9 +20,11 @@ import { eveningWorkoutDays, HARD_MEASURES, hardDays, type HardMeasure } from '.
 const LEARNING_KEY = 'learning'
 const WEIGHT_CARD_MIN_DAYS = 28
 
-async function records() {
-  const [checkins, offers, outcomes, cards, declarations] = await Promise.all([allCheckIns(), db.offers.toArray(), db.outcomes.toArray(), db.cards.toArray(), db.declarations.toArray()])
-  return { checkins, offers, outcomes, cards, declarations }
+/** What learning reads: the record, a trip's days left out once Away from home is open. Exported for its test alone. */
+export async function learningRecords() {
+  const [checkins, offers, outcomes, cards, declarations, away] = await Promise.all([allCheckIns(), db.offers.toArray(), db.outcomes.toArray(), db.cards.toArray(), db.declarations.toArray(), awayDays()])
+  // Away from home (post-window, gated): a trip's days teach nothing about home and are left out; with the gate closed, none is.
+  return { checkins: homeDaysOnly(checkins, away), offers: homeDaysOnly(offers, away), outcomes: homeDaysOnly(outcomes, away), cards, declarations }
 }
 
 /** The situations the beliefs are kept for: every one an offer has been made in, and the two fixed slots. */
@@ -36,7 +39,7 @@ function situationsOf(offers: readonly { situationKey: string }[]): string[] {
 export async function runLearning(day: string, force = false): Promise<void> {
   const done = await db.derived.get(LEARNING_KEY)
   if (done && done.day === day && !force) return
-  const { checkins, offers, outcomes, cards, declarations } = await records()
+  const { checkins, offers, outcomes, cards, declarations } = await learningRecords()
   const obs = observations(checkins, offers, outcomes)
   const tags = tagBeliefs(obs, day)
   const beliefs: MoveBelief[] = []
@@ -165,7 +168,7 @@ export interface Evidence {
  * for a card that is gone or holds a weight.
  */
 export async function tierOfCard(cardId: number, today: string): Promise<Tier | null> {
-  const { checkins, offers, outcomes, cards, declarations } = await records()
+  const { checkins, offers, outcomes, cards, declarations } = await learningRecords()
   const card = cards.find((c) => c.id === cardId)
   if (!card || card.origin === 'weight') return null
   if (card.origin === 'passive') return associationTier(passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today), card.worthwhile * 25)
@@ -178,7 +181,7 @@ export async function tierOfCard(cardId: number, today: string): Promise<Tier | 
 }
 
 export async function evidence(today: string): Promise<Evidence> {
-  const { checkins, offers, outcomes, cards, declarations } = await records()
+  const { checkins, offers, outcomes, cards, declarations } = await learningRecords()
   const settings = await getSettings()
   const items = await privateItems()
   const obs = observations(checkins, offers, outcomes)

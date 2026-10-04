@@ -1,5 +1,6 @@
 import { LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
 import type { Fact, FactSheet } from '../../src/factTypes'
+import { AWAY_FROM_HOME } from '../../src/postWindow'
 import { readingById } from '../../src/readings'
 import { isUsageFact, useEventText, USAGE_FOR, USAGE_SLICE } from '../../src/useShared'
 import { CATEGORIES, permitted, type Category, type Gates } from './briefing'
@@ -106,7 +107,7 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
                     ? ['commitments', 'faith', 'her']
                     : f.id === 'people.seen'
                       ? ['tier2']
-                      : head === 'week' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
+                      : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
                         ? ['factSheet']
                         : ['dayRecord']
   return f.tags.includes('faith') && !own.includes('faith') ? [...own, 'faith'] : own
@@ -240,8 +241,8 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       items = []
       for (const d of days) {
         const b = obj(d.body)
-        // A day she was away held no drop-off or pickup, whatever the week's shape wrote.
-        const parts = [b.atOffice ? 'at the office' : 'at home', b.pickupTime && b.withHer !== false ? `a daycare day, pickup at ${str(b.pickupTime)}` : null, b.churchDay ? 'a church day' : null, b.studyNight ? 'a preferred study day' : null, b.withHer === false ? 'she was away' : null].filter(Boolean)
+        // A day she was away held no drop-off or pickup, whatever the week's shape wrote. A trip's day says so only once Away from home is open (post-window).
+        const parts = [AWAY_FROM_HOME === 'open' && b.awayFromHome ? 'away from home on a trip' : b.atOffice ? 'at the office' : 'at home', b.pickupTime && b.withHer !== false ? `a daycare day, pickup at ${str(b.pickupTime)}` : null, b.churchDay ? 'a church day' : null, b.studyNight ? 'a preferred study day' : null, b.withHer === false ? 'she was away' : null].filter(Boolean)
         items.push({ day: d.day, text: `the day: ${parts.join('; ')}` })
       }
       for (const c of cs) {

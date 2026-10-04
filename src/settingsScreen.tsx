@@ -14,6 +14,9 @@ import { activeBlocks, applyLowDemand, daylightFor, type Settings, type Weekday,
 import { parsePlace, placeText, sunLocal, type Place } from './sun'
 import { setTheme, THEMES, useTheme, type ThemeId } from './theme'
 import { Disclosure, LinkRow, SectionLabel, SubHead } from './ui'
+import { awayOn } from './postWindowFlow'
+import { awayStatus } from './awayFlow'
+import { awayShort } from './awayScreen'
 
 // Settings as a short list of sections (the approved structure, 2026-09-23): each row says what
 // is set in one line, and opens its own screen with the same controls as before. Nothing was
@@ -67,7 +70,7 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
 }
 
 /** The Settings tab: the sections, grouped, each with its one line. */
-export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings, onWording, onLegend }: { onSection: (s: SettingsSection) => void; onData: () => void; onCloud: () => void; onBrain: () => void; onReadings: () => void; onWording: () => void; onLegend: () => void }) {
+export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings, onWording, onLegend, onAway }: { onSection: (s: SettingsSection) => void; onData: () => void; onCloud: () => void; onBrain: () => void; onReadings: () => void; onWording: () => void; onLegend: () => void; onAway?: () => void }) {
   const settings = useLive(getSettings, [])
   const places = useLive(namedPlaces, [])
   const theme = useTheme()
@@ -104,6 +107,8 @@ export function SettingsScreen({ onSection, onData, onCloud, onBrain, onReadings
         <ul class="rows">
           {row(n.week, line.week, 'week', () => onSection('week'), 'settings-week')}
           {row(n.location, line.location, 'pin', () => onSection('location'), 'settings-location')}
+          {/* Away from home (post-window, gated): its row only while the gate is open. */}
+          {awayOn() && onAway && row(copy.away.row, awayShort(awayStatus(settings.away, blockAt(new Date()).day)) ?? copy.away.off, 'trip', onAway, 'settings-away')}
           {row(n.checkins, line.checkins, 'bell', () => onSection('checkins'), 'settings-checkins')}
           {row(n.extras, line.extras, 'extras', () => onSection('extras'), 'settings-extras')}
         </ul>

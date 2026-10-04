@@ -76,7 +76,17 @@ function aims(sheet: FactSheet): Fact[] {
 /** A commitment its rhythm leaves alone today: a rest day, or a week whose sessions are in. Nothing nudges it (Part 39). */
 function restful(f: Fact): boolean {
   const due = str(f, 'due')
-  return due !== 'resting' && due !== 'notDue'
+  return due !== 'resting' && due !== 'notDue' && due !== 'away'
+}
+
+/**
+ * Away from home (post-window): the days a trip held in each of the four weeks the weekly counts
+ * read, oldest first, from the sheet's trip fact; all none when there is no trip fact, as always
+ * while its gate is closed.
+ */
+function tripWeeks(sheet: FactSheet): [number, number, number, number] {
+  const f = factById(sheet, 'trip')
+  return f ? [num(f, 'a3') ?? 0, num(f, 'a2') ?? 0, num(f, 'a1') ?? 0, num(f, 'a0') ?? 0] : [0, 0, 0, 0]
 }
 
 function cueOf(f: Fact, cue: Cue): { n: number; started: number } {
@@ -437,6 +447,9 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['implementation-intentions', 'self-compassion-after-lapse'],
     cooldownDays: 7,
     test: (sheet) => {
+      // A trip in the last two weeks explains the pause: it is never read as letting a commitment go.
+      const [, , a1, a0] = tripWeeks(sheet)
+      if (a1 + a0 > 0) return null
       const t = factsWhere(sheet, 'trajectory.')
         .map((f) => ({ f, before: (num(f, 'w3') ?? 0) + (num(f, 'w2') ?? 0), lately: (num(f, 'w1') ?? 0) + (num(f, 'w0') ?? 0) }))
         .filter((x) => x.before >= 2 && x.lately === 0 && (num(x.f, 'ageDays') ?? 0) >= 21 && num(factById(sheet, `aim.${num(x.f, 'aimId')}`), 'faith') !== 1)
@@ -453,6 +466,8 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['habit-formation-time', 'implementation-intentions'],
     cooldownDays: 7,
     test: (sheet) => {
+      // A trip this week explains the quiet week.
+      if (tripWeeks(sheet)[3] > 0) return null
       const t = factsWhere(sheet, 'trajectory.')
         .filter((f) => (num(f, 'w1') ?? 0) >= 2 && num(f, 'w0') === 0 && (num(f, 'ageDays') ?? 0) >= 14 && num(factById(sheet, `aim.${num(f, 'aimId')}`), 'faith') !== 1)
         .sort((a, b) => (num(b, 'w1') ?? 0) - (num(a, 'w1') ?? 0))[0]
@@ -471,6 +486,9 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const f = factById(sheet, 'cadence')
       if (!f || str(f, 'depth') !== 'full' || num(f, 'lowDemand') === 1) return null
+      // A trip in any of the three weeks read is not a drop in the record.
+      const [, a2, a1, a0] = tripWeeks(sheet)
+      if (a2 + a1 + a0 > 0) return null
       const usual = Math.round(((num(f, 'w2') ?? 0) + (num(f, 'w1') ?? 0)) / 2)
       const now = num(f, 'w0') ?? 0
       return usual >= 6 && now <= usual / 2 ? { factIds: [f.id], strength: 0.85, vars: { usual: s(usual), now: s(now) }, action: { kind: 'depth', value: 'short' } } : null
@@ -649,14 +667,17 @@ export function phoneReview(sheet: FactSheet, feedback: readonly FeedbackBefore[
   const c = copy.brain.review
   const t = factsWhere(sheet, 'trajectory.')
   const held = t.filter((f) => (num(f, 'w0') ?? 0) > 0).map((f) => fill(c.heldItem, { name: s(str(f, 'name')), n: s(num(f, 'w0')), done: s(num(f, 'd0')) }))
+  // Away from home (post-window): a week a trip held is not set against what it could not hold; it is said once instead.
+  const tripDays = tripWeeks(sheet)[3]
   // A commitment younger than the week is not set against a week it did not have.
-  const quiet = t.filter((f) => (num(f, 'w0') ?? 0) === 0)
+  const quiet = tripDays > 0 ? [] : t.filter((f) => (num(f, 'w0') ?? 0) === 0)
   const missed = quiet.map((f) => {
     const d = num(f, 'ageDays') ?? 0
     return fill(d >= 7 ? c.missedItem : d === 0 ? c.newToday : d === 1 ? c.newYesterday : c.newItem, { name: s(str(f, 'name')), d: s(d) })
   })
   const cadence = factById(sheet, 'cadence')
-  if (cadence && (num(cadence, 'w0') ?? 0) < (num(cadence, 'w1') ?? 0) / 2) missed.push(fill(c.missedCadence, { now: s(num(cadence, 'w0')), before: s(num(cadence, 'w1')) }))
+  if (tripDays > 0) missed.push(fill(c.tripWeek, { n: s(tripDays) }))
+  else if (cadence && (num(cadence, 'w0') ?? 0) < (num(cadence, 'w1') ?? 0) / 2) missed.push(fill(c.missedCadence, { now: s(num(cadence, 'w0')), before: s(num(cadence, 'w1')) }))
   // The week's one change comes only from a pattern over days; a fact of one day (a reading at the last check-in, last night) is never the week's change.
   const chosen = chooseLine(sheet, [], feedback, isWeekScoped, firm)
   // Part 41's one line, once its gate is open: a progression review waiting for your answer is the week's change to make.

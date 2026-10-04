@@ -31,7 +31,9 @@ import {
   type PrivateItem,
   type WinOutcome,
 } from './db'
-import { fill } from './format'
+import { fill, formatDayShort } from './format'
+import { awayOn } from './postWindowFlow'
+import { awayStatus } from './awayFlow'
 import { syncRecoveryGap } from './offerFlow'
 import { useLive } from './live'
 import { teethOf, TEETH_COUNTS, type TeethBrushed } from './necessities'
@@ -46,7 +48,7 @@ const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOf
  * tap on Done. "Felt close to God today?" carries its own permanent off switch. The two chips
  * about how today landed are answered at once from your own record.
  */
-export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block; onDone: () => void }) {
+export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; block: Block; onDone: () => void; onAway?: () => void }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
   const settings = useLive(getSettings, [])
   const items = useLive(privateItems, [])
@@ -179,7 +181,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
         </ul>
       </div>
 
-      <TodayChips day={day} />
+      <TodayChips day={day} onAway={onAway} />
 
       <h2 class="section">{copy.extras.noteLabel}</h2>
       <div class="card pad">
@@ -208,7 +210,7 @@ export function ExtrasScreen({ day, block, onDone }: { day: string; block: Block
  * never on Now (Rules 19 and 20), on every block's summary, since the away flag decides what is
  * offered all day. Each changes today alone.
  */
-export function TodayChips({ day }: { day: string }) {
+export function TodayChips({ day, onAway }: { day: string; onAway?: () => void }) {
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
   const contexts = useLive(() => db.days.toArray(), [])
@@ -220,19 +222,26 @@ export function TodayChips({ day }: { day: string }) {
   const states = chipStates(all, contexts, settings.chipsBack, day)
   const weekday = parseDay(day).getDay() as Weekday
   const office = settings.week.officeDays[weekday]
+  // Away from home (post-window, gated): one row to the trip's own screen; on a trip's day the office row gives way to it. Closed, the rows are as they were.
+  const away = awayOn() && onAway !== undefined
+  const trip = away ? awayStatus(settings.away, day) : null
+  const onTripToday = away && Boolean(ctx.awayFromHome)
   return (
     <>
       <h2 class="section">{copy.today.context}</h2>
       <div class="card">
         <ul class="rows">
           {!chipRetired('away', states) && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />}
-          <ExtraRow
-            label={office ? copy.today.homeToday : copy.today.officeToday}
-            on={Boolean(ctx.atOffice) !== office}
-            onLabel={copy.extras.yes}
-            testid="chip-office"
-            onClick={() => void setDayContext(day, { atOffice: !ctx.atOffice })}
-          />
+          {!onTripToday && (
+            <ExtraRow
+              label={office ? copy.today.homeToday : copy.today.officeToday}
+              on={Boolean(ctx.atOffice) !== office}
+              onLabel={copy.extras.yes}
+              testid="chip-office"
+              onClick={() => void setDayContext(day, { atOffice: !ctx.atOffice })}
+            />
+          )}
+          {away && <ExtraRow label={copy.away.row} on={onTripToday} onLabel={trip?.state === 'away' ? fill(copy.away.untilShort, { to: formatDayShort(trip.range.to) }) : ''} testid="chip-away-from-home" onClick={() => onAway?.()} />}
         </ul>
       </div>
     </>

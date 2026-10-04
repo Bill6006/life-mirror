@@ -19,6 +19,8 @@ import { sunLocal } from './sun'
 import type { UseKind } from './useShared'
 import type { Area, PlaceKind, Where } from './location'
 import type { TeethBrushed } from './necessities'
+import { onTrip, type AwayHeld } from './postWindow'
+import { awayMode, awayOn, type GateMode } from './postWindowFlow'
 
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
@@ -87,6 +89,12 @@ export interface DayContext {
    * coordinate, an address or a time of arrival. Absent while Location Context is off.
    */
   where?: Partial<Record<Block, Where[]>>
+  /**
+   * Away from home (post-window, gated): a day inside a trip you set. The week's office, daycare,
+   * church and preferred study day hold none of it, and `held` keeps what they gave, so ending the
+   * trip gives the day them back. Absent on every other day, and on every day while the gate is closed.
+   */
+  awayFromHome?: { held: AwayHeld }
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string
@@ -232,6 +240,8 @@ export interface Offer {
   /** Recorded after the fact with "Did it already": a session done away from the app, started and done at the same moment. */
   logged?: boolean
   skippedAt: string | null
+  /** Skip's reason, given only with "Not home" on a move that needs the house (post-window, gated); absent on every other skip. */
+  skipReason?: 'notHome'
   /** Set once the outcome has been asked, answered or not. */
   closedAt: string | null
 }
@@ -1151,13 +1161,17 @@ export async function getDayContext(day: string): Promise<DayContext | null> {
   return (await db.days.get(day)) ?? null
 }
 
-/** A day's context from the week's shape in Settings: pure, written nowhere. The one function that shapes a day. */
-export function contextFromWeek(day: string, settings: Settings, createdAt: string = new Date().toISOString()): DayContext {
+/**
+ * A day's context from the week's shape in Settings: pure, written nowhere. The one function that
+ * shapes a day. Inside a trip you set (Away from home, post-window: only while its gate is open),
+ * the week's office, daycare, church and preferred study day give way, and the day keeps them aside.
+ */
+export function contextFromWeek(day: string, settings: Settings, createdAt: string = new Date().toISOString(), away: GateMode = awayMode()): DayContext {
   const weekday = parseDay(day).getDay() as Weekday
   const w = settings.week
   const where = sunPlace(settings)
   const light = where ? sunLocal(day, where.place) : null
-  return {
+  const ctx: DayContext = {
     day,
     weekday,
     withHer: w.livesWithMe,
@@ -1171,6 +1185,21 @@ export function contextFromWeek(day: string, settings: Settings, createdAt: stri
     changed: false,
     createdAt,
   }
+  return awayOn(away) && onTrip(settings.away, day) ? awayShaped(ctx) : ctx
+}
+
+/** A day inside a trip: the week's places give way, and what they gave is kept aside to give back. Her days stay as the week and the chip say. */
+export function awayShaped(ctx: DayContext): DayContext {
+  if (ctx.awayFromHome) return ctx
+  const held: AwayHeld = { atOffice: Boolean(ctx.atOffice), pickupTime: ctx.pickupTime, churchDay: ctx.churchDay, studyNight: ctx.studyNight }
+  return { ...ctx, atOffice: false, pickupTime: null, churchDay: false, studyNight: false, awayFromHome: { held } }
+}
+
+/** A trip's day given back: what the week's places gave before the trip shaped it. */
+export function awayUnshaped(ctx: DayContext): DayContext {
+  if (!ctx.awayFromHome) return ctx
+  const { awayFromHome, ...rest } = ctx
+  return { ...rest, ...awayFromHome.held }
 }
 
 /** Writes today's context from the week's shape the first time the day is seen; later shape edits never touch it. */

@@ -9,6 +9,7 @@ import { MoveCard } from './moveCard'
 import { deleteOutcome, offerForSlot, offerHistory, pendingOffers, pickupOfferNow, skipOffer } from './offerFlow'
 import { readingById } from './readings'
 import { ScreenHead } from './ui'
+import { awayDays } from './awayFlow'
 
 /** The Moves tab: the live move with why and testing, then the doors to History and the catalogue. */
 export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory: () => void; onCatalogue: () => void; onEvidence: () => void }) {
@@ -28,14 +29,14 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
       {settings.hideMoves ? (
         <p class="note">{c.hidden}</p>
       ) : offer ? (
-        <MoveCard offer={offer} onSkip={offer === here ? () => void skipOffer(offer) : undefined} />
+        <MoveCard offer={offer} onSkip={offer === here ? (reason) => void skipOffer(offer, reason ?? null) : undefined} />
       ) : (
         <div class="card pad">
           <p class="eyebrow small">{c.title}</p>
           <p class="note no-gap">{c.none}</p>
         </div>
       )}
-      {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
+      {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={(reason) => void skipOffer(pickup, reason ?? null)} />}
 
       {/* The doors, each with one line; the note on how tiers are computed now sits inside Evidence, where the tiers are. */}
       <div class="card doors">
@@ -52,6 +53,8 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
 /** Every offer, its card, and what happened: three records, shown as three. */
 export function HistoryScreen({ onClose }: { onClose: () => void }) {
   const entries = useLive(() => offerHistory(copy.move.nothing), [])
+  // Away from home (post-window, gated): the days a trip shaped say so; closed, there are none.
+  const away = useLive(() => awayDays(), [])
   const [confirm, setConfirm] = useState<number | null>(null)
   if (!entries) return <section class="screen" />
   const h = copy.history
@@ -76,6 +79,7 @@ export function HistoryScreen({ onClose }: { onClose: () => void }) {
                     {moveName}
                     <span class="sub">
                       {formatDayShort(offer.day)} · {copy.blocks[offer.block]}
+                      {away?.has(offer.day) ? ` · ${h.away}` : ''}
                       {offer.kind === 'pickup' ? ` · ${h.pickup}` : offer.kind === 'study' ? ` · ${h.study}` : offer.kind === 'step' ? ` · ${h.step}` : offer.kind === 'unblock' ? ` · ${h.unblock}` : ` · ${readingById(offer.target).name}`}
                       {offer.coinFlip ? ` · ${h.coinFlip}` : ''} · {fill(h.offer, { id: String(offer.id) })} ·{' '}
                       {card ? fill(h.card, { id: String(card.id), window: copy.catalogue.windows[card.window as keyof typeof copy.catalogue.windows] ?? card.window }) : h.noCard} ·{' '}

@@ -382,14 +382,19 @@ export interface DayShape {
   office: boolean
   church: boolean
   studyNight: boolean
+  /** Away from home on a trip (post-window): set only when the sheet says so, which it never does while that gate is closed. */
+  trip?: true
 }
 
 export function shapeFor(sheet: FactSheet, forDay: string): DayShape | null {
   const f = forDay === sheet.day ? sheet.facts.find((x) => x.id === 'week.today') : sheet.facts.find((x) => x.id === 'week.tomorrow' && x.values.day === forDay)
   if (!f) return null
   const v = f.values
-  return { day: forDay, weekday: typeof v.weekday === 'string' ? v.weekday : forDay, daycare: Number(v.daycare) === 1, pickup: typeof v.pickup === 'string' ? v.pickup : null, office: Number(v.office) === 1, church: Number(v.church) === 1, studyNight: Number(v.studyNight) === 1 }
+  return { day: forDay, weekday: typeof v.weekday === 'string' ? v.weekday : forDay, daycare: Number(v.daycare) === 1, pickup: typeof v.pickup === 'string' ? v.pickup : null, office: Number(v.office) === 1, church: Number(v.church) === 1, studyNight: Number(v.studyNight) === 1, ...(Number(v.trip) === 1 ? { trip: true as const } : {}) }
 }
+
+/** The house's own places: on a trip's day a line may not send you to them (post-window, Away from home). */
+export const HOME_WORDS = /\b(?:at home|around the house|the house|your (?:house|home|flat|apartment|kitchen|living room|bathroom|bedroom|windows|counters?|laundry|washing machine))\b/i
 
 /** Words that put another adult in the same place as him: the coach's in-person guard, when the phone says something keeps in-person reps out (Part 32). */
 export const PEOPLE_AROUND_WORDS = /\b(?:in person|face to face|people around|someone nearby|talk to someone|say hello to someone|strike up a conversation|a stranger|other parents?)\b/i
@@ -425,6 +430,8 @@ export function dayGuard(text: string, sheet: FactSheet, forDay: string): string
     if (!shape) return `speaks of ${w.what}, and the sheet does not know the shape of ${forDay}`
     if (!w.holds(shape)) return `speaks of ${w.what}, which ${shape.weekday} ${forDay} does not hold`
   }
+  // Away from home (post-window): only a sheet that says the day is a trip's ever bars these words.
+  if (shape?.trip && HOME_WORDS.test(text)) return `speaks of home, and ${shape.weekday} ${forDay} is away from home on a trip`
   if (sheet.showPrivate !== true) {
     for (const f of sheet.facts) {
       if (!f.id.startsWith('private.')) continue

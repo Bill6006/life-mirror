@@ -205,7 +205,7 @@ export function whatIf(values: ReadonlyMap<string, number>, doneSlots: ReadonlyS
 }
 
 /** The forecasts to write now: every slot from today out to the horizon that has no forecast yet at that horizon and no reading yet. Never a rewrite. */
-export function forecastsDue(chosen: Chosen, values: ReadonlyMap<string, number>, existing: readonly Forecast[], today: string, doneSlots: ReadonlySet<string>): Forecast[] {
+export function forecastsDue(chosen: Chosen, values: ReadonlyMap<string, number>, existing: readonly Forecast[], today: string, doneSlots: ReadonlySet<string>, logged: ReadonlyMap<string, number> = values): Forecast[] {
   const days = loggedDays(values)
   const have = new Set(existing.map((f) => `${f.day}|${f.block}|${f.horizon}`))
   const out: Forecast[] = []
@@ -216,7 +216,8 @@ export function forecastsDue(chosen: Chosen, values: ReadonlyMap<string, number>
     const band = horizonBand(chosen, values, today, Math.max(1, h))
     for (const block of BLOCKS) {
       if (have.has(`${day}|${block}|${h}`)) continue
-      if (values.has(slotKey(day, block))) continue
+      // A slot already logged is never forecast, whatever the model was fitted on: a forecast is written before its block or not at all.
+      if (logged.has(slotKey(day, block))) continue
       const f = forecastSlot(chosen, values, day, block, band)
       if (!f) continue
       out.push({ day, block, horizon: h, madeOn: today, model: chosen.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: whatIf(values, doneSlots, day, block) })

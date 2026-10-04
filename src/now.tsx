@@ -13,7 +13,9 @@ import { MoveCard } from './moveCard'
 import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
 import { activeBlocks } from './settings'
-import { Disclosure, Facts, ScreenHead, SectionLabel } from './ui'
+import { Disclosure, Facts, LinkRow, ScreenHead, SectionLabel } from './ui'
+import { awayStatus } from './awayFlow'
+import { awayLine } from './awayScreen'
 
 type WindowState = 'logged' | 'partial' | 'now' | 'missed' | 'later'
 
@@ -165,7 +167,7 @@ export function Earlier({ checkins, blocks, onOpen }: { checkins: readonly Check
   )
 }
 
-export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void }) {
+export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onAway?: () => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
   const [tick, setTick] = useState(0)
@@ -227,10 +229,19 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
   const dueAimId = action === null && !briefPrimary && line?.action?.kind === 'plan' ? line.action.aimId : null
 
   const offer = here ?? pending.find((o) => o.kind === 'block') ?? null
+  // Away from home (post-window, gated): one line while a trip is set, to its screen; closed, Now is as it was.
+  const trip = awayLine(awayStatus(settings.away, today.day))
 
   return (
     <section class="screen now">
       <ScreenHead title={copy.tabs.now} day={today.day} />
+      {trip && onAway && (
+        <div class="card" data-testid="away-line">
+          <ul class="rows">
+            <LinkRow label={copy.away.row} note={trip} icon="trip" onClick={onAway} testid="away-open" />
+          </ul>
+        </div>
+      )}
 
       {settings.directionAskedAt === null && <DirectionAsk />}
 
@@ -246,10 +257,10 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep }: { onCheckIn: (day:
       )}
       <AimsOnNow onChangeRep={onChangeRep} dueAimId={dueAimId} />
 
-      {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={() => void skipOffer(pickup)} />}
+      {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={(reason) => void skipOffer(pickup, reason ?? null)} />}
       {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6),
           and with nothing to tap it keeps to its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */}
-      {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? () => void skipOffer(offer) : undefined} waiting={offer !== here} />}
+      {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? (reason) => void skipOffer(offer, reason ?? null) : undefined} waiting={offer !== here} />}
       {!settings.hideMoves && <Knows weeks={weeks ?? 0} />}
 
       <ContextChips all={all} today={today.day} index={1} />

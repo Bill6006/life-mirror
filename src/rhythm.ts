@@ -43,7 +43,7 @@ export function isFaithPractice(aim: Pick<Aim, 'kind' | 'stepMoveId'>): boolean 
   return m.family === 'faith' || m.hiddenWith === 'faith'
 }
 
-export type DueState = 'paused' | 'started' | 'done' | 'partly' | 'planned' | 'due' | 'resting' | 'notDue' | 'open'
+export type DueState = 'paused' | 'started' | 'done' | 'partly' | 'planned' | 'away' | 'due' | 'resting' | 'notDue' | 'open'
 
 export interface Due {
   state: DueState
@@ -71,6 +71,8 @@ export interface DueInput {
   /** The days it was practised (done or partly), by the day each session began. */
   practiceDays: readonly string[]
   today: string
+  /** Away from home today (post-window, gated): nothing is due. Absent means at home, as always. */
+  away?: boolean
 }
 
 function nextFixed(schedule: readonly Weekday[], weekday: Weekday): Weekday {
@@ -83,7 +85,8 @@ function nextFixed(schedule: readonly Weekday[], weekday: Weekday): Weekday {
 
 /**
  * Whether a commitment is due today, and why. In order: paused; a session started, done or partly
- * done today; your plan for today; its fixed days, which alone decide when it has them; its rhythm,
+ * done today; your plan for today; a day away from home (post-window, gated), when nothing is due;
+ * its fixed days, which alone decide when it has them; its rhythm,
  * counted in days practised over the seven before today, with its rest days kept after a session;
  * otherwise open. Silence is not a missed session (Rule 2): an unlogged day only leaves it due.
  */
@@ -93,6 +96,8 @@ export function dueOf(i: DueInput): Due {
   if (i.doneToday) return { state: 'done', by: null }
   if (i.partlyToday) return { state: 'partly', by: null }
   if (i.planned) return { state: 'planned', by: 'plan' }
+  // A day away from home (post-window, gated): nothing is due; Start still works, without asking.
+  if (i.away === true) return { state: 'away', by: null }
   const weekday = parseDay(i.today).getDay() as Weekday
   if (i.schedule.length) return i.schedule.includes(weekday) ? { state: 'due', by: 'schedule' } : { state: 'notDue', by: 'schedule', next: nextFixed(i.schedule, weekday) }
   if (!i.rhythm || i.faith) return { state: 'open', by: null }
@@ -123,9 +128,9 @@ export function rankOf(d: Pick<Due, 'state'>): number {
   }
 }
 
-/** Whether a row's Start is the pill or a quiet tap: a rest day or a week whose rhythm is met still lets you start, without asking. */
+/** Whether a row's Start is the pill or a quiet tap: a rest day, a week whose rhythm is met or a day away from home still lets you start, without asking. */
 export function quiet(d: Pick<Due, 'state'>): boolean {
-  return d.state === 'resting' || d.state === 'notDue'
+  return d.state === 'resting' || d.state === 'notDue' || d.state === 'away'
 }
 
 /** The preferred study time, if you set one: days, and a part of the day or any time. A preference only; it never makes anything due. */
