@@ -1947,7 +1947,6 @@ async function startWithDirection(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
 }
 
-const COACH_IDS = ['coach-pending', 'coach-ask', 'coach-care', 'coach-suggestion', 'coach-review', 'aim-review-mark', 'aim-safety', 'aim-likely-next']
 
 test('the skill coach as it ships since Pass 1B, with no cloud copy: Claude is never asked, commitments are set up and practised by hand as before, and a review that falls due is asked by the phone, neutrally (Parts 40–41)', async ({ page }) => {
   test.setTimeout(180_000)
