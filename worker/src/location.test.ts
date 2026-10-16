@@ -20,12 +20,14 @@ const LOCATION: Fact[] = [
 ]
 const base: FactSheet = { version: 1, day: DAY, builtAt: `${DAY}T11:41:00.000Z`, hour: 7, weeks: 3, days: 22, direction: null, said: [], shortlist: [], facts: [f('week.today', 'Today is Tuesday.', {}, ['cue']), f('week.tomorrow', 'Tomorrow is Wednesday.', { day: '2026-10-21' }, ['cue'])] }
 const withLocation: FactSheet = { ...base, facts: [...base.facts, ...LOCATION] }
-const GATED: Gates = gatesFrom({ hideFaith: false })
+// Closed by hand: the shipped state until Pass 1B. As the build ships now (2026-10-16), both gates are open.
+const GATED: Gates = gatesFrom({ hideFaith: false }, 'gated', 'gated')
 const OPEN: Gates = gatesFrom({ hideFaith: false }, 'gated', 'open')
 const locationIds = (s: FactSheet) => s.facts.map((x) => x.id).filter((id) => id.startsWith('location.'))
 
 describe('the gate', () => {
-  it('keeps where the day was spent from every task while it is closed, and from the free chain always', () => {
+  it('keeps where the day was spent from every task when closed by hand, and from the free chain always; it ships open since Pass 1B', () => {
+    expect(gatesFrom({ hideFaith: false }).locationOpen).toBe(true)
     expect(GATED.locationOpen).toBe(false)
     expect(CLOSED_GATES.locationOpen).toBe(false)
     for (const task of ['line', 'review', 'coach'] as const) {

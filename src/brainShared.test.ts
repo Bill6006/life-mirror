@@ -167,11 +167,11 @@ describe('how Life Mirror is used, as evidence and never an explanation (Follow-
   }
   const line = (text: string, factIds = ['usage.screens']) => validateOutput({ mode: 'observation', text, factIds, cardIds: [] }, usage, library)
 
-  it('gives Claude a switch of its own, on until turned off, and keeps its access gated while the reliability checks run', () => {
+  it('gives Claude a switch of its own, on until turned off; its access opened at Pass 1B (2026-10-16)', () => {
     expect(BRAIN_SWITCHES).toContain('usage')
     expect(readBrainPrefs({ switches: { usage: false } }).switches).toEqual({ usage: false })
-    // Opening it changes the monitored prompts: only at the owner's word, once monitoring is complete.
-    expect(USAGE_TO_CLAUDE).toBe('gated')
+    // Opened at Pass 1B, after the clean window and the owner's word.
+    expect(USAGE_TO_CLAUDE).toBe('open')
   })
 
   it('lets a line say what was observed, and offer a reason about the app only as a possibility to test', () => {
@@ -212,9 +212,9 @@ describe('a place is context, never a cause (Part 43)', () => {
   }
   const line = (text: string, factIds = ['location.today']) => validateOutput({ mode: 'observation', text, factIds, cardIds: [] }, where, library)
 
-  it('keeps its own switch and its own gate, closed while the reliability checks run', () => {
+  it('keeps its own switch and its own gate, opened at Pass 1B (2026-10-16)', () => {
     expect(BRAIN_SWITCHES).toContain('location')
-    expect(LOCATION_TO_CLAUDE).toBe('gated')
+    expect(LOCATION_TO_CLAUDE).toBe('open')
     expect(isLocationFact('location.today')).toBe(true)
     expect(isLocationFact('context.loneliness')).toBe(false)
   })

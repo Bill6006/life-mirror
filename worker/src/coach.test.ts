@@ -347,7 +347,7 @@ describe('the coach job after launch', () => {
   it('off by its watch, fires nothing and takes back today’s pick where the phone reads it, keeping it on record', async () => {
     const store = fresh()
     await opened(store, at('07:50', TODAY), launched)
-    expect(await post(store, at('07:52', TODAY), { picks: [{ id: ELIGIBLE[0], version: 'At the office, greet one colleague by name as you pass.' }] })).toEqual({ status: 200, body: { ok: true } })
+    expect(await post(store, at('07:52', TODAY), { picks: [{ id: ELIGIBLE[0], version: 'At the office, greet one colleague by name as you pass.', firmness: 'balanced' }] })).toEqual({ status: 200, body: { ok: true } })
     void store.writeSpot(keyFound)
     expect(await runCoach(launched, store, at('12:00', TODAY))).toMatchObject({ ran: false, reason: 'the watch has the coach off', withdrawn: true, watch: { on: false, launch: TODAY } })
     const kept = store.rows.get(`${BRAIN_APP}|coach|${TODAY}:coach`)
@@ -366,7 +366,7 @@ describe('the coach job after launch', () => {
     void store.writeSpot(keyFound)
     expect(await runCoach(launched, store, at('12:00', TODAY))).toMatchObject({ ran: false, reason: 'the watch has the coach off' })
     expect(await store.readTask(taskIdOf('coach', TODAY))).toMatchObject({ status: 'fallback', fallbackReason: expect.stringContaining('the app’s own pick stands') })
-    expect(await post(store, at('12:01', TODAY), { picks: [{ id: ELIGIBLE[0], version: 'At the office, greet one colleague by name.' }] })).toMatchObject({ status: 409 })
+    expect(await post(store, at('12:01', TODAY), { picks: [{ id: ELIGIBLE[0], version: 'At the office, greet one colleague by name.', firmness: 'balanced' }] })).toMatchObject({ status: 409 })
     expect(await store.hasCoach(`${TODAY}:coach`)).toBe(false)
   })
 
@@ -396,7 +396,7 @@ describe('the coach job after launch', () => {
   it('reports where today stands by ids and counts: the row the phone’s block offers, the task and the pick', async () => {
     const store = fresh()
     await opened(store, at('07:50', TODAY), launched)
-    await post(store, at('07:52', TODAY), { picks: [{ id: ELIGIBLE[0], version: 'At the office, greet one colleague by name.' }, { id: ELIGIBLE[1], version: 'At the office, ask one colleague one question about their morning.' }] })
+    await post(store, at('07:52', TODAY), { picks: [{ id: ELIGIBLE[0], version: 'At the office, greet one colleague by name.', firmness: 'balanced' }, { id: ELIGIBLE[1], version: 'At the office, ask one colleague one question about their morning.', firmness: 'supportive' }] })
     expect(await coachToday(store, TODAY)).toEqual({ day: TODAY, coachBlock: true, row: { path: 'social', candidates: 2 }, task: { status: 'written', forced: false, dry: false, fallbackReason: null, withdrawn: null }, pick: { path: 'social', reps: 2, model: 'claude-opus-5-5' } })
     // A block from the phone's earlier build carries no row.
     expect(await coachToday(fresh(coachBlock({}, null)), TODAY)).toMatchObject({ coachBlock: true, row: null, task: null, pick: null })
@@ -482,13 +482,13 @@ describe('the coach’s answer', () => {
   it('refuses any rep outside the row’s own candidates, more than two, or the same twice', async () => {
     const store = ready()
     await opened(store)
-    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'host-something-small', version: 'Say hello first.' }] })).toMatchObject({ status: 422, body: { reason: '"host-something-small" is not one of the reps the row may offer now', retry: true } })
+    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'host-something-small', version: 'Say hello first.', firmness: 'balanced' }] })).toMatchObject({ status: 422, body: { reason: '"host-something-small" is not one of the reps the row may offer now', retry: true } })
     const again = ready()
     await opened(again)
-    expect(await post(again, at('07:52', TODAY), { picks: [...ELIGIBLE, 'greet-by-name'].map((id) => ({ id, version: 'x' })) })).toMatchObject({ status: 422, body: { reason: 'picks must name one or two reps, each with its id and version' } })
+    expect(await post(again, at('07:52', TODAY), { picks: [...ELIGIBLE, 'greet-by-name'].map((id) => ({ id, version: 'x', firmness: 'balanced' })) })).toMatchObject({ status: 422, body: { reason: 'picks must name one or two reps, each with its id and version' } })
     const twice = ready()
     await opened(twice)
-    expect(await post(twice, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'x' }, { id: 'greet-by-name', version: 'y' }] })).toMatchObject({ status: 422, body: { reason: 'the same rep named twice' } })
+    expect(await post(twice, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'x', firmness: 'balanced' }, { id: 'greet-by-name', version: 'y', firmness: 'balanced' }] })).toMatchObject({ status: 422, body: { reason: 'the same rep named twice' } })
   })
 
   it('holds the version to twenty-five words and the people guard: no rating, verdict or reply as a measure', async () => {
@@ -501,19 +501,19 @@ describe('the coach’s answer', () => {
     for (const [version, reason] of cases) {
       const store = ready()
       await opened(store)
-      expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version }] }), version).toMatchObject({ status: 422, body: { reason } })
+      expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version, firmness: 'balanced' }] }), version).toMatchObject({ status: 422, body: { reason } })
       // With two named, each line is held to the rules, and the refusal names the rep whose line broke one.
       const two = ready()
       await opened(two)
-      expect(await post(two, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one colleague by name.' }, { id: 'ask-one-question', version }] }), version).toMatchObject({ status: 422, body: { reason: `ask-one-question: ${reason}` } })
+      expect(await post(two, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one colleague by name.', firmness: 'balanced' }, { id: 'ask-one-question', version, firmness: 'balanced' }] }), version).toMatchObject({ status: 422, body: { reason: `ask-one-question: ${reason}` } })
     }
   })
 
   it('refuses anyone in person when nobody is around by today’s shape, so the app’s own pick stands', async () => {
     const store = ready(coachBlock({ ineligibleReason: 'Nobody is around in this block by today’s shape, so in-person reps wait.' }, { path: 'social', candidates: ['text-a-friend'] }))
     await opened(store)
-    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'text-a-friend', version: 'Send the message, then go talk to someone in person at lunch.' }] })).toMatchObject({ status: 422, body: { reason: 'puts someone in person beside him when nobody is around by today’s shape' } })
-    expect(await post(store, at('07:53', TODAY), { picks: [{ id: 'text-a-friend', version: 'Talk to someone face to face today.' }] })).toMatchObject({ status: 422, body: { retry: false } })
+    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'text-a-friend', version: 'Send the message, then go talk to someone in person at lunch.', firmness: 'balanced' }] })).toMatchObject({ status: 422, body: { reason: 'puts someone in person beside him when nobody is around by today’s shape' } })
+    expect(await post(store, at('07:53', TODAY), { picks: [{ id: 'text-a-friend', version: 'Talk to someone face to face today.', firmness: 'balanced' }] })).toMatchObject({ status: 422, body: { retry: false } })
     expect(coachRow(store)).toBeNull()
     expect(await store.readTask(taskIdOf('coach', TODAY))).toMatchObject({ status: 'refused' })
   })
@@ -533,14 +533,14 @@ describe('the coach’s answer', () => {
     const r = await handleBriefing(deps(store, at('07:52', TODAY)), url('/claude/briefing', { task: 'coach', day: TODAY }))
     expect((r.body as { briefing: string }).briefing).toContain('IN PERSON: today’s shape holds no office, church or pickup in this block, so an in-person rep here would mean going out')
     // The owner's own example stands now.
-    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Send the message, then go talk to someone in person at lunch.' }] })).toEqual({ status: 200, body: { ok: true } })
+    expect(await post(store, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Send the message, then go talk to someone in person at lunch.', firmness: 'balanced' }] })).toEqual({ status: 200, body: { ok: true } })
     // The office on a day without it, and the other parents on a day without daycare, still do not.
     const office = atHome()
     await opened(office)
-    expect(await post(office, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one colleague by name at lunch.' }] })).toMatchObject({ status: 422, body: { reason: `speaks of the office, which Monday ${TODAY} does not hold` } })
+    expect(await post(office, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one colleague by name at lunch.', firmness: 'balanced' }] })).toMatchObject({ status: 422, body: { reason: `speaks of the office, which Monday ${TODAY} does not hold` } })
     const parents = atHome()
     await opened(parents)
-    expect(await post(parents, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one of the other parents by name.' }] })).toMatchObject({ status: 422, body: { reason: `speaks of pickup or daycare, which Monday ${TODAY} does not hold` } })
+    expect(await post(parents, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version: 'Greet one of the other parents by name.', firmness: 'balanced' }] })).toMatchObject({ status: 422, body: { reason: `speaks of pickup or daycare, which Monday ${TODAY} does not hold` } })
   })
 
   it('stores two reps, each with its own line, where the phone reads them; a dry run by hand is checked and never stored there', async () => {
@@ -548,13 +548,13 @@ describe('the coach’s answer', () => {
     await opened(store)
     const version = 'At the office, greet one colleague by name as you pass; put your attention on what they are carrying.'
     const asked = 'At the office, ask one colleague one question about their morning, then follow their answer.'
-    expect(await post(store, at('07:52', TODAY), { picks: [{ id: ELIGIBLE[0], version }, { id: ELIGIBLE[1], version: asked }] })).toEqual({ status: 200, body: { ok: true } })
+    expect(await post(store, at('07:52', TODAY), { picks: [{ id: ELIGIBLE[0], version, firmness: 'balanced' }, { id: ELIGIBLE[1], version: asked, firmness: 'supportive' }] })).toEqual({ status: 200, body: { ok: true } })
     expect(coachRow(store)).toMatchObject({ day: TODAY, block: 'morning', path: 'social', ids: ELIGIBLE, versions: { [ELIGIBLE[0]]: version, [ELIGIBLE[1]]: asked }, model: 'claude-opus-5-5', askedModel: 'opus' })
     expect(await store.readTask(taskIdOf('coach', TODAY))).toMatchObject({ status: 'written', writer: 'claude' })
     const dry = ready()
     const r = routine(dry)
     await runCoach(env, dry, at('07:50', TODAY), { force: true, dry: true, fireFetcher: r.f })
-    expect(await post(dry, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version }] })).toEqual({ status: 200, body: { ok: true, dry: true } })
+    expect(await post(dry, at('07:52', TODAY), { picks: [{ id: 'greet-by-name', version, firmness: 'balanced' }] })).toEqual({ status: 200, body: { ok: true, dry: true } })
     expect(coachRow(dry)).toBeNull()
     expect(await dry.readTask(taskIdOf('coach', TODAY))).toMatchObject({ status: 'written', dry: true, forced: true })
   })

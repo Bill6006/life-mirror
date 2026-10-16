@@ -1285,6 +1285,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "factIds": [
         "today.shortSleep",
       ],
+      "firmness": "balanced",
       "mode": "perspective",
       "score": 0.7,
       "situationId": "short-night-today",
@@ -1298,6 +1299,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
         "aim.1",
         "week.today",
       ],
+      "firmness": "balanced",
       "mode": "recommendation",
       "score": 0.6,
       "situationId": "say-when",
@@ -1311,6 +1313,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "factIds": [
         "assoc.shortSleep",
       ],
+      "firmness": "balanced",
       "mode": "observation",
       "score": 0.55,
       "situationId": "short-sleep-afternoons",
@@ -1323,6 +1326,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "factIds": [
         "untested",
       ],
+      "firmness": "balanced",
       "mode": "recommendation",
       "score": 0.45,
       "situationId": "propose-test",
@@ -1335,6 +1339,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "factIds": [
         "nothing",
       ],
+      "firmness": "balanced",
       "mode": "perspective",
       "score": 0.43,
       "situationId": "nothing-holds",

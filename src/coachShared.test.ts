@@ -8,8 +8,8 @@ const ctx = (extra: Partial<CoachContext> = {}): CoachContext => ({ goal: 'Learn
 const orrish = { skill: 'Understand everyday spoken Orrish', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest of the course leans on.', physical: false, safety: null, likelyNext: 'Short spoken answers' }
 
 describe('the gate', () => {
-  it('stays closed until the monitoring completes and the owner approves (2026-09-25)', () => {
-    expect(SKILL_COACH).toBe('gated')
+  it('opened at Pass 1B, after the clean window and the owner’s word (2026-10-16)', () => {
+    expect(SKILL_COACH).toBe('open')
     expect(MAX_SETUP_RUNS_A_DAY).toBe(2)
     expect([REVIEW_DAYS, REVIEW_MIN_CALENDAR_DAYS, HARD_RUN]).toEqual([6, 7, 3])
   })

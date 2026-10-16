@@ -99,12 +99,19 @@ function untouchable(): { store: Store; touched: string[] } {
   return { store, touched }
 }
 
-describe('with the gate closed, as the build ships', () => {
+describe('the by-hand route, as the build ships since Pass 1B', () => {
+  it('goes past the gate to the database: with no database token it says so, and fires nothing', async () => {
+    const res = await handler.fetch?.(new Request('https://w.test/run/commitments?key=run-key&force=1'), { ...env, RUN_KEY: 'run-key' } as never, {} as never)
+    expect(await res?.json()).toEqual({ job: 'commitments', reason: 'no database token' })
+  })
+})
+
+describe('with the gate closed by hand (the shipped state until Pass 1B)', () => {
   it('returns from the job before anything is read or fired, by schedule or by hand', async () => {
     const { store, touched } = untouchable()
     const r = routine()
-    expect(await runCommitments(env, store, at('12:00'), { fireFetcher: r.f })).toEqual({ ran: false, reason: 'gated' })
-    expect(await runCommitments(env, store, at('12:00'), { force: true, fireFetcher: r.f })).toEqual({ ran: false, reason: 'gated' })
+    expect(await runCommitments(env, store, at('12:00'), { fireFetcher: r.f, gate: 'gated' })).toEqual({ ran: false, reason: 'gated' })
+    expect(await runCommitments(env, store, at('12:00'), { force: true, fireFetcher: r.f, gate: 'gated' })).toEqual({ ran: false, reason: 'gated' })
     expect(touched).toEqual([])
     expect(r.calls).toEqual([])
   })
@@ -118,10 +125,6 @@ describe('with the gate closed, as the build ships', () => {
     expect(proposal(store, id)).toBeNull()
   })
 
-  it('answers the by-hand route with the gate’s word, before any database is opened', async () => {
-    const res = await handler.fetch?.(new Request('https://w.test/run/commitments?key=run-key&force=1'), { ...env, RUN_KEY: 'run-key' } as never, {} as never)
-    expect(await res?.json()).toEqual({ job: 'commitments', ran: false, reason: 'gated' })
-  })
 
   it('leaves the monitoring’s watch exactly as it was, whatever skill coach rows sit beside the day’s tasks', async () => {
     const plain = record()

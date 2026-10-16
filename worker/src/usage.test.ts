@@ -41,13 +41,15 @@ const base: FactSheet = {
 }
 const withUsage: FactSheet = { ...base, facts: [...base.facts, ...USAGE] }
 
-const GATED: Gates = gatesFrom({ hideFaith: false, privateInSelection: true })
+// Closed by hand: the shipped state until Pass 1B. As the build ships now (2026-10-16), both gates are open.
+const GATED: Gates = gatesFrom({ hideFaith: false, privateInSelection: true }, 'gated', 'gated')
 const OPEN: Gates = gatesFrom({ hideFaith: false, privateInSelection: true }, 'open')
 const ids = (s: FactSheet) => s.facts.map((x) => x.id)
 const usageIds = (s: FactSheet) => ids(s).filter((id) => id.startsWith('usage.'))
 
 describe('the gate and the permission check', () => {
-  it('keeps how Life Mirror is used closed to every task while the gate is, whatever the switch says', () => {
+  it('keeps how Life Mirror is used closed to every task when the gate is closed by hand, whatever the switch says; it ships open since Pass 1B', () => {
+    expect(gatesFrom({ hideFaith: false, privateInSelection: true }).usageOpen).toBe(true)
     expect(GATED.usageOpen).toBe(false)
     expect(CLOSED_GATES.usageOpen).toBe(false)
     for (const task of ['line', 'review', 'coach'] as const) for (const c of ['usage', 'usageEvents']) expect(permitted(task, 'claude', c, GATED)).toBe(false)

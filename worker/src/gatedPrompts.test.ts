@@ -8,11 +8,13 @@ import { runCoach } from './coach'
 import { buildMessages, buildReviewMessages, claudeInstructions } from './prompt'
 import { APP, BRAIN_APP, memoryStore } from './turso'
 
-// What Claude and the free chain are given for the day's line, the Sunday review and the coach,
-// recorded before Parts 40 and 41 were built and held fixed while their gate is closed: the
-// monitored prompts, their instructions, their private context and their read log must not move
-// by a byte (the owner's condition, 2026-09-25). Small invented cards and moves stand in for the
-// library and the catalogue, so a change to either is not mistaken for one here.
+// What Claude and the free chain are given for the day's line, the Sunday review and the coach.
+// First recorded before Parts 40 and 41 were built and held fixed while the Pass 1B gates were
+// closed (the owner's condition, 2026-09-25). Re-recorded at Pass 1B (2026-10-16), with every gate
+// open and the two held wordings applied, and read line by line; held fixed from here, so any move
+// in the monitored prompts, their instructions, their private context or their read log is a change
+// to the Brain made on purpose. Small invented cards and moves stand in for the library and the
+// catalogue, so a change to either is not mistaken for one here.
 
 const TZ = 'America/New_York'
 const env = {
@@ -96,11 +98,11 @@ function record(): Store {
 function routine() {
   return (async () => new Response(JSON.stringify({ claude_code_session_url: 'https://claude.ai/code/session_z' }), { status: 200 })) as typeof fetch
 }
-const deps = (store: Store, now: Date) => ({ env, store, now, fetcher })
+const deps = (store: Store, now: Date, howFirm?: 'gated' | 'open') => ({ env, store, now, fetcher, ...(howFirm ? { howFirm } : {}) })
 const url = (q: Record<string, string>) => new URL(`https://w.test/claude/briefing?${new URLSearchParams(q)}`)
 const readsOf = async (store: Store) => (await store.readReads(100)).map(({ task, category, count, bytes, via }) => ({ task, category, count, bytes, via })).sort((a, b) => `${a.task}${a.category}`.localeCompare(`${b.task}${b.category}`))
 
-describe('the monitored prompts, held fixed while Parts 40 and 41 are gated', () => {
+describe('the monitored prompts as Pass 1B opened them (2026-10-16), held fixed from here', () => {
   it('serves Claude the day’s line exactly as before, with the same private context and the same reads logged', async () => {
     const store = record()
     await runBrief(env, store, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })
@@ -144,7 +146,7 @@ describe('the monitored prompts, held fixed while Parts 40 and 41 are gated', ()
   })
 })
 
-describe('a saved How firm choice, while its gate is closed (Pass 2)', () => {
+describe('a saved How firm choice, when its gate is closed by hand (the shipped state until Pass 1B)', () => {
   const withChoice = (firmness: string) => {
     const store = record()
     put(store, 'brainPrefs', 'prefs', null, { id: 'prefs', writerModel: 'opus', switches: {}, firmness })
@@ -157,13 +159,13 @@ describe('a saved How firm choice, while its gate is closed (Pass 2)', () => {
   it('serves Claude the same line, review and coach, with the same reads, whatever was chosen', async () => {
     for (const firmness of ['hardCoach', 'supportive', 'adaptive']) {
       const [plain, chosen] = [record(), withChoice(firmness)]
-      for (const s of [plain, chosen]) await runBrief(env, s, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })
-      expect(await handleBriefing(deps(chosen, at('07:46', DAY)), url({ task: 'line', day: DAY })), firmness).toEqual(await handleBriefing(deps(plain, at('07:46', DAY)), url({ task: 'line', day: DAY })))
+      for (const s of [plain, chosen]) await runBrief(env, s, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine(), howFirm: 'gated' })
+      expect(await handleBriefing(deps(chosen, at('07:46', DAY), 'gated'), url({ task: 'line', day: DAY })), firmness).toEqual(await handleBriefing(deps(plain, at('07:46', DAY), 'gated'), url({ task: 'line', day: DAY })))
       expect(await readsOf(chosen)).toEqual(await readsOf(plain))
 
       const [plainR, chosenR] = [record(), withChoice(firmness)]
-      for (const s of [plainR, chosenR]) await runReview(env, s, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine() })
-      expect(await handleBriefing(deps(chosenR, at('05:01', DAY)), url({ task: 'review', day: DAY })), firmness).toEqual(await handleBriefing(deps(plainR, at('05:01', DAY)), url({ task: 'review', day: DAY })))
+      for (const s of [plainR, chosenR]) await runReview(env, s, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine(), howFirm: 'gated' })
+      expect(await handleBriefing(deps(chosenR, at('05:01', DAY), 'gated'), url({ task: 'review', day: DAY })), firmness).toEqual(await handleBriefing(deps(plainR, at('05:01', DAY), 'gated'), url({ task: 'review', day: DAY })))
 
       const [plainC, chosenC] = [record(), withChoice(firmness)]
       for (const s of [plainC, chosenC]) {
@@ -171,13 +173,13 @@ describe('a saved How firm choice, while its gate is closed (Pass 2)', () => {
         await s.writeBrief({ id: `${DAY}:brief`, day: DAY, kind: 'brief', text: 'x', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: at('07:48', DAY).toISOString(), writer: 'claude', forDay: DAY }, at('07:48', DAY).toISOString())
         await runCoach(env, s, at('07:50', DAY), { fireFetcher: routine() })
       }
-      expect(await handleBriefing(deps(chosenC, at('07:51', DAY)), url({ task: 'coach', day: DAY })), firmness).toEqual(await handleBriefing(deps(plainC, at('07:51', DAY)), url({ task: 'coach', day: DAY })))
+      expect(await handleBriefing(deps(chosenC, at('07:51', DAY), 'gated'), url({ task: 'coach', day: DAY })), firmness).toEqual(await handleBriefing(deps(plainC, at('07:51', DAY), 'gated'), url({ task: 'coach', day: DAY })))
     }
   })
 
   it('lets the free chain write as before: its answer is checked without a delivery, and none is stored', async () => {
     const store = withChoice('hardCoach')
-    const r = await runBrief(noClaude, store, freeRunner, at('07:45', DAY), { fetcher })
+    const r = await runBrief(noClaude, store, freeRunner, at('07:45', DAY), { fetcher, howFirm: 'gated' })
     expect(r).toMatchObject({ wrote: true, writer: 'free', text: candidate.text })
     const row = store.rows.get(`${BRAIN_APP}|briefs|${DAY}:brief`)
     expect(row).toBeDefined()

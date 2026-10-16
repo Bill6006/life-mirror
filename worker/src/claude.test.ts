@@ -75,8 +75,8 @@ function routine(store: Store, status = 200, extra: Record<string, string> = {})
   return { f, calls }
 }
 
-const good = { mode: 'strategy', text: 'After her bedtime held 1 of 4 plans. Try the next check-in as the cue today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' } }
-const freeLine = JSON.stringify({ candidates: [{ mode: 'strategy', text: 'Veltish waits after her bedtime; a smaller step at the next check-in may land better today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null }] })
+const good = { mode: 'strategy', text: 'After her bedtime held 1 of 4 plans. Try the next check-in as the cue today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' }, firmness: 'balanced' }
+const freeLine = JSON.stringify({ candidates: [{ mode: 'strategy', text: 'Veltish waits after her bedtime; a smaller step at the next check-in may land better today.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null, firmness: 'balanced' }] })
 const freeRun = async () => ({ response: freeLine })
 const briefOf = (store: Store, id: string) => JSON.parse(store.rows.get(`${BRAIN_APP}|briefs|${id}`)?.body ?? 'null')
 const deps = (store: Store, now: Date) => ({ env, store, now, fetcher })
@@ -347,7 +347,7 @@ describe('reading on demand', () => {
 
 describe('the Sunday review through the same bridge (Part 31)', () => {
   const SUN = '2026-09-20'
-  const reviewAnswer = { held: 'Veltish held 1 of 4 plans after her bedtime.', didNot: 'Most plans after her bedtime did not start.', change: 'Try the next check-in as the cue this week.', factIds: ['aim.1'], cardIds: ['implementation-intentions'] }
+  const reviewAnswer = { held: 'Veltish held 1 of 4 plans after her bedtime.', didNot: 'Most plans after her bedtime did not start.', change: 'Try the next check-in as the cue this week.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], firmness: 'balanced' }
 
   it('fires at the hour, reads the week, keeps the Partner path to acts done and the monthly check out, and stores Claude’s three parts', async () => {
     const store = withSheet(sheetFor('2026-09-19', [], { builtAt: '2026-09-20T01:00:00.000Z' }))
@@ -400,36 +400,30 @@ describe('the keyed door', () => {
   })
 })
 
-describe('how Life Mirror is used, while its gate is closed (Follow-up F1)', () => {
+describe('how Life Mirror is used, open since Pass 1B (Follow-up F1); closed by hand, usage.test holds it back', () => {
   const usage: FactSheet['facts'] = [
     { id: 'usage.line', tags: [], text: 'The line’s one tap: offered on 5 of the 7 days to yesterday, taken on 2 of them. Why under the line: opened 4 times.', values: { days: 7, offered: 5, taken: 2, why: 4 } },
     { id: 'usage.screens', tags: [], text: 'Screens in the 28 days to yesterday: opened most, Now 40.', values: { days: 28, often: 'Now 40', rarely: '', never: '', neverDays: 56 } },
   ]
 
-  it('serves a briefing with none of it, the same as a sheet without it, and logs no read of it', async () => {
+  it('serves the line the usage counts that bear on it, never the screens, and lets it ask for the counts but not the events', async () => {
     const store = withSheet(sheetFor(DAY, usage))
     await fired(store)
     const r = await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'line', day: DAY }))
     expect(r.status).toBe(200)
     const b = r.body as { briefing: string; context: { categories: string[] } }
-    expect(b.briefing).not.toContain('usage.')
-    expect(b.briefing).not.toContain('HOW LIFE MIRROR IS USED')
-    expect(b.context.categories).not.toEqual(expect.arrayContaining(['usage']))
+    expect(b.briefing).toContain('[usage.line]')
+    expect(b.briefing).not.toContain('[usage.screens]')
+    expect(b.context.categories).toContain('usage')
     expect(b.context.categories).not.toContain('usageEvents')
-    const plain = withSheet(sheetFor(DAY))
-    await fired(plain)
-    const p = (await handleBriefing(deps(plain, at('07:47')), url('/claude/briefing', { task: 'line', day: DAY }))).body as { briefing: string }
-    expect(b.briefing).toBe(p.briefing)
-    const reads = [...store.rows.values()].filter((row) => row.app === BRAIN_APP && row.store === 'reads').map((row) => JSON.parse(row.body ?? '{}').category)
-    expect(reads).not.toContain('usage')
   })
 
-  it('refuses a read of it on demand, counts and events alike, and logs nothing', async () => {
+  it('reads the counts on demand for the line, logged as a read, and refuses the events, which are the review’s alone', async () => {
     const store = withSheet(sheetFor(DAY, usage))
     await fired(store)
     const q = (category: string) => handleContext(deps(store, at('07:47')), url('/claude/context', { task: 'line', day: DAY, category }))
-    expect(await q('usage')).toEqual({ status: 403, body: { error: 'the line task may not read usage' } })
+    expect((await q('usage')).status).toBe(200)
     expect(await q('usageEvents')).toEqual({ status: 403, body: { error: 'the line task may not read usageEvents' } })
-    expect([...store.rows.values()].filter((row) => row.store === 'reads')).toEqual([])
+    expect([...store.rows.values()].filter((row) => row.store === 'reads').map((row) => JSON.parse(row.body ?? '{}').category)).toContain('usage')
   })
 })

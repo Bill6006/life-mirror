@@ -54,9 +54,10 @@ const yesterday = () => putFacts(memoryStore(), sheetFor('2026-09-17'))
 /** Today's sheet, built right after the morning check-in completed at 07:40. */
 const afterCheckIn = (store: Store = yesterday()) => putFacts(store, sheetFor('2026-09-18', { builtAt: '2026-09-18T11:41:00.000Z', checkedIn: { morning: '2026-09-18T11:40:00.000Z' } }))
 
-const line = (text: string, extra: Record<string, unknown> = {}) => ({ mode: 'strategy', text, factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null, ...extra })
+// Since How firm opened at Pass 1B every model's line names its delivery; Adaptive, the default, allows balanced on any.
+const line = (text: string, extra: Record<string, unknown> = {}) => ({ mode: 'strategy', text, factIds: ['aim.1'], cardIds: ['implementation-intentions'], action: null, firmness: 'balanced', ...extra })
 const good = JSON.stringify(line('After her bedtime held 1 of 4 plans. Try the next check-in as the cue this week.', { action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' } }))
-const review = JSON.stringify({ held: 'Nothing on Veltish held this week: 0 steps started.', didNot: 'Veltish went from 3 and 2 sittings to 0 and 0.', change: 'Pin one short sitting to the next check-in instead of after her bedtime, which held 1 of 4.', factIds: ['aim.1', 'trajectory.1'], cardIds: ['implementation-intentions'] })
+const review = JSON.stringify({ held: 'Nothing on Veltish held this week: 0 steps started.', didNot: 'Veltish went from 3 and 2 sittings to 0 and 0.', change: 'Pin one short sitting to the next check-in instead of after her bedtime, which held 1 of 4.', factIds: ['aim.1', 'trajectory.1'], cardIds: ['implementation-intentions'], firmness: 'balanced' })
 const bodyOf = (store: Store, id: string) => JSON.parse(store.rows.get(`${BRAIN_APP}|briefs|${id}`)?.body ?? '{}')
 
 describe('when the day’s line is written', () => {
@@ -173,9 +174,9 @@ describe('when the day’s line is written', () => {
     let prompt = ''
     const run = async (_model: string, messages: Message[]) => {
       prompt = messages[1].content
-      if (messages.length === 2) return { response: JSON.stringify({ mode: 'recommendation', text: 'After picking up your child, do a short pleasant task.', factIds: ['aim.1'], cardIds: [] }) }
+      if (messages.length === 2) return { response: JSON.stringify({ mode: 'recommendation', text: 'After picking up your child, do a short pleasant task.', factIds: ['aim.1'], cardIds: [], firmness: 'balanced' }) }
       expect(messages[messages.length - 1].content).toContain('speaks of pickup or daycare, which Saturday 2026-09-19 does not hold')
-      return { response: JSON.stringify({ mode: 'recommendation', text: 'One short sitting after her bedtime keeps the thread.', factIds: ['aim.1'], cardIds: [] }) }
+      return { response: JSON.stringify({ mode: 'recommendation', text: 'One short sitting after her bedtime keeps the thread.', factIds: ['aim.1'], cardIds: [], firmness: 'balanced' }) }
     }
     const r = await runBrief(env, store, run, at('11:15', '2026-09-19'), { fetcher })
     expect(r).toMatchObject({ wrote: true, trigger: 'fallback', day: '2026-09-19', forDay: '2026-09-19', factsDay: '2026-09-18' })
@@ -213,7 +214,7 @@ describe('when the day’s line is written', () => {
     const run = async (model: string, messages: Message[]) => {
       calls++
       if (model === 'model-a') throw new Error('capacity')
-      if (messages.length === 2) return { response: JSON.stringify({ mode: 'warning', text: 'Held 1 of 9 plans.', factIds: ['aim.1'], cardIds: [] }) }
+      if (messages.length === 2) return { response: JSON.stringify({ mode: 'warning', text: 'Held 1 of 9 plans.', factIds: ['aim.1'], cardIds: [], firmness: 'balanced' }) }
       expect(messages[messages.length - 1].content).toContain('the number 9 is not in the cited facts')
       return { response: good }
     }

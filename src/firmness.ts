@@ -16,7 +16,7 @@ import type { Grade } from './libraryTypes'
  * ten-day check to 2026-10-04): opening it changes the monitored prompts and the phone's own lines.
  * Opened only at the owner's word; the phone and the Worker read this one value.
  */
-export const HOW_FIRM: 'gated' | 'open' = 'gated'
+export const HOW_FIRM: 'gated' | 'open' = 'open'
 
 export const FIRMNESS_PREFS = ['adaptive', 'supportive', 'balanced', 'hardCoach'] as const
 export type FirmnessPref = (typeof FIRMNESS_PREFS)[number]

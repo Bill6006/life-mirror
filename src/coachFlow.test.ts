@@ -41,27 +41,29 @@ describe('who may see the skill coach', () => {
   afterEach(() => vi.unstubAllGlobals())
   const flag = (v: string | null) => vi.stubGlobal('localStorage', { getItem: (k: string) => (k === 'life-mirror.preview.skillCoach' ? v : null) })
 
-  it('is closed as the build ships, and an ordinary browser cannot preview it, whatever it stores', () => {
-    expect(coachMode()).toBe('gated')
+  it('is open as the build ships since Pass 1B (2026-10-16), for an ordinary browser too; closed by hand, it holds back', () => {
+    expect(coachMode()).toBe('open')
     vi.stubGlobal('navigator', { webdriver: false })
+    flag(null)
+    expect(skillCoachOpen()).toBe(true)
     flag('1')
-    expect(coachMode()).toBe('gated')
-    expect(skillCoachOpen()).toBe(false)
+    expect(coachMode('gated')).toBe('gated')
+    expect(skillCoachOpen(coachMode('gated'))).toBe(false)
   })
 
-  it('previews only in an automated test browser that asks for it, and opens for everyone only with the gate', () => {
+  it('closed by hand, previews only in an automated test browser that asks for it; open, for everyone', () => {
     vi.stubGlobal('navigator', { webdriver: true })
     flag(null)
-    expect(coachMode()).toBe('gated')
+    expect(coachMode('gated')).toBe('gated')
     flag('1')
-    expect(coachMode()).toBe('preview')
-    expect(skillCoachOpen()).toBe(true)
+    expect(coachMode('gated')).toBe('preview')
+    expect(skillCoachOpen(coachMode('gated'))).toBe(true)
     vi.stubGlobal('navigator', { webdriver: false })
     expect(coachMode('open')).toBe('open')
   })
 })
 
-describe('with the gate closed (as it stays until the owner turns it on)', () => {
+describe('with the gate closed by hand (the shipped state until Pass 1B)', () => {
   beforeEach(async () => {
     await db.delete()
     await db.open()
@@ -70,9 +72,9 @@ describe('with the gate closed (as it stays until the owner turns it on)', () =>
   it('asks nothing, shows nothing and writes nothing, and the commitment is set by hand as before', async () => {
     const aim = await orrish()
     await withCloud()
-    expect(await coachStates(day(20))).toBeNull()
-    expect(await askSuggestion(aim.id as number, T(20))).toBeNull()
-    expect(await ensureReviews(day(20), T(20))).toBe(0)
+    expect(await coachStates(day(20), 'gated')).toBeNull()
+    expect(await askSuggestion(aim.id as number, T(20), undefined, 'gated')).toBeNull()
+    expect(await ensureReviews(day(20), T(20), 'gated')).toBe(0)
     expect(await db.coachAsks.count()).toBe(0)
     expect(await setCurrentSkill(aim.id as number, { name: 'Ten words' }, T(20, 10))).not.toBeNull()
     expect((await db.skills.toArray())[0]).toMatchObject({ name: 'Ten words', source: 'you' })
@@ -382,12 +384,12 @@ describe('a progression review (Part 41)', () => {
     expect((await db.skills.toArray()).find((s) => s.id === now.currentSkillId)).toMatchObject({ name: 'Twenty words', source: 'you' })
   })
 
-  it('carries an open review onto the sheet and into Sunday’s review, once its gate is open; closed, the sheet says nothing of it', async () => {
+  it('carries an open review onto the sheet and into Sunday’s review with its gate open; closed by hand, the sheet says nothing of it', async () => {
     const aim = await orrish('Ten words')
     await practise(aim, [20, 21, 22, 23, 24, 25])
     await ensureReviews(day(27), T(27), 'open')
-    // Closed (as the build ships): the commitment's fact is as it was.
-    const closed = await factSheet(day(27), T(27, 21))
+    // Closed by hand (the shipped state until Pass 1B): the commitment's fact is as it was.
+    const closed = await factSheet(day(27), T(27, 21), 'gated')
     expect(factById(closed, `aim.${aim.id}`)?.values).not.toHaveProperty('review')
     expect(factById(closed, `aim.${aim.id}`)?.text).not.toContain('progression review')
     // Open: it says the review waits, never a verdict.

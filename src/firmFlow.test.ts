@@ -40,14 +40,14 @@ describe('the How firm setting', () => {
     expect((await db.brainPrefs.get('prefs'))?.firmness).toBe('hardCoach')
   })
 
-  it('is read by nothing while the gate is closed: not the setting, and not for the sheet or the phone’s line', async () => {
+  // The phone's own line, closed by hand, is held below: the same with a saved choice and without. Since
+  // Pass 1B the skill coach reads this row too, so a spy on it speaks only for the sheet here.
+  it('is read by nothing when the gate is closed by hand (the shipped state until Pass 1B): not the setting, and not for the sheet', async () => {
     await setFirmness('supportive')
     const reads = vi.spyOn(db.brainPrefs, 'get')
     try {
       expect(await firmPrefNow('gated')).toBeNull()
-      expect(await firmPrefNow()).toBeNull()
-      await factSheet(DAY, NOW)
-      await chooseAndLog(DAY, NOW)
+      await factSheet(DAY, NOW, coachMode('gated'), 'gated')
       expect(reads).not.toHaveBeenCalled()
       await firmPrefNow('open')
       expect(reads).toHaveBeenCalled()
@@ -57,17 +57,17 @@ describe('the How firm setting', () => {
   })
 })
 
-describe('a saved choice while the gate is closed', () => {
+describe('a saved choice when the gate is closed by hand', () => {
   beforeEach(fresh)
 
   it('changes nothing: the ranking the Worker reads and the phone’s own line are the same with it and without it', async () => {
-    const before = await factSheet(DAY, NOW)
-    await chooseAndLog(DAY, NOW)
+    const before = await factSheet(DAY, NOW, coachMode('gated'), 'gated')
+    await chooseAndLog(DAY, NOW, 'gated')
     const lineBefore = await todaysLine(DAY, NOW)
     for (const pref of ['hardCoach', 'supportive', 'adaptive']) {
       await setFirmness(pref)
-      expect((await factSheet(DAY, NOW)).shortlist, pref).toEqual(before.shortlist)
-      await chooseAndLog(DAY, NOW)
+      expect((await factSheet(DAY, NOW, coachMode('gated'), 'gated')).shortlist, pref).toEqual(before.shortlist)
+      await chooseAndLog(DAY, NOW, 'gated')
       expect(await todaysLine(DAY, NOW), pref).toEqual(lineBefore)
     }
     expect(before.shortlist?.[0]?.situationId).toBe('first-skill')

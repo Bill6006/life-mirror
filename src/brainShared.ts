@@ -132,14 +132,14 @@ export type BrainSwitch = (typeof BRAIN_SWITCHES)[number]
  * giving it would change the monitored prompts and their size. Collection goes on meanwhile. Opened
  * only at the owner's word once monitoring is complete; the phone and the Worker read this one value.
  */
-export const USAGE_TO_CLAUDE: 'gated' | 'open' = 'gated'
+export const USAGE_TO_CLAUDE: 'gated' | 'open' = 'open'
 
 /**
  * Part 43 (2026-09-24): whether Claude may be given where the day's parts were spent (kinds of place,
  * never coordinates). Gated for the same reason and on the same terms as usage: it would change the
  * monitored prompts. Location Context still records on the phone, for you and for the sun.
  */
-export const LOCATION_TO_CLAUDE: 'gated' | 'open' = 'gated'
+export const LOCATION_TO_CLAUDE: 'gated' | 'open' = 'open'
 
 /** Location facts on the sheet: all of them are the location category's, and nothing else is. */
 export function isLocationFact(id: string): boolean {
@@ -236,14 +236,18 @@ export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:
  * comparisons are never said to have caused what happened. Gated, since it changes what the
  * monitored lines are refused for: it opens with the owner's word after the 2026-10-04 report.
  */
-export const EVIDENCE_WORDING: 'gated' | 'open' = 'gated'
+export const EVIDENCE_WORDING: 'gated' | 'open' = 'open'
 
 /** Words that say an effect is large: a cited card whose effect is large must stand under them. */
 export const LARGE_WORDS = /\b(greatly|dramatic(?:ally)?|huge(?:ly)?|massive(?:ly)?|vast(?:ly)?|enormous(?:ly)?|far (?:more|less|better|worse|fewer|higher|lower|greater)|much (?:more|less|better|worse|fewer|higher|lower|greater)|a lot (?:more|less|better|worse)|doubl(?:e|es|ed|ing)|tripl(?:e|es|ed|ing)|halv(?:e|es|ed|ing)|twice as|several times|(?<!(?:more|less|most|as) )strongly|a (?:large|big|huge|major|dramatic|powerful|strong) (?:effect|difference|change|gain|drop|boost|improvement|lift|benefit))\b/i
 /** Words that say an effect is at least medium: a cited card whose effect is medium or large must stand under them. */
 export const MEDIUM_WORDS = /\b(considerabl[ey]|marked(?:ly)?|substantial(?:ly)?|significantly|sizeable|a (?:moderate|medium|sizeable|marked|clear) (?:effect|difference|change|gain|drop|improvement|lift|benefit))\b/i
-/** A claim that something in the record caused what happened: a past cause aimed at you, a because about you, or a why. */
-export const RECORD_CAUSE = /\b(?:(?:made|kept|left|gave|cost|drained|sapped|lifted|raised|lowered|improved|boosted|hurt|harmed|helped|cut|pushed|dragged|ruined|wrecked|fixed|caused|affected|reduced|increased|worsened|spoiled|brought) (?:you|your)\b|because (?:you|your)\b|(?:that|this|which|it)(?:'s|’s| is| was) why\b|is why (?:you|your)\b|(?:led|due|thanks) to (?:you|your)\b)/i
+/**
+ * A claim that something in the record caused what happened: a past cause aimed at you, a because about
+ * you, a why, or a thing said to be what does it ("is what gets it done", "made the difference", "does the
+ * trick", "is the key"; the owner's example at Pass 1B, 2026-10-16).
+ */
+export const RECORD_CAUSE = /\b(?:(?:made|kept|left|gave|cost|drained|sapped|lifted|raised|lowered|improved|boosted|hurt|harmed|helped|cut|pushed|dragged|ruined|wrecked|fixed|caused|affected|reduced|increased|worsened|spoiled|brought) (?:you|your)\b|because (?:you|your)\b|(?:that|this|which|it)(?:'s|’s| is| was) why\b|is why (?:you|your)\b|(?:led|due|thanks) to (?:you|your)\b|(?:\bis|\bwas|'s|’s) what (?:gets|got|keeps|kept|makes|made|does|did|works|worked|helps|helped|drives|drove|turns|turned)\b|\b(?:makes|made) (?:the|all the) difference\b|\b(?:does|did) the trick\b|(?:\bis|\bwas|'s|’s) the key\b)/i
 
 /** The record's own comparisons, like for like and never randomised: an association, never a cause. The owner's test cards are randomised, and are not among them. */
 export function isAssociationFact(id: string): boolean {

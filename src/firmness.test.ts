@@ -79,24 +79,27 @@ describe('the gate', () => {
   afterEach(() => vi.unstubAllGlobals())
   const flag = (v: string | null) => vi.stubGlobal('localStorage', { getItem: (k: string) => (k === 'life-mirror.preview.howFirm' ? v : null) })
 
-  it('ships closed, and nothing reads a setting while it is', () => {
-    expect(HOW_FIRM).toBe('gated')
-    expect(firmMode()).toBe('gated')
-    expect(firmOn()).toBe(false)
-    expect(firmPrefOf({ firmness: 'hardCoach' })).toBeNull()
+  it('ships open since Pass 1B (2026-10-16); closed by hand, nothing reads a setting', () => {
+    expect(HOW_FIRM).toBe('open')
+    expect(firmMode()).toBe('open')
+    expect(firmOn()).toBe(true)
+    expect(firmPrefOf({ firmness: 'hardCoach' })).toBe('hardCoach')
+    expect(firmOn('gated')).toBe(false)
+    expect(firmPrefOf({ firmness: 'hardCoach' }, 'gated')).toBeNull()
   })
 
-  it('previews only in an automated test browser that asks for it, and opens for everyone only with the gate', () => {
+  it('closed by hand, previews only in an automated test browser that asks for it; open, for everyone', () => {
     vi.stubGlobal('navigator', { webdriver: false })
     flag('1')
-    expect(firmMode()).toBe('gated')
+    expect(firmMode('gated')).toBe('gated')
     vi.stubGlobal('navigator', { webdriver: true })
     flag(null)
-    expect(firmMode()).toBe('gated')
+    expect(firmMode('gated')).toBe('gated')
     flag('1')
-    expect(firmMode()).toBe('preview')
-    expect(firmOn()).toBe(true)
+    expect(firmMode('gated')).toBe('preview')
+    expect(firmOn(firmMode('gated'))).toBe(true)
     expect(firmMode('open')).toBe('open')
+    expect(firmMode()).toBe('open')
   })
 
   it('starts on Adaptive, and knows the four settings and the three deliveries', () => {

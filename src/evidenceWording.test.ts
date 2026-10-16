@@ -12,8 +12,8 @@ import { SITUATION_SHEETS } from './situationFixtures'
 // Pass 4: how big a line says an effect is may not outrun its cards, and the record's own
 // comparisons are never said to have caused what happened. Legitimate experimental evidence keeps
 // its causal words: a card from trials may say what a thing does, and the owner's own test cards
-// were randomised. The check on the monitored lines is gated until the owner's word after the
-// 2026-10-04 report; what the app writes itself is held to it now.
+// were randomised. The check on the monitored lines opened at Pass 1B (2026-10-16), after the clean
+// window and the owner's word; what the app writes itself was held to it from the start.
 
 const card = (id: string, extra: Partial<ClaimCard> = {}): ClaimCard => ({ id, claim: 'A claim long enough to be a claim of its own.', domain: 'sleep', tags: ['sleep'], grade: 'B', replication: 'replicated', effect: 'an effect', population: 'adults', sources: [], caveats: 'none', app: 'a use', reviewed: '2026-09-25', status: 'admitted', ...extra })
 const small = card('small-card')
@@ -21,8 +21,8 @@ const medium = card('medium-card', { size: 'medium' })
 const large = card('large-card', { size: 'large' })
 
 describe('size words stay within the cited cards’ sizes, and the record’s comparisons are never causes (Pass 4)', () => {
-  it('stays gated while the monitoring runs', () => {
-    expect(EVIDENCE_WORDING).toBe('gated')
+  it('opened at Pass 1B (2026-10-16)', () => {
+    expect(EVIDENCE_WORDING).toBe('open')
   })
 
   it('lets a large word stand only on a large card, a medium word on a medium or large one, and small words on any', () => {
@@ -51,13 +51,25 @@ describe('size words stay within the cited cards’ sizes, and the record’s co
     expect(evidenceWordingRefusal('The walk lifted your mood in your own test.', ['test.walk'], [])).toBeNull()
   })
 
-  it('refuses nothing new on the monitored lines while gated, and refuses the outrun words once open', () => {
+  it('refuses a thing said to be what does it, on an association alone: “is what gets it done” (the owner’s example, Pass 1B)', () => {
+    for (const text of ['Planning the night before is what gets it done.', 'The evening walk is what keeps your evenings steady.', 'That nap made the difference.', 'Coffee before nine does the trick.', 'The walk is the key.', 'That’s what got it done last week.'])
+      expect(evidenceWordingRefusal(text, ['assoc.napped'], [large]), text).toMatch(/never said to have caused it/)
+    // A count, and an association said as one, stand.
+    for (const text of ['You got it done 3 times this week.', 'Evenings with a walk read 4 higher, 5 of 7: an association, not a cause.', 'What helps most is still unclear: 2 of 5.'])
+      expect(evidenceWordingRefusal(text, ['assoc.napped'], [large]), text).toBeNull()
+    // The owner's randomised test may say what the move does.
+    expect(evidenceWordingRefusal('The walk is what lifts your mood, in your own test.', ['test.walk'], [])).toBeNull()
+  })
+
+  it('refuses nothing new when closed by hand, and refuses the outrun words open, as it ships since Pass 1B', () => {
     const sheet: FactSheet = { day: '2026-09-25', builtAt: '2026-09-25T08:00:00.000Z', facts: [{ id: 'assoc.napped', tags: ['nap'], text: 'Mornings after a nap read 6 higher, 5 naps.', values: { diff: 6, times: 5 } } as Fact], said: [], shortlist: [], showPrivate: false } as unknown as FactSheet
     const line = { mode: 'observation', text: 'The nap improved your morning.', factIds: ['assoc.napped'], cardIds: [] }
-    expect(validateOutput(line, sheet, []).ok).toBe(true)
+    expect(validateOutput(line, sheet, [], 60, undefined, undefined, false).ok).toBe(true)
     expect(validateOutput(line, sheet, [], 60, undefined, undefined, true)).toMatchObject({ ok: false, reason: expect.stringContaining('never said to have caused it') })
+    expect(validateOutput(line, sheet, []).ok).toBe(false)
     const review = { held: 'Naps greatly helped.', didNot: 'Nothing stalled.', change: 'Keep the naps short.', factIds: ['assoc.napped'], cardIds: [] }
-    expect(validateReview(review, sheet, []).ok).toBe(true)
+    expect(validateReview(review, sheet, [], undefined, undefined, false).ok).toBe(true)
+    expect(validateReview(review, sheet, []).ok).toBe(false)
     expect(validateReview(review, sheet, [], undefined, undefined, true)).toMatchObject({ ok: false, reason: expect.stringContaining('held: says "greatly"') })
   })
 })

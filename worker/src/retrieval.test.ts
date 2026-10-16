@@ -104,7 +104,8 @@ describe('the permission check, for Claude', () => {
   })
 
   it('closes when the settings row cannot be read: faith hidden, private items out of picks', () => {
-    expect(gatesFrom(null)).toEqual({ faithHidden: true, privateInSelection: false, claudeMayRead: true, usageOpen: false, locationOpen: false })
+    // The usage and location gates are code, opened at Pass 1B, not settings: their own switches in the Brain row decide.
+    expect(gatesFrom(null)).toEqual({ faithHidden: true, privateInSelection: false, claudeMayRead: true, usageOpen: true, locationOpen: true })
   })
 })
 

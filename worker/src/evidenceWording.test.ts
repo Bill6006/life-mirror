@@ -12,24 +12,23 @@ const card = (id: string, size?: 'medium' | 'large'): ClaimCard => ({ id, claim:
 const LAST = '- Plain words, second person, no headings, no lists, no emoji.'
 
 describe('the evidence rule in the prompts (Pass 4)', () => {
-  it('is gated, and changes nothing while it is', () => {
-    expect(EVIDENCE_WORDING).toBe('gated')
+  it('opened at Pass 1B (2026-10-16); closed by hand, it changes nothing', () => {
+    expect(EVIDENCE_WORDING).toBe('open')
     for (const system of [lineSystem(), reviewSystem(), claudeInstructions('line'), claudeInstructions('review'), claudeInstructions('coach')]) {
-      expect(system).not.toContain(EVIDENCE_RULE)
       expect(withEvidenceRule(system, 'gated')).toBe(system)
     }
     expect(cardLines([card('a', 'large'), card('b')], 'gated')).not.toContain('Size:')
   })
 
-  it('once open, tells every writer of a line or a review the rule, once, just before the last rule', () => {
+  it('as it ships, tells every writer of a line or a review the rule, once, just before the last rule', () => {
     for (const system of [lineSystem(), reviewSystem(), claudeInstructions('line'), claudeInstructions('review')]) {
       expect(system.split(LAST).length - 1).toBe(1)
-      const open = withEvidenceRule(system, 'open')
-      expect(open.split(EVIDENCE_RULE).length - 1).toBe(1)
-      expect(open).toContain(`${EVIDENCE_RULE}\n${LAST}`)
+      expect(system.split(EVIDENCE_RULE).length - 1).toBe(1)
+      expect(system).toContain(`${EVIDENCE_RULE}\n${LAST}`)
     }
     // The coach cites no cards and is never given it.
     expect(claudeInstructions('coach')).not.toContain(LAST)
+    expect(claudeInstructions('coach')).not.toContain(EVIDENCE_RULE)
   })
 
   it('once open, says each medium or large card’s size, and nothing of the rest', () => {

@@ -12,7 +12,7 @@ import { BANNED_WORDS, USAGE_VERDICT } from './brainShared'
  * monitored prompts do not move. Opened only when the reliability reports complete, their
  * thresholds pass, and the owner approves; the phone and the Worker read this one value.
  */
-export const SKILL_COACH: 'gated' | 'open' = 'gated'
+export const SKILL_COACH: 'gated' | 'open' = 'open'
 
 /** D7: at most two on-demand suggestion runs a day, only after the day's line and the coach. */
 export const MAX_SETUP_RUNS_A_DAY = 2

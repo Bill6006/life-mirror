@@ -3,9 +3,9 @@ import type { FactSheet } from '../../src/factTypes'
 import catalogue from '../../src/catalogue.json'
 import cards from '../../src/library.json'
 
-// Part 43, once its gate opens (a test stands in for the owner's word): the day's line reads where the
-// day was spent, with the rule that a place is context; usage stays behind its own gate. Nothing here
-// opens it in the app.
+// Part 43 with its gate open, as it ships since Pass 1B (2026-10-16): the day's line reads where the day
+// was spent, with the rule that a place is context; usage, opened at the same moment, rides beside it
+// with its own rule. The mock below now only matches the shipped constant.
 vi.mock('../../src/brainShared', async (original) => ({ ...(await original<typeof import('../../src/brainShared')>()), LOCATION_TO_CLAUDE: 'open' }))
 
 const { runBrief } = await import('./brief')
@@ -39,8 +39,8 @@ const sheet: FactSheet = {
   ],
 }
 
-describe('once the location gate opens', () => {
-  it('the day’s line reads where the day was spent, with its rule; usage stays gated', async () => {
+describe('with the location gate open', () => {
+  it('the day’s line reads where the day was spent, with its rule, and how the app is used, with its own', async () => {
     const store = memoryStore()
     const put = (s: string, id: string, day: string | null, body: unknown) => store.put({ app: APP, store: s, id, day, body: JSON.stringify(body), updated_at: sheet.builtAt, deleted: 0, synced_at: sheet.builtAt })
     put('facts', DAY, DAY, { day: DAY, builtAt: sheet.builtAt, updatedAt: sheet.builtAt, sheet })
@@ -51,7 +51,7 @@ describe('once the location gate opens', () => {
     const b = (r.body as { briefing: string }).briefing
     expect(b).toContain('[location.today] Where today has been so far')
     expect(b).toContain(LOCATION_RULES)
-    expect(b).not.toContain('[usage.line]')
-    expect(b).not.toContain(USAGE_RULES)
+    expect(b).toContain('[usage.line]')
+    expect(b).toContain(USAGE_RULES)
   })
 })
