@@ -9,6 +9,19 @@ export type ReadingId = string
 export type Answers = Partial<Record<ReadingId, Position>>
 export type Unit = 'step' | 'band'
 
+/**
+ * A reading's construct card (requirement 3 of the learning design agreed 2026-10-10): what it
+ * measures, where it ends and its nearest neighbours begin, the time it asks about, which way is
+ * good, and what a missing answer means.
+ */
+export interface Construct {
+  measures: string
+  boundary: string
+  timeframe: 'right now' | 'today' | 'last night'
+  good: string
+  missing: string
+}
+
 export interface Reading {
   id: ReadingId
   name: string
@@ -20,6 +33,8 @@ export interface Reading {
   /** What the reading measures, in the words a writer reads beside its answers (Part 42). */
   meaning?: string
   unit: Unit
+  /** Its construct card (requirement 3). */
+  construct: Construct
   /** Five phrases, least to most of the thing named. */
   anchors: readonly string[]
   /** Phase 9: one pre-written alternate per anchor except the middle, for your veto; null where a reading has none. */

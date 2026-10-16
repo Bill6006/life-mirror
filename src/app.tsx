@@ -39,6 +39,7 @@ import { sample as sampleLocation, watchLocation } from './locationFlow'
 import { WordingScreen } from './wording'
 import { MoveCue } from './moveCue'
 import { AwayScreen } from './awayScreen'
+import { JournalScreen } from './journalScreen'
 
 type Tab = keyof typeof copy.tabs
 const order: Tab[] = ['now', 'mirror', 'moves', 'aims', 'settings']
@@ -68,6 +69,7 @@ type View =
   | { kind: 'brain' }
   | { kind: 'evidence' }
   | { kind: 'weekly' }
+  | { kind: 'journal' }
   | { kind: 'readings' }
   /** Away from home (post-window, gated): reached only while its gate is open; back goes where it was opened from. */
   | { kind: 'away'; back?: View }
@@ -266,6 +268,8 @@ export function App() {
         return <EvidenceScreen onClose={closeAll} />
       case 'weekly':
         return <WeeklyScreen onClose={closeAll} />
+      case 'journal':
+        return <JournalScreen onClose={closeAll} />
       case 'readings':
         return <ReadingsScreen onClose={closeAll} />
       case 'away':
@@ -287,7 +291,7 @@ export function App() {
           />
         )
       case 'mirror':
-        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} />
+        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} onJournal={() => open({ kind: 'journal' })} />
       case 'moves':
         return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} onEvidence={() => open({ kind: 'evidence' })} />
       case 'aims':

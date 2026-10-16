@@ -4031,3 +4031,22 @@ main.has-move-cue {
   background: rgba(10, 12, 15, 0.9);
   box-shadow: 0 0 14px rgba(79, 209, 197, 0.3), 0 6px 18px rgba(0, 0, 0, 0.5);
 }
+
+/* Let it out (agreed 2026-10-15): a large box for the night's words, and its history kept as written. */
+.journal-input {
+  display: block;
+  width: 100%;
+  min-height: 12rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Your line breaks and paragraphs kept as written; spaces at a wrap collapse, so none hangs past the edge (the edit box keeps every character). */
+.journal-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.journal-search {
+  margin-bottom: 12px;
+}

@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type Aim, type AnchorSwap, askedOf, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import { type Aim, type AnchorSwap, askedOf, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
@@ -45,6 +45,10 @@ export interface RecordsData {
   /** Part 43: each day's record, for where its parts were spent; and the places you named. Never a fingerprint or a coordinate. */
   days?: readonly DayContext[]
   places?: readonly KnownPlace[]
+  /** Let it out (agreed 2026-10-15): every night's entry, word for word. */
+  journal?: readonly JournalEntry[]
+  /** The engine's calls about its tests, kept to be resolved (requirement 15). */
+  claims?: readonly Claim[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -164,6 +168,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       checkins,
       freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
+      journal: (records?.journal ?? []).map((e) => ({ day: e.day, text: e.text, writtenAt: e.writtenAt, editedAt: e.editedAt })),
+      claims: (records?.claims ?? []).map((c) => ({ card: c.cardId, move: c.moveId, situation: c.situationKey, target: c.target, day: c.day, at: c.at, level: c.level, interval: c.interval, estimator: c.estimator, n: c.n, engine: c.engine })),
       useLog: (records?.useLog ?? []).filter((r) => partner || !PARTNER_SCREENS.includes(r.what ?? '')).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),
       usage: (records?.usage ?? []).map((f) => ({ id: f.id, text: f.text })),
       location: {

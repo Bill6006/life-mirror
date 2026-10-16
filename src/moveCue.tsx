@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { copy } from './copy'
 import { fill } from './format'
 import { DWELL_MS, fitAt, loadSeen, movesBelow, placeCue, saveSeen, SEEN_SHARE, visibleShare, type CardBox, type Guarded, type Placement } from './moveCueLogic'
+import { markOfferSeen } from './offerFlow'
 
 // Final UI polish (2026-09-26): a small cue above the tab bar while a move on Now is still lower
 // down and unseen. It moves nothing on the screen and sends nothing: a tap scrolls to the first such
@@ -99,6 +100,8 @@ export function MoveCue() {
           else if (now - first >= DWELL_MS) {
             seen.current.add(b.key)
             changed = true
+            // Requirement 2: seen, recorded on the offer itself, not on this phone's screen alone.
+            void markOfferSeen(b.key)
           }
         } else since.current.delete(b.key)
       }

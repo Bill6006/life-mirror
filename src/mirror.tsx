@@ -41,7 +41,7 @@ function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
 }
 
 /** Your own record, drawn. Every chart here is a calculation from the check-ins; each carries its caption. */
-export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
+export function MirrorScreen({ onWeekly, onJournal }: { onWeekly: () => void; onJournal: () => void }) {
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
   const [overlayId, setOverlayId] = useState<ReadingId | null>(null)
@@ -70,6 +70,7 @@ export function MirrorScreen({ onWeekly }: { onWeekly: () => void }) {
       <div class="card">
         <ul class="rows">
           <NavRow label={copy.weekly.door} note={copy.weekly.doorNote} onClick={onWeekly} />
+          <NavRow label={copy.journal.door} note={copy.journal.doorNote} onClick={onJournal} testid="journal-door" />
         </ul>
       </div>
 

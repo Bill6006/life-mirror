@@ -1,4 +1,5 @@
 import type { BrainPrefsBody, CitedFact, Lacked, LineAction } from './brainShared'
+import type { DrawRecord, OutcomeReason } from './provenance'
 import type { OutsideSession } from './outsideRow'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Firmness } from './firmness'
@@ -6,6 +7,7 @@ import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
 import type { PickRule } from './pathStage'
+import type { Tier } from './tiers'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
 import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
@@ -253,6 +255,10 @@ export interface Offer {
   skipReason?: 'notHome'
   /** Set once the outcome has been asked, answered or not. */
   closedAt: string | null
+  /** What the draw knew when it was made (requirement 2, the foundations): absent on offers drawn before, and on sessions you chose. */
+  draw?: DrawRecord
+  /** When the move's card was first on screen long enough to be read, on Now (requirement 2): absent until it is. */
+  seenAt?: string
 }
 
 /** A test card, written before any comparison and never edited. A change is a new card. */
@@ -395,7 +401,52 @@ export interface Outcome {
   note?: string
   /** Sync safety (2026-10-02): the offer this answered, when a later offer took its id; offerId is then its negative, so it joins no move. */
   lostOfferId?: number
+  /** The answer's reason, never collapsed (requirement 2): done, partly, No for no time, No for didn't want, a No with no reason, or left unanswered. Absent on answers from before. */
+  reason?: OutcomeReason
+  /** Whether its card had been seen on Now by the time it was answered (requirement 2). Absent on answers from before. */
+  seen?: boolean
 }
+
+/**
+ * One call the engine made about a test, kept with its day and level (requirement 15, its record begun
+ * with the foundations): written when a card's level changes, never edited, and resolved later by the
+ * engine that replaces today's.
+ */
+export interface Claim {
+  id?: number
+  cardId: number
+  moveId: string
+  situationKey: string
+  target: ReadingId
+  day: string
+  at: string
+  /** The level called, as Evidence showed it then; unclear only when it steps back from a call. */
+  level: Tier
+  /** The interval it rested on, when it had one: the difference, its bounds and the test's p. */
+  interval: { diff: number; lo: number; hi: number; p: number } | null
+  estimator: string | null
+  n: { done: number; alternative: number }
+  /** The engine whose rules made the call. */
+  engine: string
+}
+
+/**
+ * Let it out (agreed 2026-10-15): a night's free writing, kept forever unless you delete it. Never
+ * evidence: the learning engine never reads it, and nothing in it becomes a reading, a fact or a finding.
+ */
+export interface JournalEntry {
+  id?: number
+  /** The night it belongs to: the evening check-in's day. */
+  day: string
+  text: string
+  writtenAt: string
+  /** When it was last changed after it was first written; null until it is. */
+  editedAt: string | null
+  updatedAt: string
+}
+
+/** The most a night's entry holds, in characters: generous, and small enough that one entry never swamps a sync, a run or the second copy. */
+export const JOURNAL_MAX = 20_000
 
 /** How a session went, in your own sense of it: harder than it should be, about right, or easy now. */
 export type Ease = 'hard' | 'right' | 'easy'
@@ -756,6 +807,8 @@ class LifeMirrorDB extends Dexie {
   placeMeta!: Table<PlaceMeta, string>
   coachAsks!: Table<CoachAsk, number>
   coachProposals!: Table<CoachProposal, string>
+  claims!: Table<Claim, number>
+  journal!: Table<JournalEntry, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -953,6 +1006,11 @@ class LifeMirrorDB extends Dexie {
     this.version(18).stores({
       coachAsks: '++id, aimId, kind, day',
       coachProposals: 'id, aimId, askId',
+    })
+    // The foundations (requirement 15): the engine's calls, kept to be resolved. And Let it out (agreed 2026-10-15): the night's writing. Both synced.
+    this.version(19).stores({
+      claims: '++id, cardId, day',
+      journal: '++id, day',
     })
     installOutbox(this)
     installPendingCopy(this)
@@ -1309,50 +1367,10 @@ export function wipeEverything(): Promise<void> {
 }
 
 function wipeTables(): Promise<void> {
-  return db.transaction('rw', [db.checkins, db.wins, db.privateItems, db.settings, db.offers, db.cards, db.outcomes, db.days, db.studyNights, db.aims, db.skills, db.rungMarks, db.intentions, db.facts, db.briefLog, db.briefFeedback, db.brainBriefs, db.outbox, db.cloudRows, db.outside, db.cloudMeta, db.declarations, db.beliefs, db.tagBeliefs, db.derived, db.forecasts, db.forecastScores, db.anchorSwaps, db.herSkills, db.moments, db.pathMarks, db.reflections, db.monthlyChecks, db.brainPrefs, db.brainReads, db.coachPicks, db.useLog, db.places, db.placeCandidates, db.placeMeta], async () => {
+  // Every table there is, so none added later can be left behind (two were, until 2026-10-16: the skill coach's asks and proposals).
+  return db.transaction('rw', db.tables, async () => {
     // The wipe writes nothing to the outbox: the cloud rows are deleted directly, before this runs.
     markSilent()
-    await Promise.all([
-      db.outbox.clear(),
-      db.cloudRows.clear(),
-      db.cloudMeta.clear(),
-      db.declarations.clear(),
-      db.forecasts.clear(),
-      db.forecastScores.clear(),
-      db.anchorSwaps.clear(),
-      db.beliefs.clear(),
-      db.tagBeliefs.clear(),
-      db.derived.clear(),
-      db.outside.clear(),
-      db.checkins.clear(),
-      db.wins.clear(),
-      db.privateItems.clear(),
-      db.settings.clear(),
-      db.offers.clear(),
-      db.cards.clear(),
-      db.outcomes.clear(),
-      db.days.clear(),
-      db.studyNights.clear(),
-      db.aims.clear(),
-      db.skills.clear(),
-      db.rungMarks.clear(),
-      db.intentions.clear(),
-      db.facts.clear(),
-      db.briefLog.clear(),
-      db.briefFeedback.clear(),
-      db.brainBriefs.clear(),
-      db.herSkills.clear(),
-      db.moments.clear(),
-      db.pathMarks.clear(),
-      db.reflections.clear(),
-      db.monthlyChecks.clear(),
-      db.brainPrefs.clear(),
-      db.brainReads.clear(),
-      db.coachPicks.clear(),
-      db.useLog.clear(),
-      db.places.clear(),
-      db.placeCandidates.clear(),
-      db.placeMeta.clear(),
-    ])
+    await Promise.all(db.tables.map((t) => t.clear()))
   })
 }

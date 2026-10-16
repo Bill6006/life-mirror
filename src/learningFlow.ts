@@ -11,6 +11,7 @@ import { readings, setAnchorSwaps } from './readings'
 import { setLearnedWeights } from './score'
 import { declarationsDue, evaluateCards, proposeWeights, weightStanding, type CardStats, type Tier, type WeightStats } from './tiers'
 import { eveningWorkoutDays, HARD_MEASURES, hardDays, type HardMeasure } from './workouts'
+import { claimsDue, type CardLevel } from './claims'
 
 // The learning engine on the phone. Once a day: every effect in the record, the beliefs the
 // bandit draws from, sign flips with cards to test them on purpose, declarations when a card
@@ -64,6 +65,16 @@ export async function runLearning(day: string, force = false): Promise<void> {
   const tagRows: TagBeliefRow[] = tags.map((t) => ({ id: t.id, mean: t.belief.mean, sd: t.belief.sd, n: t.belief.n, researchMean: t.research.mean, recordMean: t.record?.mean ?? null, recordN: t.record?.n ?? 0, computedOn: day }))
   const effectCardsOnly = cards.filter((c) => c.origin !== 'weight')
   const stats = evaluateCards(effectCardsOnly, obs, declarations)
+  // The claims log (requirement 15): each card's level exactly as Evidence shows it, a passive card read like for like.
+  const levels = new Map<number, CardLevel>()
+  for (const card of effectCardsOnly) {
+    const id = card.id as number
+    if (card.origin === 'passive') levels.set(id, { tier: associationTier(passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, day), card.worthwhile * 25) })
+    else {
+      const s = stats.find((x) => x.cardId === id)
+      if (s) levels.set(id, { tier: s.tier, stats: s })
+    }
+  }
   const due = declarationsDue(effectCardsOnly, stats, declarations, day)
   const now = new Date().toISOString()
   // Phase 12: the anchor swap guard, once per reading, never the middle, logged and dated.
@@ -79,8 +90,10 @@ export async function runLearning(day: string, force = false): Promise<void> {
     if (standing.holds && w.weights) weightsToApply = w.weights
   }
 
-  await db.transaction('rw', [db.beliefs, db.tagBeliefs, db.cards, db.declarations, db.derived, db.anchorSwaps], async () => {
+  await db.transaction('rw', [db.beliefs, db.tagBeliefs, db.cards, db.declarations, db.derived, db.anchorSwaps, db.claims], async () => {
     if (swapsDue.length) await db.anchorSwaps.bulkAdd(swapsDue)
+    const calls = claimsDue(effectCardsOnly, levels, await db.claims.toArray(), day, now)
+    if (calls.length) await db.claims.bulkAdd(calls)
     if (weightDue.length) await db.declarations.bulkAdd(weightDue)
     await db.beliefs.clear()
     await db.beliefs.bulkPut(rows)

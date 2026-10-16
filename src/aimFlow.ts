@@ -254,7 +254,8 @@ export function logSession(aim: Aim, sitting: Sitting, now: Date = new Date()): 
       closedAt: at,
     }
     const id = await db.offers.add(offer)
-    await db.outcomes.add({ offerId: id, moveId: sitting.id, day, block, at, outcome: 'done', why: null, passiveOutcome: null })
+    // Logged after the fact ("Did it already"): done, with no card to have seen (requirement 2).
+    await db.outcomes.add({ offerId: id, moveId: sitting.id, day, block, at, outcome: 'done', why: null, passiveOutcome: null, reason: 'done', seen: false })
     const plan = planFor(await db.intentions.where('day').equals(day).toArray(), aim.id as number, day)
     if (plan && plan.offerId === null) await db.intentions.update(plan.id as number, { offerId: id })
     return id

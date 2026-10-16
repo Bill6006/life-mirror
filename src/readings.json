@@ -41,6 +41,13 @@
       "name": "Mood",
       "prompt": "Right now",
       "unit": "step",
+      "construct": {
+        "measures": "How good or bad you feel right now, from heavy to bright.",
+        "boundary": "Not Energy, the body's charge, and not Stress or Overwhelm, the weight and the load: a calm, tired evening can still read Warm.",
+        "timeframe": "right now",
+        "good": "higher",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Heavy — hard to lift anything",
         "Down — the day feels dull and downhill",
@@ -61,6 +68,13 @@
       "name": "Irritation",
       "prompt": "How short the fuse is",
       "unit": "step",
+      "construct": {
+        "measures": "How short your fuse is: how easily small things get to you.",
+        "boundary": "Not Stress, the weight you carry, and not Mood: you can be low and patient, or irritable and otherwise fine.",
+        "timeframe": "right now",
+        "good": "lower",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "None — nothing is getting to me",
         "Faint — a small thing or two scratched",
@@ -82,6 +96,13 @@
       "prompt": "How heavy or urgent things feel",
       "reworded": "2026-10-16",
       "unit": "step",
+      "construct": {
+        "measures": "How heavy or urgent things feel, from nothing pressing to more than you can carry.",
+        "boundary": "Weight and urgency, never a count: how many things compete for your attention is Overwhelm's.",
+        "timeframe": "right now",
+        "good": "lower",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Loose — nothing pressing on me",
         "Light — a little pressure, nothing urgent",
@@ -103,6 +124,13 @@
       "prompt": "How many things are competing for your attention, even small ones",
       "reworded": "2026-10-16",
       "unit": "step",
+      "construct": {
+        "measures": "How many things are competing for your attention, even small ones.",
+        "boundary": "A count of what is on your mind, never its weight: how heavy or urgent it feels is Stress's.",
+        "timeframe": "right now",
+        "good": "lower",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Open — barely anything",
         "Occupied — a few things",
@@ -123,6 +151,13 @@
       "name": "Motivation",
       "prompt": "The pull to do things",
       "unit": "step",
+      "construct": {
+        "measures": "The pull to do things.",
+        "boundary": "Not Energy, the body's charge, and not Confidence, trust in yourself: you can want to start with little in the tank.",
+        "timeframe": "right now",
+        "good": "higher",
+        "missing": "Asked at the morning check-in alone. Missing at any other is not asked; a morning skipped or the reading left is unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "None — nothing pulls me to do anything",
         "Faint — I'd rather not, but might",
@@ -143,6 +178,13 @@
       "name": "Confidence",
       "prompt": "Trust in yourself today",
       "unit": "step",
+      "construct": {
+        "measures": "Trust in yourself for the day.",
+        "boundary": "Not Mood and not Motivation: you can feel flat and still trust yourself with the day.",
+        "timeframe": "today",
+        "good": "higher",
+        "missing": "Asked at the morning check-in alone. Missing at any other is not asked; a morning skipped or the reading left is unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Doubting — I expect to get things wrong",
         "Shaky — unsure I'm up to it",
@@ -163,6 +205,13 @@
       "name": "Focus",
       "prompt": "Holding attention",
       "unit": "step",
+      "construct": {
+        "measures": "How well your attention holds where you put it.",
+        "boundary": "Not Overwhelm, how much competes for it, and not Energy: a quiet head can still drift.",
+        "timeframe": "right now",
+        "good": "higher",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Scattered — can't hold a thought",
         "Drifting — attention keeps sliding off",
@@ -185,6 +234,13 @@
       "help": "Not whether you want company right now, or how many people are around.",
       "meaning": "how much meaningful closeness feels missing, not a wish for company or how many people are around",
       "unit": "step",
+      "construct": {
+        "measures": "How much meaningful closeness feels missing.",
+        "boundary": "Not a wish for company or how many people are around: the appetite for people is Social energy's.",
+        "timeframe": "right now",
+        "good": "lower",
+        "missing": "Asked in the morning and the evening. Missing at the afternoon is not asked; a check-in skipped or the reading left is unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Content — nothing feels missing",
         "Slight — a little feels missing",
@@ -205,6 +261,13 @@
       "name": "Social energy",
       "prompt": "Appetite for people",
       "unit": "step",
+      "construct": {
+        "measures": "Your appetite for people.",
+        "boundary": "Not Loneliness: you can miss closeness and still want no one around.",
+        "timeframe": "right now",
+        "good": "neither end: it is context, not a score",
+        "missing": "Asked at the morning check-in alone. Missing at any other is not asked; a morning skipped or the reading left is unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Empty — I want no one around",
         "Low — one quiet person at most",
@@ -225,6 +288,13 @@
       "name": "Energy",
       "prompt": "In the body",
       "unit": "step",
+      "construct": {
+        "measures": "The charge in your body.",
+        "boundary": "The body's, not the mind's: the pull to do things is Motivation's, the hold of attention Focus's.",
+        "timeframe": "right now",
+        "good": "higher",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Drained — body feels heavy",
         "Low — moving takes effort",
@@ -245,6 +315,13 @@
       "name": "Hunger",
       "prompt": "Right now",
       "unit": "step",
+      "construct": {
+        "measures": "How hungry or full you are.",
+        "boundary": "The body's need for food alone.",
+        "timeframe": "right now",
+        "good": "the middle: neither hungry nor full",
+        "missing": "Asked at every check-in. Missing means not asked there (a shorter depth, or a reading you retired) or left unanswered: unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Stuffed — uncomfortably full",
         "Full — satisfied, no wish to eat",
@@ -265,6 +342,13 @@
       "name": "Sleep hours",
       "prompt": "Last night",
       "unit": "band",
+      "construct": {
+        "measures": "How long you slept last night, in bands of hours.",
+        "boundary": "Length alone: how restful it was is Sleep quality's.",
+        "timeframe": "last night",
+        "good": "toward 7 to 8 hours",
+        "missing": "Asked at the morning check-in alone. Missing at any other is not asked; a morning skipped or the reading left is unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Under 5 hours",
         "5 to 6 hours",
@@ -279,6 +363,13 @@
       "name": "Sleep quality",
       "prompt": "Last night",
       "unit": "step",
+      "construct": {
+        "measures": "How restful last night's sleep was.",
+        "boundary": "Rest, not length: the hours are Sleep hours.",
+        "timeframe": "last night",
+        "good": "higher",
+        "missing": "Asked at the morning check-in alone. Missing at any other is not asked; a morning skipped or the reading left is unknown, never read as low or high, and never filled in."
+      },
       "anchors": [
         "Broken — barely slept",
         "Rough — woke often, unrested",

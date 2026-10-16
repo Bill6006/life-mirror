@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { addDays, parseDay, type Block, type Slot } from './blocks'
 import { coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
@@ -11,6 +11,7 @@ import {
   answerWin,
   askedOf,
   db,
+  JOURNAL_MAX,
   ensureDayContext,
   getCheckIn,
   getDayContext,
@@ -39,6 +40,8 @@ import { useLive } from './live'
 import { teethOf, TEETH_COUNTS, type TeethBrushed } from './necessities'
 import type { ReadingId } from './readings'
 import { askedReadings, type Weekday } from './settings'
+import { journalFor, saveJournal } from './journal'
+import { Disclosure } from './ui'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
 const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped']
@@ -190,6 +193,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
       <div class="card pad">
         <LineInput initial={ex.note ?? ''} placeholder={copy.extras.notePlaceholder} testid="note-input" onSave={(text) => void setNote(slot, asked, text)} />
       </div>
+      <JournalBox day={day} />
 
       {settings.extras.minimumWin && (
         <>
@@ -323,6 +327,55 @@ function CountRow({ label, value, testid, onPick }: { label: string; value: Teet
         </span>
       </div>
     </li>
+  )
+}
+
+/**
+ * Let it out (agreed 2026-10-15): a collapsed row below the note that opens a large box. Skipping it is
+ * not opening it, and it bears on nothing the check-in completes. Saved as it is written, and on leaving.
+ */
+function JournalBox({ day }: { day: string }) {
+  const entry = useLive(() => journalFor(day), [day])
+  const [text, setText] = useState<string | null>(null)
+  const pending = useRef<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const flush = () => {
+    clearTimeout(timer.current)
+    if (pending.current === null) return
+    const words = pending.current
+    pending.current = null
+    void saveJournal(day, words)
+  }
+  // Leaving the screen with words not yet saved saves them.
+  useEffect(() => flush, [day])
+  if (entry === undefined) return null
+  const value = text ?? entry?.text ?? ''
+  const c = copy.journal
+  return (
+    <div class="card">
+      <Disclosure label={c.row} sub={entry?.text.trim() ? c.rowWritten : undefined} testid="journal-open">
+        <div class="pad">
+          <textarea
+            class="input journal-input"
+            rows={10}
+            maxLength={JOURNAL_MAX}
+            value={value}
+            placeholder={c.placeholder}
+            aria-label={c.row}
+            data-testid="journal-input"
+            onInput={(e) => {
+              const words = (e.currentTarget as HTMLTextAreaElement).value
+              setText(words)
+              pending.current = words
+              clearTimeout(timer.current)
+              timer.current = setTimeout(flush, 800)
+            }}
+            onBlur={flush}
+          />
+          <p class="note faint no-gap">{c.boxNote}</p>
+        </div>
+      </Disclosure>
+    </div>
   )
 }
 

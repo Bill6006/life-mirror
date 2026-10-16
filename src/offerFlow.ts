@@ -27,6 +27,7 @@ import { beliefsFor, bigSocialToday } from './learningFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'
 import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
+import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
 // card (what is being tested, written first), and the outcome (what happened).
@@ -48,6 +49,21 @@ export async function pendingOffers(): Promise<Offer[]> {
       return !x || (o.passiveId !== null && x.passiveOutcome === null)
     })
     .sort((a, b) => (a.at < b.at ? -1 : 1))
+}
+
+/**
+ * A move's card first on screen long enough to be read (requirement 2): recorded on its offer, once.
+ * The key is the card's own, its offer's id and the moment it was drawn, so a reused id never takes it.
+ */
+export async function markOfferSeen(key: string, now: Date = new Date()): Promise<void> {
+  const cut = key.indexOf(':')
+  const id = Number(key.slice(0, cut))
+  const at = key.slice(cut + 1)
+  if (cut < 1 || !Number.isInteger(id)) return
+  await db.transaction('rw', db.offers, async () => {
+    const offer = await db.offers.get(id)
+    if (offer && offer.at === at && !offer.seenAt) await db.offers.update(id, { seenAt: now.toISOString() })
+  })
 }
 
 /** "Not now" on an offer's question: it stays open and is asked once more at the next check-in (stage 1, item i). */
@@ -110,7 +126,8 @@ export function recordDoneNow(offer: Offer, now: Date = new Date(), passiveOutco
     if (existing) return false
     const slot = blockAt(now)
     const at = now.toISOString()
-    await db.outcomes.add({ offerId: offer.id as number, moveId: offer.moveId, day: slot.day, block: slot.block, at, outcome: 'done', why: null, passiveOutcome })
+    const seen = Boolean((await db.offers.get(offer.id as number))?.seenAt)
+    await db.outcomes.add({ offerId: offer.id as number, moveId: offer.moveId, day: slot.day, block: slot.block, at, outcome: 'done', why: null, passiveOutcome, reason: 'done', seen })
     if (!offer.passiveId || passiveOutcome !== null) await db.offers.update(offer.id as number, { closedAt: at })
     return true
   })
@@ -331,6 +348,9 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       if (!has) await db.cards.add({ createdAt: now, situationKey: pKey, block, target: passive.targets[0].reading, moveId: passive.id, alternativeId: NOTHING, window: passive.targets[0].window, worthwhile: 1, origin: 'passive' })
     }
     const whyNot = whyNotThat(expected, choice, set)
+    // Requirement 2: what the draw knew, recorded now, since it cannot be rebuilt later.
+    const [dayNow, checkinsNow] = await Promise.all([db.days.get(day), db.checkins.toArray()])
+    const drawRecord = drawRecordOf({ excluded: drawn.excluded, candidates: set.candidates.map((c) => c.id), belief: beliefs, target: situation.target, window: choice.id === NOTHING ? null : windowFor(choice.id, situation.target), context: drawContextOf(dayNow, checkinsNow, day), checkins: checkinsNow, day, block })
 
     const offer: Offer = {
       kind: 'block',
@@ -352,6 +372,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       propensities: odds,
       skippedAt: null,
       closedAt: null,
+      draw: drawRecord,
     }
     offer.id = await db.offers.add(offer)
     return offer
@@ -391,7 +412,7 @@ export async function syncRecoveryGap(day: string, marked: boolean): Promise<boo
 
 /** Inside the ninety minutes before pickup, on a day she is with you: one short move whose job is arriving with something left. */
 export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims], async () => {
+  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims, db.checkins], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const day = dayKey(now)
@@ -415,6 +436,9 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     const odds = propensities(set.candidates, pickupBeliefs, draw)
     const history = await db.offers.where('situationKey').equals(key).toArray()
     const nowIso = now.toISOString()
+    // Requirement 2: what the draw knew, recorded now.
+    const checkinsNow = await db.checkins.toArray()
+    const drawRecord = drawRecordOf({ excluded: set.excluded, candidates: set.candidates.map((c) => c.id), belief: pickupBeliefs, target: 'energy', window: choice.id === NOTHING ? null : 'nextBlock', context: drawContextOf(ctx, checkinsNow, day), checkins: checkinsNow, day, block })
     let cardId: number | null = null
     const existingCard = await db.cards.where('situationKey').equals(key).filter((c) => c.moveId === choice.id).first()
     if (existingCard) cardId = existingCard.id as number
@@ -426,6 +450,7 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     }
     const offer: Offer = {
       kind: 'pickup',
+      draw: drawRecord,
       day,
       block,
       at: nowIso,
@@ -511,7 +536,8 @@ export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: Out
       return
     }
     // A learning session's one optional tap on how it went rides with the answer (Workstream 6); nothing moves a rung (D2).
-    const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome, ...(ease && outcome !== 'no' && outcome !== null ? { ease } : {}) }
+    const seen = Boolean((await db.offers.get(offer.id as number))?.seenAt)
+    const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome, ...(ease && outcome !== 'no' && outcome !== null ? { ease } : {}), reason: outcomeReasonOf(outcome, why), seen }
     await db.outcomes.add(record)
     await db.offers.update(offer.id as number, { closedAt: now })
   })

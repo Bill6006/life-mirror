@@ -16,6 +16,11 @@ md += 'Under each phrase but the middle, one pre-written alternate (Phase 9), fo
 for (const r of data.readings) {
   md += `## ${r.name}\n\n_${r.prompt}_\n\n`
   if (r.reworded) md += `Worded as here since ${r.reworded}; answers from before may read a little differently for that alone.\n\n`
+  if (r.construct) {
+    const c = r.construct
+    md += `What it measures: ${c.measures} ${c.boundary}\n\n`
+    md += `Asks about: ${c.timeframe}. Good: ${c.good}. ${c.missing}\n\n`
+  }
   if (r.help) md += `${r.help}\n\n`
   r.anchors.forEach((a, i) => {
     md += `- ${a}\n`

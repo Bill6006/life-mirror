@@ -64,6 +64,26 @@ async function seedRecord(page: Page): Promise<void> {
   })
 }
 
+/** Two nights of Let it out (agreed 2026-10-15), one long enough to fold, so the journal's screens are read as they will be. Generic words only. */
+async function seedJournal(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['journal'], 'readwrite')
+    const long = Array.from({ length: 14 }, (_, i) => `A sentence of the night, number ${i + 1}, set down so the page has something to hold.`).join(' ')
+    tx.objectStore('journal').add({ day: '2026-09-21', text: 'A short night. Tired, and glad it is over.', writtenAt: '2026-09-22T01:10:00.000Z', editedAt: null, updatedAt: '2026-09-22T01:10:00.000Z' })
+    tx.objectStore('journal').add({ day: '2026-09-22', text: `${long}\n\nAnd a second paragraph after a blank line.`, writtenAt: '2026-09-23T01:20:00.000Z', editedAt: '2026-09-23T01:40:00.000Z', updatedAt: '2026-09-23T01:40:00.000Z' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
 async function tab(page: Page, name: string): Promise<void> {
   await page.locator('nav.tabs').getByRole('button', { name, exact: true }).click()
   await page.evaluate(() => window.scrollTo(0, 0))
@@ -146,6 +166,7 @@ async function seedProfile(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
   await seedRecord(page)
   await seedOlderStudy(page)
+  await seedJournal(page)
   await seedUse(page)
   await seedLocation(page)
   await page.reload()
@@ -488,6 +509,27 @@ const MORE: typeof STATES = [
   },
   { name: 'Change the rep', tab: 'Now', open: async (p) => p.getByTestId('path-change').first().click() },
   { name: 'The weekly view', tab: 'Mirror', open: click(/^The weekly view/) },
+  // Let it out (agreed 2026-10-15): the history, an entry being edited, and the night's box open.
+  { name: 'Journal', tab: 'Mirror', open: click(/^Journal/) },
+  {
+    name: 'Journal, an entry being edited',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Journal/ }).click()
+      await p.getByTestId('journal-edit').first().click()
+      await expect(p.getByTestId('journal-edit-input')).toBeVisible()
+    },
+  },
+  {
+    name: 'Evening extras, Let it out open',
+    tab: 'Now',
+    open: async (p) => {
+      await p.getByRole('button', { name: /Logged/ }).first().click()
+      await p.getByRole('button', { name: 'Change the extras' }).click()
+      await p.getByTestId('journal-open').click()
+      await expect(p.getByTestId('journal-input')).toBeVisible()
+    },
+  },
   // The deeper diagnostics are closed until opened (final UI polish, 2026-09-26): audited opened, every one.
   {
     name: 'The weekly view, every diagnostic open',
