@@ -457,6 +457,11 @@ describe('the line, acted on', () => {
     await db.brainBriefs.put({ id: `${DAY}:brief`, day: DAY, kind: 'brief', text: 'From the Worker, before.', mode: 'observation', factIds: ['week.today'], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', factsDay: DAY })
     const before = await todaysLine(DAY, noon)
     expect((await whyFor(before!, DAY, noon)).facts[0].text).toContain('the hour is 12')
+    expect((await whyFor(before!, DAY, noon)).journal).toEqual([])
+    // Let it out: a line that drew on the journal names its nights in Why, a source apart from the record and the library.
+    await db.brainBriefs.put({ id: `${DAY}:brief`, day: DAY, kind: 'brief', text: 'Last night you wrote about work.', mode: 'observation', factIds: ['week.today'], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', factsDay: DAY, facts: [{ id: 'week.today', text: 'As the Worker read it.' }], journal: ['2026-09-17'] })
+    const drew = await todaysLine(DAY, noon)
+    expect(await whyFor(drew!, DAY, noon)).toMatchObject({ facts: [{ id: 'week.today', text: 'As the Worker read it.' }], journal: ['2026-09-17'] })
   })
 
   it('titles the line by when it is meant to be acted on, from its action alone (owner, 2026-09-23)', async () => {
@@ -518,7 +523,13 @@ describe('the line, acted on', () => {
     await addAim('certification', null, 'Veltish', 'language')
     expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'phone', didNot: 'Veltish: added today, no step started yet.' })
     await db.brainBriefs.put({ id: 'r1', day: DAY, kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', parts: { held: 'a', didNot: 'b', change: 'c' } })
-    expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'worker', held: 'a', didNot: 'b', change: 'c', model: 'm' })
+    const plain = await weekReview(DAY, NOW)
+    expect(plain).toMatchObject({ source: 'worker', held: 'a', didNot: 'b', change: 'c', model: 'm' })
+    expect(plain).not.toHaveProperty('question')
+    expect(plain).not.toHaveProperty('journal')
+    // Let it out: a review that drew on the journal brings its one follow-up question and the nights behind it.
+    await db.brainBriefs.put({ id: 'r1', day: DAY, kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', parts: { held: 'a', didNot: 'b', change: 'c', question: 'On Thursday you wrote about work; what would make it lighter?' }, journal: ['2026-09-17'] })
+    expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'worker', held: 'a', question: 'On Thursday you wrote about work; what would make it lighter?', journal: ['2026-09-17'] })
   })
 })
 

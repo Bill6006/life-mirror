@@ -171,6 +171,11 @@ function isFaithMove(c: Catalogue, moveId: string): boolean {
 
 const nameOf = (c: Catalogue, moveId: string) => c.get(moveId)?.name ?? moveId
 
+/** How a journal entry reads to Claude: the third source, what was written, apart from the readings and the findings. */
+export const JOURNAL_LABEL = 'in your journal that night you wrote'
+/** How much of one entry a briefing carries (engineering judgment): a long night is read whole on demand, never swamps the day's context. */
+export const JOURNAL_BRIEF_CHARS = 1200
+
 /** Check-ins in the range, for notes and the day's record. */
 async function checkins(x: Ctx, q: Query): Promise<RecordRow[]> {
   return x.store.readRecords('checkins', { from: q.from, to: q.to })
@@ -219,7 +224,13 @@ async function pathMarks(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<
 }
 
 /** Every category that has a reader. The others (the fact sheet, which the briefing carries, the monthly check, the coach's core, tier 2) are never served here. */
-export const READABLE: readonly Category[] = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage', 'usageEvents']
+export const READABLE: readonly Category[] = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage', 'usageEvents', 'journal']
+
+/** A keyword the database may cut by first: plain ASCII its stored text holds as typed, so the cut never drops a row the reader would keep. */
+const likeOf = (q: string | undefined): string | undefined => {
+  const n = q?.trim()
+  return n && /^[\x20-\x7e]+$/.test(n) && !/["\\]/.test(n) ? n : undefined
+}
 
 /** One category's lines for a query, newest first, or null when it has no reader. The caller has already passed the check. */
 export async function readCategory(x: Ctx, category: Category, q: Query): Promise<Item[] | null> {
@@ -400,6 +411,18 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
         .map(({ day, text }) => ({ day, text }))
       break
     }
+    case 'journal': {
+      // Let it out (agreed 2026-10-15): each night's entry whole, with its night, from the whole record (adjustment 4).
+      // Never evidence: what was written, never a fact. An entry about faith is left out whole while faith may not be
+      // read, as a note is. A keyword searches the owner's words, not the label they are read under.
+      const needle = q.q?.trim().toLowerCase()
+      const like = likeOf(q.q)
+      items = (await x.store.readRecords('journal', { from: q.from, to: q.to, ...(like ? { like } : {}) }))
+        .map((r) => ({ day: r.day, text: str(obj(r.body).text).trim() }))
+        .filter((e) => e.text && (faith || !FAITH_WORDS.test(e.text)) && (!needle || e.text.toLowerCase().includes(needle)))
+        .map((e) => ({ day: e.day, text: `${JOURNAL_LABEL}: “${e.text}”` }))
+      break
+    }
     default:
       return null
   }
@@ -444,6 +467,14 @@ interface Section {
   q: Query
 }
 
+/** A journal entry as a briefing carries it: whole up to JOURNAL_BRIEF_CHARS, else cut there, with where to read the rest. */
+export function briefEntry(i: Item): Item {
+  const head = `${JOURNAL_LABEL}: “`
+  const words = i.text.slice(head.length, -1)
+  if (!i.text.startsWith(head) || words.length <= JOURNAL_BRIEF_CHARS) return i
+  return { ...i, text: `${head}${words.slice(0, JOURNAL_BRIEF_CHARS).trimEnd()}…” (cut here; read it whole with category=journal, from and to ${i.day})` }
+}
+
 /**
  * The private context a task's briefing carries: what bears on the day or the week, by recency,
  * path and the day's own declarations, within the task's budget. The daily line gets recent notes
@@ -452,7 +483,7 @@ interface Section {
  * gets the week, the Partner path as acts done and experiences written, never a shortfall; the
  * monthly check is in neither. Every category read is logged.
  */
-export async function contextFor(store: Store, catalogue: Catalogue, a: Access, forDay: string, run: string, now: Date, noteIdsOnSheet: ReadonlySet<string> = new Set(), rowPath: 'social' | 'partner' = 'social', dry = false): Promise<{ text: string; bytes: number }> {
+export async function contextFor(store: Store, catalogue: Catalogue, a: Access, forDay: string, run: string, now: Date, noteIdsOnSheet: ReadonlySet<string> = new Set(), rowPath: 'social' | 'partner' = 'social', dry = false): Promise<{ text: string; bytes: number; journal: string[] }> {
   const week = { from: addDays(forDay, -7), to: forDay }
   const rowCategory: Category = rowPath === 'partner' ? 'partnerPath' : 'socialPath'
   const sections: Section[] =
@@ -477,6 +508,7 @@ export async function contextFor(store: Store, catalogue: Catalogue, a: Access, 
           { category: 'partnerPath', title: 'The Partner path: what bears on today', q: { ...week, limit: 8, doneOnly: true } },
           { category: 'her', title: 'Her record this week (counts only)', q: { ...week, limit: 7 } },
           { category: 'faith', title: 'Faith this week', q: { ...week, limit: 5 } },
+          { category: 'journal', title: 'Your journal, the last seven nights (what you wrote, never evidence)', q: { ...week, limit: 7 } },
         ]
       : [
           { category: 'notes', title: 'Check-in notes of the week', q: { ...week, limit: 21 } },
@@ -486,10 +518,13 @@ export async function contextFor(store: Store, catalogue: Catalogue, a: Access, 
           { category: 'partnerPath', title: 'The Partner path this week: acts done and what you wrote', q: { ...week, limit: 14, doneOnly: true } },
           { category: 'her', title: 'Her record this week (counts only)', q: { ...week, limit: 7 } },
           { category: 'faith', title: 'Faith this week', q: { ...week, limit: 7 } },
+          { category: 'journal', title: 'Your journal this week (what you wrote, never evidence)', q: { ...week, limit: 7 } },
         ]
   const x: Ctx = { store, catalogue, a }
   const budget = CONTEXT_BUDGET[a.task]
   const parts: string[] = []
+  /** The nights of the journal the briefing carried: a line may draw on these, and is checked against their words. */
+  const journal: string[] = []
   let used = 0
   let seq = 0
   for (const s of sections) {
@@ -499,6 +534,8 @@ export async function contextFor(store: Store, catalogue: Catalogue, a: Access, 
     if (s.category === 'notes') items = items.filter((i) => !noteIdsOnSheet.has(`note.${i.day}.${/at the (\w+) check-in/.exec(i.text)?.[1] ?? ''}`))
     // The daily line hears of the Partner path only what bears on today: a date declared for it, or this week's milestones and acts.
     if (s.category === 'partnerPath' && a.task === 'line' && !(await partnerBearsOn(store, forDay, a))) items = []
+    // A long night is cut here and read whole on demand, so one entry never crowds out the rest of the day's context.
+    if (s.category === 'journal') items = items.map(briefEntry)
     const kept: Item[] = []
     for (const i of items) {
       const line = itemLines([i])
@@ -509,9 +546,10 @@ export async function contextFor(store: Store, catalogue: Catalogue, a: Access, 
     const text = itemLines(kept)
     await logRead(store, run, seq++, a.task, forDay, s.category, kept, text, 'briefing', now, dry)
     if (kept.length) parts.push(`[${s.category}] ${s.title}\n${text}`)
+    if (s.category === 'journal') for (const i of kept) if (i.day) journal.push(i.day)
   }
   const text = parts.join('\n\n')
-  return { text, bytes: bytesOf(text) }
+  return { text, bytes: bytesOf(text), journal }
 }
 
 /**
@@ -552,7 +590,8 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
   const from = url.searchParams.get('from') ?? (slice && DAY_RE.test(to) ? addDays(to, -(USAGE_SLICE.maxDays - 1)) : addDays(day, -30))
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || from > to) return { ok: false, reason: 'from and to must be days, from before to' }
   if (to > day) return { ok: false, reason: 'to may not be after the task’s day' }
-  if (from < addDays(day, -366)) return { ok: false, reason: 'from may reach back a year at most' }
+  // The journal reaches the whole record, so an entry can be found years later (adjustment 4, 2026-10-15), under the same caps per run.
+  if (from < addDays(day, -366) && category !== 'journal') return { ok: false, reason: 'from may reach back a year at most' }
   // Follow-up F1: a slice of events is short and recent: a week at most, from the last fourteen days.
   if (slice && from < addDays(day, -(USAGE_SLICE.reachDays - 1))) return { ok: false, reason: `a slice of events reaches back ${USAGE_SLICE.reachDays} days at most` }
   if (slice && addDays(from, USAGE_SLICE.maxDays - 1) < to) return { ok: false, reason: `a slice of events covers ${USAGE_SLICE.maxDays} days at most` }

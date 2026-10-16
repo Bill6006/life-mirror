@@ -45,6 +45,9 @@ export const CATEGORIES = [
   'usageEvents',
   // Part 43: where the day's parts were spent, as kinds of place, from the day's sheet.
   'location',
+  // Let it out (agreed 2026-10-15): the nightly journal, the owner's own words. Claude's line and review alone
+  // read it, under its own switch; it is never evidence, and it reaches the whole record, not a year.
+  'journal',
 ] as const
 export type Category = (typeof CATEGORIES)[number]
 
@@ -56,11 +59,11 @@ export type Category = (typeof CATEGORIES)[number]
 export const PROFILES: Readonly<Record<Task, Readonly<Record<Writer, readonly Category[]>>>> = {
   line: {
     free: ['factSheet'],
-    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'location'],
+    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'location', 'journal'],
   },
   review: {
     free: ['factSheet'],
-    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'usageEvents', 'location'],
+    claude: ['factSheet', 'dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'her', 'faith', 'brainHistory', 'tier2', 'usage', 'usageEvents', 'location', 'journal'],
   },
   coach: {
     free: [],

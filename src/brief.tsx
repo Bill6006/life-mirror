@@ -3,7 +3,7 @@ import { applyLineAction, chooseAndLog, feedbackFor, hypothesisOf, lineActionSta
 import type { LineAction } from './brainShared'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
-import { clockTimes12, fill, formatHHMM } from './format'
+import { clockTimes12, fill, formatDayShort, formatHHMM } from './format'
 import { briefData, type Brief as BriefData, type LastNight, type YesterdayMove } from './forecastFlow'
 import { gradeWord } from './library'
 import { useLive } from './live'
@@ -153,6 +153,17 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
           {why.cards.map((card) => (
             <p key={card.id} class="calc-line">
               {clockTimes12(card.claim)} <span class="muted">{fill(c.whyCard, { grade: gradeWord(card.grade), effect: clockTimes12(card.effect), source: card.sources[0]?.cite ?? '' })}</span>
+            </p>
+          ))}
+          {/* Let it out: what you wrote, a third source apart from the record and the library, named by its night. */}
+          {why.journal.length > 0 && (
+            <p class="calc-line">
+              <span class="calc-key">{c.whyJournal}</span>
+            </p>
+          )}
+          {why.journal.map((night) => (
+            <p key={night} class="calc-line" data-testid="brief-why-journal">
+              {fill(c.whyJournalNight, { day: formatDayShort(night) })}
             </p>
           ))}
         </>

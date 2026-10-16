@@ -1,5 +1,5 @@
 import { readBrainPrefs } from '../../src/brainShared'
-import { ASK_KEEPS_DAYS, checkReview, checkSuggestion, FAITH_WORDS, HARD_RUN, isPhysical, MAX_SETUP_RUNS_A_DAY, practised, proposalIdOf, revisionOf, skillSessions, SKILL_COACH, type CoachAsk, type CoachContext, type CoachProposal, type OfferLike, type OutcomeLike, type ReviewSuggestion, type SkillSession, type SkillSuggestion } from '../../src/coachShared'
+import { ASK_KEEPS_DAYS, checkReview, checkSuggestion, COACH_LIMITS, FAITH_WORDS, HARD_RUN, isPhysical, MAX_SETUP_RUNS_A_DAY, practised, proposalIdOf, revisionOf, skillSessions, SKILL_COACH, type CoachAsk, type CoachContext, type CoachProposal, type OfferLike, type OutcomeLike, type ReviewSuggestion, type SkillSession, type SkillSuggestion } from '../../src/coachShared'
 import { claudeOn, fallbackReason, fire, fireFailure, fireText, MAX_POSTS, timeoutMinutes, type ClaudeEnv, type Deps, type Reply } from './claude'
 import type { Env } from './env'
 import { parseOutput } from './prompt'
@@ -278,7 +278,7 @@ export function coachInstructions(task: CoachTask): string {
 - A physical goal (a handstand, running, yoga, lifting, a sport) always carries a safety line: warm-up, what pain means stop, conditions to check first (for inversions, blood pressure and the eyes), and rest. Say once that it is not medical advice. Its rhythm keeps rest days.
 - Every number you write is in the briefing, or is your own minutes, sessions a week or rest days.
 - Nothing you propose is applied until they choose it on their phone; the app decides what is due, keeps the rest days, and stores what they choose.
-- Plain words, second person, short.`
+- Plain words, second person, short. Each field is checked for length, in characters: the skill and the likely next at most ${COACH_LIMITS.skill}, the method ${COACH_LIMITS.method}, how and the safety line ${COACH_LIMITS.how}, why ${COACH_LIMITS.why}, each piece of evidence ${COACH_LIMITS.evidence}.`
   if (task === 'skill') {
     return `You suggest the current skill for someone's learning commitment in Life Mirror, as Claude, through their own Worker. They should not have to know the curriculum: you do.
 
@@ -293,8 +293,9 @@ For each, choose one verdict and say it plainly: keep (the skill still fits; no 
 ${common}`
 }
 
-const SKILL_ANSWER = { proposals: [{ askId: 'the ask id', skill: 'the one current skill', method: 'how it is learned, or null', how: 'one or two sentences', minutes: 'a whole number, or null', rhythm: { perWeek: 'sessions a week', restDays: 'rest days between: 0, 1 or 2' }, why: 'one sentence', physical: 'true or false', safety: 'for a physical skill, the safety line; else null', likelyNext: 'a provisional next skill, or null' }] }
-const REVIEW_ANSWER = { reviews: [{ askId: 'the ask id', verdict: 'keep | adjust | progress | simplify', evidence: ['one to three facts from the briefing'], why: 'one sentence', change: { skill: 'the next or simpler skill, when it changes', method: 'optional', how: 'optional', minutes: 'optional', rhythm: 'optional, { perWeek, restDays } or null', safety: 'for a new physical skill' } }] }
+const L = COACH_LIMITS
+const SKILL_ANSWER = { proposals: [{ askId: 'the ask id', skill: `the one current skill, at most ${L.skill} characters`, method: `how it is learned, at most ${L.method} characters, or null`, how: `one or two sentences, at most ${L.how} characters`, minutes: 'a whole number, or null', rhythm: { perWeek: 'sessions a week', restDays: 'rest days between: 0, 1 or 2' }, why: `one sentence, at most ${L.why} characters`, physical: 'true or false', safety: `for a physical skill, the safety line, at most ${L.safety} characters; else null`, likelyNext: `a provisional next skill, at most ${L.likelyNext} characters, or null` }] }
+const REVIEW_ANSWER = { reviews: [{ askId: 'the ask id', verdict: 'keep | adjust | progress | simplify', evidence: [`one to three facts from the briefing, each at most ${L.evidence} characters`], why: `one sentence, at most ${L.why} characters`, change: { skill: `the next or simpler skill, when it changes, at most ${L.skill} characters`, method: `optional, at most ${L.method} characters`, how: `optional, at most ${L.how} characters`, minutes: 'optional', rhythm: 'optional, { perWeek, restDays } or null', safety: `for a new physical skill, at most ${L.safety} characters` } }] }
 
 /** GET /claude/briefing for a skill coach run: its commitments whole, the rules, and the answer's shape; every read logged by category, count and size. */
 export async function handleCoachBriefing(deps: CoachDeps, url: URL): Promise<Reply> {

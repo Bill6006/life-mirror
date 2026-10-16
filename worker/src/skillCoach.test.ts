@@ -344,4 +344,25 @@ describe('a review run (Part 41), opened in these tests', () => {
     await opened(store)
     expect(await post(store, at('12:03'), 'progress', { reviews: [{ askId: a, verdict: 'keep', evidence: ['9 sessions marked Easy.'], why: 'x', change: null }] })).toMatchObject({ status: 422, body: { reason: `ask ${a}: the number 9 is not in the briefing` } })
   })
+
+  it('says every length it checks before it checks one: a field one past its limit is refused with the limit Claude was told (2026-10-16)', async () => {
+    const store = record()
+    const a = ask(store, { aimId: 1, kind: 'review', skillId: 2, days: 6, reason: 'ordinary' })
+    await opened(store)
+    const body = (await handleCoachBriefing(deps(store, at('12:01')), url({ task: 'progress', day: DAY }))).body as { instructions: string; answer: unknown }
+    const told = `${body.instructions}\n${JSON.stringify(body.answer)}`
+    for (const [field, n] of [['how', 240], ['why', 200], ['evidence', 160], ['method', 60], ['skill', 80]] as const) expect(told, field).toContain(String(n))
+    expect(body.instructions).toContain('how and the safety line 240')
+    expect(JSON.stringify(body.answer)).toContain('optional, at most 240 characters')
+    const how = `Short clips with a transcript, listened to three ways: ${'without it, then reading it, then without it again; '.repeat(4)}`.slice(0, 241)
+    expect(how.length).toBe(241)
+    const adjust = { reviews: [{ askId: a, verdict: 'adjust', evidence: ['2 of the 4 sessions marked Easy.'], why: 'The practice can change while the skill fits.', change: { how } }] }
+    expect(await post(store, at('12:03'), 'progress', adjust)).toMatchObject({ status: 422, body: { reason: `ask ${a}: how is 241 characters; at most 240`, retry: true } })
+    expect(await post(store, at('12:04'), 'progress', { reviews: [{ ...adjust.reviews[0], change: { how: how.slice(0, 240) } }] })).toEqual({ status: 200, body: { ok: true, answered: [a] } })
+  })
+
+  it('tells a suggestion run each length too', () => {
+    const told = coachInstructions('skill')
+    expect(told).toContain('the skill and the likely next at most 80, the method 60, how and the safety line 240, why 200')
+  })
 })

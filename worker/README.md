@@ -38,6 +38,15 @@ own claude.ai account, through a routine:
 4. A failed fire (a 429, a paused routine, a server error), two refusals, or no valid line
    within twenty minutes, and the free chain writes; failing that, the phone's own line stands.
 
+The journal, Let it out (agreed 2026-10-15), is a category of its own, read only by Claude's
+line and review, under its own switch; the free chain never reads it. It reaches the whole
+record, not a year. A briefing carries the last seven nights, each cut at 1,200 characters, and
+a read gives an entry whole. The nights served are kept with the task, never their words. An
+answer that draws on an entry lists its nights in `journal`, and `src/journalCheck.ts` holds it
+to the never-evidence rule: each statement from the journal names its night, is framed as what
+was written, and carries no number, level or cause; an entry's words anywhere else are refused.
+The review may add one follow-up question from what was written.
+
 The three `/claude/` addresses answer only the bridge key, which Anthropic's agent proxy adds to
 the run's requests after they leave its machine, so the key never reaches Claude. The routine's
 instructions live in its own private repository, `life-mirror-bridge`. `CLAUDE_BRIDGE_KEY` and

@@ -184,6 +184,13 @@ export function coachTextRefusal(text: string, c: CoachContext): string | null {
 
 type Check<T> = { ok: true; value: T } | { ok: false; reason: string }
 
+/**
+ * The longest each field may be, in characters: one list, read by the checks and said in Claude's
+ * instructions and answer shape, so a limit is never enforced without being stated (2026-10-16: a
+ * review's "how" refused at 249 characters against a limit it had not been told).
+ */
+export const COACH_LIMITS = { skill: 80, method: 60, how: 240, why: 200, safety: 240, likelyNext: 80, evidence: 160 } as const
+
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
 function text(v: unknown, max: number, label: string, required: boolean): Check<string | null> {
   if (v === null || v === undefined || v === '') return required ? { ok: false, reason: `no ${label}` } : { ok: true, value: null }
@@ -224,12 +231,12 @@ function ownNumbers(c: CoachContext, extra: readonly (number | null | undefined)
  */
 export function checkSuggestion(raw: unknown, c: CoachContext): Check<SkillSuggestion> {
   const o = obj(raw)
-  const skill = text(o.skill, 80, 'skill', true)
-  const method = text(o.method, 60, 'method', false)
-  const how = text(o.how, 240, 'how', true)
-  const why = text(o.why, 200, 'why', true)
-  const safety = text(o.safety, 240, 'safety line', false)
-  const likelyNext = text(o.likelyNext, 80, 'likely next', false)
+  const skill = text(o.skill, COACH_LIMITS.skill, 'skill', true)
+  const method = text(o.method, COACH_LIMITS.method, 'method', false)
+  const how = text(o.how, COACH_LIMITS.how, 'how', true)
+  const why = text(o.why, COACH_LIMITS.why, 'why', true)
+  const safety = text(o.safety, COACH_LIMITS.safety, 'safety line', false)
+  const likelyNext = text(o.likelyNext, COACH_LIMITS.likelyNext, 'likely next', false)
   const minutes = minutesOf(o.minutes)
   const rhythm = rhythmOf(o.rhythm)
   for (const f of [skill, method, how, why, safety, likelyNext, minutes, rhythm]) if (!f.ok) return f
@@ -261,21 +268,21 @@ export function checkReview(raw: unknown, c: CoachContext & { currentSkill: stri
   if (evidence.length < 1 || evidence.length > 3) return { ok: false, reason: 'one to three pieces of evidence' }
   const ev: string[] = []
   for (const e of evidence) {
-    const t = text(e, 160, 'evidence', true)
+    const t = text(e, COACH_LIMITS.evidence, 'evidence', true)
     if (!t.ok) return t
     ev.push(t.value as string)
   }
-  const why = text(o.why, 200, 'why', true)
+  const why = text(o.why, COACH_LIMITS.why, 'why', true)
   if (!why.ok) return why
   let change: SkillChange | null = null
   if (verdict === 'keep') {
     if (o.change !== null && o.change !== undefined && Object.keys(obj(o.change)).length) return { ok: false, reason: 'Keep changes nothing' }
   } else {
     const ch = obj(o.change)
-    const skill = text(ch.skill, 80, 'skill', false)
-    const method = text(ch.method, 60, 'method', false)
-    const how = text(ch.how, 240, 'how', false)
-    const safety = text(ch.safety, 240, 'safety line', false)
+    const skill = text(ch.skill, COACH_LIMITS.skill, 'skill', false)
+    const method = text(ch.method, COACH_LIMITS.method, 'method', false)
+    const how = text(ch.how, COACH_LIMITS.how, 'how', false)
+    const safety = text(ch.safety, COACH_LIMITS.safety, 'safety line', false)
     const minutes = minutesOf(ch.minutes)
     const rhythm = 'rhythm' in ch ? rhythmOf(ch.rhythm) : ({ ok: true, value: undefined } as const)
     for (const f of [skill, method, how, safety, minutes, rhythm]) if (!f.ok) return f

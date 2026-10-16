@@ -14,7 +14,10 @@ import { APP, BRAIN_APP, memoryStore } from './turso'
 // open and the two held wordings applied, and read line by line; held fixed from here, so any move
 // in the monitored prompts, their instructions, their private context or their read log is a change
 // to the Brain made on purpose. Small invented cards and moves stand in for the library and the
-// catalogue, so a change to either is not mistaken for one here.
+// catalogue, so a change to either is not mistaken for one here. Re-recorded with the journal's Brain
+// use (Let it out, agreed 2026-10-15) and read line by line: the answer's "journal" field, the review's
+// "question", the journal among the categories and its empty read. While no entry is served, the
+// prompts themselves are unchanged; the journal's own case below holds them when one is.
 
 const TZ = 'America/New_York'
 const env = {
@@ -143,6 +146,32 @@ describe('the monitored prompts as stage 1 left them (2026-10-16), held fixed fr
     expect(buildMessages(line.briefing)).toMatchSnapshot()
     expect(buildReviewMessages(review.briefing)).toMatchSnapshot()
     expect({ line: claudeInstructions('line'), review: claudeInstructions('review'), coach: claudeInstructions('coach') }).toMatchSnapshot()
+  })
+})
+
+describe('the monitored prompts with the journal served (Let it out, agreed 2026-10-15), held fixed from here', () => {
+  const withJournal = () => {
+    const store = record()
+    put(store, 'journal', '1', '2026-10-02', { id: 1, day: '2026-10-02', text: 'Hard to switch off after work. The kitchen was a mess and I let it go.', writtenAt: '2026-10-03T02:10:00.000Z', editedAt: null, updatedAt: '2026-10-03T02:10:00.000Z' })
+    put(store, 'journal', '2', '2026-10-03', { id: 2, day: '2026-10-03', text: 'Long week. The walk on Saturday morning was the best hour of it.', writtenAt: '2026-10-04T02:30:00.000Z', editedAt: null, updatedAt: '2026-10-04T02:30:00.000Z' })
+    return store
+  }
+
+  it('serves the day’s line the last seven nights after the rest of its context, and the journal’s rules after it', async () => {
+    const store = withJournal()
+    await runBrief(env, store, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })
+    const r = await handleBriefing(deps(store, at('07:46', DAY)), url({ task: 'line', day: DAY }))
+    expect(r.status).toBe(200)
+    expect(r.body).toMatchSnapshot()
+    expect(await readsOf(store)).toMatchSnapshot()
+  })
+
+  it('serves the Sunday review the week’s nights, with its one follow-up question in the rules', async () => {
+    const store = withJournal()
+    await runReview(env, store, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine() })
+    const r = await handleBriefing(deps(store, at('05:01', DAY)), url({ task: 'review', day: DAY }))
+    expect(r.status).toBe(200)
+    expect(r.body).toMatchSnapshot()
   })
 })
 

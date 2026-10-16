@@ -296,7 +296,13 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await screen.getByTestId('brain-model-sonnet').click()
   await expect(screen.getByTestId('brain-model-sonnet')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-model-opus')).toHaveAttribute('aria-pressed', 'false')
-  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(13)
+  await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(14)
+  // Let it out (agreed 2026-10-15, adjustment 1): the journal has its own switch, right after the check-in notes, on as the others are.
+  const switches = await screen.locator('[data-testid^="brain-switch-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
+  expect(switches.slice(0, 3)).toEqual(['brain-switch-dayRecord', 'brain-switch-notes', 'brain-switch-journal'])
+  await expect(screen.getByTestId('brain-switch-journal')).toHaveAttribute('aria-pressed', 'true')
+  await expect(screen.getByTestId('brain-switch-journal')).toContainText('Never evidence')
+  await expect(screen.getByTestId('brain-switch-journal')).toContainText('The free models never read it.')
   // Part 43: where the day was spent has its own switch, on; since Pass 1B Claude reads it while it is, so no 'none of it yet' shows.
   await expect(screen.getByTestId('brain-switch-location')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-switch-location')).toContainText('Never a coordinate, an address or a trail; context, never a cause.')
@@ -308,6 +314,8 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'true')
   await screen.getByTestId('brain-switch-notes').click()
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'false')
+  // Its own control: the notes off leave the journal on.
+  await expect(screen.getByTestId('brain-switch-journal')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-recent-line')).toHaveText(/Claude, asked for Opus, written by claude-opus-5-5$/)
   const groups = screen.getByTestId('brain-read-group')
   await expect(groups).toHaveCount(2)
@@ -2971,6 +2979,42 @@ test('Let it out: the night’s words kept as written, read back under Mirror, s
   await expect(page.getByTestId('journal-entry')).toHaveCount(0)
   await expect(page.getByTestId('journal-none')).toBeVisible()
   expect(await rowsOf(page, 'journal')).toEqual([])
+})
+
+test('Let it out in the Brain: a line drawn on the journal names its night in Why as what you wrote, and the week’s review brings its one follow-up question (agreed 2026-10-15)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 18, 8, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  const line = { id: '2026-09-18:brief', day: '2026-09-18', kind: 'brief', text: 'Last night you wrote that work ran late again; keep this evening light.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:48:00.000Z', factsDay: '2026-09-18', writer: 'claude', askedModel: 'opus', facts: [{ id: 'record', text: 'A stand-in fact for this test.' }] }
+  await putBrief(page, { ...line, journal: ['2026-09-17'] })
+  const question = 'On Thursday you wrote that work ran late again; what would make a late evening lighter?'
+  await putBrief(page, { id: '2026-09-18:review', day: '2026-09-18', kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:49:00.000Z', writer: 'claude', askedModel: 'opus', parts: { held: 'Veltish held twice.', didNot: 'The walk did not start.', change: 'Plan the walk after pickup.', question }, journal: ['2026-09-17'] })
+  await page.reload()
+  const card = page.getByTestId('brief')
+  await expect(card.getByTestId('brief-line')).toHaveText(line.text)
+  await card.getByTestId('brief-why').click()
+  const why = card.getByTestId('brief-why-panel')
+  await expect(why).toContainText('From your record')
+  await expect(why).toContainText('From what you wrote')
+  await expect(why.getByTestId('brief-why-journal')).toHaveText(/^Your journal, the night of .*Sep 17/)
+  // The weekly view: the question beside the three parts, and the nights behind it named.
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('week-review-question')).toHaveText(question)
+  await expect(page.getByTestId('week-review-journal')).toHaveText(/^Drew on what you wrote: .*Sep 17\.$/)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // A line and a review that drew on nothing written name no such source.
+  await putBrief(page, line)
+  await putBrief(page, { id: '2026-09-18:review', day: '2026-09-18', kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-18T11:49:00.000Z', writer: 'claude', askedModel: 'opus', parts: { held: 'Veltish held twice.', didNot: 'The walk did not start.', change: 'Plan the walk after pickup.' } })
+  await page.reload()
+  await page.getByTestId('brief').getByTestId('brief-why').click()
+  await expect(page.getByTestId('brief-why-panel')).not.toContainText('From what you wrote')
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('week-review-held')).toHaveText('Veltish held twice.')
+  await expect(page.getByTestId('week-review-question')).toHaveCount(0)
+  await expect(page.getByTestId('week-review-journal')).toHaveCount(0)
 })
 
 test('the foundations: a move drawn keeps what its draw knew, and is marked seen once its card has been on Now long enough to read (requirement 2)', async ({ page }) => {

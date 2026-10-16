@@ -1,13 +1,15 @@
 import { useEffect } from 'preact/hooks'
 import { markShown, weekReview, writtenBy } from './brainFlow'
 import { copy } from './copy'
-import { clockTimes12 } from './format'
+import { clockTimes12, fill, formatDayShort } from './format'
 import { useLive } from './live'
 
 /**
  * The week, reviewed, at the head of the weekly view: what held, what did not, and one change.
  * The Worker's three parts when it wrote them this week, held to the same rules as a line; else
- * the record's own, from the trajectories and the strongest strategy the sheet supports.
+ * the record's own, from the trajectories and the strongest strategy the sheet supports. Where the
+ * Worker's review drew on the journal (Let it out), one follow-up question from it, and the nights
+ * it drew on, named as what you wrote.
  */
 export function WeekReviewCard({ day }: { day: string }) {
   const r = useLive(() => weekReview(day), [day])
@@ -31,7 +33,17 @@ export function WeekReviewCard({ day }: { day: string }) {
           <p class="calc-line ink">
             <span class="calc-key">{c.change}</span> · <span data-testid="week-review-change">{clockTimes12(r.change)}</span>
           </p>
+          {r.question && (
+            <p class="calc-line">
+              <span class="calc-key">{c.question}</span> · <span data-testid="week-review-question">{clockTimes12(r.question)}</span>
+            </p>
+          )}
         </div>
+        {r.journal && r.journal.length > 0 && (
+          <p class="note faint no-gap" data-testid="week-review-journal">
+            {fill(c.fromJournal, { nights: r.journal.map(formatDayShort).join('; ') })}
+          </p>
+        )}
         <p class="note faint no-gap" data-testid="week-review-writer">
           {writtenBy(r, c)}
         </p>

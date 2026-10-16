@@ -122,9 +122,10 @@ export function isWriterModel(v: unknown): v is WriterModel {
  * categories are not switches: the fact sheet's frame, the coach's decision core, and tier 2.
  * `usage` (Follow-up F1) governs how Life Mirror is used: its counts and, for the weekly review
  * alone, a short slice of its events. `location` (Part 43) governs where the day's parts were spent,
- * as kinds of place.
+ * as kinds of place. `journal` (Let it out, agreed 2026-10-15, adjustment 1) governs the nightly
+ * journal: its own switch, apart from the check-in notes, so the most sensitive text has its own control.
  */
-export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage', 'location'] as const
+export const BRAIN_SWITCHES = ['dayRecord', 'notes', 'journal', 'privateItems', 'commitments', 'socialPath', 'partnerPath', 'reflections', 'monthlyCheck', 'her', 'faith', 'brainHistory', 'usage', 'location'] as const
 export type BrainSwitch = (typeof BRAIN_SWITCHES)[number]
 
 /**
@@ -201,6 +202,8 @@ export interface ReviewOutput {
   held: string
   didNot: string
   change: string
+  /** One follow-up question from what was written (the journal, agreed 2026-10-15): only where the journal may be read. */
+  question?: string
   factIds: string[]
   cardIds: string[]
   firmness?: Firmness
@@ -637,8 +640,15 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   return { ok: true, value }
 }
 
-/** The weekly review: what held, what did not, one change; each part held to the rules of a line. */
-export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string, firm?: FirmCheck, evidence = EVIDENCE_WORDING === 'open'): ReviewValidation {
+/** The review's follow-up question (the journal, agreed 2026-10-15): at most this many words. */
+export const REVIEW_QUESTION_WORDS = 25
+
+/**
+ * The weekly review: what held, what did not, one change; each part held to the rules of a line. Where the
+ * journal may be read, `question` lets one follow-up question stand beside them, held to the same rules; a
+ * follow-up question lives here and in Ask, never as a check-in question.
+ */
+export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], forDay?: string, firm?: FirmCheck, evidence = EVIDENCE_WORDING === 'open', opts: { question?: boolean } = {}): ReviewValidation {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const cited = citations(o, sheet, cards)
@@ -650,11 +660,16 @@ export function validateReview(raw: unknown, sheet: FactSheet, cards: readonly C
     if (why) return { ok: false, reason: `${key}: ${why}` }
     parts[key] = text
   }
-  const value: ReviewOutput = { ...parts, factIds: cited.factIds, cardIds: cited.cardIds }
+  const asked = opts.question && typeof o.question === 'string' ? o.question.trim() : ''
+  if (asked) {
+    const why = (asked.endsWith('?') ? null : 'is not a question') ?? refusal(asked, cited.factIds, cited.cardIds, sheet, cited.admitted, REVIEW_QUESTION_WORDS, evidence) ?? (forDay ? dayGuard(asked, sheet, forDay) : null)
+    if (why) return { ok: false, reason: `question: ${why}` }
+  }
+  const value: ReviewOutput = { ...parts, ...(asked ? { question: asked } : {}), factIds: cited.factIds, cardIds: cited.cardIds }
   // How firm (Pass 2): one delivery for the week's three parts, checked only once its gate is open.
   if (firm) {
     const x = deliverySignals('strategy', cited.factIds, cited.cardIds.map((id) => (cited.admitted.get(id) as ClaimCard).grade), sheet)
-    const f = firmVerdict(o.firmness, [parts.held, parts.didNot, parts.change], x, firm, sheet, cited.factIds)
+    const f = firmVerdict(o.firmness, [parts.held, parts.didNot, parts.change, ...(asked ? [asked] : [])], x, firm, sheet, cited.factIds)
     if (!f.ok) return { ok: false, reason: f.reason }
     value.firmness = f.firmness
   }

@@ -507,6 +507,9 @@ describe('the brain’s lines, read from the same database', () => {
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', facts: [{ id: 'aim.1', text: 'As read.' }, { id: 2 }, 'x', { id: 'week.today', text: 'Friday.', extra: 1 }] }))?.facts).toEqual([{ id: 'aim.1', text: 'As read.' }, { id: 'week.today', text: 'Friday.' }])
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', facts: 'none' }))).not.toHaveProperty('facts')
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', lacked: 'notes' }))).not.toHaveProperty('lacked')
+    // Let it out: the nights of the journal a line drew on, days only, each once; never their words.
+    expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', journal: ['2026-09-17', 'last night', '2026-09-17', 3] }))?.journal).toEqual(['2026-09-17'])
+    expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', journal: [] }))).not.toHaveProperty('journal')
   })
 })
 

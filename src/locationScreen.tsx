@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { BLOCKS, blockAt } from './blocks'
+import { LOCATION_TO_CLAUDE } from './brainShared'
 import { SwitchRow } from './controls'
 import { copy } from './copy'
 import { getDayContext, getSettings } from './db'
@@ -136,7 +137,7 @@ export function LocationSection() {
       <h2 class="section">{c.kept}</h2>
       <div class="card pad">
         <p class="note no-gap" data-testid="location-kept">
-          {c.keptNote}
+          {LOCATION_TO_CLAUDE === 'open' ? c.keptNoteOpen : c.keptNote}
         </p>
       </div>
       <div class="actions">

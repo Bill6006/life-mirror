@@ -110,7 +110,7 @@ export const copy = {
     row: 'Let it out',
     rowWritten: 'Written tonight',
     placeholder: 'Whatever is on your mind, as long as you like.',
-    boxNote: 'Yours to read back under Mirror. Never a reading, a score or a finding.',
+    boxNote: 'Yours to read back under Mirror, and Claude’s to read while Settings → Brain → Journal is on. Never a reading, a score or a finding.',
     title: 'Journal',
     door: 'Journal',
     doorNote: 'What you let out, night by night',
@@ -1357,6 +1357,9 @@ export const copy = {
     whyNoFacts: 'The facts under this line have not reached this phone yet.',
     whyCards: 'From the library',
     whyCard: '({grade}; {effect}. {source})',
+    // Let it out (agreed 2026-10-15): the third source, apart from the record and the library, and never evidence.
+    whyJournal: 'From what you wrote',
+    whyJournalNight: 'Your journal, the night of {day}',
     review: {
       title: 'The week, reviewed',
       held: 'What held',
@@ -1380,6 +1383,8 @@ export const copy = {
       fromClaude: 'Written by Claude through your claude.ai routine: asked for {asked}, written by {model}, from the week’s record as Settings → Brain allows.',
       fromFallback: 'Written by a free model under your Cloudflare account, {model}, from the week’s facts, standing in for Claude: {why}.',
       fromPhone: 'From the record alone; the brain writes a fuller one on Sundays.',
+      question: 'A question',
+      fromJournal: 'Drew on what you wrote: {nights}.',
     },
     fromWorker: 'Written by the brain under your account, {model}, from the facts and the library.',
     fromClaude: 'Written by Claude through your claude.ai routine: asked for {asked}, written by {model}, from your record as Settings → Brain allows.',
@@ -1443,6 +1448,7 @@ export const copy = {
     switches: {
       dayRecord: { label: 'The day’s record', note: 'Readings, the day’s shape, extras, caffeine and workout days.' },
       notes: { label: 'Check-in notes', note: 'The lines you type at a check-in.' },
+      journal: { label: 'Journal', note: 'What you write under Let it out, for the day’s line and the week’s review, back to your first night. Never evidence: a line drawing on it names the night and says it is what you wrote, with no number, finding or cause. The free models never read it.' },
       privateItems: { label: 'Private items', note: 'Their names, and what the record shows about them. A name never appears on Now unless Show private items is on.' },
       commitments: { label: 'Commitments', note: 'Your commitments, their steps and your plans.' },
       socialPath: { label: 'The Social path', note: 'Its stage, its reps and what you declared.' },
@@ -1530,6 +1536,7 @@ export const copy = {
     daylightFixed: 'From {from} to {to}: the hours you set under The week.',
     kept: 'What is kept',
     keptNote: 'The kind of place each part of the day was spent at. For a place you named, fingerprints of the few map cells around it, made with a key that never leaves this phone, so it is known again without keeping where it is. For the sun, the area you are in, to about eleven kilometres. Never a coordinate, a street address or a trail of where you went. Only the kinds of place leave this phone, into your own database; Claude reads none of them yet.',
+    keptNoteOpen: 'The kind of place each part of the day was spent at. For a place you named, fingerprints of the few map cells around it, made with a key that never leaves this phone, so it is known again without keeping where it is. For the sun, the area you are in, to about eleven kilometres. Never a coordinate, a street address or a trail of where you went. Only the kinds of place leave this phone, into your own database, where Claude reads them while Settings → Brain → Where your day was spent is on.',
     forgetAll: 'Forget everything it learned',
     forgetAllNote: 'The places, the ones being learned, the key and the area, gone from this phone. What each day noted stays in its record.',
     forgotten: 'Forgotten.',

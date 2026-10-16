@@ -988,6 +988,56 @@ for (const theme of THEMES) {
   })
 }
 
+/**
+ * Let it out in the Brain (agreed 2026-10-15): a line Claude wrote drawing on two nights, its Why naming
+ * them as what you wrote, and the week's review with its one follow-up question. Generic words only.
+ */
+async function seedJournalBrain(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['brainBriefs'], 'readwrite')
+    const briefs = tx.objectStore('brainBriefs')
+    const common = { mode: 'observation', cardIds: [], model: 'claude-opus-5-5', writer: 'claude', askedModel: 'opus', factsDay: '2026-09-23' }
+    briefs.put({ ...common, id: '2026-09-23:brief', day: '2026-09-23', kind: 'brief', text: 'Last night you wrote that the day ran long; a short walk after dinner may suit this evening.', factIds: ['record'], at: '2026-09-23T13:00:00.000Z', facts: [{ id: 'record', text: 'A stand-in fact for the audit, long enough to wrap across the panel at the narrowest width.' }], journal: ['2026-09-22', '2026-09-20'] })
+    briefs.put({ ...common, id: '2026-09-23:review', day: '2026-09-23', kind: 'review', mode: 'strategy', text: 'a b c', factIds: [], at: '2026-09-23T13:01:00.000Z', parts: { held: 'The evening walk held on three days.', didNot: 'The morning plans did not start.', change: 'Plan the walk for after dinner.', question: 'On Monday you wrote that the day ran long; what would make the evening after a long day lighter?' }, journal: ['2026-09-22', '2026-09-21', '2026-09-20'] })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+const JOURNAL_BRAIN: typeof STATES = [
+  { name: 'Now, Why open, from what you wrote', tab: 'Now', open: async (p) => p.getByTestId('brief-why').first().click() },
+  { name: 'The weekly view, a question from what you wrote', tab: 'Mirror', open: click(/^The weekly view/) },
+  { name: 'Brain, the journal’s own switch', tab: 'Settings', open: async (p) => p.getByTestId('settings-brain').click() },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the journal in the Brain reads, fits and can be tapped, at three widths (Let it out)`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedJournalBrain(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, JOURNAL_BRAIN, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
 test('a theme switch changes the look alone: at once, no reload, the same screen, the same record', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
   await page.goto('./')

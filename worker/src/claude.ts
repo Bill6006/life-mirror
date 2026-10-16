@@ -6,7 +6,8 @@ import { checkCoach, rowOf } from './coachCheck'
 import { surfaceGuard, type Surface } from './surface'
 import type { Env } from './env'
 import { loadLibrary, retrieve } from './library'
-import { claudeBriefingText, claudeInstructions, coachBriefingText, parseOutput } from './prompt'
+import { claudeBriefingText, claudeInstructions, coachBriefingText, journalRules, parseOutput } from './prompt'
+import { journalDaysOf, journalRefusal, withoutNightDates, type ServedEntry } from '../../src/journalCheck'
 import { coachFirmness, DEFAULT_FIRMNESS, HOW_FIRM, type Firmness, type FirmnessPref } from '../../src/firmness'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, logUsageOnSheet, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
 import { addDays } from './time'
@@ -183,6 +184,50 @@ function servedOf(deps: Deps, t: TaskRow, facts: { sheet: FactSheet; updatedAt: 
   return t.served ?? { at: deps.now.toISOString(), factsUpdatedAt: facts.updatedAt, sheet: facts.sheet, ...(facts.coach ? { coach: facts.coach } : {}) }
 }
 
+/** Journal nights, each once, in order: those a task was given before, and those given now. */
+export function nightsOf(...lists: (readonly (string | null)[] | undefined)[]): string[] {
+  return [...new Set(lists.flatMap((l) => l ?? []).filter((d): d is string => typeof d === 'string' && DAY_RE.test(d)))].sort()
+}
+
+/** How many days one read of the journal spans at most, so a read's row limit never cuts a night the check needs. */
+const SERVED_SPAN_DAYS = 900
+
+/**
+ * The entries a task was given (Let it out), read again whole for the check, since their words are never
+ * kept with the task: one read per stretch of nights, so even a night years back is read in a few calls.
+ */
+export async function servedEntries(store: Store, nights: readonly string[]): Promise<ServedEntry[]> {
+  const want = new Set(nights)
+  const sorted = [...want].sort()
+  const out: ServedEntry[] = []
+  for (let i = 0; i < sorted.length; ) {
+    const from = sorted[i]
+    const last = addDays(from, SERVED_SPAN_DAYS - 1)
+    let j = i
+    while (j + 1 < sorted.length && sorted[j + 1] <= last) j++
+    const rows = await store.readRecords('journal', { from, to: sorted[j] }, SERVED_SPAN_DAYS + 100)
+    for (const r of rows) {
+      const text = r.body && typeof r.body === 'object' ? (r.body as Record<string, unknown>).text : undefined
+      if (r.day !== null && want.has(r.day) && typeof text === 'string' && text.trim()) out.push({ day: r.day, text })
+    }
+    i = j + 1
+  }
+  return out
+}
+
+/**
+ * The journal's rule on an answer that passed every other check (Let it out, agreed 2026-10-15,
+ * adjustment 3): the nights it says it drew on were given to it, and what it says of them names the
+ * night, is framed as what was written, and carries no number, level or cause. A review's follow-up
+ * question comes from what was written, so it needs a night listed.
+ */
+export async function journalVerdict(store: Store, t: TaskRow, raw: unknown, texts: readonly string[], question: boolean): Promise<{ ok: true; nights: string[] } | { ok: false; reason: string }> {
+  const nights = journalDaysOf(raw && typeof raw === 'object' ? (raw as Record<string, unknown>).journal : undefined)
+  if (question && !nights.length) return { ok: false, reason: 'question: a follow-up question comes from what was written: list in "journal" the nights it draws on' }
+  const why = journalRefusal(texts, nights, await servedEntries(store, t.journal ?? []), t.day)
+  return why ? { ok: false, reason: why } : { ok: true, nights }
+}
+
 /** The briefing for a task, built the same way for its GET and its POST, so a line is checked against exactly what was served. */
 async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } | { ok: false; reply: Reply }> {
   const facts = await servedFacts(deps, t)
@@ -286,13 +331,16 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
   // Follow-up F1: the usage facts the sheet carried, logged by count and size; none while the gate is closed.
   await logUsageOnSheet(deps.store, t.id, t.task === 'review' ? 'review' : 'line', t.day, b.sheet, deps.now, t.dry === true)
   const text = claudeBriefingText({ ...b, context: ctx.text })
-  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served: built.run.served })
+  const journal = nightsOf(t.journal, ctx.journal)
+  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served: built.run.served, ...(journal.length ? { journal } : {}) })
   // Pass 2: How firm's field only once its gate is open.
   const firmField = b.firm ? { firmness: 'supportive, balanced or hardCoach, as HOW FIRM says' } : {}
+  // Let it out: the nights drawn on, and the review's one follow-up question, only while the journal may be read.
+  const journalField = access.allowed('journal') ? { journal: ['the night (YYYY-MM-DD) of each journal entry you drew on, or none'], ...(t.task === 'review' ? { question: 'one follow-up question from what was written, or null' } : {}) } : {}
   const answer =
     t.task === 'line'
-      ? { mode: 'one of the modes named in the instructions', text: 'the line', ...firmField, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null, lacked: ['ids from the instructions’ list, or none'] }
-      : { held: 'what held', didNot: 'what did not', change: 'one change', ...firmField, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], lacked: ['ids from the instructions’ list, or none'] }
+      ? { mode: 'one of the modes named in the instructions', text: 'the line', ...firmField, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], action: null, lacked: ['ids from the instructions’ list, or none'], ...journalField }
+      : { held: 'what held', didNot: 'what did not', change: 'one change', ...firmField, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], lacked: ['ids from the instructions’ list, or none'], ...journalField }
   return reply(200, {
     task: t.task,
     day: t.day,
@@ -322,11 +370,16 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   const catalogue = await loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)
   const r = await readOnDemand(deps.store, catalogue, access, q.category, q.q, t.day, t.id, 100 + t.contextCalls, deps.now, CONTEXT_BYTES - t.contextBytes, t.dry === true, deps.env.TIMEZONE)
   if (!r) return reply(403, { error: `${q.category} is not served here` })
-  await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text) })
-  return reply(200, { category: q.category, items: r.items, truncated: r.truncated })
+  // Let it out: the nights read are kept with the task, so an answer is checked against them; their rules come with them.
+  const journal = q.category === 'journal' ? nightsOf(t.journal, r.items.map((i) => i.day)) : []
+  await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text), ...(journal.length ? { journal } : {}) })
+  return reply(200, { category: q.category, items: r.items, truncated: r.truncated, ...(q.category === 'journal' && (t.task === 'line' || t.task === 'review') ? { rules: journalRules(t.task) } : {}) })
 }
 
 type Verdict<T> = { ok: true; value: T } | { ok: false; reason: string }
+
+/** A review's parts as said, its follow-up question last. */
+const partsOf = (v: ReviewOutput): string[] => [v.held, v.didNot, v.change, ...(v.question ? [v.question] : [])]
 
 /** A line Claude wrote: the checks every line passes, then the surface rules. */
 export function checkClaudeLine(b: LineBriefing, said: readonly Said[], raw: unknown, s: Surface): Verdict<BrainOutput> {
@@ -336,11 +389,11 @@ export function checkClaudeLine(b: LineBriefing, said: readonly Said[], raw: unk
   return g ? { ok: false, reason: g } : v
 }
 
-/** A review Claude wrote: the review validator and the day guard, then the surface rules on each part. */
-export function checkClaudeReview(b: LineBriefing, raw: unknown, s: Surface): Verdict<ReviewOutput> {
-  const v = validateReview(raw, b.sheet, b.cards, b.forDay, b.firm ? { pref: b.firm } : undefined)
+/** A review Claude wrote: the review validator and the day guard, then the surface rules on each part; a follow-up question only where the journal may be read. */
+export function checkClaudeReview(b: LineBriefing, raw: unknown, s: Surface, question = false): Verdict<ReviewOutput> {
+  const v = validateReview(raw, b.sheet, b.cards, b.forDay, b.firm ? { pref: b.firm } : undefined, undefined, { question })
   if (!v.ok) return v
-  for (const part of [v.value.held, v.value.didNot, v.value.change]) {
+  for (const part of [v.value.held, v.value.didNot, v.value.change, ...(v.value.question ? [v.value.question] : [])]) {
     const g = surfaceGuard(part, s)
     if (g) return { ok: false, reason: g }
   }
@@ -363,7 +416,25 @@ export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
       ? await partnerBearsOn(deps.store, t.day, access)
       : access.allowed('partnerPath') && ((await readCategory({ store: deps.store, catalogue, a: access }, 'partnerPath', { from: addDays(t.day, -7), to: t.day, limit: 1, doneOnly: true })) ?? []).length > 0
   const surface = { names, bears, usage: b.sheet.facts.some((f) => isUsageFact(f.id)) }
-  const verdict = t.task === 'line' ? checkClaudeLine(b, said, answer, surface) : checkClaudeReview(b, answer, surface)
+  // Let it out: the checks every line passes read a listed night's date as the night's name, not a count; the words stored are as written.
+  const listed = answer && typeof answer === 'object' ? (answer as Record<string, unknown>) : null
+  const declared = journalDaysOf(listed?.journal)
+  const fields = t.task === 'line' ? ['text'] : ['held', 'didNot', 'change', 'question']
+  const asChecked = listed && declared.length ? { ...listed, ...Object.fromEntries(fields.filter((k) => typeof listed[k] === 'string').map((k) => [k, withoutNightDates(listed[k] as string, declared, t.day)])) } : answer
+  let verdict: Verdict<BrainOutput | ReviewOutput> = t.task === 'line' ? checkClaudeLine(b, said, asChecked, surface) : checkClaudeReview(b, asChecked, surface, access.allowed('journal'))
+  if (verdict.ok && asChecked !== answer && listed) {
+    const own = (k: string) => (typeof listed[k] === 'string' ? (listed[k] as string).trim() : '')
+    const v = verdict.value
+    verdict = { ok: true, value: 'held' in v ? { ...v, held: own('held'), didNot: own('didNot'), change: own('change'), ...(v.question ? { question: own('question') } : {}) } : { ...v, text: own('text') } }
+  }
+  // Then the journal's own rule, on every part said.
+  let nights: string[] = []
+  if (verdict.ok) {
+    const v = verdict.value
+    const j = await journalVerdict(deps.store, t, answer, 'held' in v ? partsOf(v) : [v.text], 'held' in v && Boolean(v.question))
+    if (j.ok) nights = j.nights
+    else verdict = j
+  }
   const posts = t.posts + 1
   if (!verdict.ok) {
     const refusals = [...t.refusals, verdict.reason].slice(-10)
@@ -381,10 +452,10 @@ export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
   let row: BriefRow
   if (t.task === 'line') {
     const v = verdict.value as BrainOutput
-    row = { id: rowIdOf('line', t.day), kind: 'brief', text: v.text, mode: v.mode, factIds: v.factIds, cardIds: v.cardIds, action: v.action, candidates: 1, ...common, facts: citedFacts(b.sheet, v.factIds, (f) => relabel(f, b.sheet, t.day)) }
+    row = { id: rowIdOf('line', t.day), kind: 'brief', text: v.text, mode: v.mode, factIds: v.factIds, cardIds: v.cardIds, action: v.action, candidates: 1, ...common, facts: citedFacts(b.sheet, v.factIds, (f) => relabel(f, b.sheet, t.day)), ...(nights.length ? { journal: nights } : {}) }
   } else {
     const v = verdict.value as ReviewOutput
-    row = { id: rowIdOf('review', t.day), kind: 'review', text: `${v.held} ${v.didNot} ${v.change}`, mode: 'strategy', factIds: v.factIds, cardIds: v.cardIds, action: null, parts: { held: v.held, didNot: v.didNot, change: v.change }, ...common, facts: citedFacts(b.sheet, v.factIds, (f) => relabel(f, b.sheet, t.day)) }
+    row = { id: rowIdOf('review', t.day), kind: 'review', text: `${v.held} ${v.didNot} ${v.change}`, mode: 'strategy', factIds: v.factIds, cardIds: v.cardIds, action: null, parts: { held: v.held, didNot: v.didNot, change: v.change, ...(v.question ? { question: v.question } : {}) }, ...common, facts: citedFacts(b.sheet, v.factIds, (f) => relabel(f, b.sheet, t.day)), ...(nights.length ? { journal: nights } : {}) }
   }
   await deps.store.writeBrief(row, at)
   await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs })

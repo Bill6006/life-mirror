@@ -45,8 +45,10 @@ export interface BriefRow {
   forDay?: string
   /** The one tap the line offers, checked against the sheet before it was written; the phone checks again at the tap. */
   action?: LineAction | null
-  /** The review's three parts, on a row of kind review. */
-  parts?: { held: string; didNot: string; change: string }
+  /** The review's three parts, on a row of kind review; and where the journal was drawn on, one follow-up question from it. */
+  parts?: { held: string; didNot: string; change: string; question?: string }
+  /** The nights of the journal it drew on (Let it out, agreed 2026-10-15): what you wrote, the third source Why names. Never their words. */
+  journal?: string[]
   /** What set it off (Part 28): the morning check-in, the fallback hour, Sunday's hour, or a run by hand; and for the skill coach's runs (Parts 40 and 41), an ask. */
   trigger?: 'checkin' | 'fallback' | 'sunday' | 'forced' | 'ask'
   /** The target day's shape as the briefing named it. */
@@ -123,6 +125,11 @@ export interface TaskRow {
    * Stored with the task in your own database; no report shows it.
    */
   served?: { at: string; factsUpdatedAt: string; sheet: FactSheet; coach?: CoachBlock }
+  /**
+   * The nights of the journal Claude was given, by the briefing and by its reads (Let it out): an answer
+   * may draw only on these, and is checked against their words, read again at the check. Never the words.
+   */
+  journal?: string[]
   /** A coach pick taken back where the phone reads it, when and why: its watch turned it off, it was switched off, or the monthly check's help showed. */
   withdrawn?: { at: string; reason: string }
   /** A skill coach's run (Parts 40 and 41): the phone's asks it answers. */
@@ -262,8 +269,11 @@ export interface Store {
   /** A spot-check recorded; and from a day on, the bridge's tasks and spot-checks with the lines and reviews, in the fields the coach's gate and watch read. */
   writeSpot(row: SpotRow): Promise<void>
   readWatchRows(from: string): Promise<{ rows: (DayTask | SpotRow)[]; lines: DayLine[] }>
-  /** The phone's own rows of one store, newest day first, within a day range when one is given: the retrieval layer's only read. */
-  readRecords(store: string, range?: { from?: string; to?: string }, limit?: number): Promise<RecordRow[]>
+  /**
+   * The phone's own rows of one store, newest day first, within a day range when one is given: the retrieval layer's only read.
+   * `like` keeps only rows whose stored body holds those characters, ASCII case aside: a coarse first cut the reader refines.
+   */
+  readRecords(store: string, range?: { from?: string; to?: string; like?: string }, limit?: number): Promise<RecordRow[]>
   /** One of the phone's own rows by id, or null. */
   readRecord(store: string, id: string): Promise<unknown | null>
   /** The other app's finished workouts, newest written first, read-only: the final checklist's sanity report (item 4). */
@@ -436,6 +446,10 @@ export function tursoStore(url: string, token: string): Store {
       if (range.to) {
         where.push('day <= ?')
         args.push(range.to)
+      }
+      if (range.like) {
+        where.push("body LIKE ? ESCAPE '\\'")
+        args.push(`%${range.like.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
       }
       args.push(limit)
       const r = await rows(`SELECT id, day, body FROM records WHERE ${where.join(' AND ')} ORDER BY day DESC LIMIT ?`, args)
@@ -610,7 +624,7 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async readRecords(store, range = {}, limit = 500) {
       return live(APP, store)
-        .filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)))
+        .filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)) && (!range.like || (r.body ?? '').toLowerCase().includes(range.like.toLowerCase())))
         .sort((a, b) => ((a.day ?? '') < (b.day ?? '') ? 1 : (a.day ?? '') > (b.day ?? '') ? -1 : 0))
         .slice(0, limit)
         .map((r) => ({ id: r.id, day: r.day, body: parse<unknown>(r.body) }))

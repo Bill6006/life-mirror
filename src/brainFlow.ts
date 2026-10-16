@@ -191,6 +191,8 @@ export interface BriefLine {
   adaptive?: true
   /** The facts it cited, in their words when it was written (stage 1, item l). */
   facts?: CitedFact[]
+  /** The nights of the journal it drew on (Let it out): what you wrote, the third source. */
+  journal?: string[]
 }
 
 /** Who wrote a line or a review, in the words its screen uses (Part 30): Claude with the model asked for and the one that wrote, the free chain and why it stood in for Claude, or the phone. */
@@ -213,7 +215,7 @@ export async function todaysLine(day: string, now: Date = new Date()): Promise<B
   const off = offOf(record, day, now)
   const live = (l: { text: string; action?: LineAction | null; at?: string }) => !momentGone(lineMoment({ text: l.text, action: l.action ?? null, at: l.at }, day, ctx, planOf(intentions, l.action ?? null, day)), day, now)
   const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off) && live(b)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}), ...(worker.firmness ? { firmness: worker.firmness, ...(worker.adaptive ? { adaptive: true as const } : {}) } : {}), ...(worker.facts?.length ? { facts: worker.facts } : {}) }
+  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}), ...(worker.firmness ? { firmness: worker.firmness, ...(worker.adaptive ? { adaptive: true as const } : {}) } : {}), ...(worker.facts?.length ? { facts: worker.facts } : {}), ...(worker.journal?.length ? { journal: worker.journal } : {}) }
   const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off) && live(l)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
   if (!own) return null
   return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day, at: own.at, ...(own.firmness ? { firmness: own.firmness, ...(own.adaptive ? { adaptive: true as const } : {}) } : {}), ...(own.facts?.length ? { facts: own.facts } : {}) }
@@ -438,6 +440,8 @@ export function momentGone(moment: number | null, day: string, now: Date): boole
 export interface Why {
   facts: { id: string; text: string }[]
   cards: ClaimCard[]
+  /** The nights of the journal the line drew on (Let it out): a third source, apart from the record and the library. */
+  journal: string[]
 }
 
 /**
@@ -447,7 +451,8 @@ export interface Why {
  */
 export async function whyFor(line: BriefLine, day: string, now: Date = new Date()): Promise<Why> {
   const cards = line.cardIds.map((id) => cardById(id)).filter((c): c is ClaimCard => c !== undefined)
-  if (line.facts?.length) return { facts: line.factIds.map((id) => line.facts?.find((f) => f.id === id)).filter((f): f is CitedFact => f !== undefined), cards }
+  const journal = line.journal ?? []
+  if (line.facts?.length) return { facts: line.factIds.map((id) => line.facts?.find((f) => f.id === id)).filter((f): f is CitedFact => f !== undefined), cards, journal }
   const rows = await Promise.all([line.factsDay, day, addDays(day, -1)].map((d) => db.facts.get(d)))
   const sheets = rows.map((r) => r?.sheet)
   const facts: { id: string; text: string }[] = []
@@ -461,10 +466,14 @@ export async function whyFor(line: BriefLine, day: string, now: Date = new Date(
     }
     if (found) facts.push({ id, text: found.text })
   }
-  return { facts, cards: line.cardIds.map((id) => cardById(id)).filter((c): c is ClaimCard => c !== undefined) }
+  return { facts, cards, journal }
 }
 
 export interface WeekReview extends ReviewParts {
+  /** One follow-up question from what you wrote, where the Worker's review drew on the journal (Let it out). */
+  question?: string
+  /** The nights of the journal it drew on. */
+  journal?: string[]
   source: 'phone' | 'worker'
   /** The Worker's review row's key, for marking it shown (stage 1, item m). */
   key?: string
@@ -479,7 +488,10 @@ export interface WeekReview extends ReviewParts {
 export async function weekReview(day: string, now: Date = new Date(), firmGate: FirmMode = firmMode()): Promise<WeekReview> {
   const since = addDays(day, -6)
   const worker = (await db.brainBriefs.toArray()).filter((b) => b.kind === 'review' && b.parts && b.day >= since && b.day <= day).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker?.parts) return { source: 'worker', key: `worker:${worker.id}`, model: worker.model, day: worker.day, ...worker.parts, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
+  if (worker?.parts) {
+    const { held, didNot, change, question } = worker.parts
+    return { source: 'worker', key: `worker:${worker.id}`, model: worker.model, day: worker.day, held, didNot, change, ...(typeof question === 'string' && question ? { question } : {}), ...(worker.journal?.length ? { journal: worker.journal } : {}), ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
+  }
   const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
   return { source: 'phone', model: null, day, ...phoneReview(await factSheet(day, now), feedback, await firmPrefNow(firmGate)) }
 }

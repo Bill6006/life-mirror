@@ -1,4 +1,5 @@
 import { citedFactsOf, lackedOf } from './brainShared'
+import { journalDaysOf } from './journalCheck'
 import type { CoachProposal } from './coachShared'
 import { isFirmness } from './firmness'
 import type { BrainBrief, BrainRead, CoachPick } from './db'
@@ -175,7 +176,7 @@ export function brainBriefOf(id: string, body: string): BrainBrief | null {
     const r = JSON.parse(body) as Partial<BrainBrief>
     if (typeof r.day !== 'string' || typeof r.text !== 'string' || !r.text) return null
     const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
-    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '', ...(r.action && typeof r.action === 'object' ? { action: r.action } : {}), ...(typeof r.factsDay === 'string' ? { factsDay: r.factsDay } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}), ...(r.parts && typeof r.parts === 'object' ? { parts: r.parts } : {}), ...(r.writer === 'claude' || r.writer === 'free' ? { writer: r.writer } : {}), ...(typeof r.askedModel === 'string' ? { askedModel: r.askedModel } : {}), ...(typeof r.fallback === 'string' ? { fallback: r.fallback } : {}), ...(lackedOf(r.lacked).length ? { lacked: lackedOf(r.lacked) } : {}) , ...(isFirmness(r.firmness) ? { firmness: r.firmness, ...(r.adaptive === true ? { adaptive: true as const } : {}) } : {}), ...(citedFactsOf(r.facts).length ? { facts: citedFactsOf(r.facts) } : {}) }
+    return { id, day: r.day, kind: r.kind === 'review' ? 'review' : 'brief', text: r.text, mode: typeof r.mode === 'string' ? r.mode : 'observation', factIds: strings(r.factIds), cardIds: strings(r.cardIds), model: typeof r.model === 'string' ? r.model : '', at: typeof r.at === 'string' ? r.at : '', ...(r.action && typeof r.action === 'object' ? { action: r.action } : {}), ...(typeof r.factsDay === 'string' ? { factsDay: r.factsDay } : {}), ...(typeof r.forDay === 'string' ? { forDay: r.forDay } : {}), ...(r.parts && typeof r.parts === 'object' ? { parts: r.parts } : {}), ...(r.writer === 'claude' || r.writer === 'free' ? { writer: r.writer } : {}), ...(typeof r.askedModel === 'string' ? { askedModel: r.askedModel } : {}), ...(typeof r.fallback === 'string' ? { fallback: r.fallback } : {}), ...(lackedOf(r.lacked).length ? { lacked: lackedOf(r.lacked) } : {}) , ...(isFirmness(r.firmness) ? { firmness: r.firmness, ...(r.adaptive === true ? { adaptive: true as const } : {}) } : {}), ...(citedFactsOf(r.facts).length ? { facts: citedFactsOf(r.facts) } : {}), ...(journalDaysOf(r.journal).length ? { journal: journalDaysOf(r.journal) } : {}) }
   } catch {
     return null
   }

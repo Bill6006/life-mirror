@@ -631,8 +631,8 @@ export interface BrainBrief {
   factsDay?: string
   /** The day the Worker wrote the line for. */
   forDay?: string
-  /** The weekly review's three parts, on a row of kind review. */
-  parts?: { held: string; didNot: string; change: string }
+  /** The weekly review's three parts, on a row of kind review; and where it drew on the journal, one follow-up question from it. */
+  parts?: { held: string; didNot: string; change: string; question?: string }
   /** Who wrote it (Part 30): Claude through your routine, or the free model chain. Absent on lines written before Part 30. */
   writer?: 'claude' | 'free'
   /** For Claude's line: the model alias asked for; `model` is the id that actually wrote it. */
@@ -646,6 +646,8 @@ export interface BrainBrief {
   adaptive?: true
   /** The facts it cited, in their words as they stood when it was written (stage 1, item l): what Why shows. Absent on lines from before. */
   facts?: CitedFact[]
+  /** The nights of the journal it drew on (Let it out): the third source Why names, never evidence. */
+  journal?: string[]
 }
 
 /** The Brain settings (Part 30): which model writes, and what Claude may read. One row, synced, so the Worker reads it at every request. */
