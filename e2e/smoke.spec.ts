@@ -297,14 +297,14 @@ test('the Brain screen: who writes the line, what Claude may read, who wrote rec
   await expect(screen.getByTestId('brain-model-sonnet')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-model-opus')).toHaveAttribute('aria-pressed', 'false')
   await expect(screen.locator('[data-testid^="brain-switch-"]')).toHaveCount(13)
-  // Part 43: where the day was spent has its own switch, on, and says Claude reads none of it yet.
+  // Part 43: where the day was spent has its own switch, on; since Pass 1B Claude reads it while it is, so no 'none of it yet' shows.
   await expect(screen.getByTestId('brain-switch-location')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-switch-location')).toContainText('Never a coordinate, an address or a trail; context, never a cause.')
-  await expect(screen.getByTestId('brain-switch-location')).toContainText('Claude reads none of it yet')
-  // Follow-up F1: how the app is used has a switch of its own, on, and says Claude reads none of it yet.
+  await expect(screen.getByTestId('brain-switch-location')).not.toContainText('Claude reads none of it yet')
+  // Follow-up F1: how the app is used has a switch of its own, on; since Pass 1B Claude reads it while it is.
   await expect(screen.getByTestId('brain-switch-usage')).toHaveAttribute('aria-pressed', 'true')
   await expect(screen.getByTestId('brain-switch-usage')).toContainText('What was observed, never why; nothing outside the app, no keystrokes, nothing you type.')
-  await expect(screen.getByTestId('brain-switch-usage')).toContainText('Claude reads none of it yet: it opens after the reliability checks end, and only at your word.')
+  await expect(screen.getByTestId('brain-switch-usage')).not.toContainText('Claude reads none of it yet')
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'true')
   await screen.getByTestId('brain-switch-notes').click()
   await expect(screen.getByTestId('brain-switch-notes')).toHaveAttribute('aria-pressed', 'false')
@@ -1688,10 +1688,10 @@ test('the use log counts how the app is used and what Claude may be given of it,
   // Opening Life Mirror is counted (F1): once at launch.
   await expect(card.getByTestId('use-opened')).toHaveText('Life Mirror opened: once, on one day')
   await expect(card.getByTestId('use-change')).toHaveText('Change on the People row: not opened')
-  // What Claude may be given: counts over whole days to yesterday, none yet on a first day; Claude reads none of it while gated.
+  // What Claude may be given: counts over whole days to yesterday, none yet on a first day; since Pass 1B Claude reads them while its switch is on.
   await expect(card.getByTestId('use-given')).toContainText('Nothing yet')
   await card.getByTestId('use-given').click()
-  await expect(card.getByTestId('use-given-note')).toContainText('Claude reads none of them yet: they open after the reliability checks end, and only at your word.')
+  await expect(card.getByTestId('use-given-note')).toContainText('Claude reads them while Settings → Brain → How you use Life Mirror is on')
   await expect(card).toContainText('Nothing yet: the counts cover whole days, from yesterday back.')
   await expect(card.getByTestId('use-checkins')).toHaveText('Check-ins: 1 opened, 1 left before the end')
   // Now three times: on opening, by its tab, and on leaving the check-in.
@@ -1718,7 +1718,7 @@ test('the use log counts how the app is used and what Claude may be given of it,
   await expect(page.getByTestId('brain-lacked-counts')).toHaveText('Your notes 1 · Workout detail 1')
 })
 
-test('what Claude may be given of how the app is used: counts over whole days to yesterday, word for word, no time of day, and none of it read while gated (F1)', async ({ page }) => {
+test('what Claude may be given of how the app is used: counts over whole days to yesterday, word for word, no time of day, read by Claude since Pass 1B while its switch is on (F1)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 20, 9, 30))
   await page.goto('./')
   // Two earlier days of use, as the log keeps them; counting began on the first.
@@ -1755,7 +1755,7 @@ test('what Claude may be given of how the app is used: counts over whole days to
   // Today's use waits for tomorrow; a Partner screen is never named; no clock time, no date.
   const text = (await list.textContent()) ?? ''
   expect(text).not.toMatch(/Partner|\d{1,2}:\d{2}|2026-/)
-  await expect(page.getByTestId('use-given-note')).toContainText('Claude reads none of them yet')
+  await expect(page.getByTestId('use-given-note')).toContainText('Claude reads them while')
 })
 
 test('Loneliness asks how much meaningful closeness feels missing, never whether company is wanted (Part 42)', async ({ page }) => {
@@ -1881,11 +1881,18 @@ test('daylight from where you are: a place typed once, the sun shown back, the f
 })
 
 // ─── The skill coach (Parts 40 and 41) ──────────────────────────────────────────────────────────
-// Built behind their gate: as the build ships it asks, shows and stores nothing. A test browser
-// alone may preview it (the Worker's own gate stays closed, so a preview sends nothing to Claude);
-// the previews write Claude's answers into the phone's store as the brain's pull would.
+// Open since Pass 1B (2026-10-16). An ask to Claude travels through the cloud copy, so the tests that
+// ask set one up whose database is never reached; Claude's answers are written into the phone's store
+// as the brain's pull would.
 
-const PREVIEW = 'life-mirror.preview.skillCoach'
+/** A cloud copy set up, its database never reached: every request to the host is refused at the browser. */
+async function withCloudCopy(page: Page): Promise<void> {
+  await page.route(/turso\.io/, (route) => route.abort())
+  const [settings] = await rowsOf<{ cloud: Record<string, unknown> }>(page, 'settings')
+  await putInto(page, 'settings', { ...settings, cloud: { ...settings.cloud, token: 'e2e-token-never-real' } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+}
 type Ask = { id: number; aimId: number; kind: string; revision: string; day: string; claude: boolean; decision?: string; after?: string; care?: string; days?: number; reason?: string }
 
 /** Every row of one of the phone's stores. */
@@ -1942,13 +1949,13 @@ async function startWithDirection(page: Page): Promise<void> {
 
 const COACH_IDS = ['coach-pending', 'coach-ask', 'coach-care', 'coach-suggestion', 'coach-review', 'aim-review-mark', 'aim-safety', 'aim-likely-next']
 
-test('the skill coach stays dark while its gate is closed: commitments are set up and practised by hand as before, and nothing is asked, shown or stored (Parts 40–41)', async ({ page }) => {
+test('the skill coach as it ships since Pass 1B, with no cloud copy: Claude is never asked, commitments are set up and practised by hand as before, and a review that falls due is asked by the phone, neutrally (Parts 40–41)', async ({ page }) => {
   test.setTimeout(180_000)
   await startWithDirection(page)
-  // A goal with no skill, and a physical one: neither asks Claude, no safety question shows, and each card asks for the one thing to work on now.
+  // A goal with no skill, and a physical one: with no cloud copy no ask could travel, so neither asks Claude, no safety question shows, and each card asks for the one thing to work on now.
   await addLearning(page, 'Orrish')
   await addLearning(page, 'Cartwheel')
-  for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
+  for (const id of ['coach-pending', 'coach-ask', 'coach-care', 'coach-suggestion']) await expect(page.getByTestId(id)).toHaveCount(0)
   await expect(page.getByTestId('aim-skill-set-name')).toHaveCount(2)
   const orrish = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
   await orrish.getByTestId('aim-skill-set-name').fill('Ten words')
@@ -1956,21 +1963,24 @@ test('the skill coach stays dark while its gate is closed: commitments are set u
   await expect(orrish.getByTestId('aim-step')).toHaveText('Ten words')
   await orrish.getByTestId('aim-details').click()
   await expect(orrish.getByTestId('coach-ask-row')).toHaveCount(0)
-  // Six different practice days with a week behind the skill: where a review would fall due, and none does.
+  // Six different practice days with a week behind the skill: the review falls due, and the phone asks its question neutrally, with nothing asked of Claude.
   for (const d of [8, 9, 10, 11, 12, 13]) await practiseOn(page, d, ['Orrish'])
   await page.clock.setFixedTime(new Date(2026, 8, 14, 18, 0))
   await page.reload()
   await expect(page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Orrish' })).toBeVisible()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(orrish.getByTestId('aim-practice')).toContainText('6 sessions on 6 different days')
-  for (const id of COACH_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
-  expect(await rowsOf(page, 'coachAsks')).toEqual([])
+  await expect(orrish.getByTestId('coach-review-question')).toHaveText('Keep it, adjust it, or move on?')
+  await expect(orrish.getByTestId('coach-review-pending')).toHaveCount(0)
+  const asks = await rowsOf<Ask>(page, 'coachAsks')
+  expect(asks).toHaveLength(1)
+  expect(asks[0]).toMatchObject({ kind: 'review', claude: false, days: 6 })
   expect(await rowsOf(page, 'coachProposals')).toEqual([])
 })
 
-test('the skill coach, previewed (Part 40): a first skill asked for at once; Claude’s suggestion changes nothing until you choose; Another suggestion, Edit first, and the likely next on your tap', async ({ page }) => {
-  await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
+test('the skill coach as it ships since Pass 1B (Part 40): a first skill asked for at once; Claude’s suggestion changes nothing until you choose; Another suggestion, Edit first, and the likely next on your tap', async ({ page }) => {
   await startWithDirection(page)
+  await withCloudCopy(page)
   await addLearning(page, 'Orrish', '', 'A phrasebook')
   const card = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
   // Asked at once; meanwhile the one thing to work on now can be yours.
@@ -2024,9 +2034,9 @@ test('the skill coach, previewed (Part 40): a first skill asked for at once; Cla
   await expect(page.locator('#main')).not.toContainText('%')
 })
 
-test('the skill coach, previewed (Part 40): a physical goal asks one safety question first; Write my own sets a suggestion aside; Use this keeps its safety line and rest days', async ({ page }) => {
-  await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
+test('the skill coach as it ships since Pass 1B (Part 40): a physical goal asks one safety question first; Write my own sets a suggestion aside; Use this keeps its safety line and rest days', async ({ page }) => {
   await startWithDirection(page)
+  await withCloudCopy(page)
   await addLearning(page, 'Cartwheel')
   const card = page.getByTestId('aim-card').filter({ hasText: 'Cartwheel' })
   // Nothing is asked until the one question is answered or left empty.
@@ -2079,10 +2089,10 @@ test('the skill coach, previewed (Part 40): a physical goal asks one safety ques
   await expect(row.getByTestId('aim-due')).toHaveText('a rest day')
 })
 
-test('a progression review, previewed (Part 41): six different practice days with a week behind the skill, never sooner and never by sessions on one day; marked on the row and the card; Keep changes nothing; Claude’s Progress only on your tap, the goal kept', async ({ page }) => {
+test('a progression review as it ships since Pass 1B (Part 41): six different practice days with a week behind the skill, never sooner and never by sessions on one day; marked on the row and the card; Keep changes nothing; Claude’s Progress only on your tap, the goal kept', async ({ page }) => {
   test.setTimeout(240_000)
-  await page.addInitScript((k) => localStorage.setItem(k, '1'), PREVIEW)
   await startWithDirection(page)
+  await withCloudCopy(page)
   await addLearning(page, 'Cello', 'Scale of C', 'A teacher')
   await addLearning(page, 'Guitar', 'Open chords', 'A book')
   // Cello: two sessions on the 8th, then one a day to the 12th, six sessions on five days. Guitar: one a day, the 8th to the 13th.
@@ -2136,11 +2146,9 @@ test('a progression review, previewed (Part 41): six different practice days wit
 })
 
 // ─── How firm (Pass 2) ──────────────────────────────────────────────────────────────────────────
-// Built behind its gate: as the build ships, nothing shows and every line reads as it always has.
-// A test browser alone may preview it; the Worker's gate stays closed, so a preview reaches only
-// this phone's own screen.
+// Open since Pass 1B (2026-10-16): the setting under Brain, Adaptive until chosen, and the phone's own
+// line said at it.
 
-const FIRM_PREVIEW = 'life-mirror.preview.howFirm'
 const NO_SKILL = {
   balanced: 'Orrish has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.',
   supportive: 'Orrish has no current skill yet. Naming one is the first step: the one thing to work on now, on its card under Aims; it stays until you change it.',
@@ -2168,22 +2176,20 @@ async function openWhy(page: Page): Promise<void> {
   await expect(card.getByTestId('brief-why-panel')).toBeVisible()
 }
 
-test('How firm stays dark while its gate is closed: nothing under Brain, and the phone’s own line reads as it always has (Pass 2)', async ({ page }) => {
+test('How firm as it ships since Pass 1B: open for everyone with no preview, Adaptive until chosen, and the phone’s own line says how firmly it was said (Pass 2)', async ({ page }) => {
   await startWithDirection(page)
   await addLearning(page, 'Orrish')
   await checkInForTheLine(page)
   await expect(page.getByTestId('brief').getByTestId('brief-line')).toHaveText(NO_SKILL.balanced)
   await openWhy(page)
-  await expect(page.getByTestId('brief-firmness')).toHaveCount(0)
+  await expect(page.getByTestId('brief-firmness')).toHaveCount(1)
   await settingsSection(page, 'brain')
-  await expect(page.getByTestId('brain-screen')).toBeVisible()
-  await expect(page.getByTestId('brain-firm')).toHaveCount(0)
-  expect((await rowsOf<{ firmness?: string }>(page, 'briefLog')).every((l) => l.firmness === undefined)).toBe(true)
-  expect((await rowsOf<{ firmness?: string }>(page, 'brainPrefs')).every((p) => p.firmness === undefined)).toBe(true)
+  await expect(page.getByTestId('brain-firm')).toBeVisible()
+  await expect(page.getByTestId('brain-firm-adaptive')).toHaveAttribute('aria-pressed', 'true')
+  expect((await rowsOf<{ firmness?: string }>(page, 'briefLog')).some((l) => l.firmness === 'balanced')).toBe(true)
 })
 
-test('How firm, previewed (Pass 2): four settings under Brain, Adaptive until chosen, the choice kept; the phone’s own line said at each, its facts unchanged', async ({ page }) => {
-  await page.addInitScript((k) => localStorage.setItem(k, '1'), FIRM_PREVIEW)
+test('How firm (Pass 2), as it ships since Pass 1B: four settings under Brain, Adaptive until chosen, the choice kept; the phone’s own line said at each, its facts unchanged', async ({ page }) => {
   await startWithDirection(page)
   await addLearning(page, 'Orrish')
 

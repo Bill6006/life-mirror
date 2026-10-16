@@ -620,17 +620,14 @@ for (const theme of THEMES) {
 }
 
 /**
- * The skill coach (Parts 40 and 41), previewed as a test browser alone may (their gate stays
- * closed): Watercolour asked for a first skill and answered; a physical goal's one question; Cello's
+ * The skill coach (Parts 40 and 41), open since Pass 1B, with a cloud copy set up whose database is
+ * never reached: Watercolour asked for a first skill and answered; a physical goal's one question; Cello's
  * review with Claude's view and Guitar's asked neutrally, both after six practice days; Yoga with a
  * suggestion taken, its safety line and likely next kept.
  */
 async function seedCoach(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    localStorage.setItem('life-mirror.preview.skillCoach', '1')
-    // How firm (Pass 2), previewed the same way: its setting under Brain.
-    localStorage.setItem('life-mirror.preview.howFirm', '1')
-  })
+  // An ask travels through the cloud copy: one is set up below, and every request to its host is refused.
+  await page.route(/turso\.io/, (route) => route.abort())
   await page.clock.setFixedTime(new Date(2026, 8, 23, 18, 30))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
@@ -641,6 +638,12 @@ async function seedCoach(page: Page): Promise<void> {
       r.onsuccess = () => res(r.result)
       r.onerror = () => rej(r.error)
     })
+    const cloud = dbx.transaction(['settings'], 'readwrite').objectStore('settings')
+    const settings = await new Promise<Record<string, unknown> & { cloud: Record<string, unknown> }>((res) => {
+      const q = cloud.get(1)
+      q.onsuccess = () => res(q.result)
+    })
+    cloud.put({ ...settings, cloud: { ...settings.cloud, token: 'e2e-token-never-real' } })
     const tx = dbx.transaction(['aims', 'skills', 'offers', 'outcomes'], 'readwrite')
     const aims = tx.objectStore('aims')
     const skills = tx.objectStore('skills')
@@ -736,7 +739,7 @@ const COACH: typeof STATES = [
 ]
 
 for (const theme of THEMES) {
-  test(`${theme}: the dormant features read, fit and can be tapped, at three widths (Parts 40–41 and How firm, previewed)`, async ({ page }, info) => {
+  test(`${theme}: the Pass 1B features read, fit and can be tapped, at three widths (Parts 40–41 and How firm)`, async ({ page }, info) => {
     test.setTimeout(600_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedCoach(page)
