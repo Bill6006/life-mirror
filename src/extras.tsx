@@ -48,6 +48,9 @@ const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOf
  * tap on Done. "Felt close to God today?" carries its own permanent off switch. The two chips
  * about how today landed are answered at once from your own record.
  */
+/** How many times a chip was marked before, said as a sentence starts it: Once, or 3 times (stage 1, item q). */
+const timesBefore = (n: number) => (n === 1 ? copy.extras.timesOnce : fill(copy.extras.timesN, { n: String(n) }))
+
 export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; block: Block; onDone: () => void; onAway?: () => void }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
   const settings = useLive(getSettings, [])
@@ -134,10 +137,10 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
               a.times === 0
                 ? copy.extras.chipFirst
                 : a.withEvent.mean === null
-                  ? fill(copy.extras.chipTimesNoNext, { n: String(a.times) })
+                  ? fill(copy.extras.chipTimesNoNext, { times: timesBefore(a.times) })
                   : a.without.mean === null
-                    ? fill(copy.extras.chipUnmatched, { n: String(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
-                    : fill(copy.extras.chipTimes, { n: String(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+                    ? fill(copy.extras.chipUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
+                    : fill(copy.extras.chipTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
             const cooling = key === 'coolingOff' && on ? coolingOffDuration(all, day) : null
             return (
               <li key={key}>
@@ -153,7 +156,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
                 {on && (
                   <div class="calc chip-answer" data-testid="chip-answer">
                     <p class="calc-line">{answer}</p>
-                    {cooling && <p class="calc-line">{fill(copy.extras.coolingAnswer, { blocks: String(cooling.blocks), events: String(cooling.events) })}</p>}
+                    {cooling && <p class="calc-line">{fill(copy.extras.coolingAnswer, { blocks: cooling.blocks === 1 ? copy.extras.coolingBlocksOne : fill(copy.extras.coolingBlocksN, { n: String(cooling.blocks) }), events: cooling.events === 1 ? copy.extras.coolingEventsOne : fill(copy.extras.coolingEventsN, { n: String(cooling.events) }) })}</p>}
                     {key === 'bigSocial' && (gapTonight ?? 0) > 0 && (
                       <p class="calc-line" data-testid="recovery-note">
                         {copy.extras.recoveryNote}
@@ -241,6 +244,8 @@ export function TodayChips({ day, onAway }: { day: string; onAway?: () => void }
               onClick={() => void setDayContext(day, { atOffice: !ctx.atOffice })}
             />
           )}
+          {/* Unwell today (the owner's decision, 2026-10-10): optional, today alone, and never retired, since a rare mark is still the one that matters. */}
+          <ExtraRow label={copy.today.unwellToday} on={Boolean(ctx.unwell)} onLabel={copy.extras.yes} testid="chip-unwell" onClick={() => void setDayContext(day, { unwell: !ctx.unwell })} />
           {away && <ExtraRow label={copy.away.row} on={onTripToday} onLabel={trip?.state === 'away' ? fill(copy.away.untilShort, { to: formatDayShort(trip.range.to) }) : ''} testid="chip-away-from-home" onClick={() => onAway?.()} />}
         </ul>
       </div>

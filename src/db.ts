@@ -1,4 +1,4 @@
-import type { BrainPrefsBody, Lacked, LineAction } from './brainShared'
+import type { BrainPrefsBody, CitedFact, Lacked, LineAction } from './brainShared'
 import type { OutsideSession } from './outsideRow'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Firmness } from './firmness'
@@ -95,9 +95,16 @@ export interface DayContext {
    * trip gives the day them back. Absent on every other day, and on every day while the gate is closed.
    */
   awayFromHome?: { held: AwayHeld }
+  /**
+   * Unwell today (the owner's decision, 2026-10-10): one optional mark among Today, if different,
+   * a day's own and one of the learning's contexts. Absent means not marked, never well.
+   */
+  unwell?: boolean
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string
+  /** The Worker's lines and reviews first shown on screen this day, by their key, with the moment: only a line seen was said (stage 1, item m). Absent until one is. */
+  shown?: Record<string, string>
 }
 
 /**
@@ -240,6 +247,8 @@ export interface Offer {
   /** Recorded after the fact with "Did it already": a session done away from the app, started and done at the same moment. */
   logged?: boolean
   skippedAt: string | null
+  /** "Not now" on its question at a check-in: asked once more at the next one, where leaving it is said plainly (stage 1, item i). */
+  deferredAt?: string
   /** Skip's reason, given only with "Not home" on a move that needs the house (post-window, gated); absent on every other skip. */
   skipReason?: 'notHome'
   /** Set once the outcome has been asked, answered or not. */
@@ -522,6 +531,8 @@ export interface BriefLog {
   /** How firmly it was said (Pass 2), once How firm's gate is open; with adaptive set when Adaptive chose it. */
   firmness?: Firmness
   adaptive?: true
+  /** The facts it cited, in their words as they stood when it was said (stage 1, item l): what Why shows. Absent on lines from before. */
+  facts?: CitedFact[]
 }
 
 /**
@@ -582,6 +593,8 @@ export interface BrainBrief {
   /** How firmly it was said (Pass 2), once How firm's gate is open; with adaptive set when Adaptive chose it. */
   firmness?: Firmness
   adaptive?: true
+  /** The facts it cited, in their words as they stood when it was written (stage 1, item l): what Why shows. Absent on lines from before. */
+  facts?: CitedFact[]
 }
 
 /** The Brain settings (Part 30): which model writes, and what Claude may read. One row, synced, so the Worker reads it at every request. */
@@ -1214,7 +1227,7 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
 }
 
 /** Changes today alone. */
-export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay' | 'atOffice'>>): Promise<void> {
+export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay' | 'atOffice' | 'unwell'>>): Promise<void> {
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
     if (!existing) return

@@ -79,27 +79,29 @@
     {
       "id": "stress",
       "name": "Stress",
-      "prompt": "How much is pressing on you",
+      "prompt": "How heavy or urgent things feel",
+      "reworded": "2026-10-16",
       "unit": "step",
       "anchors": [
         "Loose — nothing pressing on me",
-        "Light — a task or two on my mind",
+        "Light — a little pressure, nothing urgent",
         "Middling — pressure I can carry",
-        "Wound tight — pressure most of the time",
-        "Crushing — pressure with no let-up"
+        "Wound tight — pressure I can only just carry",
+        "Crushing — more pressure than I can carry"
       ],
       "alternates": [
         "Easy — nothing pressing",
-        "Mild — a thing or two on my mind",
+        "Mild — some pressure, easy to carry",
         null,
-        "Braced — under pressure most of the time",
-        "Flattened — no let-up at all"
+        "Braced — pressure I can only just carry",
+        "Flattened — more than I can carry"
       ]
     },
     {
       "id": "overwhelm",
       "name": "Overwhelm",
-      "prompt": "How much is active in your head",
+      "prompt": "How many things are competing for your attention, even small ones",
+      "reworded": "2026-10-16",
       "unit": "step",
       "anchors": [
         "Open — barely anything",

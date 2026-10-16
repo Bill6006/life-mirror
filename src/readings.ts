@@ -13,6 +13,8 @@ export interface Reading {
   id: ReadingId
   name: string
   prompt: string
+  /** The day its words last changed (Stress and Overwhelm, 2026-10-16): answers either side may read a little differently for that alone. */
+  reworded?: string
   /** One line under the prompt where a reading is easily misread (Part 42): what it does not ask. */
   help?: string
   /** What the reading measures, in the words a writer reads beside its answers (Part 42). */

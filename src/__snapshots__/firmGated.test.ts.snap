@@ -368,18 +368,20 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
   },
   "propose-test": {
     "action": {
+      "block": "afternoon",
       "kind": "test",
-      "moveId": "spaced-review",
+      "moveId": "nap-ten",
+      "reading": "energy",
     },
     "cardIds": [
-      "spacing-effect",
+      "naps-cognition",
     ],
     "factIds": [
       "untested",
     ],
     "mode": "recommendation",
-    "score": 0.45,
-    "text": "The library holds strong evidence for Review last week's topic for ten minutes, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
+    "score": 0.3825,
+    "text": "The library holds good evidence for A ten-minute nap, alarm set, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
   },
   "say-when": {
     "action": {

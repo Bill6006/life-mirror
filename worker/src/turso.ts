@@ -1,7 +1,7 @@
 import type { QualifyReport } from './qualify'
 import { createClient } from '@libsql/client/web'
 import { OUTSIDE_APP, OUTSIDE_STORE } from '../../src/outsideRow'
-import type { LineAction } from '../../src/brainShared'
+import type { CitedFact, LineAction } from '../../src/brainShared'
 import type { CoachProposal } from '../../src/coachShared'
 import type { Firmness } from '../../src/firmness'
 import type { CoachBlock, FactSheet } from '../../src/factTypes'
@@ -29,6 +29,8 @@ export interface PlanRow {
 export interface BriefRow {
   id: string
   day: string
+  /** The facts it cited, in their words as the writer read them (stage 1, item l): what Why shows on the phone. */
+  facts?: CitedFact[]
   /** The day's line, or on Sunday the week's review beside it. */
   kind: 'brief' | 'review'
   text: string
@@ -115,6 +117,12 @@ export interface TaskRow {
   fallbackReason?: string
   /** From the fire to the stored line. */
   latencyMs?: number
+  /**
+   * The sheet as the briefing served it (stage 1, item k): every answer to the task, a retry
+   * included, is checked against exactly what Claude read, never a sheet the phone rewrote since.
+   * Stored with the task in your own database; no report shows it.
+   */
+  served?: { at: string; factsUpdatedAt: string; sheet: FactSheet; coach?: CoachBlock }
   /** A coach pick taken back where the phone reads it, when and why: its watch turned it off, it was switched off, or the monthly check's help showed. */
   withdrawn?: { at: string; reason: string }
   /** A skill coach's run (Parts 40 and 41): the phone's asks it answers. */
@@ -215,6 +223,8 @@ export interface SaidRow {
   id: string
   day: string
   text: string
+  /** When it was written: what the shown test reads (stage 1, item m). */
+  at?: string
 }
 
 export interface FeedbackRow {
@@ -306,7 +316,7 @@ export function tursoStore(url: string, token: string): Store {
     },
     async readSaid(limit) {
       const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = 'briefs' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
-      return r.map((row) => ({ id: String(row.id), ...(parse<{ day: string; text: string }>(row.body) ?? { day: '', text: '' }) })).filter((s) => s.text)
+      return r.map((row) => ({ id: String(row.id), ...(parse<{ day: string; text: string; at?: string }>(row.body) ?? { day: '', text: '' }) })).filter((s) => s.text)
     },
     async readBriefs(limit) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'briefs' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
@@ -492,7 +502,7 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
       return live(BRAIN_APP, 'briefs')
         .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
         .slice(0, limit)
-        .map((r) => ({ id: r.id, ...(parse<{ day: string; text: string }>(r.body) ?? { day: '', text: '' }) }))
+        .map((r) => ({ id: r.id, ...(parse<{ day: string; text: string; at?: string }>(r.body) ?? { day: '', text: '' }) }))
     },
     async readBriefs(limit) {
       return live(BRAIN_APP, 'briefs')

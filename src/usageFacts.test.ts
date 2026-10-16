@@ -68,10 +68,13 @@ describe('the screens', () => {
 
 describe('the line, Change, the coach, plans, skips and setup', () => {
   it('set the line’s tap against the days it was offered, and count Why', () => {
-    const briefs = [{ id: 'a', kind: 'brief', day: '2026-10-15', action: { kind: 'depth', value: 'short' } }, { id: 'b', kind: 'brief', day: '2026-10-17', action: { kind: 'depth', value: 'short' } }] as unknown as BrainBrief[]
+    // The Worker's line of the 15th was written before its shown mark existed, so it counts as said; the 17th's, once shown (stage 1, item m).
+    const briefs = [{ id: 'a', kind: 'brief', day: '2026-10-15', at: '2026-10-15T09:15:00.000Z', action: { kind: 'depth', value: 'short' } }, { id: 'b', kind: 'brief', day: '2026-10-17', at: '2026-10-17T09:15:00.000Z', action: { kind: 'depth', value: 'short' } }] as unknown as BrainBrief[]
+    const contexts = [{ day: '2026-10-17', shown: { 'worker:b': '2026-10-17T12:00:00.000Z' } }]
     const log = [{ id: 1, day: '2026-10-18', action: { kind: 'depth', value: 'short' }, shownAt: '2026-10-18T12:00:00.000Z' }] as unknown as BriefLog[]
     const rows = [began, row('2026-10-17', 'lineAction', 'depth'), row('2026-10-19', 'lineAction', 'depth'), row('2026-10-14', 'lineWhy'), row('2026-10-15', 'lineWhy'), row('2026-10-16', 'lineWhy'), row('2026-10-18', 'lineWhy')]
-    expect(byId(usageFacts(input({ rows, briefs, log }), TODAY), 'usage.line')).toEqual({ id: 'usage.line', tags: [], text: 'The line’s one tap: offered on 3 of the 7 days to yesterday, taken on 1 of them. Why under the line: opened 4 times.', values: { days: 7, offered: 3, taken: 1, why: 4 } })
+    expect(byId(usageFacts(input({ rows, briefs, log }), TODAY), 'usage.line')?.values).toMatchObject({ offered: 2, taken: 0 })
+    expect(byId(usageFacts({ ...input({ rows, briefs, log }), contexts }, TODAY), 'usage.line')).toEqual({ id: 'usage.line', tags: [], text: 'The line’s one tap: offered on 3 of the 7 days to yesterday, taken on 1 of them. Why under the line: opened 4 times.', values: { days: 7, offered: 3, taken: 1, why: 4 } })
   })
 
   it('count Change opened and a rep chosen there, and the openings that ended without one; nothing when no path is on and Change was never opened', () => {
@@ -94,6 +97,9 @@ describe('the line, Change, the coach, plans, skips and setup', () => {
     const intentions = [plan(1, '2026-09-01', null), plan(1, '2026-10-01', 101), plan(1, '2026-10-05', 102), plan(1, '2026-10-10', null), plan(1, '2026-10-19', null), plan(2, '2026-10-02', null), plan(2, '2026-10-03', null), plan(3, '2026-10-04', 103)]
     const outcomes = [{ offerId: 101, outcome: 'done' }, { offerId: 102, outcome: 'partly' }, { offerId: 103, outcome: 'done' }] as Outcome[]
     expect(byId(usageFacts(input({ aims, intentions, outcomes }), TODAY), 'usage.plans')).toEqual({ id: 'usage.plans', tags: [], text: 'Plans in the 28 days to yesterday: 4 made, 2 of them started, 1 done.', values: { days: 28, planned: 4, started: 2, done: 1 } })
+    // A plan replaced the same day is neither a second plan nor one left unstarted (stage 1, item c).
+    const replaced = { ...plan(1, '2026-10-05', null), setAt: '2026-10-05T09:00:00.000Z' }
+    expect(byId(usageFacts(input({ aims, intentions: [replaced, ...intentions], outcomes }), TODAY), 'usage.plans')?.values).toEqual({ days: 28, planned: 4, started: 2, done: 1 })
   })
 
   it('name the kinds of suggestion skipped again and again, three times or more and at least half the times offered; never faith, the Partner path, her moves or study', () => {

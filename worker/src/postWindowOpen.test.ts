@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-// The Worker's side of Away from home once its gate is open (post-window): opened here for the test
-// alone, by standing in for the shared gate. While it ships closed, postWindowGated.test.ts holds
-// every prompt, day record and verdict as it was.
+// The Worker's side of Away from home with its gate open, as it ships since stage 1 (2026-10-16). The
+// stand-in below names the open gate the test is about, so it holds whatever the shipped value.
 vi.mock('../../src/postWindow', async (original) => ({ ...(await original<typeof import('../../src/postWindow')>()), AWAY_FROM_HOME: 'open', HOME_ONLY: 'open' }))
 
 const { readBrainPrefs } = await import('../../src/brainShared')

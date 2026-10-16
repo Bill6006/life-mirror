@@ -82,31 +82,96 @@ describe('one follow-up at the moment of decision', () => {
   })
 })
 
-describe('the check-in ping', () => {
-  const pingEnv = { TIMEZONE: 'America/New_York', PING_TIMES: '07:30, 13:00,19:30' }
+/** Your settings as the phone copies them to the cloud: only what the pings and cues read. */
+function settings(body: Record<string, unknown>) {
+  return { app: APP, store: 'settings', id: '1', day: null, body: JSON.stringify({ id: 1, frequency: 'three', quietStart: '22:00', quietEnd: '07:00', reminders: { enabled: true, times: { morning: '07:30', afternoon: '13:00', evening: '19:30' } }, ...body }), updated_at: '2026-09-18T12:00:00.000Z', deleted: 0 as const, synced_at: '2026-09-18T12:00:00.000Z' }
+}
 
-  it('goes once inside the quarter hour that starts at each time, content-free, and never twice', async () => {
+function aimRow(id: string, body: Record<string, unknown>) {
+  return { app: APP, store: 'aims', id, day: null, body: JSON.stringify({ id: Number(id), kind: 'certification', archivedAt: null, ...body }), updated_at: '2026-09-18T12:00:00.000Z', deleted: 0 as const, synced_at: '2026-09-18T12:00:00.000Z' }
+}
+
+describe('the check-in ping (stage 1, item b: your own reminder times, and nothing while reminders are off)', () => {
+  it('goes once inside the quarter hour that starts at each of your reminder times, content-free, and never twice', async () => {
     const store = memoryStore()
+    store.put(settings({ reminders: { enabled: true, times: { morning: '07:40', afternoon: '13:15', evening: '19:45' } } }))
     const sent: string[] = []
     const send = async (payload: string) => {
       sent.push(payload)
       return true
     }
-    // 19:30 in New York on 18 September is 23:30 UTC.
-    expect(await runPings(pingEnv, store, new Date('2026-09-18T23:30:00Z'), send)).toEqual({ sent: true, due: '19:30', reason: 'sent' })
+    // 19:45 in New York on 18 September is 23:45 UTC; 19:30, the old fixed time, is no ping time now.
+    expect(await runPings(env, store, new Date('2026-09-18T23:30:00Z'), send)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
+    expect(await runPings(env, store, new Date('2026-09-18T23:45:00Z'), send)).toEqual({ sent: true, due: '19:45', reason: 'sent' })
     expect(sent).toEqual(['{"kind":"ping"}'])
-    expect(await runPings(pingEnv, store, new Date('2026-09-18T23:40:00Z'), send)).toEqual({ sent: false, due: '19:30', reason: 'sent already' })
-    expect(await runPings(pingEnv, store, new Date('2026-09-18T23:45:00Z'), send)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
-    // The next morning's 07:30 is its own ping.
-    expect((await runPings(pingEnv, store, new Date('2026-09-19T11:30:00Z'), send)).sent).toBe(true)
+    expect(await runPings(env, store, new Date('2026-09-18T23:55:00Z'), send)).toEqual({ sent: false, due: '19:45', reason: 'sent already' })
+    expect(await runPings(env, store, new Date('2026-09-19T00:00:00Z'), send)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
+    // The next morning's 07:40 is its own ping, at the 07:45 tick.
+    expect((await runPings(env, store, new Date('2026-09-19T11:45:00Z'), send)).sent).toBe(true)
     expect(sent).toHaveLength(2)
+  })
+
+  it('sends nothing at all while reminders are off, at any of the times, and nothing before the phone has copied its settings (their default is off)', async () => {
+    const off = memoryStore()
+    off.put(settings({ reminders: { enabled: false, times: { morning: '07:30', afternoon: '13:00', evening: '19:30' } } }))
+    const none = memoryStore()
+    let calls = 0
+    const send = async () => {
+      calls++
+      return true
+    }
+    for (const at of ['2026-09-18T11:30:00Z', '2026-09-18T17:00:00Z', '2026-09-18T23:30:00Z']) {
+      expect(await runPings(env, off, new Date(at), send)).toEqual({ sent: false, due: null, reason: 'reminders are off' })
+      expect(await runPings(env, none, new Date(at), send)).toEqual({ sent: false, due: null, reason: 'reminders are off' })
+    }
+    expect(calls).toBe(0)
+  })
+
+  it('pings only the check-ins the day holds, and never in quiet hours', async () => {
+    const two = memoryStore()
+    two.put(settings({ frequency: 'two' }))
+    const send = async () => true
+    // Morning and evening only: 13:00 holds no check-in.
+    expect(await runPings(env, two, new Date('2026-09-18T17:00:00Z'), send)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
+    expect((await runPings(env, two, new Date('2026-09-18T23:30:00Z'), send)).sent).toBe(true)
+    // An evening reminder at 22:30 with quiet hours from 22:00: no ping.
+    const late = memoryStore()
+    late.put(settings({ reminders: { enabled: true, times: { morning: '07:30', afternoon: '13:00', evening: '22:30' } } }))
+    expect(await runPings(env, late, new Date('2026-09-19T02:30:00Z'), send)).toEqual({ sent: false, due: '22:30', reason: 'quiet hours' })
   })
 
   it('says why when it cannot send, and marks nothing', async () => {
     const store = memoryStore()
-    expect(await runPings(pingEnv, store, new Date('2026-09-18T17:00:00Z'), null)).toEqual({ sent: false, due: '13:00', reason: 'no push address or key' })
-    expect(await runPings(pingEnv, store, new Date('2026-09-18T17:00:00Z'), async () => false)).toEqual({ sent: false, due: '13:00', reason: 'the push service refused it' })
-    expect(await runPings({ TIMEZONE: 'America/New_York' }, store, new Date('2026-09-18T17:00:00Z'), async () => true)).toEqual({ sent: false, due: null, reason: 'not a ping time' })
-    expect(store.rows.size).toBe(0)
+    store.put(settings({}))
+    const before = store.rows.size
+    expect(await runPings(env, store, new Date('2026-09-18T17:00:00Z'), null)).toEqual({ sent: false, due: '13:00', reason: 'no push address or key' })
+    expect(await runPings(env, store, new Date('2026-09-18T17:00:00Z'), async () => false)).toEqual({ sent: false, due: '13:00', reason: 'the push service refused it' })
+    expect(store.rows.size).toBe(before)
+  })
+})
+
+describe('a plan cue keeps quiet hours and skips a commitment at rest (stage 1, item b)', () => {
+  it('sends nothing for a plan whose moment falls in quiet hours, and no follow-up into them', async () => {
+    const store = memoryStore()
+    store.put(settings({ quietStart: '20:30', quietEnd: '07:00' }))
+    store.put(plan('5', { time: '20:40' }))
+    const send = async () => true
+    expect(await runCues(env, store, new Date('2026-09-19T00:45:00Z'), send)).toEqual({ sent: false, due: [], followUps: [], reason: 'nothing due' })
+    // Reminded at 20:00, before quiet hours: the follow-up at 20:45 would fall inside them.
+    const early = memoryStore()
+    early.put(settings({ quietStart: '20:30', quietEnd: '07:00' }))
+    early.put(plan('6', {}))
+    expect((await runCues(env, early, AT_2005, send)).due).toEqual(['6'])
+    expect((await runCues(env, early, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual([])
+  })
+
+  it('never cues a paused or archived commitment; one not yet in the cloud copy is cued', async () => {
+    const store = memoryStore()
+    store.put(plan('5', { aimId: 1 }))
+    store.put(plan('6', { aimId: 2 }))
+    store.put(plan('7', { aimId: 3 }))
+    store.put(aimRow('1', { pausedAt: '2026-09-17T12:00:00.000Z' }))
+    store.put(aimRow('2', { archivedAt: '2026-09-17T12:00:00.000Z' }))
+    expect(await runCues(env, store, AT_2005, async () => true)).toEqual({ sent: true, due: ['7'], followUps: [], reason: 'sent' })
   })
 })

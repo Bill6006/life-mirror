@@ -13,11 +13,16 @@ import { ensureOffer, recordOutcome, todayState } from './offerFlow'
 import { blockReadings, type Answers, type Position } from './readings'
 
 // The two features agreed for after the clean window (home-only moves with Skip's "Not home", and
-// Away from home) are built behind closed gates. Recorded before either was built and held fixed
-// while both gates are closed: the day's sheet the monitored prompts are built from, the coach
+// Away from home) were built behind gates, opened at stage 1 (2026-10-16). With both closed, as here
+// by standing in for the shared gate, held fixed (recorded before either was built, and again at
+// stage 1 with that stage's own changes): the day's sheet the monitored prompts are built from, the coach
 // block, every draw, every candidate set and every day's shape must not move by a byte. The record
 // already holds what the features would store once open (a trip saved in Settings, days shaped by
 // it, a skip given "Not home"), so these snapshots also prove the closed gates read none of it.
+
+// Closed here by standing in for the shared gate (open as it ships since stage 1, 2026-10-16), so each
+// test below reads the feature closed, then opened through the preview, exactly as it always did.
+vi.mock('./postWindow', async (original) => ({ ...(await original<typeof import('./postWindow')>()), HOME_ONLY: 'gated', AWAY_FROM_HOME: 'gated' }))
 
 const DAY = '2026-10-07'
 const NOW = new Date(2026, 9, 7, 7, 45)
@@ -52,7 +57,7 @@ function awayShaped(ctx: DayContext): DayContext {
 
 const digest = (lines: readonly string[]) => createHash('sha256').update(lines.join('\n')).digest('hex')
 
-describe('the record the monitored prompts are built from, held fixed while the post-window features are gated', () => {
+describe('the record the monitored prompts are built from, held fixed with the post-window features closed', () => {
   let settings: Settings
 
   beforeAll(async () => {

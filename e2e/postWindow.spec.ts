@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// The two features agreed for after the clean window, built behind closed gates (the owner's word,
-// 2026-10-04): home-only moves with Skip's "Not home", and Away from home. Closed, as they ship,
-// nothing of either shows or is stored. Previewed, as only an automated browser may, each works end
-// to end; a preview reaches nothing but this browser's own screen and store.
+// The two features agreed for after the clean window, built behind gates (the owner's word,
+// 2026-10-04): home-only moves with Skip's "Not home", and Away from home. Open as they ship since
+// stage 1 (2026-10-16), at the owner's word once Pass 1B was complete: each works end to end with no
+// preview at all. The tests below still name the previews they were written with; an open gate needs
+// none, and closed, nothing of either shows or is stored (postWindow.test.ts and postWindowGated.test.ts).
 
 const HOME = 'life-mirror.preview.homeOnly'
 const AWAY = 'life-mirror.preview.away'
@@ -121,41 +122,34 @@ async function storeTrip(page: Page): Promise<void> {
   await page.reload()
 }
 
-test('closed, as both ship: no trip row, no "Not home", no needs-home, and nothing of either stored or read, a trip stored or not', async ({ page }) => {
+test('open as both ship since stage 1 (2026-10-16), with no preview at all: the trip row, the house among a move’s needs, and Skip’s “Not home”', async ({ page }) => {
   await start(page, [])
-  // Even with a trip already stored, the closed gate reads none of it: today is shaped by the week alone.
-  await storeTrip(page)
-  await expect(page.getByTestId('away-line')).toHaveCount(0)
-  await expect.poll(async () => (await rowsOf<{ day: string }>(page, 'days')).some((d) => d.day === '2026-10-14')).toBe(true)
-  expect((await rowsOf(page, 'days')).every((d) => !('awayFromHome' in d))).toBe(true)
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await expect(page.getByTestId('settings-week')).toBeVisible()
-  await expect(page.getByTestId('settings-away')).toHaveCount(0)
-  // The catalogue lists the windows with no need of the house.
+  await expect(page.getByTestId('settings-away')).toBeVisible()
+  // The catalogue lists the windows with the house among their needs.
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Read the catalogue/ }).click()
-  await expect(page.locator('#move-open-windows .move-meta').first()).toContainText('needs nothing')
-  expect(await page.getByText(/needs home/).count()).toBe(0)
+  await expect(page.locator('#move-open-windows .move-meta').first()).toContainText('needs home')
   await page.getByRole('button', { name: 'Done', exact: true }).last().click()
 
   await checkIn(page)
   await expect(page.getByTestId('chip-office')).toBeVisible()
-  await expect(page.getByTestId('chip-away-from-home')).toHaveCount(0)
+  await expect(page.getByTestId('chip-away-from-home')).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
   await liveMoveIs(page, 'open-windows')
   const card = page.getByTestId('move-card').filter({ hasText: 'Open the windows for ten minutes' })
-  await expect(card.getByTestId('move-facts')).toContainText('needs nothing')
-  await expect(card.getByTestId('move-skip')).toBeVisible()
-  await expect(card.getByTestId('move-not-home')).toHaveCount(0)
-  await expect(page.getByTestId('away-line')).toHaveCount(0)
-  await card.getByTestId('move-skip').click()
-  await expect(page.getByTestId('move-card').filter({ hasText: 'Open the windows for ten minutes' })).toHaveCount(0)
+  await expect(card.getByTestId('move-facts')).toContainText('needs home')
+  await expect(card.getByTestId('move-not-home')).toHaveText('Not home · show another')
+  await card.getByTestId('move-not-home').click()
+  await expect(card).toHaveCount(0)
+  expect((await rowsOf<OfferRow>(page, 'offers')).find((o) => o.moveId === 'open-windows')?.skipReason).toBe('notHome')
 
-  const offers = await rowsOf<OfferRow>(page, 'offers')
-  expect(offers.find((o) => o.moveId === 'open-windows')?.skippedAt).not.toBeNull()
-  expect(offers.every((o) => o.skipReason === undefined)).toBe(true)
-  expect((await rowsOf(page, 'days')).every((d) => !('awayFromHome' in d))).toBe(true)
+  // A trip stored, with no preview: today is shaped by it and says so.
+  await storeTrip(page)
+  await expect(page.getByTestId('away-line')).toBeVisible()
+  await expect.poll(async () => (await rowsOf<{ day: string; awayFromHome?: unknown }>(page, 'days')).find((d) => d.day === '2026-10-14')?.awayFromHome ?? null).not.toBeNull()
 })
 
 test('Away from home, previewed: set in its own screen, said on Now and in the check-in, and ended in one tap', async ({ page }) => {

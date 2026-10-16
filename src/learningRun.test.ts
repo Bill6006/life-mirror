@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db, type CheckIn, type Offer } from './db'
-import { beliefsFor, bigSocialToday, evidence, runLearning, tierOfCard } from './learningFlow'
+import { beliefsFor, bigSocialToday, evidence, knowsCounts, runLearning, tierOfCard } from './learningFlow'
 import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -52,5 +52,24 @@ describe('the daily run and the null offer', () => {
     await db.checkins.add({ ...ci('2026-09-13', 'evening', 3), extras: { bigSocial: true } })
     expect(await bigSocialToday('2026-09-13')).toBe(true)
     expect(await bigSocialToday('2026-09-14')).toBe(false)
+  })
+})
+
+describe('Now’s “how much it knows” line, counted from the record (stage 1, item p)', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+
+  it('counts the moves done or partly done at least once, never Nothing extra or a No, and the tests set', async () => {
+    expect(await knowsCounts()).toEqual({ tried: 0, tests: 0 })
+    const out = (offerId: number, moveId: string, outcome: 'done' | 'partly' | 'no') => db.outcomes.add({ offerId, moveId, day: '2026-09-10', block: 'afternoon', at: '2026-09-10T18:00:00.000Z', outcome, why: null, passiveOutcome: null })
+    await out(1, 'walk-ten', 'done')
+    await out(2, 'walk-ten', 'partly')
+    await out(3, 'green-walk', 'partly')
+    await out(4, 'dim-lights-hour', 'no')
+    await out(5, NOTHING, 'done')
+    await db.cards.add({ createdAt: '2026-09-10T18:00:00.000Z', situationKey: 'afternoon:mood', block: 'afternoon', target: 'mood', moveId: 'walk-ten', alternativeId: NOTHING, window: 'nextBlock', worthwhile: 1 })
+    expect(await knowsCounts()).toEqual({ tried: 2, tests: 1 })
   })
 })

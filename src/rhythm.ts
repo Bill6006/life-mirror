@@ -19,6 +19,30 @@ export interface Rhythm {
 export const MAX_PER_WEEK = 7
 export const MAX_REST_DAYS = 2
 
+/** The most rest days between sessions that still lets `perWeek` of them fit in a week (stage 1, item n). */
+export function maxRestFor(perWeek: number): number {
+  return Math.max(0, Math.min(MAX_REST_DAYS, Math.floor(7 / Math.max(1, perWeek)) - 1))
+}
+
+/**
+ * The days a commitment's own spacing allows between sessions (stage 1, item e): with fixed days,
+ * the longest stretch between two of them; with a rhythm, seven days over its sessions a week, never
+ * less than its rest; one with neither.
+ */
+export function intervalOf(rhythm: Rhythm | null, schedule: readonly Weekday[]): number {
+  if (schedule.length) {
+    let longest = 0
+    for (let k = 0; k < schedule.length; k++) longest = Math.max(longest, (k + 1 < schedule.length ? schedule[k + 1] : schedule[0] + 7) - schedule[k])
+    return longest
+  }
+  return rhythm ? Math.max(rhythm.restDays + 1, Math.ceil(7 / rhythm.perWeek)) : 1
+}
+
+/** The days without a session that make a stall: a whole interval missed past the one it allows, and never sooner than `floor` days, a week unless a line says otherwise (stage 1, item e). */
+export function stallAfter(interval: number, floor = 7): number {
+  return Math.max(floor, 2 * interval)
+}
+
 /** A rhythm as stored, kept only when it makes sense; anything else reads as none (flexible). */
 export function rhythmOf(v: unknown): Rhythm | null {
   if (!v || typeof v !== 'object') return null

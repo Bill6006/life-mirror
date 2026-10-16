@@ -2629,11 +2629,13 @@ button.chip {
   color: var(--ink);
 }
 
-/* The Caffeine item: four bands, one tap, and its helper text under them. */
+/* The Caffeine item: four bands, one tap, and its helper text under them. Wrapped into two rows, each
+   chip's 48 px target reaches 5 px past its 38 px face, so rows sit 11 px apart: the targets never
+   overlap, with a pixel to spare (stage 1, item r). */
 .caffeine-bands {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 11px 6px;
   margin-bottom: 10px;
 }
 

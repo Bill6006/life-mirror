@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { skillsOf } from './ladder'
-import { becoming, blockedBy, cueCounts, cuesFor, EASE_UNUSED_RETIRES, easeRetired, followThrough, lastDoneDay, lastLine, lastPracticeDay, NO_SKILL, planFor, practiceOn, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
+import { becoming, blockedBy, cueCounts, cuesFor, EASE_UNUSED_RETIRES, easeRetired, followThrough, lastDoneDay, lastLine, lastPracticeDay, latestPlans, NO_SKILL, planFor, practiceOn, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
 import { dayKey } from './blocks'
 import { moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { Aim, Cue, Intention, Offer, Outcome, RungMark, Skill, StudyNight, Win } from './db'
@@ -138,6 +138,21 @@ describe('one tap says when', () => {
     expect(cuesFor({ withHer: true, pickupTime: null, soloUntil: '20:00' }, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['afterBedtime', 'nextCheckIn'])
     expect(cuesFor(null, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['nextCheckIn'])
     expect(cuesFor(ctx, new Date(2026, 8, 8, 1, 0))).toEqual([])
+  })
+
+  it('names only a check-in the day holds, at its reminder time while reminders are on (stage 1, item d)', () => {
+    const at9 = new Date(2026, 8, 7, 9, 0)
+    const reminders = { enabled: true, times: { morning: '07:30', afternoon: '13:15', evening: '19:45' } }
+    const next = (checkIns: Parameters<typeof cuesFor>[0] extends infer C ? (C extends { checkIns?: infer K } ? K : never) : never, now = at9) => cuesFor({ ...ctx, checkIns }, now).find((c) => c.cue === 'nextCheckIn') ?? null
+    // Three check-ins, reminders on: the afternoon, at its reminder time.
+    expect(next({ frequency: 'three', reminders })).toEqual({ cue: 'nextCheckIn', time: '13:15' })
+    // Morning and evening only, or the evening alone: the next one the day holds is the evening.
+    expect(next({ frequency: 'two', reminders })).toEqual({ cue: 'nextCheckIn', time: '19:45' })
+    expect(next({ frequency: 'one', reminders })).toEqual({ cue: 'nextCheckIn', time: '19:45' })
+    // Reminders off: when its block begins.
+    expect(next({ frequency: 'two', reminders: { ...reminders, enabled: false } })).toEqual({ cue: 'nextCheckIn', time: '17:00' })
+    // In the evening there is none after it.
+    expect(next({ frequency: 'three', reminders }, new Date(2026, 8, 7, 20, 30))).toBeNull()
     // A day she is away offers neither after pickup nor after her bedtime (Part 33).
     expect(cuesFor({ ...ctx, withHer: false }, new Date(2026, 8, 7, 9, 0)).map((c) => c.cue)).toEqual(['nextCheckIn'])
   })
@@ -227,5 +242,15 @@ describe('several study subjects', () => {
     expect(keysOf(a, [a, b])).toEqual(['aim:certification:1', 'aim:certification:1:unblock', 'aim:certification', 'aim:certification:unblock'])
     expect(keysOf(b, [a, b])).toEqual(['aim:certification:2', 'aim:certification:2:unblock'])
     expect(keyFor({ id: 5, kind: 'person', stepMoveId: 'call-not-text', createdAt: '', archivedAt: null })).toBe('aim:person')
+  })
+})
+
+describe('the plan that counts for a commitment and day (stage 1, item c)', () => {
+  it('is the latest set, so a plan replaced the same day is never reminded of, counted or called missed', () => {
+    const p = (id: number, aimId: number, day: string, setAt: string, offerId: number | null = null) => ({ id, aimId, day, cue: 'nextCheckIn' as const, time: '19:00', setAt, offerId })
+    const plans = [p(1, 1, '2026-09-07', '2026-09-07T12:00:00.000Z'), p(2, 1, '2026-09-07', '2026-09-07T13:00:00.000Z', 40), p(3, 2, '2026-09-07', '2026-09-07T12:30:00.000Z'), p(4, 1, '2026-09-08', '2026-09-08T09:00:00.000Z'), p(5, 2, '2026-09-07', '2026-09-07T12:30:00.000Z')]
+    // Commitment 1 on the 7th: the started replacement, never the plan it replaced; a tie on the moment set goes to the later record.
+    expect(latestPlans(plans).map((x) => x.id)).toEqual([5, 2, 4])
+    expect(latestPlans([])).toEqual([])
   })
 })

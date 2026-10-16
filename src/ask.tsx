@@ -16,6 +16,8 @@ export interface Answer {
   passiveOutcome: 'done' | 'no' | null
   /** A learning session's one optional tap on how it went (Workstream 6), after Done or Partly. */
   ease: Ease | null
+  /** Not now: asked once more at the next check-in, nothing recorded (stage 1, item i). */
+  later?: boolean
 }
 
 const EASES: readonly Ease[] = ['hard', 'right', 'easy']
@@ -92,9 +94,15 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
             </ul>
           </div>
           <div class="actions">
-            <button type="button" class="textbtn" onClick={() => onAnswer({ outcome: null, why: null, passiveOutcome: null, ease: null })}>
-              {c.skip}
-            </button>
+            {offer.deferredAt ? (
+              <button type="button" class="textbtn" data-testid="outcome-leave" onClick={() => onAnswer({ outcome: null, why: null, passiveOutcome: null, ease: null })}>
+                {c.leaveUnanswered}
+              </button>
+            ) : (
+              <button type="button" class="textbtn" data-testid="outcome-later" onClick={() => onAnswer({ outcome: null, why: null, passiveOutcome: null, ease: null, later: true })}>
+                {c.skip}
+              </button>
+            )}
           </div>
         </>
       )}

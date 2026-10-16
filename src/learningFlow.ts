@@ -279,3 +279,10 @@ export function outcomesOf(outcomes: readonly Outcome[], offerId: number): Outco
 }
 
 export type { Observation, Declaration }
+
+/** What Now's "how much it knows" line counts (stage 1, item p): the moves done or partly done at least once, and the tests set. */
+export async function knowsCounts(): Promise<{ tried: number; tests: number }> {
+  const [outcomes, tests] = await Promise.all([db.outcomes.toArray(), db.cards.count()])
+  const tried = new Set(outcomes.filter((o: Outcome) => (o.outcome === 'done' || o.outcome === 'partly') && o.moveId !== NOTHING && hasMove(o.moveId)).map((o) => o.moveId)).size
+  return { tried, tests }
+}

@@ -1,16 +1,19 @@
-import { describe, expect, it } from 'vitest'
-import { readBrainPrefs } from '../../src/brainShared'
-import { AWAY_FROM_HOME } from '../../src/postWindow'
-import { accessFor, gatesFrom, readCategory } from './retrieval'
-import { APP, memoryStore } from './turso'
+import { describe, expect, it, vi } from 'vitest'
 
-// The Worker's side of Away from home as it ships, its gate closed: a day stored with a trip's mark
-// reads as it always did. Its open side is postWindowOpen.test.ts.
+// The Worker's side of Away from home with its gate closed, as it shipped until stage 1 (2026-10-16):
+// closed here by standing in for the shared gate, a day stored with a trip's mark reads as it always
+// did. Its open side, as it ships, is postWindowOpen.test.ts.
+vi.mock('../../src/postWindow', async (original) => ({ ...(await original<typeof import('../../src/postWindow')>()), AWAY_FROM_HOME: 'gated', HOME_ONLY: 'gated' }))
+
+const { readBrainPrefs } = await import('../../src/brainShared')
+const { AWAY_FROM_HOME } = await import('../../src/postWindow')
+const { accessFor, gatesFrom, readCategory } = await import('./retrieval')
+const { APP, memoryStore } = await import('./turso')
 
 type Store = ReturnType<typeof memoryStore>
 const put = (store: Store, s: string, id: string, day: string | null, body: unknown) => store.put({ app: APP, store: s, id, day, body: JSON.stringify(body), updated_at: '', deleted: 0, synced_at: '' })
 
-describe('Away from home in the Worker, closed as it ships', () => {
+describe('Away from home in the Worker, closed', () => {
   it('reads a day stored with a trip’s mark exactly as before', async () => {
     expect(AWAY_FROM_HOME).toBe('gated')
     const store = memoryStore()

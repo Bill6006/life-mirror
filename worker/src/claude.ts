@@ -1,6 +1,6 @@
 import { isUsageFact } from '../../src/useShared'
-import { isWriterModel, lackedOf, readBrainPrefs, validateReview, type BrainOutput, type ReviewOutput } from '../../src/brainShared'
-import { coachCore, lineBriefing, type CoachCoreKey, type LineBriefing, type Said } from './briefing'
+import { citedFacts, isWriterModel, lackedOf, readBrainPrefs, validateReview, type BrainOutput, type ReviewOutput } from '../../src/brainShared'
+import { coachCore, lineBriefing, relabel, type CoachCoreKey, type LineBriefing, type Said } from './briefing'
 import { lineCheck, saidLately } from './checks'
 import { checkCoach, rowOf } from './coachCheck'
 import { surfaceGuard, type Surface } from './surface'
@@ -10,7 +10,7 @@ import { claudeBriefingText, claudeInstructions, coachBriefingText, parseOutput 
 import { coachFirmness, DEFAULT_FIRMNESS, HOW_FIRM, type Firmness, type FirmnessPref } from '../../src/firmness'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, logUsageOnSheet, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
 import { addDays } from './time'
-import type { FactSheet } from '../../src/factTypes'
+import type { CoachBlock, FactSheet } from '../../src/factTypes'
 import type { BriefRow, Store, TaskRow } from './turso'
 
 // Claude writes the line; the Worker stays in charge (Parts 30 and 31). When a line or the Sunday
@@ -162,15 +162,30 @@ async function openTask(deps: Deps, task: unknown, day: unknown): Promise<{ ok: 
 interface Run {
   t: TaskRow
   b: LineBriefing
+  /** The sheet the briefing serves, kept with the task at its first serving (stage 1, item k). */
+  served: NonNullable<TaskRow['served']>
   access: Access
   catalogue: Catalogue
   /** Everything said lately, for the repeat check, whatever Claude may read. */
   said: Said[]
 }
 
+/**
+ * The sheet a task is answered from (stage 1, item k): the one its briefing first served, kept with
+ * the task, or, before any serving, the day's sheet as it stands now.
+ */
+async function servedFacts(deps: Deps, t: TaskRow): Promise<{ sheet: FactSheet; updatedAt: string; coach?: CoachBlock } | null> {
+  if (t.served) return { sheet: t.served.sheet, updatedAt: t.served.factsUpdatedAt, ...(t.served.coach ? { coach: t.served.coach } : {}) }
+  return deps.store.readFacts(t.factsDay)
+}
+
+function servedOf(deps: Deps, t: TaskRow, facts: { sheet: FactSheet; updatedAt: string; coach?: CoachBlock }): NonNullable<TaskRow['served']> {
+  return t.served ?? { at: deps.now.toISOString(), factsUpdatedAt: facts.updatedAt, sheet: facts.sheet, ...(facts.coach ? { coach: facts.coach } : {}) }
+}
+
 /** The briefing for a task, built the same way for its GET and its POST, so a line is checked against exactly what was served. */
 async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } | { ok: false; reply: Reply }> {
-  const facts = await deps.store.readFacts(t.factsDay)
+  const facts = await servedFacts(deps, t)
   if (!facts) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is missing` }) }
   if (deps.now.getTime() - Date.parse(facts.updatedAt) > MAX_FACTS_AGE_MS) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is stale (${facts.updatedAt})` }) }
   const [settings, prefs, catalogue, library] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher), loadLibrary(deps.env.LIBRARY_URL, deps.fetcher)])
@@ -180,11 +195,13 @@ async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } 
   const task = t.task === 'review' ? 'review' : 'line'
   const built = lineBriefing({ task, writer: 'claude', sheet, forDay: t.day, cards: retrieve(library, sheet, task === 'review' ? 16 : 12), said: access.allowed('brainHistory') ? said : [], writerModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', gates: access.gates, firm: firmOf(deps, prefs) })
   if (!built.ok) return { ok: false, reply: reply(409, { error: built.reason }) }
-  return { ok: true, run: { t, b: built.briefing, access, catalogue, said } }
+  return { ok: true, run: { t, b: built.briefing, access, catalogue, said, served: servedOf(deps, t, facts) } }
 }
 
 interface CoachRun {
   core: Partial<Record<CoachCoreKey, unknown>>
+  /** The sheet and coach block the briefing serves, kept with the task at its first serving (stage 1, item k). */
+  served: NonNullable<TaskRow['served']>
   row: { path: string; candidates: string[] }
   sheet: FactSheet
   access: Access
@@ -200,7 +217,7 @@ interface CoachRun {
  * task may read under the owner's switches and the governing rules.
  */
 async function coachRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: CoachRun } | { ok: false; reply: Reply }> {
-  const facts = await deps.store.readFacts(t.factsDay)
+  const facts = await servedFacts(deps, t)
   if (!facts?.coach) return { ok: false, reply: reply(409, { error: `no coach block for ${t.factsDay}` }) }
   if (deps.now.getTime() - Date.parse(facts.updatedAt) > MAX_FACTS_AGE_MS) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is stale (${facts.updatedAt})` }) }
   const core = coachCore(facts.coach)
@@ -211,16 +228,16 @@ async function coachRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: CoachR
   const firm = firmOf(deps, prefs)
   const per = (Array.isArray(core.perRep) ? core.perRep : []) as { path: string; id: string; last: (string | null)[] }[]
   const firmByRep = firm ? Object.fromEntries(row.candidates.map((id) => [id, coachFirmness(firm, row.path, (per.find((r) => r.path === row.path && r.id === id)?.last ?? []).filter((x): x is string => typeof x === 'string'))])) : null
-  return { ok: true, run: { core, row, sheet: facts.sheet, access: accessFor('coach', gatesFrom(settings), readBrainPrefs(prefs)), catalogue, firm, firmByRep } }
+  return { ok: true, run: { core, row, sheet: facts.sheet, access: accessFor('coach', gatesFrom(settings), readBrainPrefs(prefs)), catalogue, firm, firmByRep, served: servedOf(deps, t, facts) } }
 }
 
 async function coachBriefing(deps: Deps, t: TaskRow): Promise<Reply> {
   const built = await coachRun(deps, t)
   if (!built.ok) return built.reply
-  const { core, row, sheet, access, catalogue, firm, firmByRep } = built.run
+  const { core, row, sheet, access, catalogue, firm, firmByRep, served } = built.run
   const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, new Set(), row.path === 'partner' ? 'partner' : 'social', t.dry === true)
   const text = coachBriefingText(core, new Map([...catalogue].map(([id, m]) => [id, m.name])), ctx.text, sheet.showPrivate === true, firmByRep)
-  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
+  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served })
   return reply(200, {
     task: t.task,
     day: t.day,
@@ -269,7 +286,7 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
   // Follow-up F1: the usage facts the sheet carried, logged by count and size; none while the gate is closed.
   await logUsageOnSheet(deps.store, t.id, t.task === 'review' ? 'review' : 'line', t.day, b.sheet, deps.now, t.dry === true)
   const text = claudeBriefingText({ ...b, context: ctx.text })
-  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
+  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served: built.run.served })
   // Pass 2: How firm's field only once its gate is open.
   const firmField = b.firm ? { firmness: 'supportive, balanced or hardCoach, as HOW FIRM says' } : {}
   const answer =
@@ -364,10 +381,10 @@ export async function handleLine(deps: Deps, raw: unknown): Promise<Reply> {
   let row: BriefRow
   if (t.task === 'line') {
     const v = verdict.value as BrainOutput
-    row = { id: rowIdOf('line', t.day), kind: 'brief', text: v.text, mode: v.mode, factIds: v.factIds, cardIds: v.cardIds, action: v.action, candidates: 1, ...common }
+    row = { id: rowIdOf('line', t.day), kind: 'brief', text: v.text, mode: v.mode, factIds: v.factIds, cardIds: v.cardIds, action: v.action, candidates: 1, ...common, facts: citedFacts(b.sheet, v.factIds, (f) => relabel(f, b.sheet, t.day)) }
   } else {
     const v = verdict.value as ReviewOutput
-    row = { id: rowIdOf('review', t.day), kind: 'review', text: `${v.held} ${v.didNot} ${v.change}`, mode: 'strategy', factIds: v.factIds, cardIds: v.cardIds, action: null, parts: { held: v.held, didNot: v.didNot, change: v.change }, ...common }
+    row = { id: rowIdOf('review', t.day), kind: 'review', text: `${v.held} ${v.didNot} ${v.change}`, mode: 'strategy', factIds: v.factIds, cardIds: v.cardIds, action: null, parts: { held: v.held, didNot: v.didNot, change: v.change }, ...common, facts: citedFacts(b.sheet, v.factIds, (f) => relabel(f, b.sheet, t.day)) }
   }
   await deps.store.writeBrief(row, at)
   await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs })

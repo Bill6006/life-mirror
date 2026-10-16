@@ -1,13 +1,13 @@
 import { hasMove, isParked, isPathOnly, isProposed, moveById, movesInFamily, OBSERVED_ONLY, PASSIVE, type Counter, type Move, type PathId } from './catalogue'
 import { pathById, pathKey, pathName } from './pathStage'
-import { blockAt, blockStart, dayKey, daysBetween } from './blocks'
+import { BLOCKS, blockAt, blockIndex, blockStart, dayKey, daysBetween, type Block } from './blocks'
 import { copy } from './copy'
 import type { Aim, AimKind, Cue, DayContext, Ease, Intention, Offer, Outcome, OutcomeWhy, RungMark, Skill, StudyNight, StudyReason, Win } from './db'
 import { heldBedtime, heldPickup } from './dayShape'
 import { fill } from './format'
 import { firstStudyId, nextStep, parseRungId, parseSkillSessionId, skillSessionId, skillStep, sittingOf, skillsOf, type Sitting } from './ladder'
 import { NOTHING } from './offers'
-import { minutesOf } from './settings'
+import { activeBlocks, minutesOf, type Frequency } from './settings'
 
 // Aims, the pure part: which step protects each commitment, what blocks it and what unblocks it,
 // follow-through as counts, and the dated counts under your direction sentence. Nothing here
@@ -199,21 +199,36 @@ export function aheadToday(time: string | null | undefined, now: Date): time is 
   return typeof time === 'string' && blockAt(now).day === dayKey(now) && minutesOf(time) > now.getHours() * 60 + now.getMinutes()
 }
 
+/** The check-ins a day holds and when each is reminded: the next check-in cue names only one that exists, at its time (stage 1, item d). */
+export interface CheckInSchedule {
+  frequency: Frequency
+  reminders: { enabled: boolean; times: Record<Block, string> }
+}
+
+/** A day's context with its check-ins, for the cues on offer. */
+export function withCheckIns<T extends object>(ctx: T | null, s: CheckInSchedule): (T & { checkIns: CheckInSchedule }) | null {
+  return ctx ? { ...ctx, checkIns: { frequency: s.frequency, reminders: s.reminders } } : null
+}
+
 /**
  * One tap says when. The cues on offer at this moment, each with the time it names today: after
  * pickup on a daycare day and after her bedtime, both only while she is with you, and at the next check-in. A cue whose moment has passed
  * is not offered, and none are in the small hours; then the step is for now.
  */
-export function cuesFor(ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null, now: Date): CueOffer[] {
+export function cuesFor(ctx: (Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> & { checkIns?: CheckInSchedule }) | null, now: Date): CueOffer[] {
   if (blockAt(now).day !== dayKey(now)) return []
   const out: CueOffer[] = []
   const pickup = heldPickup(ctx)
   const bedtime = heldBedtime(ctx)
   if (aheadToday(pickup, now)) out.push({ cue: 'afterPickup', time: pickup })
   if (aheadToday(bedtime, now)) out.push({ cue: 'afterBedtime', time: bedtime })
+  // The next check-in the day holds (Low-demand and fewer check-ins skip the ones it does not), at its
+  // reminder time while reminders are on, else when its block begins.
   const block = blockAt(now).block
-  const next = block === 'morning' ? 'afternoon' : block === 'afternoon' ? 'evening' : null
-  if (next && aheadToday(blockStart[next], now)) out.push({ cue: 'nextCheckIn', time: blockStart[next] })
+  const held = ctx?.checkIns ? activeBlocks(ctx.checkIns.frequency) : BLOCKS
+  const next = BLOCKS.slice(blockIndex(block) + 1).find((b) => held.includes(b)) ?? null
+  const at = next === null ? null : ctx?.checkIns?.reminders.enabled ? ctx.checkIns.reminders.times[next] : blockStart[next]
+  if (next && at && aheadToday(at, now)) out.push({ cue: 'nextCheckIn', time: at })
   return out
 }
 
@@ -225,6 +240,21 @@ export function planFor(intentions: readonly Intention[], aimId: number, day: st
     if (!plan || i.setAt > plan.setAt || (i.setAt === plan.setAt && (i.id ?? 0) > (plan.id ?? 0))) plan = i
   }
   return plan
+}
+
+/**
+ * The plan that counts for each commitment and day: the latest set, as planFor chooses it
+ * (stage 1, item c). A plan replaced the same day is never reminded of, counted or called missed.
+ * In the order they were set.
+ */
+export function latestPlans<T extends Pick<Intention, 'aimId' | 'day' | 'setAt' | 'id'>>(intentions: readonly T[]): T[] {
+  const latest = new Map<string, T>()
+  for (const i of intentions) {
+    const k = `${i.aimId}|${i.day}`
+    const cur = latest.get(k)
+    if (!cur || i.setAt > cur.setAt || (i.setAt === cur.setAt && (i.id ?? 0) > (cur.id ?? 0))) latest.set(k, i)
+  }
+  return [...latest.values()].sort((a, b) => (a.setAt < b.setAt ? -1 : a.setAt > b.setAt ? 1 : 0))
 }
 
 export interface CueCount {

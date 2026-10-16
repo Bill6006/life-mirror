@@ -1,6 +1,8 @@
+import { latestPlans } from './aims'
 import { addDays, daysBetween } from './blocks'
 import { hasMove, moveById } from './catalogue'
-import type { Aim, BrainBrief, BriefLog, CoachPick, Intention, Offer, Outcome, UseKind, UseRow } from './db'
+import type { Aim, BrainBrief, BriefLog, CoachPick, DayContext, Intention, Offer, Outcome, UseKind, UseRow } from './db'
+import { workerShown } from './shown'
 import type { Fact } from './factTypes'
 import { isFaithPractice } from './rhythm'
 import { USE_FAMILIES, USE_SECTIONS, useScreenName } from './useShared'
@@ -16,6 +18,8 @@ export const USAGE_DAYS = { short: 7, long: 28, never: 56 } as const
 export interface UseInput {
   rows: readonly UseRow[]
   briefs: readonly BrainBrief[]
+  /** The day records, which hold when each Worker line was shown (stage 1, item m). */
+  contexts?: readonly Pick<DayContext, 'day' | 'shown'>[]
   log: readonly BriefLog[]
   picks: readonly CoachPick[]
   offers: readonly Offer[]
@@ -53,9 +57,9 @@ export function summarizeUse(i: UseInput, from: string, to: string, today: strin
   const of = (kind: UseKind) => rows.filter((r) => r.kind === kind)
   const screens = new Map<string, number>()
   for (const r of of('screen')) if (r.what) screens.set(r.what, (screens.get(r.what) ?? 0) + 1)
-  // A day's line offered one tap when the line on screen that day carried one: the brain's own, else the phone's once shown.
+  // A day's line offered one tap when the line on screen that day carried one: the brain's own, else the phone's, each once shown (stage 1, item m).
   const withAction = new Set<string>()
-  for (const b of i.briefs) if (b.kind === 'brief' && b.action && inWindow(b.day)) withAction.add(b.day)
+  for (const b of i.briefs) if (b.kind === 'brief' && b.action && inWindow(b.day) && workerShown(b, i.contexts ?? [])) withAction.add(b.day)
   for (const l of i.log) if (l.action && l.shownAt && inWindow(l.day)) withAction.add(l.day)
   const takenDays = new Set(of('lineAction').map((r) => r.day))
   const picked = i.picks.filter((p) => inWindow(p.day) && p.day < today)
@@ -198,7 +202,8 @@ export function usageFacts(i: UseInput, today: string): Fact[] {
 
   // Plans for your own commitments: a path's rep and a faith practice are their switches' to read.
   const own = new Map(i.aims.filter((a) => a.kind !== 'path' && !isFaithPractice(a)).map((a) => [a.id as number, a]))
-  const plans = i.intentions.filter((p) => own.has(p.aimId))
+  // The day's latest plan only: one replaced the same day is neither made twice nor left unstarted (stage 1, item c).
+  const plans = latestPlans(i.intentions).filter((p) => own.has(p.aimId))
   const p28 = windowOf(today, USAGE_DAYS.long, firstDay(plans.map((p) => p.day)))
   if (p28) {
     const inW = plans.filter((p) => p.day >= p28.from && p.day <= p28.to)

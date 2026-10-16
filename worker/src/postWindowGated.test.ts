@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import { dayGuard } from '../../src/brainShared'
@@ -8,11 +8,15 @@ import { handleBriefing, taskIdOf } from './claude'
 import { buildMessages, buildReviewMessages } from './prompt'
 import { APP, memoryStore } from './turso'
 
-// The two features agreed for after the clean window are built behind closed gates (the owner's
-// word, 2026-10-04). Recorded before either was built and held fixed while both are closed: what
+// The two features agreed for after the clean window were built behind gates (the owner's word,
+// 2026-10-04), opened at stage 1 (2026-10-16). With both closed, as here by standing in for the
+// shared gate, held fixed (recorded before either was built, and again at stage 1 with that stage's
+// own changes): what
 // Claude and the free chain are given for the day's line and the Sunday review must not move by a
 // byte, even with a record already holding what the features would store once open: days shaped
 // by a trip, a trip saved in Settings and a skip given "Not home".
+
+vi.mock('../../src/postWindow', async (original) => ({ ...(await original<typeof import('../../src/postWindow')>()), HOME_ONLY: 'gated', AWAY_FROM_HOME: 'gated' }))
 
 const TZ = 'America/New_York'
 const env = {
@@ -83,7 +87,7 @@ const deps = (store: Store, now: Date) => ({ env, store, now, fetcher })
 const url = (q: Record<string, string>) => new URL(`https://w.test/claude/briefing?${new URLSearchParams(q)}`)
 const readsOf = async (store: Store) => (await store.readReads(100)).map(({ task, category, count, bytes, via }) => ({ task, category, count, bytes, via })).sort((a, b) => `${a.task}${a.category}`.localeCompare(`${b.task}${b.category}`))
 
-describe('the monitored prompts, held fixed while the post-window features are gated', () => {
+describe('the monitored prompts, held fixed with the post-window features closed', () => {
   it('serves Claude the day’s line exactly as before, trip-shaped days and a "Not home" skip in the record', async () => {
     const store = record()
     await runBrief(env, store, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })

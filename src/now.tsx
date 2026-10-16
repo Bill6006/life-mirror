@@ -5,10 +5,11 @@ import { Brief } from './brief'
 import { PlaceQuestion } from './locationScreen'
 import { lineActionState, todaysLine } from './brainFlow'
 import { copy } from './copy'
-import { allCheckIns, answeredCount, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
+import { allCheckIns, answeredCount, answerWin, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
 import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon } from './icons'
 import { useLive } from './live'
+import { knowsCounts } from './learningFlow'
 import { MoveCard } from './moveCard'
 import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
@@ -91,15 +92,24 @@ function Status({ windows, today, onOpen, onCheckIn }: { windows: readonly Today
 }
 
 /** How much the moves know: one line, and how they pick one tap behind it, in the same words as before. */
-function Knows({ weeks }: { weeks: number }) {
+function Knows({ weeks, counts }: { weeks: number; counts: { tried: number; tests: number } | undefined }) {
   const c = copy.move
   const w = weeks === 1 ? c.weeksOne : fill(c.weeksMany, { n: String(weeks) })
-  const [lead, rest] = fill(c.knowsShort, { weeks: w }).split(' · ')
+  const tried = counts?.tried ?? 0
+  const tests = counts?.tests ?? 0
+  const basis = tried === 0 ? c.knowsResearch : tried === 1 ? c.knowsCorrectedOne : fill(c.knowsCorrected, { n: String(tried) })
+  const [lead, rest] = fill(c.knowsShort, { weeks: w, basis }).split(' · ')
   return (
     <div class="knows" data-testid="knows">
       <Facts items={[lead, rest]} />
       <Disclosure label={copy.disclose.knowsMore} testid="knows-more">
-        <p class="note faint no-gap">{fill(c.knows, { weeks: String(weeks) })}</p>
+        <p class="note faint no-gap">
+          {fill(c.knows, {
+            weeks: w,
+            tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
+            tests: tests === 0 ? c.knowsTestsNone : tests === 1 ? c.knowsTestsOne : fill(c.knowsTestsN, { n: String(tests) }),
+          })}
+        </p>
       </Disclosure>
     </div>
   )
@@ -187,6 +197,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckI
     if (settings) void ensureDayContext(today.day, settings)
   }, [settings?.updatedAt, today.day])
   const win = useLive(() => winFor(today.day), [today.day])
+  const knows = useLive(knowsCounts, [])
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
   const pickup = useLive(() => pickupOfferNow(new Date()), [today.day, today.block, tick])
   const pending = useLive(pendingOffers, [])
@@ -261,7 +272,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckI
       {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6),
           and with nothing to tap it keeps to its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? (reason) => void skipOffer(offer, reason ?? null) : undefined} waiting={offer !== here} />}
-      {!settings.hideMoves && <Knows weeks={weeks ?? 0} />}
+      {!settings.hideMoves && <Knows weeks={weeks ?? 0} counts={knows} />}
 
       <ContextChips all={all} today={today.day} index={1} />
 
@@ -272,6 +283,11 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckI
             {win.text}
             {win.outcome && <span class="muted"> · {copy.extras.winOutcome[win.outcome]}</span>}
           </p>
+          {win.outcome !== 'done' && (
+            <button type="button" class="pill-quiet" data-testid="win-done" onClick={() => void answerWin(today.day, 'done')}>
+              {copy.win.done}
+            </button>
+          )}
         </div>
       )}
 

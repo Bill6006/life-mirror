@@ -121,8 +121,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
     offer.kind === 'pickup'
       ? c.whyPickup
       : nothing
-        ? fill(c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
-        : fill(c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })
+        ? fill(INGREDIENTS[offer.target] === 'down' ? c.whyNothingDown : c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
+        : fill(INGREDIENTS[offer.target] === 'down' ? c.whyLineDown : c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })
   const shownPrivates = (privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
 
   const head = (

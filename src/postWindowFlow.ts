@@ -1,10 +1,10 @@
 import { AWAY_FROM_HOME, HOME_ONLY } from './postWindow'
 
-// Whether the two post-window features show and act on this phone at all. Closed as the build
-// ships: nothing of either is shown, stored or read, and every screen, draw and sheet reads as it
-// always has. An automated test browser alone may preview them, so they can be tested and seen; a
-// preview reaches nothing but that browser's own screen and store, since the Worker's gates stay
-// closed and a test browser holds no token.
+// Whether the two post-window features show and act on this phone at all. Open since stage 1
+// (2026-10-16). Closed, as they shipped until then and as a test may still ask for: nothing of
+// either is shown, stored or read, and every screen, draw and sheet reads as it always had. While a
+// gate is closed an automated test browser alone may preview it; a preview reaches nothing but that
+// browser's own screen and store.
 
 const HOME_PREVIEW = 'life-mirror.preview.homeOnly'
 const AWAY_PREVIEW = 'life-mirror.preview.away'

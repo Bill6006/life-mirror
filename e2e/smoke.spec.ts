@@ -2733,3 +2733,163 @@ test('the browser’s offer to install shows as one card at the top of Settings,
   await expect.poll(() => page.evaluate(() => (window as unknown as { prompted?: number }).prompted)).toBe(1)
   await expect(page.getByTestId('install-card')).toHaveCount(0)
 })
+
+// ─── Stage 1 of the agreed order after the window (2026-10-16) ───
+
+test('stage 1, item i: “Not now” on a move’s question asks once more at the next check-in, where it says plainly “Leave it unanswered”', async ({ page }) => {
+  test.setTimeout(150_000)
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 8, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('move-card').first()).toBeVisible()
+  const morning = (await rowsOf<{ id: number; block: string; kind: string }>(page, 'offers')).find((o) => o.block === 'morning' && o.kind === 'block')
+  expect(morning).toBeDefined()
+  // The afternoon asks about it; Not now records nothing and leaves it open.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 13, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const ask = page.getByTestId('outcome-ask')
+  await expect(ask).toBeVisible()
+  await expect(page.getByTestId('outcome-leave')).toHaveCount(0)
+  await expect(page.getByTestId('outcome-later')).toHaveText('Not now')
+  await page.getByTestId('outcome-later').click()
+  await expect(ask).toBeHidden()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  const deferred = (await rowsOf<{ id: number; deferredAt?: string; closedAt: string | null }>(page, 'offers')).find((o) => o.id === morning?.id)
+  expect(deferred?.deferredAt).toBeTruthy()
+  expect(deferred?.closedAt).toBeNull()
+  expect((await rowsOf<{ offerId: number }>(page, 'outcomes')).filter((x) => x.offerId === morning?.id)).toEqual([])
+  // The evening asks once more, and leaving it is said plainly; any other question there keeps its Not now.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  // The questions load with the screen: wait for the first before reading them.
+  await expect(ask).toBeVisible()
+  let left = false
+  for (let i = 0; i < 4 && (await ask.isVisible()); i++) {
+    if (await page.getByTestId('outcome-leave').isVisible()) {
+      await expect(page.getByTestId('outcome-leave')).toHaveText('Leave it unanswered')
+      await page.getByTestId('outcome-leave').click()
+      left = true
+    } else await page.getByTestId('outcome-later').click()
+    await page.waitForTimeout(300)
+  }
+  expect(left).toBe(true)
+  const closed = (await rowsOf<{ id: number; closedAt: string | null }>(page, 'offers')).find((o) => o.id === morning?.id)
+  expect(closed?.closedAt).toBeTruthy()
+  // Unanswered, said so: one record with no answer, never a No.
+  expect((await rowsOf<{ offerId: number; outcome: string | null }>(page, 'outcomes')).filter((x) => x.offerId === morning?.id)).toMatchObject([{ outcome: null }])
+})
+
+test('stage 1, item o: today’s minimum win has one name, and Done on Now', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 10, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await putInto(page, 'wins', { forDay: '2026-09-07', setOn: '2026-09-06', text: 'One short walk', outcome: null, answeredAt: null, updatedAt: '2026-09-06T23:00:00.000Z' })
+  await page.reload()
+  const card = page.locator('.win-card')
+  await expect(card.locator('.eyebrow')).toHaveText('Today’s minimum win')
+  await card.getByTestId('win-done').click()
+  await expect(card.getByTestId('win-done')).toHaveCount(0)
+  await expect(card).toContainText('One short walk')
+  expect((await rowsOf<{ forDay: string; outcome: string | null }>(page, 'wins')).find((w) => w.forDay === '2026-09-07')?.outcome).toBe('done')
+})
+
+test('stage 1, item p: Now’s “how much it knows” line is counted from the record', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 10, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  const knows = page.getByTestId('knows')
+  await expect(knows).toContainText('offers drawn from research')
+  await knows.getByTestId('knows-more').click()
+  await expect(knows).toContainText('no move tried yet')
+  await expect(knows).toContainText('no test set')
+})
+
+test('stage 1, item q: an unfinished check-in’s summary offers to continue the readings', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 8, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapAnchor(page)
+  await tapAnchor(page)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  // By the afternoon the morning is left unfinished; its summary says so and offers the way back.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 13, 5))
+  await page.reload()
+  await page.locator('[data-testid="block-row"].is-partial').first().click()
+  await expect(page.getByText('Finish the readings and this card says what changed.')).toBeVisible()
+  const go = page.getByTestId('summary-continue')
+  await expect(go).toHaveText('Continue the readings')
+  await go.click()
+  await expect(page.locator('#ci-title')).toBeVisible()
+})
+
+test('stage 1: Unwell today is one optional mark among Today, if different, on today’s record alone', async ({ page }) => {
+  // The morning's summary carries Today, if different (the evening's sits on its extras).
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 8, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  const chip = page.getByTestId('chip-unwell')
+  await expect(chip).toHaveText(/Unwell today/)
+  await expect(chip).toHaveAttribute('aria-pressed', 'false')
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'true')
+  const day = (await rowsOf<{ day: string; unwell?: boolean; changed: boolean }>(page, 'days')).find((d) => d.day === '2026-09-07')
+  expect(day).toMatchObject({ unwell: true, changed: true })
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'false')
+  expect((await rowsOf<{ day: string; unwell?: boolean }>(page, 'days')).find((d) => d.day === '2026-09-07')?.unwell).toBe(false)
+  expect((await rowsOf<{ day: string; unwell?: boolean }>(page, 'days')).filter((d) => d.day !== '2026-09-07' && d.unwell)).toEqual([])
+})
+
+test('stage 1, item n: the rhythm editor offers only rest that lets the sessions fit in a week', async ({ page }) => {
+  await startWithDirection(page)
+  await addLearning(page, 'Orrish', 'Ten words')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
+  await card.getByTestId('aim-details').click()
+  await card.getByTestId('aim-rhythm-2').click()
+  await card.getByTestId('aim-rest-2').click()
+  await expect(card.getByTestId('aim-rest-2')).toHaveAttribute('aria-pressed', 'true')
+  // Three a week leaves room for one rest day between them at most: the two chosen comes down to one.
+  await card.getByTestId('aim-rhythm-3').click()
+  await expect(card.getByTestId('aim-rest-2')).toHaveCount(0)
+  await expect(card.getByTestId('aim-rest-1')).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => (await rowsOf<{ name?: string; rhythm?: { perWeek: number; restDays: number } }>(page, 'aims')).find((a) => a.name === 'Orrish')?.rhythm ?? null).toEqual({ perWeek: 3, restDays: 1 })
+  // Four a week leaves no room for a rest day.
+  await card.getByTestId('aim-rhythm-4').click()
+  await expect(card.getByTestId('aim-rest-1')).toHaveCount(0)
+  await expect(card.getByTestId('aim-rest-0')).toBeVisible()
+})
+
+test('stage 1, item m: a line counts as said once on screen: the Worker’s line and review marked on the record of the day they are seen', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 10, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await putBrief(page, { id: '2026-09-07:brief', day: '2026-09-07', kind: 'brief', text: 'A line from the Worker.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'm', at: '2026-09-07T13:15:00.000Z', factsDay: '2026-09-07' })
+  await page.reload()
+  await expect(page.getByTestId('brief').getByTestId('brief-line')).toHaveText('A line from the Worker.')
+  await expect.poll(async () => (await rowsOf<{ day: string; shown?: Record<string, string> }>(page, 'days')).find((d) => d.day === '2026-09-07')?.shown?.['worker:2026-09-07:brief'] ?? null).not.toBeNull()
+  // The Worker's review of the Sunday before, a day this phone never opened: marked on today's record once its card is on screen.
+  await putBrief(page, { id: '2026-09-06:review', day: '2026-09-06', kind: 'review', text: 'H D C', mode: 'strategy', factIds: ['record'], cardIds: [], model: 'm', at: '2026-09-06T09:15:00.000Z', parts: { held: 'What held.', didNot: 'What did not.', change: 'One change.' } })
+  await page.reload()
+  expect((await rowsOf<{ day: string; shown?: Record<string, string> }>(page, 'days')).some((d) => d.shown?.['worker:2026-09-06:review'])).toBe(false)
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('week-review-held')).toHaveText('What held.')
+  await expect.poll(async () => (await rowsOf<{ day: string; shown?: Record<string, string> }>(page, 'days')).find((d) => d.day === '2026-09-07')?.shown?.['worker:2026-09-06:review'] ?? null).not.toBeNull()
+  // No record is made up for the day it was written.
+  expect((await rowsOf<{ day: string }>(page, 'days')).some((d) => d.day === '2026-09-06')).toBe(false)
+})

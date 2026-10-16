@@ -47,8 +47,8 @@ function sheetFor(day: string, extra: FactSheet['facts'] = [], patch: Partial<Fa
     checkedIn: { morning: `${day}T11:40:00.000Z` },
     shortlist: [{ situationId: 'cue-switch', mode: 'strategy', text: 'After her bedtime held 1 of 4.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], score: 0.8 }],
     facts: [
-      { id: 'week.today', tags: ['cue'], text: shape('Today is', day), values: { weekday: weekdayOf(day), daycare: daycare(day) ? 1 : 0, pickup: daycare(day) ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
-      { id: 'week.tomorrow', tags: ['cue'], text: shape('Tomorrow is', next(day)), values: { day: next(day), weekday: weekdayOf(next(day)), daycare: daycare(next(day)) ? 1 : 0, pickup: daycare(next(day)) ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
+      { id: 'week.today', tags: ['cue'], text: shape('Today is', day), values: { weekday: weekdayOf(day), daycare: daycare(day) ? 1 : 0, pickup: daycare(day) ? '17:30' : null, office: 0, church: 0, studyNight: 0, bedtime: '20:00' } },
+      { id: 'week.tomorrow', tags: ['cue'], text: shape('Tomorrow is', next(day)), values: { day: next(day), weekday: weekdayOf(next(day)), daycare: daycare(next(day)) ? 1 : 0, pickup: daycare(next(day)) ? '17:30' : null, bedtime: '20:00', office: 0, church: 0, studyNight: 0 } },
       { id: 'aim.1', tags: ['study', 'cue'], text: 'Veltish: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.', values: { name: 'Veltish', cue_afterBedtime_n: 4, cue_afterBedtime_started: 1 }, n: 4 },
       { id: 'note.2026-09-17.evening', tags: ['writing'], text: 'On 2026-09-17, at the evening check-in, you wrote: “work was heavy”.', values: { day: '2026-09-17', block: 'evening', note: 'work was heavy' } },
       ...extra,
@@ -249,8 +249,37 @@ describe('the line Claude posts back', () => {
     expect(await post(store, at('07:48'), good)).toEqual({ status: 200, body: { ok: true } })
     expect(briefOf(store, `${DAY}:brief`)).toMatchObject({ writer: 'claude', model: 'claude-opus-5-5', askedModel: 'opus', runnerModel: 'claude-haiku-4-5-20251001', trigger: 'checkin', factsDay: DAY, forDay: DAY, text: good.text, action: good.action })
     expect(await store.readTask(taskIdOf('line', DAY))).toMatchObject({ status: 'written', writer: 'claude', writtenModel: 'claude-opus-5-5', posts: 1, latencyMs: 180_000 })
+    // The words it cited, kept with it for Why (stage 1, item l).
+    expect(briefOf(store, `${DAY}:brief`).facts).toEqual([{ id: 'aim.1', text: 'Veltish: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.' }])
     expect((await post(store, at('07:49'), good)).status).toBe(409)
     expect(await runBrief(env, store, freeRun, at('08:30'), { fetcher })).toMatchObject({ wrote: false, reason: 'written already' })
+  })
+
+  it('checks the answer against the sheet its briefing served, kept with the task, never one the phone rewrote since (stage 1, item k)', async () => {
+    const store = withSheet()
+    await fired(store)
+    expect((await handleBriefing(deps(store, at('07:46')), url('/claude/briefing', { task: 'line', day: DAY }))).status).toBe(200)
+    const served = (await store.readTask(taskIdOf('line', DAY)))?.served
+    expect(served?.sheet.facts.map((f) => f.id)).toContain('aim.1')
+    expect(served).toMatchObject({ at: at('07:46').toISOString(), factsUpdatedAt: '2026-09-18T11:41:00.000Z' })
+    // A tap on the phone rewrites the day's sheet between the briefing and the answer: the commitment's cue counts are gone from it.
+    const rewritten = sheetFor(DAY)
+    rewritten.facts = rewritten.facts.map((f) => (f.id === 'aim.1' ? { ...f, text: 'Veltish: planned for the next check-in.', values: { name: 'Veltish' } } : f))
+    put(store, APP, 'facts', DAY, DAY, { day: DAY, builtAt: '2026-09-18T11:47:00.000Z', updatedAt: '2026-09-18T11:47:00.000Z', sheet: rewritten }, '2026-09-18T11:47:00.000Z')
+    // A second serving is the same sheet, and the answer that was true of it is kept.
+    await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'line', day: DAY }))
+    expect((await store.readTask(taskIdOf('line', DAY)))?.served).toEqual(served)
+    expect(await post(store, at('07:48'), good)).toEqual({ status: 200, body: { ok: true } })
+    expect(briefOf(store, `${DAY}:brief`)).toMatchObject({ writer: 'claude', text: good.text })
+  })
+
+  it('checks an answer posted with no briefing served against the sheet as it stands (stage 1, item k)', async () => {
+    const store = withSheet()
+    await fired(store)
+    const rewritten = sheetFor(DAY)
+    rewritten.facts = rewritten.facts.map((f) => (f.id === 'aim.1' ? { ...f, values: { name: 'Veltish' } } : f))
+    put(store, APP, 'facts', DAY, DAY, { day: DAY, builtAt: '2026-09-18T11:47:00.000Z', updatedAt: '2026-09-18T11:47:00.000Z', sheet: rewritten }, '2026-09-18T11:47:00.000Z')
+    expect(await post(store, at('07:48'), good)).toMatchObject({ status: 422, body: { ok: false, reason: expect.stringContaining('the number 1') } })
   })
 
   it('keeps what Claude said it lacked, known ids only, each once, at most three, and never refuses a line over it (Part 34)', async () => {

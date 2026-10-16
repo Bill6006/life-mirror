@@ -19,10 +19,15 @@ import { dueOf, quiet } from './rhythm'
 import { SITUATION_SHEETS } from './situationFixtures'
 import { phoneReview, rankLines, SITUATIONS } from './situations'
 
-// The two features agreed for after the clean window, built behind closed gates (the owner's word,
-// 2026-10-04): what each does once open, read here through the preview an automated browser alone
-// may have, and that both ship closed. That closed they change nothing at all is held by
-// postWindowGated.test.ts, recorded before either was built.
+// The two features agreed for after the clean window, built behind gates (the owner's word,
+// 2026-10-04) and opened at stage 1 (2026-10-16): what each does once open, read here through the
+// preview with both gates stood in for as closed. That closed they change nothing at all is held by
+// postWindowGated.test.ts; what ships is postWindowShipped.test.ts.
+
+// Closed here by standing in for the shared gate (open as it ships since stage 1, 2026-10-16), so each
+// test below reads the feature closed, then opened through the preview, exactly as it always did.
+vi.mock('./postWindow', async (original) => ({ ...(await original<typeof import('./postWindow')>()), HOME_ONLY: 'gated', AWAY_FROM_HOME: 'gated' }))
+
 
 const HOME_KEY = 'life-mirror.preview.homeOnly'
 const AWAY_KEY = 'life-mirror.preview.away'
@@ -50,7 +55,7 @@ afterEach(() => {
 })
 
 describe('the gates', () => {
-  it('ship closed, the Worker and the phone reading the same two values', () => {
+  it('read as closed here, the Worker and the phone reading the same two values', () => {
     expect(HOME_ONLY).toBe('gated')
     expect(AWAY_FROM_HOME).toBe('gated')
     expect(homeOnlyMode()).toBe('gated')
@@ -70,7 +75,7 @@ describe('the gates', () => {
     expect(homeOnlyMode('open')).toBe('open')
   })
 
-  it('stay closed where there is no browser at all, as in the service worker', () => {
+  it('stay closed where there is no browser at all, as in the service worker, while the gate is closed', () => {
     vi.stubGlobal('navigator', undefined)
     vi.stubGlobal('localStorage', undefined)
     expect(awayMode()).toBe('gated')

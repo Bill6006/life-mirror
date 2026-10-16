@@ -1,24 +1,23 @@
 import { activeAims, aimRecords, allIntentions, isOpenAimOffer, liveSkills, planAim, rungMarks } from './aimFlow'
-import { aheadToday, cuesFor, keysOf, planFor, sessionsToday, stepFor } from './aims'
+import { aheadToday, cuesFor, keysOf, planFor, sessionsToday, stepFor, withCheckIns } from './aims'
 import { addDays, blockAt, BLOCKS, blockStart, dayKey, daysBetween, type Block } from './blocks'
 import { heldBedtime, heldPickup } from './dayShape'
 import type { CoachBlock } from './factTypes'
 import { coachRow, pathOn, peopleRowOf } from './pathFlow'
 import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
-import { readBrainPrefs, type LineAction, type LineCue, type WriterModel } from './brainShared'
+import { citedFacts, readBrainPrefs, type CitedFact, type LineAction, type LineCue, type WriterModel } from './brainShared'
 import { copy } from './copy'
 import { clockTimesIn, fill } from './format'
 import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
 import { firmMode, firmOn, firmPrefNow, firmPrefOf, type FirmMode } from './firmFlow'
 import type { Firmness } from './firmness'
-import { hasMove, moveById } from './catalogue'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathMark } from './db'
 import { buildFactSheet, type FactSheet } from './facts'
+import { wasShown } from './shown'
 import { briefData, usualFor } from './forecastFlow'
-import { cardFromHypothesis, type Hypothesis } from './hypothesis'
+import { cardFromHypothesis, testOf, type Hypothesis } from './hypothesis'
 import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
-import { INGREDIENTS } from './score'
 import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
@@ -61,7 +60,8 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
   const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
-  const said = log.filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
+  // A situation rests only after its line was seen (stage 1, item m).
+  const said = log.filter((l) => l.situationId !== null && wasShown(l, brainBriefs)).map((l) => ({ day: l.day, situationId: l.situationId }))
   sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs), undefined, firmPref)
     .slice(0, SHORTLIST)
     .map((c) => ({ situationId: c.situationId, mode: c.mode, text: c.text, factIds: c.factIds, cardIds: c.cardIds, score: Math.round(c.score * 100) / 100, ...(c.firmness ? { firmness: c.firmness } : {}) }))
@@ -189,6 +189,8 @@ export interface BriefLine {
   /** How firmly it was said (Pass 2), once How firm's gate is open; adaptive when Adaptive chose it. */
   firmness?: Firmness
   adaptive?: true
+  /** The facts it cited, in their words when it was written (stage 1, item l). */
+  facts?: CitedFact[]
 }
 
 /** Who wrote a line or a review, in the words its screen uses (Part 30): Claude with the model asked for and the one that wrote, the free chain and why it stood in for Claude, or the phone. */
@@ -211,10 +213,10 @@ export async function todaysLine(day: string, now: Date = new Date()): Promise<B
   const off = offOf(record, day, now)
   const live = (l: { text: string; action?: LineAction | null; at?: string }) => !momentGone(lineMoment({ text: l.text, action: l.action ?? null, at: l.at }, day, ctx, planOf(intentions, l.action ?? null, day)), day, now)
   const worker = briefs.filter((b) => b.kind === 'brief' && onTheRow(b, off) && live(b)).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}), ...(worker.firmness ? { firmness: worker.firmness, ...(worker.adaptive ? { adaptive: true as const } : {}) } : {}) }
+  if (worker) return { key: `worker:${worker.id}`, source: 'worker', text: worker.text, mode: worker.mode, situationId: null, model: worker.model, factIds: worker.factIds, cardIds: worker.cardIds, action: worker.action ?? null, factsDay: worker.factsDay ?? addDays(day, -1), at: worker.at, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}), ...(worker.firmness ? { firmness: worker.firmness, ...(worker.adaptive ? { adaptive: true as const } : {}) } : {}), ...(worker.facts?.length ? { facts: worker.facts } : {}) }
   const own = log.filter((l) => l.situationId !== null && !l.withdrawnAt && onTheRow(l, off) && live(l)).sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0]
   if (!own) return null
-  return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day, at: own.at, ...(own.firmness ? { firmness: own.firmness, ...(own.adaptive ? { adaptive: true as const } : {}) } : {}) }
+  return { key: `phone:${day}:${own.id}`, source: 'phone', text: own.text, mode: own.mode, situationId: own.situationId, model: null, factIds: own.factIds, cardIds: own.cardIds, action: own.action ?? null, factsDay: day, at: own.at, ...(own.firmness ? { firmness: own.firmness, ...(own.adaptive ? { adaptive: true as const } : {}) } : {}), ...(own.facts?.length ? { facts: own.facts } : {}) }
 }
 
 /** Today's plan for the commitment a line's action names, if it names one and a plan was made. */
@@ -252,12 +254,15 @@ export async function chooseAndLog(day: string, now: Date = new Date(), firmGate
       // Kept while its situation holds, and said as the record now stands: the same row, so a tap stays filed under it.
       // A line already answered, by a tap on it or its one action taken, keeps the words it was answered in.
       const answered = (await feedbackFor(`phone:${day}:${current.id}`)) !== null || (current.action ? (await lineActionState(day, current.action, now))?.state === 'done' : false)
-      if (!answered && (!sameLine(current, match) || firmMoved(current, match))) await db.briefLog.update(current.id as number, { text: match.text, factIds: match.factIds, cardIds: match.cardIds, action: match.action ?? undefined, ...refirm(match) })
+      // Said again in new words, it keeps the facts' words it is now said from (stage 1, item l).
+      if (!answered && (!sameLine(current, match) || firmMoved(current, match))) await db.briefLog.update(current.id as number, { text: match.text, factIds: match.factIds, cardIds: match.cardIds, action: match.action ?? undefined, ...refirm(match), facts: citedFacts(sheet, match.factIds) })
       return
     }
     if (current.action && onTheRow(current, off) && (await lineActionState(day, current.action, now))?.state === 'done') return
   }
-  const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null).map((l) => ({ day: l.day, situationId: l.situationId }))
+  // A situation rests only after its line was seen (stage 1, item m).
+  const briefs = await db.brainBriefs.toArray()
+  const said = (await db.briefLog.toArray()).filter((l) => l.situationId !== null && wasShown(l, briefs)).map((l) => ({ day: l.day, situationId: l.situationId }))
   const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
   const choice = rankLines(sheet, said, feedback, undefined, firm).find((c) => onTheRow(c, off) && live({ text: c.text, action: c.action ?? null, at: now.toISOString() })) ?? null
   const empty = existing.filter((e) => e.situationId === null)
@@ -266,7 +271,7 @@ export async function chooseAndLog(day: string, now: Date = new Date(), firmGate
     if (current) await db.briefLog.update(current.id as number, { withdrawnAt: now.toISOString() })
     if (choice) {
       for (const e of empty) await db.briefLog.delete(e.id as number)
-      await db.briefLog.add({ day, situationId: choice.situationId, mode: choice.mode, text: choice.text, factIds: choice.factIds, cardIds: choice.cardIds, ...(choice.action ? { action: choice.action } : {}), at: now.toISOString(), ...firmOf(choice) })
+      await db.briefLog.add({ day, situationId: choice.situationId, mode: choice.mode, text: choice.text, factIds: choice.factIds, cardIds: choice.cardIds, ...(choice.action ? { action: choice.action } : {}), at: now.toISOString(), ...firmOf(choice), facts: citedFacts(sheet, choice.factIds) })
     } else if (!empty.length) {
       await db.briefLog.add({ day, situationId: null, mode: 'observation', text: '', factIds: [], cardIds: [], at: now.toISOString() })
     }
@@ -283,8 +288,21 @@ export async function feedbackFor(key: string | null): Promise<BriefFeedback | n
 }
 
 /** One tap under the line: useful, knew it, or not. Recorded once per line; it shapes what is said next. */
-/** Marks the phone's own line as on screen, once: only a line that was shown counts as said (Part 33). */
+/**
+ * Marks a line as on screen, once: only a line that was shown counts as said (Part 33). The phone's
+ * own on its log entry; the Worker's line or review on the record of the day it is seen, which the
+ * screen showing it has written (stage 1, item m), and never twice, whichever day it was first seen.
+ */
 export async function markShown(line: Pick<BriefLine, 'key' | 'source'>, now: Date = new Date()): Promise<void> {
+  if (line.source === 'worker') {
+    const day = blockAt(now).day
+    await db.transaction('rw', db.days, async () => {
+      if ((await db.days.toArray()).some((c) => c.shown?.[line.key])) return
+      const ctx = await db.days.get(day)
+      if (ctx) await db.days.update(day, { shown: { ...(ctx.shown ?? {}), [line.key]: now.toISOString() } })
+    })
+    return
+  }
   if (line.source !== 'phone') return
   const id = Number(line.key.split(':')[2])
   if (!Number.isInteger(id)) return
@@ -301,11 +319,12 @@ export async function recordFeedback(day: string, line: BriefLine, answer: 'usef
 
 /** The test a move would get: itself against nothing extra, on the first reading out of 100 it moves, in the first block it fits. */
 export function hypothesisFor(moveId: string): Hypothesis | null {
-  if (!hasMove(moveId)) return null
-  const move = moveById(moveId)
-  const target = move.targets.find((t) => INGREDIENTS[t.reading])?.reading
-  const context = move.when[0]
-  return target && context ? { move: moveId, alternative: 'nothing', target, context } : null
+  return testOf(moveId)
+}
+
+/** The test a line's tap sets (item 6): the reading and part of the day it carries, or, on a tap from before, the move's first. */
+export function hypothesisOf(action: Extract<LineAction, { kind: 'test' }>): Hypothesis | null {
+  return action.reading !== undefined || action.block !== undefined ? testOf(action.moveId, action.reading, action.block) : testOf(action.moveId)
 }
 
 export interface ActionState {
@@ -330,14 +349,14 @@ export async function lineActionState(day: string, action: LineAction | null, no
     const records = await aimRecords()
     const keys = keysOf(aim, studyAims)
     if (records.offers.some((o) => isOpenAimOffer(o) && keys.includes(o.situationKey)) || sessionsToday(aim, records.offers, records.outcomes, day, await liveSkills(), studyAims).done) return { state: 'gone' }
-    const cue = cuesFor(await getDayContext(day), now).find((c) => c.cue === action.cue)
+    const cue = cuesFor(withCheckIns(await getDayContext(day), await getSettings()), now).find((c) => c.cue === action.cue)
     return cue ? { state: 'open', cue: cue.cue, time: cue.time } : { state: 'gone' }
   }
   if (action.kind === 'depth') {
     const s = await getSettings()
     return s.depth === 'short' ? { state: 'done' } : s.lowDemand ? { state: 'gone' } : { state: 'open' }
   }
-  if (!hypothesisFor(action.moveId)) return { state: 'gone' }
+  if (!hypothesisOf(action)) return { state: 'gone' }
   return (await db.cards.filter((c) => c.moveId === action.moveId).count()) > 0 ? { state: 'done' } : { state: 'open' }
 }
 
@@ -357,7 +376,7 @@ export async function applyLineAction(day: string, action: LineAction, now: Date
     await updateSettings((s) => ({ ...s, depth: 'short' }))
     return true
   }
-  const h = hypothesisFor(action.moveId)
+  const h = hypothesisOf(action)
   if (!h) return false
   await db.cards.add(cardFromHypothesis(h, now.toISOString()))
   return true
@@ -421,8 +440,14 @@ export interface Why {
   cards: ClaimCard[]
 }
 
-/** Why it said this: the facts it cited, as the sheet worded them, and the library's cards with their grades and sources. */
+/**
+ * Why it said this: the facts it cited, in their words as they stood when it was written (stage 1,
+ * item l), so Why never contradicts a morning line by evening; a line from before those words were
+ * kept reads them from the sheet as it stands. With the library's cards, their grades and sources.
+ */
 export async function whyFor(line: BriefLine, day: string, now: Date = new Date()): Promise<Why> {
+  const cards = line.cardIds.map((id) => cardById(id)).filter((c): c is ClaimCard => c !== undefined)
+  if (line.facts?.length) return { facts: line.factIds.map((id) => line.facts?.find((f) => f.id === id)).filter((f): f is CitedFact => f !== undefined), cards }
   const rows = await Promise.all([line.factsDay, day, addDays(day, -1)].map((d) => db.facts.get(d)))
   const sheets = rows.map((r) => r?.sheet)
   const facts: { id: string; text: string }[] = []
@@ -441,6 +466,8 @@ export async function whyFor(line: BriefLine, day: string, now: Date = new Date(
 
 export interface WeekReview extends ReviewParts {
   source: 'phone' | 'worker'
+  /** The Worker's review row's key, for marking it shown (stage 1, item m). */
+  key?: string
   model: string | null
   day: string
   writer?: 'claude' | 'free'
@@ -452,7 +479,7 @@ export interface WeekReview extends ReviewParts {
 export async function weekReview(day: string, now: Date = new Date(), firmGate: FirmMode = firmMode()): Promise<WeekReview> {
   const since = addDays(day, -6)
   const worker = (await db.brainBriefs.toArray()).filter((b) => b.kind === 'review' && b.parts && b.day >= since && b.day <= day).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
-  if (worker?.parts) return { source: 'worker', model: worker.model, day: worker.day, ...worker.parts, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
+  if (worker?.parts) return { source: 'worker', key: `worker:${worker.id}`, model: worker.model, day: worker.day, ...worker.parts, ...(worker.writer ? { writer: worker.writer } : {}), ...(worker.askedModel ? { askedModel: worker.askedModel } : {}), ...(worker.fallback ? { fallback: worker.fallback } : {}) }
   const feedback = receivedBefore(await db.briefFeedback.toArray(), await db.brainBriefs.toArray())
   return { source: 'phone', model: null, day, ...phoneReview(await factSheet(day, now), feedback, await firmPrefNow(firmGate)) }
 }

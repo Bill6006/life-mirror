@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated > names the commitment, its skill, its sessions and its plan exactly as before 1`] = `
+exports[`the sheet the monitored prompts are built from, as stage 1 left it (2026-10-16), held fixed from here > names the commitment, its skill, its sessions and its plan exactly as before 1`] = `
 [
   {
     "id": "aim.1",
@@ -21,6 +21,7 @@ exports[`the sheet the monitored prompts are built from, held fixed while Parts 
       "fixed": null,
       "gapDays": 3,
       "hard": 1,
+      "interval": 3,
       "kind": "certification",
       "method": "A phrasebook",
       "minutes": 0,
@@ -79,6 +80,6 @@ exports[`the sheet the monitored prompts are built from, held fixed while Parts 
 ]
 `;
 
-exports[`the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated > names the commitment, its skill, its sessions and its plan exactly as before 2`] = `[]`;
+exports[`the sheet the monitored prompts are built from, as stage 1 left it (2026-10-16), held fixed from here > names the commitment, its skill, its sessions and its plan exactly as before 2`] = `[]`;
 
-exports[`the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated > writes the same coach block 1`] = `null`;
+exports[`the sheet the monitored prompts are built from, as stage 1 left it (2026-10-16), held fixed from here > writes the same coach block 1`] = `null`;

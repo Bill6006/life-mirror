@@ -1,4 +1,5 @@
-import { weekReview, writtenBy } from './brainFlow'
+import { useEffect } from 'preact/hooks'
+import { markShown, weekReview, writtenBy } from './brainFlow'
 import { copy } from './copy'
 import { clockTimes12 } from './format'
 import { useLive } from './live'
@@ -10,6 +11,10 @@ import { useLive } from './live'
  */
 export function WeekReviewCard({ day }: { day: string }) {
   const r = useLive(() => weekReview(day), [day])
+  // The Worker's review counts as said only once it has been on screen (stage 1, item m).
+  useEffect(() => {
+    if (r?.source === 'worker' && r.key) void markShown({ key: r.key, source: 'worker' })
+  }, [r?.key])
   const c = copy.brain.review
   if (!r) return null
   return (

@@ -23,7 +23,7 @@ import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
 import { PrivateLog, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
-import { isSession, offerForSlot, recordOutcome } from './offerFlow'
+import { deferOutcome, isSession, offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
@@ -94,6 +94,11 @@ export function CheckInScreen({
       setAsked((s) => new Set(s).add(toAsk.id as number))
       // A session you started stays yours to resolve: Not now leaves it open, with Done still on its row (D3).
       if (a.outcome === null && isSession(toAsk)) return
+      // Not now on any other move: nothing recorded, asked once more at the next check-in (stage 1, item i).
+      if (a.outcome === null && a.later) {
+        void deferOutcome(toAsk)
+        return
+      }
       void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }, a.ease)
     }
     return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} />
@@ -197,10 +202,13 @@ export function SummaryScreen({
   onAway,
   onDone,
   onDeleted,
+  onContinue,
 }: {
   day: string
   block: Block
   fresh: boolean
+  /** Back into the check-in at its next unanswered reading (stage 1, item q). */
+  onContinue?: () => void
   onChange: (id: ReadingId) => void
   onExtras: () => void
   /** Away from home's screen (post-window, gated): its row shows only while the gate is open. */
@@ -273,7 +281,14 @@ export function SummaryScreen({
             ))}
           </>
         ) : (
-          <p class="calc-line">{copy.summary.finishFirst}</p>
+          <>
+            <p class="calc-line">{copy.summary.finishFirst}</p>
+            {onContinue && (
+              <button type="button" class="pill-quiet" data-testid="summary-continue" onClick={onContinue}>
+                {copy.summary.continueReadings}
+              </button>
+            )}
+          </>
         )}
       </div>
 

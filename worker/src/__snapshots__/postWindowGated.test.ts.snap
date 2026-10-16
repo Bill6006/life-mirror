@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > gives the free chain the same messages 1`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > gives the free chain the same messages 1`] = `
 [
   {
     "content": "You write one line a day for one person's phone. You get the shape of the day you are writing for, the phone's own ranking of what is true today (best first), the day's fact sheet (each fact has an id in brackets), a set of claim cards from an evidence library (each with an id and a grade), and what was said on recent days with how it landed.
@@ -8,7 +8,7 @@ exports[`the monitored prompts, held fixed while the post-window features are ga
 Offer three candidate lines. Each is the single most useful thing for this person to hear, understand, reconsider or do on the day you are writing for, and each takes a different angle or a different thing; the phone's ranking is a strong guide, not a rule. For each choose one mode: observation, challenge, perspective, strategy, warning, recommendation, encouragement. Sometimes that is an observation, a challenge, a change of strategy, a warning, a recommendation, a perspective, or encouragement. Never comfort by default and never push by default; the facts and the evidence decide.
 
 Rules, all checked by a validator that refuses the answer:
-- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact. Do not invent patterns; a fact's n and tier say how much stands under it.
+- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact, a count written as a word (three days) included; a date, or a line quoted in a fact, is no ground for one. Write clock times as the record does, 24-hour (21:30), never a bare 12-hour time; a time that names another minute of the day than the cited facts is refused. Do not invent patterns; a fact's n and tier say how much stands under it.
 - Cite in cardIds the cards you rely on: only the ids in brackets in CARDS, kebab-case words such as implementation-intentions. A fact id never goes in cardIds, even one that describes a test card. Speak of evidence only with the phrase matching the strongest cited card's grade: A "strong evidence", B "good evidence", C "some evidence", D "thin evidence". Never say a finding applies to this person unless a fact shows it.
 - Never use the words failed, bad, lazy, behind, weak, slipped again. No score of the person, no streaks, no shame.
 - Facts named note.* are the person's own words, typed at a check-in. Read them as context for what is going on in their life and let them change what you say; refer to what they wrote in your own words, quote at most a few of theirs, and never judge them.
@@ -16,12 +16,12 @@ Rules, all checked by a validator that refuses the answer:
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle. A line that nearly repeats one said on the last seven days is refused.
-- Speak of pickup, daycare, the office or church only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
+- Speak of pickup, daycare, the office, church or her bedtime only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
 - Caffeine is spoken of only as an association in the record, with its counts, never as a cause. A window where nothing was reported is "no caffeine reported", never caffeine-free or "no caffeine"; the validator refuses both.
 - Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.
 - Plain words, second person, no headings, no lists, no emoji.
 - Each line under 60 words.
-- When the line asks the person to do one of three things, offer it as "action" so one tap does it; otherwise "action" is null. Only these: {"kind":"plan","aimId":N,"cue":"afterPickup|afterBedtime|nextCheckIn"} to pin the step of the commitment in fact aim.N to a moment today; {"kind":"depth","value":"short"} to make the check-in lighter, only when the cadence fact says the depth is full; {"kind":"test","moveId":"<an id given in parentheses in the untested fact>"} to set a test the record has never run. Never offer an action the text does not itself recommend.
+- When the line asks the person to do one of three things, offer it as "action" so one tap does it; otherwise "action" is null. Only these: {"kind":"plan","aimId":N,"cue":"afterPickup|afterBedtime|nextCheckIn"} to pin the step of the commitment in fact aim.N to a moment today, with a cue the day holds (after pickup only on a daycare day, after her bedtime only on a day she is with you) and, when the line names a time, the cue whose time that is; never for a faith practice, which is offered and never pushed; {"kind":"depth","value":"short"} to make the check-in lighter, only when the cadence fact says the depth is full; {"kind":"test","moveId":"<an id given in parentheses in the untested fact>","reading":"<a reading the untested fact says that move can test, the one the line speaks of, with a cited fact about it>","block":"<a part of the day the untested fact gives for it>"} to set a test the record has never run; when the line speaks of a reading no test can measure, offer no test, never a different one. Never offer an action the text does not itself recommend.
 
 Answer with JSON only, nothing before or after: {"candidates": [{"mode": "...", "text": "...", "factIds": ["..."], "cardIds": ["..."], "action": null}, {...}, {...}]}",
     "role": "system",
@@ -54,7 +54,7 @@ JSON only.",
 ]
 `;
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > gives the free chain the same messages 2`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > gives the free chain the same messages 2`] = `
 [
   {
     "content": "You write the weekly review for one person's phone, on Sunday, from the week as the fact sheet shows it: the trajectories of their commitments over four weeks, the cadence of their check-ins, the record of each cue, the cards being tested, chips, their own notes, and what was said this week with how it landed.
@@ -62,7 +62,7 @@ exports[`the monitored prompts, held fixed while the post-window features are ga
 Three short parts. "held": what held this week, stated as facts. "didNot": what did not, stated as facts, with no verdict on the person. "change": at most one change of strategy for the coming week, the one the facts and the evidence most support; if nothing should change, say what to keep and why.
 
 Rules, all checked by a validator that refuses the answer:
-- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact. Do not invent patterns; a fact's n and tier say how much stands under it.
+- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact, a count written as a word (three days) included; a date, or a line quoted in a fact, is no ground for one. Write clock times as the record does, 24-hour (21:30), never a bare 12-hour time; a time that names another minute of the day than the cited facts is refused. Do not invent patterns; a fact's n and tier say how much stands under it.
 - Cite in cardIds the cards you rely on: only the ids in brackets in CARDS, kebab-case words such as implementation-intentions. A fact id never goes in cardIds, even one that describes a test card. Speak of evidence only with the phrase matching the strongest cited card's grade: A "strong evidence", B "good evidence", C "some evidence", D "thin evidence". Never say a finding applies to this person unless a fact shows it.
 - Never use the words failed, bad, lazy, behind, weak, slipped again. No score of the person, no streaks, no shame.
 - Facts named note.* are the person's own words, typed at a check-in. Read them as context for what is going on in their life and let them change what you say; refer to what they wrote in your own words, quote at most a few of theirs, and never judge them.
@@ -70,7 +70,7 @@ Rules, all checked by a validator that refuses the answer:
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle. A line that nearly repeats one said on the last seven days is refused.
-- Speak of pickup, daycare, the office or church only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
+- Speak of pickup, daycare, the office, church or her bedtime only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
 - Caffeine is spoken of only as an association in the record, with its counts, never as a cause. A window where nothing was reported is "no caffeine reported", never caffeine-free or "no caffeine"; the validator refuses both.
 - Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.
 - Plain words, second person, no headings, no lists, no emoji.
@@ -108,7 +108,7 @@ JSON only.",
 ]
 `;
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > refuses and allows the same words on the day’s shape 1`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > refuses and allows the same words on the day’s shape 1`] = `
 [
   [
     "Open the windows at home for ten minutes.",
@@ -143,7 +143,7 @@ exports[`the monitored prompts, held fixed while the post-window features are ga
 ]
 `;
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > serves Claude the Sunday review exactly as before 1`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > serves Claude the Sunday review exactly as before 1`] = `
 {
   "answer": {
     "cardIds": [
@@ -219,7 +219,7 @@ JSON only.",
 Three short parts. "held": what held this week, stated as facts. "didNot": what did not, stated as facts, with no verdict on the person. "change": at most one change of strategy for the coming week, the one the facts and the evidence most support; if nothing should change, say what to keep and why.
 
 Rules, all checked by a validator that refuses the answer:
-- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact. Do not invent patterns; a fact's n and tier say how much stands under it.
+- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact, a count written as a word (three days) included; a date, or a line quoted in a fact, is no ground for one. Write clock times as the record does, 24-hour (21:30), never a bare 12-hour time; a time that names another minute of the day than the cited facts is refused. Do not invent patterns; a fact's n and tier say how much stands under it.
 - Cite in cardIds the cards you rely on: only the ids in brackets in CARDS, kebab-case words such as implementation-intentions. A fact id never goes in cardIds, even one that describes a test card. Speak of evidence only with the phrase matching the strongest cited card's grade: A "strong evidence", B "good evidence", C "some evidence", D "thin evidence". Never say a finding applies to this person unless a fact shows it.
 - Never use the words failed, bad, lazy, behind, weak, slipped again. No score of the person, no streaks, no shame.
 - Facts named note.* are the person's own words, typed at a check-in. Read them as context for what is going on in their life and let them change what you say; refer to what they wrote in your own words, quote at most a few of theirs, and never judge them.
@@ -227,7 +227,7 @@ Rules, all checked by a validator that refuses the answer:
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle. A line that nearly repeats one said on the last seven days is refused.
-- Speak of pickup, daycare, the office or church only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
+- Speak of pickup, daycare, the office, church or her bedtime only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
 - Caffeine is spoken of only as an association in the record, with its counts, never as a cause. A window where nothing was reported is "no caffeine reported", never caffeine-free or "no caffeine"; the validator refuses both.
 - Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.
 - Plain words, second person, no headings, no lists, no emoji.
@@ -266,7 +266,7 @@ Answer with JSON only, nothing before or after: {"held": "...", "didNot": "...",
 }
 `;
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > serves Claude the Sunday review exactly as before 2`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > serves Claude the Sunday review exactly as before 2`] = `
 [
   {
     "bytes": 0,
@@ -320,7 +320,7 @@ exports[`the monitored prompts, held fixed while the post-window features are ga
 ]
 `;
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > serves Claude the day’s line exactly as before, trip-shaped days and a "Not home" skip in the record 1`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > serves Claude the day’s line exactly as before, trip-shaped days and a "Not home" skip in the record 1`] = `
 {
   "answer": {
     "action": null,
@@ -395,7 +395,7 @@ JSON only.",
 Write the single most useful thing for this person to hear, understand, reconsider or do on the day you are writing for; the phone's ranking is a strong guide, not a rule. Choose one mode: observation, challenge, perspective, strategy, warning, recommendation, encouragement. Sometimes that is an observation, a challenge, a change of strategy, a warning, a recommendation, a perspective, or encouragement. Never comfort by default and never push by default; the facts and the evidence decide.
 
 Rules, all checked by a validator that refuses the answer:
-- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact. Do not invent patterns; a fact's n and tier say how much stands under it.
+- Ground what you say in the facts and cite their ids in factIds: the ids in brackets in FACTS, such as aim.1 or assoc.napped. Every number you write must appear in a cited fact, a count written as a word (three days) included; a date, or a line quoted in a fact, is no ground for one. Write clock times as the record does, 24-hour (21:30), never a bare 12-hour time; a time that names another minute of the day than the cited facts is refused. Do not invent patterns; a fact's n and tier say how much stands under it.
 - Cite in cardIds the cards you rely on: only the ids in brackets in CARDS, kebab-case words such as implementation-intentions. A fact id never goes in cardIds, even one that describes a test card. Speak of evidence only with the phrase matching the strongest cited card's grade: A "strong evidence", B "good evidence", C "some evidence", D "thin evidence". Never say a finding applies to this person unless a fact shows it.
 - Never use the words failed, bad, lazy, behind, weak, slipped again. No score of the person, no streaks, no shame.
 - Facts named note.* are the person's own words, typed at a check-in. Read them as context for what is going on in their life and let them change what you say; refer to what they wrote in your own words, quote at most a few of theirs, and never judge them.
@@ -403,7 +403,7 @@ Rules, all checked by a validator that refuses the answer:
 - The followup fact says what the record shows since the last line. Close that loop when it matters: say plainly what was done, or name what did not happen and make the next step smaller, never heavier.
 - The phone keeps the readings and their bands, the usual per block, the forecast, last night's comparison, steady or stretch and yesterday's move behind a tap, so the line must stand on its own: if it rests on one of them, say it in your own words, with numbers only from cited facts.
 - Do not repeat what was said recently; if the same thing is still the most useful, say it from a new angle. A line that nearly repeats one said on the last seven days is refused.
-- Speak of pickup, daycare, the office or church only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
+- Speak of pickup, daycare, the office, church or her bedtime only when the shape of the day you are writing for holds them, and never of a study night, which no longer exists; the validator refuses the rest. Seeing someone in person needs none of them: where the day's shape puts no one around, it would mean going out.
 - Caffeine is spoken of only as an association in the record, with its counts, never as a cause. A window where nothing was reported is "no caffeine reported", never caffeine-free or "no caffeine"; the validator refuses both.
 - Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.
 - Plain words, second person, no headings, no lists, no emoji.
@@ -411,7 +411,7 @@ Rules, all checked by a validator that refuses the answer:
 - Reading is not showing. Speak of dating, a date or a partner only when the private context shows the Partner path bears on the day you are writing for; never from what did not happen, never counting anything, never rating or comparing anyone. Never name a private item unless PRIVATE NAMES says their names may be shown. Say nothing of any monthly check.
 - Quote at most a few of the person's own words, and never judge them.
 - One line, under 60 words.
-- When the line asks the person to do one of three things, offer it as "action" so one tap does it; otherwise "action" is null. Only these: {"kind":"plan","aimId":N,"cue":"afterPickup|afterBedtime|nextCheckIn"} to pin the step of the commitment in fact aim.N to a moment today; {"kind":"depth","value":"short"} to make the check-in lighter, only when the cadence fact says the depth is full; {"kind":"test","moveId":"<an id given in parentheses in the untested fact>"} to set a test the record has never run. Never offer an action the text does not itself recommend.
+- When the line asks the person to do one of three things, offer it as "action" so one tap does it; otherwise "action" is null. Only these: {"kind":"plan","aimId":N,"cue":"afterPickup|afterBedtime|nextCheckIn"} to pin the step of the commitment in fact aim.N to a moment today, with a cue the day holds (after pickup only on a daycare day, after her bedtime only on a day she is with you) and, when the line names a time, the cue whose time that is; never for a faith practice, which is offered and never pushed; {"kind":"depth","value":"short"} to make the check-in lighter, only when the cadence fact says the depth is full; {"kind":"test","moveId":"<an id given in parentheses in the untested fact>","reading":"<a reading the untested fact says that move can test, the one the line speaks of, with a cited fact about it>","block":"<a part of the day the untested fact gives for it>"} to set a test the record has never run; when the line speaks of a reading no test can measure, offer no test, never a different one. Never offer an action the text does not itself recommend.
 
 Optionally, in "lacked", name up to 3 things you would have needed and did not have, as ids from this list: longerRecord (more days of record than exist yet); workoutDetail (what a workout was, beyond that the day had one); sleepDetail (sleep beyond the two sleep readings); dayPlans (what the day held: plans, events, who was coming); reasons (why a step or a move was not done); outcomes (whether a move or a step helped); notes (your own notes); people (who was around); other (something not on this list). Leave it [] when nothing was missing. It is counted on the phone, never shown, and never decides whether your answer is accepted.
 
@@ -441,7 +441,7 @@ Answer with JSON only, nothing before or after: {"mode": "...", "text": "...", "
 }
 `;
 
-exports[`the monitored prompts, held fixed while the post-window features are gated > serves Claude the day’s line exactly as before, trip-shaped days and a "Not home" skip in the record 2`] = `
+exports[`the monitored prompts, held fixed with the post-window features closed > serves Claude the day’s line exactly as before, trip-shaped days and a "Not home" skip in the record 2`] = `
 [
   {
     "bytes": 0,

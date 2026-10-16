@@ -1,5 +1,6 @@
 import { hasMove } from './catalogue'
 import type { Fact, FactSheet } from './facts'
+import { testOf } from './hypothesis'
 import { admitted } from './library'
 
 // Test fixtures, never imported by the app: for each of the judgment engine's situations, the
@@ -18,7 +19,7 @@ const fact = (id: string, values: Record<string, number | string | null>, extra:
 
 /** A move an admitted card names and the catalogue holds: the propose-test situation needs one. */
 function testableMove(): string {
-  for (const c of admitted()) for (const m of c.moves ?? []) if (hasMove(m)) return m
+  for (const c of admitted()) for (const m of c.moves ?? []) if (hasMove(m) && testOf(m)) return m
   throw new Error('no admitted card names a catalogue move')
 }
 
@@ -26,7 +27,7 @@ function testableMove(): string {
 export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
   stretch: () => sheetOf([today(), fact('stretch', { under: 4, of: 6, chips: 1, necessities: 0 }, { n: 6 })]),
   'necessities-missed': () => sheetOf([today(), fact('necessities.3d', { misses: 2 }, { n: 3 })]),
-  'loneliness-high': () => sheetOf([today(), fact('context.loneliness', { position: 4, word: 'Lonely' })]),
+  'loneliness-high': () => sheetOf([today(), fact('context.loneliness', { position: 4, word: 'Lonely', day: DAY, block: 'morning', ageDays: 0 })]),
   'cue-switch': () => sheetOf([today(), aim({ cue_afterPickup_n: 4, cue_afterPickup_started: 1, cue_afterBedtime_n: 2, cue_afterBedtime_started: 2, plan: 'afterPickup' })]),
   'first-skill': () => sheetOf([today(), aim({ skills: 0, skill: null, step: 'No current skill yet' })]),
   'caffeine-sleep-shorter': () => sheetOf([today(), fact('assoc.caffeine.bands', { groups: 2, none: 0, minutes: -40, quality: null, low: 'none', high: '200 mg or more', n: 6, m: 5 })]),

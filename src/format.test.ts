@@ -37,6 +37,9 @@ describe('clock times, shown', () => {
     expect(clockTimes12('the hour is 4 PM; the hour is 30')).toBe('the hour is 4 PM; the hour is 30')
     expect(clockTimes12('At 6:08 am, and 5:30 p.m.')).toBe('At 6:08 AM, and 5:30 PM.')
     expect(clockTimes12('Checked in at 07:05 and 00:40.')).toBe('Checked in at 7:05 AM and 12:40 AM.')
+    // A bare unpadded hour with no am or pm says neither half of the day: left as written, never 9:30 AM by a guess (item 5).
+    expect(clockTimes12('At 9:30 last night, and 09:30 this morning.')).toBe('At 9:30 last night, and 9:30 AM this morning.')
+    expect(clockTimes12('Lights out at 9:30 pm, or 21:30.')).toBe('Lights out at 9:30 PM, or 9:30 PM.')
     const untouched = 'A 3:2 split, a 12:05:33 stamp, 24:10, 13:30 PM, 1.5:30, and 1:5.'
     expect(clockTimes12(untouched)).toBe(untouched)
   })

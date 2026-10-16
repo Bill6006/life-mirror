@@ -6,13 +6,14 @@ import { coachFor, factSheet } from './brainFlow'
 import { db, ensureDayContext, getSettings } from './db'
 
 // What the day's sheet and the coach block say of a learning commitment with sessions, eased and
-// noted, recorded before Parts 40 and 41 were built and held fixed while their gate is closed: the
-// Worker reads this sheet for every monitored prompt, so it must not move by a byte.
+// noted: recorded before Parts 40 and 41 were built, and again as stage 1 left it (2026-10-16, which
+// added the interval a stall is measured against). The Worker reads this sheet for every monitored
+// prompt, so it moves only by a reviewed change.
 
 const DAY = '2026-10-04'
 const NOW = new Date(2026, 9, 4, 7, 45)
 
-describe('the sheet the monitored prompts are built from, held fixed while Parts 40 and 41 are gated', () => {
+describe('the sheet the monitored prompts are built from, as stage 1 left it (2026-10-16), held fixed from here', () => {
   beforeAll(async () => {
     await db.delete()
     await db.open()

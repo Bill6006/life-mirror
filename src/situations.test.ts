@@ -137,11 +137,11 @@ describe('what the engine sees early, and the one tap it offers', () => {
 
   it('closes the loop on what it said yesterday, either way, and lets Not useful end it', () => {
     const done: Fact = { id: 'followup', tags: [], text: '', values: { day: '2026-09-17', about: 'Veltish', aimId: 1, planned: 1, started: 1, done: 1, changed: 1, received: 'useful', text: 'x' } }
-    const closed = chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 0 }), done]), [], [])
+    const closed = chooseLine(sheetOf([today, aim(1, { plan: 'afterBedtime', gapDays: 0 }), done]), [], [])
     expect(closed?.situationId).toBe('loop-closed')
     expect(closed?.text).toBe('Yesterday’s line was about Veltish; since then the record shows 1 step started, 1 marked done, the current skill changed once. That is the loop closing.')
     const open: Fact = { ...done, values: { ...done.values, planned: 0, started: 0, done: 0, changed: 0, received: 'untapped' } }
-    const o = chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 2 }), open]), [], [])
+    const o = chooseLine(sheetOf([today, aim(1, { plan: 'afterBedtime', gapDays: 2 }), open]), [], [])
     expect(o?.situationId).toBe('loop-open')
     expect(o?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
     expect(chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 2 }), { ...open, values: { ...open.values, received: 'not' } }]), [], [])).toBeNull()
@@ -169,7 +169,7 @@ describe('what the engine sees early, and the one tap it offers', () => {
     for (const id of dayScoped) expect(isWeekScoped(SITUATIONS.find((x) => x.id === id)!), id).toBe(false)
     expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'caffeine-sleep-even', 'caffeine-sleep-shorter', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'propose-test', 'step-stalled'])
     // The smoke test's case: the only true thing is a reading at the last check-in; the week's change says nothing.
-    const lonely: Fact = { id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off' } }
+    const lonely: Fact = { id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off', day: '2026-09-18', block: 'morning' } }
     expect(chooseLine(sheetOf([lonely]), [], [])?.situationId).toBe('loneliness-high')
     expect(phoneReview(sheetOf([lonely]), []).change).toBe('Nothing the record supports changing; keep the cues that hold.')
   })
@@ -202,5 +202,63 @@ describe('a tap on the brain’s own line reaches the phone’s ranking (Part 33
     const facts = [today, aim(1, { skills: 0, skill: null, step: 'No current skill yet' }), { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values: { study: 0, conversations: 0, faith: 0, her: 0 } }] as Fact[]
     expect(chooseLine(sheetOf(facts), [], [onFacts('not', ['aim.1']), onFacts('not', ['aim.1'])])?.situationId).toBe('direction-counts')
     expect(chooseLine(sheetOf(facts), [], [onFacts('not', ['week.today']), onFacts('not', ['week.today'])])?.situationId).toBe('first-skill')
+  })
+})
+
+describe('a stalled step, measured against its own interval (stage 1, item e)', () => {
+  const stalled = (values: Record<string, number | string | null>) => rankLines(sheetOf([today, aim(1, { due: 'due', ...values })]), [], []).some((c) => c.situationId === 'step-stalled')
+
+  it('never calls a once-a-week commitment kept on time stalled, by its rhythm or its one fixed day', () => {
+    expect(stalled({ gapDays: 7, perWeek: 1, interval: 7 })).toBe(false)
+    expect(stalled({ gapDays: 13, fixed: 'Saturday', interval: 7 })).toBe(false)
+    // A whole week's session missed past it: stalled.
+    expect(stalled({ gapDays: 14, perWeek: 1, interval: 7 })).toBe(true)
+  })
+
+  it('keeps a week as the stall for a commitment with neither, and for one practised most days', () => {
+    expect(stalled({ gapDays: 6, interval: 1 })).toBe(false)
+    expect(stalled({ gapDays: 7, interval: 1 })).toBe(true)
+    expect(stalled({ gapDays: 7, perWeek: 3, interval: 3 })).toBe(true)
+    // A sheet written before the interval was carried reads as before.
+    expect(stalled({ gapDays: 7 })).toBe(true)
+  })
+})
+
+describe('an old context answer does not drive today’s line (stage 1, item f)', () => {
+  it('speaks of loneliness from today’s or yesterday’s answer only', () => {
+    const lonely = (day: string): Fact => ({ id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off', day, block: 'evening' } })
+    expect(chooseLine(sheetOf([lonely('2026-09-18')]), [], [])?.situationId).toBe('loneliness-high')
+    expect(chooseLine(sheetOf([lonely('2026-09-17')]), [], [])?.situationId).toBe('loneliness-high')
+    expect(chooseLine(sheetOf([lonely('2026-09-16')]), [], [])?.situationId).not.toBe('loneliness-high')
+    expect(chooseLine(sheetOf([lonely('2026-08-30')]), [], [])?.situationId).not.toBe('loneliness-high')
+  })
+})
+
+describe('a plan tap names only a cue the day still holds (stage 1, item j)', () => {
+  const stalled = aim(1, { gapDays: 9, due: 'due' })
+  const tap = (facts: Fact[], hour: number) => (rankLines(sheetOf(facts, hour), [], []).find((c) => c.situationId === 'step-stalled')?.action ?? null) as { kind: string; aimId?: number; cue?: string } | null
+
+  it('pins to her bedtime while it is ahead, to the next check-in when she is away, and offers no tap once the day holds none', () => {
+    expect(tap([today, stalled], 8)).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
+    const away: Fact = { ...today, values: { ...today.values, bedtime: null } }
+    expect(tap([away, stalled], 8)).toEqual({ kind: 'plan', aimId: 1, cue: 'nextCheckIn' })
+    // At 21:00 her bedtime has passed and no check-in is left: the line stands without a tap.
+    expect(tap([today, stalled], 21)).toBeNull()
+    expect(rankLines(sheetOf([today, stalled], 21), [], []).some((c) => c.situationId === 'step-stalled')).toBe(true)
+  })
+
+  it('pins after pickup only on a day with one, before it', () => {
+    const kept = aim(1, { gapDays: 9, due: 'due', cue_afterPickup_n: 4, cue_afterPickup_started: 4 })
+    const pickup: Fact = { ...today, values: { ...today.values, pickup: '17:30' } }
+    expect(tap([pickup, kept], 8)?.cue).toBe('afterPickup')
+    expect(tap([today, kept], 8)?.cue).toBe('afterBedtime')
+    expect(tap([pickup, kept], 18)?.cue).toBe('afterBedtime')
+  })
+
+  it('says when only with a cue to say it with', () => {
+    const plain = aim(1, { gapDays: 2, due: 'due' })
+    expect(rankLines(sheetOf([today, plain], 8), [], []).find((c) => c.situationId === 'say-when')?.action).toEqual({ kind: 'plan', aimId: 1, cue: 'afterBedtime' })
+    const late: Fact = { ...today, values: { ...today.values, bedtime: '23:30' } }
+    expect(rankLines(sheetOf([{ ...late, values: { ...late.values, bedtime: null } }, plain], 18), [], []).some((c) => c.situationId === 'say-when')).toBe(false)
   })
 })

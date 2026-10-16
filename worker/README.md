@@ -10,8 +10,9 @@ On Sunday, beside the day's line, it writes the week reviewed in three parts: wh
 did not, one change; each part held to the rules of a line. Every
 fifteen minutes it looks for a plan whose moment has come and sends a content-free push; the
 phone composes the reminder from the plan it recorded. Forty-five minutes on, if the step is
-still not started, it sends one more, once, and never again for that plan. It also sends the three content-free
-check-in pings (07:30, 13:00, 19:30 local), which the repository used to send. Nothing here is paid for. If the free
+still not started, it sends one more, once, and never again for that plan; neither goes in quiet hours or for a
+paused commitment. It also sends the content-free check-in pings at your own reminder times, read from the settings
+the phone copies to the cloud, and none at all while reminders are off. Nothing here is paid for. If the free
 tier or a model goes away, the phone's own line stands.
 
 The free models never see a check-in: only the derived facts, which carry the last few notes you

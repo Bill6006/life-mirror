@@ -176,6 +176,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
               const x = records.outcomes.find((y) => y.offerId === o.id)
               return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null, ...(homeOnlyOn() && o.skipReason ? { skipReason: o.skipReason } : {}) }
             }),
+            // The days marked Unwell today (the owner's decision, 2026-10-10).
+            unwellDays: (records.days ?? []).filter((d) => d.unwell).map((d) => d.day),
             // Away from home (post-window, gated): the days a trip shaped, with what the week gave them; closed, not a key.
             ...(awayOn() ? { awayFromHome: (records.days ?? []).filter((d) => d.awayFromHome).map((d) => ({ day: d.day, held: d.awayFromHome?.held ?? null })) } : {}),
             // Answers whose move a reused id took (sync safety, 2026-10-02): kept whole, under no move.

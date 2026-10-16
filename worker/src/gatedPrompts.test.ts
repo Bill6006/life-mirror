@@ -102,7 +102,7 @@ const deps = (store: Store, now: Date, howFirm?: 'gated' | 'open') => ({ env, st
 const url = (q: Record<string, string>) => new URL(`https://w.test/claude/briefing?${new URLSearchParams(q)}`)
 const readsOf = async (store: Store) => (await store.readReads(100)).map(({ task, category, count, bytes, via }) => ({ task, category, count, bytes, via })).sort((a, b) => `${a.task}${a.category}`.localeCompare(`${b.task}${b.category}`))
 
-describe('the monitored prompts as Pass 1B opened them (2026-10-16), held fixed from here', () => {
+describe('the monitored prompts as stage 1 left them (2026-10-16), held fixed from here', () => {
   it('serves Claude the day’s line exactly as before, with the same private context and the same reads logged', async () => {
     const store = record()
     await runBrief(env, store, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })

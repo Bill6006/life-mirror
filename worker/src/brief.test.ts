@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FactSheet } from '../../src/factTypes'
 import cards from '../../src/library.json'
 import { runBrief, runReview } from './brief'
+import { saidLately } from './checks'
 import { memoryStore, APP, BRAIN_APP } from './turso'
 import type { Message } from './prompt'
 
@@ -34,8 +35,8 @@ function sheetFor(day: string, patch: Partial<FactSheet> = {}, daycare = { today
     said: [{ day, source: 'phone', situationId: 'first-skill', text: 'The phone said this.', feedback: null }],
     shortlist: [{ situationId: 'cue-switch', mode: 'strategy', text: 'After her bedtime held 1 of 4; the next check-in held more.', factIds: ['aim.1'], cardIds: ['implementation-intentions'], score: 0.8 }],
     facts: [
-      { id: 'week.today', tags: ['cue'], text: shape('Today is', day, daycare.today), values: { weekday: weekdayOf(day), daycare: daycare.today ? 1 : 0, pickup: daycare.today ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
-      { id: 'week.tomorrow', tags: ['cue'], text: shape('Tomorrow is', next(day), daycare.tomorrow), values: { day: next(day), weekday: weekdayOf(next(day)), daycare: daycare.tomorrow ? 1 : 0, pickup: daycare.tomorrow ? '17:30' : null, office: 0, church: 0, studyNight: 0 } },
+      { id: 'week.today', tags: ['cue'], text: shape('Today is', day, daycare.today), values: { weekday: weekdayOf(day), daycare: daycare.today ? 1 : 0, pickup: daycare.today ? '17:30' : null, office: 0, church: 0, studyNight: 0, bedtime: '20:00' } },
+      { id: 'week.tomorrow', tags: ['cue'], text: shape('Tomorrow is', next(day), daycare.tomorrow), values: { day: next(day), weekday: weekdayOf(next(day)), daycare: daycare.tomorrow ? 1 : 0, pickup: daycare.tomorrow ? '17:30' : null, office: 0, church: 0, studyNight: 0, bedtime: '20:00' } },
       { id: 'aim.1', tags: ['study', 'cue'], text: 'Veltish: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.', values: { name: 'Veltish', cue_afterBedtime_n: 4, cue_afterBedtime_started: 1 }, n: 4 },
       { id: 'trajectory.1', tags: ['study', 'habit'], text: 'Veltish: steps started per week over the last four weeks, oldest first: 3, 2, 0, 0.', values: { name: 'Veltish', aimId: 1, w3: 3, w2: 2, w1: 0, w0: 0 }, n: 5 },
       { id: 'note.2026-09-16.evening', tags: ['writing'], text: 'On 2026-09-16, at the evening check-in, you wrote: “work was heavy”.', values: { day: '2026-09-16', block: 'evening', note: 'work was heavy' } },
@@ -184,6 +185,8 @@ describe('when the day’s line is written', () => {
     expect(prompt).toContain('You are writing for 2026-09-19')
     expect(prompt).toContain('THE DAY YOU ARE WRITING FOR, 2026-09-19\nThe day you are writing for, 2026-09-19, is Saturday; not a daycare day')
     expect(bodyOf(store, '2026-09-19:brief')).toMatchObject({ forDay: '2026-09-19', factsDay: '2026-09-18', refusals: ['model-a: speaks of pickup or daycare, which Saturday 2026-09-19 does not hold'] })
+    // The words it cited, kept with it for Why, as the writer read them (stage 1, item l).
+    expect(bodyOf(store, '2026-09-19:brief').facts).toEqual([{ id: 'aim.1', text: 'Veltish: planned after her bedtime at 20:00, not started; cues: after her bedtime started 1 of 4.' }])
   })
 
   it('writes nothing from a sheet that does not say what the day holds, without facts, or with facts too old', async () => {
@@ -265,5 +268,18 @@ describe('the week reviewed', () => {
     const r = await runReview(env, yesterday(), async () => ({ response: broken }), at('05:15'), { fetcher, force: true })
     expect(r.wrote).toBe(false)
     expect(r.attempts?.[0]).toContain('didNot: uses the word "weak"')
+  })
+})
+
+describe('what the repeat check takes as said (stage 1, item m)', () => {
+  it('takes the Worker’s own line as said only once the phone showed it, and one from before the mark as said', async () => {
+    const store = memoryStore()
+    const brief = (id: string, day: string, at: string, text: string) => store.put({ app: BRAIN_APP, store: 'briefs', id, day, body: JSON.stringify({ day, at, text }), updated_at: at, deleted: 0, synced_at: at })
+    brief('2026-10-14:brief', '2026-10-14', '2026-10-14T09:15:00.000Z', 'Before the mark.')
+    brief('2026-10-19:brief', '2026-10-19', '2026-10-19T09:15:00.000Z', 'Never on screen.')
+    brief('2026-10-20:brief', '2026-10-20', '2026-10-20T09:15:00.000Z', 'On screen.')
+    store.put({ app: APP, store: 'days', id: '2026-10-20', day: '2026-10-20', body: JSON.stringify({ day: '2026-10-20', shown: { 'worker:2026-10-20:brief': '2026-10-20T09:30:00.000Z' } }), updated_at: '2026-10-20T09:30:00.000Z', deleted: 0, synced_at: '2026-10-20T09:30:00.000Z' })
+    const sheet = { version: 1, day: '2026-10-21', builtAt: '', hour: 7, weeks: 3, days: 22, direction: null, said: [], facts: [] } as FactSheet
+    expect((await saidLately(store, sheet)).map((x) => x.text).sort()).toEqual(['Before the mark.', 'On screen.'])
   })
 })

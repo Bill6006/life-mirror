@@ -10,8 +10,8 @@ import type { Fact } from './factTypes'
 
 /** Everything the two readings are counted from, read together in one go. */
 export async function readUseInput(): Promise<UseInput> {
-  const [rows, briefs, log, picks, offers, outcomes, intentions, aims] = await Promise.all([db.useLog.toArray(), db.brainBriefs.toArray(), db.briefLog.toArray(), db.coachPicks.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.intentions.toArray(), db.aims.toArray()])
-  return { rows, briefs, log, picks, offers, outcomes, intentions, aims }
+  const [rows, briefs, log, picks, offers, outcomes, intentions, aims, contexts] = await Promise.all([db.useLog.toArray(), db.brainBriefs.toArray(), db.briefLog.toArray(), db.coachPicks.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.intentions.toArray(), db.aims.toArray(), db.days.toArray()])
+  return { rows, briefs, contexts, log, picks, offers, outcomes, intentions, aims }
 }
 
 /** The last four weeks of use, today included, as Data and privacy shows them. */

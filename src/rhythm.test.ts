@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from './settings'
-import { dueOf, inStudyTime, isFaithPractice, quiet, rankOf, rhythmOf, scheduleOf, type DueInput } from './rhythm'
+import { dueOf, inStudyTime, intervalOf, isFaithPractice, maxRestFor, quiet, rankOf, rhythmOf, scheduleOf, stallAfter, type DueInput } from './rhythm'
 
 // Workstream 6, Part 39: a commitment is due by its own rhythm or its own fixed days, never by the
 // time of day, never by a draw, and never by an assumed cadence; a preferred study time only orders.
@@ -82,5 +82,33 @@ describe('a preferred study time', () => {
     expect(inStudyTime(week([4], 'evening'), thuNight)).toBe(true)
     expect(inStudyTime(week([1]), thuNoon)).toBe(false)
     expect(inStudyTime(week([]), thuNoon)).toBe(false)
+  })
+})
+
+describe('the rhythm editor offers only a rhythm that fits a week (stage 1, item n)', () => {
+  it('keeps the sessions and the rest between them within seven days', () => {
+    expect([1, 2, 3, 4, 5, 6, 7].map(maxRestFor)).toEqual([2, 2, 1, 0, 0, 0, 0])
+    for (let per = 1; per <= 7; per++) expect(per * (maxRestFor(per) + 1)).toBeLessThanOrEqual(7)
+  })
+})
+
+describe('a stall is measured against the commitment’s own interval (stage 1, item e)', () => {
+  it('reads the interval from its fixed days, else its rhythm, else one day', () => {
+    expect(intervalOf(null, [6])).toBe(7)
+    expect(intervalOf(null, [1, 4])).toBe(4)
+    expect(intervalOf(null, [0, 1, 2, 3, 4, 5, 6])).toBe(1)
+    // Fixed days decide over a rhythm, as they do for what is due.
+    expect(intervalOf({ perWeek: 3, restDays: 0 }, [6])).toBe(7)
+    expect(intervalOf({ perWeek: 1, restDays: 0 }, [])).toBe(7)
+    expect(intervalOf({ perWeek: 3, restDays: 0 }, [])).toBe(3)
+    expect(intervalOf({ perWeek: 2, restDays: 2 }, [])).toBe(4)
+    expect(intervalOf({ perWeek: 3, restDays: 2 }, [])).toBe(3)
+    expect(intervalOf(null, [])).toBe(1)
+  })
+
+  it('calls a stall only after a whole interval missed past the one it allows, never sooner than a week', () => {
+    expect([1, 3, 4, 7].map((i) => stallAfter(i))).toEqual([7, 7, 8, 14])
+    // A Monday's fresh start reads a stretch from five days, by the same interval.
+    expect([1, 2, 7].map((i) => stallAfter(i, 5))).toEqual([5, 5, 14])
   })
 })

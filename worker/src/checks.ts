@@ -3,6 +3,7 @@ import { DEFAULT_FIRMNESS, HOW_FIRM, type FirmnessPref } from '../../src/firmnes
 import type { FactSheet } from '../../src/factTypes'
 import type { Check } from './ai'
 import type { LineBriefing, Said } from './briefing'
+import { workerShown, type ShownMarks } from '../../src/shown'
 import { addDays } from './time'
 import type { Store } from './turso'
 
@@ -16,7 +17,15 @@ export const REPEAT_DAYS = 7
 /** What was said lately, by the Worker and by the phone, with how each landed. */
 export async function saidLately(store: Store, sheet: FactSheet): Promise<Said[]> {
   const feedback = new Map((await store.readFeedback()).map((f) => [f.briefKey, f.answer]))
-  return [...(await store.readSaid(7)).map((s) => ({ day: s.day, text: s.text, feedback: feedback.get(`worker:${s.id}`) ?? null })), ...sheet.said.filter((s) => s.source === 'phone').map((s) => ({ day: s.day, text: s.text, feedback: s.feedback }))]
+  // Said means seen (stage 1, item m): the Worker's own lines only once the phone showed them, by the mark on the record
+  // of the day each was first seen, from the oldest line's day to the sheet's.
+  const rows = await store.readSaid(7)
+  const first = rows.map((s) => s.day).filter(Boolean).sort()[0]
+  const span: string[] = []
+  for (let d = first; d && d <= sheet.day && span.length < 31; d = addDays(d, 1)) span.push(d)
+  const days: ShownMarks[] = await Promise.all(span.map(async (day) => ({ day, ...(((await store.readRecord('days', day)) as ShownMarks | null) ?? {}) })))
+  const seen = rows.filter((s) => workerShown({ id: s.id, at: s.at ?? '' }, days))
+  return [...seen.map((s) => ({ day: s.day, text: s.text, feedback: feedback.get(`worker:${s.id}`) ?? null })), ...sheet.said.filter((s) => s.source === 'phone').map((s) => ({ day: s.day, text: s.text, feedback: s.feedback }))]
     .sort((a, b) => (a.day < b.day ? 1 : -1))
     .slice(0, 10)
 }

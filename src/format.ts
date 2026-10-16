@@ -48,6 +48,23 @@ function minutesOfMatch(hh: string, mm: string, half: string | undefined): numbe
   return h <= 23 ? h * 60 + Number(mm) : null
 }
 
+/**
+ * The clock times a text names as written (item 5): each with its minute of the day, 24-hour unless
+ * am or pm says otherwise, and whether it is bare, an unpadded hour with no am or pm (9:30), which
+ * in your own words may mean either half of the day.
+ */
+export function clockTimesWritten(text: string): { written: string; minutes: number; bare: boolean }[] {
+  return [...text.matchAll(TIME_IN_TEXT)].flatMap((m) => {
+    const minutes = minutesOfMatch(m[1], m[2], m[3])
+    return minutes === null ? [] : [{ written: m[0], minutes, bare: !m[3] && m[1].length === 1 }]
+  })
+}
+
+/** The text with its clock times taken out, so a check of counts never reads a time's digits as one. */
+export function withoutClockTimes(text: string): string {
+  return text.replace(TIME_IN_TEXT, ' ')
+}
+
 /** The clock times a text names, in either form, as minutes after midnight. */
 export function clockTimesIn(text: string): number[] {
   return [...text.matchAll(TIME_IN_TEXT)].flatMap((m) => {
@@ -59,10 +76,15 @@ export function clockTimesIn(text: string): number[] {
 // The day's shape names the hour as a bare 24-hour number for its writers: "the hour is 16".
 const HOUR_IN_TEXT = /\bthe hour is (\d{1,2})\b(?![:.]\d)(?!\s?[AaPp]\.?[Mm](?![A-Za-z]))/g
 
-/** Words written from facts that keep HH:MM, shown with every clock time as 5:30 PM, and the day's hour as 4 PM; a token that is no time of day is left as written. */
+/**
+ * Words written from facts that keep HH:MM, shown with every clock time as 5:30 PM, and the day's
+ * hour as 4 PM; a token that is no time of day is left as written, and so is a bare unpadded hour
+ * with no am or pm (9:30), which says neither half of the day (item 5): never 9:30 AM by a guess.
+ */
 export function clockTimes12(text: string): string {
   return text
     .replace(TIME_IN_TEXT, (whole: string, hh: string, mm: string, half: string | undefined) => {
+      if (!half && hh.length === 1) return whole
       const minutes = minutesOfMatch(hh, mm, half)
       return minutes === null ? whole : clock12(Math.floor(minutes / 60), minutes % 60)
     })

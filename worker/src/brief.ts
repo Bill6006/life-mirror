@@ -1,7 +1,7 @@
-import { validateReview } from '../../src/brainShared'
+import { citedFacts, validateReview } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import { generateCandidates, generateValid, newUsage, neuronsOf, textOf, type Runner } from './ai'
-import { forFreeChain, lineBriefing } from './briefing'
+import { forFreeChain, lineBriefing, relabel } from './briefing'
 import { firmFor, lineCheck, saidLately } from './checks'
 import { claudeOn, fallbackReason, rowIdOf, startTask, taskIdOf, timeoutMinutes, type ClaudeTask } from './claude'
 import type { Env } from './env'
@@ -148,6 +148,7 @@ async function writeFreeLine(env: JobEnv, store: Store, run: Runner, now: Date, 
     writer: 'free',
     ...(fallback ? { fallback } : {}),
     ...(out.firmness ? { firmness: out.firmness, ...(firm === 'adaptive' ? { adaptive: true as const } : {}) } : {}),
+    facts: citedFacts(b.sheet, out.factIds, (f) => relabel(f, b.sheet, day)),
   }
   // Standing in for Claude: a line Claude posted while the chain was writing stands, and this one is dropped.
   if (fallback && !opts.force && (await store.hasBrief(row.id))) return { wrote: false, reason: 'written already', day }
@@ -228,7 +229,7 @@ async function writeFreeReview(env: JobEnv, store: Store, run: Runner, now: Date
 
   const at = now.toISOString()
   const { held, didNot, change, factIds, cardIds, firmness } = generated.output
-  const row: BriefRow = { id: `${day}:review`, day, kind: 'review', text: `${held} ${didNot} ${change}`, mode: 'strategy', factIds, cardIds, action: null, parts: { held, didNot, change }, model: generated.model, at, factsDay: b.factsDay, forDay: day, trigger, shape: b.shape, refusals: attempts, neurons: round1(usage.neurons), calls: usage.calls, latencyMs: Date.now() - started, writer: 'free', ...(fallback ? { fallback } : {}), ...(firmness ? { firmness, ...(firm === 'adaptive' ? { adaptive: true as const } : {}) } : {}) }
+  const row: BriefRow = { id: `${day}:review`, day, kind: 'review', text: `${held} ${didNot} ${change}`, mode: 'strategy', factIds, cardIds, action: null, parts: { held, didNot, change }, facts: citedFacts(b.sheet, factIds, (f) => relabel(f, b.sheet, day)), model: generated.model, at, factsDay: b.factsDay, forDay: day, trigger, shape: b.shape, refusals: attempts, neurons: round1(usage.neurons), calls: usage.calls, latencyMs: Date.now() - started, writer: 'free', ...(fallback ? { fallback } : {}), ...(firmness ? { firmness, ...(firm === 'adaptive' ? { adaptive: true as const } : {}) } : {}) }
   if (fallback && !opts.force && (await store.hasBrief(row.id))) return { wrote: false, reason: 'written already', day }
   await store.writeBrief(row, at)
   return { wrote: true, reason: 'review', day, forDay: day, factsDay: b.factsDay, trigger, writer: 'free', model: generated.model, attempts, neurons: row.neurons, text: row.text, mode: row.mode, cardIds, ...(fallback ? { fallback } : {}) }

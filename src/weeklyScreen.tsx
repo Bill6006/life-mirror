@@ -11,6 +11,7 @@ import { useLive } from './live'
 import { WeekReviewCard } from './weekReview'
 import { Disclosure } from './ui'
 import { readingById } from './readings'
+import type { Moved } from './weekly'
 
 // Mirror → The weekly view (final UI polish, 2026-09-26): the week ahead (its line, the graph, always
 // shown, and its range), the week reviewed, what moved this week, the baseline and the gap; then the
@@ -21,6 +22,18 @@ import { readingById } from './readings'
 const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v * 100)))
 const num = (v: number | null, digits = 0) => (v === null ? '—' : v.toFixed(digits))
 const steps = (v: number) => `${v > 0 ? '+' : ''}${(Math.round(v * 100) / 100).toFixed(2)}`
+
+/**
+ * A reading's move this week in its own direction, and which way that went (stage 1, item a): "Stress:
+ * down 0.50 steps, better". The delta is kept with the helpful direction positive; the words never are.
+ */
+export function movedWords(m: Moved): string {
+  const c = copy.weekly
+  const reading = readingById(m.reading).name
+  const raw = (m.thisWeek ?? 0) - (m.lastWeek ?? 0)
+  if (Math.abs(raw) < 0.005) return fill(c.movedSame, { reading })
+  return fill(c.movedLine, { reading, dir: raw > 0 ? c.movedUp : c.movedDown, steps: (Math.round(Math.abs(raw) * 100) / 100).toFixed(2), way: (m.delta ?? 0) > 0 ? c.movedBetter : c.movedWorse })
+}
 
 /** The week's range in plain words, whichever way it runs from tomorrow to a week out: never said to widen when it does not. */
 export function aheadRangeLine(flat: Pick<FlatWeek, 'near' | 'far'>): string {
@@ -96,7 +109,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             <p class="calc-line ink">{fill(c.movedReading, { thisWeek: num(w.moved.reading.thisWeek), lastWeek: num(w.moved.reading.lastWeek), delta: steps(w.moved.reading.delta) })}</p>
             {w.moved.ingredients.map((m) => (
               <p key={m.reading} class="calc-line">
-                {fill(c.movedLine, { reading: readingById(m.reading).name, delta: steps(m.delta as number) })}
+                {movedWords(m)}
               </p>
             ))}
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
-import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
+import { applyLineAction, chooseAndLog, feedbackFor, hypothesisOf, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
+import type { LineAction } from './brainShared'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
 import { clockTimes12, fill, formatHHMM } from './format'
@@ -8,6 +9,8 @@ import { gradeWord } from './library'
 import { useLive } from './live'
 import { nameOf } from './offerFlow'
 import { readingById } from './readings'
+import { INGREDIENTS } from './score'
+import { MIN_PER_ARM } from './tiers'
 import { logUse } from './useLog'
 
 // The brief on Now. The brain's line for the day comes first: the Worker's when it wrote one,
@@ -39,7 +42,10 @@ export function moveLine(m: YesterdayMove | null): string | null {
   if (!m) return null
   const c = copy.brief
   const steps = String(Math.round(Math.abs(m.effect) * 10) / 10)
-  const base = { target: readingById(m.target).name, steps, dir: m.effect >= 0 ? c.above : c.under }
+  // The effect is kept with the helpful direction positive; the words follow the reading itself, so a
+  // fall in Stress, which helps, is "under your usual" (stage 1, item a).
+  const raw = (INGREDIENTS[m.target] ?? 'up') === 'down' ? -m.effect : m.effect
+  const base = { target: readingById(m.target).name, steps, dir: raw >= 0 ? c.above : c.under }
   // "Nothing today" is a choice, not a move with a name: it gets a sentence of its own.
   if (m.moveId === NOTHING) return fill(c.moveNothing, base)
   return fill(c.move, { ...base, name: nameOf(m.moveId, copy.move.nothing), arm: m.arm === 'done' ? copy.move.done : copy.extras.winOutcome.partly })
@@ -58,6 +64,13 @@ function actionLabel(line: BriefLine, state: ActionState): string {
   if (a.kind === 'plan') return fill(c.actionPlan, { cue: copy.aims.cues[state.cue ?? a.cue].toLowerCase(), time: state.time ? formatHHMM(state.time) : '' })
   if (a.kind === 'depth') return c.actionDepth
   return fill(c.actionTest, { move: hasMove(a.moveId) ? moveById(a.moveId).name : a.moveId })
+}
+
+/** What a test tap set, said plainly (item 6): the move, the part of the day, the reading and how long. */
+export function testSetWords(a: Extract<LineAction, { kind: 'test' }>): string {
+  const h = hypothesisOf(a)
+  if (!h) return copy.brain.acted.test
+  return fill(copy.brain.actedTest, { move: hasMove(h.move) ? moveById(h.move).name : h.move, block: copy.blocks[h.context].toLowerCase(), reading: readingById(h.target).name.toLowerCase(), n: String(MIN_PER_ARM) })
 }
 
 /** The early warning: a conclusion, in the double-rule register. */
@@ -182,7 +195,7 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
       )}
       {line.action && act?.state === 'done' && (
         <p class="note faint no-gap" data-testid="brief-acted">
-          {c.acted[line.action.kind]}
+          {line.action.kind === 'test' ? testSetWords(line.action) : c.acted[line.action.kind]}
         </p>
       )}
       <div class="taps" role="group" aria-label={c.tapLabel}>

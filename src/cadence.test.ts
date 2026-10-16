@@ -1,9 +1,12 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { activeAims, addAim, addLearning, logSession, pauseAim, setRhythm, setSchedule, studyAims } from './aimFlow'
+import { activeAims, addAim, addLearning, logSession, pauseAim, planAim, resumeAim, setRhythm, setSchedule, studyAims } from './aimFlow'
 import { stepFor } from './aims'
 import { factSheet } from './brainFlow'
+import { moveById } from './catalogue'
 import { db, ensureDayContext, getSettings, type Aim } from './db'
+import { recordDoneNow } from './offerFlow'
+import { mayNudge, validateAction } from './brainShared'
 import { factById, type Fact, type FactSheet } from './facts'
 import { rankLines } from './situations'
 
@@ -71,6 +74,56 @@ describe('rhythm on the sheet', () => {
     // The same gap on a practice that is not faith does bring a nudge, so the silence above is the rule, not an accident.
     const plain: FactSheet = { ...stale, facts: stale.facts.map((x) => (x.id === f.id ? { ...x, values: { ...x.values, faith: 0 } } : x)) }
     expect(rankLines(plain, [], []).filter((c) => c.factIds.includes(f.id)).length).toBeGreaterThan(0)
+  })
+
+  it('holds Rule 10 everywhere for a faith practice: no gap, no cue counts, no fading reading, tagged faith alone, and no line or action nudges it (stage 1, item g)', async () => {
+    await addAim('practice', 'five-minutes-prayer')
+    const aim = (await activeAims()).find((a) => a.kind === 'practice') as Aim
+    const id = aim.id as number
+    for (const d of [20, 21, 22]) await planAim(aim, 'afterBedtime', '20:00', new Date(2026, 8, d, 9, 0))
+    // Done four days before, so anything else would carry a gap of four days.
+    const session = await resumeAim(aim, stepFor(aim, [], [], []), 'step', new Date(2026, 8, 20, 20, 0))
+    await recordDoneNow(session, new Date(2026, 8, 20, 20, 10))
+    await db.brainBriefs.put({ id: 'w-faith', day: '2026-09-23', kind: 'brief', text: 'A line about it.', mode: 'observation', factIds: [`aim.${id}`], cardIds: [], model: 'm', at: '2026-09-23T09:15:00.000Z' })
+    const sheet = await factSheet(DAY, NOW)
+    const f = factById(sheet, `aim.${id}`) as Fact
+    expect(f.values.gapDays).toBeNull()
+    expect(Object.keys(f.values).filter((k) => k.startsWith('cue_'))).toEqual([])
+    expect(f.text).not.toMatch(/days ago|cues:/)
+    expect(f.tags).toContain('faith')
+    expect(factById(sheet, `trajectory.${id}`)).toBeUndefined()
+    // The last line was about it: what the record shows since is never counted for it.
+    expect(factById(sheet, 'followup')?.values).toMatchObject({ aimId: null, planned: 0, missed: 0 })
+    // The one shared test, and the Worker's line check, refuse to nudge it.
+    expect(mayNudge(f)).toBe(false)
+    expect(validateAction({ kind: 'plan', aimId: id, cue: 'afterBedtime' }, sheet)).toMatchObject({ ok: false, reason: expect.stringContaining('faith practice') })
+    // Three plans and none started would bring a cue switch on anything else; on a faith practice, no line at all.
+    const counted: FactSheet = { ...sheet, facts: sheet.facts.map((x) => (x.id === f.id ? { ...x, values: { ...x.values, cue_afterBedtime_n: 3, cue_afterBedtime_started: 0, gapDays: 9 } } : x)) }
+    expect(rankLines(counted, [], []).filter((c) => c.factIds.includes(f.id)).map((c) => c.situationId)).toEqual([])
+  })
+
+  it('never proposes a test of a faith move: a test offers it more often (stage 1, item g)', async () => {
+    for (let d = 1; d <= 15; d++) {
+      const day = `2026-09-${String(d).padStart(2, '0')}`
+      await db.checkins.add({ day, block: 'evening', answers: { mood: 3 }, startedAt: `${day}T23:00:00.000Z`, completedAt: `${day}T23:01:00.000Z`, updatedAt: `${day}T23:01:00.000Z`, activeMs: 60_000 })
+    }
+    const untested = factById(await factSheet(DAY, NOW), 'untested')
+    const moves = String(untested?.values.moves ?? '').split(',').filter(Boolean)
+    expect(moves.length).toBeGreaterThan(0)
+    for (const m of moves) expect(moveById(m).family === 'faith' || moveById(m).hiddenWith === 'faith', m).toBe(false)
+    expect(untested?.text).not.toMatch(/prayer|verse|scripture|God/i)
+  })
+
+  it('tags a practice that is not faith as a habit, never as faith (stage 1, item g)', async () => {
+    await addAim('practice', 'walk-ten')
+    const aim = (await activeAims()).find((a) => a.kind === 'practice') as Aim
+    const sheet = await factSheet(DAY, NOW)
+    const f = factById(sheet, `aim.${aim.id}`) as Fact
+    expect(f.values.faith).toBe(0)
+    expect(f.tags).toContain('habit')
+    expect(f.tags).not.toContain('faith')
+    expect(mayNudge(f)).toBe(true)
+    expect(validateAction({ kind: 'plan', aimId: aim.id, cue: 'afterBedtime' }, sheet).ok).toBe(true)
   })
 
   it('never nudges a commitment on its rest day or once its week is in', async () => {

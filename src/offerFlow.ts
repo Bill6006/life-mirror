@@ -50,6 +50,11 @@ export async function pendingOffers(): Promise<Offer[]> {
     .sort((a, b) => (a.at < b.at ? -1 : 1))
 }
 
+/** "Not now" on an offer's question: it stays open and is asked once more at the next check-in (stage 1, item i). */
+export async function deferOutcome(offer: Offer): Promise<void> {
+  await db.offers.update(offer.id as number, { deferredAt: new Date().toISOString() })
+}
+
 /** The outcome logged for an offer, from the card or at the next check-in, or null. */
 export function outcomeFor(offerId: number | undefined): Promise<Outcome | null> {
   if (offerId === undefined) return Promise.resolve(null)

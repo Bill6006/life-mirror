@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > builds the same sheet: every fact, the shortlist and the day 1`] = `
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > builds the same sheet: every fact, the shortlist and the day 1`] = `
 [
   "record",
   "week.today",
@@ -80,7 +80,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
 ]
 `;
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > builds the same sheet: every fact, the shortlist and the day 2`] = `
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > builds the same sheet: every fact, the shortlist and the day 2`] = `
 {
   "day": "2026-10-07",
   "days": 36,
@@ -292,8 +292,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "hunger",
       ],
-      "text": "Hunger read “Stuffed” (1 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Hunger read “Stuffed” (1 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 1,
@@ -318,8 +319,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "sleep",
       ],
-      "text": "Sleep hours read “5 to 6 hours” (2 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Sleep hours read “5 to 6 hours” (2 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 2,
@@ -344,8 +346,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "sleep",
       ],
-      "text": "Sleep quality read “Fair” (3 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Sleep quality read “Fair” (3 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 3,
@@ -370,8 +373,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "social",
       ],
-      "text": "Confidence read “Doubting” (1 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Confidence read “Doubting” (1 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 1,
@@ -396,8 +400,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "mood",
       ],
-      "text": "Motivation read “Pulled” (5 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Motivation read “Pulled” (5 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 5,
@@ -422,8 +427,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "loneliness",
       ],
-      "text": "Loneliness (how much meaningful closeness feels missing, not a wish for company or how many people are around) read “Distant” (3 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Loneliness (how much meaningful closeness feels missing, not a wish for company or how many people are around) read “Distant” (3 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 3,
@@ -448,8 +454,9 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "social",
       ],
-      "text": "Social energy read “Up for it” (4 of 5) at the morning check-in on 2026-10-07.",
+      "text": "Social energy read “Up for it” (4 of 5) at the morning check-in on 2026-10-07, today.",
       "values": {
+        "ageDays": 0,
         "block": "morning",
         "day": "2026-10-07",
         "position": 4,
@@ -546,13 +553,14 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "mood",
       ],
-      "text": "Yesterday's move, Delete the one app that eats the evening (done), read 2.1 anchor steps above usual on Energy: one reading, not a finding.",
+      "text": "Yesterday's move, Delete the one app that eats the evening (done), read 2.1 anchor steps above usual on Energy, the better way: one reading, not a finding.",
       "values": {
         "arm": "done",
         "direction": "above",
         "move": "Delete the one app that eats the evening",
         "steps": 2.1,
         "target": "Energy",
+        "way": "better",
       },
     },
     {
@@ -1113,10 +1121,32 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "tags": [
         "monitoring",
       ],
-      "text": "Moves the library backs that the record has never tested: Review last week's topic for ten minutes (spaced-review), Ten minutes of recall, book closed (retrieval-ten), Explain one concept aloud as if teaching (explain-aloud), Half an hour with no screens (screen-free-half-hour), Write tomorrow's list before bed (todo-list-before-bed), A ten-minute walk, now (walk-ten), One set of something hard (strength-set), Walk somewhere green (green-walk), Say what you feel in one sentence (name-it), Name three things you are grateful for tonight (gratitude-three), Send a thank-you to someone who helped (thank-you-note), Eleven minutes lying still with a guided body scan (body-scan), Five minutes of prayer (five-minutes-prayer), One album side on purpose (music-on-purpose), Sit down for a real lunch (real-lunch), Ten minutes of daylight before ten (morning-daylight), One sentence past hello (one-sentence-past-hello), Ask one question in a group (ask-one-question), Close every tab and app but one (close-tabs), One 25-minute block, phone in another room (focused-block), Lay out tomorrow's clothes and bags (tomorrow-laid-out), Three two-minute things, now (two-minute-rule), Finish one thing that is nearly done (finish-one-thing), Finish the shower cold (cold-finish-shower).",
+      "text": "Moves the library backs that the record has never tested: Review last week's topic for ten minutes (spaced-review; no reading a test can measure), Ten minutes of recall, book closed (retrieval-ten; no reading a test can measure), Explain one concept aloud as if teaching (explain-aloud; no reading a test can measure), Half an hour with no screens (screen-free-half-hour; can test stress in the afternoon or evening), Write tomorrow's list before bed (todo-list-before-bed; can test overwhelm in the evening), A ten-minute walk, now (walk-ten; can test mood or energy or stress in the morning or afternoon or evening), One set of something hard (strength-set; can test energy in the morning or afternoon), Walk somewhere green (green-walk; can test overwhelm or mood or stress in the morning or afternoon), Say what you feel in one sentence (name-it; can test irritation or overwhelm in the morning or afternoon or evening), Send a thank-you to someone who helped (thank-you-note; can test mood in the morning or afternoon or evening), Eleven minutes lying still with a guided body scan (body-scan; can test stress or energy in the afternoon or evening), One album side on purpose (music-on-purpose; can test mood or stress in the afternoon or evening), Sit down for a real lunch (real-lunch; can test energy or irritation in the morning or afternoon), Ten minutes of daylight before ten (morning-daylight; can test energy in the morning), One sentence past hello (one-sentence-past-hello; can test mood in the morning or afternoon or evening), Ask one question in a group (ask-one-question; can test mood in the morning or afternoon or evening), Close every tab and app but one (close-tabs; can test focus or overwhelm in the morning or afternoon or evening), One 25-minute block, phone in another room (focused-block; can test focus in the morning or afternoon or evening), Lay out tomorrow's clothes and bags (tomorrow-laid-out; can test stress or overwhelm in the evening), Three two-minute things, now (two-minute-rule; can test overwhelm in the morning or afternoon or evening), Finish one thing that is nearly done (finish-one-thing; can test mood in the morning or afternoon or evening), Finish the shower cold (cold-finish-shower; can test energy in the morning).",
       "values": {
-        "count": 24,
-        "moves": "spaced-review,retrieval-ten,explain-aloud,screen-free-half-hour,todo-list-before-bed,walk-ten,strength-set,green-walk,name-it,gratitude-three,thank-you-note,body-scan,five-minutes-prayer,music-on-purpose,real-lunch,morning-daylight,one-sentence-past-hello,ask-one-question,close-tabs,focused-block,tomorrow-laid-out,two-minute-rule,finish-one-thing,cold-finish-shower",
+        "count": 22,
+        "moves": "spaced-review,retrieval-ten,explain-aloud,screen-free-half-hour,todo-list-before-bed,walk-ten,strength-set,green-walk,name-it,thank-you-note,body-scan,music-on-purpose,real-lunch,morning-daylight,one-sentence-past-hello,ask-one-question,close-tabs,focused-block,tomorrow-laid-out,two-minute-rule,finish-one-thing,cold-finish-shower",
+        "tests_ask-one-question": "mood@morning,afternoon,evening",
+        "tests_body-scan": "stress,energy@afternoon,evening",
+        "tests_close-tabs": "focus,overwhelm@morning,afternoon,evening",
+        "tests_cold-finish-shower": "energy@morning",
+        "tests_explain-aloud": "@morning,afternoon,evening",
+        "tests_finish-one-thing": "mood@morning,afternoon,evening",
+        "tests_focused-block": "focus@morning,afternoon,evening",
+        "tests_green-walk": "overwhelm,mood,stress@morning,afternoon",
+        "tests_morning-daylight": "energy@morning",
+        "tests_music-on-purpose": "mood,stress@afternoon,evening",
+        "tests_name-it": "irritation,overwhelm@morning,afternoon,evening",
+        "tests_one-sentence-past-hello": "mood@morning,afternoon,evening",
+        "tests_real-lunch": "energy,irritation@morning,afternoon",
+        "tests_retrieval-ten": "@morning,afternoon,evening",
+        "tests_screen-free-half-hour": "stress@afternoon,evening",
+        "tests_spaced-review": "@morning,afternoon,evening",
+        "tests_strength-set": "energy@morning,afternoon",
+        "tests_thank-you-note": "mood@morning,afternoon,evening",
+        "tests_todo-list-before-bed": "overwhelm@evening",
+        "tests_tomorrow-laid-out": "stress,overwhelm@evening",
+        "tests_two-minute-rule": "overwhelm@morning,afternoon,evening",
+        "tests_walk-ten": "mood,energy,stress@morning,afternoon,evening",
       },
     },
     {
@@ -1136,6 +1166,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
         "fixed": null,
         "gapDays": 3,
         "hard": 1,
+        "interval": 3,
         "kind": "certification",
         "method": "A phrasebook",
         "minutes": 0,
@@ -1321,7 +1352,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
     },
     {
       "cardIds": [
-        "spacing-effect",
+        "exercise-depression",
       ],
       "factIds": [
         "untested",
@@ -1330,7 +1361,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
       "mode": "recommendation",
       "score": 0.45,
       "situationId": "propose-test",
-      "text": "The library holds strong evidence for Review last week's topic for ten minutes, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
+      "text": "The library holds strong evidence for A ten-minute walk, now, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
     },
     {
       "cardIds": [
@@ -1352,7 +1383,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
 }
 `;
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > draws the same moves from the same candidates, the replacement after the skip included 1`] = `
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > draws the same moves from the same candidates, the replacement after the skip included 1`] = `
 [
   {
     "block": "evening",
@@ -2335,7 +2366,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
 ]
 `;
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > reads the same usual ranges 1`] = `
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > reads the same usual ranges 1`] = `
 {
   "afternoon": {
     "hi": 67,
@@ -2351,7 +2382,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
 }
 `;
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > screens every move the same way in every situation, on an office day, a trip day, a church day and a study day 1`] = `
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > screens every move the same way in every situation, on an office day, a trip day, a church day and a study day 1`] = `
 {
   "2026-09-25": {
     "candidates": 1056,
@@ -2376,7 +2407,7 @@ exports[`the record the monitored prompts are built from, held fixed while the p
 }
 `;
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > shapes the same fortnight from the week, a trip saved or not 1`] = `
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > shapes the same fortnight from the week, a trip saved or not 1`] = `
 [
   {
     "atOffice": true,
@@ -2549,4 +2580,4 @@ exports[`the record the monitored prompts are built from, held fixed while the p
 ]
 `;
 
-exports[`the record the monitored prompts are built from, held fixed while the post-window features are gated > writes the same coach block 1`] = `null`;
+exports[`the record the monitored prompts are built from, held fixed with the post-window features closed > writes the same coach block 1`] = `null`;

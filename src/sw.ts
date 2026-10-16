@@ -5,9 +5,10 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute, type 
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { blockAt, type Block } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, db, getSettings, markReminded, updateSettings, type CheckIn, type Intention } from './db'
+import { latestPlans } from './aims'
+import { allCheckIns, db, getSettings, markReminded, updateSettings, type CheckIn } from './db'
 import { fill } from './format'
-import { minutesOf, pushDecision } from './settings'
+import { hhmmOf, inQuietHours, minutesOf, pushDecision } from './settings'
 import { logUse } from './useLog'
 import { VAPID_PUBLIC_KEY } from './vapid'
 
@@ -58,18 +59,19 @@ async function quiet(): Promise<void> {
 /**
  * A cue whose moment has come, or, once and no more, the same cue forty-five minutes on with the
  * step still not started: the Worker sent nothing but the fact of it; the words are the
- * plan's own, recorded on this phone when it was made. Only plans not yet started, the latest
- * per commitment.
+ * plan's own, recorded on this phone when it was made. The latest plan per commitment first, then
+ * only those not yet started: a plan replaced is never shown again (stage 1, item c). Never a
+ * paused or archived commitment's, and nothing in quiet hours (item b).
  */
 async function onCue(followUp: boolean): Promise<void> {
   const now = new Date()
   const { day } = blockAt(now)
   const minute = now.getHours() * 60 + now.getMinutes()
-  const plans = (await db.intentions.where('day').equals(day).toArray()).filter((p) => p.offerId === null && minutesOf(p.time) <= minute - (followUp ? 40 : 0))
-  const latest = new Map<number, Intention>()
-  for (const p of plans.sort((a, b) => (a.setAt < b.setAt ? -1 : 1))) latest.set(p.aimId, p)
-  const lines = [...latest.values()].map((p) => (p.step ? `${copy.aims.cues[p.cue]} · ${p.step}` : copy.aims.cues[p.cue]))
-  if (!lines.length) return quiet()
+  const [todays, settings, aims] = await Promise.all([db.intentions.where('day').equals(day).toArray(), getSettings(), db.aims.toArray()])
+  const resting = new Set(aims.filter((a) => a.pausedAt || a.archivedAt !== null).map((a) => a.id as number))
+  const plans = latestPlans(todays).filter((p) => p.offerId === null && minutesOf(p.time) <= minute - (followUp ? 40 : 0) && !resting.has(p.aimId))
+  const lines = plans.map((p) => (p.step ? `${copy.aims.cues[p.cue]} · ${p.step}` : copy.aims.cues[p.cue]))
+  if (!lines.length || inQuietHours(hhmmOf(now), settings)) return quiet()
   await self.registration.showNotification(copy.appName, { body: (followUp ? copy.reminders.stillOpen + ' · ' : '') + lines.join(' · '), tag: followUp ? 'cue2' : 'cue', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
 }
 

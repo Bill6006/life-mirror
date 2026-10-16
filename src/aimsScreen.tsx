@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { AimCard, AimRow, type Cadence, type LearningView } from './aimCard'
 import { activeAims, addAim, addLearning, aimRecords, allIntentions, editSkill, finishAim, finishedAims, liveSkills, logSession, makeCurrent, openAimOffers, pauseAim, planAim, removeAim, reopenAim, resumeAim, rungMarks, setAimStep, setCurrentSkill, setRhythm, setSchedule, type AimRecords } from './aimFlow'
-import { BECOMING_KEYS, becoming, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { BECOMING_KEYS, becoming, withCheckIns, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
 import { dueOf, inStudyTime, isFaithPractice, rankOf, rhythmOf, scheduleOf, type Rhythm } from './rhythm'
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
@@ -50,7 +50,7 @@ function useAims() {
   // Parts 40 and 41: each learning commitment's skill coach; null while their gate is closed.
   const skillCoach = useLive(() => coachStates(today), [today])
   if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks || skillCoach === undefined) return null
-  return { aims, skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach }
+  return { aims, skills, marks, open, records, intentions, ctx: withCheckIns(ctx, settings), today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach }
 }
 
 /** A learning commitment's own view: the practice on its current skill, the skills before it newest first with their sessions, the proofs the retired ladder recorded (read only), and the taps only you make. */

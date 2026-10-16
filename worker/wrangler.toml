@@ -11,8 +11,8 @@ compatibility_date = "2026-09-01"
 binding = "AI"
 
 [triggers]
-# One tick every fifteen minutes (Part 28): a cue whose moment has come and the three check-in
-# pings at their times; the day's line once today's sheet carries the morning check-in, or from
+# One tick every fifteen minutes (Part 28): a cue whose moment has come and the check-in pings at
+# your own reminder times (from the settings the phone copies); the day's line once today's sheet carries the morning check-in, or from
 # FALLBACK_TIME without one; on Sunday at BRIEF_HOUR, the week reviewed.
 crons = ["*/15 * * * *"]
 
@@ -22,8 +22,6 @@ TIMEZONE = "America/New_York"
 BRIEF_HOUR = "5"
 # With no morning check-in on a sheet by this local time, the day's line is written from the newest sheet.
 FALLBACK_TIME = "11:00"
-# The content-free check-in pings, local time; the phone decides whether to show anything.
-PING_TIMES = "07:30,13:00,19:30"
 # The database address is a constant shown in Settings, not a secret; the token is.
 TURSO_URL = "https://life-record-bill6006.aws-us-east-1.turso.io"
 LIBRARY_URL = "https://raw.githubusercontent.com/Bill6006/life-mirror/main/src/library.json"

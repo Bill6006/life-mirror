@@ -755,8 +755,8 @@ for (const theme of THEMES) {
 
 /**
  * The two features agreed for after the clean window (home-only moves with Skip's "Not home", and
- * Away from home), previewed as a test browser alone may; both gates stay closed (2026-10-04): a
- * trip set for tomorrow, a day an earlier trip shaped with a move offered on it, and the morning's
+ * Away from home), open as they ship since stage 1 (2026-10-16; the preview flags set here are no
+ * longer needed): a trip set for tomorrow, a day an earlier trip shaped with a move offered on it, and the morning's
  * live move one that needs the house.
  */
 async function seedPostWindow(page: Page): Promise<void> {
@@ -791,13 +791,8 @@ async function seedPostWindow(page: Page): Promise<void> {
     })
     const live = offers.find((o) => o.kind === 'block' && o.day === '2026-10-14' && o.skippedAt === null)
     if (!live) throw new Error('no live move')
-    const settings = await new Promise<Record<string, unknown> & { extras: Record<string, boolean> }>((res) => {
-      const q = dbx.transaction(['settings'], 'readonly').objectStore('settings').get(1)
-      q.onsuccess = () => res(q.result)
-    })
-    const tx = dbx.transaction(['offers', 'days', 'settings'], 'readwrite')
-    // The caffeine item off: a morning summary's caffeine chips are measured apart (their wrapped rows' targets overlap by 4 px, before this build); this walk measures the new rows.
-    tx.objectStore('settings').put({ ...settings, extras: { ...settings.extras, caffeine: false } })
+    // The caffeine item stays on (stage 1, item r): its wrapped rows' targets no longer overlap, so this walk measures them too.
+    const tx = dbx.transaction(['offers', 'days'], 'readwrite')
     tx.objectStore('offers').put({ ...live, moveId: 'open-windows', cardId: null, whyNot: null, passiveId: null })
     const at = new Date(2026, 9, 12, 19, 40).toISOString()
     tx.objectStore('offers').put({ ...live, id: 7000, day: '2026-10-12', block: 'evening', at, moveId: 'walk-ten', cardId: null, whyNot: null, passiveId: null, closedAt: at })
@@ -859,7 +854,7 @@ const POST_WINDOW: typeof STATES = [
 ]
 
 for (const theme of THEMES) {
-  test(`${theme}: the post-window features read, fit and can be tapped, at three widths (previewed, both gates closed)`, async ({ page }, info) => {
+  test(`${theme}: the post-window features read, fit and can be tapped, at three widths (open since stage 1)`, async ({ page }, info) => {
     test.setTimeout(600_000)
     await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
     await seedPostWindow(page)

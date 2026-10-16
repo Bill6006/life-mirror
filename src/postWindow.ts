@@ -2,14 +2,15 @@
 // need the house, with Skip's "Not home"; and Away from home, a trip with a start and a required
 // end. Built behind these two gates and shipped closed (the owner's word, 2026-10-04): closed,
 // nothing of either is shown, stored, read or sent, so the day's sheet, the draw, eligibility,
-// every prompt and the monitoring stay exactly as they were. Opened only at the owner's word once
-// Pass 1B is complete and activated, the Worker first; the phone and the Worker read these values.
+// every prompt and the monitoring stay exactly as they were. Opened at the owner's word once Pass 1B
+// was complete and activated (2026-10-16, the agreed order's stage 1), the Worker first; the phone
+// and the Worker read these values.
 
-/** Moves that need the house, and Skip's "Not home". */
-export const HOME_ONLY: 'gated' | 'open' = 'gated'
+/** Moves that need the house, and Skip's "Not home". Open since stage 1 (2026-10-16). */
+export const HOME_ONLY: 'gated' | 'open' = 'open'
 
-/** Away from home: a trip's days, set ahead with a required end. */
-export const AWAY_FROM_HOME: 'gated' | 'open' = 'gated'
+/** Away from home: a trip's days, set ahead with a required end. Open since stage 1 (2026-10-16). */
+export const AWAY_FROM_HOME: 'gated' | 'open' = 'open'
 
 /** A trip: its first and last day, both away from home. The last day is required, so a trip always ends by itself. */
 export interface AwayRange {

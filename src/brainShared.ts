@@ -1,6 +1,7 @@
-import type { FactSheet } from './factTypes'
+import type { Fact, FactSheet } from './factTypes'
 import { allowedFirmness, deliverySignals, firmnessRefusal, isFirmness, isFirmnessPref, isPatternFact, type DeliverySignals, type Firmness, type FirmnessPref } from './firmness'
 import type { ClaimCard, Grade } from './libraryTypes'
+import { clockTimesWritten, withoutClockTimes } from './format'
 import { isUsageFact } from './useShared'
 
 // What the brain may say, checked the same way on the phone and in the Worker: one of the
@@ -169,7 +170,22 @@ export function readBrainPrefs(raw: unknown): BrainPrefsBody {
  * step to a cue today, make the check-in lighter, or set a test the record has never run.
  * Nothing else; the phone checks again at the tap that it is still possible.
  */
-export type LineAction = { kind: 'plan'; aimId: number; cue: LineCue } | { kind: 'depth'; value: 'short' } | { kind: 'test'; moveId: string }
+/**
+ * The one tap a line may offer. A test carries what it tests (item 6): the reading and the part of
+ * the day, as the untested fact says that move can be tested; absent only on taps from before.
+ */
+export type LineAction = { kind: 'plan'; aimId: number; cue: LineCue } | { kind: 'depth'; value: 'short' } | { kind: 'test'; moveId: string; reading?: string; block?: LineBlock }
+
+/** A part of the day, as a test names it. */
+export type LineBlock = 'morning' | 'afternoon' | 'evening'
+
+/** What the untested fact says a move can be tested on (item 6): the readings a test can measure among its targets, and the parts of the day it fits. */
+export function testsOf(sheet: FactSheet, moveId: string): { readings: string[]; blocks: string[] } | null {
+  const spec = sheet.facts.find((f) => f.id === 'untested')?.values[`tests_${moveId}`]
+  if (typeof spec !== 'string') return null
+  const [readings, blocks] = spec.split('@')
+  return { readings: (readings ?? '').split(',').filter(Boolean), blocks: (blocks ?? '').split(',').filter(Boolean) }
+}
 
 export interface BrainOutput {
   mode: Mode
@@ -291,18 +307,79 @@ export function numbersIn(text: string): string[] {
   return text.match(/\d+(?:[.,:]\d+)*/g) ?? []
 }
 
-/** Whether a number as written appears among the cited facts' values, as a number or inside a string such as a time. */
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Minutes after midnight as the record writes a time: 21:30. */
+const hhmmOf = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+
+/** Values that hold the Brain's own earlier words, the last line and the last review's change: never grounds for a number (stage 1, item h). */
+const EARLIER_WORDS: ReadonlySet<string> = new Set(['text', 'change'])
+const ISO_DATE = /\b\d{4}-\d{2}-\d{2}\b/g
+const CLOCK = /^(\d{1,2}):(\d{2})$/
+
+/**
+ * Whether a number as written is one of the cited facts' own (stage 1, item h): a whole number equal
+ * to one of their numbers, or a time equal to one of their times (7:30 is 07:30). Never a part of a
+ * date, never a digit inside a name or another number, and never the Brain's own earlier words.
+ */
 export function numberGrounded(token: string, sheet: FactSheet, factIds: readonly string[]): boolean {
   const plain = token.replace(/,/g, '')
+  const clock = CLOCK.exec(token)
   for (const f of sheet.facts) {
     if (!factIds.includes(f.id)) continue
-    for (const v of Object.values(f.values)) {
+    for (const [k, v] of Object.entries(f.values)) {
       if (typeof v === 'number' && (String(v) === plain || String(Math.round(v)) === plain || Math.abs(v).toString() === plain)) return true
-      if (typeof v === 'string' && v.includes(token)) return true
+      if (!clock || typeof v !== 'string' || EARLIER_WORDS.has(k)) continue
+      for (const t of numbersIn(v.replace(ISO_DATE, ' '))) {
+        const c = CLOCK.exec(t)
+        if (c && Number(c[1]) === Number(clock[1]) && c[2] === clock[2]) return true
+      }
     }
     if (f.n !== undefined && String(f.n) === plain) return true
   }
   return false
+}
+
+const NUMBER_WORDS: Readonly<Record<string, number>> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 }
+const UNIT_WORDS: Readonly<Record<string, number>> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 }
+/**
+ * A count written as a word (stage 1, item h): a number word before a thing the record counts, or
+ * before "of"; never "one", and never a window ("the last seven days", "per week").
+ */
+const COUNT_WORD = new RegExp(
+  `(?<!\\b(?:last|past|next|over|per|every|each|within|first)\\s)\\b(${Object.keys(NUMBER_WORDS).join('|')})(?:-(${Object.keys(UNIT_WORDS).join('|')}))?(?=\\s+(?:of\\b|(?:more\\s+)?(?:times?|sessions?|plans?|steps?|check-ins?|moves?|naps?|workouts?|days?|nights?|weeks?|reps?|sittings?|conversations?|evenings?|mornings?|afternoons?)\\b))`,
+  'gi',
+)
+
+/**
+ * The reason a line's numbers are refused, or null (stage 1, item h). A cited name, step or time said
+ * as written names, it does not count, so it is set aside first; every number left must be one of the
+ * cited facts' own, and so must every count written as a word, which may also stand where a cited
+ * fact itself says it in words. The Brain's own earlier words ground nothing.
+ */
+export function numbersRefusal(text: string, sheet: FactSheet, factIds: readonly string[]): string | null {
+  const cited = sheet.facts.filter((f) => factIds.includes(f.id))
+  const named = cited.flatMap((f) => Object.entries(f.values).filter((e): e is [string, string] => typeof e[1] === 'string' && !EARLIER_WORDS.has(e[0]) && e[1].trim().length >= 2 && !/^[\d.,:]+$/.test(e[1].trim())).map((e) => e[1].trim()))
+  let rest = text
+  for (const name of [...new Set(named)].sort((a, b) => b.length - a.length)) rest = rest.replace(new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(name)}(?=$|[^\\p{L}\\p{N}])`, 'giu'), '$1 ')
+  // Clock times (item 5): each names a minute of the day, 24-hour unless am or pm says so, and must be one the cited facts name; a
+  // bare 9:30 in your own words may be either half. The wrong half is refused with the record's own 24-hour time.
+  const times = new Set(cited.flatMap((f) => Object.entries(f.values).flatMap(([k, v]) => (typeof v === 'string' && !EARLIER_WORDS.has(k) ? clockTimesWritten(v).flatMap((t) => (t.bare ? [t.minutes, t.minutes + 720] : [t.minutes])) : []))))
+  for (const t of clockTimesWritten(rest)) {
+    if (times.has(t.minutes)) continue
+    const same = [...times].find((m) => m % 720 === t.minutes % 720)
+    return same !== undefined ? `the time ${t.written} is not the cited facts' ${hhmmOf(same)}; write clock times as the record does, 24-hour: ${hhmmOf(same)}` : `the time ${t.written} is not in the cited facts`
+  }
+  rest = withoutClockTimes(rest)
+  for (const n of numbersIn(rest)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
+  // The cited facts' own words, less the Brain's earlier words they quote.
+  const own = cited.map((f) => Object.entries(f.values).reduce((t, [k, v]) => (EARLIER_WORDS.has(k) && typeof v === 'string' && v ? t.split(v).join(' ') : t), f.text)).join(' ')
+  for (const m of rest.matchAll(COUNT_WORD)) {
+    const word = m[0].toLowerCase()
+    const value = NUMBER_WORDS[(m[1] ?? '').toLowerCase()] + (m[2] ? UNIT_WORDS[m[2].toLowerCase()] : 0)
+    if (!numberGrounded(String(value), sheet, factIds) && !new RegExp(`\\b${escapeRe(word)}\\b`, 'i').test(own)) return `the count “${m[0]}” is not in the cited facts`
+  }
+  return null
 }
 
 function strings(v: unknown): string[] {
@@ -328,7 +405,8 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
     const why = placeRefusal(text)
     if (why) return why
   }
-  for (const n of numbersIn(text)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
+  const numbers = numbersRefusal(text, sheet, factIds)
+  if (numbers) return numbers
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
     if (text.toLowerCase().includes(phrase) && GRADE_ORDER[grade] < best) return `says "${phrase}" beyond the cited cards' grade`
@@ -358,15 +436,53 @@ function citations(o: Record<string, unknown>, sheet: FactSheet, cards: readonly
  * at full depth, the move is one the record has never tested; and, once Away from home is open, no
  * plan for a day the sheet says is away from home on a trip, when nothing is due.
  */
-export function validateAction(raw: unknown, sheet: FactSheet, forDay?: string): ActionValidation {
+/** A fact as a line cited it, kept with the line (stage 1, item l): its id and its words as they stood when the line was written. */
+export interface CitedFact {
+  id: string
+  text: string
+}
+
+/** The cited facts' words from the sheet a line was written from, in the order cited; `wording` gives them as the writer read them. */
+export function citedFacts(sheet: FactSheet, factIds: readonly string[], wording: (f: Fact) => string = (f) => f.text): CitedFact[] {
+  return factIds.map((id) => sheet.facts.find((f) => f.id === id)).filter((f): f is Fact => f !== undefined).map((f) => ({ id: f.id, text: wording(f) }))
+}
+
+/** Cited facts as stored: each kept only when it is an id and its words. */
+export function citedFactsOf(v: unknown): CitedFact[] {
+  if (!Array.isArray(v)) return []
+  return v.filter((x): x is CitedFact => typeof x === 'object' && x !== null && typeof (x as CitedFact).id === 'string' && typeof (x as CitedFact).text === 'string').map((x) => ({ id: x.id, text: x.text }))
+}
+
+/**
+ * Whether a line may nudge this commitment toward a plan (stage 1, item g): never a faith practice,
+ * which is offered and never pushed (Rule 10). The one test every plan line on the phone and the
+ * line check on the Worker use.
+ */
+export function mayNudge(aim: Fact | undefined): boolean {
+  return aim !== undefined && aim.values.faith !== 1
+}
+
+export function validateAction(raw: unknown, sheet: FactSheet, forDay?: string, line?: { text: string; factIds: readonly string[] }): ActionValidation {
   if (raw === undefined || raw === null) return { ok: true, value: null }
   if (typeof raw !== 'object') return { ok: false, reason: 'action is not an object' }
   const a = raw as Record<string, unknown>
   if (a.kind === 'plan') {
     if (forDay && shapeFor(sheet, forDay)?.trip) return { ok: false, reason: 'action plan: that day is away from home on a trip, when nothing is due; leave the action out' }
     const aimId = typeof a.aimId === 'number' ? a.aimId : Number(a.aimId)
-    if (!Number.isInteger(aimId) || !sheet.facts.some((f) => f.id === `aim.${aimId}`)) return { ok: false, reason: `action plan: no commitment aim.${String(a.aimId)} on the sheet` }
+    const aim = Number.isInteger(aimId) ? sheet.facts.find((f) => f.id === `aim.${aimId}`) : undefined
+    if (!aim) return { ok: false, reason: `action plan: no commitment aim.${String(a.aimId)} on the sheet` }
+    if (!mayNudge(aim)) return { ok: false, reason: 'action plan: a faith practice is offered, never pushed (Rule 10); leave the action out' }
     if (typeof a.cue !== 'string' || !(LINE_CUES as readonly string[]).includes(a.cue)) return { ok: false, reason: `action plan: cue must be one of ${LINE_CUES.join(', ')}` }
+    // A cue the day written for holds (stage 1, item j): after pickup on a daycare day, after her bedtime on a day she is with you.
+    const shape = shapeFor(sheet, forDay ?? sheet.day)
+    if (a.cue === 'afterPickup' && !shape?.pickup) return { ok: false, reason: 'action plan: that day has no pickup; use a cue it holds' }
+    if (a.cue === 'afterBedtime' && !shape?.bedtime) return { ok: false, reason: 'action plan: that day has no bedtime of hers; use a cue it holds' }
+    // Held to its line (item 6): a tap pins the step to the moment the line names, when it names one.
+    const named = line ? clockTimesWritten(line.text).map((t) => t.minutes) : []
+    const cueTime = a.cue === 'afterPickup' ? shape?.pickup : a.cue === 'afterBedtime' ? shape?.bedtime : null
+    const minutesOfCue = (t: string | null | undefined) => clockTimesWritten(t ?? '').map((x) => x.minutes)[0]
+    if (named.length && cueTime && !named.includes(minutesOfCue(cueTime) as number)) return { ok: false, reason: `action plan: the line names ${named.map(hhmmOf).join(', ')}, and its tap pins the step to ${cueTime}; make them the same moment` }
+    if (named.length && a.cue === 'nextCheckIn' && [shape?.pickup, shape?.bedtime].some((t) => t && named.includes(minutesOfCue(t) as number))) return { ok: false, reason: 'action plan: the line names the moment of another cue; pin the step to that cue' }
     return { ok: true, value: { kind: 'plan', aimId, cue: a.cue as LineCue } }
   }
   if (a.kind === 'depth') {
@@ -377,7 +493,12 @@ export function validateAction(raw: unknown, sheet: FactSheet, forDay?: string):
   if (a.kind === 'test') {
     const untested = String(sheet.facts.find((f) => f.id === 'untested')?.values.moves ?? '').split(',')
     if (typeof a.moveId !== 'string' || !untested.includes(a.moveId)) return { ok: false, reason: 'action test: moveId must be one the untested fact lists' }
-    return { ok: true, value: { kind: 'test', moveId: a.moveId } }
+    // What it tests (item 6): a reading the untested fact says that move can be tested on, which the line itself speaks of and cites, in one of its parts of the day. A line whose subject cannot be tested offers no test.
+    const tests = testsOf(sheet, a.moveId)
+    if (!tests || typeof a.reading !== 'string' || !tests.readings.includes(a.reading)) return { ok: false, reason: `action test: reading must be one the untested fact says ${a.moveId} can test${tests ? ` (${tests.readings.join(', ')})` : ''}; if the line speaks of another, offer no test` }
+    if (typeof a.block !== 'string' || !tests.blocks.includes(a.block)) return { ok: false, reason: `action test: block must be a part of the day ${a.moveId} fits (${tests.blocks.join(', ')})` }
+    if (line && !line.factIds.some((id) => id.split('.').includes(a.reading as string))) return { ok: false, reason: `action test: the line does not cite a fact about ${a.reading}; a test measures what the line speaks of, so offer no test` }
+    return { ok: true, value: { kind: 'test', moveId: a.moveId, reading: a.reading, block: a.block as LineBlock } }
   }
   return { ok: false, reason: 'action kind must be plan, depth or test' }
 }
@@ -391,6 +512,8 @@ export interface DayShape {
   office: boolean
   church: boolean
   studyNight: boolean
+  /** Her bedtime that day, HH:MM, or null when she is away or none is set: what an after-bedtime cue and bedtime words need (stage 1, item j). */
+  bedtime: string | null
   /** Away from home on a trip (post-window): set only when the sheet says so, which it never does while that gate is closed. */
   trip?: true
 }
@@ -399,7 +522,7 @@ export function shapeFor(sheet: FactSheet, forDay: string): DayShape | null {
   const f = forDay === sheet.day ? sheet.facts.find((x) => x.id === 'week.today') : sheet.facts.find((x) => x.id === 'week.tomorrow' && x.values.day === forDay)
   if (!f) return null
   const v = f.values
-  return { day: forDay, weekday: typeof v.weekday === 'string' ? v.weekday : forDay, daycare: Number(v.daycare) === 1, pickup: typeof v.pickup === 'string' ? v.pickup : null, office: Number(v.office) === 1, church: Number(v.church) === 1, studyNight: Number(v.studyNight) === 1, ...(Number(v.trip) === 1 ? { trip: true as const } : {}) }
+  return { day: forDay, weekday: typeof v.weekday === 'string' ? v.weekday : forDay, daycare: Number(v.daycare) === 1, pickup: typeof v.pickup === 'string' ? v.pickup : null, office: Number(v.office) === 1, church: Number(v.church) === 1, studyNight: Number(v.studyNight) === 1, bedtime: typeof v.bedtime === 'string' ? v.bedtime : null, ...(Number(v.trip) === 1 ? { trip: true as const } : {}) }
 }
 
 /** The house's own places: on a trip's day a line may not send you to them (post-window, Away from home). */
@@ -418,11 +541,12 @@ const SCHEDULE_WORDS: readonly { what: string; re: RegExp; holds: (s: DayShape) 
   { what: 'pickup or daycare', re: /\b(?:pickup|pick-up|daycare|drop-?off|other parents?)\b|\bpick(?:ing|ed)?\s+up\s+(?:your|her|the)\s+(?:child|daughter|kid|little one)\b|\bafter\s+pick(?:ing)?\s*up\b/i, holds: (s) => s.daycare },
   { what: 'the office', re: /\b(?:office|at work|colleagues?|co-?workers?)\b/i, holds: (s) => s.office },
   { what: 'church', re: /\b(?:church|congregation)\b/i, holds: (s) => s.church },
+  // Her bedtime (stage 1, item j): only on a day she is with you, never your own sleep, which any day holds.
+  { what: 'her bedtime', re: /\b(?:her bed-?time|after bed-?time|put(?:ting)? her (?:down|to bed)|tuck(?:ing)? her in)\b/i, holds: (s) => s.bedtime !== null },
   // Study Night is retired as an engine (Workstream 6, D5): no day holds one, so no line may speak of one.
   { what: 'a study night', re: /\bstudy night\b/i, holds: () => false },
 ]
 
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /**
  * The guard every writer inherits (Part 19): a line may not speak of pickup, daycare, the office,
@@ -500,7 +624,7 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   if (why) return { ok: false, reason: why }
   const guarded = forDay ? dayGuard(text, sheet, forDay) : null
   if (guarded) return { ok: false, reason: guarded }
-  const action = validateAction(o.action, sheet, forDay)
+  const action = validateAction(o.action, sheet, forDay, { text, factIds: cited.factIds })
   if (!action.ok) return { ok: false, reason: action.reason }
   const value: BrainOutput = { mode: mode as Mode, text, factIds: cited.factIds, cardIds: cited.cardIds, action: action.value }
   // How firm (Pass 2): checked only once its gate is open; every check above is the same at every firmness.

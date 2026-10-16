@@ -1,11 +1,14 @@
-import { shapeFor, type LineAction, type Mode } from './brainShared'
-import { daysBetween } from './blocks'
+import { mayNudge, shapeFor, type LineAction, type Mode } from './brainShared'
+import { blockStart, daysBetween } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { factById, factsWhere, num, str, type Fact, type FactSheet } from './facts'
 import { fill } from './format'
 import { deliver, deliverySignals, firmnessFor, type Firmness, type FirmnessPref } from './firmness'
 import { admitted, bestGrade, cardById, gradeWeight, gradeWord } from './library'
+import { testOf } from './hypothesis'
+import { minutesOf } from './reminderRules'
+import { stallAfter } from './rhythm'
 
 // The judgment engine on the phone: situations worth speaking to, each a test over the fact
 // sheet, linked to claim cards, carrying a mode and a line with slots. Every morning the ones
@@ -74,6 +77,15 @@ function aims(sheet: FactSheet): Fact[] {
 }
 
 /** A commitment its rhythm leaves alone today: a rest day, or a week whose sessions are in. Nothing nudges it (Part 39). */
+/** The days a context answer stays current for the lines: today's or yesterday's (stage 1, item f). */
+export const CONTEXT_FRESH_DAYS = 1
+
+/** A context reading's fact while its answer is current, else none. */
+function fresh(sheet: FactSheet, f: Fact | undefined): Fact | undefined {
+  const day = f ? str(f, 'day') : null
+  return f && day !== null && daysBetween(day, sheet.day) <= CONTEXT_FRESH_DAYS ? f : undefined
+}
+
 function restful(f: Fact): boolean {
   const due = str(f, 'due')
   return due !== 'resting' && due !== 'notDue' && due !== 'away'
@@ -93,6 +105,22 @@ function cueOf(f: Fact, cue: Cue): { n: number; started: number } {
   return { n: num(f, `cue_${cue}_n`) ?? 0, started: num(f, `cue_${cue}_started`) ?? 0 }
 }
 
+/**
+ * The cues the day still holds at the sheet's hour (stage 1, item j): after pickup and after her
+ * bedtime only when today has them and their moment is ahead, and the next check-in until the
+ * evening's, which every day holds, has begun.
+ */
+function dayCues(sheet: FactSheet): Cue[] {
+  const t = factById(sheet, 'week.today')
+  const ahead = (hhmm: string | null) => hhmm !== null && /^\d{1,2}:\d{2}$/.test(hhmm) && minutesOf(hhmm) > sheet.hour * 60
+  return CUES.filter((c) => (c === 'afterPickup' ? ahead(str(t, 'pickup')) : c === 'afterBedtime' ? ahead(str(t, 'bedtime')) : sheet.hour * 60 < minutesOf(blockStart.evening)))
+}
+
+/** A plan tap for this commitment and cue, only while the day holds the cue: else the line goes without one. */
+function planTap(sheet: FactSheet, f: Fact, cue: Cue | null): { action: LineAction } | Record<string, never> {
+  return cue !== null && dayCues(sheet).includes(cue) ? { action: { kind: 'plan', aimId: aimIdOf(f), cue } } : {}
+}
+
 /** The cue with the best record other than this one; failing any record, after her bedtime, or the next check-in when that is the one that stalls. */
 function otherCue(f: Fact, cue: Cue): Cue {
   let best: Cue | null = null
@@ -110,18 +138,23 @@ function otherCue(f: Fact, cue: Cue): Cue {
 
 const aimIdOf = (f: Fact): number => Number(f.id.split('.')[1])
 
-/** The cue to pin a step to: the one with the best record of being kept, or after her bedtime when none has a record. */
-function bestCue(f: Fact): Cue {
-  let best: Cue = 'afterBedtime'
+/**
+ * The cue to pin a step to, among those the day still holds (stage 1, item j): the one with the best
+ * record of being kept, else after her bedtime, else the next check-in, else after pickup; null when
+ * the day holds none.
+ */
+function bestCue(f: Fact, sheet: FactSheet): Cue | null {
+  const held = dayCues(sheet)
+  let best: Cue | null = null
   let rate = -1
-  for (const c of CUES) {
+  for (const c of held) {
     const r = cueOf(f, c)
     if (r.n && r.started / r.n > rate) {
       best = c
       rate = r.started / r.n
     }
   }
-  return best
+  return best ?? (['afterBedtime', 'nextCheckIn', 'afterPickup'] as const).find((c) => held.includes(c)) ?? null
 }
 
 const assoc = (sheet: FactSheet, id: string, min: number): Fact | null => {
@@ -157,7 +190,8 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['weak-ties-and-belonging', 'talking-to-strangers', 'loneliness-and-mortality'],
     cooldownDays: 2,
     test: (sheet) => {
-      const f = factById(sheet, 'context.loneliness')
+      // Only an answer from today or yesterday: an old one never drives today's line (stage 1, item f).
+      const f = fresh(sheet, factById(sheet, 'context.loneliness'))
       return f && (num(f, 'position') ?? 0) >= 4 ? { factIds: [f.id], strength: 0.9, vars: { word: s(str(f, 'word')) } } : null
     },
   },
@@ -168,10 +202,10 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['implementation-intentions', 'habit-formation-time'],
     cooldownDays: 7,
     test: (sheet) => {
-      for (const a of aims(sheet)) {
+      for (const a of aims(sheet).filter(mayNudge)) {
         for (const cue of CUES) {
           const r = cueOf(a, cue)
-          if (r.n >= 3 && r.started / r.n <= 0.34) return { factIds: [a.id], strength: 0.9, vars: { cue: cueLabel(cue), started: s(r.started), n: s(r.n), other: cueLabel(otherCue(a, cue)).toLowerCase() }, action: { kind: 'plan', aimId: aimIdOf(a), cue: otherCue(a, cue) } }
+          if (r.n >= 3 && r.started / r.n <= 0.34) return { factIds: [a.id], strength: 0.9, vars: { cue: cueLabel(cue), started: s(r.started), n: s(r.n), other: cueLabel(otherCue(a, cue)).toLowerCase() }, ...planTap(sheet, a, otherCue(a, cue)) }
         }
       }
       return null
@@ -217,12 +251,13 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['self-compassion-after-lapse', 'habit-formation-time'],
     cooldownDays: 5,
     test: (sheet) => {
+      // Measured against its own interval (stage 1, item e): a once-a-week commitment kept on time is never stalled.
       const stalled = aims(sheet)
-        .filter((f) => num(f, 'faith') !== 1 && restful(f))
-        .map((f) => ({ f, d: num(f, 'gapDays') ?? -1 }))
-        .filter((x) => x.d >= 7)
-        .sort((a, b) => b.d - a.d)[0]
-      return stalled ? { factIds: [stalled.f.id], strength: Math.min(1, stalled.d / 14), vars: { name: s(str(stalled.f, 'name')), d: s(stalled.d) }, action: { kind: 'plan', aimId: aimIdOf(stalled.f), cue: bestCue(stalled.f) } } : null
+        .filter((f) => mayNudge(f) && restful(f))
+        .map((f) => ({ f, d: num(f, 'gapDays') ?? -1, need: stallAfter(num(f, 'interval') ?? 1) }))
+        .filter((x) => x.d >= x.need)
+        .sort((a, b) => b.d / b.need - a.d / a.need)[0]
+      return stalled ? { factIds: [stalled.f.id], strength: Math.min(1, stalled.d / (2 * stalled.need)), vars: { name: s(str(stalled.f, 'name')), d: s(stalled.d) }, ...planTap(sheet, stalled.f, bestCue(stalled.f, sheet)) } : null
     },
   },
   {
@@ -274,7 +309,7 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['implementation-intentions', 'monitoring-progress'],
     cooldownDays: 7,
     test: (sheet) => {
-      for (const a of aims(sheet)) {
+      for (const a of aims(sheet).filter(mayNudge)) {
         for (const cue of CUES) {
           const r = cueOf(a, cue)
           if (r.n >= 4 && r.started / r.n >= 0.75) return { factIds: [a.id], strength: 0.6, vars: { cue: cueLabel(cue), started: s(r.started), n: s(r.n) } }
@@ -294,8 +329,9 @@ export const SITUATIONS: readonly Situation[] = [
       const bedtime = str(today, 'bedtime')
       if (bedtime && sheet.hour >= Number(bedtime.split(':')[0])) return null
       // Never a faith practice (Rule 10), and never on a rest day or a week whose rhythm is met (Part 39).
-      const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && num(f, 'doneToday') !== 1 && restful(f) && num(f, 'faith') !== 1 && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || str(f, 'skill') !== null))
-      return a ? { factIds: [a.id, today.id], strength: 0.6, vars: { name: s(str(a, 'name')), step: s(str(a, 'step')) }, action: { kind: 'plan', aimId: aimIdOf(a), cue: bestCue(a) } } : null
+      const a = aims(sheet).find((f) => str(f, 'plan') === null && num(f, 'open') === 0 && num(f, 'doneToday') !== 1 && restful(f) && mayNudge(f) && (num(f, 'gapDays') ?? 1) >= 1 && (str(f, 'kind') !== 'certification' || str(f, 'skill') !== null))
+      const cue = a ? bestCue(a, sheet) : null
+      return a && cue ? { factIds: [a.id, today.id], strength: 0.6, vars: { name: s(str(a, 'name')), step: s(str(a, 'step')) }, action: { kind: 'plan', aimId: aimIdOf(a), cue } } : null
     },
   },
   {
@@ -386,10 +422,10 @@ export const SITUATIONS: readonly Situation[] = [
       const weekday = str(today, 'weekday')
       if (!today || !(weekday === 'Monday' || sheet.day.endsWith('-01'))) return null
       const stalled = aims(sheet)
-        .filter((f) => num(f, 'faith') !== 1 && restful(f))
-        .map((f) => ({ f, d: num(f, 'gapDays') ?? -1 }))
-        .filter((x) => x.d >= 5)
-        .sort((a, b) => b.d - a.d)[0]
+        .filter((f) => mayNudge(f) && restful(f))
+        .map((f) => ({ f, d: num(f, 'gapDays') ?? -1, need: stallAfter(num(f, 'interval') ?? 1, 5) }))
+        .filter((x) => x.d >= x.need)
+        .sort((a, b) => b.d / b.need - a.d / a.need)[0]
       return stalled ? { factIds: [today.id, stalled.f.id], strength: 0.5, vars: { weekday: s(weekday), name: s(str(stalled.f, 'name')), d: s(stalled.d) } } : null
     },
   },
@@ -452,11 +488,11 @@ export const SITUATIONS: readonly Situation[] = [
       if (a1 + a0 > 0) return null
       const t = factsWhere(sheet, 'trajectory.')
         .map((f) => ({ f, before: (num(f, 'w3') ?? 0) + (num(f, 'w2') ?? 0), lately: (num(f, 'w1') ?? 0) + (num(f, 'w0') ?? 0) }))
-        .filter((x) => x.before >= 2 && x.lately === 0 && (num(x.f, 'ageDays') ?? 0) >= 21 && num(factById(sheet, `aim.${num(x.f, 'aimId')}`), 'faith') !== 1)
+        .filter((x) => x.before >= 2 && x.lately === 0 && (num(x.f, 'ageDays') ?? 0) >= 21 && mayNudge(factById(sheet, `aim.${num(x.f, 'aimId')}`)))
         .sort((a, b) => b.before - a.before)[0]
       if (!t) return null
       const aim = factById(sheet, `aim.${num(t.f, 'aimId')}`)
-      return { factIds: aim ? [t.f.id, aim.id] : [t.f.id], strength: 0.85, vars: { name: s(str(t.f, 'name')), before: s(t.before) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+      return { factIds: aim ? [t.f.id, aim.id] : [t.f.id], strength: 0.85, vars: { name: s(str(t.f, 'name')), before: s(t.before) }, ...(aim ? planTap(sheet, aim, bestCue(aim, sheet)) : {}) }
     },
   },
   {
@@ -469,11 +505,11 @@ export const SITUATIONS: readonly Situation[] = [
       // A trip this week explains the quiet week.
       if (tripWeeks(sheet)[3] > 0) return null
       const t = factsWhere(sheet, 'trajectory.')
-        .filter((f) => (num(f, 'w1') ?? 0) >= 2 && num(f, 'w0') === 0 && (num(f, 'ageDays') ?? 0) >= 14 && num(factById(sheet, `aim.${num(f, 'aimId')}`), 'faith') !== 1)
+        .filter((f) => (num(f, 'w1') ?? 0) >= 2 && num(f, 'w0') === 0 && (num(f, 'ageDays') ?? 0) >= 14 && mayNudge(factById(sheet, `aim.${num(f, 'aimId')}`)))
         .sort((a, b) => (num(b, 'w1') ?? 0) - (num(a, 'w1') ?? 0))[0]
       if (!t) return null
       const aim = factById(sheet, `aim.${num(t, 'aimId')}`)
-      return { factIds: aim ? [t.id, aim.id] : [t.id], strength: 0.7, vars: { name: s(str(t, 'name')), before: s(num(t, 'w1')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+      return { factIds: aim ? [t.id, aim.id] : [t.id], strength: 0.7, vars: { name: s(str(t, 'name')), before: s(num(t, 'w1')) }, ...(aim ? planTap(sheet, aim, bestCue(aim, sheet)) : {}) }
     },
   },
   {
@@ -521,8 +557,8 @@ export const SITUATIONS: readonly Situation[] = [
       const missed = num(f, 'missed') ?? 0
       if (missed === 0 || (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'changed') ?? 0) > 0) return null
       const aim = factById(sheet, `aim.${num(f, 'aimId')}`)
-      if (aim && str(aim, 'plan') !== null) return null
-      return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.65, vars: { name: s(str(f, 'about')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+      if (aim && (str(aim, 'plan') !== null || !mayNudge(aim))) return null
+      return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.65, vars: { name: s(str(f, 'about')) }, ...(aim ? planTap(sheet, aim, bestCue(aim, sheet)) : {}) }
     },
   },
   {
@@ -535,7 +571,8 @@ export const SITUATIONS: readonly Situation[] = [
       if (!f || num(f, 'aimId') === null || str(f, 'received') === 'not') return null
       if ((num(f, 'planned') ?? 0) + (num(f, 'started') ?? 0) + (num(f, 'done') ?? 0) + (num(f, 'changed') ?? 0) > 0) return null
       const aim = factById(sheet, `aim.${num(f, 'aimId')}`)
-      return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.6, vars: { name: s(str(f, 'about')) }, ...(aim ? { action: { kind: 'plan' as const, aimId: aimIdOf(aim), cue: bestCue(aim) } } : {}) }
+      if (aim && !mayNudge(aim)) return null
+      return { factIds: aim ? [f.id, aim.id] : [f.id], strength: 0.6, vars: { name: s(str(f, 'about')) }, ...(aim ? planTap(sheet, aim, bestCue(aim, sheet)) : {}) }
     },
   },
   {
@@ -571,8 +608,10 @@ export const SITUATIONS: readonly Situation[] = [
       if (!f || !open.length) return null
       const order = { A: 0, B: 1, C: 2, D: 3 }
       for (const card of admitted().sort((a, b) => order[a.grade] - order[b.grade])) {
-        const moveId = (card.moves ?? []).find((m) => open.includes(m) && hasMove(m))
-        if (moveId) return { factIds: [f.id], strength: 0.45, vars: { grade: gradeWord(card.grade), move: moveById(moveId).name }, action: { kind: 'test', moveId }, cardIds: [card.id] }
+        // Only a move a test can measure, and the tap carries the test it sets (item 6), so what it says it set is what was set.
+        const moveId = (card.moves ?? []).find((m) => open.includes(m) && hasMove(m) && testOf(m) !== null)
+        const t = moveId ? testOf(moveId) : null
+        if (moveId && t) return { factIds: [f.id], strength: 0.45, vars: { grade: gradeWord(card.grade), move: moveById(moveId).name }, action: { kind: 'test', moveId, reading: t.target, block: t.context }, cardIds: [card.id] }
       }
       return null
     },

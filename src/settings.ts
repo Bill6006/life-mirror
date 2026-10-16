@@ -1,14 +1,16 @@
-import { BLOCKS, blockAt, type Block } from './blocks'
+import { blockAt, type Block } from './blocks'
 import type { CheckIn } from './db'
 import type { AwayRange } from './postWindow'
 import { blockReadings, type ReadingId } from './readings'
+import { activeBlocks, DEFAULT_FREQUENCY, DEFAULT_QUIET, DEFAULT_REMINDERS, inQuietHours, minutesOf, type Frequency } from './reminderRules'
 import { sunLocal, type Place } from './sun'
 
 // Settings are one record on the phone. Depth and frequency are separate controls; Low-demand
 // mode is a preset over both that remembers what it replaced.
 
 export type Depth = 'full' | 'short'
-export type Frequency = 'three' | 'two' | 'one'
+// Shared with the Worker, which reads your copied settings by the same rules (stage 1, item b).
+export { activeBlocks, inQuietHours, minutesOf, type Frequency }
 
 export interface PushState {
   /** The browser's push address, the one thing that ever leaves the phone. */
@@ -119,14 +121,14 @@ export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyN
 export const DEFAULT_SETTINGS: Settings = {
   id: 1,
   depth: 'full',
-  frequency: 'three',
-  quietStart: '22:00',
-  quietEnd: '07:00',
+  frequency: DEFAULT_FREQUENCY,
+  quietStart: DEFAULT_QUIET.quietStart,
+  quietEnd: DEFAULT_QUIET.quietEnd,
   lowDemand: false,
   beforeLowDemand: null,
   hideMoves: false,
   hideFaith: false,
-  reminders: { enabled: false, times: { morning: '07:30', afternoon: '13:00', evening: '19:30' } },
+  reminders: { enabled: DEFAULT_REMINDERS.enabled, times: { ...DEFAULT_REMINDERS.times } },
   extras: { minimumWin: true, caffeine: true, dinner: true, privateLog: true, faith: true },
   showPrivate: false,
   privateInSelection: false,
@@ -190,22 +192,6 @@ export function askedReadings(block: Block, depth: Depth, retired: readonly stri
   return depth === 'short' ? all.filter((id) => SHORT_READINGS.includes(id)) : all
 }
 
-export function activeBlocks(frequency: Frequency): readonly Block[] {
-  switch (frequency) {
-    case 'three':
-      return BLOCKS
-    case 'two':
-      return ['morning', 'evening']
-    case 'one':
-      return ['evening']
-  }
-}
-
-export function minutesOf(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number)
-  return h * 60 + m
-}
-
 /** A stored place, kept only when both numbers are in range; anything else is no place. */
 function placeOf(v: unknown): Place | null {
   const p = v && typeof v === 'object' ? (v as Record<string, unknown>) : null
@@ -250,15 +236,6 @@ export function inDaylight(window: { from: string; to: string }, now: Date): boo
 
 export function hhmmOf(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-/** True inside quiet hours, including spans that cross midnight. Equal start and end means none. */
-export function inQuietHours(hhmm: string, s: Pick<Settings, 'quietStart' | 'quietEnd'>): boolean {
-  const t = minutesOf(hhmm)
-  const a = minutesOf(s.quietStart)
-  const b = minutesOf(s.quietEnd)
-  if (a === b) return false
-  return a < b ? t >= a && t < b : t >= a || t < b
 }
 
 /** Low-demand on: short depth, evening only, one reminder, no move. Off: what it replaced. */

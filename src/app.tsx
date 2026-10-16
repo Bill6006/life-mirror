@@ -223,6 +223,7 @@ export function App() {
             onAway={() => setView({ kind: 'away', back: view })}
             onDone={closeAll}
             onDeleted={closeAll}
+            onContinue={() => setView({ kind: 'checkin', day: view.day, block: view.block })}
           />
         )
       case 'wording':

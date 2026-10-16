@@ -229,7 +229,10 @@ describe('what the sheet learned to carry', () => {
     await db.brainBriefs.put({ id: '2026-09-13:review', day: '2026-09-13', kind: 'review', text: 'H D C', mode: 'strategy', factIds: [`aim.${aim.id}`], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-13T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'Pin Veltish to after her bedtime.' }, writer: 'claude' })
     await planAim(aim, 'afterBedtime', '20:00', NOW, 'Veltish · Ten words · hear or read it')
     const f = factById(await factSheet(DAY, NOW), 'review.change')
-    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin Veltish to after her bedtime.” Since then the record shows, for Veltish, 1 plans made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the current skill changed 0 times.')
+    expect(f?.text).toBe('The last review, on 2026-09-13, proposed one change: “Pin Veltish to after her bedtime.” Since then the record shows, for Veltish, 1 plan made, 0 of them past their day with no step started, 0 steps started, 0 marked done, and the current skill changed 0 times.')
+    // Replaced the same day, it is still one plan (stage 1, item c).
+    await planAim(aim, 'nextCheckIn', '19:00', new Date(NOW.getTime() + 60_000), 'Veltish · Ten words · hear or read it')
+    expect(factById(await factSheet(DAY, NOW), 'review.change')?.values).toMatchObject({ planned: 1 })
     expect(f?.values).toMatchObject({ day: '2026-09-13', aimId: aim.id, planned: 1 })
     // A change about no commitment: what the record shows in general since.
     await db.brainBriefs.put({ id: '2026-09-14:review', day: '2026-09-14', kind: 'review', text: 'H D C', mode: 'strategy', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: '2026-09-14T09:00:00.000Z', parts: { held: 'H', didNot: 'D', change: 'One small move a day.' }, writer: 'claude' })
@@ -342,20 +345,25 @@ describe('a line whose moment is gone (truth audit, 2026-09-24)', () => {
   })
 
   it('withdraws the phone’s own line once its moment is gone, even while its situation still holds', async () => {
-    // A step last taken nine days ago: the stalled line holds at any hour, and pins the step to her bedtime, 20:00.
+    // A step last taken nine days ago: the stalled line holds at any hour, and at 19:00 pins the step to her bedtime, 20:00, still ahead
+    // (stage 1, item j). Say when was said yesterday, so it rests and the stalled line is the one chosen.
     await addAim('certification', null, 'Veltish', 'language')
     await addSkill('Ten words', 'Veltish')
     const [aim] = await studyAims()
     const session = await resumeAim(aim, stepFor(aim, await db.skills.toArray(), [], [aim]), 'step', new Date(2026, 8, 9, 20, 0))
     await recordDoneNow(session, new Date(2026, 8, 9, 20, 20))
-    await chooseAndLog(DAY, at(21, 0))
+    await db.briefLog.add({ day: '2026-09-17', situationId: 'say-when', mode: 'recommendation', text: 'Said yesterday.', factIds: ['week.today'], cardIds: [], at: '2026-09-17T12:00:00.000Z' })
+    await chooseAndLog(DAY, at(19, 0))
     const stalled = (await db.briefLog.toArray()).find((r) => r.situationId === 'step-stalled' && !r.withdrawnAt)
     expect(stalled?.action).toMatchObject({ kind: 'plan', cue: 'afterBedtime' })
-    expect((await todaysLine(DAY, at(21, 0)))?.situationId).toBe('step-stalled')
+    expect((await todaysLine(DAY, at(19, 0)))?.situationId).toBe('step-stalled')
     // At 22:30 its situation still holds, but its moment is two hours gone.
     await chooseAndLog(DAY, at(22, 30))
     expect((await db.briefLog.get(stalled?.id as number))?.withdrawnAt).toBe(at(22, 30).toISOString())
-    expect((await todaysLine(DAY, at(22, 30)))?.situationId).not.toBe('step-stalled')
+    // Its situation still holds, so it is said again, with no tap: the day holds no cue now (stage 1, item j).
+    const after = await todaysLine(DAY, at(22, 30))
+    expect(after?.situationId).toBe('step-stalled')
+    expect(after?.action ?? null).toBeNull()
   })
 
   it('withdraws the phone’s own line once its moment is gone, and chooses none whose moment is already gone', async () => {
@@ -426,6 +434,31 @@ describe('the line, acted on', () => {
     expect((await lineActionState(DAY, { kind: 'depth', value: 'short' }, NOW))?.state).toBe('done')
   })
 
+  it('shows under Why the facts as they stood when the line was said, never the day’s sheet rewritten since (stage 1, item l)', async () => {
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
+    await chooseAndLog(DAY, NOW)
+    const line = await todaysLine(DAY, NOW)
+    const said = line?.facts?.find((f) => f.id === 'week.today')?.text ?? ''
+    expect(said).toContain(`the hour is ${NOW.getHours()}`)
+    // Answered, it keeps its words while its situation holds; by noon the day's sheet names another hour.
+    await recordFeedback(DAY, line!, 'useful', NOW)
+    const noon = new Date(2026, 8, 18, 12, 0)
+    await chooseAndLog(DAY, noon)
+    await writeFactsRow(DAY, noon)
+    expect(factById((await db.facts.get(DAY))!.sheet, 'week.today')?.text).toContain('the hour is 12')
+    const kept = await todaysLine(DAY, noon)
+    expect(kept?.key).toBe(line?.key)
+    expect((await whyFor(kept!, DAY, noon)).facts.find((f) => f.id === 'week.today')?.text).toBe(said)
+    // A Worker's line carries its own words the same way; one from before reads the sheet as it stands.
+    await db.brainBriefs.put({ id: `${DAY}:brief`, day: DAY, kind: 'brief', text: 'From the Worker.', mode: 'observation', factIds: ['week.today'], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', factsDay: DAY, facts: [{ id: 'week.today', text: 'As the Worker read it.' }] })
+    const worker = await todaysLine(DAY, noon)
+    expect((await whyFor(worker!, DAY, noon)).facts).toEqual([{ id: 'week.today', text: 'As the Worker read it.' }])
+    await db.brainBriefs.put({ id: `${DAY}:brief`, day: DAY, kind: 'brief', text: 'From the Worker, before.', mode: 'observation', factIds: ['week.today'], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', factsDay: DAY })
+    const before = await todaysLine(DAY, noon)
+    expect((await whyFor(before!, DAY, noon)).facts[0].text).toContain('the hour is 12')
+  })
+
   it('titles the line by when it is meant to be acted on, from its action alone (owner, 2026-09-23)', async () => {
     await addAim('certification', null, 'Veltish', 'language')
     const at = (h: number, m = 0) => new Date(2026, 8, 18, h, m)
@@ -486,5 +519,52 @@ describe('the line, acted on', () => {
     expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'phone', didNot: 'Veltish: added today, no step started yet.' })
     await db.brainBriefs.put({ id: 'r1', day: DAY, kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: '2026-09-18T09:15:00.000Z', parts: { held: 'a', didNot: 'b', change: 'c' } })
     expect(await weekReview(DAY, NOW)).toMatchObject({ source: 'worker', held: 'a', didNot: 'b', change: 'c', model: 'm' })
+  })
+})
+
+describe('said means seen, the Worker’s lines too (stage 1, item m)', () => {
+  // After the Worker's shown mark began: a line counts as said only once it was on screen.
+  const D2 = '2026-10-20'
+  const T2 = new Date(2026, 9, 20, 8, 0)
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await ensureDayContext('2026-10-19', await getSettings())
+    await ensureDayContext(D2, await getSettings())
+  })
+
+  it('takes the Worker’s line of yesterday as said, for the follow-up and the repeat check, only once it was shown', async () => {
+    await addAim('certification', null, 'Veltish', 'language')
+    await db.brainBriefs.put({ id: '2026-10-19:brief', day: '2026-10-19', kind: 'brief', text: 'A line nobody saw.', mode: 'observation', factIds: ['aim.1'], cardIds: [], model: 'm', at: '2026-10-19T09:15:00.000Z' })
+    let sheet = await factSheet(D2, T2)
+    expect(sheet.said.map((x) => x.text)).not.toContain('A line nobody saw.')
+    expect(factById(sheet, 'followup')).toBeUndefined()
+    await markShown({ key: 'worker:2026-10-19:brief', source: 'worker' }, new Date(2026, 9, 19, 9, 30))
+    expect((await getDayContext('2026-10-19'))?.shown).toEqual({ 'worker:2026-10-19:brief': new Date(2026, 9, 19, 9, 30).toISOString() })
+    // Marked once: a later showing keeps the first moment.
+    await markShown({ key: 'worker:2026-10-19:brief', source: 'worker' }, new Date(2026, 9, 19, 18, 0))
+    expect((await getDayContext('2026-10-19'))?.shown?.['worker:2026-10-19:brief']).toBe(new Date(2026, 9, 19, 9, 30).toISOString())
+    sheet = await factSheet(D2, T2)
+    expect(sheet.said.map((x) => x.text)).toContain('A line nobody saw.')
+    expect(factById(sheet, 'followup')?.values).toMatchObject({ day: '2026-10-19', aimId: 1 })
+  })
+
+  it('rests a situation only after its line was seen', async () => {
+    await addAim('certification', null, 'Veltish', 'language')
+    await addSkill('Ten words', 'Veltish')
+    // Yesterday's say-when, logged and never shown: it does not rest today's.
+    await db.briefLog.add({ day: '2026-10-19', situationId: 'say-when', mode: 'recommendation', text: 'Never on screen.', factIds: ['week.today'], cardIds: [], at: '2026-10-19T12:00:00.000Z' })
+    await chooseAndLog(D2, T2)
+    expect((await todaysLine(D2, T2))?.situationId).toBe('say-when')
+    // Shown, it rests for its days.
+    await db.briefLog.clear()
+    await db.briefLog.add({ day: '2026-10-19', situationId: 'say-when', mode: 'recommendation', text: 'On screen.', factIds: ['week.today'], cardIds: [], at: '2026-10-19T12:00:00.000Z', shownAt: '2026-10-19T12:01:00.000Z' })
+    await chooseAndLog(D2, T2)
+    expect((await todaysLine(D2, T2))?.situationId).not.toBe('say-when')
+  })
+
+  it('marks the Worker’s review shown from the week’s card', async () => {
+    await db.brainBriefs.put({ id: '2026-10-18:review', day: '2026-10-18', kind: 'review', text: 'a b c', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: '2026-10-18T09:15:00.000Z', parts: { held: 'a', didNot: 'b', change: 'c' } })
+    expect(await weekReview(D2, T2)).toMatchObject({ source: 'worker', key: 'worker:2026-10-18:review' })
   })
 })

@@ -80,6 +80,27 @@ describe('the line briefing', () => {
     expect(after.briefing.facts).toContain('[today.shortSleep] On 2026-09-18: Sleep hours read')
   })
 
+  it('dates every fact that speaks of today, tonight, yesterday or days ago when the sheet is the day before, and leaves the rest as written (stage 1, item f)', () => {
+    const dayBound = [
+      { id: 'aim.4', tags: ['study'], text: 'Orrish: the step is Ten words; done today; planned today for after bedtime.', values: {} },
+      { id: 'whatIf', tags: [], text: 'Tonight’s what-if: with nothing extra done, the evening usually reads about 55.', values: {} },
+      { id: 'reading.2026-09-18.evening', tags: [], text: 'This evening read 61, steady, 7 of 8 ingredients.', values: {} },
+      { id: 'context.loneliness', tags: [], text: 'Loneliness read “Distant” (3 of 5) at the evening check-in on 2026-09-16, 2 days ago.', values: {} },
+      { id: 'outside.7d', tags: [], text: 'Workout days in the last seven: 2 (2026-09-15, 2026-09-17); 3 sessions.', values: {} },
+    ]
+    const timeless = { id: 'direction', tags: [], text: 'Your direction, in your words: “One line, mine”.', values: {} }
+    const s2 = { ...sheet, facts: [...sheet.facts, ...dayBound, timeless] }
+    const after = lineBriefing({ task: 'line', writer: 'free', sheet: s2, forDay: '2026-09-19', cards: [], said: [] })
+    expect(after.ok).toBe(true)
+    if (!after.ok) return
+    for (const f of dayBound) expect(after.briefing.facts, f.id).toContain(`[${f.id}] On 2026-09-18: ${f.text}`)
+    expect(after.briefing.facts).toContain(`[direction] ${timeless.text}`)
+    expect(after.briefing.facts).toContain('Every fact describes the record as of 2026-09-18, not 2026-09-19')
+    // On the day itself nothing is relabelled.
+    const same = lineBriefing({ task: 'line', writer: 'free', sheet: s2, forDay: '2026-09-18', cards: [], said: [] })
+    expect(same.ok && same.briefing.facts).toContain(`[aim.4] ${dayBound[0].text}`)
+  })
+
   it('refuses a sheet that is neither the day’s nor the day before’s, one that cannot say what the day holds, and a writer model outside the four', () => {
     expect(lineBriefing({ task: 'line', writer: 'free', sheet, forDay: '2026-09-20', cards: [], said: [] })).toEqual({ ok: false, reason: 'the sheet is for 2026-09-18, not 2026-09-20 or the day before it' })
     expect(lineBriefing({ task: 'line', writer: 'free', sheet, forDay: '2026-09-17', cards: [], said: [] }).ok).toBe(false)

@@ -42,21 +42,25 @@ _How short the fuse is_
 
 ## Stress
 
-_How much is pressing on you_
+_How heavy or urgent things feel_
+
+Worded as here since 2026-10-16; answers from before may read a little differently for that alone.
 
 - Loose — nothing pressing on me
   - or: Easy — nothing pressing
-- Light — a task or two on my mind
-  - or: Mild — a thing or two on my mind
+- Light — a little pressure, nothing urgent
+  - or: Mild — some pressure, easy to carry
 - Middling — pressure I can carry
-- Wound tight — pressure most of the time
-  - or: Braced — under pressure most of the time
-- Crushing — pressure with no let-up
-  - or: Flattened — no let-up at all
+- Wound tight — pressure I can only just carry
+  - or: Braced — pressure I can only just carry
+- Crushing — more pressure than I can carry
+  - or: Flattened — more than I can carry
 
 ## Overwhelm
 
-_How much is active in your head_
+_How many things are competing for your attention, even small ones_
+
+Worded as here since 2026-10-16; answers from before may read a little differently for that alone.
 
 - Open — barely anything
   - or: Clear — hardly anything there

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BRAIN_SWITCHES, dayGuard, isLocationFact, LOCATION_TO_CLAUDE, lackedOf, nearRepeat, numberGrounded, numbersIn, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
+import { BRAIN_SWITCHES, dayGuard, isLocationFact, LOCATION_TO_CLAUDE, lackedOf, nearRepeat, numberGrounded, numbersIn, numbersRefusal, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -63,12 +63,74 @@ describe('what the brain may say', () => {
     expect(numberGrounded('5', sheet, ['assoc.napped'])).toBe(true)
     expect(numberGrounded('5', sheet, ['aim.1'])).toBe(false)
   })
+
+  describe('checks numbers as whole numbers, never by a date, a name or the Brain’s own earlier words, and counts written as words too (stage 1, item h)', () => {
+    const s2: FactSheet = {
+      ...sheet,
+      facts: [
+        { id: 'aim.2', tags: [], text: 'Room 3 (practice): the step is “Ten words”, 10 min; last done 9 days ago.', values: { name: 'Room 3', step: 'Ten words', minutes: 10, gapDays: 9, planTime: '07:30', since: '2026-09-13' } },
+        { id: 'followup', tags: [], text: 'The last line, on 2026-09-17, was: “Room 3 waited 4 days.” It was received as: untapped.', values: { day: '2026-09-17', aimId: null, planned: 0, received: 'untapped', text: 'Room 3 waited 4 days.' } },
+        { id: 'trajectory.2', tags: [], text: 'Room 3: steps started per week over the last four weeks, oldest first: 2, 1, 0, 0.', values: { w3: 2, w2: 1, w1: 0, w0: 0 } },
+      ],
+    }
+    const ok = (text: string, ids = ['aim.2']) => numbersRefusal(text, s2, ids)
+
+    it('takes a cited name, step or date said as written as a name, and checks every number left against the facts’ own', () => {
+      expect(ok('Room 3 waited 9 days; Ten words is the step.')).toBeNull()
+      // The digit in a name grounds no count.
+      expect(ok('Room 3 waited 3 days.')).toMatch('the number 3')
+      // The parts of a date ground nothing; the date itself, said as a date, is named.
+      expect(ok('Room 3 waited 13 days.')).toMatch('the number 13')
+      expect(ok('Since 2026-09-13, 9 days.')).toBeNull()
+      expect(ok('Since 2026-09-12, 9 days.')).toMatch('the number 2026')
+    })
+
+    it('matches whole numbers and times as times, never a digit inside another number', () => {
+      expect(ok('Pinned for 7:30.')).toBeNull()
+      expect(ok('Pinned for 07:30.')).toBeNull()
+      expect(ok('Pinned for 7:31.')).toMatch('7:31')
+      expect(ok('1 day left.')).toMatch('the number 1')
+      expect(numberGrounded('3', s2, ['aim.2'])).toBe(false)
+      expect(numberGrounded('30', s2, ['aim.2'])).toBe(false)
+    })
+
+    it('checks a clock time as a minute of the day, and names the record’s 24-hour time when the half is wrong (item 5)', () => {
+      const noted: FactSheet = { ...s2, facts: [...s2.facts, { id: 'note.2026-10-07.evening', tags: [], text: 'On 2026-10-07, at the evening check-in, you wrote: “in bed by 9:30pm”.', values: { day: '2026-10-07', block: 'evening', note: 'in bed by 9:30pm' } }, { id: 'note.2026-10-08.evening', tags: [], text: '', values: { day: '2026-10-08', block: 'evening', note: 'lights out 9:30' } }] }
+      const check = (text: string, ids: string[]) => numbersRefusal(text, noted, ids)
+      // The note's 9:30pm is 21:30: a bare 9:30 names 09:30, and is refused with the record's own time.
+      expect(check('In bed by 21:30, as you wrote.', ['note.2026-10-07.evening'])).toBeNull()
+      expect(check('In bed by 9:30 pm, as you wrote.', ['note.2026-10-07.evening'])).toBeNull()
+      expect(check('In bed by 9:30, as you wrote.', ['note.2026-10-07.evening'])).toBe('the time 9:30 is not the cited facts’ 21:30; write clock times as the record does, 24-hour: 21:30'.replace('’', "'"))
+      expect(check('In bed by 9:30 am.', ['note.2026-10-07.evening'])).toMatch('24-hour: 21:30')
+      // Your own bare 9:30 may be either half: both stand, and one with no time of the day near it is refused.
+      expect(check('Lights out at 9:30, as you wrote.', ['note.2026-10-08.evening'])).toBeNull()
+      expect(check('Lights out at 21:30, as you wrote.', ['note.2026-10-08.evening'])).toBeNull()
+      expect(check('Lights out at 22:15.', ['note.2026-10-08.evening'])).toBe('the time 22:15 is not in the cited facts')
+      // A time's digits are never read as a count.
+      expect(check('Pinned for 07:30, Room 3, 9 days.', ['aim.2'])).toBeNull()
+    })
+
+    it('never grounds a number in the Brain’s own earlier words', () => {
+      expect(ok('Room 3 waited 4 days.', ['followup', 'aim.2'])).toMatch('the number 4')
+      expect(ok('Four days, the last line said.', ['followup'])).toMatch('“Four”')
+    })
+
+    it('checks a count written as a word, but not one, not a window, and not a word the cited facts use', () => {
+      expect(ok('Nine days since Room 3 was done.')).toBeNull()
+      expect(ok('Five days since Room 3 was done.')).toMatch('“Five”')
+      expect(ok('Room 3 held three of its plans.')).toMatch('“three”')
+      expect(ok('One short sitting today, ten minutes.')).toBeNull()
+      expect(ok('Nothing on Room 3 in the last seven days.')).toBeNull()
+      expect(ok('Four weeks of record show it thinning.', ['trajectory.2'])).toBeNull()
+      expect(ok('Twenty-one sessions so far.')).toMatch('“Twenty-one”')
+    })
+  })
 })
 
 describe('the one tap a line may offer, and the week in three parts', () => {
   const withMore: FactSheet = {
     ...sheet,
-    facts: [...sheet.facts, { id: 'cadence', tags: [], text: '', values: { w3: 18, w2: 19, w1: 17, w0: 6, depth: 'full', lowDemand: 0 } }, { id: 'untested', tags: [], text: '', values: { moves: 'walk-ten,cyclic-sigh', count: 2 } }],
+    facts: [...sheet.facts, { id: 'week.today', tags: [], text: '', values: { weekday: 'Friday', daycare: 0, pickup: null, bedtime: '20:00' } }, { id: 'cadence', tags: [], text: '', values: { w3: 18, w2: 19, w1: 17, w0: 6, depth: 'full', lowDemand: 0 } }, { id: 'untested', tags: [], text: '', values: { moves: 'walk-ten,cyclic-sigh', count: 2, 'tests_walk-ten': 'energy,mood@afternoon,morning', 'tests_cyclic-sigh': 'stress@evening' } }],
   }
 
   it('allows an action only when the sheet makes it possible', () => {
@@ -77,10 +139,28 @@ describe('the one tap a line may offer, and the week in three parts', () => {
     expect(validateAction({ kind: 'plan', aimId: 1, cue: 'afterBedtime' }, withMore)).toEqual({ ok: true, value: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } })
     expect(validateAction({ kind: 'plan', aimId: 9, cue: 'afterBedtime' }, withMore).ok).toBe(false)
     expect(validateAction({ kind: 'plan', aimId: 1, cue: 'atDawn' }, withMore).ok).toBe(false)
+    // Only a cue the day holds (stage 1, item j): no pickup on a day without one; no bedtime of hers on a day she is away, or one the sheet cannot see.
+    expect(validateAction({ kind: 'plan', aimId: 1, cue: 'afterPickup' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('no pickup') })
+    const away = { ...withMore, facts: withMore.facts.map((f) => (f.id === 'week.today' ? { ...f, values: { ...f.values, bedtime: null } } : f)) }
+    expect(validateAction({ kind: 'plan', aimId: 1, cue: 'afterBedtime' }, away)).toMatchObject({ ok: false, reason: expect.stringContaining('no bedtime') })
+    expect(validateAction({ kind: 'plan', aimId: 1, cue: 'afterBedtime' }, sheet).ok).toBe(false)
+    expect(validateAction({ kind: 'plan', aimId: 1, cue: 'nextCheckIn' }, away).ok).toBe(true)
     expect(validateAction({ kind: 'depth', value: 'short' }, withMore).ok).toBe(true)
     expect(validateAction({ kind: 'depth', value: 'short' }, sheet).ok).toBe(false)
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten' }, withMore).ok).toBe(true)
-    expect(validateAction({ kind: 'test', moveId: 'nap-ten' }, withMore).ok).toBe(false)
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore)).toEqual({ ok: true, value: { kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' } })
+    expect(validateAction({ kind: 'test', moveId: 'nap-ten', reading: 'energy', block: 'afternoon' }, withMore).ok).toBe(false)
+    // A test carries what it tests (item 6): a reading the move can be tested on, in a part of the day it fits, which the line cites.
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('offer no test') })
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'sleepQuality', block: 'evening' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('energy, mood') })
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'evening' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('afternoon, morning') })
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore, undefined, { text: 'Walk.', factIds: ['trend.sleepQuality'] })).toMatchObject({ ok: false, reason: expect.stringContaining('does not cite a fact about energy') })
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore, undefined, { text: 'Walk.', factIds: ['trend.energy'] }).ok).toBe(true)
+    // A plan is held to its line (item 6): the moment the line names is the moment the tap pins.
+    const plan = { kind: 'plan', aimId: 1, cue: 'afterBedtime' }
+    expect(validateAction(plan, withMore, undefined, { text: 'Pin it to 20:00.', factIds: ['aim.1'] }).ok).toBe(true)
+    expect(validateAction(plan, withMore, undefined, { text: 'Pin it to 17:30.', factIds: ['aim.1'] })).toMatchObject({ ok: false, reason: expect.stringContaining('the line names 17:30') })
+    expect(validateAction({ ...plan, cue: 'nextCheckIn' }, withMore, undefined, { text: 'Pin it to 20:00.', factIds: ['aim.1'] })).toMatchObject({ ok: false, reason: expect.stringContaining('another cue') })
+    expect(validateAction({ ...plan, cue: 'nextCheckIn' }, withMore, undefined, { text: 'Pin it to the next check-in.', factIds: ['aim.1'] }).ok).toBe(true)
     expect(validateAction({ kind: 'delete-everything' }, withMore).ok).toBe(false)
     const v = validateOutput({ mode: 'strategy', text: 'Veltish waited 3 days. Pin it to a moment today.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 1, cue: 'afterBedtime' } }, withMore, library)
     expect(v).toMatchObject({ ok: true, value: { action: { kind: 'plan', aimId: 1 } } })
@@ -98,8 +178,8 @@ describe('the one tap a line may offer, and the week in three parts', () => {
 
 describe('the guard every writer inherits: the day a line is for, and names kept private', () => {
   const day = (id: string, v: Record<string, string | number | null>) => ({ id, tags: [], text: '', values: v })
-  const friday = day('week.today', { weekday: 'Friday', daycare: 1, pickup: '17:30', office: 0, church: 0, studyNight: 0 })
-  const saturday = day('week.tomorrow', { day: '2026-09-19', weekday: 'Saturday', daycare: 0, pickup: null, office: 0, church: 0, studyNight: 0 })
+  const friday = day('week.today', { weekday: 'Friday', daycare: 1, pickup: '17:30', office: 0, church: 0, studyNight: 0, bedtime: '20:00' })
+  const saturday = day('week.tomorrow', { day: '2026-09-19', weekday: 'Saturday', daycare: 0, pickup: null, office: 0, church: 0, studyNight: 0, bedtime: '20:00' })
   const base: FactSheet = { version: 1, day: '2026-09-18', builtAt: '', hour: 22, weeks: 3, days: 22, direction: null, said: [], facts: [friday, saturday] }
 
   it('reads the shape of the day written for: its own day, or tomorrow when the sheet is the day before', () => {
@@ -113,6 +193,15 @@ describe('the guard every writer inherits: the day a line is for, and names kept
     expect(dayGuard('After pickup, one short sitting.', base, '2026-09-18')).toBeNull()
     expect(dayGuard('After pickup, one short sitting.', base, '2026-09-20')).toMatch(/does not know the shape of 2026-09-20/)
     expect(dayGuard('Pick up the thread with one short sitting after her bedtime.', base, '2026-09-19')).toBeNull()
+  })
+
+  it('speaks of her bedtime only on a day she is with you, and of your own sleep on any day (stage 1, item j)', () => {
+    const away: FactSheet = { ...base, facts: [{ ...friday, values: { ...friday.values, bedtime: null, daycare: 0, pickup: null } }, saturday] }
+    expect(dayGuard('One short sitting after her bedtime.', away, '2026-09-18')).toBe('speaks of her bedtime, which Friday 2026-09-18 does not hold')
+    expect(dayGuard('Ten minutes after bedtime.', away, '2026-09-18')).toMatch('her bedtime')
+    expect(dayGuard('Once you have put her to bed, ten minutes.', away, '2026-09-18')).toMatch('her bedtime')
+    expect(dayGuard('Lights out thirty minutes before your own bedtime.', away, '2026-09-18')).toBeNull()
+    expect(dayGuard('One short sitting after her bedtime.', base, '2026-09-18')).toBeNull()
   })
 
   it('refuses a study night on any day, even a preferred study day: that engine is retired (Workstream 6, D5)', () => {

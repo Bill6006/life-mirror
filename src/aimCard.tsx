@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { setEase, setSessionNote, type SkillWords } from './aimFlow'
-import { cuesFor, type BlockReason, type CueCount, type Practice, type TodaySessions } from './aims'
+import { cuesFor, type BlockReason, type CheckInSchedule, type CueCount, type Practice, type TodaySessions } from './aims'
 import { blockAt } from './blocks'
 import type { Move, PathId } from './catalogue'
 import { copy } from './copy'
@@ -12,7 +12,7 @@ import type { Sitting } from './ladder'
 import { AskCoach, ReviewCoach, SetupCoach, type SetupHandlers } from './coachCards'
 import type { AimCoach, ReviewAnswer } from './coachFlow'
 import { doneOpen, recordDoneNow } from './offerFlow'
-import { MAX_PER_WEEK, MAX_REST_DAYS, quiet, type Due, type Rhythm } from './rhythm'
+import { MAX_PER_WEEK, maxRestFor, quiet, type Due, type Rhythm } from './rhythm'
 import type { Weekday } from './settings'
 import { indexLabel } from './theme'
 import { ClampText, Disclosure, Facts } from './ui'
@@ -26,8 +26,8 @@ interface Shared {
   openOffer: Offer | null
   blocked: BlockReason | null
   unblock: Move | null
-  /** Today's context, for the cues on offer; null before the day is written. */
-  ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> | null
+  /** Today's context, for the cues on offer, with the check-ins the day holds; null before the day is written. */
+  ctx: (Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> & { checkIns?: CheckInSchedule }) | null
   /** Today's plan for the step, or null. */
   plan: Intention | null
   /** One plain fact: when it was last practised, or the step last done. */
@@ -109,7 +109,7 @@ function CadenceEditor({ c }: { c: Cadence }) {
           <p class="setting-label">{a.rhythmLabel}</p>
           <div class="days" role="group" aria-label={a.rhythmLabel} data-testid="aim-rhythm">
             {Array.from({ length: MAX_PER_WEEK + 1 }, (_, n) => (
-              <button key={n} type="button" class={per === n ? 'day is-on' : 'day'} aria-pressed={per === n} data-testid={`aim-rhythm-${n}`} onClick={() => c.onRhythm?.(n === 0 ? null : { perWeek: n, restDays: rest })}>
+              <button key={n} type="button" class={per === n ? 'day is-on' : 'day'} aria-pressed={per === n} data-testid={`aim-rhythm-${n}`} onClick={() => c.onRhythm?.(n === 0 ? null : { perWeek: n, restDays: Math.min(rest, maxRestFor(n)) })}>
                 {n === 0 ? a.rhythmFlexible : String(n)}
               </button>
             ))}
@@ -118,7 +118,8 @@ function CadenceEditor({ c }: { c: Cadence }) {
             <>
               <p class="setting-label">{a.restLabel}</p>
               <div class="days" role="group" aria-label={a.restLabel} data-testid="aim-rest">
-                {Array.from({ length: MAX_REST_DAYS + 1 }, (_, n) => (
+                {/* Only the rest that lets this many sessions fit in a week is offered. */}
+                {Array.from({ length: maxRestFor(per) + 1 }, (_, n) => (
                   <button key={n} type="button" class={rest === n ? 'day is-on' : 'day'} aria-pressed={rest === n} data-testid={`aim-rest-${n}`} onClick={() => c.onRhythm?.({ perWeek: per, restDays: n })}>
                     {a.rest[n]}
                   </button>

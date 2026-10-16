@@ -117,15 +117,21 @@ export interface Said {
   feedback: string | null
 }
 
+/** Words that tie a fact to the day its sheet was built: on a sheet from another day, such a fact is dated (stage 1, item f). */
+export const DAY_RELATIVE = /\b(today|tonight|yesterday|last night|so far|ago|this (morning|afternoon|evening|week)|the last seven|the seven before)\b/i
+
 /**
  * A fact as the writer should read it when the sheet was built on another day than the one
- * written for (Part 19). Applied here and nowhere else, so no prompt can skip it.
+ * written for (Part 19): its own day named, the day written for named, and every fact that
+ * speaks of today, tonight, yesterday or days ago dated to the facts' own day (stage 1, item f),
+ * so "done today" and "this evening" never describe the day written for. Applied here and
+ * nowhere else, so no prompt can skip it.
  */
-function relabel(f: FactSheet['facts'][number], sheet: FactSheet, forDay: string): string {
+export function relabel(f: FactSheet['facts'][number], sheet: FactSheet, forDay: string): string {
   if (forDay === sheet.day) return f.text
   if (f.id === 'week.today') return f.text.replace(/^Today is /, `The facts' own day, ${sheet.day}, was `)
   if (f.id === 'week.tomorrow') return f.text.replace(/^Tomorrow is /, `The day you are writing for, ${forDay}, is `)
-  if (f.id.startsWith('today.')) return `On ${sheet.day}: ${f.text}`
+  if (f.id.startsWith('today.') || DAY_RELATIVE.test(f.text)) return `On ${sheet.day}: ${f.text}`
   return f.text
 }
 
@@ -136,7 +142,7 @@ export function sheetLines(sheet: FactSheet, forDay: string = sheet.day): string
       ? [`Day ${sheet.day}; ${sheet.days} days of record; local hour ${sheet.hour}.`]
       : [
           `These facts were built on ${sheet.day} at local hour ${sheet.hour}; ${sheet.days} days of record.`,
-          `You are writing for ${forDay}, the day after. Facts named week.today and today.* describe ${sheet.day}, not ${forDay}; the shape of ${forDay} is the fact week.tomorrow, and it alone says what that day holds.`,
+          `You are writing for ${forDay}, the day after. Every fact describes the record as of ${sheet.day}, not ${forDay}, and each that speaks of today, tonight, yesterday or days ago is marked "On ${sheet.day}"; the shape of ${forDay} is the fact week.tomorrow, and it alone says what that day holds.`,
         ]
   if (sheet.direction) head.push(`Direction, in the person's own words: ${sheet.direction}`)
   const lines = sheet.facts.map((f) => `[${f.id}] ${relabel(f, sheet, forDay)}${f.n !== undefined ? ` (n=${f.n})` : ''}`)

@@ -503,6 +503,9 @@ describe('the brain’s lines, read from the same database', () => {
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', kind: 'review' }))?.kind).toBe('review')
     // Part 34: what Claude said it lacked arrives with the line, known ids only.
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', lacked: ['notes', 'x', 'notes'] }))?.lacked).toEqual(['notes'])
+    // The cited facts' words, kept for Why (stage 1, item l): each an id and its words, or left out.
+    expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', facts: [{ id: 'aim.1', text: 'As read.' }, { id: 2 }, 'x', { id: 'week.today', text: 'Friday.', extra: 1 }] }))?.facts).toEqual([{ id: 'aim.1', text: 'As read.' }, { id: 'week.today', text: 'Friday.' }])
+    expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', facts: 'none' }))).not.toHaveProperty('facts')
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', lacked: 'notes' }))).not.toHaveProperty('lacked')
   })
 })
