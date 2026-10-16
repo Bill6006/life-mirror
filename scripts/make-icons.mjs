@@ -1,66 +1,81 @@
-// Renders the app icon to PNG at the sizes the manifest needs, plus the SVG favicon.
-// Run once with `npm run icons`; the output in public/ is committed.
+// Renders the app icon to PNG at the sizes the manifest needs, plus the SVG favicon, all from one image:
+// the owner's approved icon (2026-10-16), kept at scripts/icon-source.png. Run once with `npm run icons`;
+// the output in public/ is committed, at the paths the manifest, the page and the service worker already use.
 import { chromium } from '@playwright/test'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
-const GROUND = '#14171f'
-const GROUND_LIFT = '#1f2431'
-const HAIR = '#5d6374'
-const ACCENT = '#ff7d4d'
+const SOURCE = 'scripts/icon-source.png'
+/** The image's own ground, measured from its corners (15, 14, 13): a maskable icon's margin is filled with it. */
+const GROUND = 'rgb(15, 14, 13)'
 
-/** The reflection under the horizon: each bar's height on the grid, its width and how much of the sun it still holds. */
-const BARS = [
-  [64, 31, 0.8],
-  [70, 22, 0.55],
-  [76, 14, 0.34],
-  [82, 6.5, 0.18],
-]
-
-// The sun over a horizon, and its reflection breaking up on the water below (the owner's pick, 2026-10-03):
-// the mirror and the day in one mark, in the app's own colours. Drawn on a 100-unit grid; `scale` keeps it
-// inside a launcher's mask.
-function svg(size, scale) {
-  const t = 50 * (1 - scale)
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
-  <defs>
-    <radialGradient id="ground" cx="50%" cy="36%" r="75%">
-      <stop offset="0%" stop-color="${GROUND_LIFT}"/>
-      <stop offset="100%" stop-color="${GROUND}"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="${ACCENT}" stop-opacity="0.32"/>
-      <stop offset="100%" stop-color="${ACCENT}" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="100" height="100" fill="url(#ground)"/>
-  <g transform="translate(${t} ${t}) scale(${scale})">
-    <circle cx="50" cy="38" r="25" fill="url(#glow)"/>
-    <circle cx="50" cy="38" r="14.5" fill="${ACCENT}"/>
-    <line x1="16" y1="58" x2="84" y2="58" stroke="${HAIR}" stroke-width="2.6" stroke-linecap="round"/>
-${BARS.map(([y, w, o]) => `    <rect x="${50 - w / 2}" y="${y - 1.7}" width="${w}" height="3.4" rx="1.7" fill="${ACCENT}" fill-opacity="${o}"/>`).join('\n')}
-  </g>
-</svg>
-`
-}
-
-mkdirSync('public/icons', { recursive: true })
-writeFileSync('public/favicon.svg', svg(64, 1))
-
-// A maskable icon keeps its mark inside the launcher's safe zone (the middle 80%); the others fill the square.
+// A maskable icon keeps the whole image, its glowing frame included, inside a launcher's safe zone (a circle of
+// 40% radius): the frame's rounded corners reach about 0.56 of the half-size, so it is drawn at 0.72. The
+// others fill the square, as the image was made to.
 const sizes = [
   ['icon-192', 192, 1],
   ['icon-512', 512, 1],
-  ['maskable-512', 512, 0.9],
+  ['maskable-512', 512, 0.72],
   ['apple-touch-icon', 180, 1],
 ]
+/** The favicon's raster, held inside favicon.svg so its path stays the one the page names. */
+const FAVICON = 64
+
+const src = `data:image/png;base64,${readFileSync(SOURCE).toString('base64')}`
 
 const browser = await chromium.launch()
-const page = await browser.newPage({ deviceScaleFactor: 1 })
+const page = await browser.newPage()
+
+/** The image drawn at `size`, filling `scale` of it on the ground: stepped down by halves, then once smoothly, so fine lines stay clean. */
+async function render(size, scale) {
+  const bytes = await page.evaluate(
+    async ({ src, size, scale, ground }) => {
+      const img = new Image()
+      img.src = src
+      await img.decode()
+      let w = img.naturalWidth
+      let canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = w
+      canvas.getContext('2d').drawImage(img, 0, 0)
+      const target = Math.round(size * scale)
+      while (w / 2 >= target) {
+        const half = document.createElement('canvas')
+        half.width = Math.round(w / 2)
+        half.height = half.width
+        const h = half.getContext('2d')
+        h.imageSmoothingEnabled = true
+        h.imageSmoothingQuality = 'high'
+        h.drawImage(canvas, 0, 0, w, w, 0, 0, half.width, half.width)
+        canvas = half
+        w = half.width
+      }
+      const out = document.createElement('canvas')
+      out.width = size
+      out.height = size
+      const o = out.getContext('2d')
+      o.fillStyle = ground
+      o.fillRect(0, 0, size, size)
+      o.imageSmoothingEnabled = true
+      o.imageSmoothingQuality = 'high'
+      const at = Math.round((size - target) / 2)
+      o.drawImage(canvas, 0, 0, w, w, at, at, target, target)
+      const blob = await new Promise((resolve) => out.toBlob(resolve, 'image/png'))
+      return Array.from(new Uint8Array(await blob.arrayBuffer()))
+    },
+    { src, size, scale, ground: GROUND },
+  )
+  return Buffer.from(bytes)
+}
+
+mkdirSync('public/icons', { recursive: true })
 for (const [name, size, scale] of sizes) {
-  await page.setViewportSize({ width: size, height: size })
-  await page.setContent(`<!doctype html><html><body style="margin:0;background:${GROUND}">${svg(size, scale)}</body></html>`)
-  const png = await page.screenshot({ clip: { x: 0, y: 0, width: size, height: size } })
-  writeFileSync(`public/icons/${name}.png`, png)
+  writeFileSync(`public/icons/${name}.png`, await render(size, scale))
   console.log(`public/icons/${name}.png`)
 }
+const fav = (await render(FAVICON, 1)).toString('base64')
+writeFileSync(
+  'public/favicon.svg',
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${FAVICON}" height="${FAVICON}" viewBox="0 0 ${FAVICON} ${FAVICON}"><image width="${FAVICON}" height="${FAVICON}" href="data:image/png;base64,${fav}"/></svg>\n`,
+)
+console.log('public/favicon.svg')
 await browser.close()

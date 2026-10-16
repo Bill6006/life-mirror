@@ -2893,3 +2893,26 @@ test('stage 1, item m: a line counts as said once on screen: the Worker’s line
   // No record is made up for the day it was written.
   expect((await rowsOf<{ day: string }>(page, 'days')).some((d) => d.day === '2026-09-06')).toBe(false)
 })
+
+test('the icon: every size the manifest and the page name is served, an image of the size it says, the maskable one among them', async ({ page }) => {
+  await page.goto('./')
+  const manifest = (await (await page.request.get('manifest.webmanifest')).json()) as { icons: { src: string; sizes: string; purpose?: string }[] }
+  expect(manifest.icons.map((i) => i.src)).toEqual(['icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'])
+  expect(manifest.icons.find((i) => i.purpose === 'maskable')?.src).toBe('icons/maskable-512.png')
+  const sizeOf = (src: string) =>
+    page.evaluate(async (url) => {
+      const blob = await (await fetch(url)).blob()
+      const bitmap = await createImageBitmap(blob)
+      return { type: blob.type, w: bitmap.width, h: bitmap.height }
+    }, src)
+  for (const icon of manifest.icons) {
+    const [w, h] = icon.sizes.split('x').map(Number)
+    expect(await sizeOf(icon.src), icon.src).toEqual({ type: 'image/png', w, h })
+  }
+  const touch = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href')
+  expect(await sizeOf(touch as string)).toEqual({ type: 'image/png', w: 180, h: 180 })
+  const favicon = await page.locator('link[rel="icon"]').getAttribute('href')
+  const svg = await (await page.request.get(favicon as string)).text()
+  expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 64 64"/)
+  expect(svg).toContain('data:image/png;base64,')
+})
