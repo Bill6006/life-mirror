@@ -4,26 +4,34 @@ This repository is public. The owner's private documents are not in it.
 
 ## Where the plan lives
 
-- `PLAN.md`, `PROGRESS.md` and `REVIEW_EXECUTION_PLAN.md` live in the private repository
-  `Bill6006/life-mirror-private`. Sessions read them from a clone at `private/` in this repository's root, which is
-  gitignored here.
-- If `private/` is missing, clone it: `git clone https://github.com/Bill6006/life-mirror-private private`.
-  - If the clone fails, stop and tell the owner.
+`PLAN.md`, `PROGRESS.md` and `REVIEW_EXECUTION_PLAN.md` live in the private repository
+`Bill6006/life-mirror-private`. Use the copy your session already has:
+
+- **A cloud session:** the owner attaches both repositories when starting it, with the **+** beside the repository.
+  - The private one is then a sibling folder, `../life-mirror-private`, and the session starts in the folder above
+    both.
+  - Use that copy, and never clone a second one.
+  - It starts on a detached HEAD, so run `git checkout -B main origin/main` in it before editing.
+- **The owner's computer:** a clone at `private/` in this repository's root, gitignored here. Run
+  `git -C private pull --ff-only` before reading it.
+- **If neither copy exists, stop and tell the owner.**
+  - A cloud session can reach the private repository only if it was attached when the session started.
   - Never reconstruct the plan from memory or from a summary.
-- If `private/` is already there, run `git -C private pull` before reading it.
-- The working rules, the agreed order, the gates and the current checkpoint are in those documents. Start with the
-  checkpoint at the head of `private/REVIEW_EXECUTION_PLAN.md`.
+
+The working rules, the agreed order, the gates and the current checkpoint are in those documents. Start with the
+checkpoint at the head of `REVIEW_EXECUTION_PLAN.md`.
 
 ## Never rely on summarized chat memory
 
-- Before acting on any plan item, read its exact text in `private/`. Quote the lines you build from in your report.
+- Before acting on any plan item, read its exact text in the private copy. Quote the lines you build from in your
+  report.
 - After the conversation has been compacted, re-read the relevant sections before you continue. A summary is a
   paraphrase, and paraphrased rules drift.
 - Copy stop conditions, gates and the owner's decisions word for word. Never shorten them.
 
 ## Never copy private content here
 
-- Nothing from `private/` goes into this repository. That covers files, commits, commit messages, tests,
+- Nothing from the private repository goes into this one. That covers files, commits, commit messages, tests,
   screenshots, catalogue text, issues and pull requests.
 - CI refuses to ship if `PLAN.md`, `PROGRESS.md`, `REVIEW_EXECUTION_PLAN.md` or anything under `private/` is tracked.
 - No secrets go into either repository. Tokens and keys stay in `worker/.dev.vars`, which is local and gitignored,
@@ -31,5 +39,7 @@ This repository is public. The owner's private documents are not in it.
 
 ## Keeping the ledger
 
-- When status changes, update `private/PROGRESS.md`, and the plan's checkpoint where it says so.
-- Commit and push in `private/` by explicit paths, as a commit separate from any here.
+- When status changes, update `PROGRESS.md`, and the plan's checkpoint where it says so.
+- Commit in the private copy by explicit paths, separately from any commit here. Push with
+  `git push origin main` (from a cloud copy, `git push origin HEAD:main` also works).
+- The cloud refuses branch deletion in the private repository. Push only to `main` there.
