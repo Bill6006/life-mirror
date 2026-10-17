@@ -76,6 +76,8 @@ export function dayReadings(checkins: readonly CheckIn[], today: string): { day:
 
 export interface Difference {
   label: string
+  /** The move a difference is about, when it is one done: what the review's facts file it under (stage 3, group 1). */
+  moveId?: string
   onBest: number
   ofBest: number
   onOthers: number
@@ -124,7 +126,7 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
     if (o.id === undefined || !done.has(o.id) || !hasMove(o.moveId)) continue
     doneMoves.set(o.moveId, new Set([...(doneMoves.get(o.moveId) ?? []), o.day]))
   }
-  for (const [moveId, days] of doneMoves) controlled.push(count(moveById(moveId).name, (d) => days.has(d)))
+  for (const [moveId, days] of doneMoves) controlled.push({ ...count(moveById(moveId).name, (d) => days.has(d)), moveId })
   const evening = (day: string) => byDay.get(day)?.find((c) => c.block === 'evening')
   // Caffeine from reported bands (Part 22e), counted over the days the item recorded anything, so a
   // day with nothing known is in neither count. The old yes/no rows stay until the item has 28 days.

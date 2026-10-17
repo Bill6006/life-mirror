@@ -548,6 +548,12 @@ export interface Intention {
   step?: string
   /** Sync safety (2026-10-02): the offer that started the plan, when an offer of another day took its id; offerId is then its negative, still started. */
   lostOfferId?: number
+  /**
+   * Timing (stage 3, group 2): when the reminder comes, HH:MM, where that differs from the cue's own
+   * time: the moment this commitment's steps have actually started after the cue, never mid-pickup.
+   * Absent, the reminder comes at the cue's own time, as before.
+   */
+  remindAt?: string
 }
 
 /** The day's fact sheet as a record of its own: what the brain may speak from, written by the phone and read by the Worker. */

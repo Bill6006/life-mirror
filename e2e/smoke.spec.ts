@@ -3182,3 +3182,43 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
   // The evening's own summary never asks Anything going on?: its note stays in its extras.
   await expect(page.getByTestId('behind-it')).toHaveCount(0)
 })
+
+test('timing (stage 3, group 2): the Plan when chips come in the order the record keeps them for this commitment', async ({ page }) => {
+  // A Tuesday morning: her bedtime and the next check-in are still ahead, and no pickup is set.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await addLearning(page, 'Veltish', 'Ten words', 'A class')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Veltish' })
+  const order = () => card.locator('[data-testid^="aim-cue-"]:not([data-testid="aim-cue-count"])').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
+  await card.getByTestId('aim-plan-open').click()
+  // With nothing kept yet: the cues' own order.
+  await expect(card.getByTestId('aim-cue-afterBedtime')).toBeVisible()
+  expect(await order()).toEqual(['aim-cue-afterBedtime', 'aim-cue-nextCheckIn'])
+
+  // Three plans at the next check-in kept in the last week, one after her bedtime never started.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['intentions'], 'readwrite')
+    const store = tx.objectStore('intentions')
+    for (const [d, cue, offerId] of [[1, 'nextCheckIn', 101], [2, 'nextCheckIn', 102], [3, 'nextCheckIn', 103], [4, 'afterBedtime', null]] as const) {
+      store.add({ aimId: 1, day: `2026-09-0${d}`, cue, time: cue === 'afterBedtime' ? '20:00' : '13:00', setAt: new Date(2026, 8, d, 9).toISOString(), offerId })
+    }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await card.getByTestId('aim-plan-open').click()
+  await expect(card.getByTestId('aim-cue-nextCheckIn')).toBeVisible()
+  expect(await order()).toEqual(['aim-cue-nextCheckIn', 'aim-cue-afterBedtime'])
+})

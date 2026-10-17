@@ -30,6 +30,8 @@ import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } fro
 import type { Fact, FactSheet, SaidEntry } from './factTypes'
 import { necessitiesMissed } from './necessities'
 import { onTrip, type AwayRange } from './postWindow'
+import { memoryFacts } from './memoryFacts'
+import { weeklyFacts, type WeeklyAnalyses } from './weeklyFacts'
 export type { Fact, FactSheet, SaidEntry } from './factTypes'
 
 export interface FactInput {
@@ -69,6 +71,8 @@ export interface FactInput {
   reviews?: ReadonlyMap<number, { days: number; reason: 'ordinary' | 'struggle' }>
   /** Away from home (post-window), once its gate is open: the trip set, if any. Absent, the sheet is as it was. */
   away?: { range: AwayRange | null }
+  /** The weekly view's analyses over the steps the sheet may count, for the Sunday review (stage 3, group 1). Absent, no weekly fact is written. */
+  weekly?: WeeklyAnalyses
 }
 
 /**
@@ -81,7 +85,9 @@ export function onTheSheet(o: Pick<Offer, 'paths'>): boolean {
 
 /** A like-for-like difference worth calling promising for a chip: ten points on the reading out of 100. */
 export const CHIP_WORTHWHILE = 10
-const TREND_WINDOW = 6
+/** A trend compares the seven days to yesterday with the seven before (stage 3, group 1), once each holds three answers. */
+const TREND_DAYS = 7
+const TREND_MIN = 3
 /** Sleep hours at or under this position is a short night: under five hours, or five to six. */
 export const SHORT_SLEEP = 2
 const NOTE_DAYS = 14
@@ -267,11 +273,7 @@ export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence
   return out
 }
 
-/** The positions answered for one reading, oldest first. */
-function positionsOf(checkins: readonly CheckIn[], id: ReadingId): number[] {
-  return answersOf(checkins, id).map((a) => a.p)
-}
-
+/** The answers given for one reading, oldest first. */
 function answersOf(checkins: readonly CheckIn[], id: ReadingId): { day: string; p: 1 | 2 | 3 | 4 | 5 }[] {
   return [...checkins]
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : blockIndex(a.block) - blockIndex(b.block)))
@@ -408,14 +410,17 @@ export function buildFactSheet(i: FactInput): FactSheet {
       const word = headword(anchorFor(id, p))
       facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : id === 'motivation' ? 'mood' : 'social'], `${named(reading)} read “${word}” (${p} of 5) at the ${latest.block} check-in on ${latest.day}, ${ageWords(daysBetween(latest.day, today))}.`, { position: p, word, day: latest.day, block: latest.block, ageDays: daysBetween(latest.day, today) }))
     }
-    const ps = positionsOf(i.checkins, id)
-    if (ps.length >= TREND_WINDOW * 2) {
-      const recent = mean(ps.slice(-TREND_WINDOW))
-      const prior = mean(ps.slice(-TREND_WINDOW * 2, -TREND_WINDOW))
+    // Read by the week (stage 3, group 1): the seven days to yesterday against the seven before, each with its count, and
+    // none said until each week holds three answers.
+    const answers = answersOf(i.checkins, id)
+    const week = answers.filter((a) => a.day >= addDays(today, -TREND_DAYS) && a.day < today)
+    const before = answers.filter((a) => a.day >= addDays(today, -TREND_DAYS * 2) && a.day < addDays(today, -TREND_DAYS))
+    if (week.length >= TREND_MIN && before.length >= TREND_MIN) {
+      const recent = mean(week.map((a) => a.p))
+      const prior = mean(before.map((a) => a.p))
       // A comparison across the day its words changed says so (item 4, 2026-10-16): the change alone may move the answers a little.
-      const compared = answersOf(i.checkins, id).slice(-TREND_WINDOW * 2)
-      const across = reading.reworded !== undefined && compared[0].day < reading.reworded && compared[compared.length - 1].day >= reading.reworded
-      facts.push(fact(`trend.${id}`, [id === 'loneliness' ? 'loneliness' : 'mood'], `${named(reading)}: the last ${TREND_WINDOW} answers average ${recent} of 5 against ${prior} for the ${TREND_WINDOW} before${across ? `; its words changed on ${reading.reworded}, so answers either side may differ a little for that alone` : ''}.`, { recent, prior, window: TREND_WINDOW, ...(across ? { reworded: reading.reworded as string } : {}) }, { n: TREND_WINDOW }))
+      const across = reading.reworded !== undefined && before[0].day < reading.reworded && week[week.length - 1].day >= reading.reworded
+      facts.push(fact(`trend.${id}`, [id === 'loneliness' ? 'loneliness' : 'mood'], `${named(reading)}: the ${TREND_DAYS} days to yesterday average ${recent} of 5 over ${week.length} answers, against ${prior} over ${before.length} answers the ${TREND_DAYS} days before${across ? `; its words changed on ${reading.reworded}, so answers either side may differ a little for that alone` : ''}.`, { recent, prior, recentAnswers: week.length, priorAnswers: before.length, days: TREND_DAYS, ...(across ? { reworded: reading.reworded as string } : {}) }, { n: Math.min(week.length, before.length) }))
     }
   }
 
@@ -808,6 +813,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
       : `Since then ${checkins} check-ins were completed and ${moves} moves marked done.`
     facts.push(fact('review.change', ['monitoring'], `The last review, on ${review.day}, proposed one change: ${quoted(review.parts.change)} ${since}`, { day: review.day, change: review.parts.change, aimId: s && ref ? Number(ref[1]) : null, checkins, moves, planned: s?.planned ?? null, started: s?.started ?? null, done: s?.done ?? null, changed: s?.changed ?? null }))
   }
+
+  // Stage 3, group 1: the Brain's memory of the lines seen in the last 30 days, and the weekly view's analyses for the Sunday review.
+  facts.push(...memoryFacts({ today, log: i.log, brainBriefs: i.brainBriefs, contexts: i.contexts, feedback: i.feedback, intentions: i.intentions, offers: i.offers, outcomes: i.outcomes, checkins: i.checkins, cards: i.evidence.cards.map((c) => c.card), aims: i.aims }))
+  if (i.weekly) facts.push(...weeklyFacts(i.weekly))
 
   // Part 43: where today and yesterday were spent, as kinds of place; context, never a cause, and Claude's to read only through its gate.
   for (const [id, d, head] of [

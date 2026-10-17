@@ -12,6 +12,7 @@ import type { Sitting } from './ladder'
 import { AskCoach, ReviewCoach, SetupCoach, type SetupHandlers } from './coachCards'
 import type { AimCoach, ReviewAnswer } from './coachFlow'
 import { doneOpen, recordDoneNow } from './offerFlow'
+import { chipOrder } from './planMoment'
 import { MAX_PER_WEEK, maxRestFor, quiet, type Due, type Rhythm } from './rhythm'
 import type { Weekday } from './settings'
 import { indexLabel } from './theme'
@@ -30,6 +31,8 @@ interface Shared {
   ctx: (Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil'> & { checkIns?: CheckInSchedule }) | null
   /** Today's plan for the step, or null. */
   plan: Intention | null
+  /** Timing (stage 3, group 2): this commitment's plans per cue in the last 60 days and how many were kept; orders the Plan when chips. */
+  kept?: readonly CueCount[]
   /** One plain fact: when it was last practised, or the step last done. */
   last: string | null
   /** Today's sessions: the latest done, or a Partly with none done (Workstream 6). */
@@ -342,10 +345,11 @@ export function PlanTap({ open, onToggle, label = copy.disclose.plan }: { open: 
  * with a tap to change it. Nothing once the step is started, and nothing when no cue is ahead:
  * then the step is for now.
  */
-export function When({ plan, ctx, onPlan }: Pick<Shared, 'plan' | 'ctx' | 'onPlan'>) {
+export function When({ plan, ctx, onPlan, kept = [] }: Pick<Shared, 'plan' | 'ctx' | 'onPlan' | 'kept'>) {
   const c = copy.aims
   const [changing, setChanging] = useState(false)
-  const cues = cuesFor(ctx, new Date())
+  // The cue the record keeps most often comes first (stage 3, group 2).
+  const cues = chipOrder(cuesFor(ctx, new Date()), kept)
   const pending = plan && plan.offerId === null ? plan : null
   if (pending && !changing) {
     return (
@@ -401,6 +405,7 @@ export function AimCard({
   unblock,
   ctx,
   plan,
+  kept,
   last,
   today,
   due = false,
@@ -548,6 +553,7 @@ export function AimCard({
             <When
               plan={plan}
               ctx={ctx}
+              kept={kept}
               onPlan={(cue, time) => {
                 onPlan(cue, time)
                 setPlanOpen(false)
@@ -770,7 +776,7 @@ export function RowFrame({
  * Something to learn with no skill named shows where to name it and nothing to start. Several fit
  * without a scroll; the rest lives on Aims.
  */
-export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0, reviewOpen = false }: Shared & { unnamed?: boolean; index?: number; reviewOpen?: boolean }) {
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, kept, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0, reviewOpen = false }: Shared & { unnamed?: boolean; index?: number; reviewOpen?: boolean }) {
   const c = copy.aims
   const [planOpen, setPlanOpen] = useState(false)
   const [justDone, setJustDone] = useState<number | null>(null)
@@ -858,6 +864,7 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
             <When
               plan={plan}
               ctx={ctx}
+              kept={kept}
               onPlan={(cue, time) => {
                 onPlan(cue, time)
                 setPlanOpen(false)

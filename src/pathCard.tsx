@@ -29,6 +29,8 @@ export interface PathShared {
   openOffer: Offer | null
   ctx: Pick<DayContext, 'withHer' | 'pickupTime' | 'soloUntil' | 'atOffice' | 'weekday'> | null
   plan: Intention | null
+  /** Timing (stage 3, group 2): the plans per cue in the last 60 days and how many were kept; orders the Plan when chips. */
+  kept?: readonly CueCount[]
   /** Tier 2's one counted line for this context, shown only under "no people rep fits". */
   carried: string | null
   /** The paths the rep on show counts for: both, when both paths are on and hold it (Part 27). */
@@ -226,6 +228,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
             <When
               plan={p.plan}
               ctx={p.ctx}
+              kept={p.kept}
               onPlan={(cue, time) => {
                 p.onPlan(cue, time)
                 setPlanOpen(false)
@@ -359,6 +362,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               <When
                 plan={p.plan}
                 ctx={p.ctx}
+                kept={p.kept}
                 onPlan={(cue, time) => {
                   p.onPlan(cue, time)
                   setPlanOpen(false)

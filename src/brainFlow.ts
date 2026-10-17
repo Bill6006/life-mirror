@@ -12,9 +12,9 @@ import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
 import { firmMode, firmOn, firmPrefNow, firmPrefOf, type FirmMode } from './firmFlow'
 import type { Firmness } from './firmness'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathMark } from './db'
-import { buildFactSheet, type FactSheet } from './facts'
+import { buildFactSheet, onTheSheet, type FactSheet } from './facts'
 import { wasShown } from './shown'
-import { briefData, usualFor } from './forecastFlow'
+import { briefData, usualFor, weeklyAnalyses } from './forecastFlow'
 import { cardFromHypothesis, testOf, type Hypothesis } from './hypothesis'
 import { evidence } from './learningFlow'
 import { cardById, type ClaimCard } from './library'
@@ -48,7 +48,7 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   ])
   // Parts 40 and 41: the reviews waiting for an answer, read only while their gate is open; closed, the sheet is as it was.
   // Pass 2: How firm is read only while its gate is open; closed, the ranking is said as it always was.
-  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined)])
+  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow, cards, declarations, scores] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined), db.cards.toArray(), db.declarations.toArray(), db.forecastScores.toArray()])
   const firmPref = firmPrefOf(firmOn(firm) ? readBrainPrefs(prefsRow) : undefined, firm)
   const reviews = new Map<number, { days: number; reason: 'ordinary' | 'struggle' }>()
   for (const a of asks) {
@@ -58,7 +58,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}) })
+  // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27).
+  const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith }, day)
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
   const said = log.filter((l) => l.situationId !== null && wasShown(l, brainBriefs)).map((l) => ({ day: l.day, situationId: l.situationId }))

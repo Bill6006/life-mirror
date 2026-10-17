@@ -1,4 +1,6 @@
-import { blockAt } from './blocks'
+import { addDays, blockAt } from './blocks'
+import { heldPickup } from './dayShape'
+import { momentFor, MOMENT_WINDOW_DAYS } from './planMoment'
 import { db, type Aim, type AimKind, type Cue, type Ease, type Intention, type LadderKind, type Offer, type Outcome, type RungMark, type Skill, type StudyNight } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import { AIM_KINDS, keyFor, planFor, unblockKeyFor } from './aims'
@@ -87,10 +89,14 @@ export function alignLadders(): Promise<void> {
 }
 
 /** One tap says when: the cue for a commitment's step today. A later tap replaces it; the plan is kept once the step is started. */
-export function planAim(aim: Aim, cue: Cue, time: string, now: Date = new Date(), step = ''): Promise<void> {
+export async function planAim(aim: Aim, cue: Cue, time: string, now: Date = new Date(), step = ''): Promise<void> {
+  const { day } = blockAt(now)
+  // Timing (stage 3, group 2): reminded at the moment the record says this commitment actually happens, never mid-pickup.
+  const since = addDays(day, -MOMENT_WINDOW_DAYS)
+  const [intentions, offers, ctx] = await Promise.all([db.intentions.toArray(), db.offers.where('day').aboveOrEqual(since).toArray(), db.days.get(day)])
+  const remindAt = momentFor(intentions, offers, aim.id as number, cue, time, heldPickup(ctx ?? null), now)
   return db.transaction('rw', db.intentions, async () => {
-    const { day } = blockAt(now)
-    await db.intentions.add({ aimId: aim.id as number, day, cue, time, setAt: now.toISOString(), offerId: null, ...(step ? { step } : {}) })
+    await db.intentions.add({ aimId: aim.id as number, day, cue, time, setAt: now.toISOString(), offerId: null, ...(step ? { step } : {}), ...(remindAt !== time ? { remindAt } : {}) })
   })
 }
 

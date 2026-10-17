@@ -4,7 +4,7 @@ import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
-import type { CheckIn, DayContext } from './db'
+import type { Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
 import { eveningWorkoutDays } from './workouts'
 import { observations, slotKey } from './learning'
 import type { ReadingId } from './readings'
@@ -12,6 +12,7 @@ import { evaluateCards } from './tiers'
 import { baselineShift, type Shift } from './shift'
 import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type Scorecard } from './weekly'
 import { necessitiesMissed } from './necessities'
+import type { WeeklyAnalyses } from './weeklyFacts'
 import { awayDays, homeDaysOnly } from './awayFlow'
 
 // Forecasts on the phone: written before their slot is logged and never rewritten; scored in
@@ -216,6 +217,36 @@ export interface Weekly {
   /** True when the model has no weekday term, so the days ahead come out alike by construction. */
   weekAheadAlike: boolean
   shift: Shift | null
+}
+
+/** The records the weekly view's analyses are computed from. */
+export interface WeeklyRecords {
+  checkins: readonly CheckIn[]
+  offers: readonly Offer[]
+  outcomes: readonly Outcome[]
+  cards: readonly Card[]
+  declarations: readonly Declaration[]
+  contexts: readonly DayContext[]
+  scores: readonly ForecastScore[]
+  outside: readonly { day: string }[]
+  hideFaith: boolean
+}
+
+/**
+ * The weekly view's six analyses, computed exactly as the view computes them (stage 3, group 1): the
+ * Sunday review's facts read them over the steps the sheet may count, and the view over every step.
+ */
+export function weeklyAnalyses(r: WeeklyRecords, today: string): WeeklyAnalyses {
+  const obs = observations(r.checkins, r.offers, r.outcomes)
+  const stats = evaluateCards(r.cards.filter((c) => c.origin !== 'weight'), obs, r.declarations)
+  return {
+    scorecard: scorecard(r.scores, r.checkins, r.declarations, stats),
+    best: bestDays(r.checkins, r.offers, r.outcomes, r.contexts, today, new Set(r.outside.map((o) => o.day))),
+    gap: gap(r.checkins, today),
+    moved: movedThisWeek(r.checkins, today),
+    lasts: whatLasts(obs, r.checkins),
+    health: catalogueHealth(r.offers, r.outcomes, recentSituations(r.offers, today), new Set(r.hideFaith ? ['faith'] : [])),
+  }
 }
 
 /** Everything the weekly view shows, from the records at the moment of asking. */
