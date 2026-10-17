@@ -346,10 +346,11 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
                     {startLabel(p, rep)}
                   </button>
                 )}
+                {/* Start, then Plan when, as on every commitment's card; Change last (cleaned up 2026-10-17). */}
+                {rep && ((!pending && cues > 0) || hasNotes) && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={!pending && cues > 0 ? d.planWhen : d.repNotes} />}
                 <button type="button" class="textbtn" data-testid="path-change" onClick={p.onChange}>
                   {c.change}
                 </button>
-                {rep && ((!pending && cues > 0) || hasNotes) && <PlanTap open={planOpen} onToggle={() => setPlanOpen((v) => !v)} label={!pending && cues > 0 ? d.plan : d.repNotes} />}
               </>
             )}
           </div>
@@ -407,8 +408,10 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         </Disclosure>
       )}
 
-      <Disclosure label={d.how} sub={partnerPath ? d.howPartner : d.howSocial} testid="path-how">
-        <div class="calc evidence">
+      {/* One Details row, as on every commitment's card: how the path works, then its settings (cleaned up 2026-10-17). */}
+      <Disclosure label={d.details} testid="path-details">
+        <div class="calc evidence" data-testid="path-how">
+          <p class="calc-line ink">{d.how}</p>
           {stage && <p class="move-what">{stage.what}</p>}
           {rep && !rep.path?.[path.id]?.advances && (
             <p class="calc-line" data-testid="path-warmup">
@@ -440,17 +443,16 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
             </p>
           )}
         </div>
-      </Disclosure>
-
-      <Disclosure label={d.pathSettings} sub={partnerPath ? d.pathSettingsPartner : d.pathSettingsSocial} testid="path-settings">
-        {p.settings}
-        <div class="actions">
-          <button type="button" class="textbtn" data-testid="path-pause" onClick={() => p.onPause(!paused)}>
-            {paused ? c.unpause : c.pause}
-          </button>
-          <button type="button" class="textbtn faint" onClick={p.onRemove}>
-            {copy.aims.remove}
-          </button>
+        <div data-testid="path-settings">
+          {p.settings}
+          <div class="actions">
+            <button type="button" class="textbtn" data-testid="path-pause" onClick={() => p.onPause(!paused)}>
+              {paused ? c.unpause : c.pause}
+            </button>
+            <button type="button" class="textbtn faint" onClick={p.onRemove}>
+              {copy.aims.remove}
+            </button>
+          </div>
         </div>
       </Disclosure>
     </div>

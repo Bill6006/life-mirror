@@ -2624,6 +2624,20 @@ button.chip {
   border-left: 0;
 }
 
+/* Claude's suggested skill reads as the answer, at the size of a move's name (cleaned up 2026-10-17). */
+.coach-skill {
+  margin: 2px 0 6px;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+/* A card with no skill yet: Suggest a skill with Claude and Set one myself, close under the title. */
+.coach-start .actions {
+  margin-bottom: 4px;
+}
+
 .sub.ink,
 .note.ink {
   color: var(--ink);
@@ -4033,6 +4047,21 @@ main.has-move-cue {
 }
 
 /* Let it out (agreed 2026-10-15): a large box for the night's words, and its history kept as written. */
+/* Its row sits under the note in the note's own card (cleaned up 2026-10-17): close below it, and at full ink, so it reads as part of the note. */
+.note-card .journal-row {
+  margin-top: 12px;
+}
+
+.journal-row .d-label {
+  color: var(--ink);
+}
+
+/* Instrument and Signal draw the row plain under a rule: closed, the card's full bottom padding would leave it floating. */
+[data-theme="instrument"] .note-card:has(> .journal-row:not(.is-open)),
+[data-theme="signal"] .note-card:has(> .journal-row:not(.is-open)) {
+  padding-bottom: 4px;
+}
+
 .journal-input {
   display: block;
   width: 100%;

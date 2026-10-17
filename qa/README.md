@@ -16,12 +16,16 @@ red. Rules every runner keeps:
 
 | Runner | Covers | Last result |
 | --- | --- | --- |
-| `stage1_breaks.py` | stage 1, items a–s and agreed items 4–6 | 33 of 33 caught; re-run against batch 2b's code, still 33 of 33 |
-| `batch2_breaks.py` | batch 2a: the foundations, the claims log, the journal's capture, the wipe | 14 of 14; re-run, 14 of 14 |
-| `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26 |
+| `stage1_breaks.py` | stage 1, items a–s and agreed items 4–6 | 33 of 33 caught; re-run against batch 2b's code and the UI cleanups', still 33 of 33 |
+| `batch2_breaks.py` | batch 2a: the foundations, the claims log, the journal's capture, the wipe | 14 of 14; re-run twice, 14 of 14 |
+| `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26; re-run against the UI cleanups' code, 26 of 26 |
+| `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16 |
 
 Run all of a runner's breaks with `python qa/batch2b_breaks.py`, or name ids to run only those:
 `python qa/batch2b_breaks.py coach-limits-said`.
+
+`ui_cleanup_breaks.py` guards with browser tests, which serve the built folder, so it rebuilds the app
+after each replacement and after each restore. `PW_CONFIG=<config>` picks the Playwright config.
 
 ## Live checks (`live-*.mjs`, `common.mjs`)
 
@@ -36,9 +40,13 @@ itself, and threw no page error.
 | `live-stage1.mjs` | stage 1 | 18 of 18 at b6623bb |
 | `live-b2a.mjs` | batch 2a | 14 of 14 at fd924d2 |
 | `live-b2b.mjs` | batch 2b | 10 of 10, twice, at 4d650b1 |
+| `live-ui-cleanups.mjs` | the UI cleanups | 18 of 18 against a local preview; 7 of 18 against the build before them, every cleanup's check failing |
 
 Wait for each element before reading it. Two of batch 2b's first misses were the script reading the
 screen before it rendered.
+
+`LIVE_URL=<url>` points `live-ui-cleanups.mjs` at a local preview to prove the script itself, and
+`CHROMIUM_PATH=<path>` launches a browser where Playwright's own is not installed.
 
 ## Snapshot pairing (`snappair.py`)
 

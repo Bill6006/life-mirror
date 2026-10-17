@@ -190,10 +190,11 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
       <TodayChips day={day} onAway={onAway} />
 
       <h2 class="section">{copy.extras.noteLabel}</h2>
-      <div class="card pad">
+      {/* Let it out sits directly under the note, in the same card: one compact row, not a card of its own. */}
+      <div class="card pad note-card">
         <LineInput initial={ex.note ?? ''} placeholder={copy.extras.notePlaceholder} testid="note-input" onSave={(text) => void setNote(slot, asked, text)} />
+        <JournalBox day={day} />
       </div>
-      <JournalBox day={day} />
 
       {settings.extras.minimumWin && (
         <>
@@ -331,8 +332,9 @@ function CountRow({ label, value, testid, onPick }: { label: string; value: Teet
 }
 
 /**
- * Let it out (agreed 2026-10-15): a collapsed row below the note that opens a large box. Skipping it is
- * not opening it, and it bears on nothing the check-in completes. Saved as it is written, and on leaving.
+ * Let it out (agreed 2026-10-15): a collapsed row under the note, in the note's card, that opens a large
+ * box. Skipping it is not opening it, and it bears on nothing the check-in completes. Saved as it is
+ * written, and on leaving.
  */
 function JournalBox({ day }: { day: string }) {
   const entry = useLive(() => journalFor(day), [day])
@@ -352,30 +354,27 @@ function JournalBox({ day }: { day: string }) {
   const value = text ?? entry?.text ?? ''
   const c = copy.journal
   return (
-    <div class="card">
-      <Disclosure label={c.row} sub={entry?.text.trim() ? c.rowWritten : undefined} testid="journal-open">
-        <div class="pad">
-          <textarea
-            class="input journal-input"
-            rows={10}
-            maxLength={JOURNAL_MAX}
-            value={value}
-            placeholder={c.placeholder}
-            aria-label={c.row}
-            data-testid="journal-input"
-            onInput={(e) => {
-              const words = (e.currentTarget as HTMLTextAreaElement).value
-              setText(words)
-              pending.current = words
-              clearTimeout(timer.current)
-              timer.current = setTimeout(flush, 800)
-            }}
-            onBlur={flush}
-          />
-          <p class="note faint no-gap">{c.boxNote}</p>
-        </div>
-      </Disclosure>
-    </div>
+    <Disclosure label={c.row} sub={entry?.text.trim() ? c.rowWritten : undefined} testid="journal-open" class="journal-row">
+      <div class="pad">
+        <textarea
+          class="input journal-input"
+          rows={10}
+          maxLength={JOURNAL_MAX}
+          value={value}
+          placeholder={c.placeholder}
+          aria-label={c.row}
+          data-testid="journal-input"
+          onInput={(e) => {
+            const words = (e.currentTarget as HTMLTextAreaElement).value
+            setText(words)
+            pending.current = words
+            clearTimeout(timer.current)
+            timer.current = setTimeout(flush, 800)
+          }}
+          onBlur={flush}
+        />
+      </div>
+    </Disclosure>
   )
 }
 

@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import type { SkillWords } from './aimFlow'
 import type { AimCoach, ReviewAnswer } from './coachFlow'
@@ -8,9 +9,9 @@ import { fill } from './format'
 import { MAX_PER_WEEK, MAX_REST_DAYS, type Rhythm } from './rhythm'
 
 // Parts 40 and 41 on a learning commitment's card: Claude's suggestion for the current skill with
-// Use this, Edit first, Another suggestion and Write my own; the ask still waiting, with your own
-// words always possible; and a progression review, Claude's or the phone's neutral question, never
-// a modal. Nothing here changes the commitment until you tap.
+// Use this skill, Try another, Set one myself and Edit first; the ask still waiting, with when its
+// answer comes and your own words always possible; and a progression review, Claude's or the phone's
+// neutral question, never a modal. Nothing here changes the commitment until you tap.
 
 /** A rhythm in words: "3 a week, with a rest day between". */
 export function rhythmWords(r: { perWeek: number; restDays: number } | null | undefined): string | null {
@@ -100,10 +101,12 @@ export interface SetupHandlers {
 }
 
 /**
- * A setup ask on the card (Part 40): waiting, said plainly with your own words still possible; or
- * Claude's suggestion, whole, with Use this, Edit first, Another suggestion and Write my own.
+ * A setup ask on the card (Part 40): while Claude works, said plainly with when its answer comes (the
+ * Worker answers after the day's line, at most twice a day; the app has no route to ask it sooner); or
+ * Claude's suggestion, whole and prominent, with Use this skill, Try another, Set one myself (Keep my
+ * current skill, once one is named) and Edit first. Nothing changes until you choose.
  */
-export function SetupCoach({ coach, h }: { coach: AimCoach; h: SetupHandlers }) {
+export function SetupCoach({ coach, h, named, onOwn }: { coach: AimCoach; h: SetupHandlers; named: boolean; onOwn?: () => void }) {
   const c = copy.coach
   const [editing, setEditing] = useState(false)
   const open = coach.setup
@@ -112,9 +115,12 @@ export function SetupCoach({ coach, h }: { coach: AimCoach; h: SetupHandlers }) 
   const s: SkillSuggestion | undefined = open.proposal?.suggestion
   if (!s) {
     return (
-      <p class="note faint" data-testid="coach-pending">
-        {open.ask.after ? c.askingAnother : c.asking}
-      </p>
+      <div class="calc coach" data-testid="coach-pending">
+        <p class="calc-line ink">{open.ask.after ? c.choosingAnother : c.choosing}</p>
+        <p class="calc-line faint" data-testid="coach-when">
+          {coach.afterLine ? c.whenAfterLine : c.whenSoon}
+        </p>
+      </div>
     )
   }
   if (editing) return <Editor initial={{ name: s.skill, method: s.method ?? undefined, how: s.how, minutes: s.minutes }} rhythm={s.rhythm} testid="coach-editor" onCancel={() => setEditing(false)} onSave={(w, r) => h.onEdited(askId, w, r)} />
@@ -123,23 +129,31 @@ export function SetupCoach({ coach, h }: { coach: AimCoach; h: SetupHandlers }) 
       <p class="calc-line">
         <span class="calc-key">{c.suggests}</span>
       </p>
-      <p class="calc-line ink" data-testid="coach-suggestion-skill">
+      <p class="coach-skill" data-testid="coach-suggestion-skill">
         {s.skill}
       </p>
       <Proposed method={s.method} how={s.how} minutes={s.minutes} rhythm={s.rhythm} safety={s.safety} likelyNext={s.likelyNext} />
       <p class="calc-line faint">{fill(c.why, { why: s.why })}</p>
       <div class="actions">
         <button type="button" class="pill-quiet is-primary" data-testid="coach-use" onClick={() => h.onUse(askId)}>
-          {c.use}
-        </button>
-        <button type="button" class="textbtn" data-testid="coach-edit" onClick={() => setEditing(true)}>
-          {c.edit}
+          {c.useSkill}
         </button>
         <button type="button" class="textbtn" data-testid="coach-another" onClick={() => h.onAnother(askId)}>
           {c.another}
         </button>
-        <button type="button" class="textbtn" data-testid="coach-own" onClick={() => h.onOwn(askId)}>
-          {c.own}
+        <button
+          type="button"
+          class="textbtn"
+          data-testid="coach-own"
+          onClick={() => {
+            h.onOwn(askId)
+            onOwn?.()
+          }}
+        >
+          {named ? c.keepMine : c.setMyself}
+        </button>
+        <button type="button" class="textbtn" data-testid="coach-edit" onClick={() => setEditing(true)}>
+          {c.edit}
         </button>
       </div>
     </div>
@@ -147,27 +161,29 @@ export function SetupCoach({ coach, h }: { coach: AimCoach; h: SetupHandlers }) 
 }
 
 /**
- * The ask itself: on a new commitment's card, or from Details once a skill is named; nothing is
- * replaced until you choose. For a physical goal, one safety question comes first, its answer
- * optional, and Claude reads it; asked again, it starts from your last answer.
+ * Asking Claude (Part 40): on a card with no skill yet, the first action, beside the card's own Set one
+ * myself (its children); once a skill is named, from Details, where the current skill stays until you
+ * choose. A physical goal's one safety question sits above it, compact, its answer optional, and Claude
+ * reads it; asked again, it starts from your last answer.
  */
-export function AskCoach({ onAsk, physical = false, last = null }: { onAsk: (care?: string) => void; physical?: boolean; last?: string | null }) {
+export function AskCoach({ onAsk, physical = false, last = null, named = false, children }: { onAsk: (care?: string) => void; physical?: boolean; last?: string | null; named?: boolean; children?: ComponentChildren }) {
   const c = copy.coach
   const [care, setCare] = useState(last ?? '')
-  const row = (
-    <div class="actions" data-testid="coach-ask-row">
-      <button type="button" class="textbtn" data-testid="coach-ask" onClick={() => onAsk(physical ? care : undefined)}>
-        {c.ask}
-      </button>
-      <span class="note faint no-gap">{c.askNote}</span>
-    </div>
-  )
-  if (!physical) return row
   return (
-    <div data-testid="coach-care-ask">
-      <p class="setting-label">{c.careQuestion}</p>
-      <input class="input" type="text" maxLength={200} aria-label={c.careQuestion} placeholder={c.carePlaceholder} value={care} data-testid="coach-care" onInput={(e) => setCare((e.currentTarget as HTMLInputElement).value)} />
-      {row}
+    <div class="coach-ask" data-testid="coach-ask-row">
+      {physical && (
+        <div data-testid="coach-care-ask">
+          <p class="setting-label">{c.careQuestion}</p>
+          <input class="input" type="text" maxLength={200} aria-label={c.careQuestion} placeholder={c.carePlaceholder} value={care} data-testid="coach-care" onInput={(e) => setCare((e.currentTarget as HTMLInputElement).value)} />
+        </div>
+      )}
+      <div class="actions">
+        <button type="button" class={named ? 'pill-quiet' : 'pill-quiet is-primary'} data-testid="coach-ask" onClick={() => onAsk(physical ? care : undefined)}>
+          {named ? c.askNew : c.ask}
+        </button>
+        {children}
+      </div>
+      {named && <p class="note faint no-gap">{c.askNote}</p>}
     </div>
   )
 }

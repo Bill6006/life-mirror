@@ -76,7 +76,7 @@ try {
     check('How firm: Adaptive until chosen', (await page.getByTestId('brain-firm-adaptive').getAttribute('aria-pressed')) === 'true')
     await page.reload()
     await page.waitForTimeout(600)
-    // The skill coach, open, with no cloud copy: Claude is never asked; the card asks for the one thing to work on now.
+    // The skill coach, open, with no cloud copy: Claude is never asked; the card offers Set one myself (since the cleanup of 2026-10-17).
     await tab(page, 'Aims')
     await page.getByRole('button', { name: /^Add a commitment/ }).click()
     await page.getByTestId('aim-kind-certification').click()
@@ -84,8 +84,9 @@ try {
     await page.getByTestId('aim-learn-add').click()
     await seen(page.getByTestId('aim-card').filter({ hasText: 'Orrish' }))
     const asked = await page.getByTestId('coach-pending').or(page.getByTestId('coach-ask')).or(page.getByTestId('coach-suggestion')).count()
-    check('the skill coach with no cloud copy asks nothing of Claude', asked === 0 && (await page.getByTestId('aim-skill-set-name').count()) === 1)
+    check('the skill coach with no cloud copy asks nothing of Claude', asked === 0 && (await page.getByTestId('aim-skill-own').count()) === 1)
     const ord = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
+    await ord.getByTestId('aim-skill-own').click()
     await ord.getByTestId('aim-skill-set-name').fill('Ten words')
     await ord.getByTestId('aim-skill-set-save').click()
     check('a skill set by hand becomes the step', await seen(ord.getByTestId('aim-step').filter({ hasText: 'Ten words' })))

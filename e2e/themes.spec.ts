@@ -176,12 +176,15 @@ async function seedProfile(page: Page): Promise<void> {
   await page.getByTestId('aim-kind-certification').click()
   await page.getByTestId('aim-goal-input').fill('Tamlic')
   await page.getByTestId('aim-method-input').fill('A class')
-  await page.getByTestId('aim-skill-now-input').fill('Ordering at a café')
   await page.getByTestId('aim-learn-add').click()
+  // The skill is set on the card, with Set one myself (cleaned up 2026-10-17).
+  const tamlic = page.getByTestId('aim-card').filter({ hasText: 'Tamlic' })
+  await tamlic.getByTestId('aim-skill-own').click()
+  await tamlic.getByTestId('aim-skill-set-name').fill('Ordering at a café')
+  await tamlic.getByTestId('aim-skill-set-save').click()
   await add()
   await page.getByTestId('aim-kind-certification').click()
   await page.getByTestId('aim-goal-input').fill('Pottery')
-  await page.getByTestId('aim-method-unsure').click()
   await page.getByTestId('aim-learn-add').click()
   await add()
   await page.getByTestId('aim-kind-practice').click()
@@ -438,7 +441,7 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
     tab: 'Aims',
     open: async (p) => {
       const card = p.locator('[data-path="partner"]')
-      for (const id of ['path-dates', 'path-how', 'path-settings']) await card.getByTestId(id).click()
+      for (const id of ['path-dates', 'path-details']) await card.getByTestId(id).click()
       // Today's rep unfolded: its whole text and the Less that folds it again.
       await card.getByTestId('path-rep-what-more').click()
       await p.getByTestId('aim-details').first().click()
@@ -563,7 +566,7 @@ const MORE: typeof STATES = [
     name: 'Partner notes',
     tab: 'Aims',
     open: async (p) => {
-      await p.locator('[data-path="partner"]').getByTestId('path-settings').click()
+      await p.locator('[data-path="partner"]').getByTestId('path-details').click()
       await p.getByRole('button', { name: /^Notes and checks/ }).click()
     },
   },

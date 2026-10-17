@@ -20,7 +20,6 @@ import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingO
 import { useLive } from './live'
 import { todaysLine } from './brainFlow'
 import { anotherSuggestion, answerReview, askSuggestion, coachStates, editedSuggestion, ensureReviews, skillCoachOpen, takeLikelyNext, useSuggestion, writeOwnSkill, type AimCoach } from './coachFlow'
-import { isPhysical } from './coachShared'
 import { ScreenHead, SectionLabel } from './ui'
 import { awayOn } from './postWindowFlow'
 
@@ -320,7 +319,6 @@ export function AimsScreen({
           ))}
         </div>
       )}
-      <p class="note faint">{c.dataNote}</p>
     </section>
   )
 }
@@ -359,40 +357,30 @@ function StepPicker({ kind, onPick }: { kind: AimKind; onPick: (moveId: string) 
 }
 
 /**
- * Something to learn (Workstream 6): the goal in your words, how you learn or practise it or that
- * you are not sure yet, the one thing to work on now when you know it, and anything that would
- * change the advice. No cadence is asked or assumed; the card keeps a place for the skill.
+ * Something to learn (Workstream 6; cleaned up 2026-10-17): the goal in your words, what you practise
+ * with, and anything Claude should know. No skill is asked for here: the card offers Suggest a skill
+ * with Claude and Set one myself. No cadence is asked or assumed.
  */
-function LearningForm({ onAdd }: { onAdd: (goal: string, method: string, skill: string, about: string) => void }) {
+function LearningForm({ onAdd }: { onAdd: (goal: string, method: string, about: string) => void }) {
   const c = copy.aims
   const [goal, setGoal] = useState('')
   const [method, setMethod] = useState('')
-  const [unsure, setUnsure] = useState(false)
-  const [skill, setSkill] = useState('')
   const [about, setAbout] = useState('')
-  const input = (label: string, value: string, set: (v: string) => void, testid: string, max: number, placeholder: string, disabled = false) => (
+  const input = (label: string, value: string, set: (v: string) => void, testid: string, max: number, placeholder: string) => (
     <>
       <p class="setting-label">{label}</p>
       <div class="add">
-        <input class="input" type="text" maxLength={max} aria-label={label} placeholder={placeholder} value={value} disabled={disabled} data-testid={testid} onInput={(e) => set((e.currentTarget as HTMLInputElement).value)} />
+        <input class="input" type="text" maxLength={max} aria-label={label} placeholder={placeholder} value={value} data-testid={testid} onInput={(e) => set((e.currentTarget as HTMLInputElement).value)} />
       </div>
     </>
   )
   return (
     <>
-      <p class="note">{c.learnNote}</p>
       {input(c.goalLabel, goal, setGoal, 'aim-goal-input', 60, c.goalPlaceholder)}
-      {input(c.methodLabel, unsure ? '' : method, setMethod, 'aim-method-input', 60, c.methodPlaceholder, unsure)}
-      <span class="when method-unsure" role="group" aria-label={c.methodLabel}>
-        <button type="button" class={unsure ? 'when-chip is-on' : 'when-chip'} aria-pressed={unsure} data-testid="aim-method-unsure" onClick={() => setUnsure((v) => !v)}>
-          {c.notSure}
-        </button>
-      </span>
-      {input(c.skillLabel, skill, setSkill, 'aim-skill-now-input', 80, c.skillNowPlaceholder)}
-      <p class="note faint">{c.skillNowNote}</p>
+      {input(c.methodLabel, method, setMethod, 'aim-method-input', 60, c.methodPlaceholder)}
       {input(c.aboutLabel, about, setAbout, 'aim-about-input', 240, c.aboutPlaceholder)}
       <div class="actions">
-        <button type="button" class="pill-ink" data-testid="aim-learn-add" disabled={!goal.trim()} onClick={() => onAdd(goal, unsure ? '' : method, skill, about)}>
+        <button type="button" class="pill-ink" data-testid="aim-learn-add" disabled={!goal.trim()} onClick={() => onAdd(goal, method, about)}>
           {c.studyAdd}
         </button>
       </div>
@@ -448,16 +436,7 @@ export function AddAimScreen({ onClose }: { onClose: () => void }) {
           </div>
         </>
       ) : kind === 'certification' ? (
-        <LearningForm
-          onAdd={(goal, method, skill, about) =>
-            void addLearning(goal, method, skill, about).then((id) => {
-              // Parts 40 and 41: with no skill named, Claude is asked for a first suggestion, once their gate is open and it may be asked;
-              // a physical goal waits for its one safety question, on the card.
-              if (id !== null && !skill.trim() && skillCoachOpen() && !isPhysical([goal, method, about])) void askSuggestion(id)
-              onClose()
-            })
-          }
-        />
+        <LearningForm onAdd={(goal, method, about) => void addLearning(goal, method, '', about).then(onClose)} />
       ) : (
         <StepPicker kind={kind} onPick={(id) => void addAim(kind, id).then(onClose)} />
       )}

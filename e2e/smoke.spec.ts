@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 /** Taps one phrase of the reading on screen (the middle one unless told otherwise), then waits for the screen to move on: the next reading, the extras, or the card. */
 async function tapAnchor(page: Page, nth = 2): Promise<boolean> {
@@ -155,15 +155,29 @@ async function backToSettings(page: Page): Promise<void> {
   await expect(page.locator('nav.tabs')).toBeVisible()
 }
 
-/** Something to learn, set up in its own words (Workstream 6): the goal, and when given, the one thing to work on now and how it is practised. */
+/** A path card's one Details row (cleaned up 2026-10-17): how the path works and its settings, opened only if closed. */
+async function pathDetails(card: Locator): Promise<void> {
+  const toggle = card.getByTestId('path-details')
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+}
+
+/**
+ * Something to learn, set up in its own words (Workstream 6; cleaned up 2026-10-17): the goal and what it is
+ * practised with, no skill asked for; when given, the skill is then set on the card with Set one myself.
+ */
 async function addLearning(page: Page, goal: string, skill = '', method = ''): Promise<void> {
   await page.getByRole('button', { name: /^Add a commitment/ }).click()
   await page.getByTestId('aim-kind-certification').click()
   await page.getByTestId('aim-goal-input').fill(goal)
   if (method) await page.getByTestId('aim-method-input').fill(method)
-  if (skill) await page.getByTestId('aim-skill-now-input').fill(skill)
   await page.getByTestId('aim-learn-add').click()
-  await expect(page.getByTestId('aim-card').filter({ hasText: goal })).toHaveCount(1)
+  const card = page.getByTestId('aim-card').filter({ hasText: goal })
+  await expect(card).toHaveCount(1)
+  if (!skill) return
+  await card.getByTestId('aim-skill-own').click()
+  await card.getByTestId('aim-skill-set-name').fill(skill)
+  await card.getByTestId('aim-skill-set-save').click()
+  await expect(card.getByTestId('aim-step')).toHaveText(skill)
 }
 
 /** Taps through every reading until the give-back card appears; skips the evening extras and any open move's question. */
@@ -785,6 +799,10 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await expect(page.getByTestId('aim-step')).toHaveText('No current skill yet')
   await expect(page.getByTestId('aim-no-skill')).toBeVisible()
   await expect(page.getByTestId('aim-start')).toHaveCount(0)
+  // Cleaned up 2026-10-17: no "not practised yet" before there is a skill, a one-line Details, and no closing note under the cards.
+  await expect(page.getByTestId('aim-card')).not.toContainText('not practised yet')
+  await expect(page.getByTestId('aim-details').locator('.d-sub')).toHaveCount(0)
+  await expect(page.locator('#main')).not.toContainText('nothing is graded')
   // No proof ladder: nothing to climb, and no earlier proofs on a new install.
   await expect(page.getByRole('button', { name: /^Earlier proofs/ })).toHaveCount(0)
   await expect(page.getByTestId('aim-ladder')).toHaveCount(0)
@@ -805,13 +823,17 @@ test('aims: something to learn in its own words, held above the move, Start aske
   const moveBox = await page.getByTestId('move-card').first().boundingBox()
   expect(stepBox && moveBox && stepBox.y < moveBox.y).toBe(true)
 
-  // The one thing to work on now, named on the card; how it is practised, in your words.
+  // The one thing to work on now, set on the card with Set one myself; how it is practised, in your words.
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByTestId('aim-skill-own').click()
   await page.getByTestId('aim-skill-set-name').fill('Gear trains')
   await page.getByTestId('aim-skill-set-method').fill('A book')
   await page.getByTestId('aim-skill-set-save').click()
   await expect(page.getByTestId('aim-step')).toHaveText('Gear trains')
   await expect(page.getByTestId('aim-card')).toContainText('With a book')
+  // Not practised yet is said once, in the facts: no second line saying no session yet.
+  await expect(page.getByTestId('aim-card')).toContainText('not practised yet')
+  await expect(page.getByTestId('aim-practice')).toHaveCount(0)
 
   // Start is one tap on Now; the session stays resolvable after the block ends, and the evening check-in asks about it.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
@@ -848,8 +870,10 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await expect(page.getByTestId('follow-steps')).toContainText('1 started, 1 finished')
   await expect(page.locator('#main')).not.toContainText('%')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
-  // The card: the practice since the skill became current, and how the session went, in counts.
+  // The card: the practice since the skill became current; how the session went, in counts, under Details (cleaned up 2026-10-17).
   await expect(page.getByTestId('aim-practice')).toContainText('One session on one day')
+  await expect(page.getByTestId('aim-ease-line')).toHaveCount(0)
+  await page.getByTestId('aim-details').click()
   await expect(page.getByTestId('aim-ease-line')).toContainText('about right 1')
 
   // Becoming: the direction line unchanged, and a dated count from what was marked done.
@@ -1431,8 +1455,13 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await page.getByTestId('aim-kind-path-social').click()
   await expect(page.locator('[data-kind="path"]')).toHaveCount(1)
   await expect(page.locator('[data-kind="path"]').getByTestId('path-stage')).toContainText('Stage 1 of 6 · Presence')
-  // Part 25: the card says in one line which rule chose today's rep, under How this path works.
-  await page.getByTestId('path-how').click()
+  // Cleaned up 2026-10-17: one Details row, as on every commitment's card; Start, then Plan when, then Change.
+  await expect(page.locator('[data-kind="path"] .disclosure')).toHaveCount(1)
+  const across = async (id: string) => (await page.locator('[data-kind="path"]').getByTestId(id).boundingBox())?.x ?? -1
+  expect(await across('aim-start')).toBeLessThan(await across('aim-plan-open'))
+  expect(await across('aim-plan-open')).toBeLessThan(await across('path-change'))
+  // Part 25: the card says in one line which rule chose today's rep, under How this path works in Details.
+  await pathDetails(page.locator('[data-kind="path"]'))
   await expect(page.getByTestId('path-why')).toContainText('Why this rep')
 
   // Now: one People row with its stage in words, and an in-person rep of the stage while people are around.
@@ -1532,7 +1561,7 @@ test('the coach: a pick stubbed for today shows its version under the rep and sa
   expect([shown, other]).toContain(drawn)
   await expect(row.getByTestId('path-coach-version')).toHaveText(lineFor(drawn))
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await page.locator('[data-path="social"]').getByTestId('path-how').click()
+  await pathDetails(page.locator('[data-path="social"]'))
   await expect(page.locator('[data-path="social"]')).toContainText('The coach named two of the reps that fit now; drawn between them, even chances, kept with the step.')
 })
 
@@ -1556,7 +1585,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await expect(partnerCard.getByTestId('path-stage')).toContainText('Stage 1 of 7 · Meeting')
   await expect(page.getByTestId('aim-start')).toHaveCount(1)
   await expect(page.getByTestId('path-elsewhere')).toHaveCount(1)
-  await partnerCard.getByTestId('path-settings').click()
+  await pathDetails(partnerCard)
   await expect(partnerCard.getByTestId('partner-online')).toHaveAttribute('aria-pressed', 'false')
 
   // Now: exactly one People row; a Partner-only rep holds it on a day the bound allows.
@@ -1592,7 +1621,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   // From Dating on the month's reflection and check are yours, and a note before each step: the card says the month's are open.
   await expect(partnerCard.getByTestId('partner-check-open')).toBeVisible()
   await expect(partnerCard.getByTestId('partner-reflection-open')).toBeVisible()
-  await partnerCard.getByTestId('path-settings').click()
+  await pathDetails(partnerCard)
   await partnerCard.getByRole('button', { name: /^Notes and checks/ }).click()
   await expect(page.getByTestId('monthly-check')).toBeVisible()
   await expect(page.getByTestId('partner-reflection-monthly')).toBeVisible()
@@ -1626,7 +1655,7 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await expect(partnerCard.getByTestId('partner-check-open')).toBeVisible()
 
   // Notes and checks: an engagement is one tap and needs no course; the course is a suggestion beside its note.
-  await partnerCard.getByTestId('path-settings').click()
+  await pathDetails(partnerCard)
   await partnerCard.getByRole('button', { name: /^Notes and checks/ }).click()
   await expect(page.getByTestId('partner-notes')).toBeVisible()
   await page.getByTestId('partner-step-engagement').click()
@@ -1959,12 +1988,14 @@ async function startWithDirection(page: Page): Promise<void> {
 test('the skill coach as it ships since Pass 1B, with no cloud copy: Claude is never asked, commitments are set up and practised by hand as before, and a review that falls due is asked by the phone, neutrally (Parts 40–41)', async ({ page }) => {
   test.setTimeout(180_000)
   await startWithDirection(page)
-  // A goal with no skill, and a physical one: with no cloud copy no ask could travel, so neither asks Claude, no safety question shows, and each card asks for the one thing to work on now.
+  // A goal with no skill, and a physical one: with no cloud copy no ask could travel, so neither asks Claude, no safety question shows, and each card offers Set one myself alone.
   await addLearning(page, 'Orrish')
   await addLearning(page, 'Cartwheel')
   for (const id of ['coach-pending', 'coach-ask', 'coach-care', 'coach-suggestion']) await expect(page.getByTestId(id)).toHaveCount(0)
-  await expect(page.getByTestId('aim-skill-set-name')).toHaveCount(2)
+  await expect(page.getByTestId('aim-skill-own')).toHaveCount(2)
+  await expect(page.getByTestId('aim-skill-set-name')).toHaveCount(0)
   const orrish = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
+  await orrish.getByTestId('aim-skill-own').click()
   await orrish.getByTestId('aim-skill-set-name').fill('Ten words')
   await orrish.getByTestId('aim-skill-set-save').click()
   await expect(orrish.getByTestId('aim-step')).toHaveText('Ten words')
@@ -1985,14 +2016,28 @@ test('the skill coach as it ships since Pass 1B, with no cloud copy: Claude is n
   expect(await rowsOf(page, 'coachProposals')).toEqual([])
 })
 
-test('the skill coach as it ships since Pass 1B (Part 40): a first skill asked for at once; Claude’s suggestion changes nothing until you choose; Another suggestion, Edit first, and the likely next on your tap', async ({ page }) => {
+test('the skill coach (Part 40, cleaned up 2026-10-17): no skill asked for with the goal; Suggest a skill with Claude on your tap, then when it comes; Claude’s suggestion changes nothing until you choose; Try another, Edit first, and the likely next on your tap', async ({ page }) => {
   await startWithDirection(page)
   await withCloudCopy(page)
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-certification').click()
+  // The goal, what it is practised with, and anything Claude should know: no skill is asked for.
+  await expect(page.getByTestId('aim-goal-input')).toBeVisible()
+  await expect(page.getByText('Optional: anything Claude should know', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('aim-skill-now-input')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
   await addLearning(page, 'Orrish', '', 'A phrasebook')
   const card = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
-  // Asked at once; meanwhile the one thing to work on now can be yours.
-  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for a first skill')
-  await expect(card.getByTestId('aim-skill-set-name')).toBeVisible()
+  // Nothing is asked until you tap: Suggest a skill with Claude, a button that looks like one, beside Set one myself.
+  expect(await rowsOf(page, 'coachAsks')).toEqual([])
+  await expect(card.getByTestId('coach-ask')).toHaveText('Suggest a skill with Claude')
+  await expect(card.getByTestId('coach-ask')).toHaveClass(/\bpill-quiet\b.*\bis-primary\b/)
+  await expect(card.getByTestId('aim-skill-own')).toHaveText('Set one myself')
+  await card.getByTestId('coach-ask').click()
+  // While Claude works the card says so, and when the answer comes: today's line is not in yet, so after it; Set one myself stays.
+  await expect(card.getByTestId('coach-pending')).toContainText('Claude is choosing a skill…')
+  await expect(card.getByTestId('coach-when')).toHaveText('It comes after today’s line, which follows your morning check-in or 11:00 AM.')
+  await expect(card.getByTestId('aim-skill-own')).toBeVisible()
   const [first] = await rowsOf<Ask>(page, 'coachAsks')
   expect(first).toMatchObject({ kind: 'setup', claude: true, day: '2026-09-07' })
   expect(first).not.toHaveProperty('care')
@@ -2006,13 +2051,21 @@ test('the skill coach as it ships since Pass 1B (Part 40): a first skill asked f
   await expect(s).toContainText('Why: Listening first builds the ear the rest stands on.')
   await expect(s).toContainText('Likely next: Short spoken answers')
   await expect(card.getByTestId('coach-safety')).toHaveCount(0)
-  // Nothing is set until you choose: still no current skill; the form steps aside while the suggestion shows.
+  // Nothing is set until you choose: still no current skill; the suggestion carries its own clear actions.
   await expect(card.getByTestId('aim-step')).toHaveText('No current skill yet')
   await expect(card.getByTestId('aim-skill-set-name')).toHaveCount(0)
-  // Another suggestion: this one set aside and another asked for; your own words are possible again meanwhile.
+  await expect(card.getByTestId('coach-use')).toHaveText('Use this skill')
+  await expect(card.getByTestId('coach-another')).toHaveText('Try another')
+  await expect(card.getByTestId('coach-own')).toHaveText('Set one myself')
+  // Today's line arrives on the phone: a suggestion asked now usually comes within the hour.
+  await putBrief(page, { id: '2026-09-07:brief', day: '2026-09-07', kind: 'brief', text: 'One short sitting after dinner may suit this evening.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: new Date(2026, 8, 7, 10, 0).toISOString(), factsDay: '2026-09-06', facts: [{ id: 'record', text: 'A stand-in fact.' }] })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  // Try another: this one set aside and another asked for; your own words are possible again meanwhile.
   await card.getByTestId('coach-another').click()
-  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for another suggestion')
-  await expect(card.getByTestId('aim-skill-set-name')).toBeVisible()
+  await expect(card.getByTestId('coach-pending')).toContainText('Claude is choosing another skill…')
+  await expect(card.getByTestId('coach-when')).toHaveText('It usually comes within an hour; after two in a day, the next waits for tomorrow.')
+  await expect(card.getByTestId('aim-skill-own')).toBeVisible()
   const asks = await rowsOf<Ask>(page, 'coachAsks')
   expect(asks).toHaveLength(2)
   expect(asks[0]).toMatchObject({ decision: 'another' })
@@ -2041,13 +2094,14 @@ test('the skill coach as it ships since Pass 1B (Part 40): a first skill asked f
   await expect(page.locator('#main')).not.toContainText('%')
 })
 
-test('the skill coach as it ships since Pass 1B (Part 40): a physical goal asks one safety question first; Write my own sets a suggestion aside; Use this keeps its safety line and rest days', async ({ page }) => {
+test('the skill coach (Part 40, cleaned up 2026-10-17): a physical goal asks one safety question, compactly, above the ask; Set one myself sets a suggestion aside and opens the form; Use this skill keeps its safety line and rest days', async ({ page }) => {
   await startWithDirection(page)
   await withCloudCopy(page)
   await addLearning(page, 'Cartwheel')
   const card = page.getByTestId('aim-card').filter({ hasText: 'Cartwheel' })
-  // Nothing is asked until the one question is answered or left empty.
+  // Nothing is asked until you tap the ask, with the one question answered or left empty.
   await expect(card.getByTestId('coach-care')).toBeVisible()
+  await expect(card.getByTestId('coach-care-ask')).toContainText('Any injury or condition the practice should respect?')
   await expect(card.getByTestId('coach-pending')).toHaveCount(0)
   expect(await rowsOf(page, 'coachAsks')).toEqual([])
   await card.getByTestId('coach-care').fill('A sore left wrist')
@@ -2061,7 +2115,7 @@ test('the skill coach as it ships since Pass 1B (Part 40): a physical goal asks 
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(card.getByTestId('coach-safety')).toHaveText('Warm the wrists first; stop at sharp pain in the wrist or neck. Not medical advice.')
   await expect(card.getByTestId('coach-suggestion')).toContainText('12 minutes a session · 3 a week, with a rest day between')
-  // Write my own: set aside, and the card's own form is yours.
+  // Set one myself: set aside, and the card's own form opens at once.
   await card.getByTestId('coach-own').click()
   await expect(card.getByTestId('coach-suggestion')).toHaveCount(0)
   await card.getByTestId('aim-skill-set-name').fill('Wrist warm-ups')
@@ -2939,7 +2993,12 @@ test('Let it out: the night’s words kept as written, read back under Mirror, s
   }
   await expect(page.getByTestId('extras')).toBeVisible()
   await expect(page.getByTestId('journal-input')).toHaveCount(0)
+  // Cleaned up 2026-10-17: the row sits in the note's own card, directly under it, its label at full ink.
+  await expect(page.locator('.note-card').getByTestId('journal-open')).toBeVisible()
+  expect(await page.getByTestId('journal-open').locator('.d-label').evaluate((el) => getComputedStyle(el).color === getComputedStyle(document.body).color)).toBe(true)
   await page.getByTestId('journal-open').click()
+  // Open, the box alone: no explanatory line under it.
+  await expect(page.getByTestId('extras')).not.toContainText('Never a reading, a score or a finding')
   const box = page.getByTestId('journal-input')
   await box.fill('A long day. The walk after dinner helped.')
   await box.blur()

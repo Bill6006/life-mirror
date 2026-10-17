@@ -207,7 +207,7 @@ export function EaseTap({ offerId, withNote = false }: { offerId: number; withNo
 }
 
 /** A skill in your words: its name, and, when asked, how you practise it, how to do it and a session's minutes. Nothing is assumed. */
-function SkillForm({ initial, submit, onSubmit, testid, full = true }: { initial: SkillWords; submit: string; onSubmit: (w: SkillWords) => void; testid: string; full?: boolean }) {
+function SkillForm({ initial, submit, onSubmit, onCancel, testid, full = true }: { initial: SkillWords; submit: string; onSubmit: (w: SkillWords) => void; onCancel?: () => void; testid: string; full?: boolean }) {
   const c = copy.aims
   const [name, setName] = useState(initial.name)
   const [method, setMethod] = useState(initial.method ?? '')
@@ -234,8 +234,22 @@ function SkillForm({ initial, submit, onSubmit, testid, full = true }: { initial
         <button type="button" class="pill-quiet" data-testid={`${testid}-save`} disabled={!name.trim()} onClick={() => onSubmit({ name, method, how, minutes: minutes.trim() ? Number(minutes) : null })}>
           {submit}
         </button>
+        {onCancel && (
+          <button type="button" class="textbtn" data-testid={`${testid}-cancel`} onClick={onCancel}>
+            {copy.coach.cancel}
+          </button>
+        )}
       </div>
     </div>
+  )
+}
+
+/** Set one myself: a card with no skill yet opens its own form, beside Suggest a skill with Claude. */
+function SetMyself({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" class="pill-quiet" data-testid="aim-skill-own" onClick={onClick}>
+      {copy.coach.setMyself}
+    </button>
   )
 }
 
@@ -416,6 +430,8 @@ export function AimCard({
   const [planOpen, setPlanOpen] = useState(false)
   const [justDone, setJustDone] = useState<number | null>(null)
   const [editing, setEditing] = useState<'edit' | 'new' | null>(null)
+  // No skill yet: Set one myself opens the card's own form.
+  const [own, setOwn] = useState(false)
   useQuarterMinute()
   const canDone = openOffer !== null && doneOpen(openOffer)
   const { pending, cues } = planState(plan, ctx)
@@ -423,11 +439,13 @@ export function AimCard({
   // Something to learn with no skill named has nothing to start: its card asks for one.
   const unnamed = learning !== undefined && learning.current === null
   const done = !open && today.done !== null
-  const detailsSub = learning ? (learning.current ? d.detailsStudy : d.detailsStudyNoSkill) : aim.kind === 'person' ? d.detailsPerson : d.detailsPractice
   const when = !open && !done ? cadenceWords(cadence) : null
+  // The facts line carries the status (cleaned up 2026-10-17): no "not practised yet" before there is a skill to practise, and no sizing note.
   const facts = learning
-    ? [learning.current?.method && withMethod(learning.current.method), step.minutes > 0 && fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>]
-    : [fill(c.sized, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>]
+    ? [learning.current?.method && withMethod(learning.current.method), step.minutes > 0 && fill(copy.catalogue.minutes, { n: String(step.minutes) }), !unnamed && last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>]
+    : [fill(copy.catalogue.minutes, { n: String(step.minutes) }), last && <span data-testid="aim-last">{last}</span>, when && <span data-testid="aim-due">{when}</span>]
+  const ease = learning?.practice?.ease
+  const hasEase = ease !== undefined && ease.hard + ease.right + ease.easy > 0
   return (
     <div class={due && !open && !done && !unnamed && !paused ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind={aim.kind}>
       <div class="aim-head">
@@ -439,14 +457,9 @@ export function AimCard({
       <p class="aim-facts">
         <Facts items={facts} />
       </p>
-      {learning?.current && (
+      {learning?.current && (learning.practice?.sessions ?? 0) > 0 && (
         <p class="calc-line" data-testid="aim-practice">
           {practiceLine(learning.practice)}
-        </p>
-      )}
-      {learning?.practice && learning.practice.ease.hard + learning.practice.ease.right + learning.practice.ease.easy > 0 && (
-        <p class="calc-line faint" data-testid="aim-ease-line">
-          {fill(c.easeLine, { hard: String(learning.practice.ease.hard), right: String(learning.practice.ease.right), easy: String(learning.practice.ease.easy) })}
         </p>
       )}
       {learning?.current?.safety && (
@@ -456,7 +469,7 @@ export function AimCard({
       )}
       {learning?.coach && learning.current && !paused && (
         <>
-          <SetupCoach coach={learning.coach.state} h={learning.coach.setup} />
+          <SetupCoach coach={learning.coach.state} h={learning.coach.setup} named />
           <ReviewCoach coach={learning.coach.state} current={learning.current} rhythm={learning.coach.rhythm} earlier={learning.earlier} onAnswer={learning.coach.onReview} />
         </>
       )}
@@ -466,13 +479,23 @@ export function AimCard({
           {c.paused}
         </p>
       ) : unnamed ? (
-        <div class="calc" data-testid="aim-no-skill">
-          {learning?.coach && <SetupCoach coach={learning.coach.state} h={learning.coach.setup} />}
-          {learning?.coach?.state.mayAsk && !learning.coach.state.setup && <AskCoach onAsk={learning.coach.onAsk} physical={learning.coach.state.physical} last={learning.coach.state.care} />}
-          {!learning?.coach?.state.setup?.proposal && (
+        // No skill yet (cleaned up 2026-10-17): Suggest a skill with Claude, or Set one myself; nothing to name before the goal is kept.
+        <div class="coach-start" data-testid="aim-no-skill">
+          {own ? (
+            <SkillForm initial={{ name: '', method: aim.method }} submit={c.setSkill} onSubmit={(w) => learning?.onSetSkill(w)} onCancel={() => setOwn(false)} testid="aim-skill-set" full={false} />
+          ) : (
             <>
-              <p class="calc-line">{c.noSkillNote}</p>
-              <SkillForm initial={{ name: '', method: aim.method }} submit={c.setSkill} onSubmit={(w) => learning?.onSetSkill(w)} testid="aim-skill-set" full={false} />
+              {learning?.coach && <SetupCoach coach={learning.coach.state} h={learning.coach.setup} named={false} onOwn={() => setOwn(true)} />}
+              {!learning?.coach?.state.setup?.proposal &&
+                (learning?.coach?.state.mayAsk && !learning.coach.state.setup ? (
+                  <AskCoach onAsk={learning.coach.onAsk} physical={learning.coach.state.physical} last={learning.coach.state.care}>
+                    <SetMyself onClick={() => setOwn(true)} />
+                  </AskCoach>
+                ) : (
+                  <div class="actions">
+                    <SetMyself onClick={() => setOwn(true)} />
+                  </div>
+                ))}
             </>
           )}
         </div>
@@ -557,10 +580,15 @@ export function AimCard({
         </div>
       )}
 
-      <Disclosure label={d.details} sub={detailsSub} testid="aim-details">
+      <Disclosure label={d.details} testid="aim-details">
         {cadence && <CadenceEditor c={cadence} />}
         {learning ? (
           <>
+            {hasEase && ease && (
+              <p class="calc-line faint" data-testid="aim-ease-line">
+                {fill(c.easeLine, { hard: String(ease.hard), right: String(ease.right), easy: String(ease.easy) })}
+              </p>
+            )}
             {learning.current && (
               <>
                 <div class="actions">
@@ -632,7 +660,7 @@ export function AimCard({
                 </button>
               </div>
             )}
-            {learning.coach?.state.mayAsk && learning.current && !learning.coach.state.setup && !paused && <AskCoach onAsk={learning.coach.onAsk} physical={learning.coach.state.physical} last={learning.coach.state.care} />}
+            {learning.coach?.state.mayAsk && learning.current && !learning.coach.state.setup && !paused && <AskCoach onAsk={learning.coach.onAsk} physical={learning.coach.state.physical} last={learning.coach.state.care} named />}
             {aim.about && (
               <p class="note faint" data-testid="aim-about">
                 {fill(c.aboutSaid, { about: aim.about })}

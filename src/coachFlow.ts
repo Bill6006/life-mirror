@@ -70,6 +70,8 @@ export interface AimCoach {
   setup: OpenAsk | null
   /** A progression review due on the current skill and not yet answered. */
   review: OpenAsk | null
+  /** Today's line is not on the phone yet: the Worker answers an ask only after it (D7), so a waiting card says so. */
+  afterLine: boolean
 }
 
 const learningAims = () => db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
@@ -84,8 +86,9 @@ const newest = (asks: readonly CoachAsk[]) => [...asks].sort((a, b) => (a.at < b
  */
 export async function coachStates(today: string, mode: CoachMode = coachMode()): Promise<Map<number, AimCoach> | null> {
   if (mode === 'gated') return null
-  const [aims, skills, asks, proposals, settingsRow, prefsRow] = await Promise.all([learningAims(), db.skills.toArray(), db.coachAsks.toArray(), db.coachProposals.toArray(), db.settings.get(1), db.brainPrefs.get('prefs')])
+  const [aims, skills, asks, proposals, settingsRow, prefsRow, briefs] = await Promise.all([learningAims(), db.skills.toArray(), db.coachAsks.toArray(), db.coachProposals.toArray(), db.settings.get(1), db.brainPrefs.get('prefs'), db.brainBriefs.where('day').equals(today).toArray()])
   const settings = withDefaults(settingsRow)
+  const afterLine = !briefs.some((b) => b.kind === 'brief')
   const switchOn = readBrainPrefs(prefsRow).switches.commitments !== false
   // An ask travels through the cloud copy; a preview's goes nowhere, so it needs none.
   const cloud = mode === 'preview' || Boolean(settings.cloud.token)
@@ -101,7 +104,7 @@ export async function coachStates(today: string, mode: CoachMode = coachMode()):
     const setup = s && s.revision === rev && (sp !== null || daysBetween(s.day, today) <= ASK_KEEPS_DAYS) ? { ask: s, proposal: sp } : null
     const r = current ? newest(mine.filter((a) => a.kind === 'review' && a.skillId === current.id)) : null
     const cared = newest(asks.filter((a) => a.aimId === id && typeof a.care === 'string'))
-    out.set(id, { mayAsk: mayAskFor(aim, current, switchOn, cloud, settings.hideFaith), physical: isPhysical(goalWords(aim, current)), care: cared?.care ?? null, setup, review: r ? { ask: r, proposal: answer(r) } : null })
+    out.set(id, { mayAsk: mayAskFor(aim, current, switchOn, cloud, settings.hideFaith), physical: isPhysical(goalWords(aim, current)), care: cared?.care ?? null, setup, review: r ? { ask: r, proposal: answer(r) } : null, afterLine })
   }
   return out
 }
