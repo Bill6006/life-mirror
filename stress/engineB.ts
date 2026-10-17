@@ -2,7 +2,7 @@ import { BLOCKS, type Block } from '../src/blocks'
 import { hasMove, liveMoves, moveById, rungOf, type Window } from '../src/catalogue'
 import type { CheckIn } from '../src/db'
 import { noTimeCeiling, PRIOR_SD } from '../src/learning'
-import { candidatesFor, NOTHING, situationOf, standingSetups, type TodayState } from '../src/offers'
+import { candidatesFor, NOTHING, screen, situationOf, standingSetups, type Situation, type TodayState } from '../src/offers'
 import { blockReadings, type ReadingId } from '../src/readings'
 import { INGREDIENT_IDS, INGREDIENTS } from '../src/score'
 import { gauss, invertSpd, phi, type Rng } from './stats'
@@ -80,6 +80,19 @@ export interface BConfig {
   alphaEarly: number
   /** Sensitivity only, never the verdict: tests (move|reading|window) held in the queue from the first day they exist, without expiry. */
   pinned: string[]
+  /**
+   * How a test's effect is read from its decisions. 'wcls' divides by the design the draws happened to
+   * give; 'ht' by the design the recorded chances promise (the Horvitz–Thompson form of the same weights
+   * and centring), so each decision's part is unbiased given the past, whatever the chances were, and a
+   * test the draws starved early is not read as a smaller effect (C3; Hadad, Wager and Athey 2021).
+   */
+  estimator: 'wcls' | 'ht'
+  /**
+   * The opt-in learning week (requirement 11), or none: the chance the owner says yes to an invitation,
+   * the week's days, the days before the next invitation after a week or a no, how many tests a week
+   * runs, and, for the upper-bound probe only, a week that never ends.
+   */
+  lw: { accept: number; length: number; gap: number; tests: number; always: boolean } | null
 }
 
 export const B_DEFAULT: BConfig = {
@@ -112,7 +125,16 @@ export const B_DEFAULT: BConfig = {
   alphaLikely: 0.005,
   alphaEarly: 0.01,
   pinned: [],
+  estimator: 'wcls',
+  lw: null,
 }
+
+/**
+ * Rule 16: whether study, faith, church, time with her, the partner and the people paths happen is the
+ * owner's, never a draw, so the learning week never tests them.
+ */
+const COMMITTED_FAMILIES = new Set(['study', 'faith', 'fatherhood', 'partner', 'people', 'charisma'])
+const committed = (moveId: string): boolean => !hasMove(moveId) || moveId === 'time-with-her' || moveId === 'church-early' || COMMITTED_FAMILIES.has(moveById(moveId).family)
 
 export type Cls = 'next' | 'day' | 'multi'
 export const clsOf = (w: Window): Cls => (w === 'nextBlock' ? 'next' : w === 'sevenDays' ? 'multi' : 'day')
@@ -175,6 +197,8 @@ interface Decision {
 
 interface DayAcc {
   S: Float64Array
+  /** The design the recorded chances promise: the expectation of S given the past ('ht'). */
+  E: Float64Array
   b: Float64Array
   /** Σ w y², for the residual spread. */
   yy: number
@@ -237,6 +261,8 @@ export interface Test {
   expired: boolean
   /** Eligible moments of the move, by day: how available it is. */
   eligibleDays: number[]
+  /** Days the move fitted a check-in on this test's own reading, whatever reading was lowest: where a learning week could run it. */
+  lwDays: number[]
 }
 
 export interface CallB {
@@ -330,12 +356,18 @@ export class EngineB {
   private readonly predPtr = new Map<Window, number>()
   private readonly pred = new Map<string, { XtX: Float64Array; Xty: Float64Array; yy: number; n: number; coef: Float64Array | null; spread: number }>()
   private readonly running = new Map<ReadingId, [number, number]>()
+  /** The learning week: the person's own answers to invitations, the day the running week ends, the first day of the next invitation, and what the weeks did. */
+  private readonly optIn: Rng | null
+  private lwUntil = -1
+  private lwNext = 0
+  readonly lwStats = { invited: 0, accepted: 0, days: 0, checkins: 0, moveOffers: 0 }
 
-  constructor(rng: Rng, cfg: BConfig = B_DEFAULT, awayDays: ReadonlySet<number> = new Set(), declared: { moveId: string; target: ReadingId; window: Window }[] = []) {
+  constructor(rng: Rng, cfg: BConfig = B_DEFAULT, awayDays: ReadonlySet<number> = new Set(), declared: { moveId: string; target: ReadingId; window: Window }[] = [], optIn: Rng | null = null) {
     this.rng = rng
     this.cfg = cfg
     this.away = awayDays
     this.declared = declared
+    this.optIn = optIn
     // Each test the queue may ever run, one pre-declared reading, gets an equal part of the system's error rate.
     this.alphaTest = cfg.alphaSystem / cfg.queueCap
   }
@@ -344,7 +376,7 @@ export class EngineB {
     const key = `${moveId}|${target}|${window}`
     let t = this.tests.get(key)
     if (!t) {
-      t = { key, moveId, target, cls: clsOf(window), window, decisions: [], days: new Map(), n1: 0, n0: 0, comp: 0, compN: 0, csStart: 0, established: null, revised: false, post: { w: [1], m: [0], s: [1] }, theta: null, thetaSe: null, compliance: 0.6, fitAll: null, level: 'none', direction: null, ctxCalls: [], queuedAt: null, expired: false, eligibleDays: [] }
+      t = { key, moveId, target, cls: clsOf(window), window, decisions: [], days: new Map(), n1: 0, n0: 0, comp: 0, compN: 0, csStart: 0, established: null, revised: false, post: { w: [1], m: [0], s: [1] }, theta: null, thetaSe: null, compliance: 0.6, fitAll: null, level: 'none', direction: null, ctxCalls: [], queuedAt: null, expired: false, eligibleDays: [], lwDays: [] }
       t.post = this.priorFor(t, 0)
       this.tests.set(key, t)
     }
@@ -518,6 +550,12 @@ export class EngineB {
     let candidates = candidatesFor(situation, t).candidates.map((x) => x.id)
     // A day's window is randomized per day: one such move a day. Several days run in blocks with a gap after, one at a time (requirement 6).
     const offeredClasses = new Set(this.offers.filter((o) => o.d === d && o.moveId !== NOTHING).map((o) => clsOf(windowOfMove(o.moveId, situation.target))))
+    // The learning week (requirement 11): a running test's move is offered on its own declared reading at every moment it
+    // fits, whatever reading is lowest now. Still one suggestion per check-in, no new check-in (Rule 17), no committed
+    // practice (Rule 16), and each move at most once a day.
+    const weekFits = this.cfg.lw ? this.queue.filter((tt) => this.fitsWeek(tt, situation, t, offeredClasses)) : []
+    for (const tt of weekFits) if (tt.lwDays[tt.lwDays.length - 1] !== d) tt.lwDays.push(d)
+    if (weekFits.length && d < this.lwUntil) return this.weekDraw(weekFits, a, d, c, here, situation.target)
     candidates = candidates.filter((id) => {
       if (id === NOTHING) return true
       const cls = clsOf(windowOfMove(id, situation.target))
@@ -595,6 +633,51 @@ export class EngineB {
     return { id: offerId, moveId: chosen, propensity: p.get(chosen) as number, target: situation.target, candidates, lowMoves: low }
   }
 
+  /** A running test the learning week can run at this moment: open, not a committed practice, not believed to hurt, and its move fits on its own reading. */
+  private fitsWeek(tt: Test, s: Situation, t: TodayState, offeredClasses: ReadonlySet<Cls>): boolean {
+    if (tt.established || tt.cls === 'multi' || committed(tt.moveId) || lowTest(tt)) return false
+    if (tt.cls === 'day' && offeredClasses.has('day')) return false
+    return screen(moveById(tt.moveId), { ...s, target: tt.target }, t) === null
+  }
+
+  /**
+   * A learning week's check-in: each running test that fits gets an equal chance, and "nothing extra", every test's
+   * comparison, the same chance again, so each test's decision is an even coin between its move and nothing.
+   */
+  private weekDraw(fits: readonly Test[], a: Answered, d: number, c: DayContext, here: number, situationTarget: ReadingId): OfferMadeB {
+    const share = 1 / (fits.length + 1)
+    let u = this.rng()
+    let chosen = NOTHING
+    for (const tt of fits) {
+      u -= share
+      if (u < 0) {
+        chosen = tt.moveId
+        break
+      }
+    }
+    const offerId = this.nextId++
+    const decisions: Decision[] = []
+    const isAway = this.away.has(d)
+    const ctx: [boolean, boolean, boolean, boolean] = [c.withHer, c.office, c.weekend, c.shortSleep]
+    for (const tt of fits) {
+      // The move is available here: every one of its readings is recorded at this moment, as at every other.
+      for (const { target, window } of this.readingsOf(tt.moveId)) {
+        const test = this.testFor(tt.moveId, target, window)
+        if (test.eligibleDays[test.eligibleDays.length - 1] !== d) test.eligibleDays.push(d)
+        if (chosen !== tt.moveId && chosen !== NOTHING) continue
+        const A: 0 | 1 = chosen === tt.moveId ? 1 : 0
+        const dec: Decision = { d, slot: here, A, pi: 0.5, yhat: this.predict(target, window, here), x: this.features(c, A), outSlots: reach(d, a.block, window).map(([sl]) => sl), seen: null, fraction: null, away: isAway, resolved: false, ctx }
+        test.decisions.push(dec)
+        decisions.push(dec)
+      }
+    }
+    this.offers.push({ id: offerId, moveId: chosen, d, block: a.block, decisions })
+    this.lwStats.checkins++
+    if (chosen !== NOTHING) this.lwStats.moveOffers++
+    const target = chosen === NOTHING ? situationTarget : (fits.find((x) => x.moveId === chosen) as Test).target
+    return { id: offerId, moveId: chosen, propensity: share, target, candidates: [...fits.map((x) => x.moveId), NOTHING], lowMoves: [] }
+  }
+
   /** The decision point's terms: the intercept, the centred treatment, and its context interactions. */
   private features(c: DayContext, A: 0 | 1): Float64Array {
     const x = new Float64Array(P)
@@ -649,7 +732,7 @@ export class EngineB {
         const w = dec.A ? this.cfg.pTilde / dec.pi : (1 - this.cfg.pTilde) / (1 - dec.pi)
         let acc = t.days.get(dec.d)
         if (!acc) {
-          acc = { S: new Float64Array(P * P), b: new Float64Array(P), yy: 0, w1: 0, w1sq: 0, w0: 0, w0sq: 0, n1: 0, n0: 0, byCtx: CONTEXTS.map(() => [[0, 0], [0, 0]]) }
+          acc = { S: new Float64Array(P * P), E: new Float64Array(P * P), b: new Float64Array(P), yy: 0, w1: 0, w1sq: 0, w0: 0, w0sq: 0, n1: 0, n0: 0, byCtx: CONTEXTS.map(() => [[0, 0], [0, 0]]) }
           t.days.set(dec.d, acc)
         }
         const x = dec.x
@@ -659,6 +742,12 @@ export class EngineB {
           acc.b[i] += wi * y
           for (let j = 0; j < P; j++) acc.S[i * P + j] += wi * x[j]
         }
+        // What the recorded chances promise for this decision, whatever the draw gave: E[w] = 1 on the intercept,
+        // E[w (A − p̃)²] = p̃(1 − p̃) on the treatment terms, and E[w (A − p̃)] = 0 across.
+        const z = [1, ...CONTEXTS.map((k, i) => (dec.ctx[i] ? 1 : 0) - CENTRE[k])]
+        const pq = this.cfg.pTilde * (1 - this.cfg.pTilde)
+        acc.E[0] += 1
+        for (let i = 0; i < z.length; i++) for (let j = 0; j < z.length; j++) acc.E[(IDX_BETA + i) * P + IDX_BETA + j] += pq * z[i] * z[j]
         acc.yy += w * y * y
         if (dec.A) {
           acc.w1 += w
@@ -695,7 +784,42 @@ export class EngineB {
       if (t.queuedAt !== null && t.n1 >= 1 && t.n0 >= 1) calls.push(this.callOf(t))
     }
     this.tendQueue(d)
+    this.tendWeek(d)
     return calls
+  }
+
+  /**
+   * The learning week's invitation (requirement 11; opt-in each time, the owner's decision of 2026-10-10). It earns its
+   * place (Rule 3): it is asked only when a running test, still open, fitted a check-in on at least three of the last
+   * seven days, so the week would run it, and never sooner than `gap` days after the last week or the last no.
+   */
+  private tendWeek(d: number): void {
+    const lw = this.cfg.lw
+    if (!lw) return
+    if (lw.always) {
+      if (this.lwUntil !== Infinity) {
+        this.lwUntil = Infinity
+        this.tendQueue(d)
+      }
+      this.lwStats.days++
+      return
+    }
+    if (d < this.lwUntil) {
+      this.lwStats.days++
+      return
+    }
+    if (d < this.lwNext) return
+    const worth = this.queue.some((t) => !t.established && t.cls !== 'multi' && !committed(t.moveId) && !lowTest(t) && t.lwDays.filter((x) => x > d - 7).length >= 3)
+    if (!worth) return
+    this.lwStats.invited++
+    if (this.optIn && this.optIn() < lw.accept) {
+      this.lwStats.accepted++
+      this.lwStats.days++
+      this.lwUntil = d + lw.length
+      this.lwNext = d + lw.length + lw.gap
+      // A week runs up to its own number of tests.
+      this.tendQueue(d)
+    } else this.lwNext = d + lw.gap
   }
 
   /**
@@ -727,7 +851,9 @@ export class EngineB {
       this.enter(t, d)
       this.queue.unshift(t)
     }
-    if (this.queue.length >= this.cfg.queueSize || this.queuedEver >= this.cfg.queueCap) return
+    // A learning week runs two or three tests (requirement 11); the rest of the time the queue keeps its own size.
+    const size = this.cfg.lw && d < this.lwUntil ? Math.max(this.cfg.queueSize, this.cfg.lw.tests) : this.cfg.queueSize
+    if (this.queue.length >= size || this.queuedEver >= this.cfg.queueCap) return
     const busy = new Set(this.queue.map((t) => t.moveId))
     const declaredWaiting = new Set([...this.tests.values()].filter((t) => t.queuedAt === null && this.isDeclared(t)).map((t) => t.moveId))
     const options = [...this.tests.values()].filter((t) => t.queuedAt === null && !busy.has(t.moveId) && t.cls !== 'multi' && (!declaredWaiting.has(t.moveId) || this.isDeclared(t)))
@@ -738,7 +864,7 @@ export class EngineB {
     }
     options.sort((a, b) => score(b) - score(a))
     for (const t of options) {
-      if (this.queue.length >= this.cfg.queueSize || this.queuedEver >= this.cfg.queueCap || busy.has(t.moveId)) continue
+      if (this.queue.length >= size || this.queuedEver >= this.cfg.queueCap || busy.has(t.moveId)) continue
       if (t.eligibleDays.filter((x) => x > d - 28).length < 4) continue
       this.enter(t, d)
       this.queue.push(t)
@@ -759,7 +885,10 @@ export class EngineB {
    * arms' effective sizes and the residual spread allow, and the confidence sequences' half-widths.
    */
   private fit(t: Test, from: number, halfLife: number): Fit | null {
+    const ht = this.cfg.estimator === 'ht'
+    // The design the estimate divides by ('wcls': as the draws fell; 'ht': as the chances promise), and the realized one, for the residual spread.
     const M = new Float64Array(P * P)
+    const R = new Float64Array(P * P)
     const v = new Float64Array(P)
     const days: { w: number; acc: DayAcc }[] = []
     let yy = 0
@@ -772,7 +901,10 @@ export class EngineB {
       if (dd < from) continue
       const w = Number.isFinite(halfLife) ? 0.5 ** ((this.today - dd) / halfLife) : 1
       days.push({ w, acc })
-      for (let i = 0; i < P * P; i++) M[i] += w * acc.S[i]
+      for (let i = 0; i < P * P; i++) {
+        M[i] += w * (ht ? acc.E[i] : acc.S[i])
+        R[i] += w * acc.S[i]
+      }
       for (let i = 0; i < P; i++) v[i] += w * acc.b[i]
       yy += w * acc.yy
       w1 += w * acc.w1
@@ -793,21 +925,22 @@ export class EngineB {
     if (!Minv) return null
     const theta = new Float64Array(P)
     for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) theta[i] += Minv[i * P + j] * v[j]
-    // The residual spread: Σ w (y − xθ)² = Σ w y² − 2 θ·v + θ·Mθ (the ridge aside).
+    // The residual spread: Σ w (y − xθ)² = Σ w y² − 2 θ·v + θ·Rθ, over the realized design.
     let rss = yy
     for (let i = 0; i < P; i++) rss -= 2 * theta[i] * v[i]
-    for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) rss += theta[i] * (M[i * P + j] - (i === j ? RIDGE[i] : 0)) * theta[j]
+    for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) rss += theta[i] * R[i * P + j] * theta[j]
     // A few decisions can sit close by chance: the spread is never below what the reading's prediction leaves over the whole record.
     const sigma = Math.max(Math.sqrt(Math.max(rss, 1e-9) / (w1 + w0)), this.spreadOf(t.target, t.window))
     const neff1 = (w1 * w1) / w1sq
     const neff0 = (w0 * w0) / w0sq
-    // Day-clustered scores, each day's own: s_d = b_d − S_d θ.
+    // Day-clustered scores, each day's own: s_d = b_d − S_d θ (with the promised design for 'ht').
     const infl: Float64Array[] = []
     const s = new Float64Array(P)
     for (const { w, acc } of days) {
+      const D = ht ? acc.E : acc.S
       for (let i = 0; i < P; i++) {
         let r = acc.b[i]
-        for (let j = 0; j < P; j++) r -= acc.S[i * P + j] * theta[j]
+        for (let j = 0; j < P; j++) r -= D[i * P + j] * theta[j]
         s[i] = w * r
       }
       const psi = new Float64Array(P)
@@ -996,6 +1129,9 @@ export class EngineB {
     return this.tests
   }
 }
+
+/** A test already believed to hurt, or settled at little difference: the floors give it only a sliver, and the learning week none. */
+const lowTest = (t: Test): boolean => (t.direction === 'hurts' && (t.level === 'likely' || t.level === 'established')) || (t.level === 'established' && t.direction === 'little')
 
 function drawMixture(p: { w: number[]; m: number[]; s: number[] }, rng: Rng): number {
   let u = rng()

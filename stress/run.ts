@@ -68,6 +68,8 @@ export interface PersonB {
   benefit: number
   checkins: number
   reEstablished: number
+  /** The learning week, when on: invitations, yeses, days in a week, check-ins it drew, and move offers it made. */
+  lw?: { invited: number; accepted: number; days: number; checkins: number; moveOffers: number }
 }
 
 export type PersonResult = PersonA | PersonB
@@ -176,7 +178,8 @@ function mixtureInterval(p: { w: number[]; m: number[]; s: number[] }): [number,
 
 function runB(s: Scenario, seed: number, cfg: BConfig): PersonB {
   const world = new World(seed, s.params, s.truth)
-  const engine = new EngineB(stream(seed, 'engineB'), cfg, new Set(s.params.away), s.declared ?? [])
+  // The person's own answers to learning-week invitations come from a stream of their own, so nothing else they do changes.
+  const engine = new EngineB(stream(seed, 'engineB'), cfg, new Set(s.params.away), s.declared ?? [], stream(seed, 'optin'))
   const trackedKeys = s.tracked.map((t) => `${t.moveId}|${t.target}|${t.window ?? windowOfMove(t.moveId, t.target)}`)
   const track = new Map<string, TrackB>(trackedKeys.map((k) => [k, { key: k, truth: 0, ittTruth: 0, first: {}, firstRight: {}, littleEst: null, revisedDay: null, establishedAtEnd: false, d90: null, d180: null, post120: null, coverAll: null, sparseLooks: 0, sparseCovered: 0, offersAfter30: 0, eligibleAfter30: 0, ctx: {}, establishedCount: 0, n1End: 0, n0End: 0, csHalfEnd: null, offersAll: 0 }]))
   /** The true share done of every offer, told or not: the effect of offering is this times the effect of doing. */
@@ -327,7 +330,7 @@ function runB(s: Scenario, seed: number, cfg: BConfig): PersonB {
       engine.respond(o.id, r)
     }
   }
-  return { engine: 'B', seed, tracked: [...track.values()], est, ladder, offers, moveOffers, lowOffers, benefit, checkins, reEstablished }
+  return { engine: 'B', seed, tracked: [...track.values()], est, ladder, offers, moveOffers, lowOffers, benefit, checkins, reEstablished, ...(cfg.lw ? { lw: { ...engine.lwStats } } : {}) }
 }
 
 export { clsOf, hasMove }

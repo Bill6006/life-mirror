@@ -9,8 +9,12 @@ simulation existed. `CRITERIA.md` holds them byte for byte, with their SHA-256.
 **The first verdict (read once, 2026-10-17, seeds 100001–102000): MATERIAL FAILURE**, in `RESULTS.md`.
 It found three defects in the design. They were corrected inside the agreed design, the values were
 re-settled on the tuning seeds, and the verdict was read once more on fresh seeds 200001–202000 against
-the same frozen criteria: **MATERIAL FAILURE** again, in `RESULTS-2.md`. The learning repair waits on
-the owner's decision.
+the same frozen criteria: **MATERIAL FAILURE** again, in `RESULTS-2.md`.
+
+**Then the learning week, tried (2026-10-17, tuning seeds only)**, in `RESULTS-3.md`. The agreed
+design's one part that adds randomized decisions per day was built here, with C3's correction, and
+tuned on seeds 1–1000. No realistic configuration can pass everything, so the last fresh range,
+300001–302000, stays unread, and today's engine stays.
 
 ## What is here
 
@@ -19,15 +23,17 @@ the owner's decision.
 | `CRITERIA.md` | The frozen pass/fail criteria and their hash. |
 | `RESULTS.md` | The first verdict, the judge's output verbatim, the sensitivity runs and the eight-part report. |
 | `RESULTS-2.md` | The verdict after the three corrections: the corrections, the re-settled values, the judge's output verbatim, its independent recount and the report. |
+| `RESULTS-3.md` | The learning week and C3's correction, tuned on seeds 1–1000: the probe that could have said yes, the realistic week and lower rates, and why the last fresh range stays unread. |
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
 | `scenarios.ts` | The simulated people of the criteria's list, one scenario each. |
 | `engineA.ts` | Today's engine, replayed. The draw mirrors `offerFlow.ensureOffer` and the daily run mirrors `learningFlow.runLearning`, calling the committed functions in `src/`. |
-| `engineB.ts` | The agreed design (requirements 1–16), prototyped, with the three corrections. |
+| `engineB.ts` | The agreed design (requirements 1–16), prototyped, with the three corrections; the learning week (`lw`) and C3's correction (`estimator: 'ht'`), both off by default. |
 | `stats.ts` | The seeded generator and the small statistics both engines and the judge use. |
 | `run.ts` | One person through one engine, and what the metrics need from it. |
 | `pool.ts` | Many people over worker threads; it also merges parts of one run. |
 | `metrics.ts` | The judge: the frozen criteria, read on the validation runs. |
 | `recount.py` | An independent recount of the judge's headline numbers from the raw runs, in another language. |
+| `results3.py` | The learning-week runs read the way the judge reads the criteria: every number in `RESULTS-3.md`. |
 | `validate.sh` | The verdict run: every scenario once, on a range of validation seeds never read before. |
 | `summary.ts`, `tune.ts` | Reading a run while settling values on the tuning seeds. |
 | `probeA.ts`, `probeB.ts` | A first look at one simulated person through each engine. |
@@ -60,6 +66,14 @@ node stress/.out/pool.mjs large B 501 1000 stress/.out/sens/pinned-large-B.json 
 ```
 
   The same command with `moderate` or `null` gives the other rows.
+- The learning-week runs of `RESULTS-3.md` (tuning seeds only, never a verdict) pass engine B's
+  settings the same way, for example the realistic week:
+
+```
+node stress/.out/pool.mjs large B 1 1000 stress/.out/lw/R50/large-B.json 4 '{"estimator":"ht","lw":{"accept":0.5,"length":7,"gap":14,"tests":2,"always":false}}'
+```
+
+  `python3 -I stress/results3.py stress/.out/lw` then prints every number `RESULTS-3.md` quotes.
 - `pool.mjs` takes: scenario, engine (A or B), first seed, last seed, output file, threads, and
   engine B's settings as JSON. `pool.mjs merge <out.json> <part.json>…` joins parts of one run over
   consecutive seeds into the file one run would have written. `validate.sh` builds it, and runs engine
