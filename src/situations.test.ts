@@ -262,3 +262,13 @@ describe('a plan tap names only a cue the day still holds (stage 1, item j)', ()
     expect(rankLines(sheetOf([{ ...late, values: { ...late.values, bedtime: null } }, plain], 18), [], []).some((c) => c.situationId === 'say-when')).toBe(false)
   })
 })
+
+describe('the counts under the direction, each in the singular at one (stage 1, item q)', () => {
+  const line = (values: Record<string, number>) =>
+    rankLines(sheetOf([today, { id: 'direction', tags: [], text: '', values: { direction: 'One line' } }, { id: 'becoming', tags: [], text: '', values }]), [], []).find((c) => c.situationId === 'direction-counts')?.text
+
+  it('says one of each in the singular, and every other count in the plural', () => {
+    expect(line({ study: 1, conversations: 1, faith: 1, her: 1 })).toBe('Your direction: “One line”. So far 1 study session, 1 conversation started, 1 practice, once with her. Counts, not a verdict.')
+    expect(line({ study: 0, conversations: 2, faith: 5, her: 3 })).toBe('Your direction: “One line”. So far 0 study sessions, 2 conversations started, 5 practices, 3 times with her. Counts, not a verdict.')
+  })
+})

@@ -135,6 +135,15 @@ TABLE = [
          old="(o.outcome === 'done' || o.outcome === 'partly') && o.moveId !== NOTHING",
          new="(o.outcome === 'done' || o.outcome === 'partly' || o.outcome === 'no')",
          tests=['src/learningRun.test.ts'], pattern='how much it knows'),
+    # q. the wording defects: the counts under the direction, each in the singular at one (an instance stage 1 left, fixed 2026-10-17)
+    dict(id='q-direction-line', file='src/situations.ts',
+         old="const counted = (n: number | null, one: string, many: string) => (n === 1 ? one : fill(many, { n: s(n) }))\n",
+         new="const counted = (n: number | null, one: string, many: string) => fill(many, { n: s(n) })\n",
+         tests=['src/situations.test.ts'], pattern='each in the singular at one'),
+    dict(id='q-direction-fact', file='src/facts.ts',
+         old="  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`\n",
+         new="  const count = (n: number, one: string, many: string) => `${n} ${many}`\n",
+         tests=['src/directionCounts.test.ts']),
     # item 4: Stress and Overwhelm reworded, the trend saying so across the change
     dict(id='4-trend-across', file='src/facts.ts',
          old="      const across = reading.reworded !== undefined && ",

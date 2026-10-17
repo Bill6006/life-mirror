@@ -71,6 +71,8 @@ const LINES: Record<string, string> = copy.brain.lines
 const cueLabel = (cue: Cue) => copy.aims.cues[cue]
 const signed = (v: number) => (v > 0 ? `+${v}` : String(v))
 const s = (v: number | string | null | undefined) => (v === null || v === undefined ? '' : String(v))
+/** A count in its words, singular at one (the wording defects, item q). */
+const counted = (n: number | null, one: string, many: string) => (n === 1 ? one : fill(many, { n: s(n) }))
 
 function aims(sheet: FactSheet): Fact[] {
   return factsWhere(sheet, 'aim.')
@@ -449,8 +451,9 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const d = factById(sheet, 'direction')
       const b = factById(sheet, 'becoming')
+      const c = copy.brain.directionCounts
       // A week of record first: counts of nothing under a direction are not worth a line.
-      return d && b && sheet.days >= 7 ? { factIds: [d.id, b.id], strength: 0.5, vars: { direction: s(str(d, 'direction')), study: s(num(b, 'study')), conversations: s(num(b, 'conversations')), faith: s(num(b, 'faith')), her: s(num(b, 'her')) } } : null
+      return d && b && sheet.days >= 7 ? { factIds: [d.id, b.id], strength: 0.5, vars: { direction: s(str(d, 'direction')), study: counted(num(b, 'study'), c.studyOne, c.studyN), conversations: counted(num(b, 'conversations'), c.conversationsOne, c.conversationsN), faith: counted(num(b, 'faith'), c.faithOne, c.faithN), her: counted(num(b, 'her'), c.herOne, c.herN) } } : null
     },
   },
   {

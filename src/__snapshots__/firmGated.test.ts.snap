@@ -14,7 +14,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "commitment-thinning": "{name}: none in the last seven days, after {before} the week before. One short sitting keeps the thread; pin it to a moment today.",
   "cue-holds": "{cue} has held {started} of {n} times. Keep that cue; it is doing the work.",
   "cue-switch": "{cue} kept {started} of {n} plans. Plans stall on the cue, not on the will: try {other}.",
-  "direction-counts": "Your direction: “{direction}”. So far {study} study sessions, {conversations} conversations started, {faith} practices, {her} times with her. Counts, not a verdict.",
+  "direction-counts": "Your direction: “{direction}”. So far {study}, {conversations}, {faith}, {her}. Counts, not a verdict.",
   "first-skill": "{name} has no current skill yet. Name the one thing to work on now on its card under Aims; it stays until you change it.",
   "forecast-wide": "The model’s range for the {block} runs {lo} to {hi}: a guess. Your own reading at the check-in is the better guide today.",
   "fresh-start": "A {weekday}. People begin goals more often right after a fresh start like this, and {name}, {d} days still, is the one to restart.",
@@ -220,7 +220,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "perspective",
     "score": 0.5,
-    "text": "Your direction: “One line, mine”. So far 4 study sessions, 2 conversations started, 1 practices, 5 times with her. Counts, not a verdict.",
+    "text": "Your direction: “One line, mine”. So far 4 study sessions, 2 conversations started, 1 practice, 5 times with her. Counts, not a verdict.",
   },
   "first-skill": {
     "action": null,

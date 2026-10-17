@@ -1459,6 +1459,17 @@ export const copy = {
     fromFallback: 'Written by a free model under your Cloudflare account, {model}, from the day’s facts, standing in for Claude: {why}.',
     whyFirm: 'How firm: {firm}.',
     whyFirmAdaptive: 'How firm: {firm}, as Adaptive chose for this line.',
+    /** The counts under the direction, each in the singular at one (the wording defects, item q). */
+    directionCounts: {
+      studyOne: '1 study session',
+      studyN: '{n} study sessions',
+      conversationsOne: '1 conversation started',
+      conversationsN: '{n} conversations started',
+      faithOne: '1 practice',
+      faithN: '{n} practices',
+      herOne: 'once with her',
+      herN: '{n} times with her',
+    },
     lines: {
       stretch: '{under} of the last {of} blocks read under their usual low. A stretch is starting. ⟨It turns the way stretches do: one easy move a day, kept, and the mood follows the doing.|One easy move a day, kept, is what turns these; the mood follows the doing.|One easy move a day, kept. The mood follows the doing.⟩',
       'necessities-missed': '{n} necessities missed in three days⟨. That can be an early sign of a stretch, so start small: the smallest one first, before any move.|. That can be an early sign of a stretch; the smallest one first, before any move.|: it can be an early sign of a stretch. Do the smallest one first, before any move.⟩',
@@ -1482,7 +1493,7 @@ export const copy = {
       'steady-moving': 'Steady, {inside} of {of} blocks inside the usual, and {name} moved this week⟨: that is working||⟩. Progress that is recorded carries part of the effect by itself.',
       'fresh-start': 'A {weekday}. People begin goals more often right after a fresh start like this, and {name}, {d} days still, is the one to restart.',
       'nothing-holds': 'Nothing extra was kept {done} of the {offered} times it was offered. Rest is a move; the mornings after say what it does.',
-      'direction-counts': 'Your direction: “{direction}”. So far {study} study sessions, {conversations} conversations started, {faith} practices, {her} times with her. Counts, not a verdict.',
+      'direction-counts': 'Your direction: “{direction}”. So far {study}, {conversations}, {faith}, {her}. Counts, not a verdict.',
       'forecast-wide': 'The model’s range for the {block} runs {lo} to {hi}: a guess. Your own reading at the check-in is the better guide today.',
       'caffeine-sleep-even': 'Next nights show no difference yet between days with {low} and days with {high} of caffeine reported ({n} and {m} days). Self-reported sleep is known to miss caffeine’s effect.',
       'commitment-fading': '{name}: {before} sittings in the two weeks before, none in the last two. This is where a commitment is usually let go⟨, and it is the cue that goes first, not the will, so the fix is small: pin|, and it is the cue that goes first, not the will. Pin|. Pin⟩ the smallest sitting to a moment today.',

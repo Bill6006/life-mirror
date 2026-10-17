@@ -690,7 +690,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const ft = followThrough(sheetOffers, i.outcomes, i.wins)
   facts.push(fact('follow', ['monitoring'], `Follow-through: moves ${ft.moves.started} started ${ft.moves.finished} finished; steps ${ft.steps.started} started ${ft.steps.finished} finished; minimum wins ${ft.wins.started} written ${ft.wins.finished} done.`, { movesStarted: ft.moves.started, movesFinished: ft.moves.finished, stepsStarted: ft.steps.started, stepsFinished: ft.steps.finished, winsStarted: ft.wins.started, winsFinished: ft.wins.finished }))
   const bc = becoming(sheetOffers, i.outcomes)
-  facts.push(fact('becoming', ['monitoring'], `Under the direction: ${bc.study.n} study sessions, ${bc.conversations.n} conversations started, ${bc.faith.n} faith practices, ${bc.timeWithHer.n} times with her.`, { study: bc.study.n, conversations: bc.conversations.n, faith: bc.faith.n, her: bc.timeWithHer.n }))
+  // Each count in the singular at one (the wording defects, item q).
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+  facts.push(fact('becoming', ['monitoring'], `Under the direction: ${count(bc.study.n, 'study session', 'study sessions')}, ${count(bc.conversations.n, 'conversation started', 'conversations started')}, ${count(bc.faith.n, 'faith practice', 'faith practices')}, ${count(bc.timeWithHer.n, 'time with her', 'times with her')}.`, { study: bc.study.n, conversations: bc.conversations.n, faith: bc.faith.n, her: bc.timeWithHer.n }))
 
   // Part 35: the last session, as the other app kept it, told as it was.
   const lastSession = lastWorkout(i.outside)
