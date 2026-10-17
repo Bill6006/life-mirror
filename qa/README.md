@@ -16,11 +16,11 @@ red. Rules every runner keeps:
 
 | Runner | Covers | Last result |
 | --- | --- | --- |
-| `stage1_breaks.py` | stage 1, items a–s and agreed items 4–6 | 33 of 33 caught; re-run against batch 2b's code and the UI cleanups', still 33 of 33 |
-| `batch2_breaks.py` | batch 2a: the foundations, the claims log, the journal's capture, the wipe | 14 of 14; re-run twice, 14 of 14 |
-| `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26; re-run against the UI cleanups' code, 26 of 26 |
-| `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16 |
-| `stage3_breaks.py` | stage 3: group 3 (in the moment): Anything going on?, the evening's matching pattern; group 1 (the Brain with a memory): the memory of each line seen, the weekly view's facts, trends read by the week, their filing in the Worker and the free chain kept off them; group 2 (timing): the reminder's moment, the chips' order, the retired follow-up | group 3, 10 of 10; groups 1 and 2, 47 of 47 (one first missed and its test made stronger, then caught) |
+| `stage1_breaks.py` | stage 1, items a–s and agreed items 4–6, and item q's last instance (2026-10-17) | 33 of 33 caught; re-run against batch 2b's code and the UI cleanups', still 33 of 33; against stage 3's groups 1 to 4, 33 of 33, then 35 of 35 with item q's two |
+| `batch2_breaks.py` | batch 2a: the foundations, the claims log, the journal's capture, the wipe | 14 of 14; 14 of 14 at every re-run since, the last against stage 3's group 4 |
+| `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26; re-run against the UI cleanups' code and stage 3's, 26 of 26 |
+| `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16; re-run against stage 3's code, 16 of 16 |
+| `stage3_breaks.py` | stage 3: group 3 (in the moment): Anything going on?, the evening's matching pattern; group 1 (the Brain with a memory): the memory of each line seen, the weekly view's facts, trends read by the week, their filing in the Worker and the free chain kept off them; group 2 (timing): the reminder's moment, the chips' order, the retired follow-up; group 4 (the record shown back): a check-in's note on its summary, Your words, the line left after a session, Her from the current rung, the month, the workouts read | group 3, 10 of 10; groups 1 and 2, 47 of 47 (one first missed and its test made stronger, then caught); group 4, 27 of 27 (one first missed and its test made stronger, then caught); all 84 against group 4's final code, 84 of 84 |
 
 Run all of a runner's breaks with `python qa/batch2b_breaks.py`, or name ids to run only those:
 `python qa/batch2b_breaks.py coach-limits-said`.
