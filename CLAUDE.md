@@ -6,9 +6,11 @@ This repository is public. The owner's private documents are not in it.
 
 - Read `WORKING.md` in the private copy (below) in full before acting, and again after the conversation is compacted.
   It holds the owner's working preferences, the hard rules and the lessons of every earlier session.
-- Work autonomously. Stop only where the owner's GO prompt says to.
-- At a stop, ask for one decision: your recommendation first with its reason and cost, then a one-line reply the
-  owner can paste. Never a cold list of options.
+- Work autonomously. The owner states the goals, constraints and safeguards, and you choose the implementation and
+  keep going. Stop only when the goals and rules give no defensible way to choose, or for an action only the owner can
+  physically or account-wise perform. Their instruction of 2026-10-17 is quoted word for word in WORKING.md.
+- At one of those rare stops, ask for one decision: your recommendation first with its reason and cost, then a
+  one-line reply the owner can paste. Never a cold list of options.
 
 ## Where the plan lives
 
