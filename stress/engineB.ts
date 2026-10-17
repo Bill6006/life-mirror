@@ -15,21 +15,25 @@ import { DAYS, reach, windowOfMove, type Answered, type DayContext, type Respons
 //   compare  randomized offers only, each move against "nothing extra", centred and weighted by the
 //            recorded chances (WCLS, Boruvka 2018; Qian 2022), with the day's state as the
 //            prediction that cuts noise; uncertainty clustered by day, never below what the
-//            arms' own sizes allow; every one of a move's readings read at every moment it was
-//            available, whichever reading made the moment;
+//            arms' own sizes and the record's own spread allow; every one of a move's readings
+//            recorded at every moment it was available, whichever reading made the moment;
+//   test     one pre-declared reading per test (requirement 1): a running test is one reading of
+//            one move, declared when it enters the queue, and the move's other readings are not
+//            tested alongside it;
 //   believe  a research prior with a small vague part (Schmidli 2014's principle), tags lending to
 //            their moves, pre-declared contexts as deviations shrunk toward the general effect,
 //            evidence fading over months;
-//   decide   Thompson draws by expected net benefit, with exploration floors kept for learning;
+//   decide   Thompson draws by expected net benefit, with floors kept whole for learning: "nothing
+//            extra", the running tests' moves, and a fair minimum for every other move;
 //   check    "established" only when an anytime-valid confidence sequence (Waudby-Smith et al. 2021,
 //            the asymptotic form) excludes zero at the system's error rate shared by every test the
-//            catalogue holds; early sign and likely from the belief; a call that newer evidence
+//            queue can hold; early sign and likely from the belief; a call that newer evidence
 //            contradicts steps down and is marked revised.
 
 export interface BConfig {
   /** The floor on "nothing extra", every test's comparison arm. */
   nothingFloor: number
-  /** The floor mass shared evenly by the real moves in a draw. */
+  /** The fair minimum chance each real move outside the test queue keeps in a draw: its own, never shared by the other candidates. */
   explore: number
   /** A move already at likely-hurts or worse keeps this share of its floor. */
   lowFloorShare: number
@@ -74,7 +78,7 @@ export interface BConfig {
   /** The lower rungs' anytime-valid error rates, per test: likely and early sign need their sequences to exclude zero too. */
   alphaLikely: number
   alphaEarly: number
-  /** Sensitivity only, never the verdict: moves held in the queue from the first day they are eligible, without expiry. */
+  /** Sensitivity only, never the verdict: tests (move|reading|window) held in the queue from the first day they exist, without expiry. */
   pinned: string[]
 }
 
@@ -94,8 +98,8 @@ export const B_DEFAULT: BConfig = {
   delta: 0.25,
   pool: true,
   tagSd: 0.3,
-  vague: 0.1,
-  vagueSd: 0.75,
+  vague: 0.2,
+  vagueSd: 1.0,
   ctxSd: 0.5,
   minDaysCall: 10,
   poorPrediction: false,
@@ -105,7 +109,7 @@ export const B_DEFAULT: BConfig = {
   activeFloor: 0.45,
   queueMaxDays: 45,
   queueCap: 10,
-  alphaLikely: 0.0005,
+  alphaLikely: 0.005,
   alphaEarly: 0.01,
   pinned: [],
 }
@@ -149,7 +153,7 @@ export function testsOfMove(moveId: string): { target: ReadingId; window: Window
   return out
 }
 
-/** Every test the catalogue holds, which shares the system's error rate for established calls. */
+/** Every test the catalogue holds. */
 export const CATALOGUE_TESTS = liveMoves.reduce((n, m) => n + testsOfMove(m.id).length, 0)
 
 interface Decision {
@@ -320,11 +324,11 @@ export class EngineB {
   /** The tests running now, and how many have ever run. */
   private queue: Test[] = []
   private queuedEver = 0
-  /** The prediction per reading and window (requirement 4): each answered check-in's terms, the pairs trained so far, the fits. */
+  /** The prediction per reading and window (requirement 4): each answered check-in's terms, the pairs trained so far, the fits, and the spread the fit leaves. */
   private readonly q = new Map<number, Float64Array>()
   private readonly qSlots: number[] = []
   private readonly predPtr = new Map<Window, number>()
-  private readonly pred = new Map<string, { XtX: Float64Array; Xty: Float64Array; n: number; coef: Float64Array | null }>()
+  private readonly pred = new Map<string, { XtX: Float64Array; Xty: Float64Array; yy: number; n: number; coef: Float64Array | null; spread: number }>()
   private readonly running = new Map<ReadingId, [number, number]>()
 
   constructor(rng: Rng, cfg: BConfig = B_DEFAULT, awayDays: ReadonlySet<number> = new Set(), declared: { moveId: string; target: ReadingId; window: Window }[] = []) {
@@ -332,8 +336,8 @@ export class EngineB {
     this.cfg = cfg
     this.away = awayDays
     this.declared = declared
-    // Each move the queue may ever run gets an equal part of the system's error rate, shared by its readings (at most three).
-    this.alphaTest = cfg.alphaSystem / cfg.queueCap / 3
+    // Each test the queue may ever run, one pre-declared reading, gets an equal part of the system's error rate.
+    this.alphaTest = cfg.alphaSystem / cfg.queueCap
   }
 
   private testFor(moveId: string, target: ReadingId, window: Window): Test {
@@ -345,6 +349,15 @@ export class EngineB {
       this.tests.set(key, t)
     }
     return t
+  }
+
+  /** A move's readings the record keeps at its moments: its targets in their own windows, and any declared up front in another. */
+  private readingsOf(moveId: string): { target: ReadingId; window: Window }[] {
+    return [...testsOfMove(moveId), ...this.declared.filter((x) => x.moveId === moveId).map((x) => ({ target: x.target, window: x.window }))]
+  }
+
+  private isDeclared(t: Test): boolean {
+    return this.declared.some((x) => x.moveId === t.moveId && x.target === t.target && x.window === t.window)
   }
 
   /** Research says, with a small vague part beside it, shifted by what the move's tags have learned (requirement 7). */
@@ -448,13 +461,14 @@ export class EngineB {
           const key = `${r}|${window}`
           let m = this.pred.get(key)
           if (!m) {
-            m = { XtX: new Float64Array(Q * Q), Xty: new Float64Array(Q), n: 0, coef: null }
+            m = { XtX: new Float64Array(Q * Q), Xty: new Float64Array(Q), yy: 0, n: 0, coef: null, spread: 0 }
             this.pred.set(key, m)
           }
           for (let a = 0; a < Q; a++) {
             m.Xty[a] += q[a] * y
             for (let b = 0; b < Q; b++) m.XtX[a * Q + b] += q[a] * q[b]
           }
+          m.yy += y * y
           m.n++
         }
         i++
@@ -470,7 +484,18 @@ export class EngineB {
       const coef = new Float64Array(Q)
       for (let a = 0; a < Q; a++) for (let b = 0; b < Q; b++) coef[a] += inv[a * Q + b] * m.Xty[b]
       m.coef = coef
+      // What the prediction leaves unexplained, over the whole record: Σ (y − qβ)² = Σ y² − 2 β·Σ qy + β·(Σ qqᵀ)β.
+      let rss = m.yy
+      for (let a = 0; a < Q; a++) rss -= 2 * coef[a] * m.Xty[a]
+      for (let a = 0; a < Q; a++) for (let b = 0; b < Q; b++) rss += coef[a] * m.XtX[a * Q + b] * coef[b]
+      m.spread = m.n > Q ? Math.sqrt(Math.max(rss, 0) / (m.n - Q)) : 0
     }
+  }
+
+  /** The spread a reading's outcome keeps after its prediction, from the whole record: the least any test on it may claim. */
+  private spreadOf(r: ReadingId, window: Window): number {
+    const m = this.pred.get(`${r}|${window}`)
+    return m?.coef && m.n >= PRED_MIN ? m.spread : 0
   }
 
   checkIn(a: Answered, d: number, c: DayContext): OfferMadeB | null {
@@ -505,7 +530,7 @@ export class EngineB {
     const own = new Map(real.map((id) => [id, this.testFor(id, situation.target, windowOfMove(id, situation.target))]))
     // How available each test is: its move eligible at this moment, counted once a day.
     for (const id of real)
-      for (const { target, window } of testsOfMove(id)) {
+      for (const { target, window } of this.readingsOf(id)) {
         const tt = this.testFor(id, target, window)
         if (tt.eligibleDays[tt.eligibleDays.length - 1] !== d) tt.eligibleDays.push(d)
       }
@@ -529,16 +554,15 @@ export class EngineB {
       const tt = own.get(id) as Test
       return (tt.direction === 'hurts' && (tt.level === 'likely' || tt.level === 'established')) || (tt.level === 'established' && tt.direction === 'little')
     })
-    const floorEach = real.length ? this.cfg.explore / real.length : 0
+    // Requirement 10's floors, each kept whole: "nothing extra", every test's comparison; a running test's move; and every
+    // other move its own fair minimum, never shared away as more moves become candidates. The draws share the rest.
     const floors = new Map<string, number>()
-    for (const id of candidates) floors.set(id, id === NOTHING ? this.cfg.nothingFloor : low.includes(id) ? floorEach * this.cfg.lowFloorShare : active.has(id) ? this.cfg.activeFloor : floorEach)
-    // Every set of chances stays valid: floors never add to more than the whole.
+    for (const id of candidates) floors.set(id, id === NOTHING ? this.cfg.nothingFloor : low.includes(id) ? this.cfg.explore * this.cfg.lowFloorShare : active.has(id) ? this.cfg.activeFloor : this.cfg.explore)
+    // Every set of chances stays valid: floors never take more than 0.9 of the whole.
     const floorSum = [...floors.values()].reduce((a, b) => a + b, 0)
     const scale = floorSum > 0.9 ? 0.9 / floorSum : 1
-    const raw = new Map<string, number>()
-    for (const id of candidates) raw.set(id, Math.max((wins.get(id) ?? 0) / this.cfg.draws, (floors.get(id) as number) * scale))
-    const z = [...raw.values()].reduce((s, v) => s + v, 0)
-    const p = new Map([...raw.entries()].map(([id, v]) => [id, v / z]))
+    const free = 1 - floorSum * scale
+    const p = new Map(candidates.map((id) => [id, (floors.get(id) as number) * scale + (free * (wins.get(id) ?? 0)) / this.cfg.draws]))
     let u = this.rng()
     let chosen = NOTHING
     for (const id of candidates) {
@@ -553,13 +577,13 @@ export class EngineB {
     const p0 = p.get(NOTHING) as number
     const isAway = this.away.has(d)
     const ctx: [boolean, boolean, boolean, boolean] = [c.withHer, c.office, c.weekend, c.shortSleep]
-    // Every reading the move may be tested on is read at this moment, whichever reading made it (requirement 1).
+    // Every reading of the move is recorded at this moment, whichever reading made it: the record keeps them all, and a running
+    // test reads its one pre-declared reading from it (requirement 1).
     for (const id of real) {
       if (chosen !== id && chosen !== NOTHING) continue
       const pm = p.get(id) as number
       const A: 0 | 1 = chosen === id ? 1 : 0
-      const wanted = [...testsOfMove(id), ...this.declared.filter((x) => x.moveId === id).map((x) => ({ target: x.target, window: x.window }))]
-      for (const { target, window } of wanted) {
+      for (const { target, window } of this.readingsOf(id)) {
         const test = this.testFor(id, target, window)
         const dec: Decision = { d, slot: here, A, pi: pm / (pm + p0), yhat: this.predict(target, window, here), x: this.features(c, A), outSlots: reach(d, a.block, window).map(([s]) => s), seen: null, fraction: null, away: isAway, resolved: false, ctx }
         test.decisions.push(dec)
@@ -658,7 +682,9 @@ export class EngineB {
       const decayed = this.fit(t, 0, this.cfg.halfLife)
       t.fitAll = this.fit(t, t.csStart, Infinity)
       t.theta = decayed ? decayed.beta / t.compliance : null
-      t.thetaSe = decayed ? decayed.se / t.compliance : null
+      // The effect when done is the effect of offering over the share done, and both are estimates (the delta method).
+      const compVar = (t.compliance * (1 - t.compliance)) / (t.compN + 4)
+      t.thetaSe = decayed ? Math.sqrt(decayed.se ** 2 / t.compliance ** 2 + (decayed.beta ** 2 * compVar) / t.compliance ** 4) : null
     }
     // Tags lend to their moves: the precision-weighted shift of the tag's other moves from research, shrunk (requirement 7).
     const shiftOf = this.cfg.pool ? this.tagShifts(fitted) : () => 0
@@ -675,41 +701,36 @@ export class EngineB {
   /**
    * The test queue (requirement 11): a test leaves once it is established, or after its time with no
    * conclusion; the free places go to the tests whose answer matters most: a move often available,
-   * whose belief says it may help, not yet settled. At most queueCap tests ever run, so the system's
-   * error rate is shared by a known number of them.
+   * whose belief says it may help on that reading, not yet settled. A test is one reading of one move,
+   * declared as it enters, before any of its own sequence (requirement 1): the move's other readings
+   * are not tested alongside it, and a reading declared up front is its move's test. One test per move
+   * at a time, each test once. At most queueCap tests ever run, so the system's error rate is shared
+   * by a known number of them.
    */
   private tendQueue(d: number): void {
-    // A move runs as one test of all its readings: it leaves once every reading is settled, or after its time.
     this.queue = this.queue.filter((t) => {
-      const mine = [...this.tests.values()].filter((x) => x.moveId === t.moveId && x.queuedAt !== null)
-      if (mine.every((x) => x.established)) return false
-      if (this.cfg.pinned.includes(t.moveId)) return true
+      if (t.established) return false
+      if (this.cfg.pinned.includes(t.key)) return true
       const age = d - (t.queuedAt as number)
       // A test that looks promising keeps its place, up to three times as long; one that does not leaves at its time.
-      const promising = mine.some((x) => x.direction === 'helps' && (x.level === 'likely' || x.level === 'established'))
+      const promising = t.direction === 'helps' && (t.level === 'likely' || t.level === 'established')
       if (age >= this.cfg.queueMaxDays * (promising ? 3 : 1)) {
-        for (const x of mine) if (!x.established) x.expired = true
+        t.expired = true
         return false
       }
       return true
     })
-    // Sensitivity only: a pinned move enters the queue the first day one of its tests exists, ahead of the rest.
-    for (const id of this.cfg.pinned) {
-      if (this.queue.some((t) => t.moveId === id)) continue
-      const first = [...this.tests.values()].find((t) => t.moveId === id && t.queuedAt === null)
-      if (!first) continue
-      for (const x of this.tests.values()) {
-        if (x.moveId !== id) continue
-        x.queuedAt = d
-        x.csStart = d
-      }
-      this.queuedEver++
-      this.queue.unshift(first)
+    // Sensitivity only: a pinned test enters the queue the first day it exists, ahead of the rest.
+    for (const key of this.cfg.pinned) {
+      const t = this.tests.get(key)
+      if (!t || t.queuedAt !== null) continue
+      this.enter(t, d)
+      this.queue.unshift(t)
     }
     if (this.queue.length >= this.cfg.queueSize || this.queuedEver >= this.cfg.queueCap) return
     const busy = new Set(this.queue.map((t) => t.moveId))
-    const ran = new Set([...this.tests.values()].filter((t) => t.queuedAt !== null).map((t) => t.moveId))
-    const options = [...this.tests.values()].filter((t) => !ran.has(t.moveId) && !busy.has(t.moveId) && t.cls !== 'multi')
+    const declaredWaiting = new Set([...this.tests.values()].filter((t) => t.queuedAt === null && this.isDeclared(t)).map((t) => t.moveId))
+    const options = [...this.tests.values()].filter((t) => t.queuedAt === null && !busy.has(t.moveId) && t.cls !== 'multi' && (!declaredWaiting.has(t.moveId) || this.isDeclared(t)))
     const score = (t: Test) => {
       const recent = t.eligibleDays.filter((x) => x > d - 28).length
       const sd = Math.sqrt(Math.max(0, t.post.w.reduce((a, w, k) => a + w * (t.post.s[k] ** 2 + t.post.m[k] ** 2), 0) - pMean(t.post) ** 2))
@@ -719,15 +740,17 @@ export class EngineB {
     for (const t of options) {
       if (this.queue.length >= this.cfg.queueSize || this.queuedEver >= this.cfg.queueCap || busy.has(t.moveId)) continue
       if (t.eligibleDays.filter((x) => x > d - 28).length < 4) continue
-      for (const x of this.tests.values()) {
-        if (x.moveId !== t.moveId) continue
-        x.queuedAt = d
-        x.csStart = d
-      }
-      this.queuedEver++
+      this.enter(t, d)
       this.queue.push(t)
       busy.add(t.moveId)
     }
+  }
+
+  /** A test enters the queue: its reading is declared now, and its confidence sequence starts from today. */
+  private enter(t: Test, d: number): void {
+    t.queuedAt = d
+    t.csStart = d
+    this.queuedEver++
   }
 
   /**
@@ -774,7 +797,8 @@ export class EngineB {
     let rss = yy
     for (let i = 0; i < P; i++) rss -= 2 * theta[i] * v[i]
     for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) rss += theta[i] * (M[i * P + j] - (i === j ? RIDGE[i] : 0)) * theta[j]
-    const sigma = Math.sqrt(Math.max(rss, 1e-9) / (w1 + w0))
+    // A few decisions can sit close by chance: the spread is never below what the reading's prediction leaves over the whole record.
+    const sigma = Math.max(Math.sqrt(Math.max(rss, 1e-9) / (w1 + w0)), this.spreadOf(t.target, t.window))
     const neff1 = (w1 * w1) / w1sq
     const neff0 = (w0 * w0) / w0sq
     // Day-clustered scores, each day's own: s_d = b_d − S_d θ.
