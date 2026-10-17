@@ -432,7 +432,7 @@ function NoteRow({ note }: { note: string }) {
     <li class="row is-static" data-testid="summary-note">
       <span class="row-main">
         {copy.summary.yourNote}
-        <span class="sub ink said">{fill(copy.summary.quoted, { note })}</span>
+        <span class="said own-line">{fill(copy.summary.quoted, { note })}</span>
       </span>
     </li>
   )

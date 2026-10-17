@@ -45,12 +45,14 @@ itself, and threw no page error.
 | `live-ui-cleanups.mjs` | the UI cleanups | 18 of 18 against a local preview; 7 of 18 against the build before them, every cleanup's check failing |
 | `live-stage3.mjs` | stage 3, group 3 | 8 of 8 against a local preview; 4 of 8 against the build before it, every feature check failing |
 | `live-stage3b.mjs` | stage 3, groups 1 and 2 | 8 of 8 against a local preview; 3 of 8 against the build before it, every feature check failing |
+| `live-stage3c.mjs` | stage 3, group 4 | 11 of 11 against a local preview; 2 of 11 against the build before it, every feature check failing |
 
 Wait for each element before reading it. Two of batch 2b's first misses were the script reading the
 screen before it rendered.
 
-`LIVE_URL=<url>` points `live-ui-cleanups.mjs`, `live-stage3.mjs` and `live-stage3b.mjs` at a local preview to prove the script itself, and
-`CHROMIUM_PATH=<path>` launches a browser where Playwright's own is not installed.
+`LIVE_URL=<url>` points `live-ui-cleanups.mjs`, `live-stage3.mjs`, `live-stage3b.mjs` and `live-stage3c.mjs` at a
+local preview to prove the script itself, and `CHROMIUM_PATH=<path>` launches a browser where Playwright's own is
+not installed.
 
 ## Snapshot pairing (`snappair.py`)
 

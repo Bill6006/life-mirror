@@ -1,6 +1,7 @@
 import { blockAt } from './blocks'
 import { activeAims, allIntentions, liveSkills } from './aimFlow'
 import { hasMove, moveById } from './catalogue'
+import { NavRow } from './controls'
 import { copy } from './copy'
 import { allCheckIns, db, getSettings, type Aim } from './db'
 import { fill, formatDayShort } from './format'
@@ -126,15 +127,7 @@ export function MonthScreen({ onWords, onClose }: { onWords: () => void; onClose
 
           <div class="card">
             <ul class="rows">
-              <li>
-                <button type="button" class="row" data-testid="month-words" onClick={onWords}>
-                  <span class="row-main">{fill(c.notes, { n: String(r.notes) })}</span>
-                  <span class="row-side">{copy.words.door}</span>
-                  <span class="chev" aria-hidden="true">
-                    ›
-                  </span>
-                </button>
-              </li>
+              <NavRow label={copy.words.door} note={fill(c.notes, { n: String(r.notes) })} onClick={onWords} testid="month-words" />
             </ul>
           </div>
         </>

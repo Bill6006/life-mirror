@@ -3280,6 +3280,13 @@ test('the record shown back (stage 3, group 4): a check-in’s note on its own s
   await rows.first().click()
   await expect(page.getByTestId('summary-note')).toContainText('Your note')
   await expect(page.getByTestId('summary-note')).toContainText('“Slept well for once”')
+  // The words in the row's own face, as Your words shows them, not the small print under a label.
+  const face = await page.getByTestId('summary-note').evaluate((li) => {
+    const words = getComputedStyle(li.querySelector('.said') as Element)
+    const row = getComputedStyle(li.querySelector('.row-main') as Element)
+    return words.fontSize === row.fontSize && words.fontFamily === row.fontFamily
+  })
+  expect(face).toBe(true)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('words')).toBeVisible()
   // The evening's note sits with its extras.
@@ -3342,6 +3349,9 @@ test('the record shown back (stage 3, group 4): a month ago today on Mirror, and
   await expect(page.getByTestId('month-moves')).toContainText('Moves marked done: 3.')
   await expect(page.getByTestId('month-moves')).toContainText('Done most: A ten-minute walk, now (3).')
   await expect(page.getByTestId('month')).not.toContainText('%')
+  // The notes written, on a row like Mirror's: Your words, the count on the line beneath it.
+  await expect(page.getByTestId('month-words')).toContainText('Your words')
+  await expect(page.getByTestId('month-words').locator('.sub')).toHaveText('Lines typed at check-ins: 1.')
   await page.getByTestId('month-words').click()
   await expect(page.getByTestId('words-row')).toHaveCount(1)
 })

@@ -2109,6 +2109,12 @@ input[type="time"] {
   overflow-wrap: anywhere;
 }
 
+/* A check-in's note on its summary: the owner's words on a line of their own, in the row's own face, as Your words shows them. */
+.said.own-line {
+  display: block;
+  margin-top: 2px;
+}
+
 /* ---------- Tabs ---------- */
 .tabs {
   position: sticky;

@@ -290,6 +290,11 @@ TABLE = [
          old="              {ex.note && <NoteRow note={ex.note} />}\n",
          new="",
          tests=[S], pattern='a check-in’s note on its own summary'),
+    # Found in the screenshots: the words were the small print under their label, in Signal's data face.
+    dict(id='summary-note-face', file='src/checkin.tsx',
+         old='        <span class="said own-line">{fill(copy.summary.quoted, { note })}</span>\n',
+         new='        <span class="sub ink said">{fill(copy.summary.quoted, { note })}</span>\n',
+         tests=[S], pattern='a check-in’s note on its own summary'),
     dict(id='words-back', file='src/app.tsx',
          old="            onDone={() => (view.back ? setView(view.back) : closeAll())}\n",
          new="            onDone={closeAll}\n",
@@ -336,6 +341,11 @@ TABLE = [
          old="      {ago && <MonthAgoCard day={ago} />}\n",
          new="",
          tests=[S], pattern='a month ago today on Mirror'),
+    # Found in the screenshots: the count beside Your words wrapped in every theme; it sits on the line beneath, as on Mirror.
+    dict(id='month-words-row', file='src/monthScreen.tsx',
+         old='              <NavRow label={copy.words.door} note={fill(c.notes, { n: String(r.notes) })} onClick={onWords} testid="month-words" />\n',
+         new='              <li><button type="button" class="row" data-testid="month-words" onClick={onWords}><span class="row-main">{fill(c.notes, { n: String(r.notes) })}</span><span class="row-side">{copy.words.door}</span></button></li>\n',
+         tests=[S], pattern='the last full month’s review'),
     dict(id='month-partner-out', file='src/month.ts',
          old=" && onTheSheet(o) && !o.skippedAt",
          new=" && !o.skippedAt",
