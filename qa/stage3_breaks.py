@@ -31,8 +31,18 @@ P = 'src/planMoment.test.ts'
 R = 'src/recordBack.test.ts'
 MO = 'src/month.test.ts'
 EVENING = 'after an evening, the one pattern'
+FIELD = 'a field just shown keeps what is typed'
 
 TABLE = [
+    # The watched daylight test's race (found in group 4's phone suite): a field reset on its first effect wiped what was typed first.
+    dict(id='field-race-guard', file='src/controls.tsx',
+         old="    if (value === synced.current) return\n",
+         new="",
+         tests=[S], pattern=FIELD),
+    dict(id='field-race-line', file='src/extras.tsx',
+         old="  const [text, setText] = useSyncedText(initial)\n",
+         new="  const [text, setText] = useState(initial)\n  useEffect(() => setText(initial), [initial])\n",
+         tests=[S], pattern=FIELD),
     # Group 3: Anything going on? (the agreed "anything behind it?"; Rule 4 bans the word "behind").
     dict(id='behind-threshold', file='src/change.ts',
          old="export const BEHIND_IT_STEPS = 2\n",

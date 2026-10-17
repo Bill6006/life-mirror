@@ -1,6 +1,22 @@
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { Icon } from './icons'
 
 // The few controls Settings needs: a segmented choice, a switch row, a time row, a link row.
+
+/**
+ * A field's text, following its stored value when that changes and never reset when the field first shows: an
+ * effect runs after the first paint, so resetting there could wipe what was typed in the first moments.
+ */
+export function useSyncedText(value: string): [string, (text: string) => void] {
+  const [text, setText] = useState(value)
+  const synced = useRef(value)
+  useEffect(() => {
+    if (value === synced.current) return
+    synced.current = value
+    setText(value)
+  }, [value])
+  return [text, setText]
+}
 
 export function Seg<T extends string>({
   label,

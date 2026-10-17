@@ -3,6 +3,7 @@ import { addDays, parseDay, type Block, type Slot } from './blocks'
 import { coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
 import { CaffeineCard } from './caffeine'
+import { useSyncedText } from './controls'
 import { chipAnswer, type ChipKey } from './chips'
 import { RECOVERY_GAP } from './catalogue'
 import { copy } from './copy'
@@ -379,8 +380,7 @@ function JournalBox({ day }: { day: string }) {
 }
 
 export function LineInput({ initial, placeholder, testid, onSave }: { initial: string; placeholder: string; testid?: string; onSave: (text: string) => void }) {
-  const [text, setText] = useState(initial)
-  useEffect(() => setText(initial), [initial])
+  const [text, setText] = useSyncedText(initial)
   return (
     <input
       class="input"

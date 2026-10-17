@@ -1927,6 +1927,64 @@ test('daylight from where you are: a place typed once, the sun shown back, the f
   await expect(page.getByText('Daylight from', { exact: true })).toBeVisible()
 })
 
+/**
+ * Types into a field the moment it is first in the page, before its first effect has run (effects wait for the next
+ * paint), then reads it once that has passed. The daylight test's race (watched since 2026-10-17): a field that reset
+ * itself on its first effect wiped what was typed first.
+ */
+async function typedBeforeFirstEffect(page: Page, open: { testid?: string; text?: string }, field: string, text: string): Promise<string> {
+  await expect(open.testid ? page.getByTestId(open.testid) : page.getByRole('button', { name: open.text })).toBeVisible()
+  return page.evaluate(
+    ([open, field, text]) =>
+      new Promise<string>((resolve) => {
+        const mo = new MutationObserver(() => {
+          const input = document.querySelector<HTMLInputElement>(`[data-testid="${field}"]`)
+          if (!input) return
+          mo.disconnect()
+          input.value = text
+          input.dispatchEvent(new Event('input', { bubbles: true }))
+          requestAnimationFrame(() => setTimeout(() => resolve(input.value), 200))
+        })
+        mo.observe(document.body, { childList: true, subtree: true })
+        const opener = open.testid ? document.querySelector<HTMLElement>(`[data-testid="${open.testid}"]`) : [...document.querySelectorAll<HTMLElement>('button')].find((b) => b.textContent?.includes(open.text ?? ''))
+        if (!opener) {
+          mo.disconnect()
+          resolve('no way in')
+          return
+        }
+        opener.click()
+      }),
+    [open, field, text] as const,
+  )
+}
+
+test('a field just shown keeps what is typed into it at once: the place under The week (the daylight test’s race)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 9, 30))
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  expect(await typedBeforeFirstEffect(page, { testid: 'settings-week' }, 'place-field', 'New York')).toBe('New York')
+  await page.getByTestId('place-field').press('Enter')
+  await expect(page.getByTestId('place-note')).toContainText('Two numbers, like 40.7, -74.0')
+})
+
+test('a field just shown keeps what is typed into it at once: your direction', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 9, 30))
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  expect(await typedBeforeFirstEffect(page, { testid: 'settings-direction' }, 'direction-field', 'One line, stand-in')).toBe('One line, stand-in')
+})
+
+test('a field just shown keeps what is typed into it at once: the evening’s one line, opened again', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 19, 5))
+  await page.goto('./')
+  await toEveningExtras(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('give-back')).toBeVisible()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByTestId('block-row').filter({ hasText: 'Evening' }).click()
+  expect(await typedBeforeFirstEffect(page, { text: 'Change the extras' }, 'note-input', 'A stand-in line')).toBe('A stand-in line')
+})
+
 // ─── The skill coach (Parts 40 and 41) ──────────────────────────────────────────────────────────
 // Open since Pass 1B (2026-10-16). An ask to Claude travels through the cloud copy, so the tests that
 // ask set one up whose database is never reached; Claude's answers are written into the phone's store

@@ -1,9 +1,9 @@
 import { LocationSection } from './locationScreen'
 import { namedPlaces } from './locationFlow'
-import { useEffect, useState } from 'preact/hooks'
+import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { build } from './build'
-import { Seg, SwitchRow, TimeRow } from './controls'
+import { Seg, SwitchRow, TimeRow, useSyncedText } from './controls'
 import { copy } from './copy'
 import { getSettings, updateSettings } from './db'
 import { fill, formatHHMM, formatWhen } from './format'
@@ -172,9 +172,8 @@ function DayChips({ label, value, onChange, testid }: { label: string; value: Re
  */
 function PlaceRow({ place, onSave }: { place: Place | null; onSave: (p: Place | null) => void }) {
   const w = copy.week
-  const [text, setText] = useState(place ? placeText(place) : '')
+  const [text, setText] = useSyncedText(place ? placeText(place) : '')
   const [bad, setBad] = useState(false)
-  useEffect(() => setText(place ? placeText(place) : ''), [place?.lat, place?.lon])
   const sun = place ? sunLocal(blockAt(new Date()).day, place) : null
   function save() {
     if (!text.trim()) {
@@ -225,8 +224,7 @@ function AutoPlaceNote({ settings }: { settings: Settings }) {
 
 /** Your direction, one line, kept on this phone; saved when you leave the field. */
 function DirectionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [text, setText] = useState(value)
-  useEffect(() => setText(value), [value])
+  const [text, setText] = useSyncedText(value)
   return (
     <input
       class="input"
