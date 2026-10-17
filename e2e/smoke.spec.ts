@@ -3096,3 +3096,89 @@ test('the foundations: a move drawn keeps what its draw knew, and is marked seen
   await page.getByTestId('move-card').first().scrollIntoViewIfNeeded()
   await expect.poll(async () => (await morning())?.seenAt ?? null, { timeout: 10_000 }).not.toBeNull()
 })
+
+test('in the moment (stage 3, group 3): after a reading worsens by two steps, one optional line, Anything going on?, writes the morning’s own note', async ({ page }) => {
+  // Yesterday at its best on every reading with a direction: Mood 5, Stress 1, and so on.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
+  await page.goto('./')
+  await seedLevels(page, 1, [5, 5, 5, 5, 5, 5, 5])
+  await page.reload()
+  // This morning in the middle of every reading: Mood down two steps, Stress up two. Both are worse.
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('give-back')).toBeVisible()
+  const behind = page.getByTestId('behind-it')
+  await expect(behind).toContainText('Anything going on?')
+  // It is the note's own line: who may read it is said the same way.
+  await expect(page.getByTestId('behind-input')).toHaveAttribute('placeholder', 'One line. Claude may read it, as Settings → Brain allows.')
+  await page.getByTestId('behind-input').fill('A short night and an early start')
+  await page.getByTestId('behind-input').blur()
+  await expect.poll(async () => (await extrasOf(page, '2026-09-08', 'morning'))?.note ?? null).toBe('A short night and an early start')
+  // It stays the morning's note, and the summary shows it when opened again.
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.reload()
+  await page.getByRole('button', { name: /^Morning Logged/ }).click()
+  await expect(page.getByTestId('behind-input')).toHaveValue('A short night and an early start')
+})
+
+test('in the moment (stage 3, group 3): a change of one step never asks Anything going on?', async ({ page }) => {
+  // Yesterday one step better than the middle: Mood 4, Stress 2. This morning's middle is one step worse, too small to ask.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
+  await page.goto('./')
+  await seedLevels(page, 1, [4, 4, 4, 4, 4, 4, 4])
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('give-back')).toBeVisible()
+  await expect(page.getByTestId('behind-it')).toHaveCount(0)
+})
+
+test('in the moment (stage 3, group 3): after an evening, the one pattern from What comes before your days that tonight matches, as Mirror words it; an evening never asks Anything going on?', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 20, 21, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  // Twenty-four evenings, every other one with Stress at its top phrase and the morning after it reading lower; tonight with Stress high.
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins'], 'readwrite')
+    const store = tx.objectStore('checkins')
+    const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const put = (date: Date, block: string, over: Record<string, number>) => {
+      const answers: Record<string, number> = {}
+      for (const id of blocks[block]) answers[id] = over[id] ?? 3
+      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), block === 'morning' ? 7 : 19, 40)
+      const done = new Date(at.getTime() + 95_000).toISOString()
+      store.add({ day: key(date), block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
+    }
+    for (let i = 0; i < 24; i++) {
+      const evening = new Date(2026, 7, 27 + i)
+      const stressed = i % 2 === 0
+      put(evening, 'evening', stressed ? { stress: 5 } : {})
+      put(new Date(2026, 7, 28 + i), 'morning', stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {})
+    }
+    put(new Date(2026, 8, 20), 'evening', { stress: 5 })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+  await page.getByRole('button', { name: /^Evening Logged/ }).click()
+  const card = page.getByTestId('pattern-card')
+  await expect(card).toContainText('Evenings like this one')
+  await expect(card).toContainText('After an evening with stress high')
+  await expect(card).toContainText('next morning’s reading · lower by')
+  await expect(card).toContainText('an association, never a cause')
+  // The evening's own summary never asks Anything going on?: its note stays in its extras.
+  await expect(page.getByTestId('behind-it')).toHaveCount(0)
+})

@@ -102,3 +102,18 @@ export function comesBefore(checkins: readonly CheckIn[], today: string, opts: {
   const gathering = pairs.filter((p) => !p.enough).sort((p, q) => Math.min(q.withN, q.withoutN) - Math.min(p.withN, p.withoutN))
   return [...shown, ...gathering]
 }
+
+/**
+ * After an evening check-in (stage 3, group 3): the one pair tonight's answers match, a reading at
+ * its top two phrases or its lowest two whose pair already shows, the largest difference first; or
+ * none. Tonight itself has no morning after yet, so it is never part of its own pair.
+ */
+export function matchingPair(checkins: readonly CheckIn[], tonight: Pick<CheckIn, 'day' | 'block' | 'answers'>, opts: { min?: number; resamples?: number } = {}): BeforePair | null {
+  if (tonight.block !== 'evening') return null
+  const ready = comesBefore(checkins, tonight.day, opts).filter((p) => p.enough && p.diff !== null)
+  const matched = ready.filter((p) => {
+    const position = tonight.answers[p.reading]
+    return position !== undefined && atLevel(position, p.level)
+  })
+  return matched.sort((p, q) => Math.abs(q.diff as number) - Math.abs(p.diff as number))[0] ?? null
+}

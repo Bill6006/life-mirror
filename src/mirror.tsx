@@ -16,7 +16,7 @@ const round = (v: number) => String(Math.round(v))
 const signed = (v: number) => (Math.round(v) > 0 ? '+' : Math.round(v) < 0 ? '−' : '') + String(Math.abs(Math.round(v)))
 
 /** One pair: the evening, then what the morning after read against like evenings, with its interval. */
-function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
+export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
   const c = copy.beforeDays
   const event = fill(c.event, { reading: readingById(p.reading).name.toLowerCase(), level: c[p.level] })
   if (!p.enough || p.diff === null || p.lo === null || p.hi === null) {

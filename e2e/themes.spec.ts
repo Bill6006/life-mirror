@@ -1180,3 +1180,86 @@ test('words folded to two lines show More, and More shows them whole: nothing is
   await expect(more).toHaveText('More')
   expect(await what.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true)
 })
+
+/**
+ * Stage 3, group 3, in the moment: the summary's two new states, audited like every other. Twenty-four
+ * evenings, every other one with Stress at its top phrase and the morning after it lower; then today a
+ * morning two steps down on Mood from last night (Anything behind it?) and an evening with Stress high
+ * (Evenings like this one).
+ */
+async function seedInTheMoment(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 8, 20, 21, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins'], 'readwrite')
+    const store = tx.objectStore('checkins')
+    const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const put = (date: Date, block: string, over: Record<string, number>) => {
+      const answers: Record<string, number> = {}
+      for (const id of blocks[block]) answers[id] = over[id] ?? 3
+      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), block === 'morning' ? 7 : 19, 40)
+      const done = new Date(at.getTime() + 95_000).toISOString()
+      store.add({ day: key(date), block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
+    }
+    // Evenings from Aug 27 to last night, Sep 19, each with its morning after up to yesterday's.
+    for (let i = 0; i < 24; i++) {
+      const stressed = i % 2 === 0
+      put(new Date(2026, 7, 27 + i), 'evening', stressed ? { stress: 5 } : {})
+      if (i < 23) put(new Date(2026, 7, 28 + i), 'morning', stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {})
+    }
+    // Today: last night was even on every reading, this morning's Mood two steps down, tonight Stress high.
+    put(new Date(2026, 8, 20), 'morning', { mood: 1 })
+    put(new Date(2026, 8, 20), 'evening', { stress: 5 })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+const IN_THE_MOMENT: typeof STATES = [
+  {
+    name: 'Summary, Anything behind it?',
+    tab: 'Now',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Morning Logged/ }).click()
+      await expect(p.getByTestId('behind-it')).toBeVisible()
+    },
+  },
+  {
+    name: 'Summary, Evenings like this one',
+    tab: 'Now',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evening Logged/ }).click()
+      await expect(p.getByTestId('pattern-card')).toBeVisible()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: in the moment, the summary's two new states read, fit and can be tapped, at three widths`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedInTheMoment(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, IN_THE_MOMENT, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

@@ -378,7 +378,7 @@ function JournalBox({ day }: { day: string }) {
   )
 }
 
-function LineInput({ initial, placeholder, testid, onSave }: { initial: string; placeholder: string; testid?: string; onSave: (text: string) => void }) {
+export function LineInput({ initial, placeholder, testid, onSave }: { initial: string; placeholder: string; testid?: string; onSave: (text: string) => void }) {
   const [text, setText] = useState(initial)
   useEffect(() => setText(initial), [initial])
   return (

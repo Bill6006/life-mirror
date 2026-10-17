@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
-import { BEFORE_MIN, comesBefore, EVENING_READINGS, resampledInterval } from './beforeDays'
+import { BEFORE_MIN, comesBefore, EVENING_READINGS, matchingPair, resampledInterval } from './beforeDays'
 import type { CheckIn } from './db'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -71,5 +71,27 @@ describe('what comes before your days', () => {
 
   it('gives no interval when there is nothing to resample', () => {
     expect(resampledInterval([], 100, 1)).toBeNull()
+  })
+})
+
+describe('the pattern tonight matches (stage 3, group 3)', () => {
+  const today = '2026-09-20'
+
+  it('after an evening with stress high, shows the stress-high pair, the largest the evening matches', () => {
+    const p = matchingPair(record(24), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })
+    expect(p?.reading).toBe('stress')
+    expect(p?.level).toBe('high')
+    expect(p?.enough).toBe(true)
+  })
+
+  it('shows nothing when tonight matches no pair that shows, or before any pair has enough mornings', () => {
+    // Every reading in the middle tonight: no pair at either level matches.
+    expect(matchingPair(record(24), ci(today, 'evening', 3), { resamples: 200 })).toBeNull()
+    // Stress high tonight, but too few mornings yet for its pair to show.
+    expect(matchingPair(record(BEFORE_MIN + 2), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
+  })
+
+  it('belongs to the evening alone: a morning or an afternoon has no pattern', () => {
+    expect(matchingPair(record(24), ci(today, 'morning', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
   })
 })

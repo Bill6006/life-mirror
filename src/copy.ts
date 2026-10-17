@@ -234,6 +234,11 @@ export const copy = {
     delete: 'Delete this check-in',
     deleteConfirm: 'Tap again to delete it',
     usual: 'Usually {expected} ({lo} to {hi}) at this time.',
+    /** Stage 3, group 3: one optional line after a reading worsens by two steps, writing this check-in's note. The agreed "anything behind it?" would use "behind", a word Rule 4 bans. */
+    behindIt: 'Anything going on?',
+    /** Stage 3, group 3: the one pattern tonight matches, from What comes before your days. */
+    pattern: 'Evenings like this one',
+    patternNote: 'From your own record, as Mirror shows it: an association, never a cause.',
   },
   since: {
     heading: 'Since {when}',

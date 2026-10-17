@@ -1,7 +1,8 @@
 import { daysBetween, parseDay, type Block, type Slot } from './blocks'
 import { copy } from './copy'
 import { fill } from './format'
-import { blockReadings, readingById, type Answers } from './readings'
+import { blockReadings, readingById, type Answers, type ReadingId } from './readings'
+import { INGREDIENTS } from './score'
 
 // The first give-back: what changed since the last completed check-in, in words. This is a
 // calculation, and the screen shows it in the calculation register.
@@ -47,4 +48,23 @@ export function changesInWords(
   if (!shared.length) lines.push(copy.since.nothingShared)
 
   return { since: whenLabel(previous, today), lines }
+}
+
+/** Steps a reading must worsen by, since the last check-in, before the summary offers "Anything going on?" (stage 3, group 3). */
+export const BEHIND_IT_STEPS = 2
+
+/**
+ * The readings that worsened by at least two steps since the last completed check-in, each in its
+ * own direction: down for Mood, Energy and Focus, up for Stress, Overwhelm and Irritation. Only the six
+ * readings with a direction count; the others have no worse.
+ */
+export function worsenedReadings(current: Answers, block: Block, previous: { answers: Answers } | null): ReadingId[] {
+  if (!previous) return []
+  return blockReadings(block).filter((id) => {
+    const dir = INGREDIENTS[id]
+    const now = current[id]
+    const before = previous.answers[id]
+    if (!dir || now === undefined || before === undefined) return false
+    return (dir === 'up' ? before - now : now - before) >= BEHIND_IT_STEPS
+  })
 }

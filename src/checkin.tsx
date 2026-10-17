@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { OutcomeAsk, type Answer } from './ask'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
-import { changesInWords } from './change'
+import { changesInWords, worsenedReadings } from './change'
+import { matchingPair } from './beforeDays'
+import { BeforeRow } from './mirror'
 import { copy } from './copy'
 import {
   allCheckIns,
@@ -15,13 +17,15 @@ import {
   previousCompleted,
   privateItems,
   saveAnswer,
+  setNote,
   winFor,
+  type CheckIn,
   type Offer,
 } from './db'
 import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
-import { PrivateLog, TodayChips } from './extras'
+import { LineInput, PrivateLog, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { deferOutcome, isSession, offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
@@ -292,6 +296,8 @@ export function SummaryScreen({
         )}
       </div>
 
+      {complete && <InTheMoment record={record} previous={previous} all={all} />}
+
       {complete && offer && !settings.hideMoves && <MoveCard offer={offer} compact />}
 
       <h2 class="section">{copy.summary.readings}</h2>
@@ -363,6 +369,37 @@ export function SummaryScreen({
         </button>
       </div>
     </section>
+  )
+}
+
+/**
+ * In the moment (stage 3, group 3): after an evening, the one pattern from What comes before your
+ * days that tonight matches; after a morning or an afternoon where a reading worsened by two steps,
+ * one optional line, "Anything going on?", writing this check-in's note. Never a question in the
+ * flow, and never evidence: an association, and the owner's own words.
+ */
+function InTheMoment({ record, previous, all }: { record: CheckIn; previous: CheckIn | null; all: readonly CheckIn[] }) {
+  const pattern = useMemo(() => (record.block === 'evening' ? matchingPair(all, record) : null), [all, record])
+  const behind = record.block !== 'evening' && worsenedReadings(record.answers, record.block, previous).length > 0
+  const span = pattern && pattern.lo !== null && pattern.hi !== null ? Math.max(10, Math.abs(pattern.lo), Math.abs(pattern.hi)) : null
+  return (
+    <>
+      {behind && (
+        <div class="card pad" data-testid="behind-it">
+          <p class="calc-line ink">{copy.summary.behindIt}</p>
+          <LineInput initial={record.extras?.note ?? ''} placeholder={copy.extras.notePlaceholder} testid="behind-input" onSave={(text) => void setNote({ day: record.day, block: record.block }, askedOf(record), text)} />
+        </div>
+      )}
+      {pattern && span !== null && (
+        <div class="card pad" data-testid="pattern-card">
+          <p class="title-sm">{copy.summary.pattern}</p>
+          <ul class="rows">
+            <BeforeRow p={pattern} span={span} />
+          </ul>
+          <p class="note faint no-gap">{copy.summary.patternNote}</p>
+        </div>
+      )}
+    </>
   )
 }
 
