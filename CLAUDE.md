@@ -2,6 +2,14 @@
 
 This repository is public. The owner's private documents are not in it.
 
+## First
+
+- Read `WORKING.md` in the private copy (below) in full before acting, and again after the conversation is compacted.
+  It holds the owner's working preferences, the hard rules and the lessons of every earlier session.
+- Work autonomously. Stop only where the owner's GO prompt says to.
+- At a stop, ask for one decision: your recommendation first with its reason and cost, then a one-line reply the
+  owner can paste. Never a cold list of options.
+
 ## Where the plan lives
 
 `PLAN.md`, `PROGRESS.md` and `REVIEW_EXECUTION_PLAN.md` live in the private repository
