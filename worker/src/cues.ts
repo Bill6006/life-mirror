@@ -1,6 +1,6 @@
 import { activeBlocks, DEFAULT_FREQUENCY, DEFAULT_QUIET, DEFAULT_REMINDERS, inQuietHours, type Frequency } from '../../src/reminderRules'
 import type { Env } from './env'
-import { localTime, minutesOf } from './time'
+import { addDays, localTime, minutesOf } from './time'
 import type { Store } from './turso'
 
 // A cue whose moment has come. Every fifteen minutes: today's plans, the latest per commitment,
@@ -13,12 +13,21 @@ import type { Store } from './turso'
 
 const WINDOW_MIN = 20
 const FOLLOW_UP_AFTER_MIN = 45
+/**
+ * Stage 3, group 2: a commitment's follow-up is retired once its last five each led to no start that
+ * day, and tried once more after thirty days without one. Follow-ups are looked for this far back.
+ */
+const RETIRE_AFTER = 5
+const RETRY_AFTER_DAYS = 30
+const LOOK_BACK_DAYS = 120
 
 export interface CueResult {
   sent: boolean
   due: string[]
   /** Plans reminded of once already and still not started, given their one follow-up in this run. */
   followUps: string[]
+  /** Plans whose follow-up was due but is retired for their commitment (stage 3, group 2); absent when none. */
+  retired?: string[]
   reason: string
 }
 
@@ -88,10 +97,12 @@ export async function runCues(env: Pick<Env, 'TIMEZONE'>, store: Store, now: Dat
   for (const p of [...plans].sort((a, b) => (a.setAt < b.setAt ? -1 : 1))) latest.set(p.aimId, p)
   const due: string[] = []
   const followUps: string[] = []
+  const retired: string[] = []
   let settings: PushSettings | null = null
   for (const p of latest.values()) {
     if (p.offerId !== null) continue
-    const since = minute - minutesOf(p.time)
+    // Reminded at the moment the commitment actually happens when the phone learned one (stage 3, group 2), else at its cue's own time.
+    const since = minute - minutesOf(p.remindAt ?? p.time)
     const first = since >= 0 && since < WINDOW_MIN
     const second = since >= FOLLOW_UP_AFTER_MIN && since < FOLLOW_UP_AFTER_MIN + WINDOW_MIN
     if (!first && !second) continue
@@ -99,24 +110,47 @@ export async function runCues(env: Pick<Env, 'TIMEZONE'>, store: Store, now: Dat
     settings ??= pushSettingsOf(await store.readRecord('settings', '1'))
     if (inQuietHours(hhmmAt(minute), settings) || !(await cueable(store, p.aimId))) continue
     if (first && !(await store.isPushed(`cue:${p.id}`))) due.push(p.id)
-    // One follow-up, only for a plan that was reminded of once and is still not started.
-    else if (second && (await store.isPushed(`cue:${p.id}`)) && !(await store.isPushed(`cue2:${p.id}`))) followUps.push(p.id)
+    // One follow-up, only for a plan that was reminded of once and is still not started, and never once retired.
+    else if (second && (await store.isPushed(`cue:${p.id}`)) && !(await store.isPushed(`cue2:${p.id}`))) {
+      if (await followUpRetired(store, p.aimId, local.day)) retired.push(p.id)
+      else followUps.push(p.id)
+    }
   }
-  if (!due.length && !followUps.length) return { sent: false, due, followUps, reason: 'nothing due' }
-  if (!send) return { sent: false, due, followUps, reason: 'no push address or key' }
+  const quiet = retired.length ? { retired } : {}
+  if (!due.length && !followUps.length) return { sent: false, due, followUps, ...quiet, reason: 'nothing due' }
+  if (!send) return { sent: false, due, followUps, ...quiet, reason: 'no push address or key' }
   const at = now.toISOString()
   let sent = false
   if (due.length) {
-    if (!(await send(JSON.stringify({ kind: 'cue' })))) return { sent: false, due, followUps, reason: 'the push service refused it' }
+    if (!(await send(JSON.stringify({ kind: 'cue' })))) return { sent: false, due, followUps, ...quiet, reason: 'the push service refused it' }
     for (const id of due) await store.markPushed(`cue:${id}`, at)
     sent = true
   }
   if (followUps.length) {
-    if (!(await send(JSON.stringify({ kind: 'cue2' })))) return { sent, due, followUps, reason: 'the push service refused the follow-up' }
+    if (!(await send(JSON.stringify({ kind: 'cue2' })))) return { sent, due, followUps, ...quiet, reason: 'the push service refused the follow-up' }
     for (const id of followUps) await store.markPushed(`cue2:${id}`, at)
     sent = true
   }
-  return { sent, due, followUps, reason: 'sent' }
+  return { sent, due, followUps, ...quiet, reason: 'sent' }
+}
+
+/**
+ * Whether a commitment's follow-up is retired (stage 3, group 2): its last five follow-ups, on days
+ * before today, each led to no start that day, and the newest of them is under thirty days old. A plan
+ * given a follow-up was not started before it, so one started afterwards is a start it led to.
+ */
+async function followUpRetired(store: Store, aimId: number, today: string): Promise<boolean> {
+  // The record's own rows, newest day first; the text filter is coarse, so each is checked whole.
+  const rows = await store.readRecords('intentions', { from: addDays(today, -LOOK_BACK_DAYS), to: addDays(today, -1), like: `"aimId":${aimId}` })
+  const followed: { day: string; started: boolean }[] = []
+  for (const r of rows) {
+    const p = r.body as { aimId?: unknown; offerId?: unknown } | null
+    if (!p || p.aimId !== aimId || r.day === null || !(await store.isPushed(`cue2:${r.id}`))) continue
+    followed.push({ day: r.day, started: p.offerId !== null && p.offerId !== undefined })
+    if (followed.length === RETIRE_AFTER) break
+  }
+  if (followed.length < RETIRE_AFTER || followed.some((f) => f.started)) return false
+  return followed[0].day > addDays(today, -RETRY_AFTER_DAYS)
 }
 
 /** A commitment you have paused or archived is never cued; one not yet in the cloud copy is, since its plan is. */

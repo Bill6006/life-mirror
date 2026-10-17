@@ -24,6 +24,8 @@ export interface PlanRow {
   setAt: string
   offerId: number | null
   step?: string
+  /** Stage 3, group 2: when the reminder comes, the moment the commitment actually happens as the phone learned it; absent, the cue's own time. */
+  remindAt?: string
 }
 
 export interface BriefRow {

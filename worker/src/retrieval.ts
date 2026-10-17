@@ -1,4 +1,4 @@
-import { LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
+import { isWeeklyFact, LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
 import type { Fact, FactSheet } from '../../src/factTypes'
 import { AWAY_FROM_HOME } from '../../src/postWindow'
 import { readingById } from '../../src/readings'
@@ -84,6 +84,8 @@ export function accessFor(task: ReadTask, gates: Gates, prefs: BrainPrefsBody): 
  */
 export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>): Category[] {
   const [head, rest] = [f.id.split('.')[0], f.id.split('.')[1]]
+  // A commitment's own category: the Partner or Social path's when it is one, else the commitments'.
+  const aimCategory = (id: string): Category => (pathOfAim.get(id) === 'partner' ? 'partnerPath' : pathOfAim.get(id) === 'social' ? 'socialPath' : 'commitments')
   const own: Category[] =
     head === 'usage'
       ? ['usage']
@@ -98,18 +100,24 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
           : head === 'partner'
             ? ['partnerPath']
             : head === 'aim' || head === 'trajectory'
-              ? [pathOfAim.get(rest) === 'partner' ? 'partnerPath' : pathOfAim.get(rest) === 'social' ? 'socialPath' : 'commitments']
+              ? [aimCategory(rest)]
               : f.id === 'study.nights'
                 ? ['commitments']
                 : f.id === 'followup' || f.id === 'review.change'
                   ? ['brainHistory']
-                  : f.id === 'becoming'
-                    ? ['commitments', 'faith', 'her']
-                    : f.id === 'people.seen'
-                      ? ['tier2']
-                      : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
-                        ? ['factSheet']
-                        : ['dayRecord']
+                  : head === 'memory'
+                    ? // Stage 3, group 1: a line's memory is the Brain's own history, and the named commitment's; a faith practice's is faith's too.
+                      ['brainHistory', ...(typeof f.values.aimId === 'number' ? [aimCategory(String(f.values.aimId))] : []), ...(f.values.faith === 1 ? (['faith'] as const) : [])]
+                    : head === 'weekly'
+                      ? // The weekly view's analyses are the day's record; the part naming faith practices or Social path reps is theirs too.
+                        ['dayRecord', ...(f.id.endsWith('.faith') ? (['faith'] as const) : f.id.endsWith('.social') ? (['socialPath'] as const) : [])]
+                      : f.id === 'becoming'
+                        ? ['commitments', 'faith', 'her']
+                        : f.id === 'people.seen'
+                          ? ['tier2']
+                          : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
+                            ? ['factSheet']
+                            : ['dayRecord']
   return f.tags.includes('faith') && !own.includes('faith') ? [...own, 'faith'] : own
 }
 
@@ -122,7 +130,8 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
 export function sheetForClaude(sheet: FactSheet, a: Access): FactSheet {
   const pathOfAim = new Map(sheet.facts.filter((f) => f.id.startsWith('path.')).map((f) => [f.id.slice(5), String(f.values.path ?? '')]))
   const faith = a.allowed('faith')
-  const facts = sheet.facts.filter((f) => factCategories(f, pathOfAim).every((c) => a.allowed(c)) && (faith || !(f.id.startsWith('note.') && FAITH_WORDS.test(f.text))) && (!isUsageFact(f.id) || USAGE_FOR[a.task].includes(f.id)))
+  // The weekly view's analyses are the Sunday review's alone (stage 3, group 1).
+  const facts = sheet.facts.filter((f) => factCategories(f, pathOfAim).every((c) => a.allowed(c)) && (faith || !(f.id.startsWith('note.') && FAITH_WORDS.test(f.text))) && (!isUsageFact(f.id) || USAGE_FOR[a.task].includes(f.id)) && (!isWeeklyFact(f.id) || a.task === 'review'))
   const kept = new Set(facts.map((f) => f.id))
   return {
     ...sheet,

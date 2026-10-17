@@ -148,6 +148,16 @@ export function isLocationFact(id: string): boolean {
   return id.startsWith('location.')
 }
 
+/** Stage 3, group 1: the Brain's memory of its own lines, one fact a line seen in the last 30 days. Claude's alone, never the free chain's. */
+export function isMemoryFact(id: string): boolean {
+  return id.startsWith('memory.')
+}
+
+/** Stage 3, group 1: the weekly view's analyses, for the Sunday review alone. Claude's alone, never the free chain's. */
+export function isWeeklyFact(id: string): boolean {
+  return id.startsWith('weekly.')
+}
+
 /** The Brain settings, as the phone syncs them in the one row `brainPrefs`. */
 export interface BrainPrefsBody {
   writerModel: WriterModel

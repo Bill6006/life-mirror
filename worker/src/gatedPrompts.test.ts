@@ -17,7 +17,9 @@ import { APP, BRAIN_APP, memoryStore } from './turso'
 // catalogue, so a change to either is not mistaken for one here. Re-recorded with the journal's Brain
 // use (Let it out, agreed 2026-10-15) and read line by line: the answer's "journal" field, the review's
 // "question", the journal among the categories and its empty read. While no entry is served, the
-// prompts themselves are unchanged; the journal's own case below holds them when one is.
+// prompts themselves are unchanged; the journal's own case below holds them when one is. Stage 3,
+// group 1 (2026-10-17) adds the Brain's memory and the weekly view the same way: with none on the
+// sheet every prompt is as it was, and their own case below, read line by line, holds them when served.
 
 const TZ = 'America/New_York'
 const env = {
@@ -82,9 +84,8 @@ const COACH: CoachBlock & Record<string, unknown> = {
 }
 
 /** A record whose commitments category has something to say: a learning commitment, its skill, a plan and its sessions. */
-function record(): Store {
+function record(sheet: FactSheet = sheetFor(DAY)): Store {
   const store = memoryStore()
-  const sheet = sheetFor(DAY)
   put(store, 'facts', DAY, DAY, { day: DAY, builtAt: sheet.builtAt, updatedAt: sheet.builtAt, sheet, coach: COACH }, sheet.builtAt)
   put(store, 'settings', '1', null, { id: 1, hideFaith: false, showPrivate: false, privateInSelection: false })
   put(store, 'aims', '1', null, { id: 1, kind: 'certification', stepMoveId: null, name: 'Veltish', currentSkillId: 2, rhythm: { perWeek: 3, restDays: 0 }, createdAt: '2026-09-20T12:00:00.000Z', archivedAt: null })
@@ -171,6 +172,38 @@ describe('the monitored prompts with the journal served (Let it out, agreed 2026
     await runReview(env, store, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine() })
     const r = await handleBriefing(deps(store, at('05:01', DAY)), url({ task: 'review', day: DAY }))
     expect(r.status).toBe(200)
+    expect(r.body).toMatchSnapshot()
+  })
+})
+
+describe('the monitored prompts with the Brain’s memory and the weekly view served (stage 3, group 1), held fixed from here', () => {
+  // In the phone's own words (src/memoryFacts.ts, src/weeklyFacts.ts), for lines seen in the 30 days before the day.
+  const MEMORY: FactSheet['facts'] = [
+    { id: 'memory.2026-10-03', tags: [], text: 'The line seen on 2026-10-03 asked for a plan for Veltish after her bedtime: a plan was made that day, and a step was started that day and marked done; it felt easy. It was received as: useful.', values: { day: '2026-10-03', ask: 'plan', aimId: 1, cue: 'afterBedtime', planCue: 'afterBedtime', taken: 'yes', kept: 'yes', went: 'done', ease: 'easy', received: 'useful' } },
+    { id: 'memory.2026-10-02', tags: [], text: 'The line seen on 2026-10-02 asked for a plan for Veltish at the next check-in: no plan for it was made that day. It was received as: untapped.', values: { day: '2026-10-02', ask: 'plan', aimId: 1, cue: 'nextCheckIn', taken: 'no', received: 'untapped' } },
+  ]
+  const WEEKLY: FactSheet['facts'] = [
+    { id: 'weekly.gap', tags: [], text: 'The gap, from the weekly view, over 30 days with two logged blocks: typical 52 (the median day), good 61 (the top quarter’s floor), best 74 (the top tenth’s average); good days 30 percent of them, the last one 2 days ago.', values: { days: 30, typical: 52, good: 61, best: 74, goodPercent: 30, lastGoodDaysAgo: 2 } },
+  ]
+  const withMemory = () => record({ ...sheetFor(DAY), facts: [...sheetFor(DAY).facts, ...MEMORY, ...WEEKLY] })
+
+  it('serves the day’s line the memory and its rule, and never the weekly view', async () => {
+    const store = withMemory()
+    await runBrief(env, store, async () => ({ response: '' }), at('07:45', DAY), { fetcher, fireFetcher: routine() })
+    const r = await handleBriefing(deps(store, at('07:46', DAY)), url({ task: 'line', day: DAY }))
+    expect(r.status).toBe(200)
+    expect(JSON.stringify(r.body)).toContain('[memory.2026-10-03]')
+    expect(JSON.stringify(r.body)).not.toContain('weekly.gap')
+    expect(r.body).toMatchSnapshot()
+    expect(await readsOf(store)).toMatchSnapshot()
+  })
+
+  it('serves the Sunday review the memory and the weekly view, with both rules', async () => {
+    const store = withMemory()
+    await runReview(env, store, async () => ({ response: '' }), at('05:00', DAY), { fetcher, fireFetcher: routine() })
+    const r = await handleBriefing(deps(store, at('05:01', DAY)), url({ task: 'review', day: DAY }))
+    expect(r.status).toBe(200)
+    expect(JSON.stringify(r.body)).toContain('[weekly.gap]')
     expect(r.body).toMatchSnapshot()
   })
 })

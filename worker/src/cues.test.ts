@@ -175,3 +175,62 @@ describe('a plan cue keeps quiet hours and skips a commitment at rest (stage 1, 
     expect(await runCues(env, store, AT_2005, async () => true)).toEqual({ sent: true, due: ['7'], followUps: [], reason: 'sent' })
   })
 })
+
+describe('timing (stage 3, group 2)', () => {
+  const pushed = (id: string, day: string) => ({ app: BRAIN_APP, store: 'pushes', id, day, body: JSON.stringify({ at: `${day}T23:00:00.000Z` }), updated_at: `${day}T23:00:00.000Z`, deleted: 0 as const, synced_at: `${day}T23:00:00.000Z` })
+  /** A past plan of commitment 1 that was reminded of and followed up, started afterwards or not. */
+  const followed = (store: ReturnType<typeof memoryStore>, id: string, day: string, started: boolean) => {
+    store.put(plan(id, { offerId: started ? 99 : null }, day))
+    store.put(pushed(`cue:${id}`, day))
+    store.put(pushed(`cue2:${id}`, day))
+  }
+  const send = async () => true
+
+  it('reminds at the moment the commitment actually happens when the phone learned one, and follows up forty-five minutes after it', async () => {
+    const store = memoryStore()
+    store.put(plan('7', { remindAt: '20:45' }))
+    // 20:05: the cue's own time has passed, but the plan's moment has not.
+    expect((await runCues(env, store, AT_2005, send)).due).toEqual([])
+    expect((await runCues(env, store, new Date('2026-09-19T00:50:00Z'), send)).due).toEqual(['7'])
+    expect((await runCues(env, store, new Date('2026-09-19T01:30:00Z'), send)).followUps).toEqual(['7'])
+  })
+
+  it('retires a commitment’s follow-up once its last five each led to no start that day', async () => {
+    const store = memoryStore()
+    for (const [i, day] of ['2026-09-13', '2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'].entries()) followed(store, `p${i}`, day, false)
+    store.put(plan('5', {}))
+    await runCues(env, store, AT_2005, send)
+    expect(await runCues(env, store, new Date('2026-09-19T00:45:00Z'), send)).toEqual({ sent: false, due: [], followUps: [], retired: ['5'], reason: 'nothing due' })
+    expect(store.rows.get(`${BRAIN_APP}|pushes|cue2:5`)).toBeUndefined()
+  })
+
+  it('keeps the follow-up while one of the last five led to a start, or fewer than five were sent', async () => {
+    const one = memoryStore()
+    for (const [i, day] of ['2026-09-13', '2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'].entries()) followed(one, `p${i}`, day, i === 2)
+    one.put(plan('5', {}))
+    await runCues(env, one, AT_2005, send)
+    expect((await runCues(env, one, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual(['5'])
+    const four = memoryStore()
+    for (const [i, day] of ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'].entries()) followed(four, `p${i}`, day, false)
+    four.put(plan('5', {}))
+    await runCues(env, four, AT_2005, send)
+    expect((await runCues(env, four, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual(['5'])
+  })
+
+  it('tries a retired follow-up once more after thirty days without one, and counts only its own commitment’s', async () => {
+    const store = memoryStore()
+    for (const [i, day] of ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14'].entries()) followed(store, `p${i}`, day, false)
+    store.put(plan('5', {}))
+    await runCues(env, store, AT_2005, send)
+    expect((await runCues(env, store, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual(['5'])
+    // Commitment 12's five unanswered follow-ups never retire commitment 1's, though its rows hold the same digits.
+    const other = memoryStore()
+    for (const [i, day] of ['2026-09-13', '2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'].entries()) {
+      other.put(plan(`q${i}`, { aimId: 12 }, day))
+      other.put(pushed(`cue2:q${i}`, day))
+    }
+    other.put(plan('5', {}))
+    await runCues(env, other, AT_2005, send)
+    expect((await runCues(env, other, new Date('2026-09-19T00:45:00Z'), send)).followUps).toEqual(['5'])
+  })
+})

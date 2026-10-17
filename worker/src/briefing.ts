@@ -1,4 +1,4 @@
-import { isLocationFact, isWriterModel, WRITER_MODELS, type WriterModel } from '../../src/brainShared'
+import { isLocationFact, isMemoryFact, isWeeklyFact, isWriterModel, WRITER_MODELS, type WriterModel } from '../../src/brainShared'
 import type { FirmnessPref } from '../../src/firmness'
 import { isUsageFact } from '../../src/useShared'
 import type { FactSheet, RankedLine } from '../../src/factTypes'
@@ -167,9 +167,13 @@ export function without(sheet: FactSheet, drop: (id: string) => boolean): FactSh
   return { ...sheet, facts: sheet.facts.filter((f) => !drop(f.id)), ...(sheet.shortlist ? { shortlist: sheet.shortlist.filter((r) => !r.factIds.some(drop)) } : {}) }
 }
 
-/** What the free chain reads: the fact sheet approved on 2026-09-18, never how Life Mirror is used (F1) or where the day was spent (Part 43). */
+/**
+ * What the free chain reads: the fact sheet approved on 2026-09-18, never how Life Mirror is used (F1),
+ * where the day was spent (Part 43), the Brain's memory of its lines or the weekly view's analyses
+ * (stage 3, group 1).
+ */
 export function forFreeChain(sheet: FactSheet): FactSheet {
-  return without(sheet, (id) => isUsageFact(id) || isLocationFact(id))
+  return without(sheet, (id) => isUsageFact(id) || isLocationFact(id) || isMemoryFact(id) || isWeeklyFact(id))
 }
 
 /** The payload for the writer that describes the record: a decision core, plus (for Claude, from Part 30) permitted private context. */
