@@ -59,12 +59,13 @@ const rowsOf = (page, table) =>
   }, table)
 
 /**
- * Stand-in records for the commitment added first (id 1): twenty-four days of check-ins; three plans at the
- * next check-in kept, each started thirty minutes after its cue; one after her bedtime never started; and on
+ * Stand-in records for the commitment just added: twenty-four days of check-ins; three plans at the next
+ * check-in kept, each started thirty minutes after its cue; one after her bedtime never started; and on
  * Sep 7 a line seen asking for a plan at the next check-in, the plan made and a session started that day.
+ * A fresh install numbers its ids from a base taken from the clock, so the commitment's own id is used.
  */
-async function seed(page) {
-  await page.evaluate(async () => {
+async function seed(page, aimId) {
+  await page.evaluate(async (aimId) => {
     const blocks = {
       morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
       evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
@@ -90,18 +91,18 @@ async function seed(page) {
     const step = (id, d, h, m) => ({ id, kind: 'step', day: `2026-09-0${d}`, block: 'afternoon', at: new Date(2026, 8, d, h, m).toISOString(), situationKey: 'aim:certification', target: 'focus', stance: '', band: '', reading: 0, moveId: 'skill:1', cardId: null, candidates: ['skill:1'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: new Date(2026, 8, d, 21).toISOString() })
     for (const d of [1, 2, 3]) {
       tx.objectStore('offers').add(step(100 + d, d, 13, 30))
-      tx.objectStore('intentions').add({ aimId: 1, day: `2026-09-0${d}`, cue: 'nextCheckIn', time: '13:00', setAt: new Date(2026, 8, d, 9).toISOString(), offerId: 100 + d })
+      tx.objectStore('intentions').add({ aimId, day: `2026-09-0${d}`, cue: 'nextCheckIn', time: '13:00', setAt: new Date(2026, 8, d, 9).toISOString(), offerId: 100 + d })
     }
-    tx.objectStore('intentions').add({ aimId: 1, day: '2026-09-04', cue: 'afterBedtime', time: '20:00', setAt: new Date(2026, 8, 4, 9).toISOString(), offerId: null })
+    tx.objectStore('intentions').add({ aimId, day: '2026-09-04', cue: 'afterBedtime', time: '20:00', setAt: new Date(2026, 8, 4, 9).toISOString(), offerId: null })
     tx.objectStore('offers').add(step(107, 7, 14, 0))
-    tx.objectStore('intentions').add({ aimId: 1, day: '2026-09-07', cue: 'nextCheckIn', time: '13:00', setAt: new Date(2026, 8, 7, 8, 5).toISOString(), offerId: 107 })
-    tx.objectStore('briefLog').add({ day: '2026-09-07', situationId: 'say-when', mode: 'recommendation', text: 'A stand-in line.', factIds: ['aim.1'], cardIds: [], action: { kind: 'plan', aimId: 1, cue: 'nextCheckIn' }, at: new Date(2026, 8, 7, 7, 30).toISOString(), shownAt: new Date(2026, 8, 7, 8, 0).toISOString() })
+    tx.objectStore('intentions').add({ aimId, day: '2026-09-07', cue: 'nextCheckIn', time: '13:00', setAt: new Date(2026, 8, 7, 8, 5).toISOString(), offerId: 107 })
+    tx.objectStore('briefLog').add({ day: '2026-09-07', situationId: 'say-when', mode: 'recommendation', text: 'A stand-in line.', factIds: [`aim.${aimId}`], cardIds: [], action: { kind: 'plan', aimId, cue: 'nextCheckIn' }, at: new Date(2026, 8, 7, 7, 30).toISOString(), shownAt: new Date(2026, 8, 7, 8, 0).toISOString() })
     await new Promise((res, rej) => {
       tx.oncomplete = () => res()
       tx.onerror = () => rej(tx.error)
     })
     dbx.close()
-  })
+  }, aimId)
   await page.reload()
   await page.waitForTimeout(1500)
 }
@@ -114,13 +115,23 @@ try {
     await page.getByTestId('settings-about').click()
     const commit = (await page.getByTestId('build-commit').textContent())?.trim()
     check('the build stamp is the pushed commit', commit === want, `shows ${commit}`)
+    // About is a screen of its own, with no tabs: back to them.
+    await page.reload()
+    await page.waitForTimeout(600)
     await tab(page, 'Aims')
     await page.getByRole('button', { name: /^Add a commitment/ }).click()
     await page.getByTestId('aim-kind-certification').click()
     await page.getByTestId('aim-goal-input').fill('Veltish')
     await page.getByTestId('aim-learn-add').click()
-    await seen(page.getByTestId('aim-card').filter({ hasText: 'Veltish' }))
-    await seed(page)
+    const added = page.getByTestId('aim-card').filter({ hasText: 'Veltish' })
+    await seen(added)
+    // Its skill set by hand, so it has a step to plan.
+    await added.getByTestId('aim-skill-own').click()
+    await added.getByTestId('aim-skill-set-name').fill('Ten words')
+    await added.getByTestId('aim-skill-set-save').click()
+    await seen(added.getByTestId('aim-step').filter({ hasText: 'Ten words' }))
+    const aimId = (await rowsOf(page, 'aims')).find((a) => a.name === 'Veltish')?.id
+    await seed(page, aimId)
 
     // Group 1: the sheet the app writes for the day, as the Worker would read it, once it has been written from the seeded record.
     let facts = []

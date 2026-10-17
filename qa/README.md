@@ -20,7 +20,7 @@ red. Rules every runner keeps:
 | `batch2_breaks.py` | batch 2a: the foundations, the claims log, the journal's capture, the wipe | 14 of 14; re-run twice, 14 of 14 |
 | `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26; re-run against the UI cleanups' code, 26 of 26 |
 | `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16 |
-| `stage3_breaks.py` | stage 3, group 3 (in the moment): Anything going on?, the evening's matching pattern | 10 of 10 |
+| `stage3_breaks.py` | stage 3: group 3 (in the moment): Anything going on?, the evening's matching pattern; group 1 (the Brain with a memory): the memory of each line seen, the weekly view's facts, trends read by the week, their filing in the Worker and the free chain kept off them; group 2 (timing): the reminder's moment, the chips' order, the retired follow-up | group 3, 10 of 10; groups 1 and 2, 47 of 47 (one first missed and its test made stronger, then caught) |
 
 Run all of a runner's breaks with `python qa/batch2b_breaks.py`, or name ids to run only those:
 `python qa/batch2b_breaks.py coach-limits-said`.
@@ -44,11 +44,12 @@ itself, and threw no page error.
 | `live-b2b.mjs` | batch 2b | 10 of 10, twice, at 4d650b1 |
 | `live-ui-cleanups.mjs` | the UI cleanups | 18 of 18 against a local preview; 7 of 18 against the build before them, every cleanup's check failing |
 | `live-stage3.mjs` | stage 3, group 3 | 8 of 8 against a local preview; 4 of 8 against the build before it, every feature check failing |
+| `live-stage3b.mjs` | stage 3, groups 1 and 2 | 8 of 8 against a local preview; 3 of 8 against the build before it, every feature check failing |
 
 Wait for each element before reading it. Two of batch 2b's first misses were the script reading the
 screen before it rendered.
 
-`LIVE_URL=<url>` points `live-ui-cleanups.mjs` and `live-stage3.mjs` at a local preview to prove the script itself, and
+`LIVE_URL=<url>` points `live-ui-cleanups.mjs`, `live-stage3.mjs` and `live-stage3b.mjs` at a local preview to prove the script itself, and
 `CHROMIUM_PATH=<path>` launches a browser where Playwright's own is not installed.
 
 ## Snapshot pairing (`snappair.py`)
