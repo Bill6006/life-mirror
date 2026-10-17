@@ -1083,7 +1083,9 @@ test('fatherhood: Aims → Her adds a skill from the checklists, counts one with
   // One count: the moment is dated, the counts are plain, and the rung has not moved.
   await page.getByTestId('her-count').click()
   await page.getByTestId('her-help-some').click()
-  await expect(page.getByTestId('her-counts')).toContainText('Did it 1 · on her own 0 · a little help 1 · a lot of help 0')
+  // Counted from the current rung (stage 3, group 4).
+  await expect(page.getByTestId('her-counts')).toContainText(': did it 1 · on her own 0 · a little help 1 · a lot of help 0')
+  await expect(page.getByTestId('her-counts')).toContainText(/^Since /)
   await expect(page.getByTestId('her-rung')).toHaveText('Not introduced')
   await expect(page.getByTestId('her-moments')).toContainText('1 moment')
 
@@ -1091,6 +1093,14 @@ test('fatherhood: Aims → Her adds a skill from the checklists, counts one with
   await page.getByTestId('her-rung-open').click()
   await page.getByTestId('her-rung-practicingWithDaddy').click()
   await expect(page.getByTestId('her-rung')).toHaveText('Practicing with Daddy')
+  // The new rung counts from today; every count stays under Rungs so far, with each change dated.
+  await expect(page.getByTestId('her-counts')).toContainText(': none counted yet')
+  await page.getByTestId('her-rung-open').click()
+  await expect(page.getByTestId('her-history-line')).toHaveCount(2)
+  await expect(page.getByTestId('her-history-line').first()).toContainText('Practicing with Daddy, from')
+  await expect(page.getByTestId('her-history-line').last()).toContainText('Not introduced, from')
+  await expect(page.getByTestId('her-all-counts')).toHaveText('In all: did it 1 · on her own 0 · a little help 1 · a lot of help 0')
+  await page.getByTestId('her-rung-open').click()
   await expect(page.getByTestId('her')).not.toContainText('%')
   await expect(page.getByTestId('her')).not.toContainText(/[0-9]+ of [0-9]+/)
 
@@ -3221,4 +3231,136 @@ test('timing (stage 3, group 2): the Plan when chips come in the order the recor
   await card.getByTestId('aim-plan-open').click()
   await expect(card.getByTestId('aim-cue-nextCheckIn')).toBeVisible()
   expect(await order()).toEqual(['aim-cue-nextCheckIn', 'aim-cue-afterBedtime'])
+})
+
+/** Writes rows straight into one table of the phone's store. */
+async function seedRows(page: Page, table: string, rows: readonly Record<string, unknown>[]): Promise<void> {
+  await page.evaluate(
+    async ({ table, rows }) => {
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const tx = dbx.transaction([table], 'readwrite')
+      for (const row of rows) tx.objectStore(table).add(row)
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+      })
+      dbx.close()
+    },
+    { table, rows },
+  )
+}
+
+/** A completed check-in at one level: the up readings at p, the down ones mirrored, with a note when given. */
+function levelCheckIn(day: string, block: 'morning' | 'afternoon' | 'evening', p: number, note?: string): Record<string, unknown> {
+  const asked = block === 'morning' ? ['mood', 'irritation', 'stress', 'overwhelm', 'focus', 'energy'] : ['mood', 'irritation', 'energy', 'stress', 'focus', 'overwhelm']
+  const answers = Object.fromEntries(asked.map((id) => [id, ['stress', 'overwhelm', 'irritation'].includes(id) ? 6 - p : p]))
+  const [y, m, d] = day.split('-').map(Number)
+  const at = new Date(y, m - 1, d, block === 'morning' ? 7 : block === 'afternoon' ? 13 : 19, 40)
+  const done = new Date(at.getTime() + 95_000).toISOString()
+  return { day, block, asked, startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000, ...(note ? { extras: { note } } : {}) }
+}
+
+test('the record shown back (stage 3, group 4): a check-in’s note on its own summary, and Your words on Mirror, each beside its reading', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 20, 21, 5))
+  await page.goto('./')
+  await seedRows(page, 'checkins', [levelCheckIn('2026-09-18', 'evening', 2, 'A long week'), levelCheckIn('2026-09-19', 'morning', 4, 'Slept well for once'), levelCheckIn('2026-09-19', 'evening', 3)])
+  await page.reload()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByTestId('words-door').click()
+  const rows = page.getByTestId('words-row')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.first().getByTestId('words-note')).toHaveText('“Slept well for once”')
+  await expect(rows.first().getByTestId('words-when')).toContainText('Morning · 75, solid')
+  await expect(rows.last().getByTestId('words-when')).toContainText('Evening · 25, worn down')
+  // A tap opens that check-in's summary, its note on it, and Done comes back to the list.
+  await rows.first().click()
+  await expect(page.getByTestId('summary-note')).toContainText('Your note')
+  await expect(page.getByTestId('summary-note')).toContainText('“Slept well for once”')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('words')).toBeVisible()
+  // The evening's note sits with its extras.
+  await rows.last().click()
+  await expect(page.getByTestId('summary-note')).toContainText('“A long week”')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByTestId('words')).toBeVisible()
+})
+
+test('the record shown back (stage 3, group 4): the line left after a learning session shows at the next start', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await addLearning(page, 'Veltish', 'Ten words', 'A class')
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Veltish' })
+  await card.getByTestId('aim-start').click()
+  await expect(card.getByTestId('aim-started')).toBeVisible()
+  await expect(card.getByTestId('aim-last-note')).toHaveCount(0)
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 45))
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await card.getByTestId('aim-done').click()
+  await card.getByTestId('aim-ease-right').click()
+  await card.getByTestId('aim-note-open').click()
+  await card.getByTestId('aim-note-input').fill('Start at page 12 next time')
+  await card.getByTestId('aim-note-save').click()
+  await expect(card.getByTestId('aim-note-kept')).toBeVisible()
+  // The next session: the line left is there while it is under way, on the card and on Now.
+  await card.getByTestId('aim-another').click()
+  await expect(card.getByTestId('aim-started')).toBeVisible()
+  await expect(card.getByTestId('aim-last-note')).toHaveText('Last time you wrote: “Start at page 12 next time”')
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await expect(page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Veltish' }).getByTestId('aim-last-note')).toContainText('Start at page 12 next time')
+})
+
+test('the record shown back (stage 3, group 4): a month ago today on Mirror, and the last full month’s review', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 17, 9, 0))
+  await page.goto('./')
+  const checkins: Record<string, unknown>[] = []
+  for (let d = 1; d <= 30; d++) {
+    const day = `2026-09-${String(d).padStart(2, '0')}`
+    checkins.push(levelCheckIn(day, 'morning', d === 9 ? 5 : 3), levelCheckIn(day, 'evening', 3, d === 17 ? 'Dinner with friends' : undefined))
+  }
+  await seedRows(page, 'checkins', checkins)
+  await seedRows(page, 'offers', [1, 2, 17].map((d, i) => ({ id: 500 + i, kind: 'block', day: `2026-09-${String(d).padStart(2, '0')}`, block: 'evening', at: new Date(2026, 8, d, 18).toISOString(), situationKey: 'evening:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: 'walk-ten', cardId: null, candidates: ['walk-ten'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: new Date(2026, 8, d, 19).toISOString() })))
+  await seedRows(page, 'outcomes', [1, 2, 17].map((d, i) => ({ offerId: 500 + i, moveId: 'walk-ten', day: `2026-09-${String(d).padStart(2, '0')}`, block: 'evening', at: new Date(2026, 8, d, 20).toISOString(), outcome: 'done', why: null, passiveOutcome: null })))
+  await page.reload()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  const ago = page.getByTestId('month-ago')
+  await expect(ago).toContainText('A month ago today')
+  await expect(ago).toContainText('The day read 50, getting by.')
+  await expect(ago.getByTestId('month-ago-note')).toHaveText('Evening, you wrote: “Dinner with friends”')
+  await expect(ago).toContainText('Done: A ten-minute walk, now.')
+  await page.getByTestId('month-door').click()
+  await expect(page.getByTestId('month-name')).toContainText('September')
+  await expect(page.getByTestId('month-reading')).toContainText('Check-ins completed: 60, on 30 of its 30 days.')
+  await expect(page.getByTestId('month-reading')).toContainText('The day reading averaged 50.8 over 30 days with two logged blocks.')
+  await expect(page.getByTestId('month-moves')).toContainText('Moves marked done: 3.')
+  await expect(page.getByTestId('month-moves')).toContainText('Done most: A ten-minute walk, now (3).')
+  await expect(page.getByTestId('month')).not.toContainText('%')
+  await page.getByTestId('month-words').click()
+  await expect(page.getByTestId('words-row')).toHaveCount(1)
+})
+
+test('the record shown back (stage 3, group 4): the Cloud screen counts the workouts read', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Cloud copy/ }).click()
+  // Nothing read, and no token to read with: nothing said.
+  await expect(page.getByTestId('cloud-outside-read')).toHaveCount(0)
+  await seedRows(page, 'outside', [
+    { id: 'w1', day: '2026-09-02', minutes: 40, at: '2026-09-02T22:00:00.000Z', source: 'workout' },
+    { id: 'w2', day: '2026-09-02', minutes: 20, at: '2026-09-02T23:00:00.000Z', source: 'workout' },
+    { id: 'w3', day: '2026-09-05', minutes: 35, at: '2026-09-05T22:00:00.000Z', source: 'workout' },
+  ])
+  // Written straight into the store, as the cloud's reader would: the screen reads them on its next opening.
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Cloud copy/ }).click()
+  await expect(page.getByTestId('cloud-outside-read')).toContainText('Read so far: 3 workouts on 2 days, the last on')
+  await expect(page.getByTestId('cloud-outside-read')).toContainText('Sep 5')
 })

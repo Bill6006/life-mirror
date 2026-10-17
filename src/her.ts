@@ -99,3 +99,24 @@ export function momentSummary(moments: readonly MomentLike[]): MomentSummary {
   }
   return s
 }
+
+/** A rung a skill stood at, from a moment (stage 3, group 4). */
+export interface RungChange {
+  rung: HerRung
+  at: string
+}
+
+/**
+ * A skill's rungs so far, oldest first, each with when it was set; and whether changes before them went
+ * unkept. A skill starts at the rung it was added at; the record kept only the latest change until
+ * 2026-10-17, so a skill that had changed before then begins from its rung at that time.
+ */
+export function rungHistory(s: { rung: HerRung; addedAt: string; rungAt: string; rungs?: readonly RungChange[] }): { changes: RungChange[]; earlierUnknown: boolean } {
+  const changes = s.rungs?.length ? [...s.rungs] : [{ rung: s.rung, at: s.rungAt }]
+  return { changes, earlierUnknown: changes[0].at > s.addedAt }
+}
+
+/** The moments counted since a moment, such as when the current rung was set: what a skill's counts read from. Plain counts, never compared. */
+export function momentsSince<M extends { at: string }>(moments: readonly M[], at: string): M[] {
+  return moments.filter((m) => m.at >= at)
+}

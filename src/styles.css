@@ -2104,6 +2104,11 @@ input[type="time"] {
   overflow-wrap: anywhere;
 }
 
+/* Your own words, shown back as typed (stage 3, group 4): they wrap, however long a word. */
+.said {
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Tabs ---------- */
 .tabs {
   position: sticky;

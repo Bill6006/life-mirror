@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { AimCard, AimRow, type Cadence, type LearningView } from './aimCard'
 import { activeAims, addAim, addLearning, aimRecords, allIntentions, editSkill, finishAim, finishedAims, liveSkills, logSession, makeCurrent, openAimOffers, pauseAim, planAim, removeAim, reopenAim, resumeAim, rungMarks, setAimStep, setCurrentSkill, setRhythm, setSchedule, type AimRecords } from './aimFlow'
-import { BECOMING_KEYS, becoming, withCheckIns, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
+import { BECOMING_KEYS, becoming, withCheckIns, blockedBy, cueCounts, currentSkillOf, easeRetired, followThrough, keysOf, lastDoneDay, lastLine, lastPracticeDay, lastSessionNote, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepChoices, stepFor, studyOfferBelongs, unblockFor, type Tally } from './aims'
 import { keptByCue } from './planMoment'
 import { dueOf, inStudyTime, isFaithPractice, rankOf, rhythmOf, scheduleOf, type Rhythm } from './rhythm'
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
@@ -215,6 +215,8 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       ctx,
       plan,
       kept: keptByCue(intentions, id, today),
+      // Stage 3, group 4: the line left after the last session, shown at the next start.
+      lastNote: study ? lastSessionNote(aim, records.offers, records.outcomes, skills, studyAims) : null,
       last,
       today: todaySessions,
       // The line's pick carries the accent until its session is done today (Workstream 6).

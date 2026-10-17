@@ -1,7 +1,7 @@
 """Stage 3's deliberate breaks (designed 2026-10-17): each undoes one rule, and the test that guards it must turn red.
 
 Group 3 (in the moment) in the app; groups 1 and 2 (the Brain's memory, timing) in the Worker and
-in the app.
+in the app; group 4 (the owner's record shown back) in the app.
 
 Same rules as the other runners: a green baseline first, one exact replacement, the file always
 restored byte for byte, the table read as data, and an empty test list refused. A break guarded by a
@@ -28,6 +28,8 @@ M = 'src/memoryFacts.test.ts'
 W = 'src/weeklyFacts.test.ts'
 T = 'src/trendWeek.test.ts'
 P = 'src/planMoment.test.ts'
+R = 'src/recordBack.test.ts'
+MO = 'src/month.test.ts'
 EVENING = 'after an evening, the one pattern'
 
 TABLE = [
@@ -267,6 +269,110 @@ TABLE = [
          old="  const cues = chipOrder(cuesFor(ctx, new Date()), kept)\n",
          new="  const cues = cuesFor(ctx, new Date())\n",
          tests=[S], pattern='the Plan when chips come in the order the record keeps them'),
+    # Group 4, the owner's record shown back: Your words and the notes.
+    dict(id='words-typed-only', file='src/yourWords.ts',
+         old=".filter((c) => typeof c.extras?.note === 'string' && c.extras.note.trim() !== '')",
+         new=".filter((c) => typeof c.extras?.note === 'string')",
+         tests=[R], pattern='lists every line typed at a check-in'),
+    dict(id='words-newest-first', file='src/yourWords.ts',
+         old="    .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : BLOCKS.indexOf(b.block) - BLOCKS.indexOf(a.block)))\n",
+         new="",
+         tests=[R], pattern='lists every line typed at a check-in'),
+    dict(id='words-beside-reading', file='src/yourWords.ts',
+         old="value: r ? r.value : null, band: r ? bandOf(r.value) : null",
+         new="value: null, band: null",
+         tests=[R], pattern='lists every line typed at a check-in'),
+    dict(id='summary-note-shown', file='src/checkin.tsx',
+         old="      {block !== 'evening' && ex.note && !asksBehind && (\n",
+         new="      {false && block !== 'evening' && ex.note && !asksBehind && (\n",
+         tests=[S], pattern='a check-in’s note on its own summary'),
+    dict(id='summary-note-evening', file='src/checkin.tsx',
+         old="              {ex.note && <NoteRow note={ex.note} />}\n",
+         new="",
+         tests=[S], pattern='a check-in’s note on its own summary'),
+    dict(id='words-back', file='src/app.tsx',
+         old="            onDone={() => (view.back ? setView(view.back) : closeAll())}\n",
+         new="            onDone={closeAll}\n",
+         tests=[S], pattern='a check-in’s note on its own summary'),
+    dict(id='last-note-latest', file='src/aims.ts',
+         old="  const last = answered.reduce<Offer | null>((m, o) => (m === null || o.at > m.at ? o : m), null)\n",
+         new="  const last = answered.reduce<Offer | null>((m, o) => (m === null || o.at < m.at ? o : m), null)\n",
+         tests=[R], pattern='is the note left after the last answered session'),
+    dict(id='last-note-shown', file='src/aimCard.tsx',
+         old="          {lastNote && <LastNote note={lastNote} />}\n",
+         new="",
+         tests=[S], pattern='the line left after a learning session'),
+    # Group 4: Her counted from the current rung, each change dated.
+    dict(id='her-history-kept', file='src/herFlow.ts',
+         old="    await db.herSkills.update(skillId, { rung, rungAt: at, rungs: [...rungHistory(s).changes, { rung, at }] })\n",
+         new="    await db.herSkills.update(skillId, { rung, rungAt: at })\n",
+         tests=[R], pattern='keeps each rung change with its moment'),
+    dict(id='her-same-rung', file='src/herFlow.ts',
+         old="    if (!s || s.rung === rung) return\n",
+         new="    if (!s) return\n",
+         tests=[R], pattern='keeps each rung change with its moment'),
+    dict(id='her-earlier-unknown', file='src/her.ts',
+         old="  return { changes, earlierUnknown: changes[0].at > s.addedAt }\n",
+         new="  return { changes, earlierUnknown: false }\n",
+         tests=[R], pattern='its earlier changes unknown'),
+    dict(id='her-counts-since', file='src/herScreen.tsx',
+         old="  const counts = skillCounts(momentsSince(moments, skill.rungAt), skill.skillId)\n",
+         new="  const counts = skillCounts(moments, skill.skillId)\n",
+         tests=[S], pattern='Aims → Her adds a skill from the checklists'),
+    dict(id='her-exported', file='src/export.ts',
+         old=", ...(s.rungs ? { rungs: s.rungs } : {}) })),",
+         new=" })),",
+         tests=[R], pattern='goes into the export'),
+    # Group 4: a month ago today and the month's review.
+    dict(id='month-ago-last-day', file='src/month.ts',
+         old="String(Math.min(d, last)).padStart(2, '0')",
+         new="String(d).padStart(2, '0')",
+         tests=[MO], pattern='is the same date a month back'),
+    dict(id='month-ago-nothing', file='src/month.ts',
+         old="  if (value === null && !blocks.length && !notes.length && !done.length && !workout) return null\n",
+         new="",
+         tests=[MO], pattern='is nothing when the record holds nothing'),
+    dict(id='month-ago-shown', file='src/mirror.tsx',
+         old="      {ago && <MonthAgoCard day={ago} />}\n",
+         new="",
+         tests=[S], pattern='a month ago today on Mirror'),
+    dict(id='month-partner-out', file='src/month.ts',
+         old=" && onTheSheet(o) && !o.skippedAt",
+         new=" && !o.skippedAt",
+         tests=[MO], pattern='never the Partner path'),
+    dict(id='month-faith-hidden', file='src/month.ts',
+         old="    .filter((o) => !(r.hideFaith && hasMove(o.moveId) && (moveById(o.moveId).family === 'faith' || moveById(o.moveId).hiddenWith === 'faith')))\n",
+         new="",
+         tests=[MO], pattern='never the Partner path'),
+    dict(id='month-faith-never-counted', file='src/month.ts',
+         old="      const done = faith ? 0 : sessions",
+         new="      const done = sessions",
+         tests=[MO], pattern='a faith practice offered and never counted'),
+    dict(id='month-paused-out', file='src/month.ts',
+         old=".filter((a) => a.kind !== 'path' && a.archivedAt === null && !a.pausedAt)",
+         new=".filter((a) => a.kind !== 'path' && a.archivedAt === null)",
+         tests=[MO], pattern='a faith practice offered and never counted'),
+    dict(id='month-min-days', file='src/month.ts',
+         old="export const MONTH_MIN_DAYS = 7\n",
+         new="export const MONTH_MIN_DAYS = 6\n",
+         tests=[MO], pattern='says it has too few days'),
+    dict(id='month-full-month', file='src/month.ts',
+         old="  const month = monthBefore(monthOf(today))\n",
+         new="  const month = monthOf(today)\n",
+         tests=[MO], pattern='reviews the last full month'),
+    dict(id='month-moved-direction', file='src/month.ts',
+         old="delta: Math.round((INGREDIENTS[id] === 'down' ? b - a : a - b) * 100) / 100",
+         new="delta: Math.round((a - b) * 100) / 100",
+         tests=[MO], pattern='reviews the last full month'),
+    # Group 4: the workouts read, on Cloud.
+    dict(id='cloud-read-days', file='src/outsideRow.ts',
+         old="  return { n: rows.length, days: days.size,",
+         new="  return { n: rows.length, days: rows.length,",
+         tests=[R], pattern='counts what was read'),
+    dict(id='cloud-read-shown', file='src/cloudScreen.tsx',
+         old="      {readLine && (\n",
+         new="      {false && readLine && (\n",
+         tests=[S], pattern='the Cloud screen counts the workouts read'),
 ]
 
 

@@ -68,3 +68,9 @@ export function outsideDayOf(body: string): OutsideSession | null {
     return null
   }
 }
+
+/** What the Cloud screen says was read (stage 3, group 4): the workouts, the days they fell on, and the latest day. A count of what was read, never a measure of anything. */
+export function readSoFar(rows: readonly { day: string }[]): { n: number; days: number; last: string | null } {
+  const days = new Set(rows.map((r) => r.day))
+  return { n: rows.length, days: days.size, last: rows.reduce<string | null>((m, r) => (m === null || r.day > m ? r.day : m), null) }
+}

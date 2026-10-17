@@ -249,6 +249,9 @@ export function SummaryScreen({
 
   const complete = isComplete(record)
   const change = complete ? changesInWords(record.answers, block, previous, { day, block }) : null
+  // Stage 3, group 4: the check-in's own note shows on its summary; a morning's or an afternoon's below the
+  // readings, unless Anything going on? is showing, which already holds it.
+  const asksBehind = complete && block !== 'evening' && worsenedReadings(record.answers, block, previous).length > 0
   const glanceBlocks = BLOCKS.filter((b) => activeBlocks(settings.frequency).includes(b) || all.some((c) => c.day === day && c.block === b))
   const ex = record.extras ?? {}
   const privateLogged = items.filter((it) => ex.private?.[String(it.id)])
@@ -318,6 +321,14 @@ export function SummaryScreen({
         </ul>
       </div>
 
+      {block !== 'evening' && ex.note && !asksBehind && (
+        <div class="card">
+          <ul class="rows">
+            <NoteRow note={ex.note} />
+          </ul>
+        </div>
+      )}
+
       {block !== 'evening' && <CaffeineCard day={day} block={block} />}
       {block !== 'evening' && settings.extras.privateLog && placed.length > 0 && (
         <div class="card" data-testid="private-log-card">
@@ -348,6 +359,7 @@ export function SummaryScreen({
                   }
                 />
               )}
+              {ex.note && <NoteRow note={ex.note} />}
               {(settings.extras.minimumWin || tomorrowWin) && <Fact label={copy.extras.tomorrowWin} value={tomorrowWin?.text ?? null} />}
               <li>
                 <button type="button" class="row" onClick={onExtras}>
@@ -411,6 +423,18 @@ function UsualLine({ day, block }: { day: string; block: Block }) {
     <p class="note no-gap" data-testid="usual-line">
       {fill(copy.summary.usual, { expected: String(usual.point), lo: String(usual.lo), hi: String(usual.hi) })}
     </p>
+  )
+}
+
+/** The check-in's own note, as typed, its label above it (stage 3, group 4). */
+function NoteRow({ note }: { note: string }) {
+  return (
+    <li class="row is-static" data-testid="summary-note">
+      <span class="row-main">
+        {copy.summary.yourNote}
+        <span class="sub ink said">{fill(copy.summary.quoted, { note })}</span>
+      </span>
+    </li>
   )
 }
 

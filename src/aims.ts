@@ -287,6 +287,19 @@ export function lastPracticeDay(aim: Aim, offers: readonly Offer[], outcomes: re
   return practiceDaysOf(aim, offers, outcomes, skills, studyAims).pop() ?? null
 }
 
+/**
+ * The note written after a commitment's last answered session, when it has one (stage 3, group 4):
+ * shown at the next start, so the line you left for yourself is there when you begin again.
+ */
+export function lastSessionNote(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): string | null {
+  const keys = stepKeysOf(aim, studyAims)
+  const byOffer = new Map(outcomes.map((x) => [x.offerId, x]))
+  const answered = offers.filter((o) => (o.kind === 'step' || o.kind === 'study') && o.skippedAt === null && byOffer.has(o.id as number) && (keys.includes(o.situationKey) || studyOfferBelongs(o, aim, skills, studyAims)))
+  const last = answered.reduce<Offer | null>((m, o) => (m === null || o.at > m.at ? o : m), null)
+  const note = last ? byOffer.get(last.id as number)?.note?.trim() : undefined
+  return note ? note : null
+}
+
 /** The different days a commitment was practised, oldest first: the day each session began that you marked done or partly. A rhythm counts these (Part 39). */
 export function practiceDaysOf(aim: Aim, offers: readonly Offer[], outcomes: readonly Outcome[], skills: readonly Skill[] = [], studyAims: readonly Aim[] = [aim]): string[] {
   const keys = stepKeysOf(aim, studyAims)

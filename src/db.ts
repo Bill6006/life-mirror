@@ -761,6 +761,12 @@ export interface HerSkill {
   addedAt: string
   rungAt: string
   archivedAt: string | null
+  /**
+   * Stage 3, group 4: every rung change, oldest first, each with its moment. Kept from 2026-10-17 on:
+   * absent on a skill whose rung has not changed since, and a skill that changed before then starts
+   * from its rung at that time, its earlier changes unknown.
+   */
+  rungs?: { rung: HerRung; at: string }[]
 }
 
 /** One moment with her, dated: on its own, or one skill she did and how much help she needed. */

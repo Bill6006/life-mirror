@@ -3,9 +3,9 @@ import { blockAt } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { db, type HerSkill } from './db'
+import { db, type HerSkill, type Moment } from './db'
 import { fill, formatDayShort } from './format'
-import { HELP_LEVELS, HER_AREAS, HER_RUNGS, HER_SOURCE, herSkillById, herSkillsInArea, momentSummary, skillCounts, type HelpLevel, type HerRung } from './her'
+import { HELP_LEVELS, HER_AREAS, HER_RUNGS, HER_SOURCE, herSkillById, herSkillsInArea, momentsSince, momentSummary, rungHistory, skillCounts, type HelpLevel, type HerRung } from './her'
 import { addHerSkill, addMoment, allMoments, liveHerSkills, removeHerSkill, setHerRung } from './herFlow'
 import { useLive } from './live'
 
@@ -82,7 +82,7 @@ export function HerScreen({ onPick, onClose }: { onPick: () => void; onClose: ()
         ) : (
           <ul class="rows">
             {skills.map((s) => (
-              <SkillRow key={s.skillId} skill={s} open={open} setOpen={setOpen} onCount={count} onRung={rung} counts={skillCounts(moments, s.skillId)} />
+              <SkillRow key={s.skillId} skill={s} open={open} setOpen={setOpen} onCount={count} onRung={rung} moments={moments} />
             ))}
           </ul>
         )}
@@ -104,16 +104,21 @@ export function HerScreen({ onPick, onClose }: { onPick: () => void; onClose: ()
   )
 }
 
+/** Plain counts in words: what she did and the help she needed. */
+function countsWords(line: string, counts: ReturnType<typeof skillCounts>, day?: string): string {
+  return fill(line, { day: day ?? '', did: String(counts.did), own: String(counts.own), some: String(counts.some), lots: String(counts.lots) })
+}
+
 function SkillRow({
   skill,
-  counts,
+  moments,
   open,
   setOpen,
   onCount,
   onRung,
 }: {
   skill: HerSkill
-  counts: ReturnType<typeof skillCounts>
+  moments: readonly Moment[]
   open: Open
   setOpen: (o: Open) => void
   onCount: (skillId: string, help: HelpLevel) => void
@@ -123,7 +128,12 @@ function SkillRow({
   const def = herSkillById(skill.skillId)
   if (!def) return null
   const mode = open?.skillId === skill.skillId ? open.mode : null
-  const line = counts.did === 0 ? c.noCount : fill(c.countsLine, { did: String(counts.did), own: String(counts.own), some: String(counts.some), lots: String(counts.lots) })
+  // Stage 3, group 4: counted from the current rung, each change kept with its date. Counts only, never compared.
+  const since = blockAt(new Date(skill.rungAt)).day
+  const counts = skillCounts(momentsSince(moments, skill.rungAt), skill.skillId)
+  const all = skillCounts(moments, skill.skillId)
+  const history = rungHistory(skill)
+  const sinceDay = formatDayShort(since)
   return (
     <li class="skill-row her-row" data-testid="her-skill">
       <span class="row-main">
@@ -132,7 +142,7 @@ function SkillRow({
           {c.rungs[HER_RUNGS.indexOf(skill.rung)]}
         </span>
         <span class="sub" data-testid="her-counts">
-          {line}
+          {counts.did === 0 ? fill(c.sinceNone, { day: sinceDay }) : countsWords(c.sinceLine, counts, sinceDay)}
           {counts.last && ` · ${fill(c.lastOn, { day: formatDayShort(counts.last) })}`}
         </span>
       </span>
@@ -171,6 +181,18 @@ function SkillRow({
               </li>
             ))}
           </ul>
+          <div class="calc" data-testid="her-history">
+            <p class="calc-line ink">{c.historyTitle}</p>
+            {[...history.changes].reverse().map((h) => (
+              <p key={h.at} class="calc-line" data-testid="her-history-line">
+                {fill(c.historyLine, { rung: c.rungs[HER_RUNGS.indexOf(h.rung)], day: formatDayShort(blockAt(new Date(h.at)).day) })}
+              </p>
+            ))}
+            {history.earlierUnknown && <p class="calc-line">{c.earlierUnknown}</p>}
+            <p class="calc-line" data-testid="her-all-counts">
+              {all.did === 0 ? c.allNone : countsWords(c.allLine, all)}
+            </p>
+          </div>
         </div>
       )}
     </li>

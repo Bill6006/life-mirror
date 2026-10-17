@@ -1,5 +1,5 @@
 import { db, type HerSkill, type Moment } from './db'
-import { herSkillById, herSkillOrder, type HelpLevel, type HerRung } from './her'
+import { herSkillById, herSkillOrder, rungHistory, type HelpLevel, type HerRung } from './her'
 
 // Her skills and moments on the phone. A skill enters the list by your tap, its rung moves by
 // your tap, and a count is one more moment; no count ever moves a rung.
@@ -19,7 +19,7 @@ export function addHerSkill(skillId: string): Promise<void> {
       if (existing.archivedAt !== null) await db.herSkills.update(skillId, { archivedAt: null })
       return
     }
-    await db.herSkills.add({ skillId, rung: 'notIntroduced', addedAt: now, rungAt: now, archivedAt: null })
+    await db.herSkills.add({ skillId, rung: 'notIntroduced', addedAt: now, rungAt: now, archivedAt: null, rungs: [{ rung: 'notIntroduced', at: now }] })
   })
 }
 
@@ -28,9 +28,18 @@ export async function removeHerSkill(skillId: string): Promise<void> {
   await db.herSkills.update(skillId, { archivedAt: new Date().toISOString() })
 }
 
-/** The one way a rung changes: your tap. */
-export async function setHerRung(skillId: string, rung: HerRung): Promise<void> {
-  await db.herSkills.update(skillId, { rung, rungAt: new Date().toISOString() })
+/**
+ * The one way a rung changes: your tap. Each change is kept with its moment (stage 3, group 4); one
+ * kept before the history began starts from the rung it then stood at. The rung it already stands at
+ * changes nothing.
+ */
+export function setHerRung(skillId: string, rung: HerRung, now: Date = new Date()): Promise<void> {
+  return db.transaction('rw', db.herSkills, async () => {
+    const s = await db.herSkills.get(skillId)
+    if (!s || s.rung === rung) return
+    const at = now.toISOString()
+    await db.herSkills.update(skillId, { rung, rungAt: at, rungs: [...rungHistory(s).changes, { rung, at }] })
+  })
 }
 
 /** One more moment with her today: on its own, or one skill she did and the help she needed. */

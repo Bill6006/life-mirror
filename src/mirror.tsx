@@ -6,6 +6,7 @@ import { NavRow } from './controls'
 import { copy } from './copy'
 import { allCheckIns } from './db'
 import { fill, weekdayInitial } from './format'
+import { MonthAgoCard, monthAgoData } from './monthScreen'
 import { useLive } from './live'
 import { readingById, type ReadingId } from './readings'
 import { CONTEXT_IDS } from './score'
@@ -41,9 +42,11 @@ export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
 }
 
 /** Your own record, drawn. Every chart here is a calculation from the check-ins; each carries its caption. */
-export function MirrorScreen({ onWeekly, onJournal }: { onWeekly: () => void; onJournal: () => void }) {
+export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal }: { onWeekly: () => void; onMonth: () => void; onWords: () => void; onJournal: () => void }) {
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
+  // Stage 3, group 4: the day a month back, shown only when the record holds something of it.
+  const ago = useLive(() => monthAgoData(today.day), [today.day])
   const [overlayId, setOverlayId] = useState<ReadingId | null>(null)
   if (!all) return <section class="screen" />
 
@@ -70,9 +73,13 @@ export function MirrorScreen({ onWeekly, onJournal }: { onWeekly: () => void; on
       <div class="card">
         <ul class="rows">
           <NavRow label={copy.weekly.door} note={copy.weekly.doorNote} onClick={onWeekly} />
+          <NavRow label={copy.month.door} note={copy.month.doorNote} onClick={onMonth} testid="month-door" />
+          <NavRow label={copy.words.door} note={copy.words.doorNote} onClick={onWords} testid="words-door" />
           <NavRow label={copy.journal.door} note={copy.journal.doorNote} onClick={onJournal} testid="journal-door" />
         </ul>
       </div>
+
+      {ago && <MonthAgoCard day={ago} />}
 
       <SectionLabel index={0}>{copy.mirror.today}</SectionLabel>
       <div class="card chart-card">

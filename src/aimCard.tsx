@@ -33,6 +33,8 @@ interface Shared {
   plan: Intention | null
   /** Timing (stage 3, group 2): this commitment's plans per cue in the last 60 days and how many were kept; orders the Plan when chips. */
   kept?: readonly CueCount[]
+  /** Stage 3, group 4: the note written after its last session, shown while the next one is started. */
+  lastNote?: string | null
   /** One plain fact: when it was last practised, or the step last done. */
   last: string | null
   /** Today's sessions: the latest done, or a Partly with none done (Workstream 6). */
@@ -154,6 +156,15 @@ export function useQuarterMinute(): void {
 }
 
 const EASES: readonly Ease[] = ['hard', 'right', 'easy']
+
+/** The line left after the last session, while the next is under way (stage 3, group 4). */
+function LastNote({ note }: { note: string }) {
+  return (
+    <p class="note said no-gap" data-testid="aim-last-note">
+      {fill(copy.aims.lastNote, { note })}
+    </p>
+  )
+}
 
 /**
  * How it went, one optional tap after a learning session (Workstream 6): evidence for a later
@@ -406,6 +417,7 @@ export function AimCard({
   ctx,
   plan,
   kept,
+  lastNote = null,
   last,
   today,
   due = false,
@@ -509,6 +521,7 @@ export function AimCard({
           <p class="move-state" data-testid="aim-started">
             {fill(c.startedCard, { when: startedWhen(openOffer) })}
           </p>
+          {lastNote && <LastNote note={lastNote} />}
           {canDone && (
             <div class="actions">
               <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(openOffer).then((ok) => ok && setJustDone(openOffer.id as number))}>
@@ -776,7 +789,7 @@ export function RowFrame({
  * Something to learn with no skill named shows where to name it and nothing to start. Several fit
  * without a scroll; the rest lives on Aims.
  */
-export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, kept, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0, reviewOpen = false }: Shared & { unnamed?: boolean; index?: number; reviewOpen?: boolean }) {
+export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan, kept, lastNote = null, last, today, due = false, askEase = false, cadence, onResume, onUnblock, onPlan, onLog, unnamed = false, index = 0, reviewOpen = false }: Shared & { unnamed?: boolean; index?: number; reviewOpen?: boolean }) {
   const c = copy.aims
   const [planOpen, setPlanOpen] = useState(false)
   const [justDone, setJustDone] = useState<number | null>(null)
@@ -856,6 +869,8 @@ export function AimRow({ aim, step, open, openOffer, blocked, unblock, ctx, plan
       below={
         done && askEase && justDone !== null ? (
           <EaseTap key={justDone} offerId={justDone} />
+        ) : open && lastNote ? (
+          <LastNote note={lastNote} />
         ) : (
           !open &&
           !done &&

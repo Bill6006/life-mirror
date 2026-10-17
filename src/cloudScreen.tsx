@@ -3,9 +3,10 @@ import { CLOUD_URL } from './cloudStore'
 import { brainStatus } from './brainFlow'
 import { removeToken, saveToken, syncNow, useCloudStatus } from './cloudSync'
 import { copy } from './copy'
-import { getSettings } from './db'
-import { fill, formatWhen } from './format'
+import { db, getSettings } from './db'
+import { fill, formatDayShort, formatWhen } from './format'
 import { useLive } from './live'
+import { readSoFar } from './outsideRow'
 import { readLog } from './tokenVault'
 
 /**
@@ -17,10 +18,14 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
   const settings = useLive(getSettings, [])
   const status = useCloudStatus()
   const brain = useLive(brainStatus, [])
+  const outside = useLive(() => db.outside.toArray(), [])
   const [token, setToken] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
-  if (!settings || !status) return <section class="screen" />
+  if (!settings || !status || !outside) return <section class="screen" />
   const c = copy.cloud
+  // Stage 3, group 4: the workouts read so far, once there are any or a token is kept to read them.
+  const read = readSoFar(outside)
+  const readLine = read.last === null ? (settings.cloud.token ? c.outsideReadNone : null) : read.n === 1 ? fill(c.outsideReadOne, { last: formatDayShort(read.last) }) : fill(c.outsideRead, { n: String(read.n), days: String(read.days), last: formatDayShort(read.last) })
 
   function keep() {
     const t = token.trim()
@@ -71,6 +76,11 @@ export function CloudScreen({ onClose }: { onClose: () => void }) {
       <p class="note faint" data-testid="cloud-outside">
         {c.outside}
       </p>
+      {readLine && (
+        <p class="note faint" data-testid="cloud-outside-read">
+          {readLine}
+        </p>
+      )}
       <p class="note faint" data-testid="cloud-brain">
         {c.brain} {brain ? fill(c.brainStatus, { when: formatWhen(brain.at), model: brain.model }) : c.brainNone}
       </p>

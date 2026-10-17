@@ -40,6 +40,8 @@ import { WordingScreen } from './wording'
 import { MoveCue } from './moveCue'
 import { AwayScreen } from './awayScreen'
 import { JournalScreen } from './journalScreen'
+import { WordsScreen } from './wordsScreen'
+import { MonthScreen } from './monthScreen'
 
 type Tab = keyof typeof copy.tabs
 const order: Tab[] = ['now', 'mirror', 'moves', 'aims', 'settings']
@@ -48,7 +50,7 @@ type View =
   | { kind: 'tabs' }
   | { kind: 'checkin'; day: string; block: Block; only?: ReadingId }
   | { kind: 'extras'; day: string; block: Block; fresh: boolean }
-  | { kind: 'summary'; day: string; block: Block; fresh: boolean }
+  | { kind: 'summary'; day: string; block: Block; fresh: boolean; back?: View }
   | { kind: 'wording' }
   | { kind: 'legend' }
   | { kind: 'private'; from?: SettingsSection }
@@ -70,6 +72,8 @@ type View =
   | { kind: 'evidence' }
   | { kind: 'weekly' }
   | { kind: 'journal' }
+  | { kind: 'words' }
+  | { kind: 'month' }
   | { kind: 'readings' }
   /** Away from home (post-window, gated): reached only while its gate is open; back goes where it was opened from. */
   | { kind: 'away'; back?: View }
@@ -223,8 +227,8 @@ export function App() {
             onChange={(id) => setView({ kind: 'checkin', day: view.day, block: view.block, only: id })}
             onExtras={() => setView({ kind: 'extras', day: view.day, block: view.block, fresh: false })}
             onAway={() => setView({ kind: 'away', back: view })}
-            onDone={closeAll}
-            onDeleted={closeAll}
+            onDone={() => (view.back ? setView(view.back) : closeAll())}
+            onDeleted={() => (view.back ? setView(view.back) : closeAll())}
             onContinue={() => setView({ kind: 'checkin', day: view.day, block: view.block })}
           />
         )
@@ -270,6 +274,10 @@ export function App() {
         return <WeeklyScreen onClose={closeAll} />
       case 'journal':
         return <JournalScreen onClose={closeAll} />
+      case 'words':
+        return <WordsScreen onOpen={(day, block) => setView({ kind: 'summary', day, block, fresh: false, back: { kind: 'words' } })} onClose={closeAll} />
+      case 'month':
+        return <MonthScreen onWords={() => setView({ kind: 'words' })} onClose={closeAll} />
       case 'readings':
         return <ReadingsScreen onClose={closeAll} />
       case 'away':
@@ -291,7 +299,7 @@ export function App() {
           />
         )
       case 'mirror':
-        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} onJournal={() => open({ kind: 'journal' })} />
+        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} onMonth={() => open({ kind: 'month' })} onWords={() => open({ kind: 'words' })} onJournal={() => open({ kind: 'journal' })} />
       case 'moves':
         return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} onEvidence={() => open({ kind: 'evidence' })} />
       case 'aims':

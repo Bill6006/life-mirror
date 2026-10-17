@@ -1249,6 +1249,119 @@ const IN_THE_MOMENT: typeof STATES = [
   },
 ]
 
+/**
+ * Stage 3, group 4, the owner's record shown back: September's record with its notes, moves done and
+ * workouts, so a month ago today and the month's review have something to say; a learning commitment
+ * started again after a session that left a line; one of her skills with its rungs so far; and the
+ * workouts read, on Cloud.
+ */
+async function seedRecordBack(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 9, 17, 9, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins', 'offers', 'outcomes', 'outside', 'aims', 'skills', 'herSkills', 'moments'], 'readwrite')
+    const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const put = (date: Date, block: string, p: number, note?: string) => {
+      const answers: Record<string, number> = {}
+      for (const id of blocks[block]) answers[id] = ['stress', 'overwhelm', 'irritation'].includes(id) ? 6 - p : p
+      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), block === 'morning' ? 7 : 19, 40)
+      const done = new Date(at.getTime() + 95_000).toISOString()
+      tx.objectStore('checkins').add({ day: key(date), block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000, ...(note ? { extras: { note } } : {}) })
+    }
+    const notes = ['A long week, and the kitchen still a mess by Friday night', 'Dinner with friends ran late', 'Slept well for once']
+    for (let d = 1; d <= 30; d++) {
+      const date = new Date(2026, 8, d)
+      put(date, 'morning', 2 + (d % 3))
+      put(date, 'evening', 2 + ((d + 1) % 3), d % 6 === 5 ? notes[d % 3] : undefined)
+      if (d % 2 === 1) {
+        const at = new Date(2026, 8, d, 18).toISOString()
+        tx.objectStore('offers').add({ id: 700 + d, kind: 'block', day: key(date), block: 'evening', at, situationKey: 'evening:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: d % 4 === 1 ? 'walk-ten' : 'glass-of-water', cardId: null, candidates: ['walk-ten'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: at })
+        tx.objectStore('outcomes').add({ offerId: 700 + d, moveId: d % 4 === 1 ? 'walk-ten' : 'glass-of-water', day: key(date), block: 'evening', at, outcome: 'done', why: null, passiveOutcome: null })
+      }
+      if (d % 4 === 0) tx.objectStore('outside').add({ id: `w${d}`, day: key(date), minutes: 40, at: new Date(2026, 8, d, 18).toISOString(), source: 'workout' })
+    }
+    for (let d = 1; d <= 16; d++) put(new Date(2026, 9, d), 'evening', 3)
+    // Something to learn: yesterday's session left a line, and today's is under way.
+    const day = (d: Date) => key(d)
+    tx.objectStore('aims').add({ id: 90, kind: 'certification', stepMoveId: null, name: 'Veltish', method: 'A class', currentSkillId: 91, createdAt: new Date(2026, 8, 1, 9).toISOString(), archivedAt: null })
+    tx.objectStore('skills').add({ id: 91, aimId: 90, name: 'Ten words', method: 'A class', source: 'you', startedAt: new Date(2026, 8, 1, 9).toISOString(), order: 1, createdAt: new Date(2026, 8, 1, 9).toISOString(), archivedAt: null })
+    const session = (id: number, date: Date, closed: boolean) => ({ id, kind: 'step', day: day(date), block: 'morning', at: date.toISOString(), situationKey: 'aim:certification:90', target: 'focus', stance: '', band: '', reading: 0, moveId: 'skill:91', label: 'Ten words', minutes: 30, cardId: null, candidates: ['skill:91'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: closed ? date.toISOString() : null })
+    tx.objectStore('offers').add(session(801, new Date(2026, 9, 16, 8), true))
+    tx.objectStore('outcomes').add({ offerId: 801, moveId: 'skill:91', day: '2026-10-16', block: 'morning', at: new Date(2026, 9, 16, 9).toISOString(), outcome: 'done', why: null, passiveOutcome: null, ease: 'right', note: 'Start at page 12 next time, and say each word out loud twice' })
+    tx.objectStore('offers').add(session(802, new Date(2026, 9, 17, 9), false))
+    // Her: one skill with its rungs so far, and a moment counted at each.
+    tx.objectStore('herSkills').add({ skillId: 'counts-to-ten', rung: 'needsSupport', addedAt: new Date(2026, 8, 2, 9).toISOString(), rungAt: new Date(2026, 9, 3, 9).toISOString(), archivedAt: null, rungs: [{ rung: 'notIntroduced', at: new Date(2026, 8, 2, 9).toISOString() }, { rung: 'practicingWithDaddy', at: new Date(2026, 8, 20, 9).toISOString() }, { rung: 'needsSupport', at: new Date(2026, 9, 3, 9).toISOString() }] })
+    tx.objectStore('moments').add({ day: '2026-09-25', at: new Date(2026, 8, 25, 18).toISOString(), skillId: 'counts-to-ten', help: 'lots' })
+    tx.objectStore('moments').add({ day: '2026-10-10', at: new Date(2026, 9, 10, 18).toISOString(), skillId: 'counts-to-ten', help: 'some' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+const RECORD_BACK: typeof STATES = [
+  { name: 'Mirror, a month ago today', tab: 'Mirror', open: async (p) => expect(p.getByTestId('month-ago')).toBeVisible() },
+  { name: 'The month', tab: 'Mirror', open: async (p) => p.getByTestId('month-door').click() },
+  { name: 'Your words', tab: 'Mirror', open: async (p) => p.getByTestId('words-door').click() },
+  {
+    name: 'A summary with its note',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('words-door').click()
+      await p.getByTestId('words-row').first().click()
+      await expect(p.getByTestId('summary-note')).toBeVisible()
+    },
+  },
+  { name: 'Aims, the line left at the next start', tab: 'Aims', open: async (p) => expect(p.getByTestId('aim-last-note')).toBeVisible() },
+  { name: 'Now, the line left at the next start', tab: 'Now', open: async (p) => expect(p.getByTestId('aim-last-note')).toBeVisible() },
+  {
+    name: 'Her, the rungs so far',
+    tab: 'Aims',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Her/ }).click()
+      await p.getByTestId('her-rung-open').first().click()
+      await expect(p.getByTestId('her-history')).toBeVisible()
+    },
+  },
+  {
+    name: 'Cloud, the workouts read',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Cloud copy/ }).click()
+      await expect(p.getByTestId('cloud-outside-read')).toBeVisible()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the record shown back, its new screens and states read, fit and can be tapped, at three widths`, async ({ page }, info) => {
+    test.setTimeout(420_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedRecordBack(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, RECORD_BACK, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
 for (const theme of THEMES) {
   test(`${theme}: in the moment, the summary's two new states read, fit and can be tapped, at three widths`, async ({ page }, info) => {
     test.setTimeout(300_000)

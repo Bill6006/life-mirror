@@ -193,7 +193,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
             forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
             her: {
-              skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt })),
+              skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt, ...(s.rungs ? { rungs: s.rungs } : {}) })),
               moments: (records.moments ?? []).map((m) => ({ day: m.day, at: m.at, skill: m.skillId, help: m.help })),
             },
             brain: {
