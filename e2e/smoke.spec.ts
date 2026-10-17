@@ -3033,5 +3033,7 @@ test('the foundations: a move drawn keeps what its draw knew, and is marked seen
   expect(drawn?.seenAt).toBeUndefined()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('move-card').first()).toBeVisible()
+  // The draw is random, and a long card can sit mostly below the fold, where it is rightly not yet seen: bring it on screen.
+  await page.getByTestId('move-card').first().scrollIntoViewIfNeeded()
   await expect.poll(async () => (await morning())?.seenAt ?? null, { timeout: 10_000 }).not.toBeNull()
 })
