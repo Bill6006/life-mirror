@@ -2,6 +2,8 @@
 PLAN.md
 PROGRESS.md
 REVIEW_EXECUTION_PLAN.md
+# The private QA tools (break runners, live checks, the stress test's frozen copy and hashes): local paths, never committed.
+.qa/
 
 # Build and tooling
 node_modules/
