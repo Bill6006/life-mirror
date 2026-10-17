@@ -30,10 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Refuse to ship if the plan or the progress log is tracked
+      - name: Refuse to ship if a private document is tracked
         run: |
-          if git ls-files | grep -Ei '(^|/)(PLAN|PROGRESS)\.md$'; then
-            echo "PLAN.md or PROGRESS.md is tracked in this repository. Refusing to ship."
+          # The plan, the progress log and the execution plan live in the private repository
+          # (Bill6006/life-mirror-private), cloned as private/; none of them ever ships from here.
+          if git ls-files | grep -Ei '(^|/)(PLAN|PROGRESS|REVIEW_EXECUTION_PLAN)\.md$|^private/'; then
+            echo "A private document (PLAN.md, PROGRESS.md, REVIEW_EXECUTION_PLAN.md or private/) is tracked in this repository. Refusing to ship."
             exit 1
           fi
 
