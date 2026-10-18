@@ -110,6 +110,12 @@ export interface BConfig {
   /** A running test with an early sign of helping keeps its place, as one with a likely sign does. */
   keepEarly: boolean
   /**
+   * The fair minimum for a multi-day move on the days it can start, in place of `explore`, or null to use `explore`. Such a
+   * move can start only once in eight days, outside another's block (requirement 6), so at the everyday minimum it is
+   * offered about once in 180 days and its test has nothing to read.
+   */
+  multiFloor: number | null
+  /**
    * With every test declared on day one, how the system's error rate is shared among them: evenly, or in proportion
    * to the effect research expects of each test's move, fixed before any data (weighted Bonferroni; Genovese, Roeder
    * and Wasserman 2006). Every test keeps a part, never less than a move expected to give 0.05 step would.
@@ -158,6 +164,7 @@ export const B_DEFAULT: BConfig = {
   lw: null,
   declareAll: false,
   keepEarly: false,
+  multiFloor: null,
   alphaWeights: 'even',
   queueScore: 'explore',
 }
@@ -642,7 +649,8 @@ export class EngineB {
     // Requirement 10's floors, each kept whole: "nothing extra", every test's comparison; a running test's move; and every
     // other move its own fair minimum, never shared away as more moves become candidates. The draws share the rest.
     const floors = new Map<string, number>()
-    for (const id of candidates) floors.set(id, id === NOTHING ? this.cfg.nothingFloor : low.includes(id) ? this.cfg.explore * this.cfg.lowFloorShare : active.has(id) ? this.cfg.activeFloor : this.cfg.explore)
+    const everyday = (id: string) => (this.cfg.multiFloor !== null && clsOf(windowOfMove(id, situation.target)) === 'multi' ? this.cfg.multiFloor : this.cfg.explore)
+    for (const id of candidates) floors.set(id, id === NOTHING ? this.cfg.nothingFloor : low.includes(id) ? this.cfg.explore * this.cfg.lowFloorShare : active.has(id) ? this.cfg.activeFloor : everyday(id))
     // Every set of chances stays valid: floors never take more than 0.9 of the whole.
     const floorSum = [...floors.values()].reduce((a, b) => a + b, 0)
     const scale = floorSum > 0.9 ? 0.9 / floorSum : 1
