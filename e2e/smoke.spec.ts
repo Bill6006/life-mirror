@@ -240,9 +240,11 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
 
-  // Morning asks 13, afternoon 7, evening 8: every block feeds all six ingredients.
+  // On a fresh install, every block feeding all six ingredients: the morning asks 12 (Motivation or Confidence,
+  // in turn, since stage 3, item 5), the afternoon 9 (its 7, after the two sleep readings asked late, since no
+  // morning answered them) and the evening 8.
   const taps = await tapThrough(page)
-  expect([7, 8, 13]).toContain(taps)
+  expect([8, 9, 12]).toContain(taps)
 
   // The card: the reading out of 100 with its recipe, and the change since last time.
   const card = page.getByTestId('give-back')
