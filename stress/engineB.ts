@@ -85,14 +85,42 @@ export interface BConfig {
    * give; 'ht' by the design the recorded chances promise (the Horvitz–Thompson form of the same weights
    * and centring), so each decision's part is unbiased given the past, whatever the chances were, and a
    * test the draws starved early is not read as a smaller effect (C3; Hadad, Wager and Athey 2021).
+   * 'hybrid' reads as the draws fell until both arms in the range hold `hybridMin` decisions, then as the
+   * chances promise: with one or two decisions the promised design is ruled by the rare draw (a move
+   * offered with a small chance carries a weight of 1/π), and among the tests that have a decision on
+   * each arm at all, that reads large; the realized design's self-normalized form holds until both arms
+   * have a handful (Hájek's form).
    */
-  estimator: 'wcls' | 'ht'
+  estimator: 'wcls' | 'ht' | 'hybrid'
+  /** Decisions on each arm before 'hybrid' reads as the chances promise. */
+  hybridMin: number
   /**
    * The opt-in learning week (requirement 11), or none: the chance the owner says yes to an invitation,
-   * the week's days, the days before the next invitation after a week or a no, how many tests a week
-   * runs, and, for the upper-bound probe only, a week that never ends.
+   * the week's days, the days before the next invitation after a week (and after a no, `gapNo` when it is
+   * given), how many tests a week runs, and, for the upper-bound probe only, a week that never ends.
    */
-  lw: { accept: number; length: number; gap: number; tests: number; always: boolean } | null
+  lw: { accept: number; length: number; gap: number; gapNo?: number; tests: number; always: boolean } | null
+  /**
+   * Every test the catalogue holds declared on the first day, before any of its own sequence (requirement 1). Each
+   * test's confidence sequence then counts every randomized decision from day one, whether or not the queue is
+   * running it, and the system's error rates, the lower rungs' included, are shared by every test the catalogue
+   * holds instead of by the queue's cap. The queue only decides which tests get the running floor and the week.
+   */
+  declareAll: boolean
+  /** A running test with an early sign of helping keeps its place, as one with a likely sign does. */
+  keepEarly: boolean
+  /**
+   * With every test declared on day one, how the system's error rate is shared among them: evenly, or in proportion
+   * to the effect research expects of each test's move, fixed before any data (weighted Bonferroni; Genovese, Roeder
+   * and Wasserman 2006). Every test keeps a part, never less than a move expected to give 0.05 step would.
+   */
+  alphaWeights: 'even' | 'research'
+  /**
+   * How the queue ranks the tests waiting for a place: 'explore' by the expected benefit and half the belief's
+   * spread, so uncertain tests come first; 'benefit' by the expected benefit alone, so the tests research and the
+   * record most favour run first.
+   */
+  queueScore: 'explore' | 'benefit'
 }
 
 export const B_DEFAULT: BConfig = {
@@ -126,7 +154,12 @@ export const B_DEFAULT: BConfig = {
   alphaEarly: 0.01,
   pinned: [],
   estimator: 'wcls',
+  hybridMin: 5,
   lw: null,
+  declareAll: false,
+  keepEarly: false,
+  alphaWeights: 'even',
+  queueScore: 'explore',
 }
 
 /**
@@ -347,6 +380,9 @@ export class EngineB {
   private multiUntil = -1
   /** The error rate each test's confidence sequence is held to: the system's, shared by every test the queue can ever hold. */
   readonly alphaTest: number
+  /** The parts the error rate is shared in when every test is declared on day one: how many tests, and their weights' sum. */
+  private readonly allTests: number
+  private readonly allWeight: number
   /** The tests running now, and how many have ever run. */
   private queue: Test[] = []
   private queuedEver = 0
@@ -368,8 +404,19 @@ export class EngineB {
     this.away = awayDays
     this.declared = declared
     this.optIn = optIn
-    // Each test the queue may ever run, one pre-declared reading, gets an equal part of the system's error rate.
-    this.alphaTest = cfg.alphaSystem / cfg.queueCap
+    // Each test the queue may ever run, one pre-declared reading, gets an equal part of the system's error rate; with every
+    // test declared on day one, each of the catalogue's tests does, and the lower rungs' rates are shared the same way.
+    this.allTests = CATALOGUE_TESTS + declared.length
+    this.allWeight = liveMoves.reduce((a, m) => a + weightOf(m.id) * testsOfMove(m.id).length, 0) + declared.reduce((a, x) => a + weightOf(x.moveId), 0)
+    this.alphaTest = cfg.declareAll ? cfg.alphaSystem / this.allTests : cfg.alphaSystem / cfg.queueCap
+  }
+
+  /** A test's error rates: its confidence sequence's, and the lower rungs', each its part of the system's. */
+  private ratesOf(t: Test): { est: number; likely: number; early: number } {
+    const cfg = this.cfg
+    if (!cfg.declareAll) return { est: this.alphaTest, likely: cfg.alphaLikely, early: cfg.alphaEarly }
+    const share = cfg.alphaWeights === 'research' ? weightOf(t.moveId) / this.allWeight : 1 / this.allTests
+    return { est: cfg.alphaSystem * share, likely: cfg.alphaLikely * cfg.queueCap * share, early: cfg.alphaEarly * cfg.queueCap * share }
   }
 
   private testFor(moveId: string, target: ReadingId, window: Window): Test {
@@ -781,7 +828,7 @@ export class EngineB {
     for (const t of this.tests.values()) {
       t.post = mixturePosterior(this.priorFor(t, shiftOf(t)), t.theta, t.thetaSe)
       this.call(t)
-      if (t.queuedAt !== null && t.n1 >= 1 && t.n0 >= 1) calls.push(this.callOf(t))
+      if ((t.queuedAt !== null || this.cfg.declareAll) && t.n1 >= 1 && t.n0 >= 1) calls.push(this.callOf(t))
     }
     this.tendQueue(d)
     this.tendWeek(d)
@@ -819,7 +866,7 @@ export class EngineB {
       this.lwNext = d + lw.length + lw.gap
       // A week runs up to its own number of tests.
       this.tendQueue(d)
-    } else this.lwNext = d + lw.gap
+    } else this.lwNext = d + (lw.gapNo ?? lw.gap)
   }
 
   /**
@@ -837,7 +884,7 @@ export class EngineB {
       if (this.cfg.pinned.includes(t.key)) return true
       const age = d - (t.queuedAt as number)
       // A test that looks promising keeps its place, up to three times as long; one that does not leaves at its time.
-      const promising = t.direction === 'helps' && (t.level === 'likely' || t.level === 'established')
+      const promising = t.direction === 'helps' && (t.level === 'likely' || t.level === 'established' || (this.cfg.keepEarly && t.level === 'early'))
       if (age >= this.cfg.queueMaxDays * (promising ? 3 : 1)) {
         t.expired = true
         return false
@@ -853,18 +900,21 @@ export class EngineB {
     }
     // A learning week runs two or three tests (requirement 11); the rest of the time the queue keeps its own size.
     const size = this.cfg.lw && d < this.lwUntil ? Math.max(this.cfg.queueSize, this.cfg.lw.tests) : this.cfg.queueSize
-    if (this.queue.length >= size || this.queuedEver >= this.cfg.queueCap) return
+    // With every test declared on day one the error rate is already shared by them all, so the cap does not bind.
+    const capped = () => !this.cfg.declareAll && this.queuedEver >= this.cfg.queueCap
+    if (this.queue.length >= size || capped()) return
     const busy = new Set(this.queue.map((t) => t.moveId))
     const declaredWaiting = new Set([...this.tests.values()].filter((t) => t.queuedAt === null && this.isDeclared(t)).map((t) => t.moveId))
     const options = [...this.tests.values()].filter((t) => t.queuedAt === null && !busy.has(t.moveId) && t.cls !== 'multi' && (!declaredWaiting.has(t.moveId) || this.isDeclared(t)))
     const score = (t: Test) => {
       const recent = t.eligibleDays.filter((x) => x > d - 28).length
+      if (this.cfg.queueScore === 'benefit') return recent * Math.max(0, pMean(t.post) * t.compliance)
       const sd = Math.sqrt(Math.max(0, t.post.w.reduce((a, w, k) => a + w * (t.post.s[k] ** 2 + t.post.m[k] ** 2), 0) - pMean(t.post) ** 2))
       return recent * Math.max(0, pMean(t.post) * t.compliance + 0.5 * sd)
     }
     options.sort((a, b) => score(b) - score(a))
     for (const t of options) {
-      if (this.queue.length >= size || this.queuedEver >= this.cfg.queueCap || busy.has(t.moveId)) continue
+      if (this.queue.length >= size || capped() || busy.has(t.moveId)) continue
       if (t.eligibleDays.filter((x) => x > d - 28).length < 4) continue
       this.enter(t, d)
       this.queue.push(t)
@@ -872,10 +922,10 @@ export class EngineB {
     }
   }
 
-  /** A test enters the queue: its reading is declared now, and its confidence sequence starts from today. */
+  /** A test enters the queue: its reading is declared now, and its confidence sequence starts from today (from day one when every test was declared then). */
   private enter(t: Test, d: number): void {
     t.queuedAt = d
-    t.csStart = d
+    if (!this.cfg.declareAll) t.csStart = d
     this.queuedEver++
   }
 
@@ -885,7 +935,17 @@ export class EngineB {
    * arms' effective sizes and the residual spread allow, and the confidence sequences' half-widths.
    */
   private fit(t: Test, from: number, halfLife: number): Fit | null {
-    const ht = this.cfg.estimator === 'ht'
+    let ht = this.cfg.estimator === 'ht'
+    if (this.cfg.estimator === 'hybrid') {
+      let a1 = 0
+      let a0 = 0
+      for (const [dd, acc] of t.days) {
+        if (dd < from) continue
+        a1 += acc.n1
+        a0 += acc.n0
+      }
+      ht = a1 >= this.cfg.hybridMin && a0 >= this.cfg.hybridMin
+    }
     // The design the estimate divides by ('wcls': as the draws fell; 'ht': as the chances promise), and the realized one, for the residual spread.
     const M = new Float64Array(P * P)
     const R = new Float64Array(P * P)
@@ -964,7 +1024,8 @@ export class EngineB {
     // Never more certain than the arms' own sizes allow: the treatment term scales the arm difference by its centring.
     const naive = sigma * Math.sqrt(1 / neff1 + 1 / neff0)
     const se = Math.max(Math.sqrt(varOf(unit(IDX_BETA))), naive)
-    const half = (sd: number) => csHalfWidth(sd * Math.sqrt(n), n, this.alphaTest, this.cfg.csNStar)
+    const alpha = this.ratesOf(t).est
+    const half = (sd: number) => csHalfWidth(sd * Math.sqrt(n), n, alpha, this.cfg.csNStar)
     const gamma: number[] = []
     const gammaSe: number[] = []
     const ctxEst: [number, number][] = []
@@ -983,7 +1044,7 @@ export class EngineB {
         const [m0, m1] = ctxN[i][val]
         const naiveV = sigma * Math.sqrt(1 / Math.max(m0, 1) + 1 / Math.max(m1, 1))
         // Each context value's call shares the test's error rate with the other seven.
-        return [est, csHalfWidth(Math.max(Math.sqrt(varOf(a)), naiveV) * Math.sqrt(n), n, this.alphaTest / (2 * CONTEXTS.length), this.cfg.csNStar)]
+        return [est, csHalfWidth(Math.max(Math.sqrt(varOf(a)), naiveV) * Math.sqrt(n), n, alpha / (2 * CONTEXTS.length), this.cfg.csNStar)]
       })
       ctxEst.push([pair[0][0], pair[1][0]])
       ctxCs.push([pair[0][1], pair[1][1]])
@@ -1034,7 +1095,7 @@ export class EngineB {
       t.csStart = this.today
       t.fitAll = this.fit(t, t.csStart, Infinity)
     }
-    if (t.queuedAt === null) {
+    if (t.queuedAt === null && !cfg.declareAll) {
       t.level = 'none'
       t.direction = null
       t.ctxCalls = []
@@ -1071,8 +1132,9 @@ export class EngineB {
         if (f.beta - h > -margin && f.beta + h < margin && pLittle >= tau) return 'little'
         return null
       }
-      const likely = rung(cfg.alphaLikely, cfg.tauLikely)
-      const early = likely ? null : rung(cfg.alphaEarly, cfg.tauEarly)
+      const rates = this.ratesOf(t)
+      const likely = rung(rates.likely, cfg.tauLikely)
+      const early = likely ? null : rung(rates.early, cfg.tauEarly)
       t.level = likely ? 'likely' : early ? 'early' : 'none'
       t.direction = likely ?? early
     }
@@ -1129,6 +1191,9 @@ export class EngineB {
     return this.tests
   }
 }
+
+/** What research expects of a move, as its part of the error rate when it is shared by research: never under 0.05 step. */
+const weightOf = (moveId: string): number => Math.max(hasMove(moveId) ? moveById(moveId).prior.effect : 0, 0.05)
 
 /** A test already believed to hurt, or settled at little difference: the floors give it only a sliver, and the learning week none. */
 const lowTest = (t: Test): boolean => (t.direction === 'hurts' && (t.level === 'likely' || t.level === 'established')) || (t.level === 'established' && t.direction === 'little')

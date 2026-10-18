@@ -16,6 +16,12 @@ design's one part that adds randomized decisions per day was built here, with C3
 tuned on seeds 1–1000. No realistic configuration can pass everything, so the last fresh range,
 300001–302000, stays unread, and today's engine stays.
 
+**Then the design search (2026-10-18, tuning seeds only)**, in `RESULTS-4.md`, asked for in the owner's words
+before any change to the pass marks: the strongest designs not yet tried, 23 of them on C1's full step, then the
+strongest inside the agreed principles across all 34 scenarios. It holds every safeguard these runs can judge and
+every check on honesty, and fails every criterion that asks how soon a call is reached; S2 cannot be judged on so
+few calls. The last fresh range stays unread, and what happens next is the owner's decision.
+
 ## What is here
 
 | File | What it is |
@@ -24,16 +30,18 @@ tuned on seeds 1–1000. No realistic configuration can pass everything, so the 
 | `RESULTS.md` | The first verdict, the judge's output verbatim, the sensitivity runs and the eight-part report. |
 | `RESULTS-2.md` | The verdict after the three corrections: the corrections, the re-settled values, the judge's output verbatim, its independent recount and the report. |
 | `RESULTS-3.md` | The learning week and C3's correction, tuned on seeds 1–1000: the probe that could have said yes, the realistic week and lower rates, and why the last fresh range stays unread. |
+| `RESULTS-4.md` | The design search on seeds 1–1000: every design tried on C1's full step, the probes with the right test from day one, the strongest design's full run with the judge's output verbatim, and why every remaining failure is speed. |
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
 | `scenarios.ts` | The simulated people of the criteria's list, one scenario each. |
 | `engineA.ts` | Today's engine, replayed. The draw mirrors `offerFlow.ensureOffer` and the daily run mirrors `learningFlow.runLearning`, calling the committed functions in `src/`. |
-| `engineB.ts` | The agreed design (requirements 1–16), prototyped, with the three corrections; the learning week (`lw`) and C3's correction (`estimator: 'ht'`), both off by default. |
+| `engineB.ts` | The agreed design (requirements 1–16), prototyped, with the three corrections; the learning week (`lw`), C3's correction (`estimator: 'ht'`, or `'hybrid'` for sparse tests) and the design search's settings (`declareAll`, `alphaWeights`, `queueScore`, `keepEarly`, `lw.gapNo`, `hybridMin`), all off by default. |
 | `stats.ts` | The seeded generator and the small statistics both engines and the judge use. |
 | `run.ts` | One person through one engine, and what the metrics need from it. |
 | `pool.ts` | Many people over worker threads; it also merges parts of one run. |
 | `metrics.ts` | The judge: the frozen criteria, read on the validation runs. |
 | `recount.py` | An independent recount of the judge's headline numbers from the raw runs, in another language. |
 | `results3.py` | The learning-week runs read the way the judge reads the criteria: every number in `RESULTS-3.md`. |
+| `results4.py` | The design search's runs of C1's full step: the table in `RESULTS-4.md`, each file's settings printed beside it. |
 | `validate.sh` | The verdict run: every scenario once, on a range of validation seeds never read before. |
 | `summary.ts`, `tune.ts` | Reading a run while settling values on the tuning seeds. |
 | `probeA.ts`, `probeB.ts` | A first look at one simulated person through each engine. |
