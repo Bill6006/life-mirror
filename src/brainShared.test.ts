@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BRAIN_SWITCHES, dayGuard, isLocationFact, LOCATION_TO_CLAUDE, lackedOf, nearRepeat, numberGrounded, numbersIn, numbersRefusal, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
+import { BRAIN_SWITCHES, dayGuard, isLocationFact, isWeatherFact, LOCATION_TO_CLAUDE, lackedOf, nearRepeat, numberGrounded, numbersIn, numbersRefusal, readBrainPrefs, shapeFor, USAGE_TO_CLAUDE, usageTalkRefusal, validateAction, validateOutput, validateReview } from './brainShared'
 import type { FactSheet } from './facts'
 import { library } from './library'
 
@@ -321,5 +321,41 @@ describe('a place is context, never a cause (Part 43)', () => {
 
   it('leaves every line that cites no location fact as it was', () => {
     expect(validateOutput({ mode: 'observation', text: 'Yesterday evening read 62 because the day was calm.', factIds: ['reading.2026-09-17.evening'], cardIds: [] }, where, library).ok).toBe(true)
+  })
+})
+
+describe('the weather is context, never a cause (stage 3, item 6)', () => {
+  const rained: FactSheet = {
+    ...sheet,
+    facts: [
+      ...sheet.facts,
+      { id: 'weather.today', tags: [], text: 'Today’s forecast where you are: 2.3 mm of rain, 5.1 hours of sun, a high of 18 °C (64 °F).', values: { rain: 2.3, sun: 5.1, high: 18, highF: 64 } },
+      { id: 'assoc.weather.rain', tags: [], text: 'Evenings of rainy days (1 mm of rain or more) read -4 against evenings of dry days, like for like on the morning’s band, 5 rainy days of 14 with weather (unclear).', values: { diff: -4, times: 5, days: 14, bands: 2, mm: 1 }, n: 5, tier: 'unclear' },
+    ],
+  }
+  const line = (text: string, factIds = ['weather.today']) => validateOutput({ mode: 'observation', text, factIds, cardIds: [] }, rained, library)
+
+  it('knows the weather facts, and no other', () => {
+    expect(isWeatherFact('weather.today')).toBe(true)
+    expect(isWeatherFact('assoc.weather.rain')).toBe(true)
+    expect(isWeatherFact('assoc.weather.sun')).toBe(true)
+    expect(isWeatherFact('assoc.outside')).toBe(false)
+    expect(isWeatherFact('week.today')).toBe(false)
+  })
+
+  it('lets a line say what went with the weather, with its own numbers, and a reason only as a possibility', () => {
+    expect(line('2.3 mm of rain is forecast and a high of 64 °F; an indoor move fits the day.').ok).toBe(true)
+    expect(line('Rainy evenings may run a little lower for you; worth watching.', ['assoc.weather.rain']).ok).toBe(true)
+  })
+
+  it('refuses the weather said to cause a reading, and a number the forecast does not hold', () => {
+    expect(line('The rain drains your energy today.')).toMatchObject({ ok: false, reason: 'speaks of the weather as the cause of a reading; say what went with it' })
+    expect(line('Mood is lower because of the rain.').ok).toBe(false)
+    expect(line('Grey skies caused the flat evening.', ['assoc.weather.rain']).ok).toBe(false)
+    expect(line('A high of 21 °C today; a walk fits.')).toMatchObject({ ok: false, reason: 'the number 21 is not in the cited facts' })
+  })
+
+  it('leaves every line that cites no weather fact as it was', () => {
+    expect(validateOutput({ mode: 'observation', text: 'Yesterday evening read 62 because the day was calm.', factIds: ['reading.2026-09-17.evening'], cardIds: [] }, rained, library).ok).toBe(true)
   })
 })

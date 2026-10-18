@@ -111,13 +111,16 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
                     : head === 'weekly'
                       ? // The weekly view's analyses are the day's record; the part naming faith practices or Social path reps is theirs too.
                         ['dayRecord', ...(f.id.endsWith('.faith') ? (['faith'] as const) : f.id.endsWith('.social') ? (['socialPath'] as const) : [])]
-                      : f.id === 'becoming'
-                        ? ['commitments', 'faith', 'her']
-                        : f.id === 'people.seen'
-                          ? ['tier2']
-                          : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
-                            ? ['factSheet']
-                            : ['dayRecord']
+                      : head === 'weather'
+                        ? // Stage 3, item 6: the day's weather is the day's record, values only, never the area; its comparisons, assoc.weather.*, are filed as every association is.
+                          ['dayRecord']
+                        : f.id === 'becoming'
+                          ? ['commitments', 'faith', 'her']
+                          : f.id === 'people.seen'
+                            ? ['tier2']
+                            : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
+                              ? ['factSheet']
+                              : ['dayRecord']
   return f.tags.includes('faith') && !own.includes('faith') ? [...own, 'faith'] : own
 }
 

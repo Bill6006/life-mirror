@@ -158,6 +158,14 @@ export function isWeeklyFact(id: string): boolean {
   return id.startsWith('weekly.')
 }
 
+/**
+ * Stage 3, item 6: the day's weather from Open-Meteo, while its switch is on, and the comparisons of rainy and dry days,
+ * sunnier and greyer ones. Values only, never the area. Claude's alone, never the free chain's.
+ */
+export function isWeatherFact(id: string): boolean {
+  return id.startsWith('weather.') || id.startsWith('assoc.weather.')
+}
+
 /** The Brain settings, as the phone syncs them in the one row `brainPrefs`. */
 export interface BrainPrefsBody {
   writerModel: WriterModel
@@ -303,6 +311,16 @@ export function placeRefusal(text: string): string | null {
   return PLACE_CAUSE.test(text) && !USAGE_HEDGE.test(text) ? 'speaks of a place as the cause of a reading; say what went with it' : null
 }
 
+/**
+ * The weather is context, never a cause (stage 3, item 6): a line citing it may say what went with it, and a reason only
+ * as a possibility; the weather said to cause a reading is refused, as a place is.
+ */
+export const WEATHER_CAUSE = /\b(because (?:of )?(?:the )?(?:rain|weather|grey|gray|clouds?|sun(?:shine)?|heat|cold)|(?:rain|weather|grey|gray|clouds?|sun(?:shine)?|heat|cold) (?:makes?|made|causes?|caused|drains?|drained|lifts?|lifted|gives?|gave|brings?|brought|dampens?|dampened|weighs?|weighed)|caus(?:e|es|ed|ing)|affect(?:s|ed|ing)?)\b/i
+
+export function weatherRefusal(text: string): string | null {
+  return WEATHER_CAUSE.test(text) && !USAGE_HEDGE.test(text) ? 'speaks of the weather as the cause of a reading; say what went with it' : null
+}
+
 /** Words that speak of using the app itself. */
 export const USAGE_TALK = /\b(open(?:ed|s|ing)?|tapp(?:ed|ing)|taps?|skipp(?:ed|ing)|the app|life mirror|screens?|notifications?)\b/i
 
@@ -416,6 +434,11 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   // Part 43: a line citing where the day was spent keeps the place as context, never the cause.
   if (factIds.some(isLocationFact)) {
     const why = placeRefusal(text)
+    if (why) return why
+  }
+  // Stage 3, item 6: a line citing the weather keeps it as context, never the cause.
+  if (factIds.some(isWeatherFact)) {
+    const why = weatherRefusal(text)
     if (why) return why
   }
   const numbers = numbersRefusal(text, sheet, factIds)
