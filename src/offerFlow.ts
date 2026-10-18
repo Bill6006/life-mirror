@@ -26,6 +26,7 @@ import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from '.
 import { pathOn } from './pathFlow'
 import { beliefsFor, bigSocialToday } from './learningFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'
+import { rainSoon } from './weather'
 import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
@@ -233,11 +234,11 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
   }
   const hiddenFamilies = new Set<string>(settings.hideFaith ? ['faith'] : [])
   const ctx = await ensureDayContext(day, settings)
-  // A one-time setup already made stays out; the office and the daylight hours decide the two needs the app can know.
+  // A one-time setup already made stays out; the office, the daylight hours and, while the weather is on, the forecast rain decide the needs the app can know.
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
   // Part 24: with a path on, its row is the day's one people rep.
   const pathIsOn = (await db.aims.filter(pathOn).count()) > 0
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn, ...(awayOn() && ctx.awayFromHome ? { homeOut: true } : {}) }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn, ...(awayOn() && ctx.awayFromHome ? { homeOut: true } : {}), ...(settings.weather.on && rainSoon(ctx.weather, day, now) === true ? { rain: true } : {}) }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */

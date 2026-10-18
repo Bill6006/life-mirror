@@ -194,3 +194,33 @@ describe('stage 3, item 5, in your own file', () => {
     expect([col(again, 'skipped'), col(again, 'set_aside')]).toEqual(['', ''])
   })
 })
+
+describe('stage 3, item 6, the weather in your own file', () => {
+  const rec = (day: string, weather?: object) => ({ day, weekday: 1, withHer: true, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '20:00', changed: false, createdAt: '', ...(weather ? { weather } : {}) })
+  const records = {
+    offers: [],
+    outcomes: [],
+    cards: [],
+    declarations: [],
+    days: [rec('2026-10-18', { rain: 2.3, sun: 5.1, high: 15.5, at: '2026-10-18T08:00:00.000Z', hours: Array.from({ length: 24 }, () => 0) }), rec('2026-10-16'), rec('2026-10-17', { rain: 0, sun: 9.4, high: 18.2, at: '2026-10-18T08:00:00.000Z' })],
+  } as unknown as RecordsData
+  const evening = (day: string): CheckIn => ({ day, block: 'evening', answers: allAt(blockReadings('evening'), 3), startedAt: '', completedAt: `${day}T22:00:00.000Z`, updatedAt: '', activeMs: 1000 })
+
+  it('lists each day with weather, values only and in order, says what they are and whose, and leaves a day without it out', () => {
+    const out = JSON.parse(buildExport([], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records).json)
+    expect(out.weatherDays).toEqual([
+      { day: '2026-10-17', rainMm: 0, sunHours: 9.4, highC: 18.2, readAt: '2026-10-18T08:00:00.000Z' },
+      { day: '2026-10-18', rainMm: 2.3, sunHours: 5.1, highC: 15.5, readAt: '2026-10-18T08:00:00.000Z' },
+    ])
+    expect(out.key.weather).toContain('Weather data by Open-Meteo.com')
+    expect(out.key.weather).toContain('A day not listed is unknown, never dry.')
+  })
+
+  it('gives each check-in row its day’s weather, and leaves the cells empty on a day without it', () => {
+    const bundle = buildExport([evening('2026-10-16'), evening('2026-10-17')], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records)
+    const [head, unknown, dry] = bundle.csv.trim().split('\n')
+    const cells = (row: string) => ['day_rain_mm', 'day_sun_hours', 'day_high_c'].map((n) => row.split(',')[head.split(',').indexOf(n)])
+    expect(cells(unknown)).toEqual(['', '', ''])
+    expect(cells(dry)).toEqual(['0', '9.4', '18.2'])
+  })
+})

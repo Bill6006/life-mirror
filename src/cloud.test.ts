@@ -237,6 +237,32 @@ describe('the sync worker', () => {
     expect(await db.outbox.count()).toBe(0)
     expect([...store.rows.values()].filter((r) => r.app === APP).length).toBe(before)
   })
+
+  it('never restores the weather’s switch onto another phone: it is turned on where its words were shown (stage 3, item 6)', async () => {
+    const store = memoryStore()
+    await withToken(store)
+    await updateSettings((s) => ({ ...s, weather: { on: true }, direction: 'One line, mine' }))
+    await syncNow()
+    const sent = [...store.rows.values()].filter((r) => r.store === 'settings').map((r) => r.body ?? '')
+    expect(sent.length).toBeGreaterThan(0)
+    expect(sent.join('\n')).not.toContain('"weather"')
+
+    await fresh()
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    const restored = await getSettings()
+    expect(restored.direction).toBe('One line, mine')
+    expect(restored.weather.on).toBe(false)
+    // And a phone that has it on keeps it on through a pull of the settings from another.
+    await updateSettings((s) => ({ ...s, weather: { on: true } }))
+    store.rows.forEach((r, k) => {
+      if (r.store === 'settings') store.rows.set(k, { ...r, body: JSON.stringify({ ...JSON.parse(r.body ?? '{}'), direction: 'Changed elsewhere' }), updated_at: '2099-01-01T00:00:00.000Z', synced_at: '2099-01-01T00:00:00.000Z', device_id: 'other-phone' })
+    })
+    await syncNow()
+    // The pull ran: the other phone's change came in, and this phone's switch held.
+    expect((await getSettings()).direction).toBe('Changed elsewhere')
+    expect((await getSettings()).weather.on).toBe(true)
+  })
 })
 
 describe('the token on the phone', () => {

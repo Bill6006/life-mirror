@@ -1549,3 +1549,121 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+/**
+ * Stage 3, item 6, weather as context: a place typed, sixteen days of record with weather on each day's record, and the
+ * weather service answered in the page, never reached. The switch starts off, so its words can be read before it turns on.
+ */
+async function seedWeather(page: Page): Promise<void> {
+  await page.route('https://api.open-meteo.com/**', (route) => {
+    const u = new URL(route.request().url())
+    const [a, b] = [u.searchParams.get('start_date') ?? '', u.searchParams.get('end_date') ?? '']
+    const hours = (d: string) => Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`)
+    const body = {
+      daily_units: { time: 'iso8601', rain_sum: 'mm', showers_sum: 'mm', sunshine_duration: 's', temperature_2m_max: '°C' },
+      daily: { time: [a, b], rain_sum: [0.4, 2.1], showers_sum: [0, 0.2], sunshine_duration: [30_600, 18_000], temperature_2m_max: [17.2, 15.6] },
+      hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
+      hourly: { time: [...hours(a), ...hours(b)], rain: Array.from({ length: 48 }, () => 0), showers: Array.from({ length: 48 }, () => 0) },
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) })
+  })
+  await page.clock.setFixedTime(new Date(2026, 9, 18, 19, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins', 'days', 'settings'], 'readwrite')
+    const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    for (let d = 2; d <= 17; d++) {
+      const date = new Date(2026, 9, d)
+      const rainy = d % 3 === 0
+      for (const [block, p] of [['morning', 3], ['evening', rainy ? 2 : d % 2 ? 4 : 3]] as const) {
+        const answers: Record<string, number> = {}
+        for (const id of blocks[block]) answers[id] = ['stress', 'overwhelm', 'irritation'].includes(id) ? 6 - p : p
+        const at = new Date(2026, 9, d, block === 'morning' ? 7 : 19, 10).toISOString()
+        tx.objectStore('checkins').add({ day: key(date), block, asked: blocks[block], startedAt: at, completedAt: at, updatedAt: at, answers, activeMs: 60_000 })
+      }
+      tx.objectStore('days').put({ day: key(date), weekday: date.getDay(), withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:10', set: '18:20' }, changed: false, createdAt: date.toISOString(), weather: { rain: rainy ? 6.4 : 0.2, sun: d % 2 ? 8.5 : 2.5, high: 15, at: date.toISOString() } })
+    }
+    const store = tx.objectStore('settings')
+    const row = await new Promise<Record<string, unknown>>((res) => {
+      const q = store.get(1)
+      q.onsuccess = () => res(q.result as Record<string, unknown>)
+    })
+    store.put({ ...row, place: { lat: 51.5, lon: -0.1 }, weather: { on: false } })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+const WEATHER_STATES: typeof STATES = [
+  {
+    name: 'The week, the weather’s words before it turns on',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-week').click()
+      const sw = p.getByTestId('weather-switch')
+      if ((await sw.getAttribute('aria-pressed')) === 'true') await sw.click()
+      await expect(sw).toHaveAttribute('aria-pressed', 'false')
+      await sw.click()
+      await expect(p.getByTestId('weather-words')).toBeVisible()
+    },
+  },
+  {
+    name: 'The week, the weather on, today’s read',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-week').click()
+      const sw = p.getByTestId('weather-switch')
+      if ((await sw.getAttribute('aria-pressed')) === 'false') {
+        await sw.click()
+        await p.getByTestId('weather-on').click()
+      }
+      await expect(p.getByTestId('weather-status')).toContainText('Today’s forecast')
+    },
+  },
+  {
+    name: 'Evidence, the weather',
+    tab: 'Moves',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evidence/ }).click()
+      await expect(p.getByTestId('weather-rain-line')).toBeVisible()
+    },
+  },
+  {
+    name: 'Location Context, with the weather on',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-location').click()
+      await expect(p.getByTestId('location-kept')).toContainText('Open-Meteo')
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: weather for your area, its words, its reading and its comparisons read, fit and can be tapped, at three widths`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedWeather(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, WEATHER_STATES, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

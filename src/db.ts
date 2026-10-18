@@ -88,6 +88,23 @@ export interface Extras {
 }
 
 /** Each day's context, written from the week's shape when the day begins; changing today never rewrites the past. */
+/**
+ * A day's weather (stage 3, item 6), as Open-Meteo gave it for your area. Read on the day itself it is that day's forecast;
+ * read again the day after, it is the day as it was, and its hours go.
+ */
+export interface DayWeather {
+  /** Rain and showers over the day, in millimetres. */
+  rain: number
+  /** Hours of sunshine. */
+  sun: number
+  /** The day's high, in °C. */
+  high: number
+  /** When it was read. */
+  at: string
+  /** On the day itself: the rain forecast in each clock hour from midnight, in millimetres; null where none came back. */
+  hours?: (number | null)[]
+}
+
 export interface DayContext {
   day: string
   weekday: Weekday
@@ -119,6 +136,8 @@ export interface DayContext {
   unwell?: boolean
   /** Out among people today (stage 3, item 5; Part 20, tier 1): people are around in every block, for today alone. Absent means not marked. */
   amongPeople?: boolean
+  /** Stage 3, item 6: the day's weather where you were, from Open-Meteo while its switch was on; values only, never the area. Absent means unknown, never dry. */
+  weather?: DayWeather
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string

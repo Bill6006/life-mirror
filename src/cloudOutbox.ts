@@ -63,10 +63,10 @@ function isSilent(): boolean {
   return t !== null && silent.has(t)
 }
 
-/** The settings record travels without what belongs to this phone alone: the cloud token, the push address, the reminders already shown, and Location Context with its area (Part 43). */
+/** The settings record travels without what belongs to this phone alone: the cloud token, the push address, the reminders already shown, Location Context with its area (Part 43), and the weather's switch (stage 3, item 6). */
 export function bodyForCloud(store: string, body: Record<string, unknown>): Record<string, unknown> {
   if (store !== 'settings') return body
-  const { cloud: _cloud, push: _push, reminded: _reminded, location: _location, ...rest } = body
+  const { cloud: _cloud, push: _push, reminded: _reminded, location: _location, weather: _weather, ...rest } = body
   return rest
 }
 

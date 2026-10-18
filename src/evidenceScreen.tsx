@@ -10,9 +10,11 @@ import { NOTHING } from './offers'
 import { readingById } from './readings'
 import { MIN_PER_ARM } from './tiers'
 import { HARD_MEASURES } from './workouts'
-import { allCheckIns, getSettings } from './db'
+import { allCheckIns, db, getSettings } from './db'
 import { ownChipAnswer } from './ownChips'
 import { ownChipsOf } from './settings'
+import type { Association } from './associations'
+import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
 // learned; the weight card; the observational associations; and the plain line about months
@@ -127,6 +129,51 @@ function OwnChipsEvidence({ today }: { today: string }) {
           })}
         </div>
         <p class="note faint no-gap">{c.associationNote}</p>
+      </div>
+    </>
+  )
+}
+
+/** A like-for-like difference in points on the reading out of 100, said whole against the other side. */
+function diffWords(a: Association, other: string): string {
+  const c = copy.evidence
+  const d = Math.round(a.diff ?? 0)
+  if (d === 0) return fill(c.noDifferent, { other })
+  const n = String(Math.abs(d))
+  return d > 0 ? fill(d === 1 ? c.pointHigher : c.pointsHigher, { n, other }) : fill(d === -1 ? c.pointLower : c.pointsLower, { n, other })
+}
+
+/**
+ * The weather (stage 3, item 6), while its switch is on and once 14 days hold it: rainy days against dry ones and sunnier
+ * against greyer, each the evening's reading like for like on the morning's band, with Open-Meteo's credit beside it.
+ */
+function WeatherEvidence({ today }: { today: string }) {
+  const settings = useLive(getSettings, [])
+  const all = useLive(allCheckIns, [])
+  const days = useLive(() => db.days.toArray(), [])
+  if (!settings?.weather.on || !all || !days) return null
+  const ev = weatherEvidence(all, days, today)
+  if (!ev) return null
+  const c = copy.evidence
+  const compared = (a: Association, other: string) => (a.diff === null ? c.weatherNotComparable : fill(c.weatherDiff, { diff: diffWords(a, other), k: String(a.withEvent.n), m: String(a.without.n) }))
+  return (
+    <>
+      <h2 class="section">{c.weatherTitle}</h2>
+      <div class="card pad">
+        <div class="calc">
+          <p class="calc-line" data-testid="weather-rain-line">
+            {fill(c.weatherRain, { n: String(ev.rainy), days: String(ev.days) })} {compared(ev.rain, c.otherDry)}
+          </p>
+          <p class="calc-line" data-testid="weather-sun-line">
+            {fill(c.weatherSun, { n: String(ev.sunnier), days: String(ev.shared) })} {compared(ev.sun, c.otherGrey)}
+          </p>
+        </div>
+        <p class="note faint no-gap">
+          {c.associationNote}{' '}
+          <a class="credit" href={WEATHER_CREDIT_URL} target="_blank" rel="noopener noreferrer" data-testid="weather-evidence-credit">
+            {copy.weather.credit}
+          </a>
+        </p>
       </div>
     </>
   )
@@ -253,6 +300,8 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
       )}
 
       <OwnChipsEvidence today={today} />
+
+      <WeatherEvidence today={today} />
 
       <CaffeineEvidenceCard ev={ev.caffeine} />
 

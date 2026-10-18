@@ -36,6 +36,7 @@ import { Icon } from './icons'
 import { logUse, pruneUseLog, queueUseRowsForCloud } from './useLog'
 import { watchAppOpens } from './appOpens'
 import { sample as sampleLocation, watchLocation } from './locationFlow'
+import { watchWeather } from './weatherFlow'
 import { WordingScreen } from './wording'
 import { MoveCue } from './moveCue'
 import { AwayScreen } from './awayScreen'
@@ -126,6 +127,9 @@ export function App() {
   // Part 43: Location Context, only while the app is open and only once you turned it on: at launch, on return, every twenty minutes in view.
   const locationOn = settings?.location.on === true
   useEffect(() => (locationOn ? watchLocation() : undefined), [locationOn])
+  // Stage 3, item 6: the weather, at most once a day, only while the app is open and only once you turned it on; the day's sheet is written again when it comes.
+  const weatherOn = settings?.weather.on === true
+  useEffect(() => (weatherOn ? watchWeather(() => void writeFactsRow(blockAt(new Date()).day)) : undefined), [weatherOn])
   // Phase 10: beliefs update once a day, on open.
   useEffect(() => {
     const day = blockAt(new Date()).day

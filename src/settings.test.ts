@@ -118,3 +118,12 @@ describe('daycare days', () => {
     expect(s.week.daycareDays).toEqual(DEFAULT_WEEK.daycareDays)
   })
 })
+
+describe('the weather’s switch (stage 3, item 6)', () => {
+  it('is off on a fresh install and on an older record, and on only when the record says so', () => {
+    expect(DEFAULT_SETTINGS.weather).toEqual({ on: false })
+    expect(withDefaults({}).weather).toEqual({ on: false })
+    expect(withDefaults({ weather: { on: true } }).weather).toEqual({ on: true })
+    expect(withDefaults({ weather: { on: 'yes' } } as unknown as Partial<Settings>).weather).toEqual({ on: false })
+  })
+})

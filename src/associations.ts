@@ -126,11 +126,14 @@ export function morningAssociation(checkins: readonly CheckIn[], today: string, 
   return likeForLike(morningPoints(checkins, today, isEvent))
 }
 
-/** Every day before today with a morning logged, as a point: whether the day carried the event, the morning's band, and what the evening read. */
-export function dayPoints(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean): DayPoint[] {
+/**
+ * Every day before today with a morning logged, as a point: whether the day carried the event, the morning's band, and
+ * what the evening read. A day the record knows nothing about for this event (include says no) enters neither side.
+ */
+export function dayPoints(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean, include: (day: string) => boolean = () => true): DayPoint[] {
   const byKey = indexCheckIns(checkins)
   return checkins
-    .filter((c) => c.block === 'morning' && c.day < today)
+    .filter((c) => c.block === 'morning' && c.day < today && include(c.day))
     .map((c) => {
       const r = readingOf(c)
       const e = byKey.get(slotKey(c.day, 'evening'))
@@ -140,8 +143,8 @@ export function dayPoints(checkins: readonly CheckIn[], today: string, isEventDa
 }
 
 /** A day's event, like for like: the evenings of days that carried it, against the evenings of days that started the same. */
-export function dayAssociation(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean): Association {
-  return likeForLike(dayPoints(checkins, today, isEventDay))
+export function dayAssociation(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean, include?: (day: string) => boolean): Association {
+  return likeForLike(dayPoints(checkins, today, isEventDay, include))
 }
 
 export type AssociationTier = 'little' | 'unclear' | 'promising'

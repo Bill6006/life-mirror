@@ -106,6 +106,12 @@ export interface Settings {
    * hours ahead of the place you typed. Off until you turn it on.
    */
   location: { on: boolean; area: (Place & { at: string }) | null }
+  /**
+   * Stage 3, item 6: Weather for your area, on this phone alone (never synced): while on, once a day while Life Mirror
+   * is open, Open-Meteo is asked for yesterday's and today's weather at the area the sun's times use, to one decimal.
+   * Off on a fresh install and until you turn it on, after its words are shown; off, nothing is asked and nothing changes.
+   */
+  weather: { on: boolean }
   /** One-time setups you said came undone, by the day you said so; each is offered again after that day. */
   setupUndone: Record<string, string>
   /** The Partner path's optional online channel (Part 27): off until you turn it on; off, none of its reps is offered. */
@@ -151,6 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   daylight: { from: '07:00', to: '19:00' },
   place: null,
   location: { on: false, area: null },
+  weather: { on: false },
   setupUndone: {},
   weights: null,
   partnerOnline: false,
@@ -185,6 +192,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
     place: placeOf(stored.place),
     location: locationOf(stored.location),
+    weather: { on: stored.weather?.on === true },
     setupUndone: stored.setupUndone ?? {},
     partnerOnline: stored.partnerOnline === true,
   }

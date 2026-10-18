@@ -5,7 +5,7 @@ import { blockAt } from './blocks'
 import { build } from './build'
 import { Seg, SwitchRow, TimeRow, useSyncedText } from './controls'
 import { copy } from './copy'
-import { getSettings, updateSettings } from './db'
+import { db, getSettings, updateSettings } from './db'
 import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
 import { installApp, useInstallOffer } from './installOffer'
@@ -17,6 +17,7 @@ import { Disclosure, LinkRow, SectionLabel, SubHead } from './ui'
 import { awayOn } from './postWindowFlow'
 import { awayStatus } from './awayFlow'
 import { awayShort } from './awayScreen'
+import { oneDecimal, temperatureHere, WEATHER_CREDIT_URL } from './weather'
 
 // Settings as a short list of sections (the approved structure, 2026-09-23): each row says what
 // is set in one line, and opens its own screen with the same controls as before. Nothing was
@@ -52,7 +53,7 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
   const extrasOn = EXTRA_KEYS.filter((k) => s.extras[k]).length
   const tests = build.unitTests === null ? n.aboutNoTests : fill(n.aboutTests, { n: String(build.unitTests) })
   return {
-    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: formatHHMM(w.pickupTime) }), fill(s.place ? n.daylightSun : n.daylight, clockSpan(daylightFor(s, blockAt(new Date()).day)))].join(' · '),
+    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: formatHHMM(w.pickupTime) }), fill(s.place ? n.daylightSun : n.daylight, clockSpan(daylightFor(s, blockAt(new Date()).day))), ...(s.weather.on ? [n.weatherOn] : [])].join(' · '),
     location: s.location.on ? fill(n.locationOn, { known: n.locationKnownNone }) : n.locationOff,
     checkins: [...(s.lowDemand ? [n.lowDemandOn] : []), freq, s.depth === 'full' ? n.depthFull : n.depthShort, fill(n.quiet, clockSpan({ from: s.quietStart, to: s.quietEnd })), s.reminders.enabled ? n.remindersOn : n.remindersOff].join(' · '),
     extras: fill(n.extrasOn, { n: String(extrasOn), of: String(EXTRA_KEYS.length) }),
@@ -167,10 +168,10 @@ function DayChips({ label, value, onChange, testid }: { label: string; value: Re
 
 /**
  * Where you are, roughly (Part 35): typed once as latitude and longitude, kept to one decimal, and
- * today's sunrise and sunset shown back. Emptied, the hours you set take over again. Nothing is
- * looked up or sent anywhere: the sun is worked out on the phone.
+ * today's sunrise and sunset shown back. Emptied, the hours you set take over again. The sun is
+ * worked out on the phone; only the weather's switch, while on, sends this area anywhere, and the note says so.
  */
-function PlaceRow({ place, onSave }: { place: Place | null; onSave: (p: Place | null) => void }) {
+function PlaceRow({ place, weatherOn, onSave }: { place: Place | null; weatherOn: boolean; onSave: (p: Place | null) => void }) {
   const w = copy.week
   const [text, setText] = useSyncedText(place ? placeText(place) : '')
   const [bad, setBad] = useState(false)
@@ -204,7 +205,7 @@ function PlaceRow({ place, onSave }: { place: Place | null; onSave: (p: Place | 
         }}
       />
       <p class="note faint" data-testid="place-note">
-        {bad ? w.placeBad : place ? (sun ? fill(w.placeSun, { rise: formatHHMM(sun.rise), set: formatHHMM(sun.set) }) : w.placePolar) : w.placeNone}
+        {bad ? w.placeBad : place ? (sun ? fill(weatherOn ? w.placeSunWeather : w.placeSun, { rise: formatHHMM(sun.rise), set: formatHHMM(sun.set) }) : w.placePolar) : w.placeNone}
       </p>
     </div>
   )
@@ -220,6 +221,63 @@ function AutoPlaceNote({ settings }: { settings: Settings }) {
       {fill(copy.week.placeAuto, { rise: formatHHMM(sun.rise), set: formatHHMM(sun.set) })}
     </p>
   ) : null
+}
+
+/**
+ * Weather for your area (stage 3, item 6), on this phone alone: off until you turn it on, and turning it on first shows
+ * exactly what Open-Meteo would receive. Off, nothing is asked and nothing changes; the days already read stay on the record.
+ */
+function WeatherRow({ settings, onChange }: { settings: Settings; onChange: (on: boolean) => void }) {
+  const c = copy.weather
+  const [asking, setAsking] = useState(false)
+  const today = blockAt(new Date()).day
+  const day = useLive(() => db.days.get(today), [today])
+  const known = useLive(() => db.days.filter((d) => Boolean(d.weather)).count(), [])
+  const where = sunPlace(settings)
+  const area = where ? `${oneDecimal(where.place.lat)}, ${oneDecimal(where.place.lon)}` : null
+  const on = settings.weather.on
+  const w = day?.weather
+  return (
+    <>
+      <SwitchRow label={c.switch} note={on ? (area ? fill(c.on, { area }) : c.onNoArea) : c.off} on={on} onChange={(v) => (v ? setAsking(true) : onChange(false))} testid="weather-switch" />
+      {asking && !on && (
+        <div class="weather-words" data-testid="weather-words">
+          <p class="note">{c.lead}</p>
+          <ul class="weather-sent">
+            <li class="note no-gap" data-testid="weather-sent-area">{area ? fill(c.sentArea, { area }) : c.sentNoArea}</li>
+            <li class="note no-gap">{c.sentDates}</li>
+            <li class="note no-gap">{fill(c.sentCarried, { site: location.host })}</li>
+          </ul>
+          <p class="note">{c.nothingElse}</p>
+          <p class="note">{c.back}</p>
+          <div class="actions">
+            <button
+              type="button"
+              class="pill-quiet is-primary"
+              data-testid="weather-on"
+              onClick={() => {
+                setAsking(false)
+                onChange(true)
+              }}
+            >
+              {c.turnOn}
+            </button>
+            <button type="button" class="textbtn" data-testid="weather-not-now" onClick={() => setAsking(false)}>
+              {c.notNow}
+            </button>
+          </div>
+        </div>
+      )}
+      {on && (
+        <p class="note faint in-card" data-testid="weather-status">
+          {w ? fill(c.today, { rain: String(w.rain), sun: String(w.sun), high: temperatureHere(w.high) }) : c.notYet} {known === 1 ? c.oneDay : fill(c.days, { n: String(known ?? 0) })}{' '}
+          <a class="credit" href={WEATHER_CREDIT_URL} target="_blank" rel="noopener noreferrer" data-testid="weather-credit">
+            {c.credit}
+          </a>
+        </p>
+      )}
+    </>
+  )
 }
 
 /**
@@ -419,10 +477,11 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
               )}
               <p class="note faint in-card" data-testid="study-days-note">{copy.week.studyNote}</p>
               <DayChips label={copy.week.officeDays} value={w.officeDays} onChange={(officeDays) => setWeek((week) => ({ ...week, officeDays }))} testid="office-days" />
-              <PlaceRow place={cur.place} onSave={(place) => set((s) => ({ ...s, place }))} />
+              <PlaceRow place={cur.place} weatherOn={cur.weather.on} onSave={(place) => set((s) => ({ ...s, place }))} />
               <AutoPlaceNote settings={cur} />
               {!cur.place && <TimeRow label={copy.week.daylightFrom} value={cur.daylight.from} onChange={(from) => set((s) => ({ ...s, daylight: { ...s.daylight, from } }))} />}
               {!cur.place && <TimeRow label={copy.week.daylightTo} value={cur.daylight.to} onChange={(to) => set((s) => ({ ...s, daylight: { ...s.daylight, to } }))} />}
+              <WeatherRow settings={cur} onChange={(on) => set((s) => ({ ...s, weather: { on } }))} />
               <SwitchRow label={copy.week.pickupOn} on={w.pickupTime !== null} onChange={(on) => setWeek((week) => ({ ...week, pickupTime: on ? '17:00' : null }))} testid="pickup-on" />
               {w.pickupTime !== null && <TimeRow label={copy.week.pickupTime} value={w.pickupTime} onChange={(pickupTime) => setWeek((week) => ({ ...week, pickupTime }))} />}
               {w.pickupTime !== null && <DayChips label={copy.week.daycareDays} value={w.daycareDays} onChange={(daycareDays) => setWeek((week) => ({ ...week, daycareDays }))} testid="daycare-days" />}

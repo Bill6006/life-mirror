@@ -107,6 +107,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
   const ownLabels = new Map(ownAll.map((ch) => [ch.id, ch.label]))
   const ownLabel = (id: string) => ownLabels.get(id) ?? `chip ${id}`
   const shownNames = (c: CheckIn) => Object.keys(c.extras?.chipsShown ?? {}).map((k) => (k.startsWith('own:') ? `own: ${ownLabel(k.slice(4))}` : k))
+  // Stage 3, item 6: each day's weather as its record holds it, values only; a day without it is unknown, never dry.
+  const weatherOf = new Map((records?.days ?? []).flatMap((d) => (d.weather ? [[d.day, d.weather] as const] : [])))
   // The Partner path stays out unless ticked (Part 27): its commitment, its plans, its steps, and a line that cites it.
   const partner = opts.includePartner === true
   const partnerAims = new Set((aims?.aims ?? []).filter((a) => a.kind === 'path' && a.path === 'partner').map((a) => a.id))
@@ -174,6 +176,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         chipsShown: 'chipsShown names the chips added in stage 3 (outside, sweet, caffeineLast, amongPeople, and your own as own: and its label) that were on screen at the check-in. Shown and left untapped is a no for that check-in; not shown says nothing either way.',
         ownChips: 'ownChips lists your own chips by the label you typed, each asked as one tap at the evening check-in; removedAt is when you stopped one, and its taps stay. A check-in’s ownChips names those tapped there.',
         events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday', 'outsideToday', 'sweetSinceLastCheckIn'],
+        weather: 'weatherDays lists each day whose record holds weather from Open-Meteo for your area, read while its switch was on (Weather data by Open-Meteo.com, CC BY 4.0): rainMm is rain and showers over the day in millimetres, sunHours the hours of sunshine, highC the day’s high in °C, and readAt when it was read. Read on the day itself it is that day’s forecast; read the day after, the day as it was. A day not listed is unknown, never dry. The area is never kept. The check-in rows carry the same as day_rain_mm, day_sun_hours and day_high_c.',
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
         useLog: 'How Life Mirror was used, in its own words: appOpened (launch, or return after five minutes away), screen (which one), checkinOpened and checkinLeft (the block), lineAction, lineWhy, notification (its kind) and changePicked, each with its day and time. Never content, never anything outside the app. The Partner path’s own screens are left out unless the Partner path is included. usage is what Claude may be given of it: counts over windows ending the day before, what was observed and never why.',
       },
@@ -181,6 +184,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       checkins,
       freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
+      weatherDays: [...weatherOf].sort(([a], [b]) => (a < b ? -1 : 1)).map(([day, w]) => ({ day, rainMm: w.rain, sunHours: w.sun, highC: w.high, readAt: w.at })),
       journal: (records?.journal ?? []).map((e) => ({ day: e.day, text: e.text, writtenAt: e.writtenAt, editedAt: e.editedAt })),
       claims: (records?.claims ?? []).map((c) => ({ card: c.cardId, move: c.moveId, situation: c.situationKey, target: c.target, day: c.day, at: c.at, level: c.level, interval: c.interval, estimator: c.estimator, n: c.n, engine: c.engine })),
       useLog: (records?.useLog ?? []).filter((r) => partner || !PARTNER_SCREENS.includes(r.what ?? '')).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),
@@ -286,6 +290,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     'caffeine_shown',
     'caffeine_last',
     'chips_shown',
+    'day_rain_mm',
+    'day_sun_hours',
+    'day_high_c',
     'note',
     ...privateItems.map((it) => `private: ${it.name}`),
     ...ownAll.map((ch) => `own: ${ch.label}`),
@@ -311,6 +318,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     yesNo(Boolean(c.extras?.caffeineShown)),
     c.extras?.caffeineIntake?.last ?? '',
     shownNames(c).join('; '),
+    String(weatherOf.get(c.day)?.rain ?? ''),
+    String(weatherOf.get(c.day)?.sun ?? ''),
+    String(weatherOf.get(c.day)?.high ?? ''),
     c.extras?.note ?? '',
     ...privateItems.map((it) => yesNo(Boolean(c.extras?.private?.[String(it.id)]))),
     ...ownAll.map((ch) => yesNo(Boolean(c.extras?.own?.[ch.id]))),

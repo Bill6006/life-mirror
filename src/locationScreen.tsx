@@ -138,6 +138,7 @@ export function LocationSection() {
       <div class="card pad">
         <p class="note no-gap" data-testid="location-kept">
           {LOCATION_TO_CLAUDE === 'open' ? c.keptNoteOpen : c.keptNote}
+          {settings?.weather.on ? ` ${c.keptWeather}` : ''}
         </p>
       </div>
       <div class="actions">

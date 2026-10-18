@@ -424,7 +424,7 @@ async function applyChange(row: CloudRow, local: Record<string, unknown> | undef
     if (row.store === 'settings') {
       // The settings record comes back without what belongs to this phone alone; this phone keeps its own.
       const mine = local as Settings | undefined
-      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {}, location: mine?.location ?? withDefaults(undefined).location }
+      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {}, location: mine?.location ?? withDefaults(undefined).location, weather: mine?.weather ?? withDefaults(undefined).weather }
       await db.settings.put(merged)
     } else {
       const spec = LOGICAL[row.store]

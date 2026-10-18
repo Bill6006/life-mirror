@@ -34,6 +34,7 @@ import { necessitiesMissed } from './necessities'
 import { onTrip, type AwayRange } from './postWindow'
 import { memoryFacts } from './memoryFacts'
 import { weeklyFacts, type WeeklyAnalyses } from './weeklyFacts'
+import { RAIN_DAY_MM, weatherEvidence } from './weather'
 export type { Fact, FactSheet, SaidEntry } from './factTypes'
 
 export interface FactInput {
@@ -75,6 +76,8 @@ export interface FactInput {
   away?: { range: AwayRange | null }
   /** The weekly view's analyses over the steps the sheet may count, for the Sunday review (stage 3, group 1). Absent, no weekly fact is written. */
   weekly?: WeeklyAnalyses
+  /** Stage 3, item 6: the weather's switch is on. Absent, no weather fact is written and the sheet is as it was. */
+  weatherOn?: boolean
 }
 
 /**
@@ -187,6 +190,33 @@ function assocFact(id: string, tags: string[], event: string, a: Association, af
       ? `${event} has ${a.times} ${a.times === 1 ? 'day' : 'days'} behind it; nothing can be compared yet.`
       : `${after} ${event} read ${signed(diff)} against ${after.toLowerCase()} without it, like for like, ${a.times} times (${tier}).`
   return fact(id, tags, text, { diff, with: round(a.withEvent.mean), without: round(a.without.mean), times: a.times, bands: a.bands }, { n: a.times, tier })
+}
+
+/**
+ * The weather (stage 3, item 6), while its switch is on: today's forecast, and once 14 days hold weather, rainy days
+ * against dry ones and sunnier against greyer, each the evening's reading like for like on the morning's band. Values
+ * only, never the area; no tags, so the library's cards are drawn as before.
+ */
+export function weatherFacts(checkins: readonly CheckIn[], contexts: readonly DayContext[], today: string): Fact[] {
+  const out: Fact[] = []
+  const w = contexts.find((c) => c.day === today)?.weather
+  if (w) {
+    const [high, highF] = [Math.round(w.high), Math.round(w.high * 1.8 + 32)]
+    out.push(fact('weather.today', [], `Today’s forecast where you are: ${w.rain} mm of rain, ${w.sun} hours of sun, a high of ${high} °C (${highF} °F).`, { rain: w.rain, sun: w.sun, high, highF }))
+  }
+  const ev = weatherEvidence(checkins, contexts, today)
+  if (!ev) return out
+  const compared = (id: string, a: Association, said: (diff: number, tier: string) => string, none: string, extra: Record<string, number> = {}) => {
+    if (a.times < 1) return
+    const diff = round(a.diff)
+    const tier = associationTier(a, CHIP_WORTHWHILE)
+    out.push(fact(id, [], diff === null ? none : said(diff, tier), { diff, with: round(a.withEvent.mean), without: round(a.without.mean), times: a.times, days: ev.days, bands: a.bands, ...extra }, { n: a.times, tier }))
+  }
+  const rainy = `${ev.rainy} rainy ${ev.rainy === 1 ? 'day' : 'days'} of ${ev.days} with weather`
+  compared('assoc.weather.rain', ev.rain, (diff, tier) => `Evenings of rainy days (${RAIN_DAY_MM} mm of rain or more) read ${signed(diff)} against evenings of dry days, like for like on the morning’s band, ${rainy} (${tier}).`, `Rainy days (${RAIN_DAY_MM} mm of rain or more): ${rainy}; nothing can be compared yet.`, { mm: RAIN_DAY_MM, rainy: ev.rainy })
+  const sunnier = `${ev.sunnier} sunnier ${ev.sunnier === 1 ? 'day' : 'days'} of ${ev.shared} with weather and daylight known`
+  compared('assoc.weather.sun', ev.sun, (diff, tier) => `Evenings of sunnier days read ${signed(diff)} against greyer ones, like for like on the morning’s band, ${sunnier}, split at the middle day’s share of its daylight in sun (${tier}).`, `Sunnier days, above the middle day’s share of its daylight in sun: ${sunnier}; nothing can be compared yet.`, { sunnier: ev.sunnier, shared: ev.shared })
+  return out
 }
 
 /**
@@ -834,6 +864,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   // Stage 3, group 1: the Brain's memory of the lines seen in the last 30 days, and the weekly view's analyses for the Sunday review.
   facts.push(...memoryFacts({ today, log: i.log, brainBriefs: i.brainBriefs, contexts: i.contexts, feedback: i.feedback, intentions: i.intentions, offers: i.offers, outcomes: i.outcomes, checkins: i.checkins, cards: i.evidence.cards.map((c) => c.card), aims: i.aims }))
   if (i.weekly) facts.push(...weeklyFacts(i.weekly))
+  if (i.weatherOn) facts.push(...weatherFacts(i.checkins, i.contexts, today))
 
   // Part 43: where today and yesterday were spent, as kinds of place; context, never a cause, and Claude's to read only through its gate.
   for (const [id, d, head] of [

@@ -3633,3 +3633,164 @@ test('the record shown back (stage 3, group 4): the Cloud screen counts the work
   await expect(page.getByTestId('cloud-outside-read')).toContainText('Read so far: 3 workouts on 2 days, the last on')
   await expect(page.getByTestId('cloud-outside-read')).toContainText('Sep 5')
 })
+
+/**
+ * Open-Meteo's reply, stood in for in the page (stage 3, item 6): the two days asked, in its own shape and units, with
+ * rain in the hours from 13:00 and 14:00 of the second. The service itself is never reached from a test.
+ */
+function weatherReply(url: string): string {
+  const u = new URL(url)
+  const [a, b] = [u.searchParams.get('start_date') ?? '', u.searchParams.get('end_date') ?? '']
+  const hours = (d: string) => Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`)
+  return JSON.stringify({
+    daily_units: { time: 'iso8601', rain_sum: 'mm', showers_sum: 'mm', sunshine_duration: 's', temperature_2m_max: '°C' },
+    daily: { time: [a, b], rain_sum: [0.4, 2.1], showers_sum: [0, 0.2], sunshine_duration: [30_600, 18_000], temperature_2m_max: [17.2, 15.6] },
+    hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
+    hourly: { time: [...hours(a), ...hours(b)], rain: Array.from({ length: 48 }, (_, i) => (i === 24 + 14 || i === 24 + 15 ? 0.7 : 0)), showers: Array.from({ length: 48 }, () => 0) },
+  })
+}
+
+/** Every request the page makes to the weather service, answered here and never sent on: its address and its headers. */
+async function standInWeather(page: Page): Promise<{ url: string; headers: Record<string, string> }[]> {
+  const asked: { url: string; headers: Record<string, string> }[] = []
+  await page.route('https://api.open-meteo.com/**', (route) => {
+    asked.push({ url: route.request().url(), headers: route.request().headers() })
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: weatherReply(route.request().url()) })
+  })
+  return asked
+}
+
+const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-18'
+
+test('weather for your area (stage 3, item 6): off on a fresh install, its words first and naming the area, then one request a day with nothing in it but the area and two dates', async ({ page }) => {
+  const asked = await standInWeather(page)
+  await page.clock.setFixedTime(new Date(2026, 9, 18, 9, 30))
+  await page.goto('./')
+  await settingsSection(page, 'week')
+  const sw = page.getByTestId('weather-switch')
+  await expect(sw).toHaveAttribute('aria-pressed', 'false')
+  await expect(sw).toContainText('Off. Nothing is asked of any weather service.')
+  // Its words come first; Not now leaves it off.
+  await sw.click()
+  await expect(page.getByTestId('weather-words')).toBeVisible()
+  await expect(page.getByTestId('weather-sent-area')).toHaveText('your area to one decimal, about 11 km, once a place is set above; until then nothing is sent')
+  await page.getByTestId('weather-not-now').click()
+  await expect(page.getByTestId('weather-words')).toHaveCount(0)
+  await expect(sw).toHaveAttribute('aria-pressed', 'false')
+  // With a place typed, the words name the area that would go, and this site's address.
+  await page.getByTestId('place-field').fill('51.46, -0.13')
+  await page.getByTestId('place-field').press('Enter')
+  await expect(page.getByTestId('place-note')).toContainText('nothing is looked up or sent anywhere')
+  await sw.click()
+  await expect(page.getByTestId('weather-sent-area')).toHaveText('your area to one decimal, about 11 km: 51.5, -0.1')
+  await expect(page.getByTestId('weather-words')).toContainText('this phone’s IP address, its browser and language, and this site’s address, 127.0.0.1:4791')
+  await expect(page.getByTestId('weather-words')).toContainText('Its terms say it keeps request logs, coordinates among them, for 90 days.')
+  expect(asked).toEqual([])
+  // Turned on: one request, the area to one decimal and two dates, no referrer; the forecast shown with its credit.
+  await page.getByTestId('weather-on').click()
+  await expect(sw).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('weather-status')).toContainText('Today’s forecast: 2.3 mm of rain, 5 hours of sun, a high of')
+  await expect(page.getByTestId('weather-credit')).toHaveAttribute('href', 'https://open-meteo.com/')
+  expect(asked.map((a) => a.url)).toEqual([WEATHER_URL])
+  expect(asked[0].headers.referer).toBeUndefined()
+  expect(asked[0].headers.origin).toBe('http://127.0.0.1:4791')
+  expect(asked[0].headers.cookie).toBeUndefined()
+  // The place's note now says where the area goes.
+  await expect(page.getByTestId('place-note')).toContainText('the weather below sends this area to Open-Meteo once a day')
+  // The day's sheet is written again once the weather is kept, so the Brain reads today's forecast: values only.
+  await expect
+    .poll(async () => (await rowsOf<{ day: string; sheet: { facts: { id: string; values: Record<string, unknown> }[] } }>(page, 'facts')).find((r) => r.day === '2026-10-18')?.sheet.facts.find((f) => f.id === 'weather.today')?.values)
+    .toEqual({ rain: 2.3, sun: 5, high: 16, highF: 60 })
+  // Again today, after a reload and a return: nothing more is asked. The week's row says it is on.
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.getByTestId('settings-week')).toContainText('weather for your area on')
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await page.waitForTimeout(800)
+  expect(asked).toHaveLength(1)
+  // The data screen names it among what leaves the phone.
+  await page.getByTestId('settings-data').click()
+  await expect(page.getByText(/your area to one decimal and two dates, to Open-Meteo once a day, if you turn on Weather for your area/)).toBeVisible()
+})
+
+/** Sixteen days of record, each with weather on the day's own record: the rainy ones' evenings lower. Settings with the place, and the switch as given. */
+async function seedWeatherRecord(page: Page, on: boolean): Promise<void> {
+  const days: Record<string, unknown>[] = []
+  const checkins: Record<string, unknown>[] = []
+  for (let d = 2; d <= 17; d++) {
+    const day = `2026-10-${String(d).padStart(2, '0')}`
+    const rainy = d % 3 === 0
+    checkins.push(levelCheckIn(day, 'morning', 3), levelCheckIn(day, 'evening', rainy ? 2 : 4))
+    days.push({ day, weekday: new Date(2026, 9, d).getDay(), withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:10', set: '18:20' }, changed: false, createdAt: `${day}T06:00:00.000Z`, weather: { rain: rainy ? 6.4 : 0.2, sun: d % 2 ? 8.5 : 2.5, high: 15, at: `${day}T08:00:00.000Z` } })
+  }
+  await seedRows(page, 'checkins', checkins)
+  await seedRows(page, 'days', days)
+  await page.evaluate(async (weatherOn) => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['settings'], 'readwrite')
+    const store = tx.objectStore('settings')
+    const row = await new Promise<Record<string, unknown>>((res) => {
+      const q = store.get(1)
+      q.onsuccess = () => res(q.result as Record<string, unknown>)
+    })
+    // A fresh install has no settings row until something is set: the app fills the rest from its defaults.
+    store.put({ ...(row ?? {}), id: 1, place: { lat: 51.5, lon: -0.1 }, weather: { on: weatherOn } })
+    await new Promise<void>((res) => (tx.oncomplete = () => res()))
+    dbx.close()
+  }, on)
+}
+
+test('weather on Evidence (stage 3, item 6): rainy days against dry ones and sunnier against greyer, like for like, once 14 days hold weather; switched off, nothing of it shows and nothing more is asked', async ({ page }) => {
+  const asked = await standInWeather(page)
+  await page.clock.setFixedTime(new Date(2026, 9, 18, 19, 30))
+  await page.goto('./')
+  await seedWeatherRecord(page, true)
+  await page.reload()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('weather-rain-line')).toHaveText('Rainy days, 1 mm of rain or more: 5 of 16 days with weather. Like for like on the morning’s band, the evening read 50 points lower than on dry days (5 and 11 evenings).')
+  await expect(page.getByTestId('weather-sun-line')).toHaveText('Sunnier days, more of their daylight in sun than the middle day: 8 of 16. Like for like on the morning’s band, the evening read 6 points lower than on greyer days (8 and 8 evenings).')
+  await expect(page.getByTestId('weather-evidence-credit')).toHaveAttribute('href', 'https://open-meteo.com/')
+  // Switched off: no words needed to stop, and the screen is as it was.
+  await page.locator('.sub-head .back').or(page.getByRole('button', { name: 'Done', exact: true })).first().click()
+  await settingsSection(page, 'week')
+  await page.getByTestId('weather-switch').click()
+  await expect(page.getByTestId('weather-switch')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('weather-words')).toHaveCount(0)
+  const before = asked.length
+  await page.reload()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('nothing-line')).toBeVisible()
+  await expect(page.getByTestId('weather-rain-line')).toHaveCount(0)
+  await page.waitForTimeout(800)
+  expect(asked).toHaveLength(before)
+})
+
+for (const on of [true, false]) {
+  test(`a move that needs the outdoors (stage 3, item 6) ${on ? 'waits while rain is forecast for the hour, with the weather on' : 'is drawn as before with the weather off, whatever the record holds'}`, async ({ page }) => {
+    await standInWeather(page)
+    await page.clock.setFixedTime(new Date(2026, 9, 18, 13, 30))
+    await page.goto('./')
+    await seedWeatherRecord(page, on)
+    // Today's record: rain forecast in the hours from 13:00 and 14:00.
+    await putInto(page, 'days', { day: '2026-10-18', weekday: 0, withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:12', set: '18:18' }, changed: false, createdAt: '2026-10-18T06:00:00.000Z', weather: { rain: 2.3, sun: 5, high: 15.6, at: '2026-10-18T08:00:00.000Z', hours: Array.from({ length: 24 }, (_, h) => (h === 13 || h === 14 ? 0.7 : 0)) } })
+    await page.reload()
+    await page.getByRole('button', { name: /Check in/ }).click()
+    await tapThrough(page)
+    const offers = await rowsOf<{ block: string; moveId: string; draw?: { excluded: Record<string, string[]> } }>(page, 'offers')
+    const drawn = offers.find((o) => o.block === 'afternoon' && o.draw)
+    expect(drawn).toBeDefined()
+    const outdoors = ['walk-ten', 'green-walk', 'after-dinner-walk', 'morning-daylight', 'sit-outside-five']
+    if (on) {
+      expect([...(drawn?.draw?.excluded.rain ?? [])].sort()).toEqual(['green-walk', 'sit-outside-five', 'walk-ten'])
+      expect(outdoors).not.toContain(drawn?.moveId)
+    } else {
+      expect(drawn?.draw?.excluded.rain).toBeUndefined()
+    }
+  })
+}

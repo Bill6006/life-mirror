@@ -76,6 +76,8 @@ export interface TodayState {
   atOffice?: boolean
   /** Whether the draw is being made in daylight hours. Absent means it is. */
   daylight?: boolean
+  /** Stage 3, item 6: rain forecast where you are in this hour or the next, while the weather's switch is on. Absent means not known, and nothing waits. */
+  rain?: boolean
   /** Daycare pickup on this day, HH:MM, or null: she is away from the drop-off until then. Absent means no daycare. */
   pickupTime?: string | null
   /** Past her bedtime on a day she is with you: her moves wait for a day she is awake for. Absent means she is up. */
@@ -91,7 +93,7 @@ export interface TodayState {
   homeOut?: boolean
 }
 
-export type Exclusion = 'proposed' | 'parked' | 'pathOnly' | 'path' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'home' | 'daycare' | 'asleep' | 'people'
+export type Exclusion = 'proposed' | 'parked' | 'pathOnly' | 'path' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'rain' | 'home' | 'daycare' | 'asleep' | 'people'
 
 export function conflictsWithToday(move: Move, t: TodayState): boolean {
   const blocked = new Set([...t.doneToday, ...t.offeredToday])
@@ -130,9 +132,10 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if ((move.family === 'fatherhood' || move.id === 'time-with-her') && t.pickupTime && (s.block === 'morning' || (s.block === 'afternoon' && minutesOf(t.pickupTime) >= minutesOf(blockStart.evening)))) return 'daycare'
   if (move.id === 'church-early' && !t.churchDay) return 'schedule'
   if (!move.when.includes(s.block)) return 'block'
-  // The two needs the app can know: daylight from your daylight hours, quiet from your office days.
+  // The needs the app can know: daylight from your daylight hours, quiet from your office days, and the outdoors from the forecast rain while the weather is on.
   if (move.needs.includes('daylight') && t.daylight === false) return 'daylight'
   if (move.needs.includes('quiet') && t.atOffice === true && s.block !== 'evening') return 'quiet'
+  if (move.needs.includes('outdoors') && t.rain === true) return 'rain'
   // Post-window, gated: away from home, the moves that need the house wait (never set while the gate is closed).
   if (t.homeOut === true && needsHome(move.id)) return 'home'
   // The third: an adult there in person, from today's shape alone (Part 20's tier 1). Past reps elsewhere never enter here.

@@ -570,7 +570,8 @@ code,
 .when-chip,
 .link,
 .seg-opt,
-.textbtn.inline {
+.textbtn.inline,
+a.credit {
   position: relative;
 }
 
@@ -578,7 +579,8 @@ code,
 .pill-quiet::after,
 .when-chip::after,
 .link::after,
-.textbtn.inline::after {
+.textbtn.inline::after,
+a.credit::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -2098,6 +2100,26 @@ input[type="time"] {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* Weather for your area (stage 3, item 6): what would be sent, one line each, shown before the switch turns on. */
+.weather-words {
+  padding: 6px 0 2px;
+}
+
+.weather-sent {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--hair-2);
+  list-style: none;
+}
+
+/* Open-Meteo's credit beside its data: a link inside a line, kept whole, its hit area that of a tap inside a line. */
+a.credit {
+  display: inline-block;
+  text-underline-offset: 3px;
 }
 
 .history-row .sub {
