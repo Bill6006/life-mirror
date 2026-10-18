@@ -833,9 +833,13 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await page.getByTestId('aim-skill-set-save').click()
   await expect(page.getByTestId('aim-step')).toHaveText('Gear trains')
   await expect(page.getByTestId('aim-card')).toContainText('With a book')
-  // Not practised yet is said once, in the facts: no second line saying no session yet.
+  // Not practised yet is said once, in the facts: no second line saying no session yet, on the card or under its Details
+  // (where the practice line has sat since 2026-10-18).
   await expect(page.getByTestId('aim-card')).toContainText('not practised yet')
+  await page.getByTestId('aim-details').click()
   await expect(page.getByTestId('aim-practice')).toHaveCount(0)
+  await expect(page.getByTestId('aim-card')).not.toContainText('No session on this skill yet')
+  await page.getByTestId('aim-details').click()
 
   // Start is one tap on Now; the session stays resolvable after the block ends, and the evening check-in asks about it.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
@@ -940,8 +944,9 @@ test('the brief and the weekly view: silent until the record is long enough, and
   await expect(page.getByTestId('week-ahead')).toContainText('The week ahead appears once fourteen days each have a complete check-in')
   // The week first (final UI polish, 2026-09-26): the week ahead, the week reviewed, what moved, the baseline and the
   // gap; then the deeper diagnostics, each closed until opened, and everything in each one tap away.
-  const order = (await page.getByTestId('weekly').locator('h2.section').allInnerTexts()).map((t) => t.toLowerCase())
-  expect(order).toEqual(['the week ahead, as you usually are', 'the week, reviewed', 'what moved this week', 'baseline', 'the gap', 'deeper diagnostics'])
+  // Read once every section is in: the week's review comes a moment after the rest (a race CI caught, 2026-10-18).
+  const order = async () => (await page.getByTestId('weekly').locator('h2.section').allInnerTexts()).map((t) => t.toLowerCase())
+  await expect.poll(order).toEqual(['the week ahead, as you usually are', 'the week, reviewed', 'what moved this week', 'baseline', 'the gap', 'deeper diagnostics'])
   for (const id of ['weekly-best', 'weekly-scorecard', 'weekly-lasts', 'weekly-health', 'weekly-people', 'weekly-extension']) {
     await expect(page.getByTestId(id)).toHaveAttribute('aria-expanded', 'false')
   }
@@ -1403,6 +1408,10 @@ test('stage 3, item 5: Outside a while today and Something sweet, each marked sh
     } else if (!(await page.getByTestId('extras').isVisible())) await tapAnchor(page)
   }
   await expect(page.getByTestId('extras')).toBeVisible()
+  // The evening's own list asks it too, "check-in?" whole on one line there as well.
+  const eveningSweet = page.getByTestId('extras').getByTestId('chip-sweet')
+  await eveningSweet.scrollIntoViewIfNeeded()
+  expect(await eveningSweet.locator('.keep-together').evaluate((el) => el.getClientRects().length)).toBe(1)
   const outside = page.getByTestId('chip-outside')
   await outside.scrollIntoViewIfNeeded()
   await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'evening'))?.chipsShown as Record<string, true> | undefined)?.outside).toBe(true)

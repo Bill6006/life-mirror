@@ -174,7 +174,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
               <li key={key} data-chip={key}>
                 <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`chip-${key}`} onClick={() => toggle(key)}>
                   <span class="anchor-mark" aria-hidden="true" />
-                  <span class="row-main">{copy.extras[key]}</span>
+                  <span class="row-main">{keepTogether(copy.extras[key], 'check-in?')}</span>
                 </button>
                 {key === 'bigSocial' && !on && churchToday && (
                   <p class="note faint no-gap church-ask" data-testid="church-ask">
