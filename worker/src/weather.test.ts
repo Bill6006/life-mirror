@@ -13,11 +13,11 @@ import type { ClaimCard } from '../../src/libraryTypes'
 
 const DAY = '2026-10-20'
 const f = (id: string, text: string, values: Fact['values'] = {}, tags: string[] = []): Fact => ({ id, tags, text, values })
-// In the phone's own words (src/weather.ts): no tags, so the library's cards are drawn as before.
+// In the phone's own words (weatherFacts in src/facts.ts): no tags, so the library's cards are drawn as before.
 const WEATHER: Fact[] = [
   f('weather.today', 'Today’s forecast where you are: 2.3 mm of rain, 5.1 hours of sun, a high of 18 °C (64 °F).', { rain: 2.3, sun: 5.1, high: 18, highF: 64 }),
-  f('assoc.weather.rain', 'Evenings of rainy days (1 mm of rain or more) read -4 against evenings of dry days, like for like on the morning’s band, 5 rainy days of 14 with weather (unclear).', { diff: -4, with: 52, without: 56, times: 5, days: 14, bands: 2, mm: 1 }),
-  f('assoc.weather.sun', 'Evenings of sunnier days read +6 against greyer ones, like for like on the morning’s band, 7 sunnier days of 14 with weather, split at the middle day’s share of its daylight in sun (unclear).', { diff: 6, with: 58, without: 52, times: 7, days: 14, bands: 2 }),
+  f('assoc.weather.rain', 'Evenings of rainy days (1 mm of rain or more) read -4 against evenings of dry days, like for like on the morning’s band, 5 rainy days of 14 with weather (unclear).', { diff: -4, with: 52, without: 56, times: 5, days: 14, bands: 2, mm: 1, rainy: 5 }),
+  f('assoc.weather.sun', 'Evenings of sunnier days read +6 against greyer ones, like for like on the morning’s band, 7 sunnier days of 14 with weather and daylight known, split at the middle day’s share of its daylight in sun (unclear).', { diff: 6, with: 58, without: 52, times: 7, days: 14, bands: 2, sunnier: 7, shared: 14 }),
 ]
 const base: FactSheet = { version: 1, day: DAY, builtAt: `${DAY}T11:41:00.000Z`, hour: 7, weeks: 3, days: 22, direction: null, said: [], shortlist: [], facts: [f('week.today', 'Today is Tuesday.', {}, ['cue']), f('week.tomorrow', 'Tomorrow is Wednesday.', { day: '2026-10-21' }, ['cue']), f('path.4', 'The Social path is at stage 1.', { path: 'social' })] }
 const full: FactSheet = { ...base, facts: [...base.facts, ...WEATHER] }

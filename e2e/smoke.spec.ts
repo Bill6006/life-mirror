@@ -3766,8 +3766,11 @@ test('weather on Evidence (stage 3, item 6): rainy days against dry ones and sun
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Evidence/ }).click()
   await expect(page.getByTestId('nothing-line')).toBeVisible()
-  await expect(page.getByTestId('weather-rain-line')).toHaveCount(0)
-  await page.waitForTimeout(800)
+  // The section reads its own records after the screen shows: absent means absent for a while, not at the first look.
+  for (let i = 0; i < 6; i++) {
+    expect(await page.getByTestId('weather-rain-line').count()).toBe(0)
+    await page.waitForTimeout(250)
+  }
   expect(asked).toHaveLength(before)
 })
 

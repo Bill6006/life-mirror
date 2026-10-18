@@ -94,10 +94,13 @@ const until = async (read) => {
   return false
 }
 
-/** Sixteen days of stand-in record, each with weather on its day's record, the rainy ones' evenings lower; the place and the switch set. */
-const seed = (page, on, today) =>
+/**
+ * Sixteen days of stand-in record, each with weather on its day's record, the rainy ones' evenings lower (with `records`),
+ * and the place and the switch set. A write the store refuses is reported, never left hanging.
+ */
+const seed = (page, on, today, records = true) =>
   page.evaluate(
-    async ({ on, today }) => {
+    async ({ on, today, records }) => {
       const asked = ['mood', 'irritation', 'energy', 'stress', 'focus', 'overwhelm']
       const dbx = await new Promise((res, rej) => {
         const r = indexedDB.open('life-mirror')
@@ -105,7 +108,7 @@ const seed = (page, on, today) =>
         r.onerror = () => rej(r.error)
       })
       const tx = dbx.transaction(['checkins', 'days', 'settings'], 'readwrite')
-      for (let d = 2; d <= 17; d++) {
+      for (let d = 2; d <= (records ? 17 : 1); d++) {
         const day = `2026-10-${String(d).padStart(2, '0')}`
         const rainy = d % 3 === 0
         for (const [block, p, h] of [['morning', 3, 7], ['evening', rainy ? 2 : 4, 19]]) {
@@ -122,10 +125,14 @@ const seed = (page, on, today) =>
         q.onsuccess = () => res(q.result)
       })
       store.put({ ...(row ?? {}), id: 1, place: { lat: 51.5, lon: -0.1 }, weather: { on } })
-      await new Promise((res) => (tx.oncomplete = () => res()))
+      await new Promise((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+        tx.onabort = () => rej(tx.error)
+      })
       dbx.close()
     },
-    { on, today },
+    { on, today, records },
   )
 
 try {
@@ -176,12 +183,18 @@ try {
     await page.getByRole('button', { name: /^Evidence/ }).click({ timeout: 8000 }).catch(() => undefined)
     const rain = await text(page.getByTestId('weather-rain-line'))
     check('Evidence sets rainy days against dry ones, like for like, with the credit', rain === 'Rainy days, 1 mm of rain or more: 5 of 16 days with weather. Like for like on the morning’s band, the evening read 50 points lower than on dry days (5 and 11 evenings).' && (await seen(page.getByTestId('weather-evidence-credit'))), rain.slice(0, 60))
-    await seed(page, false, null)
+    await seed(page, false, null, false)
     await page.reload()
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click({ timeout: 8000 }).catch(() => undefined)
     await seen(page.getByTestId('nothing-line'))
-    check('switched off, none of it shows', (await page.getByTestId('weather-rain-line').count()) === 0)
+    // The section reads its own records after the screen shows: absent means absent for a while, not at the first look.
+    let absent = true
+    for (let i = 0; i < 8; i++) {
+      if ((await page.getByTestId('weather-rain-line').count()) > 0) absent = false
+      await page.waitForTimeout(250)
+    }
+    check('switched off, none of it shows', absent)
     await ctx.close()
   }
   {
