@@ -1,7 +1,7 @@
 import type { BrainPrefsBody, CitedFact, Lacked, LineAction } from './brainShared'
 import type { DrawRecord, OutcomeReason } from './provenance'
 import type { OutsideSession } from './outsideRow'
-import type { CoachAsk, CoachProposal } from './coachShared'
+import type { CoachAsk, CoachProposal, CoachRun } from './coachShared'
 import type { Firmness } from './firmness'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
@@ -877,6 +877,7 @@ class LifeMirrorDB extends Dexie {
   placeMeta!: Table<PlaceMeta, string>
   coachAsks!: Table<CoachAsk, number>
   coachProposals!: Table<CoachProposal, string>
+  coachRuns!: Table<CoachRun, string>
   claims!: Table<Claim, number>
   journal!: Table<JournalEntry, number>
   constructor() {
@@ -1082,6 +1083,10 @@ class LifeMirrorDB extends Dexie {
       claims: '++id, cardId, day',
       journal: '++id, day',
     })
+    // D7 as the owner amended it on 2026-10-18 ("suggestions on tap, two a day"): the Worker's suggestion runs, read from the brain's rows, so a waiting card can say where its ask stands. Never synced up.
+    this.version(20).stores({
+      coachRuns: 'id, day',
+    })
     installOutbox(this)
     installPendingCopy(this)
     installFreshIds(this)
@@ -1098,6 +1103,19 @@ export function askedOf(c: Pick<CheckIn, 'block' | 'asked'>): readonly ReadingId
 /** The sleep readings an afternoon asked late, after a morning that left them unanswered (stage 3, item 5). */
 export function askedLate(c: Pick<CheckIn, 'block' | 'asked'>): readonly ReadingId[] {
   return c.block === 'afternoon' ? askedOf(c).filter((id) => SLEEP_READINGS.includes(id)) : []
+}
+
+/**
+ * The one of Motivation and Confidence a morning did not ask because the two take turns (stage 3, item 5), to be
+ * marked "not asked" wherever it would otherwise show blank or old (the owner's words: "asked less often and
+ * marked 'not asked'"; shown since 2026-10-18). Null for any other check-in, one from before the turns, a shorter
+ * one, or a reading you retired.
+ */
+export function notAskedInTurn(c: Pick<CheckIn, 'block' | 'asked'>, retired: readonly string[] = []): ReadingId | null {
+  if (c.block !== 'morning' || !c.asked) return null
+  const has = (id: ReadingId) => c.asked?.includes(id) === true
+  const other: ReadingId | null = has('motivation') && !has('confidence') ? 'confidence' : has('confidence') && !has('motivation') ? 'motivation' : null
+  return other && !retired.includes(other) ? other : null
 }
 
 export function isComplete(c: Pick<CheckIn, 'block' | 'asked' | 'answers'>): boolean {

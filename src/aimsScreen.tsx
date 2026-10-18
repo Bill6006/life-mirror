@@ -21,7 +21,8 @@ import { hasMove, moveById } from './catalogue'
 import { currentRung, groupBySubject, ladderCounts, ladderOf, rungName, sittingOf } from './ladder'
 import { useLive } from './live'
 import { todaysLine } from './brainFlow'
-import { anotherSuggestion, answerReview, askSuggestion, coachStates, editedSuggestion, ensureReviews, skillCoachOpen, takeLikelyNext, useSuggestion, writeOwnSkill, type AimCoach } from './coachFlow'
+import { anotherSuggestion, answerReview, askSuggestion, coachStates, editedSuggestion, ensureReviews, skillCoachOpen, takeLikelyNext, useSuggestion, waitingKeys, writeOwnSkill, type AimCoach } from './coachFlow'
+import { peekBrain } from './cloudSync'
 import { ScreenHead, SectionLabel } from './ui'
 import { awayOn } from './postWindowFlow'
 
@@ -48,10 +49,44 @@ function useAims() {
   // The coach's pick for today, when the brain wrote one (Part 32); the row uses it only while it holds, and never on the Partner path while the monthly check shows its help.
   const coach = useLive(() => db.coachPicks.where('day').equals(today).toArray(), [today])
   const checks = useLive(monthlyChecks, [])
-  // Parts 40 and 41: each learning commitment's skill coach; null while their gate is closed.
-  const skillCoach = useLive(() => coachStates(today), [today])
+  // Parts 40 and 41: each learning commitment's skill coach; null while their gate is closed. While an ask waits, read again each
+  // 20 seconds, so its words keep up with the clock and the network (D7 as amended 2026-10-18).
+  const [tick, setTick] = useState(0)
+  const skillCoach = useLive(() => coachStates(today), [today, tick])
+  useWaitingCoach(skillCoach, today, () => setTick((n) => n + 1))
   if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks || skillCoach === undefined) return null
   return { aims, skills, marks, open, records, intentions, ctx: withCheckIns(ctx, settings), today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), socialEnergy: socialEnergyOn(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach }
+}
+
+/** How often a waiting card looks for its answer (D7 as the owner amended it on 2026-10-18: "every 20 seconds"). */
+export const COACH_LOOK_MS = 20_000
+
+/**
+ * While a suggestion is waiting and the screen is in view: every 20 seconds, a look at the few brain rows
+ * that would bring its answer or its run's state, by key, and a whole sync only when one changed; and a
+ * look at once whenever the app comes back into view. Nothing while nothing waits.
+ */
+function useWaitingCoach(states: ReadonlyMap<number, AimCoach> | null | undefined, today: string, onTick: () => void): void {
+  const keys = waitingKeys(states, today)
+  const key = keys.map((k) => `${k.store}|${k.id}`).join(',')
+  useEffect(() => {
+    if (!keys.length) return
+    const look = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void peekBrain(keys)
+      onTick()
+    }
+    const timer = setInterval(look, COACH_LOOK_MS)
+    const onShow = () => {
+      if (document.visibilityState === 'visible') look()
+    }
+    document.addEventListener('visibilitychange', onShow)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onShow)
+    }
+    // The keys stand for themselves: a new ask, or a new day, starts the look over.
+  }, [key])
 }
 
 /** A learning commitment's own view: the practice on its current skill, the skills before it newest first with their sessions, the proofs the retired ladder recorded (read only), and the taps only you make. */

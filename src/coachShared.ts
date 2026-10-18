@@ -14,8 +14,43 @@ import { BANNED_WORDS, USAGE_VERDICT } from './brainShared'
  */
 export const SKILL_COACH: 'gated' | 'open' = 'open'
 
-/** D7: at most two on-demand suggestion runs a day, only after the day's line and the coach. */
+/**
+ * D7, as the owner amended it on 2026-10-18 ("Go on the new D7: suggestions on tap, two a day"): a
+ * suggestion runs when the owner taps, at any time of day, at most two runs a day that reach Claude.
+ * Progression reviews stay as they were: batched in one run a day, after the day's line and the coach.
+ */
 export const MAX_SETUP_RUNS_A_DAY = 2
+/** A fire the routine refused before any session started (the account's limit, or an error) uses none of the two, and is tried again this many minutes later, or at the routine's own retry-after when that is later. */
+export const REFUSED_RETRY_MINUTES = 15
+
+/** A suggestion run as the Worker records it, with only what the phone reads to say where an ask stands. */
+export interface CoachRun {
+  id: string
+  day: string
+  at: string
+  status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
+  /** Set when the routine took the fire: the run reached Claude. */
+  firedAt?: string
+  retryAfter?: string | null
+  /** The asks the run carried. */
+  asks: number[]
+}
+
+/** A day's two suggestion runs, by the ids the Worker gives them on the bridge. */
+export const skillTaskIds = (day: string): [string, string] => [`task:${day}:skill`, `task:${day}:skill.2`]
+
+/** Whether a run reached Claude: the routine took its fire. Only these count toward the two a day. */
+export const reachedClaude = (r: { firedAt?: string | null }): boolean => typeof r.firedAt === 'string' && r.firedAt.length > 0
+
+/** When a refused fire is tried again, in milliseconds: REFUSED_RETRY_MINUTES after it, or the routine's retry-after (seconds, or a date) when that is later. */
+export function retryAtOf(r: { at: string; retryAfter?: string | null }): number {
+  const fired = Date.parse(r.at)
+  const base = fired + REFUSED_RETRY_MINUTES * 60_000
+  const ra = r.retryAfter?.trim()
+  if (!ra) return base
+  const later = /^\d+$/.test(ra) ? fired + Number(ra) * 1000 : Date.parse(ra)
+  return Number.isFinite(later) ? Math.max(base, later) : base
+}
 /** The earliest ordinary review: six different practice days on the current skill (D1, amended), never an advancement. */
 export const REVIEW_DAYS = 6
 /** And at least seven calendar days behind the skill: a burst of practice cannot reach a review in a week. */

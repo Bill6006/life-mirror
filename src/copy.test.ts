@@ -8,6 +8,12 @@ import { clockTimes12, daysAgoWords } from './format'
 
 // Rule 4 of the plan: a reading, never a verdict. These words fail the build.
 const banned = ['failed', 'bad', 'lazy', 'behind', 'weak', 'slipped again']
+/**
+ * The owner's own words, kept exactly as they gave them, that use a banned word without judging anyone. Only the
+ * whole phrase is allowed: "Anything behind it?" asks what lies behind a drop (stage 3, group 3, the owner's
+ * word of 2026-10-09, restored at their word of 2026-10-18); "behind" anywhere else still fails.
+ */
+const ownersWords = ['Anything behind it?']
 
 function* strings(value: unknown): Generator<string> {
   if (typeof value === 'string') yield value
@@ -18,8 +24,9 @@ describe('UI copy', () => {
   it('contains no verdict words', () => {
     const offences: string[] = []
     for (const s of strings(copy)) {
+      const plain = ownersWords.reduce((rest, phrase) => rest.split(phrase).join(''), s)
       for (const w of banned) {
-        if (new RegExp(`\\b${w}\\b`, 'i').test(s)) offences.push(`"${s}" uses "${w}"`)
+        if (new RegExp(`\\b${w}\\b`, 'i').test(plain)) offences.push(`"${s}" uses "${w}"`)
       }
     }
     expect(offences).toEqual([])

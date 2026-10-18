@@ -5,6 +5,13 @@ export function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => vars[key] ?? '')
 }
 
+const SMALL_NUMBERS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+
+/** A small count in words, as a sentence says it (eight days each way); a larger one in figures. */
+export function countWords(n: number): string {
+  return Number.isInteger(n) && n >= 0 && n < SMALL_NUMBERS.length ? SMALL_NUMBERS[n] : String(n)
+}
+
 /** "today", "yesterday", "3 days ago": never "1 days ago". */
 export function daysAgoWords(n: number, words: { today: string; yesterday: string; daysAgo: string }): string {
   if (n <= 0) return words.today

@@ -19,7 +19,8 @@ red. Rules every runner keeps:
 | `stage1_breaks.py` | stage 1, items a–s and agreed items 4–6, and item q's last instance (2026-10-17) | 33 of 33 caught; re-run against batch 2b's code and the UI cleanups', still 33 of 33; against stage 3's groups 1 to 4, 33 of 33, then 35 of 35 with item q's two |
 | `batch2_breaks.py` | batch 2a: the foundations, the claims log, the journal's capture, the wipe | 14 of 14; 14 of 14 at every re-run since, the last against stage 3's group 4 |
 | `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26; re-run against the UI cleanups' code and stage 3's, 26 of 26 |
-| `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16; re-run against stage 3's code, 16 of 16 |
+| `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16; re-run against stage 3's code, 16 of 16; two retired 2026-10-18 (the card's "after today's line", which the owner's new D7 replaced) |
+| `audit_fixes_breaks.py` | the audit's eight fixes and the new D7 (2026-10-18): the Worker's minute, a suggestion at once and reviews after the line, only runs that reached Claude counted, a refused fire's wait; the phone's wait words, its look before any pull; the Aims cards' actions first and counts under Details, the review's evidence under Why; "Anything behind it?"; "not asked"; the test tap's sentence; the field hints and "check-in?" kept whole | (filled in when run) |
 | `stage3_breaks.py` | stage 3: group 3 (in the moment): Anything going on?, the evening's matching pattern; group 1 (the Brain with a memory): the memory of each line seen, the weekly view's facts, trends read by the week, their filing in the Worker and the free chain kept off them; group 2 (timing): the reminder's moment, the chips' order, the retired follow-up; group 4 (the record shown back): a check-in's note on its summary, Your words, the line left after a session, Her from the current rung, the month, the workouts read; the watched daylight test's race: a field just shown keeps what is typed into it | group 3, 10 of 10; groups 1 and 2, 47 of 47 (one first missed and its test made stronger, then caught); group 4, 27 of 27 (one first missed and its test made stronger, then caught); all 84 against group 4's final code, 84 of 84; the field race, 2 of 2 |
 | `stage3_item5_breaks.py` | stage 3, item 5 (the check-in and the readings put to use): a move drawn again when the day changes, Out among people today, sleep asked late, Motivation and Confidence in turn, Outside a while today, Something sweet and when the last caffeine was, the newer chips counted and compared only where shown, Social energy's steer, the expectancy tap, your own chips | 58 of 61 first: three missed and their tests made stronger, then caught, 61 of 61 |
 | `stage3_item6_breaks.py` | stage 3, item 6 (weather as context): one request a day naming only the area to one decimal and two dates, with no referrer; nothing asked while off or without a place; a failure not tried again that day; only the units asked; a day missing anything unknown, never dry; the days' own records, none made up; rain this hour or the next keeping an outdoor move waiting, only while on; the comparisons at 14 days, a day without weather on neither side; the sheet only while on, values only; the Worker's filing, the free chain and Claude's rule; a cause refused; the switch on this phone alone; the export; the screens saying first, and wherever the area goes, what is sent | 45 of 46 first: one missed and its test made stronger, then caught, 46 of 46 |
@@ -34,7 +35,8 @@ stage 3 runners run Vitest for the breaks a unit test guards. `PW_CONFIG=<config
 ## Live checks (`live-*.mjs`, `common.mjs`)
 
 Each opens the live site in fresh throwaway Playwright contexts, with stand-in records only and no
-cloud token. Pass the expected short commit: `node qa/live-b2b.mjs 4d650b1`. Each checks the build
+cloud token, except `live-skillcoach.mjs`: its cloud is a stand-in answered inside the page, never reached, and its token
+is made up and written into the app's own storage. Pass the expected short commit: `node qa/live-b2b.mjs 4d650b1`. Each checks the build
 stamp first, then that batch's features. Each also confirms the page reached no host but the site
 itself, and threw no page error.
 
@@ -49,12 +51,13 @@ itself, and threw no page error.
 | `live-stage3b.mjs` | stage 3, groups 1 and 2 | 8 of 8 against a local preview; 3 of 8 against the build before it, every feature check failing |
 | `live-stage3c.mjs` | stage 3, group 4 | 11 of 11 against a local preview; 2 of 11 against the build before it, every feature check failing |
 | `live-stage3d.mjs` | stage 3, item 5 | 13 of 13 against a local preview, three times; 2 of 13 against the build before it, every feature check failing |
-| `live-stage3e.mjs` | stage 3, item 6, weather | 13 of 13 against a local preview, five times; 4 of 13 against the build before it, every check of the feature failing; the weather service is answered in the page and never reached |
+| `live-stage3e.mjs` | stage 3, item 6, weather | 13 of 13 against a local preview, five times; 4 of 13 against the build before it, every check of the feature failing; the weather service is answered in the page and never reached. Since 2026-10-18 its moments are by London's clock and its pages in London's zone, the stand-in area's: 13 of 13 from a New York machine against e8afea2, where it was 12 of 13 |
+| `live-skillcoach.mjs` | the skill coach the way the owner uses it, with the cloud copy on (the audit's fix 4), and the new D7 | (filled in when run) |
 
 Wait for each element before reading it. Two of batch 2b's first misses were the script reading the
 screen before it rendered.
 
-`LIVE_URL=<url>` points `live-ui-cleanups.mjs` and the five `live-stage3*.mjs` scripts at a local preview to prove
+`LIVE_URL=<url>` points `live-ui-cleanups.mjs`, the five `live-stage3*.mjs` scripts and `live-skillcoach.mjs` at a local preview to prove
 the script itself, and `CHROMIUM_PATH=<path>` launches a browser where Playwright's own is not installed.
 
 ## Snapshot pairing (`snappair.py`)

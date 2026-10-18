@@ -257,7 +257,7 @@ export const copy = {
     officeDays: 'Office days',
     daycareDays: 'Daycare days',
     place: 'Where you are, roughly',
-    placeHint: 'Latitude, longitude, like 40.7, -74.0',
+    placeHint: 'Lat, lon: 40.7, -74.0',
     placeNone: 'Typed once and rounded to one decimal, about eleven kilometres; kept on this phone and your own copy. The day’s sunrise and sunset then set the daylight hours; until then the hours below do.',
     placeSun: 'Today: sunrise {rise}, sunset {set}. A move that needs daylight waits for these; nothing is looked up or sent anywhere.',
     /** While the weather's switch is on (stage 3, item 6), the area does go somewhere, and the note says so. */
@@ -320,7 +320,7 @@ export const copy = {
     deleteConfirm: 'Tap again to delete it',
     usual: 'Usually {expected} ({lo} to {hi}) at this time.',
     /** Stage 3, group 3: one optional line after a reading worsens by two steps, writing this check-in's note. The agreed "anything behind it?" would use "behind", a word Rule 4 bans. */
-    behindIt: 'Anything going on?',
+    behindIt: 'Anything behind it?',
     /** Stage 3, group 3: the one pattern tonight matches, from What comes before your days. */
     pattern: 'Evenings like this one',
     patternNote: 'From your own record, as Mirror shows it: an association, never a cause.',
@@ -328,6 +328,9 @@ export const copy = {
     yourNote: 'Your note',
     /** Stage 3, item 5: a sleep reading the afternoon asked late. */
     askedLate: 'Asked late, about last night',
+    /** Stage 3, item 5: Motivation and Confidence take turns, one each morning; the other is marked so (the owner's words). */
+    notAsked: 'Not asked',
+    notAskedWhy: 'Asked in turn with {other}, one each morning',
     quoted: '“{note}”',
   },
   since: {
@@ -353,7 +356,7 @@ export const copy = {
     yesterdayWin: 'Today’s minimum win',
     winOutcome: { done: 'Done', partly: 'Partly', no: 'No' },
     tomorrowWin: "Tomorrow's minimum win",
-    winPlaceholder: 'One line, sized to one sitting',
+    winPlaceholder: 'One line, one sitting',
     winSet: 'Set for tomorrow.',
     caffeine: 'Caffeine',
     dinner: 'Late or heavy dinner',
@@ -398,7 +401,8 @@ export const copy = {
     churchAsk: 'Church today. If it made a big social day, mark it, and the recovery gap rides alongside this evening’s move.',
     chipDirection: 'Your direction: {line}',
     noteLabel: 'Anything the app has no question for',
-    notePlaceholder: 'One line. Claude may read it, as Settings → Brain allows.',
+    // Shortened at the owner's word (2026-10-18) to fit the field whole, with text at 130 % and in the phone's wider font too; Settings → Brain → Check-in notes still governs it.
+    notePlaceholder: 'A line Claude may read',
   },
   mirror: {
     today: 'Today',
@@ -410,6 +414,7 @@ export const copy = {
     todayCaption: '{n} of 3 blocks logged · the reading out of 100 by block · an overlay shows a context reading on the same scale',
     /** Stage 3, item 5: the afternoon's answer to a sleep reading, asked late. */
     overlayLate: '{reading}: the afternoon’s answer was asked late, about last night.',
+    overlayNotAsked: '{reading}: not asked today. Motivation and Confidence are asked in turn, one each morning.',
     weekCaption: 'Seven days · each dot one block · a gap is Not logged yet',
     heatCaption: 'Brighter is higher · an empty outline is Not logged yet · {days} days',
     togetherNote: 'Moving together is not causing.',
@@ -1040,7 +1045,8 @@ export const copy = {
     planned: 'Planned · {cue}, {time}',
     changePlan: 'Change',
     cueLine: '{cue} · started {started} of {n} planned',
-    cueNote: 'One tap says when. Counts only: plans made under each cue, and how many were started.',
+    // The Aims cards (the owner's words, 2026-10-17, done whole 2026-10-18): the counts sit under Details, headed, with no note.
+    cuesTitle: 'Plans by cue',
     moved: '{skill} advanced to {rung}.',
     stayed: '{skill} already stood at {rung}.',
     lastMoved: { today: 'moved today', yesterday: 'moved yesterday', days: 'last moved {n} days ago', never: 'not moved yet' },
@@ -1092,16 +1098,24 @@ export const copy = {
   coach: {
     suggests: 'Claude suggests',
     // The skill coach's start (cleaned up 2026-10-17): two plain actions, and while Claude works, when its answer comes.
+    // D7 as the owner amended it on 2026-10-18 ("suggestions on tap, two a day"): it starts when asked, and a card that
+    // cannot have it soon says why and when it comes.
     choosing: 'Claude is choosing a skill…',
     choosingAnother: 'Claude is choosing another skill…',
-    whenAfterLine: 'It comes after today’s line, which follows your morning check-in or 11:00 AM.',
-    whenSoon: 'It usually comes within an hour; after two in a day, the next waits for tomorrow.',
+    whenSoon: 'Usually ready in a few minutes.',
+    asked: 'Asked Claude for a skill',
+    askedAnother: 'Asked Claude for another skill',
+    whenUnsent: 'Not sent yet: it goes as soon as this phone reaches the cloud copy.',
+    whenRefused: 'Claude couldn’t start just now; your Claude usage limit may be reached. It tries again at {time}.',
+    whenTomorrow: 'Both of today’s two suggestions are used. This one comes after midnight.',
+    whenFailed: 'Claude couldn’t finish this one. It tries again after midnight.',
     ask: 'Suggest a skill with Claude',
     askNew: 'Suggest a new skill with Claude',
     askNote: 'Your current skill stays until you choose.',
     setMyself: 'Set one myself',
     careQuestion: 'Any injury or condition the practice should respect?',
-    carePlaceholder: 'Optional, e.g. high blood pressure',
+    // Fits whole with text at 130 % and in the phone's wider font (2026-10-18); the ask works with it left empty.
+    carePlaceholder: 'e.g. high blood pressure',
     minutes: '{n} minutes a session',
     rhythm: '{n} a week',
     rhythmRest: '{n} a week, with {rest} between',
@@ -1132,6 +1146,8 @@ export const copy = {
     makeCurrent: 'Make it current',
     reviewMark: 'Review',
     reviewNote: 'Nothing changes until you choose; Keep starts the count again.',
+    /** The review's evidence and reasons, one tap away (the Aims cards, 2026-10-18). */
+    reviewWhy: 'Why',
   },
   partnerNotes: {
     title: 'The Partner path · notes and checks',
@@ -1144,7 +1160,7 @@ export const copy = {
     milestones: 'Milestones',
     milestonesNote: 'Dated notes, never counts: one tap for a step, or your own words.',
     steps: { exclusive: 'We became exclusive', families: 'We met each other’s families', child: 'They met my child', movingIn: 'We moved in together', engagement: 'We got engaged' },
-    milestonePlaceholder: 'A milestone, in your words',
+    milestonePlaceholder: 'A milestone',
     keep: 'Keep',
     milestoneLine: '{note} · {day}',
     reflections: 'Reflections',
@@ -1234,7 +1250,8 @@ export const copy = {
     counts: 'What counts',
     notProgress: 'Not progress here',
     byRep: 'Your reps',
-    repLine: '{rep} · done {done} · partly {partly} · no {no}',
+    repLine: '{rep} · {counts}',
+    repCounts: { done: 'done {n}', partly: 'partly {n}', no: 'no {n}' },
     noReps: 'No rep marked yet.',
     lastRep: 'Last rep: {rep}, {when}',
     /** Stage 3, item 5: one optional tap after a People rep is marked done; reflection only. */
@@ -1392,8 +1409,8 @@ export const copy = {
     neverExported: 'Not exported yet.',
     exportFailed: 'The share sheet did not open. Try again from the installed app.',
     importTitle: 'Import a hypothesis',
-    importNote: 'An outside hypothesis enters only as a card to test, never as something to believe. Paste one line of JSON: move, alternative, target, context.',
-    importPlaceholder: '{"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}',
+    importNote: 'An outside hypothesis enters only as a card to test, never as something to believe. Paste one line of JSON: move, alternative, target, context, as in {"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}.',
+    importPlaceholder: 'One line of JSON',
     importButton: 'Add the card',
     importDone: 'Card written. It shows under Moves → Evidence and nowhere else.',
     importErrors: {
@@ -1516,7 +1533,8 @@ export const copy = {
     actionDepth: 'Switch to short depth',
     actionTest: 'Set the test: {move}',
     acted: { plan: 'Planned for today.', depth: 'Short depth is on; Settings changes it back.', test: 'The test is set; its card is under Evidence.' },
-    actedTest: 'Testing {move} in the {block}, against your {reading} at the next check-in; it is offered more often until it has {n} days each way.',
+    // The move's name quoted, so its own words (“A ten-minute walk, now”) never run into the sentence; the count in words, as the owner's example has it (2026-10-18).
+    actedTest: 'Testing “{move}” in the {block}, against your {reading} at the next check-in; it is offered more often until it has {n} days each way.',
     when: { now: 'Now', laterToday: 'Later today', forToday: 'For today' },
     why: 'Why',
     whyLine: 'Why this line',
@@ -1790,7 +1808,7 @@ export const copy = {
     url: 'Database',
     urlNote: 'A constant, not a secret. Shown so you can match it against your Turso dashboard.',
     token: 'Token',
-    tokenPlaceholder: 'Paste the token once',
+    tokenPlaceholder: 'The token',
     tokenSet: 'Token stored on this phone.',
     tokenNote: 'Created in your Turso dashboard, pasted once, stored in this app’s storage on the phone. It never appears in source, tests, the pipeline or logs.',
     keep: 'Keep it',
@@ -1961,6 +1979,8 @@ export const copy = {
     contextEarlier: 'earlier',
     /** Stage 3, item 5: a sleep reading asked at the afternoon check-in after a morning without it. */
     contextLate: 'asked late',
+    /** Stage 3, item 5: Motivation or Confidence, the one this morning did not ask, in turn: its last answer, so marked. */
+    contextNotAsked: 'not asked today',
     repNotes: 'About this rep',
     more: 'More',
     less: 'Less',

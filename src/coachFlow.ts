@@ -1,7 +1,7 @@
 import { editSkill, makeCurrent, setCurrentSkill, setRhythm, type SkillWords } from './aimFlow'
 import { dayKey, daysBetween } from './blocks'
 import { readBrainPrefs } from './brainShared'
-import { ASK_KEEPS_DAYS, FAITH_WORDS, isPhysical, practised, reviewDue, revisionOf, skillSessions, SKILL_COACH, type CoachAsk, type CoachProposal, type Decision, type SkillChange } from './coachShared'
+import { ASK_KEEPS_DAYS, FAITH_WORDS, isPhysical, MAX_SETUP_RUNS_A_DAY, practised, proposalIdOf, reachedClaude, retryAtOf, reviewDue, revisionOf, skillSessions, skillTaskIds, SKILL_COACH, type CoachAsk, type CoachProposal, type CoachRun, type Decision, type SkillChange } from './coachShared'
 import { db, type Aim, type Skill } from './db'
 import { rhythmOf, type Rhythm } from './rhythm'
 import { withDefaults } from './settings'
@@ -70,8 +70,40 @@ export interface AimCoach {
   setup: OpenAsk | null
   /** A progression review due on the current skill and not yet answered. */
   review: OpenAsk | null
-  /** Today's line is not on the phone yet: the Worker answers an ask only after it (D7), so a waiting card says so. */
-  afterLine: boolean
+  /** Where its setup ask stands while no answer has come; null with none waiting. */
+  wait: SetupWait | null
+}
+
+/**
+ * Where an ask waiting for its answer stands (D7 as the owner amended it on 2026-10-18: "suggestions
+ * on tap, two a day"): Claude at it, usually ready in a few minutes; not sent yet, the phone offline or its last sync not through;
+ * the routine refused its fire (the account's limit, or an error), tried again at retryAt; both of
+ * today's two runs used; or the run that carried it ended with no suggestion. The last two run again
+ * after midnight, when the day's two start over.
+ */
+export type SetupWait = { kind: 'soon' } | { kind: 'unsent' } | { kind: 'refused'; retryAt: string } | { kind: 'tomorrow' } | { kind: 'failed' }
+
+/** Where an ask stands, from today's suggestion runs as the Worker recorded them, whether the ask still waits in this phone's queue, and whether the phone can reach the cloud copy now (online, its last sync through). */
+export function setupWaitOf(ask: Pick<CoachAsk, 'id'>, runs: readonly CoachRun[], queued: boolean, reachable: boolean): SetupWait {
+  if (queued && !reachable) return { kind: 'unsent' }
+  const id = ask.id
+  const carrying = typeof id === 'number' ? [...runs].filter((r) => r.asks.includes(id)).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))[0] : undefined
+  if (carrying) {
+    if (!reachedClaude(carrying)) return carrying.status === 'fallback' ? { kind: 'refused', retryAt: new Date(retryAtOf(carrying)).toISOString() } : { kind: 'soon' }
+    // Taken by the routine: at work, or ended with no suggestion for this ask (an answer that came is shown instead of any wait).
+    return carrying.status === 'fired' ? { kind: 'soon' } : { kind: 'failed' }
+  }
+  if (runs.filter(reachedClaude).length >= MAX_SETUP_RUNS_A_DAY) return { kind: 'tomorrow' }
+  // Another ask's fire was refused: the next try carries this one too.
+  const refused = runs.find((r) => !reachedClaude(r) && r.status === 'fallback')
+  return refused ? { kind: 'refused', retryAt: new Date(retryAtOf(refused)).toISOString() } : { kind: 'soon' }
+}
+
+/** The brain's rows a waiting card looks at every 20 seconds, by key: each waiting ask's proposal, and today's two suggestion runs. */
+export function waitingKeys(states: ReadonlyMap<number, AimCoach> | null | undefined, today: string): { store: string; id: string }[] {
+  const asks = [...(states?.values() ?? [])].filter((s) => s.wait !== null && s.setup && typeof s.setup.ask.id === 'number').map((s) => s.setup?.ask.id as number)
+  if (!asks.length) return []
+  return [...asks.map((id) => ({ store: 'proposals', id: proposalIdOf(id) })), ...skillTaskIds(today).map((id) => ({ store: 'bridge', id }))]
 }
 
 const learningAims = () => db.aims.filter((a) => a.kind === 'certification' && a.archivedAt === null).toArray()
@@ -84,11 +116,12 @@ const newest = (asks: readonly CoachAsk[]) => [...asks].sort((a, b) => (a.at < b
  * An answer written for the commitment as it stood before an edit is dropped; an ask no run
  * answered within three days is let go. Null while the gate is closed.
  */
-export async function coachStates(today: string, mode: CoachMode = coachMode()): Promise<Map<number, AimCoach> | null> {
+export async function coachStates(today: string, mode: CoachMode = coachMode(), online: boolean = typeof navigator === 'undefined' || navigator.onLine !== false): Promise<Map<number, AimCoach> | null> {
   if (mode === 'gated') return null
-  const [aims, skills, asks, proposals, settingsRow, prefsRow, briefs] = await Promise.all([learningAims(), db.skills.toArray(), db.coachAsks.toArray(), db.coachProposals.toArray(), db.settings.get(1), db.brainPrefs.get('prefs'), db.brainBriefs.where('day').equals(today).toArray()])
+  const [aims, skills, asks, proposals, settingsRow, prefsRow, runs, queuedRows, sync] = await Promise.all([learningAims(), db.skills.toArray(), db.coachAsks.toArray(), db.coachProposals.toArray(), db.settings.get(1), db.brainPrefs.get('prefs'), db.coachRuns.where('day').equals(today).toArray(), db.outbox.filter((r) => r.store === 'coachAsks').toArray(), db.cloudMeta.get('state')])
   const settings = withDefaults(settingsRow)
-  const afterLine = !briefs.some((b) => b.kind === 'brief')
+  const queued = new Set(queuedRows.map((r) => r.key))
+  const reachable = online && !sync?.lastError
   const switchOn = readBrainPrefs(prefsRow).switches.commitments !== false
   // An ask travels through the cloud copy; a preview's goes nowhere, so it needs none.
   const cloud = mode === 'preview' || Boolean(settings.cloud.token)
@@ -104,7 +137,8 @@ export async function coachStates(today: string, mode: CoachMode = coachMode()):
     const setup = s && s.revision === rev && (sp !== null || daysBetween(s.day, today) <= ASK_KEEPS_DAYS) ? { ask: s, proposal: sp } : null
     const r = current ? newest(mine.filter((a) => a.kind === 'review' && a.skillId === current.id)) : null
     const cared = newest(asks.filter((a) => a.aimId === id && typeof a.care === 'string'))
-    out.set(id, { mayAsk: mayAskFor(aim, current, switchOn, cloud, settings.hideFaith), physical: isPhysical(goalWords(aim, current)), care: cared?.care ?? null, setup, review: r ? { ask: r, proposal: answer(r) } : null, afterLine })
+    const wait = setup && !setup.proposal ? setupWaitOf(setup.ask, runs, queued.has(String(setup.ask.id)), reachable) : null
+    out.set(id, { mayAsk: mayAskFor(aim, current, switchOn, cloud, settings.hideFaith), physical: isPhysical(goalWords(aim, current)), care: cared?.care ?? null, setup, review: r ? { ask: r, proposal: answer(r) } : null, wait })
   }
   return out
 }

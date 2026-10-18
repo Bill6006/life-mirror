@@ -1,5 +1,5 @@
 import { readBrainPrefs } from '../../src/brainShared'
-import { ASK_KEEPS_DAYS, checkReview, checkSuggestion, COACH_LIMITS, FAITH_WORDS, HARD_RUN, isPhysical, MAX_SETUP_RUNS_A_DAY, practised, proposalIdOf, revisionOf, skillSessions, SKILL_COACH, type CoachAsk, type CoachContext, type CoachProposal, type OfferLike, type OutcomeLike, type ReviewSuggestion, type SkillSession, type SkillSuggestion } from '../../src/coachShared'
+import { ASK_KEEPS_DAYS, checkReview, checkSuggestion, COACH_LIMITS, FAITH_WORDS, HARD_RUN, isPhysical, MAX_SETUP_RUNS_A_DAY, practised, proposalIdOf, reachedClaude, retryAtOf, revisionOf, skillSessions, skillTaskIds, SKILL_COACH, type CoachAsk, type CoachContext, type CoachProposal, type OfferLike, type OutcomeLike, type ReviewSuggestion, type SkillSession, type SkillSuggestion } from '../../src/coachShared'
 import { claudeOn, fallbackReason, fire, fireFailure, fireText, MAX_POSTS, timeoutMinutes, type ClaudeEnv, type Deps, type Reply } from './claude'
 import type { Env } from './env'
 import { parseOutput } from './prompt'
@@ -8,23 +8,27 @@ import { addDays, localTime } from './time'
 import type { Store, TaskRow } from './turso'
 
 // Parts 40 and 41 in the Worker: the skill coach's runs, on the same bridge as the line and the coach.
-// A suggestion for a learning commitment's current skill fires on demand when the phone asks, at most
-// two runs a day, never before the day's line and the coach (D7); reviews the app found due are
-// batched in one run a day after them. Claude reads one commitment whole, under the Brain switches,
-// with every read logged; its answer passes the same checks on the Worker the phone relies on, and is
-// stored as a proposal the phone shows and the owner decides. No free model stands in: a run that
-// fails leaves the commitment to be set by hand. While the gate is closed nothing here runs at all:
-// no read, no fire, no row.
+// A suggestion for a learning commitment's current skill fires when the phone asks, at any time of
+// day, within the minute, at most two runs a day that reach Claude (D7 as the owner amended it on
+// 2026-10-18: "Go on the new D7: suggestions on tap, two a day"); a fire the routine refused before any
+// session uses neither and is tried again after REFUSED_RETRY_MINUTES. Reviews the app found due stay
+// as they were: batched in one run a day, after the day's line and the coach. Claude reads one
+// commitment whole, under the Brain switches, with every read logged; its answer passes the same checks
+// on the Worker the phone relies on, and is stored as a proposal the phone shows and the owner decides.
+// No free model stands in: a run that fails leaves the commitment to be set by hand. While the gate is
+// closed nothing here runs at all: no read, no fire, no row.
 
 export type CoachTask = 'skill' | 'progress'
-export const skillTaskIds = (day: string): [string, string] => [`task:${day}:skill`, `task:${day}:skill.2`]
+export { skillTaskIds }
 export const progressTaskId = (day: string): string => `task:${day}:progress`
 
 type Gate = 'gated' | 'open'
 export type CommitmentsEnv = ClaudeEnv & Pick<Env, 'TIMEZONE'>
 
 export interface CommitmentsOptions {
-  /** By hand with the run key: without waiting for the day's line and the coach. Never past the gate. */
+  /** Which asks this run answers: the minute's check takes suggestions alone, the fifteen-minute tick reviews alone; by hand, both. */
+  kind?: 'setup' | 'review' | 'both'
+  /** By hand with the run key: a review without waiting for the day's line and the coach. Never past the gate. */
   force?: boolean
   dry?: boolean
   fireFetcher?: typeof fetch
@@ -65,20 +69,65 @@ function askOf(id: string, body: unknown): (CoachAsk & { id: number }) | null {
   return { ...rest, id: n, ...(typeof care === 'string' ? { care: care.trim().slice(0, 200) } : {}) }
 }
 
-/** The asks still waiting: Claude asked, undecided, unanswered, within three days, not already carried by a run today; the newest per commitment and kind. */
-async function pendingAsks(store: Store, day: string, today: readonly TaskRow[]): Promise<{ setup: number[]; review: number[] }> {
-  const [rows, answered] = await Promise.all([store.readRecords('coachAsks', { from: addDays(day, -ASK_KEEPS_DAYS) }), store.proposalIds()])
-  const carried = new Set(today.flatMap((t) => t.asks ?? []))
+/** The asks Claude was asked, still undecided, within three days: one small read by day, and all the minute's check reads when nothing is asked. */
+async function openAsks(store: Store, day: string): Promise<(CoachAsk & { id: number })[]> {
+  const rows = await store.readRecords('coachAsks', { from: addDays(day, -ASK_KEEPS_DAYS) })
+  return rows.map((r) => askOf(r.id, r.body)).filter((a): a is CoachAsk & { id: number } => a !== null && a.claude === true && !a.decision)
+}
+
+/**
+ * Whether an ask still stands for its commitment as it is now: the commitment is there, something to learn, neither
+ * paused nor archived, unchanged since the ask (its revision), not about faith while faith is hidden, and a review's
+ * skill still the current one. The briefing answers only these; since 2026-10-18 no run starts for one that does not,
+ * after a run went to Claude for two asks the commitments had moved past and the briefing refused them.
+ */
+function stands(ask: CoachAsk & { id: number }, aims: readonly Record<string, unknown>[], skills: readonly Record<string, unknown>[], faithHidden: boolean): boolean {
+  const aim = aims.find((a) => a.id === ask.aimId)
+  if (!aim || aim.kind !== 'certification' || aim.archivedAt || aim.pausedAt) return false
+  const current = skills.find((s) => s.aimId === ask.aimId && !s.archivedAt && s.id === aim.currentSkillId) ?? null
+  // An ask made before the commitment was edited is not answered: its answer would be dropped.
+  if (revisionOf(aim as Parameters<typeof revisionOf>[0], current as Parameters<typeof revisionOf>[1]) !== ask.revision) return false
+  const words = [str(aim.name), str(aim.about), str(aim.method), str(current?.name), str(current?.method), str(current?.how)]
+  if (faithHidden && words.some((w) => FAITH_WORDS.test(w))) return false
+  return ask.kind !== 'review' || (current !== null && current.id === ask.skillId)
+}
+
+/**
+ * The asks still waiting: unanswered, not carried by a run today that reached Claude or is under way, and still
+ * standing for their commitments as they are now; the newest per commitment and kind. A run the routine refused
+ * carried nothing: its asks wait on.
+ */
+async function pendingAsks(store: Store, asks: readonly (CoachAsk & { id: number })[], today: readonly TaskRow[], faithHidden: boolean): Promise<{ setup: number[]; review: number[] }> {
+  const answered = await store.proposalIds()
+  const carried = new Set(today.filter((t) => reachedClaude(t) || t.status === 'firing').flatMap((t) => t.asks ?? []))
+  const open = asks.filter((a) => !answered.has(proposalIdOf(a.id)) && !carried.has(a.id))
+  if (!open.length) return { setup: [], review: [] }
+  const [aims, skills] = await Promise.all([store.readRecords('aims', {}, 1000), store.readRecords('skills', {}, 2000)])
+  const aimBodies = aims.map((r) => obj(r.body))
+  const skillBodies = skills.map((r) => obj(r.body))
   const newest = new Map<string, CoachAsk & { id: number }>()
-  for (const r of rows) {
-    const a = askOf(r.id, r.body)
-    if (!a || a.claude !== true || a.decision || answered.has(proposalIdOf(a.id)) || carried.has(a.id)) continue
+  for (const a of open) {
+    if (!stands(a, aimBodies, skillBodies, faithHidden)) continue
     const k = `${a.kind}:${a.aimId}`
     const prev = newest.get(k)
     if (!prev || a.at > prev.at) newest.set(k, a)
   }
   const all = [...newest.values()].sort((a, b) => (a.at < b.at ? -1 : 1))
   return { setup: all.filter((a) => a.kind === 'setup').map((a) => a.id), review: all.filter((a) => a.kind === 'review').map((a) => a.id) }
+}
+
+/** Where today's suggestions stand: a run to start now (and the slot it takes), or why none starts. */
+function setupSlot(today: readonly TaskRow[], day: string, now: Date): { id: string } | { reason: string } {
+  const runs = today.filter((t) => t.task === 'skill')
+  const reached = runs.filter(reachedClaude).length
+  if (reached >= MAX_SETUP_RUNS_A_DAY) return { reason: 'today’s two suggestion runs are used; the rest wait for tomorrow' }
+  // A slot whose fire the routine refused is taken again once its wait is over; it used nothing.
+  const refused = runs.find((t) => !reachedClaude(t) && t.status === 'fallback')
+  if (refused) {
+    const at = retryAtOf(refused)
+    return now.getTime() < at ? { reason: `the routine refused the last fire; it is tried again at ${new Date(at).toISOString()}` } : { id: refused.id }
+  }
+  return { id: skillTaskIds(day)[reached] }
 }
 
 /** Marks the run, then fires the routine with no personal text: the task, the day and the model alias. The mark comes first, since a fire has no idempotency key. */
@@ -99,15 +148,20 @@ async function startCoachTask(env: CommitmentsEnv, store: Store, now: Date, task
 }
 
 /**
- * The skill coach's job, each tick after the coach's. Closed, it returns before reading anything.
- * Open: a run under way is waited for, or let go when it fails (no free model writes a suggestion);
- * then, once the day's line and the coach are settled, the asks waiting are answered: suggestions
- * first, in at most two runs a day, then the day's reviews in one.
+ * The skill coach's job. Closed, it returns before reading anything. Open: a run under way is waited
+ * for, or let go when it fails (no free model writes a suggestion). Then a suggestion asked for starts
+ * at once, at any time of day, in at most two runs a day that reach Claude (the minute's check, D7 as
+ * amended 2026-10-18); and the day's reviews, once the day's line and the coach are settled, in one run
+ * (the fifteen-minute tick). The minute's check reads one small range first and stops there when
+ * nothing is asked.
  */
 export async function runCommitments(env: CommitmentsEnv, store: Store, now: Date, opts: CommitmentsOptions = {}): Promise<CommitmentsResult> {
   if ((opts.gate ?? SKILL_COACH) !== 'open') return { ran: false, reason: 'gated' }
   if (!claudeOn(env)) return { ran: false, reason: 'Claude is off' }
+  const kind = opts.kind ?? 'both'
   const day = localTime(now, env.TIMEZONE).day
+  const asks = await openAsks(store, day)
+  if (kind === 'setup' && !asks.some((a) => a.kind === 'setup')) return { ran: false, reason: 'nothing asked', day }
   const today = (await Promise.all([...skillTaskIds(day), progressTaskId(day)].map((id) => store.readTask(id)))).filter((t): t is TaskRow => t !== null)
   for (const t of today) {
     if (t.status !== 'firing' && t.status !== 'fired') continue
@@ -116,18 +170,25 @@ export async function runCommitments(env: CommitmentsEnv, store: Store, now: Dat
     await store.writeTask({ ...t, status: 'fallback', fallbackReason: `${why}; nothing was suggested, and the commitment works by hand` })
     return { ran: false, reason: why, day, task: t.id }
   }
-  if (!opts.force) {
-    const wait = await waitFor(store, day, opts.coach)
-    if (wait) return { ran: false, reason: wait, day }
-  }
   const [settings, prefs] = await Promise.all([store.readRecord('settings', '1'), store.readRecord('brainPrefs', 'prefs')])
-  if (!accessFor('skill', gatesFrom(settings), readBrainPrefs(prefs)).allowed('commitments')) return { ran: false, reason: 'Claude may not read commitments', day }
-  const pending = await pendingAsks(store, day, today)
-  const setupRuns = today.filter((t) => t.task === 'skill').length
-  if (pending.setup.length && setupRuns < MAX_SETUP_RUNS_A_DAY) return startCoachTask(env, store, now, 'skill', skillTaskIds(day)[setupRuns], day, pending.setup, opts)
-  if (pending.review.length && !today.some((t) => t.task === 'progress')) return startCoachTask(env, store, now, 'progress', progressTaskId(day), day, pending.review, opts)
-  if (pending.setup.length) return { ran: false, reason: 'today’s two suggestion runs are used; the rest wait for tomorrow', day }
-  return { ran: false, reason: 'nothing asked', day }
+  const access = accessFor('skill', gatesFrom(settings), readBrainPrefs(prefs))
+  if (!access.allowed('commitments')) return { ran: false, reason: 'Claude may not read commitments', day }
+  const pending = await pendingAsks(store, asks, today, access.gates.faithHidden)
+  let setupWait: string | null = null
+  if (kind !== 'review' && pending.setup.length) {
+    const slot = setupSlot(today, day, now)
+    if ('id' in slot) return startCoachTask(env, store, now, 'skill', slot.id, day, pending.setup, opts)
+    setupWait = slot.reason
+  }
+  if (kind !== 'setup') {
+    // Reviews stay as they were (the owner, 2026-10-18): one run a day, after the day's line and the coach.
+    if (!opts.force && pending.review.length) {
+      const wait = await waitFor(store, day, opts.coach)
+      if (wait) return { ran: false, reason: setupWait ?? wait, day }
+    }
+    if (pending.review.length && !today.some((t) => t.task === 'progress')) return startCoachTask(env, store, now, 'progress', progressTaskId(day), day, pending.review, opts)
+  }
+  return { ran: false, reason: setupWait ?? 'nothing asked', day }
 }
 
 // ─── The briefing and the answer ────────────────────────────────────────────────────────────────
@@ -234,16 +295,11 @@ async function coachRun(deps: CoachDeps, t: TaskRow): Promise<{ ok: true; items:
   const items: Item_[] = []
   let anyPhysical = false
   for (const ask of asks) {
-    if (!ask || ask.decision || (t.task === 'skill') !== (ask.kind === 'setup')) continue
-    const aim = aimBodies.find((a) => a.id === ask.aimId)
-    if (!aim || aim.kind !== 'certification' || aim.archivedAt || aim.pausedAt) continue
+    if (!ask || ask.decision || (t.task === 'skill') !== (ask.kind === 'setup') || !stands(ask, aimBodies, skillBodies, faithHidden)) continue
+    const aim = aimBodies.find((a) => a.id === ask.aimId) as Record<string, unknown>
     const mine = skillBodies.filter((s) => s.aimId === ask.aimId && !s.archivedAt)
     const current = mine.find((s) => s.id === aim.currentSkillId) ?? null
-    // An ask made before the commitment was edited is not answered: its answer would be dropped.
-    if (revisionOf(aim as Parameters<typeof revisionOf>[0], current as Parameters<typeof revisionOf>[1]) !== ask.revision) continue
     const words = [str(aim.name), str(aim.about), str(aim.method), str(current?.name), str(current?.method), str(current?.how)]
-    if (faithHidden && words.some((w) => FAITH_WORDS.test(w))) continue
-    if (ask.kind === 'review' && (!current || current.id !== ask.skillId)) continue
     const since = current && typeof current.startedAt === 'string' ? localTime(new Date(current.startedAt), deps.env.TIMEZONE ?? 'UTC').day : null
     const sessions = current ? skillSessions(current.id as number, since, offerRows, outcomeRows) : []
     const earlier = mine

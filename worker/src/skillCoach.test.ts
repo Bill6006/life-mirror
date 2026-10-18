@@ -10,8 +10,9 @@ import { APP, BRAIN_APP, memoryStore, type BriefRow, type Store, type TaskRow } 
 
 // Parts 40 and 41 in the Worker. Closed, as the build ships: the skill coach's job, its bridge routes
 // and its by-hand route all refuse before anything is read or fired, and the monitoring's own watch
-// reads exactly as before. Open (in these tests only): it waits for the day's line and the coach,
-// fires at most two suggestion runs a day and one batched review run, briefs one commitment whole
+// reads exactly as before. Open (in these tests only): a suggestion starts when asked, at any time of
+// day (D7 as amended 2026-10-18), in at most two runs a day that reach Claude, a refused fire using
+// neither; reviews wait for the day's line and the coach, in one batched run; it briefs one commitment whole
 // under the Brain switches with every read logged, stores only an answer that passes the checks,
 // and lets a failed run go with no free model standing in.
 
@@ -149,24 +150,110 @@ describe('with the gate closed by hand (the shipped state until Pass 1B)', () =>
 })
 
 describe('the skill coach’s job, opened in these tests', () => {
-  it('never runs before the day’s line and the coach are settled, nor with Claude off or Commitments unreadable', async () => {
-    const early = record((s) => s.rows.delete(`${BRAIN_APP}|briefs|${DAY}:brief`))
-    ask(early, { aimId: 1, kind: 'setup' })
-    expect(await runCommitments(env, early, at('12:00'), OPEN)).toMatchObject({ ran: false, reason: 'waiting for the day’s line' })
+  it('starts a suggestion at once, before the day’s line and the coach (D7 as amended 2026-10-18); reviews still wait for both; nothing with Claude off or Commitments unreadable', async () => {
+    // A suggestion asked for at 07:05, with no line and no coach yet: the minute's check starts it.
+    const early = record((s) => {
+      s.rows.delete(`${BRAIN_APP}|briefs|${DAY}:brief`)
+      s.rows.delete(`${BRAIN_APP}|bridge|${taskIdOf('coach', DAY)}`)
+    })
+    const id = ask(early, { aimId: 1, kind: 'setup', at: at('07:05').toISOString() })
+    const r = routine()
+    expect(await runCommitments(env, early, at('07:06'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: true, task: skillTaskIds(DAY)[0], asks: [id] })
+    expect(r.calls).toHaveLength(1)
+    // A review waits for the day's line, then for the coach, as before (the owner: "Progression reviews stay as they are").
+    const review = { aimId: 1, kind: 'review' as const, skillId: 2, days: 6, reason: 'ordinary' as const, hardRun: false }
+    const noLine = record((s) => s.rows.delete(`${BRAIN_APP}|briefs|${DAY}:brief`))
+    ask(noLine, review)
+    expect(await runCommitments(env, noLine, at('12:00'), { ...OPEN, kind: 'review' })).toMatchObject({ ran: false, reason: 'waiting for the day’s line' })
     const coaching = record((s) => void s.writeTask({ id: taskIdOf('coach', DAY), kind: 'task', task: 'coach', day: DAY, at: at('07:50').toISOString(), status: 'fired', trigger: 'checkin', factsDay: DAY, askedModel: 'opus', contextCalls: 0, contextBytes: 0, posts: 0, refusals: [] }))
-    ask(coaching, { aimId: 1, kind: 'setup' })
-    expect(await runCommitments(env, coaching, at('12:00'), OPEN)).toMatchObject({ reason: 'waiting for the coach' })
+    ask(coaching, review)
+    expect(await runCommitments(env, coaching, at('12:00'), { ...OPEN, kind: 'review' })).toMatchObject({ reason: 'waiting for the coach' })
     // No coach task today: the coach's own word decides whether it will still run.
     const noCoach = record((s) => s.rows.delete(`${BRAIN_APP}|bridge|${taskIdOf('coach', DAY)}`))
-    ask(noCoach, { aimId: 1, kind: 'setup' })
-    expect(await runCommitments(env, noCoach, at('12:00'), OPEN)).toMatchObject({ reason: 'waiting for the coach' })
-    expect(await runCommitments(env, noCoach, at('12:00'), { ...OPEN, coach: { reason: 'waiting for the day’s line' } })).toMatchObject({ reason: 'waiting for the coach' })
-    expect(await runCommitments(env, noCoach, at('12:00'), { ...OPEN, coach: { reason: 'nothing for the coach to choose' }, fireFetcher: routine().f })).toMatchObject({ ran: true })
+    ask(noCoach, review)
+    expect(await runCommitments(env, noCoach, at('12:00'), { ...OPEN, kind: 'review' })).toMatchObject({ reason: 'waiting for the coach' })
+    expect(await runCommitments(env, noCoach, at('12:00'), { ...OPEN, kind: 'review', coach: { reason: 'waiting for the day’s line' } })).toMatchObject({ reason: 'waiting for the coach' })
+    expect(await runCommitments(env, noCoach, at('12:00'), { ...OPEN, kind: 'review', coach: { reason: 'nothing for the coach to choose' }, fireFetcher: routine().f })).toMatchObject({ ran: true, task: progressTaskId(DAY) })
+    // The minute's check never starts a review, and the fifteen-minute tick never a suggestion.
+    const both = record((s) => s.rows.delete(`${BRAIN_APP}|briefs|${DAY}:brief`))
+    ask(both, review)
+    expect(await runCommitments(env, both, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    const setupOnly = record()
+    ask(setupOnly, { aimId: 1, kind: 'setup' })
+    expect(await runCommitments(env, setupOnly, at('12:00'), { ...OPEN, kind: 'review', fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    expect(r.calls).toHaveLength(1)
     const off = record()
     ask(off, { aimId: 1, kind: 'setup' })
     expect(await runCommitments({ ...env, CLAUDE_WRITER: 'off' }, off, at('12:00'), OPEN)).toMatchObject({ reason: 'Claude is off' })
     put(off, 'brainPrefs', 'prefs', null, { id: 'prefs', writerModel: 'opus', switches: { commitments: false } })
     expect(await runCommitments(env, off, at('12:00'), OPEN)).toMatchObject({ reason: 'Claude may not read commitments' })
+  })
+
+  it('a fire the routine refused before any session uses neither of the two runs: it is tried again 15 minutes later, or at its retry-after when later, carrying the asks again', async () => {
+    const refuse = (status: number, retryAfter?: string) => (async () => new Response(JSON.stringify({ error: { message: 'Request not allowed' } }), { status, headers: retryAfter ? { 'retry-after': retryAfter } : {} })) as unknown as typeof fetch
+    const store = record()
+    const id = ask(store, { aimId: 1, kind: 'setup' })
+    expect(await runCommitments(env, store, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: refuse(403) })).toMatchObject({ ran: false, task: skillTaskIds(DAY)[0] })
+    expect(await store.readTask(skillTaskIds(DAY)[0])).toMatchObject({ status: 'fallback', fireStatus: 403 })
+    const r = routine()
+    expect(await runCommitments(env, store, at('12:14'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: false, reason: `the routine refused the last fire; it is tried again at ${at('12:15').toISOString()}` })
+    expect(r.calls).toHaveLength(0)
+    expect(await runCommitments(env, store, at('12:15'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: true, task: skillTaskIds(DAY)[0], asks: [id] })
+    expect(await store.readTask(skillTaskIds(DAY)[0])).toMatchObject({ status: 'fired', fires: 2 })
+    await store.writeTask({ ...((await store.readTask(skillTaskIds(DAY)[0])) as TaskRow), status: 'written' })
+    // The refused fire used nothing: a second ask still has its run. Its own fire refused too, one run that reached
+    // Claude never reads as "two used": the slot waits its fifteen minutes and is taken again.
+    const id2 = ask(store, { aimId: 3, kind: 'setup', at: at('13:00').toISOString() }, HAND, null)
+    expect(await runCommitments(env, store, at('13:00'), { ...OPEN, kind: 'setup', fireFetcher: refuse(403) })).toMatchObject({ ran: false, task: skillTaskIds(DAY)[1] })
+    expect(await runCommitments(env, store, at('13:15'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: true, task: skillTaskIds(DAY)[1], asks: [id2] })
+    // The routine's own retry-after, when later than the fifteen minutes, is kept.
+    const later = record()
+    ask(later, { aimId: 1, kind: 'setup' })
+    await runCommitments(env, later, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: refuse(429, '3600') })
+    expect(await runCommitments(env, later, at('12:30'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: false, reason: `the routine refused the last fire; it is tried again at ${at('13:00').toISOString()}` })
+    expect(await runCommitments(env, later, at('13:00'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: true, task: skillTaskIds(DAY)[0] })
+  })
+
+  it('starts no run for an ask its commitment has moved past, edited since, paused, or about faith while faith is hidden: the briefing would refuse it (2026-10-18)', async () => {
+    const r = routine()
+    const edited = record()
+    ask(edited, { aimId: 1, kind: 'setup' })
+    put(edited, 'aims', '1', null, { ...ORRISH, about: 'I can read a little, and now speak some' })
+    expect(await runCommitments(env, edited, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    const paused = record()
+    ask(paused, { aimId: 1, kind: 'setup' })
+    put(paused, 'aims', '1', null, { ...ORRISH, pausedAt: at('10:00').toISOString() })
+    expect(await runCommitments(env, paused, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    const faith = record()
+    const PRAYER = { ...HAND, name: 'Learn to pray the hours' }
+    put(faith, 'aims', '3', null, PRAYER)
+    put(faith, 'settings', '1', null, { id: 1, hideFaith: true, showPrivate: false, privateInSelection: false })
+    ask(faith, { aimId: 3, kind: 'setup' }, PRAYER, null)
+    expect(await runCommitments(env, faith, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    expect(r.calls).toEqual([])
+    // Still standing, it starts.
+    const standing = record()
+    const id = ask(standing, { aimId: 1, kind: 'setup' })
+    expect(await runCommitments(env, standing, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: r.f })).toMatchObject({ ran: true, asks: [id] })
+  })
+
+  it('the minute’s check reads the open asks alone, and stops there when none is a suggestion', async () => {
+    const store = record()
+    ask(store, { aimId: 1, kind: 'review', skillId: 2, days: 6, reason: 'ordinary', hardRun: false })
+    const calls: string[] = []
+    const counted = new Proxy(store, {
+      get(t, p) {
+        const v = Reflect.get(t, p) as unknown
+        return typeof v === 'function'
+          ? (...a: unknown[]) => {
+              calls.push(String(p))
+              return (v as (...x: unknown[]) => unknown).apply(t, a)
+            }
+          : v
+      },
+    })
+    expect(await runCommitments(env, counted, at('12:00'), { ...OPEN, kind: 'setup', fireFetcher: routine().f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    expect(calls).toEqual(['readRecords'])
   })
 
   it('fires once for the asks waiting, marking the run first, with no personal text; and nothing when nothing is asked', async () => {
@@ -207,7 +294,11 @@ describe('the skill coach’s job, opened in these tests', () => {
   it('batches the day’s reviews in one run after the suggestions, and makes no second review run that day', async () => {
     const store = record()
     const a = ask(store, { aimId: 1, kind: 'review', skillId: 2, days: 6, reason: 'ordinary', hardRun: false })
-    const b = ask(store, { aimId: 3, kind: 'review', skillId: 9, days: 6, reason: 'ordinary' }, HAND, null)
+    // The cartwheel with a current skill of its own, so its review stands.
+    const WALL = { id: 9, name: 'Wall holds', aimId: 3, source: 'you', startedAt: '2026-09-28T16:00:00.000Z', order: 3, createdAt: '2026-09-28T16:00:00.000Z', archivedAt: null }
+    put(store, 'aims', '3', null, { ...HAND, currentSkillId: 9 })
+    put(store, 'skills', '9', null, WALL)
+    const b = ask(store, { aimId: 3, kind: 'review', skillId: 9, days: 6, reason: 'ordinary' }, { ...HAND, currentSkillId: 9 }, WALL)
     const r = routine()
     expect(await runCommitments(env, store, at('12:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, task: progressTaskId(DAY), asks: [a, b] })
     await store.writeTask({ ...((await store.readTask(progressTaskId(DAY))) as TaskRow), status: 'written' })
@@ -295,17 +386,21 @@ describe('a suggestion run (Part 40), opened in these tests', () => {
     expect(proposal(store, id)).toBeNull()
   })
 
-  it('does not answer an ask made before the commitment changed, nor one about faith while faith is hidden', async () => {
+  it('does not answer an ask made before the commitment changed, nor one about faith while faith is hidden: no run starts for one, and a run that reached one in a race is briefed nothing', async () => {
+    // A run carrying the ask, as if it started just before the edit (2026-10-18: no run starts for it any more).
+    const raced = (s: Mem, id: number) => s.writeTask({ id: skillTaskIds(DAY)[0], kind: 'task', task: 'skill', day: DAY, at: at('12:00').toISOString(), status: 'fired', firedAt: at('12:00').toISOString(), trigger: 'ask', factsDay: DAY, askedModel: 'opus', contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], asks: [id] })
     const stale = record()
-    ask(stale, { aimId: 1, kind: 'setup' }, { ...ORRISH, currentSkillId: 1 }, NUMBERS)
-    await opened(stale)
+    const id = ask(stale, { aimId: 1, kind: 'setup' }, { ...ORRISH, currentSkillId: 1 }, NUMBERS)
+    expect(await runCommitments(env, stale, at('12:00'), { ...OPEN, fireFetcher: routine().f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    await raced(stale, id)
     expect(await handleCoachBriefing(deps(stale, at('12:01')), url({ task: 'skill', day: DAY }))).toEqual({ status: 409, body: { error: 'no ask of this run still stands' } })
     const hidden = record((s) => {
       put(s, 'settings', '1', null, { id: 1, hideFaith: true, showPrivate: false, privateInSelection: false })
       put(s, 'aims', '4', null, { id: 4, kind: 'certification', stepMoveId: null, name: 'Read the Bible in Greek', currentSkillId: null, createdAt: '2026-10-01T12:00:00.000Z', archivedAt: null })
     })
-    ask(hidden, { aimId: 4, kind: 'setup' }, { id: 4, name: 'Read the Bible in Greek', currentSkillId: null }, null)
-    await opened(hidden)
+    const hid = ask(hidden, { aimId: 4, kind: 'setup' }, { id: 4, name: 'Read the Bible in Greek', currentSkillId: null }, null)
+    expect(await runCommitments(env, hidden, at('12:00'), { ...OPEN, fireFetcher: routine().f })).toMatchObject({ ran: false, reason: 'nothing asked' })
+    await raced(hidden, hid)
     expect((await handleCoachBriefing(deps(hidden, at('12:01')), url({ task: 'skill', day: DAY }))).status).toBe(409)
   })
 

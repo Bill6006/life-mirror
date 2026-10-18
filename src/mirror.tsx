@@ -4,7 +4,7 @@ import { BEFORE_MIN, comesBefore, type BeforePair } from './beforeDays'
 import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { allCheckIns, askedLate } from './db'
+import { allCheckIns, askedLate, notAskedInTurn } from './db'
 import { fill, weekdayInitial } from './format'
 import { MonthAgoCard, monthAgoData } from './monthScreen'
 import { useLive } from './live'
@@ -103,6 +103,12 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal }: { onWeek
         {overlayId && all.some((c) => c.day === today.day && askedLate(c).includes(overlayId) && c.answers[overlayId] !== undefined) && (
           <p class="calc-line caption" data-testid="overlay-late">
             {fill(copy.mirror.overlayLate, { reading: readingById(overlayId).name })}
+          </p>
+        )}
+        {/* Stage 3, item 5: the one of Motivation and Confidence this morning did not ask, in turn, marked so rather than left blank. */}
+        {overlayId && all.some((c) => c.day === today.day && notAskedInTurn(c) === overlayId) && (
+          <p class="calc-line caption" data-testid="overlay-not-asked">
+            {fill(copy.mirror.overlayNotAsked, { reading: readingById(overlayId).name })}
           </p>
         )}
       </div>

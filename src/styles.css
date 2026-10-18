@@ -4122,3 +4122,8 @@ main.has-move-cue {
 .journal-search {
   margin-bottom: 12px;
 }
+
+/* A phrase a label keeps on one line, never broken at its hyphen (the sweets question's "check-in?", 2026-10-18). */
+.keep-together {
+  white-space: nowrap;
+}

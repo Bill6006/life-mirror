@@ -649,7 +649,7 @@ test('the evening chips answer from the record and the text line is kept', async
   await expect(page.getByTestId('chip-study')).toHaveCount(0)
 
   // The note field says who reads it (Part 17).
-  await expect(page.getByTestId('note-input')).toHaveAttribute('placeholder', 'One line. Claude may read it, as Settings → Brain allows.')
+  await expect(page.getByTestId('note-input')).toHaveAttribute('placeholder', 'A line Claude may read')
   await page.getByTestId('note-input').fill('A line the app had no question for')
   await page.getByTestId('note-input').blur()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
@@ -872,10 +872,11 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await expect(page.getByTestId('follow-steps')).toContainText('1 started, 1 finished')
   await expect(page.locator('#main')).not.toContainText('%')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
-  // The card: the practice since the skill became current; how the session went, in counts, under Details (cleaned up 2026-10-17).
-  await expect(page.getByTestId('aim-practice')).toContainText('One session on one day')
+  // The card: the practice since the skill became current and how the session went, in counts, under Details (2026-10-18).
+  await expect(page.getByTestId('aim-practice')).toHaveCount(0)
   await expect(page.getByTestId('aim-ease-line')).toHaveCount(0)
   await page.getByTestId('aim-details').click()
+  await expect(page.getByTestId('aim-practice')).toContainText('One session on one day')
   await expect(page.getByTestId('aim-ease-line')).toContainText('about right 1')
 
   // Becoming: the direction line unchanged, and a dated count from what was marked done.
@@ -1329,6 +1330,37 @@ test('stage 3, item 5: each morning asks one of Motivation and Confidence, the o
   expect(turn(first)[0]).not.toBe(turn(second)[0])
 })
 
+test('stage 3, item 5: the one of Motivation and Confidence a morning did not ask is marked “not asked”: on its summary, on Now beside its last answer, and on Mirror’s overlay (the owner’s words, shown since 2026-10-18)', async ({ page }) => {
+  const morningOf = async (d: number) => {
+    await page.clock.setFixedTime(new Date(2026, 8, d, 9, 5))
+    await page.goto('./')
+    await page.getByRole('button', { name: /Check in/ }).click()
+    await tapThrough(page)
+    const day = `2026-09-${String(d).padStart(2, '0')}`
+    return (await rowsOf<{ day: string; block: string; asked: string[] }>(page, 'checkins')).find((c) => c.day === day && c.block === 'morning')?.asked ?? []
+  }
+  await morningOf(7)
+  const asked = await morningOf(8)
+  const today = asked.includes('motivation') ? 'Motivation' : 'Confidence'
+  const other = today === 'Motivation' ? 'Confidence' : 'Motivation'
+  // The summary lists the readings asked, then the other, marked, and why.
+  const row = page.getByTestId('reading-not-asked')
+  await expect(row).toHaveCount(1)
+  await expect(row).toContainText(other)
+  await expect(row).toContainText('Not asked')
+  await expect(row).toContainText(`Asked in turn with ${today}, one each morning`)
+  await page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  // Now: its last answer, yesterday morning's, marked not asked today; the one asked today is never marked.
+  await expect(page.getByTestId('context-cell').filter({ hasText: other })).toContainText('not asked today')
+  await expect(page.getByTestId('context-cell').filter({ hasText: today })).not.toContainText('not asked')
+  // Mirror: picked as the overlay, it says why today's line for it is empty.
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: other, exact: true }).click()
+  await expect(page.getByTestId('overlay-not-asked')).toHaveText(`${other}: not asked today. Motivation and Confidence are asked in turn, one each morning.`)
+  await page.getByRole('button', { name: today, exact: true }).click()
+  await expect(page.getByTestId('overlay-not-asked')).toHaveCount(0)
+})
+
 test('stage 3, item 5: Outside a while today and Something sweet, each marked shown once seen; sweet on the afternoon summary; When was the last? once caffeine is reported', async ({ page }) => {
   // The morning: a band reported brings When was the last?, one optional tap.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
@@ -1351,6 +1383,8 @@ test('stage 3, item 5: Outside a while today and Something sweet, each marked sh
   const sweet = page.getByTestId('chip-sweet')
   await expect(sweet).toContainText('Something sweet since the last check-in?')
   await sweet.scrollIntoViewIfNeeded()
+  // "check-in?" whole on one line at the phone's width: it broke at its hyphen until 2026-10-18.
+  expect(await sweet.locator('.keep-together').evaluate((el) => el.getClientRects().length)).toBe(1)
   await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'afternoon'))?.chipsShown as Record<string, true> | undefined)?.sweet).toBe(true)
   expect((await extrasOf(page, '2026-09-07', 'afternoon'))?.sweet).toBeUndefined()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
@@ -1648,6 +1682,9 @@ test('something to learn: a language and an instrument sit beside each other, ea
   await ocarina.getByTestId('aim-log').click()
   await expect(ocarina.getByTestId('aim-done-today')).toHaveText('Done today ✓')
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  // The plans by cue, counts only, under the card's Details (2026-10-18).
+  await expect(page.getByTestId('aim-cue-count')).toHaveCount(0)
+  await page.getByTestId('aim-card').filter({ hasText: 'Veltish' }).getByTestId('aim-details').click()
   await expect(page.getByTestId('aim-cue-count').first()).toContainText('After her bedtime · started 1 of 1 planned')
 })
 
@@ -1699,7 +1736,10 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await expect(done.getByTestId('aim-another')).toHaveCount(0)
   await expect(done.getByTestId('path-change')).toHaveCount(0)
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await expect(page.getByTestId('path-rep-count')).toHaveText(`${rep} · done 1 · partly 0 · no 0`)
+  // Your reps, under the path's Details, each with the answers there are (2026-10-18).
+  await expect(page.getByTestId('path-rep-count')).toHaveCount(0)
+  await page.locator('[data-kind="path"]').getByTestId('path-details').click()
+  await expect(page.getByTestId('path-rep-count')).toHaveText(`${rep} · done 1`)
   await expect(page.locator('[data-kind="path"]').getByTestId('aim-done-today')).toContainText('Done today ✓')
   // Evidence counts the rep; a difference waits for five a side.
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
@@ -1824,7 +1864,10 @@ test('the Partner path: added by its own tap beside the Social path, one People 
   await expect(page.locator('[data-kind="path"]').getByTestId('aim-done-today')).toHaveText('Done today ✓')
   await expect(page.locator('[data-kind="path"]').getByTestId('path-change')).toHaveCount(0)
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  for (const p of ['social', 'partner']) await expect(page.locator(`[data-path="${p}"]`).getByTestId('path-rep-count')).toHaveText('Greet someone by name · done 1 · partly 0 · no 0')
+  for (const p of ['social', 'partner']) {
+    await page.locator(`[data-path="${p}"]`).getByTestId('path-details').click()
+    await expect(page.locator(`[data-path="${p}"]`).getByTestId('path-rep-count')).toHaveText('Greet someone by name · done 1')
+  }
 
   // A date declared with its day, tomorrow: the path moves to Dating at once, and a rep about your conduct on a date is the row's on that day.
   await partnerCard.getByTestId('path-dates').click()
@@ -2256,6 +2299,69 @@ async function startWithDirection(page: Page): Promise<void> {
 }
 
 
+test('the Aims cards with real history (the owner’s words of 2026-10-17, done whole 2026-10-18): each card’s actions come first after its status; the counts and their notes sit under Details; Claude’s evidence under Why', async ({ page }) => {
+  test.setTimeout(120_000)
+  await page.clock.setFixedTime(new Date(2026, 9, 16, 18, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await addLearning(page, 'Veltish', 'Ten words a day', 'A class')
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-practice').click()
+  await page.locator('button.row').first().click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-path-social').click()
+  // The record as weeks of use leave it: sessions on the skill since three weeks back, plans under two cues, a practice, and fourteen Social reps.
+  const aims = await rowsOf<{ id: number; name?: string; kind: string; stepMoveId?: string }>(page, 'aims')
+  const veltish = aims.find((a) => a.name === 'Veltish') as { id: number }
+  const practice = aims.find((a) => a.kind === 'practice') as { id: number; stepMoveId: string }
+  const skill = (await rowsOf<Record<string, unknown> & { aimId: number; id: number }>(page, 'skills')).find((s) => s.aimId === veltish.id) as Record<string, unknown> & { id: number }
+  await putInto(page, 'skills', { ...skill, startedAt: new Date(2026, 8, 25, 9).toISOString(), createdAt: new Date(2026, 8, 25, 9).toISOString() })
+  let id = 9000
+  const step = async (d: number, situationKey: string, moveId: string, outcome: string, extra: Record<string, unknown> = {}) => {
+    const at = new Date(2026, 9, d, 19).toISOString()
+    const day = `2026-10-${String(d).padStart(2, '0')}`
+    await putInto(page, 'offers', { id: ++id, kind: 'step', day, block: 'evening', at, situationKey, target: 'focus', stance: '', band: '', reading: 0, moveId, label: '', cardId: null, candidates: [moveId], coinFlip: false, passiveId: null, whyNot: null, logged: true, skippedAt: null, closedAt: at, ...extra })
+    await putInto(page, 'outcomes', { id, offerId: id, moveId, day, block: 'evening', at, outcome, why: null, passiveOutcome: null, ...(situationKey.startsWith('aim:certification') ? { ease: 'right' } : {}) })
+    return id
+  }
+  const learnIds: number[] = []
+  for (const d of [3, 5, 6, 8, 10, 13, 15]) learnIds.push(await step(d, `aim:certification:${veltish.id}`, `skill:${skill.id}`, 'done'))
+  for (const d of [2, 4, 7]) await step(d, 'aim:practice', practice.stepMoveId, 'done')
+  for (const [k, moveId] of ['eye-contact-stranger', 'one-sentence-past-hello', 'ask-follow-up', 'church-early', 'message-a-friend', 'thank-you-note', 'say-the-thing'].entries()) await step(k + 1, 'path:social', moveId, k % 3 === 2 ? 'partly' : 'done', { paths: ['social'], chosenBy: 'app', rule: 'draw', stage: 1 })
+  for (const [d, cue, time, offerId] of [[5, 'afterPickup', '17:30', learnIds[1]], [8, 'afterPickup', '17:30', learnIds[3]], [11, 'afterPickup', '17:30', null], [13, 'afterBedtime', '20:00', learnIds[5]]] as const) await putInto(page, 'intentions', { aimId: veltish.id, day: `2026-10-${String(d).padStart(2, '0')}`, cue, time, setAt: new Date(2026, 9, d, 8).toISOString(), offerId })
+  await page.reload()
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  const learn = page.getByTestId('aim-card').filter({ hasText: 'Veltish' })
+  // The review falls due on Veltish, asked of the phone (no cloud copy): its question sits after the card's own actions.
+  await expect(learn.getByTestId('coach-review-question')).toBeVisible()
+  const before = async (card: Locator, first: string, second: string) => card.evaluate((el, [a, b]) => { const x = el.querySelector(`[data-testid="${a}"]`); const y = el.querySelector(`[data-testid="${b}"]`); return Boolean(x && y && x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING) }, [first, second])
+  expect(await before(learn, 'aim-start', 'coach-review')).toBe(true)
+  // Every card: Start straight after the status, before anything else it holds, and Details last; no counts, and no note about them, on its face.
+  for (const [card, details] of [[learn, 'aim-details'], [page.getByTestId('aim-card').filter({ hasText: 'A practice' }), 'aim-details'], [page.locator('[data-path="social"]'), 'path-details']] as const) {
+    expect(await before(card, 'aim-start', details)).toBe(true)
+    await expect(card.getByTestId('aim-cue-count')).toHaveCount(0)
+    await expect(card.getByTestId('path-rep-count')).toHaveCount(0)
+    await expect(card.getByTestId('aim-practice')).toHaveCount(0)
+    await expect(card).not.toContainText('One tap says when')
+  }
+  await expect(page.locator('#main')).not.toContainText('Counts only: plans made under each cue')
+  // Under Details: the sessions on the skill, how they went, and the plans by cue.
+  await learn.getByTestId('aim-details').click()
+  await expect(learn.getByTestId('aim-practice')).toContainText('7 sessions on 7 different days')
+  await expect(learn.getByTestId('aim-ease-line')).toContainText('about right 7')
+  await expect(learn.getByTestId('aim-plans-by-cue')).toContainText('Plans by cue')
+  await expect(learn.getByTestId('aim-cue-count')).toHaveText(['After pickup · started 2 of 3 planned', 'After her bedtime · started 1 of 1 planned'])
+  // The Social path: its reps under Details, each with the answers there are.
+  const social = page.locator('[data-path="social"]')
+  expect(await before(social, 'aim-start', 'path-details')).toBe(true)
+  await social.getByTestId('path-details').click()
+  await expect(social.getByTestId('path-rep-count')).toHaveCount(7)
+  await expect(social.getByTestId('path-rep-count').first()).toHaveText('Eye contact with a stranger · done 1')
+  await expect(social.getByTestId('path-rep-count').nth(2)).toHaveText('Ask one follow-up question · partly 1')
+})
+
 test('the skill coach as it ships since Pass 1B, with no cloud copy: Claude is never asked, commitments are set up and practised by hand as before, and a review that falls due is asked by the phone, neutrally (Parts 40–41)', async ({ page }) => {
   test.setTimeout(180_000)
   await startWithDirection(page)
@@ -2278,8 +2384,10 @@ test('the skill coach as it ships since Pass 1B, with no cloud copy: Claude is n
   await page.reload()
   await expect(page.locator('li[data-testid="aim-card"]').filter({ hasText: 'Orrish' })).toBeVisible()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
-  await expect(orrish.getByTestId('aim-practice')).toContainText('6 sessions on 6 different days')
   await expect(orrish.getByTestId('coach-review-question')).toHaveText('Keep it, adjust it, or move on?')
+  await orrish.getByTestId('aim-details').click()
+  await expect(orrish.getByTestId('aim-practice')).toContainText('6 sessions on 6 different days')
+  await orrish.getByTestId('aim-details').click()
   await expect(orrish.getByTestId('coach-review-pending')).toHaveCount(0)
   const asks = await rowsOf<Ask>(page, 'coachAsks')
   expect(asks).toHaveLength(1)
@@ -2305,9 +2413,10 @@ test('the skill coach (Part 40, cleaned up 2026-10-17): no skill asked for with 
   await expect(card.getByTestId('coach-ask')).toHaveClass(/\bpill-quiet\b.*\bis-primary\b/)
   await expect(card.getByTestId('aim-skill-own')).toHaveText('Set one myself')
   await card.getByTestId('coach-ask').click()
-  // While Claude works the card says so, and when the answer comes: today's line is not in yet, so after it; Set one myself stays.
-  await expect(card.getByTestId('coach-pending')).toContainText('Claude is choosing a skill…')
-  await expect(card.getByTestId('coach-when')).toHaveText('It comes after today’s line, which follows your morning check-in or 11:00 AM.')
+  // The cloud copy is out of reach here (every request to it fails), so the card says the ask is not sent yet, and goes when it can (D7 as amended
+  // 2026-10-18; the ask sent and answered with the cloud on is in storage.spec.ts). Set one myself stays.
+  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for a skill')
+  await expect(card.getByTestId('coach-when')).toHaveText('Not sent yet: it goes as soon as this phone reaches the cloud copy.')
   await expect(card.getByTestId('aim-skill-own')).toBeVisible()
   const [first] = await rowsOf<Ask>(page, 'coachAsks')
   expect(first).toMatchObject({ kind: 'setup', claude: true, day: '2026-09-07' })
@@ -2328,14 +2437,10 @@ test('the skill coach (Part 40, cleaned up 2026-10-17): no skill asked for with 
   await expect(card.getByTestId('coach-use')).toHaveText('Use this skill')
   await expect(card.getByTestId('coach-another')).toHaveText('Try another')
   await expect(card.getByTestId('coach-own')).toHaveText('Set one myself')
-  // Today's line arrives on the phone: a suggestion asked now usually comes within the hour.
-  await putBrief(page, { id: '2026-09-07:brief', day: '2026-09-07', kind: 'brief', text: 'One short sitting after dinner may suit this evening.', mode: 'observation', factIds: ['record'], cardIds: [], model: 'claude-opus-5-5', at: new Date(2026, 8, 7, 10, 0).toISOString(), factsDay: '2026-09-06', facts: [{ id: 'record', text: 'A stand-in fact.' }] })
-  await page.reload()
-  await page.getByRole('button', { name: 'Aims', exact: true }).click()
   // Try another: this one set aside and another asked for; your own words are possible again meanwhile.
   await card.getByTestId('coach-another').click()
-  await expect(card.getByTestId('coach-pending')).toContainText('Claude is choosing another skill…')
-  await expect(card.getByTestId('coach-when')).toHaveText('It usually comes within an hour; after two in a day, the next waits for tomorrow.')
+  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for another skill')
+  await expect(card.getByTestId('coach-when')).toHaveText('Not sent yet: it goes as soon as this phone reaches the cloud copy.')
   await expect(card.getByTestId('aim-skill-own')).toBeVisible()
   const asks = await rowsOf<Ask>(page, 'coachAsks')
   expect(asks).toHaveLength(2)
@@ -2466,6 +2571,9 @@ test('a progression review as it ships since Pass 1B (Part 41): six different pr
   await page.reload()
   await page.getByRole('button', { name: 'Aims', exact: true }).click()
   await expect(cello.getByTestId('coach-review-verdict')).toHaveText('Claude suggests moving on to Scale of G.')
+  // Its evidence and reasons, one tap away under Why (2026-10-18).
+  await expect(cello.getByTestId('coach-review-evidence')).toHaveCount(0)
+  await cello.getByTestId('coach-review-why').click()
   await expect(cello.getByTestId('coach-review-evidence')).toHaveText(['7 sessions on 6 different days.'])
   await expect(cello.getByTestId('aim-step')).toHaveText('Scale of C')
   await cello.getByTestId('coach-review-use').click()
@@ -3368,7 +3476,7 @@ test('the foundations: a move drawn keeps what its draw knew, and is marked seen
   await expect.poll(async () => (await morning())?.seenAt ?? null, { timeout: 10_000 }).not.toBeNull()
 })
 
-test('in the moment (stage 3, group 3): after a reading worsens by two steps, one optional line, Anything going on?, writes the morning’s own note', async ({ page }) => {
+test('in the moment (stage 3, group 3): after a reading worsens by two steps, one optional line, Anything behind it?, writes the morning’s own note', async ({ page }) => {
   // Yesterday at its best on every reading with a direction: Mood 5, Stress 1, and so on.
   await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
   await page.goto('./')
@@ -3379,9 +3487,9 @@ test('in the moment (stage 3, group 3): after a reading worsens by two steps, on
   await tapThrough(page)
   await expect(page.getByTestId('give-back')).toBeVisible()
   const behind = page.getByTestId('behind-it')
-  await expect(behind).toContainText('Anything going on?')
+  await expect(behind).toContainText('Anything behind it?')
   // It is the note's own line: who may read it is said the same way.
-  await expect(page.getByTestId('behind-input')).toHaveAttribute('placeholder', 'One line. Claude may read it, as Settings → Brain allows.')
+  await expect(page.getByTestId('behind-input')).toHaveAttribute('placeholder', 'A line Claude may read')
   await page.getByTestId('behind-input').fill('A short night and an early start')
   await page.getByTestId('behind-input').blur()
   await expect.poll(async () => (await extrasOf(page, '2026-09-08', 'morning'))?.note ?? null).toBe('A short night and an early start')
@@ -3392,7 +3500,7 @@ test('in the moment (stage 3, group 3): after a reading worsens by two steps, on
   await expect(page.getByTestId('behind-input')).toHaveValue('A short night and an early start')
 })
 
-test('in the moment (stage 3, group 3): a change of one step never asks Anything going on?', async ({ page }) => {
+test('in the moment (stage 3, group 3): a change of one step never asks Anything behind it?', async ({ page }) => {
   // Yesterday one step better than the middle: Mood 4, Stress 2. This morning's middle is one step worse, too small to ask.
   await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
   await page.goto('./')
@@ -3404,7 +3512,7 @@ test('in the moment (stage 3, group 3): a change of one step never asks Anything
   await expect(page.getByTestId('behind-it')).toHaveCount(0)
 })
 
-test('in the moment (stage 3, group 3): after an evening, the one pattern from What comes before your days that tonight matches, as Mirror words it; an evening never asks Anything going on?', async ({ page }) => {
+test('in the moment (stage 3, group 3): after an evening, the one pattern from What comes before your days that tonight matches, as Mirror words it; an evening never asks Anything behind it?', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 20, 21, 5))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
@@ -3450,7 +3558,7 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
   await expect(card).toContainText('After an evening with stress high')
   await expect(card).toContainText('next morning’s reading · lower by')
   await expect(card).toContainText('an association, never a cause')
-  // The evening's own summary never asks Anything going on?: its note stays in its extras.
+  // The evening's own summary never asks Anything behind it?: its note stays in its extras.
   await expect(page.getByTestId('behind-it')).toHaveCount(0)
 })
 
@@ -3776,26 +3884,32 @@ test('weather on Evidence (stage 3, item 6): rainy days against dry ones and sun
   expect(asked).toHaveLength(before)
 })
 
-for (const on of [true, false]) {
-  test(`a move that needs the outdoors (stage 3, item 6) ${on ? 'waits while rain is forecast for the hour, with the weather on' : 'is drawn as before with the weather off, whatever the record holds'}`, async ({ page }) => {
-    await standInWeather(page)
-    await page.clock.setFixedTime(new Date(2026, 9, 18, 13, 30))
-    await page.goto('./')
-    await seedWeatherRecord(page, on)
-    // Today's record: rain forecast in the hours from 13:00 and 14:00.
-    await putInto(page, 'days', { day: '2026-10-18', weekday: 0, withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:12', set: '18:18' }, changed: false, createdAt: '2026-10-18T06:00:00.000Z', weather: { rain: 2.3, sun: 5, high: 15.6, at: '2026-10-18T08:00:00.000Z', hours: Array.from({ length: 24 }, (_, h) => (h === 13 || h === 14 ? 0.7 : 0)) } })
-    await page.reload()
-    await page.getByRole('button', { name: /Check in/ }).click()
-    await tapThrough(page)
-    const offers = await rowsOf<{ block: string; moveId: string; draw?: { excluded: Record<string, string[]> } }>(page, 'offers')
-    const drawn = offers.find((o) => o.block === 'afternoon' && o.draw)
-    expect(drawn).toBeDefined()
-    const outdoors = ['walk-ten', 'green-walk', 'after-dinner-walk', 'morning-daylight', 'sit-outside-five']
-    if (on) {
-      expect([...(drawn?.draw?.excluded.rain ?? [])].sort()).toEqual(['green-walk', 'sit-outside-five', 'walk-ten'])
-      expect(outdoors).not.toContain(drawn?.moveId)
-    } else {
-      expect(drawn?.draw?.excluded.rain).toBeUndefined()
-    }
-  })
-}
+// The stand-in area is London: the page keeps London's clock and the moment is built by it, so the sun the app reckons for the
+// area and the hour of rain agree on any machine (2026-10-18; from New York, 13:30 was after London's sunset).
+test.describe('by the stand-in area’s own clock', () => {
+  test.use({ timezoneId: 'Europe/London' })
+  for (const on of [true, false]) {
+    test(`a move that needs the outdoors (stage 3, item 6) ${on ? 'waits while rain is forecast for the hour, with the weather on' : 'is drawn as before with the weather off, whatever the record holds'}`, async ({ page }) => {
+      await standInWeather(page)
+      // 13:30 in London, British Summer Time.
+      await page.clock.setFixedTime(new Date(Date.UTC(2026, 9, 18, 12, 30)))
+      await page.goto('./')
+      await seedWeatherRecord(page, on)
+      // Today's record: rain forecast in the hours from 13:00 and 14:00.
+      await putInto(page, 'days', { day: '2026-10-18', weekday: 0, withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:12', set: '18:18' }, changed: false, createdAt: '2026-10-18T06:00:00.000Z', weather: { rain: 2.3, sun: 5, high: 15.6, at: '2026-10-18T08:00:00.000Z', hours: Array.from({ length: 24 }, (_, h) => (h === 13 || h === 14 ? 0.7 : 0)) } })
+      await page.reload()
+      await page.getByRole('button', { name: /Check in/ }).click()
+      await tapThrough(page)
+      const offers = await rowsOf<{ block: string; moveId: string; draw?: { excluded: Record<string, string[]> } }>(page, 'offers')
+      const drawn = offers.find((o) => o.block === 'afternoon' && o.draw)
+      expect(drawn).toBeDefined()
+      const outdoors = ['walk-ten', 'green-walk', 'after-dinner-walk', 'morning-daylight', 'sit-outside-five']
+      if (on) {
+        expect([...(drawn?.draw?.excluded.rain ?? [])].sort()).toEqual(['green-walk', 'sit-outside-five', 'walk-ten'])
+        expect(outdoors).not.toContain(drawn?.moveId)
+      } else {
+        expect(drawn?.draw?.excluded.rain).toBeUndefined()
+      }
+    })
+  }
+})

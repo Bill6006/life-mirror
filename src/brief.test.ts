@@ -31,9 +31,9 @@ describe('the brief', () => {
 
 describe('what a test tap set, said plainly (item 6)', () => {
   it('names the move, the part of the day, the reading and how long it is offered more often', () => {
-    expect(testSetWords({ kind: 'test', moveId: 'screen-free-half-hour', reading: 'stress', block: 'evening' })).toBe('Testing Half an hour with no screens in the evening, against your stress at the next check-in; it is offered more often until it has 8 days each way.')
+    expect(testSetWords({ kind: 'test', moveId: 'screen-free-half-hour', reading: 'stress', block: 'evening' })).toBe('Testing “Half an hour with no screens” in the evening, against your stress at the next check-in; it is offered more often until it has eight days each way.')
     // A tap from before carried no reading: the move's own first is the one set, and said.
-    expect(testSetWords({ kind: 'test', moveId: 'walk-ten' })).toBe('Testing A ten-minute walk, now in the morning, against your mood at the next check-in; it is offered more often until it has 8 days each way.')
+    expect(testSetWords({ kind: 'test', moveId: 'walk-ten' })).toBe('Testing “A ten-minute walk, now” in the morning, against your mood at the next check-in; it is offered more often until it has eight days each way.')
     // A reading the move cannot be tested on sets nothing: its tap is gone, never done, so these words are never shown for it; they fall back to the old line.
     expect(testSetWords({ kind: 'test', moveId: 'screen-free-half-hour', reading: 'sleepQuality', block: 'evening' })).toBe('The test is set; its card is under Evidence.')
   })

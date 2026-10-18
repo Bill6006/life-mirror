@@ -1,11 +1,11 @@
 import type { ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import type { SkillWords } from './aimFlow'
-import type { AimCoach, ReviewAnswer } from './coachFlow'
+import type { AimCoach, ReviewAnswer, SetupWait } from './coachFlow'
 import type { SkillChange, SkillSuggestion } from './coachShared'
 import { copy } from './copy'
 import type { Skill } from './db'
-import { fill } from './format'
+import { fill, formatTime } from './format'
 import { MAX_PER_WEEK, MAX_REST_DAYS, type Rhythm } from './rhythm'
 
 // Parts 40 and 41 on a learning commitment's card: Claude's suggestion for the current skill with
@@ -100,11 +100,21 @@ export interface SetupHandlers {
   onOwn: (askId: number) => void
 }
 
+/** What a waiting card says under its head: when the answer comes, or why not yet and when it is tried again. */
+function waitWords(w: SetupWait | null): string {
+  const c = copy.coach
+  if (!w || w.kind === 'soon') return c.whenSoon
+  if (w.kind === 'unsent') return c.whenUnsent
+  if (w.kind === 'refused') return fill(c.whenRefused, { time: formatTime(w.retryAt) })
+  return w.kind === 'tomorrow' ? c.whenTomorrow : c.whenFailed
+}
+
 /**
- * A setup ask on the card (Part 40): while Claude works, said plainly with when its answer comes (the
- * Worker answers after the day's line, at most twice a day; the app has no route to ask it sooner); or
- * Claude's suggestion, whole and prominent, with Use this skill, Try another, Set one myself (Keep my
- * current skill, once one is named) and Edit first. Nothing changes until you choose.
+ * A setup ask on the card (Part 40): while Claude works, said plainly, usually ready in a few minutes
+ * (D7 as the owner amended it on 2026-10-18: it starts when asked, at most two runs a day); when it
+ * cannot come soon, why and when it is tried again. Or Claude's suggestion, whole and prominent, with
+ * Use this skill, Try another, Set one myself (Keep my current skill, once one is named) and Edit
+ * first. Nothing changes until you choose.
  */
 export function SetupCoach({ coach, h, named, onOwn }: { coach: AimCoach; h: SetupHandlers; named: boolean; onOwn?: () => void }) {
   const c = copy.coach
@@ -114,11 +124,12 @@ export function SetupCoach({ coach, h, named, onOwn }: { coach: AimCoach; h: Set
   const askId = open.ask.id as number
   const s: SkillSuggestion | undefined = open.proposal?.suggestion
   if (!s) {
+    const working = !coach.wait || coach.wait.kind === 'soon'
     return (
-      <div class="calc coach" data-testid="coach-pending">
-        <p class="calc-line ink">{open.ask.after ? c.choosingAnother : c.choosing}</p>
+      <div class="calc coach" data-testid="coach-pending" data-wait={coach.wait?.kind ?? 'soon'}>
+        <p class="calc-line ink">{working ? (open.ask.after ? c.choosingAnother : c.choosing) : open.ask.after ? c.askedAnother : c.asked}</p>
         <p class="calc-line faint" data-testid="coach-when">
-          {coach.afterLine ? c.whenAfterLine : c.whenSoon}
+          {waitWords(coach.wait)}
         </p>
       </div>
     )
@@ -205,6 +216,13 @@ const DECIDE: Record<'adjust' | 'progress' | 'simplify', 'adjusted' | 'progresse
 export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coach: AimCoach; current: Skill; rhythm: Rhythm | null; earlier: readonly { skill: Skill; sessions: number }[]; onAnswer: (askId: number, a: ReviewAnswer) => void }) {
   const c = copy.coach
   const [mode, setMode] = useState<'edit' | 'write' | 'earlier' | 'editChange' | null>(null)
+  // Claude's evidence and reasons, one tap away (the Aims cards, the owner's words of 2026-10-17, done whole 2026-10-18).
+  const [why, setWhy] = useState(false)
+  const whyTap = (
+    <button type="button" class="textbtn" aria-expanded={why} data-testid="coach-review-why" onClick={() => setWhy((v) => !v)}>
+      {c.reviewWhy}
+    </button>
+  )
   const open = coach.review
   if (!open) return null
   const askId = open.ask.id as number
@@ -212,7 +230,7 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
   const head = struggle ? fill(c.reviewStruggle, { skill: current.name }) : fill(c.reviewOrdinary, { n: String(open.ask.days ?? 0), skill: current.name })
   const r = open.proposal?.review
   const answer = (a: ReviewAnswer) => onAnswer(askId, a)
-  const neutral = (
+  const neutral = (withWhy: boolean) => (
     <div class="actions">
       <button type="button" class="pill-quiet" data-testid="coach-review-keep" onClick={() => answer({ decision: 'kept' })}>
         {c.keep}
@@ -228,6 +246,7 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
       <button type="button" class="textbtn" data-testid="coach-review-write" onClick={() => setMode('write')}>
         {c.writeNext}
       </button>
+      {withWhy && whyTap}
     </div>
   )
   let body
@@ -257,14 +276,9 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
         <p class="calc-line ink" data-testid="coach-review-verdict">
           {fill(c.verdicts[r.verdict], { skill: ch.skill ?? current.name })}
         </p>
-        {r.evidence.map((e) => (
-          <p key={e} class="calc-line" data-testid="coach-review-evidence">
-            {e}
-          </p>
-        ))}
-        {ch.skill && <p class="calc-line ink">{ch.skill}</p>}
+        {/* Moving on names the skill in its verdict; any other change names it here. */}
+        {ch.skill && r.verdict !== 'progress' && <p class="calc-line ink">{ch.skill}</p>}
         <Proposed method={ch.method} how={ch.how} minutes={ch.minutes} rhythm={ch.rhythm} safety={ch.safety} />
-        <p class="calc-line faint">{fill(c.why, { why: r.why })}</p>
         <div class="actions">
           <button type="button" class="pill-quiet is-primary" data-testid="coach-review-use" onClick={() => answer({ decision: DECIDE[r.verdict as 'adjust' | 'progress' | 'simplify'], change: ch })}>
             {c.use}
@@ -278,6 +292,7 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
           <button type="button" class="textbtn" data-testid="coach-review-write" onClick={() => setMode('write')}>
             {c.own}
           </button>
+          {whyTap}
         </div>
       </>
     )
@@ -287,13 +302,7 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
         <p class="calc-line ink" data-testid="coach-review-verdict">
           {c.verdicts.keep}
         </p>
-        {r.evidence.map((e) => (
-          <p key={e} class="calc-line" data-testid="coach-review-evidence">
-            {e}
-          </p>
-        ))}
-        <p class="calc-line faint">{fill(c.why, { why: r.why })}</p>
-        {neutral}
+        {neutral(true)}
       </>
     )
   } else {
@@ -307,10 +316,22 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
             {c.reviewAsking}
           </p>
         )}
-        {neutral}
+        {neutral(false)}
       </>
     )
   }
+  // Claude's view: its evidence, its reasons and what Keep does, behind Why while the answer is on show.
+  const reasons = r && mode === null && why && (
+    <div data-testid="coach-review-reasons">
+      {r.evidence.map((e) => (
+        <p key={e} class="calc-line" data-testid="coach-review-evidence">
+          {e}
+        </p>
+      ))}
+      <p class="calc-line faint">{fill(c.why, { why: r.why })}</p>
+      <p class="note faint no-gap">{c.reviewNote}</p>
+    </div>
+  )
   return (
     <div class="calc coach" data-testid="coach-review">
       <p class="calc-line">
@@ -319,7 +340,7 @@ export function ReviewCoach({ coach, current, rhythm, earlier, onAnswer }: { coa
         </span>
       </p>
       {body}
-      <p class="note faint no-gap">{c.reviewNote}</p>
+      {reasons}
     </div>
   )
 }

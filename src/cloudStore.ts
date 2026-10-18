@@ -32,6 +32,12 @@ export interface CloudStore {
   upsert(rows: readonly CloudRow[]): Promise<void>
   /** Rows of one app synced after the watermark, oldest first, at most `limit`. */
   pull(app: string, after: string, limit: number): Promise<CloudRow[]>
+  /**
+   * When each of a few named rows of one app was last synced, by primary key alone, so each is one
+   * row read: the look the skill coach's wait takes every 20 seconds (D7 as amended 2026-10-18). A row
+   * that is not there is left out.
+   */
+  peek(app: string, keys: readonly { store: string; id: string }[]): Promise<{ store: string; id: string; synced_at: string }[]>
   /** Registers this phone in `devices` on first sight and stamps its last sync after. */
   touchDevice(d: DeviceTouch): Promise<void>
   /** Deletes every row of one app, and this phone's device row. Never another app's rows. */
@@ -56,6 +62,14 @@ export async function libsqlStore(token: string): Promise<CloudStore> {
         })),
         'write',
       )
+    },
+    async peek(app, keys) {
+      if (!keys.length) return []
+      const res = await client.batch(
+        keys.map((k) => ({ sql: 'SELECT store, id, synced_at FROM records WHERE app = ? AND store = ? AND id = ?', args: [app, k.store, k.id] })),
+        'read',
+      )
+      return res.flatMap((r) => r.rows.map((row) => ({ store: String(row.store), id: String(row.id), synced_at: String(row.synced_at) })))
     },
     async pull(app, after, limit) {
       const res = await client.execute({ sql: `SELECT ${COLUMNS} FROM records WHERE app = ? AND synced_at > ? ORDER BY synced_at ASC LIMIT ?`, args: [app, after, limit] })
@@ -116,6 +130,14 @@ export function memoryStore(): MemoryStore {
       // As the live table does: body is NOT NULL, and a batch is written whole or not at all.
       if (rows.some((r) => r.body === null || r.body === undefined)) throw notNullBody()
       for (const r of rows) store.rows.set(keyOf(r), { ...r })
+    },
+    async peek(app, keys) {
+      store.calls++
+      if (store.failWith) throw store.failWith
+      return keys.flatMap((k) => {
+        const r = store.rows.get(keyOf({ app, store: k.store, id: k.id }))
+        return r ? [{ store: r.store, id: r.id, synced_at: r.synced_at }] : []
+      })
     },
     async pull(app, after, limit) {
       store.calls++

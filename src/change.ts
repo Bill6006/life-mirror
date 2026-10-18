@@ -50,7 +50,7 @@ export function changesInWords(
   return { since: whenLabel(previous, today), lines }
 }
 
-/** Steps a reading must worsen by, since the last check-in, before the summary offers "Anything going on?" (stage 3, group 3). */
+/** Steps a reading must worsen by, since the last check-in, before the summary offers "Anything behind it?" (stage 3, group 3). */
 export const BEHIND_IT_STEPS = 2
 
 /**

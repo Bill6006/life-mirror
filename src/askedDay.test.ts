@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { morningPoints } from './associations'
 import { addDays } from './blocks'
 import { factSheet } from './brainFlow'
-import { askedLate, db, type CheckIn } from './db'
+import { askedLate, db, notAskedInTurn, type CheckIn } from './db'
 import { factById, type Fact, type FactSheet } from './facts'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { askedReadings, turnOf } from './settings'
@@ -107,5 +107,19 @@ describe('the day’s sheet when the night was read late (stage 3, item 5, part 
     expect(factById(sheet, 'today.shortSleep')?.text).toBe('Sleep hours read “Under 5 hours” this morning.')
     expect(factById(sheet, 'today.shortSleep')?.values).not.toHaveProperty('late')
     expect(factById(sheet, 'context.sleepHours')?.text).not.toContain('asked late')
+  })
+})
+
+describe('the reading a morning did not ask, in turn, marked “not asked” (the owner’s words; shown since 2026-10-18)', () => {
+  it('names the one of Motivation and Confidence a morning left for the next, and nothing for any other check-in', () => {
+    expect(notAskedInTurn({ block: 'morning', asked: ['mood', 'motivation'] })).toBe('confidence')
+    expect(notAskedInTurn({ block: 'morning', asked: ['mood', 'confidence'] })).toBe('motivation')
+    // Both, neither, before the turns (no list kept), a shorter morning, or any other block: nothing marked.
+    expect(notAskedInTurn({ block: 'morning', asked: ['motivation', 'confidence'] })).toBeNull()
+    expect(notAskedInTurn({ block: 'morning', asked: ['mood', 'energy', 'stress'] })).toBeNull()
+    expect(notAskedInTurn({ block: 'morning' })).toBeNull()
+    expect(notAskedInTurn({ block: 'afternoon', asked: ['motivation'] })).toBeNull()
+    // A reading you retired is never marked as not asked.
+    expect(notAskedInTurn({ block: 'morning', asked: ['mood', 'motivation'] }, ['confidence'])).toBeNull()
   })
 })

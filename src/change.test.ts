@@ -35,7 +35,7 @@ describe('the change since last time, in words', () => {
   })
 })
 
-describe('Anything going on? (stage 3, group 3)', () => {
+describe('Anything behind it? (stage 3, group 3)', () => {
   const previous = { answers: { ...morningAll(3) } }
 
   it('names a reading that worsened by two steps or more, each in its own direction', () => {

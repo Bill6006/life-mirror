@@ -1,6 +1,6 @@
 import { citedFactsOf, lackedOf } from './brainShared'
 import { journalDaysOf } from './journalCheck'
-import type { CoachProposal } from './coachShared'
+import type { CoachProposal, CoachRun } from './coachShared'
 import { isFirmness } from './firmness'
 import type { BrainBrief, BrainRead, CoachPick } from './db'
 import { useEffect, useState } from 'preact/hooks'
@@ -101,6 +101,8 @@ const READS_STORE = 'reads'
 const COACH_STORE = 'coach'
 /** The skill coach's proposals (Parts 40 and 41): one per ask. None is written while their gate is closed. */
 const PROPOSALS_STORE = 'proposals'
+/** The Worker's own record of each run on the bridge; the phone keeps the skill coach's suggestion runs (D7 as amended 2026-10-18). */
+const BRIDGE_STORE = 'bridge'
 
 const texts = (v: unknown, n: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null)
 const rhythmIn = (v: unknown): { perWeek: number; restDays: number } | null => {
@@ -538,6 +540,43 @@ export function wholeRuns<T extends { synced_at: string }>(rows: T[], page: numb
  * time becomes an outside day here; a deleted row takes its day back. Its own watermark, so a
  * wipe or a fresh install starts again from the beginning.
  */
+/**
+ * A suggestion run, from the Worker's row of it on the bridge (D7 as amended 2026-10-18): when it was
+ * started, where it stands, whether the routine took its fire, and the asks it carried. Null for any
+ * other task, or a row that is not whole. Nothing personal is on it.
+ */
+export function coachRunOf(id: string, body: string): CoachRun | null {
+  try {
+    const r = JSON.parse(body) as Record<string, unknown>
+    const statuses: readonly string[] = ['firing', 'fired', 'written', 'refused', 'fallback']
+    if (r.kind !== 'task' || r.task !== 'skill' || typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.status !== 'string' || !statuses.includes(r.status)) return null
+    const asks = Array.isArray(r.asks) ? (r.asks as unknown[]).filter((a): a is number => Number.isInteger(a)) : []
+    return { id, day: r.day, at: r.at, status: r.status as CoachRun['status'], ...(typeof r.firedAt === 'string' ? { firedAt: r.firedAt } : {}), ...(typeof r.retryAfter === 'string' ? { retryAfter: r.retryAfter } : {}), asks }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The skill coach's wait (D7 as amended 2026-10-18: the phone checks for the answer every 20 seconds):
+ * a look at a few of the brain's rows by their keys alone, one row read each, and a whole sync only when
+ * one of them changed since the phone last read the brain. True when it synced.
+ */
+export async function peekBrain(keys: readonly { store: string; id: string }[]): Promise<boolean> {
+  if (!keys.length) return false
+  try {
+    const { token } = await resolveToken()
+    if (!token || !isOnline()) return false
+    const seen = await (await factory(token)).peek(BRAIN_APP, keys)
+    const { watermark } = await getBrainMeta()
+    if (!seen.some((r) => r.synced_at > watermark)) return false
+    await syncNow()
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function pullOutside(store: CloudStore): Promise<number> {
   let applied = 0
   // A richer reading of the rows re-reads them all once from the start, so every session already kept gains its detail (Part 35).
@@ -573,8 +612,14 @@ async function pullBrain(store: CloudStore): Promise<number> {
     const meta = await getBrainMeta()
     const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
     if (!rows.length) break
-    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.cloudMeta], async () => {
       for (const row of rows) {
+        if (row.store === BRIDGE_STORE) {
+          const run = row.deleted || !row.body ? null : coachRunOf(row.id, row.body)
+          if (run) await db.coachRuns.put(run)
+          else if (row.deleted) await db.coachRuns.delete(row.id)
+          continue
+        }
         if (row.store === PROPOSALS_STORE) {
           const p = row.deleted || !row.body ? null : coachProposalOf(row.id, row.body)
           if (p) await db.coachProposals.put(p)

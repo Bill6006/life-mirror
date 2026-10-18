@@ -14,6 +14,7 @@ import {
   getCheckIn,
   getSettings,
   isComplete,
+  notAskedInTurn,
   placedIn,
   previousCompleted,
   privateItems,
@@ -261,7 +262,7 @@ export function SummaryScreen({
   const complete = isComplete(record)
   const change = complete ? changesInWords(record.answers, block, previous, { day, block }) : null
   // Stage 3, group 4: the check-in's own note shows on its summary; a morning's or an afternoon's below the
-  // readings, unless Anything going on? is showing, which already holds it.
+  // readings, unless Anything behind it? is showing, which already holds it.
   const asksBehind = complete && block !== 'evening' && worsenedReadings(record.answers, block, previous).length > 0
   const glanceBlocks = BLOCKS.filter((b) => activeBlocks(settings.frequency).includes(b) || all.some((c) => c.day === day && c.block === b))
   const ex = record.extras ?? {}
@@ -337,6 +338,23 @@ export function SummaryScreen({
               </li>
             )
           })}
+          {(() => {
+            // Stage 3, item 5: the one of Motivation and Confidence this morning did not ask, in turn, marked "not asked".
+            const other = notAskedInTurn(record, settings.retiredReadings)
+            if (!other) return null
+            const asked = other === 'motivation' ? 'confidence' : 'motivation'
+            return (
+              <li key={other} data-testid="reading-not-asked">
+                <div class="row">
+                  <span class="row-main">
+                    {readingById(other).name}
+                    <span class="sub">{fill(copy.summary.notAskedWhy, { other: readingById(asked).name })}</span>
+                  </span>
+                  <span class="row-side">{copy.summary.notAsked}</span>
+                </div>
+              </li>
+            )
+          })()}
         </ul>
       </div>
 
@@ -403,7 +421,7 @@ export function SummaryScreen({
 /**
  * In the moment (stage 3, group 3): after an evening, the one pattern from What comes before your
  * days that tonight matches; after a morning or an afternoon where a reading worsened by two steps,
- * one optional line, "Anything going on?", writing this check-in's note. Never a question in the
+ * one optional line, "Anything behind it?", writing this check-in's note. Never a question in the
  * flow, and never evidence: an association, and the owner's own words.
  */
 function InTheMoment({ record, previous, all }: { record: CheckIn; previous: CheckIn | null; all: readonly CheckIn[] }) {

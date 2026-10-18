@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
-import { kindIcon, planState, PlanTap, RowFrame, startedWhen, When, useQuarterMinute } from './aimCard'
+import { CueCounts, kindIcon, planState, PlanTap, RowFrame, startedWhen, When, useQuarterMinute } from './aimCard'
 import { Icon } from './icons'
 import { ClampText, Disclosure, Facts, StageProgress } from './ui'
 import { lastLine, type CueCount } from './aims'
@@ -76,6 +76,12 @@ function ExpectTap({ offerId }: { offerId: number }) {
       </span>
     </div>
   )
+}
+
+/** A rep's answers in words, the ones there are: "done 2 · partly 1", never "no 0". */
+function repCountWords(r: { done: number; partly: number; no: number }): string {
+  const w = copy.path.repCounts
+  return [r.done > 0 && fill(w.done, { n: String(r.done) }), r.partly > 0 && fill(w.partly, { n: String(r.partly) }), r.no > 0 && fill(w.no, { n: String(r.no) })].filter(Boolean).join(' · ')
 }
 
 function whereWords(s: SettingKind): string {
@@ -425,32 +431,6 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         </div>
       )}
 
-      {reps.length === 0 ? (
-        <p class="reps-line" data-testid="path-reps">
-          <span class="eyebrow">{c.byRep}</span>
-          <span class="muted">{c.repsNone}</span>
-        </p>
-      ) : (
-        <div class="calc" data-testid="path-reps">
-          <p class="calc-line ink">{c.byRep}</p>
-          {reps.map((r) => (
-            <p key={r.moveId} class="calc-line" data-testid="path-rep-count">
-              {fill(c.repLine, { rep: moveById(r.moveId).name, done: String(r.done), partly: String(r.partly), no: String(r.no) })}
-            </p>
-          ))}
-        </div>
-      )}
-
-      {p.counts.length > 0 && (
-        <div class="calc">
-          {p.counts.map((x) => (
-            <p key={x.cue} class="calc-line" data-testid="aim-cue-count">
-              {fill(copy.aims.cueLine, { cue: copy.aims.cues[x.cue], started: String(x.started), n: String(x.n) })}
-            </p>
-          ))}
-        </div>
-      )}
-
       {!paused && p.prompts}
 
       {partnerPath && !paused && p.dates && (
@@ -459,8 +439,24 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         </Disclosure>
       )}
 
-      {/* One Details row, as on every commitment's card: how the path works, then its settings (cleaned up 2026-10-17). */}
+      {/* One Details row, as on every commitment's card: your reps and the plans by cue (moved here 2026-10-18), how the path works, then its settings. */}
       <Disclosure label={d.details} testid="path-details">
+        {reps.length === 0 ? (
+          <p class="reps-line" data-testid="path-reps">
+            <span class="eyebrow">{c.byRep}</span>
+            <span class="muted">{c.repsNone}</span>
+          </p>
+        ) : (
+          <div class="calc" data-testid="path-reps">
+            <p class="calc-line ink">{c.byRep}</p>
+            {reps.map((r) => (
+              <p key={r.moveId} class="calc-line" data-testid="path-rep-count">
+                {fill(c.repLine, { rep: moveById(r.moveId).name, counts: repCountWords(r) })}
+              </p>
+            ))}
+          </div>
+        )}
+        <CueCounts counts={p.counts} />
         <div class="calc evidence" data-testid="path-how">
           <p class="calc-line ink">{d.how}</p>
           {stage && <p class="move-what">{stage.what}</p>}

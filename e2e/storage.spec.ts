@@ -47,6 +47,9 @@ class Cloud {
   down = false
   /** A store whose rows the table refuses, as it refused a row with no body. */
   refuseStore: string | null = null
+  /** The skill coach's looks at named rows (D7 as amended 2026-10-18), and the whole pulls of the brain's rows. */
+  peeks = 0
+  brainPulls = 0
   private known = new Set<string>()
   private stored = new Map<number, string>()
   private held: Promise<void> | null = null
@@ -99,8 +102,15 @@ class Cloud {
     if (sql.startsWith(`SELECT ${COLUMNS.join(', ')} FROM records WHERE app = ? AND synced_at > ? ORDER BY synced_at ASC LIMIT ?`)) {
       const [app, after, limit] = args as [string, string, number]
       if (app === APP && this.held) await this.held
+      if (app === BRAIN) this.brainPulls++
       const out = [...this.rows.values()].filter((r) => r.app === app && r.synced_at > after).sort((a, b) => (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : 0)).slice(0, limit)
       return { cols: [...COLUMNS], rows: out.map((r) => COLUMNS.map((c) => r[c])), affected: 0 }
+    }
+    if (sql.startsWith('SELECT store, id, synced_at FROM records WHERE app = ? AND store = ? AND id = ?')) {
+      const [app, store, id] = args as [string, string, string]
+      this.peeks++
+      const r = this.rows.get(`${app}|${store}|${id}`)
+      return { cols: ['store', 'id', 'synced_at'], rows: r ? [[r.store, r.id, r.synced_at]] : [], affected: 0 }
     }
     if (sql.startsWith('UPDATE devices SET last_sync')) {
       this.touches++
@@ -538,4 +548,70 @@ test('a new install used before its token is pasted writes nothing over the clou
   expect(cloud.refused).toEqual([])
   expect(b.errors).toEqual([])
   await b.context.close()
+})
+
+test('the skill coach with its cloud copy on (D7 as amended 2026-10-18: suggestions on tap, two a day): the ask goes up at once; the card says it is usually ready in a few minutes; the Worker’s answer shows within 20 seconds of being written, found by a look at its rows alone; a refused fire says when it is tried again; both of the day’s runs used, after midnight', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const cloud = new Cloud()
+  const p = await phone(browser, cloud, new Date(2026, 9, 14, 8, 0))
+  const page = p.page
+  await page.goto('./')
+  await openSettings(page, /Cloud copy/)
+  await page.getByTestId('token-input').fill(TOKEN)
+  await page.getByTestId('token-keep').click()
+  await expect.poll(() => cloud.touches).toBeGreaterThan(0)
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-certification').click()
+  await page.getByTestId('aim-goal-input').fill('Orrish')
+  await page.getByTestId('aim-method-input').fill('A phrasebook')
+  await page.getByTestId('aim-learn-add').click()
+  const card = page.getByTestId('aim-card').filter({ hasText: 'Orrish' })
+  await expect(card.getByTestId('coach-ask')).toHaveText('Suggest a skill with Claude')
+  await card.getByTestId('coach-ask').click()
+  // On the tap: Claude is at it, and the card says when; the ask is in the cloud within seconds.
+  await expect(card.getByTestId('coach-pending')).toContainText('Claude is choosing a skill…')
+  await expect(card.getByTestId('coach-when')).toHaveText('Usually ready in a few minutes.')
+  await expect.poll(() => cloud.live('coachAsks').length, { timeout: 10_000 }).toBe(1)
+  const ask = JSON.parse(cloud.live('coachAsks')[0].body ?? '{}') as { id: number; aimId: number; revision: string; day: string }
+  const now = () => page.evaluate(() => new Date().toISOString())
+  const worker = (store: string, id: string, body: Record<string, unknown>, at: string) => cloud.seed({ app: BRAIN, store, id, day: ask.day, body: JSON.stringify(body), updated_at: at, deleted: 0, device_id: 'worker', synced_at: at })
+  const run = (id: string, at: string, extra: Record<string, unknown>) => ({ id, kind: 'task', task: 'skill', day: ask.day, at, trigger: 'ask', factsDay: ask.day, askedModel: 'opus', contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], ...extra })
+  // While nothing new is written, each look reads the named rows alone: no whole pull of the brain's rows.
+  const pulls = cloud.brainPulls
+  const peeks = cloud.peeks
+  await page.clock.fastForward(20_000)
+  await expect.poll(() => cloud.peeks).toBeGreaterThan(peeks)
+  expect(cloud.brainPulls).toBe(pulls)
+  // The Worker takes the ask within the minute and writes Claude's answer: the card shows it at the next look.
+  const fired = await now()
+  worker('bridge', `task:${ask.day}:skill`, run(`task:${ask.day}:skill`, fired, { status: 'fired', firedAt: fired, fireStatus: 200, asks: [ask.id] }), fired)
+  const written = await now()
+  worker('proposals', `ask:${ask.id}`, { askId: ask.id, aimId: ask.aimId, kind: 'setup', revision: ask.revision, day: ask.day, at: written, model: 'claude-opus-5-5', askedModel: 'opus', suggestion: { skill: 'Understand everyday spoken Orrish', method: 'A phrasebook', how: 'One page a session, each phrase read aloud.', minutes: 30, rhythm: { perWeek: 5, restDays: 0 }, why: 'Listening first builds the ear the rest stands on.', physical: false, safety: null, likelyNext: 'Short spoken answers' } }, written)
+  worker('bridge', `task:${ask.day}:skill`, run(`task:${ask.day}:skill`, fired, { status: 'written', firedAt: fired, fireStatus: 200, writer: 'claude', writtenAt: written, posts: 1, asks: [ask.id] }), written)
+  await page.clock.fastForward(20_000)
+  await expect(card.getByTestId('coach-suggestion-skill')).toHaveText('Understand everyday spoken Orrish', { timeout: 10_000 })
+  await expect(card.getByTestId('coach-use')).toHaveText('Use this skill')
+  await expect(card.getByTestId('coach-another')).toHaveText('Try another')
+  await expect(card.getByTestId('coach-own')).toHaveText('Set one myself')
+  await expect(card.getByTestId('coach-edit')).toHaveText('Edit first')
+  // Try another: the second run of the day. The routine refuses its fire: the card says so, and when it is tried again.
+  await card.getByTestId('coach-another').click()
+  await expect(card.getByTestId('coach-when')).toHaveText('Usually ready in a few minutes.')
+  await expect.poll(() => cloud.live('coachAsks').filter((r) => !JSON.parse(r.body ?? '{}').decision).length, { timeout: 10_000 }).toBe(1)
+  const second = JSON.parse(cloud.live('coachAsks').find((r) => !JSON.parse(r.body ?? '{}').decision)?.body ?? '{}') as { id: number }
+  const refused = await now()
+  worker('bridge', `task:${ask.day}:skill.2`, run(`task:${ask.day}:skill.2`, refused, { status: 'fallback', fireStatus: 403, error: 'Request not allowed', asks: [second.id] }), refused)
+  await page.clock.fastForward(20_000)
+  const retry = await page.evaluate((at) => { const d = new Date(Date.parse(at) + 15 * 60_000); return `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? 'AM' : 'PM'}` }, refused)
+  await expect(card.getByTestId('coach-pending')).toContainText('Asked Claude for another skill', { timeout: 10_000 })
+  await expect(card.getByTestId('coach-when')).toHaveText(`Claude couldn’t start just now; your Claude usage limit may be reached. It tries again at ${retry}.`)
+  // Both of the day's runs reached Claude, and neither carried this ask: it comes after midnight.
+  const taken = await now()
+  worker('bridge', `task:${ask.day}:skill.2`, run(`task:${ask.day}:skill.2`, taken, { status: 'written', firedAt: taken, fireStatus: 200, writer: 'claude', posts: 1, asks: [ask.id + 1000] }), taken)
+  await page.clock.fastForward(20_000)
+  await expect(card.getByTestId('coach-when')).toHaveText('Both of today’s two suggestions are used. This one comes after midnight.', { timeout: 10_000 })
+  expect(p.errors).toEqual([])
+  await p.context.close()
 })

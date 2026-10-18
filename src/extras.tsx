@@ -69,6 +69,19 @@ function chipAnswerWords(a: Association): string {
   return fill(copy.extras.chipTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
 }
 
+
+/** A phrase kept on one line inside a label, so a narrow phone never breaks it at its hyphen ("check-" / "in?"), as it did until 2026-10-18. */
+function keepTogether(label: string, phrase: string) {
+  const at = label.indexOf(phrase)
+  if (at < 0) return label
+  return (
+    <>
+      {label.slice(0, at)}
+      <span class="keep-together">{phrase}</span>
+      {label.slice(at + phrase.length)}
+    </>
+  )
+}
 export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; block: Block; onDone: () => void; onAway?: () => void }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
   const settings = useLive(getSettings, [])
@@ -377,7 +390,7 @@ export function SweetChip({ record }: { record: CheckIn }) {
           <li data-chip="sweet">
             <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid="chip-sweet" onClick={() => void setExtra({ day: record.day, block: record.block }, askedOf(record), 'sweet', !on)}>
               <span class="anchor-mark" aria-hidden="true" />
-              <span class="row-main">{copy.extras.sweet}</span>
+              <span class="row-main">{keepTogether(copy.extras.sweet, 'check-in?')}</span>
             </button>
             {on && (
               <div class="calc chip-answer" data-testid="chip-answer">

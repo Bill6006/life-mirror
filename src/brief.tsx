@@ -3,7 +3,7 @@ import { applyLineAction, chooseAndLog, feedbackFor, hypothesisOf, lineActionSta
 import type { LineAction } from './brainShared'
 import { hasMove, moveById, NOTHING } from './catalogue'
 import { copy } from './copy'
-import { clockTimes12, fill, formatDayShort, formatHHMM } from './format'
+import { clockTimes12, countWords, fill, formatDayShort, formatHHMM } from './format'
 import { briefData, type Brief as BriefData, type LastNight, type YesterdayMove } from './forecastFlow'
 import { gradeWord } from './library'
 import { useLive } from './live'
@@ -70,7 +70,7 @@ function actionLabel(line: BriefLine, state: ActionState): string {
 export function testSetWords(a: Extract<LineAction, { kind: 'test' }>): string {
   const h = hypothesisOf(a)
   if (!h) return copy.brain.acted.test
-  return fill(copy.brain.actedTest, { move: hasMove(h.move) ? moveById(h.move).name : h.move, block: copy.blocks[h.context].toLowerCase(), reading: readingById(h.target).name.toLowerCase(), n: String(MIN_PER_ARM) })
+  return fill(copy.brain.actedTest, { move: hasMove(h.move) ? moveById(h.move).name : h.move, block: copy.blocks[h.context].toLowerCase(), reading: readingById(h.target).name.toLowerCase(), n: countWords(MIN_PER_ARM) })
 }
 
 /** The early warning: a conclusion, in the double-rule register. */

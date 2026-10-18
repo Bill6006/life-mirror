@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import type { Block, Slot } from './blocks'
 import { onBoard } from './caffeineRecord'
 import { copy } from './copy'
-import { askedLate, askedOf, type CheckIn } from './db'
+import { askedLate, askedOf, notAskedInTurn, type CheckIn } from './db'
 import { fill, formatDayShort, formatTime } from './format'
 import { anchorFor, headword, readingById } from './readings'
 import { Scale } from './scale'
@@ -128,6 +128,9 @@ export function ContextChips({ all, today, index }: { all: CheckIn[]; today: str
   const values = latestContext(all)
   const [shown, setShown] = useState<string | null>(null)
   if (!values.length) return null
+  // Stage 3, item 5: the one of Motivation and Confidence this morning did not ask, in turn: its last answer, marked "not asked today".
+  const morning = all.find((c) => c.day === today && c.block === 'morning')
+  const notToday = morning ? notAskedInTurn(morning) : null
   return (
     <div class="context" data-testid="context">
       <SectionLabel index={index}>{copy.reading.context}</SectionLabel>
@@ -138,7 +141,7 @@ export function ContextChips({ all, today, index }: { all: CheckIn[]; today: str
           const body = (
             <>
               <span class="ctx-k">
-                <Facts items={[readingById(v.id).name, old && copy.disclose.contextEarlier, askedLate(v.checkin).includes(v.id) && copy.disclose.contextLate]} />
+                <Facts items={[readingById(v.id).name, v.id === notToday ? copy.disclose.contextNotAsked : old && copy.disclose.contextEarlier, askedLate(v.checkin).includes(v.id) && copy.disclose.contextLate]} />
               </span>
               <span class="ctx-v">{headword(anchorFor(v.id, v.position))}</span>
               {old && open && <span class="ctx-when">{fill(copy.disclose.context, { when: whenOf(v.checkin, today) })}</span>}

@@ -11,10 +11,13 @@ compatibility_date = "2026-09-01"
 binding = "AI"
 
 [triggers]
-# One tick every fifteen minutes (Part 28): a cue whose moment has come and the check-in pings at
-# your own reminder times (from the settings the phone copies); the day's line once today's sheet carries the morning check-in, or from
-# FALLBACK_TIME without one; on Sunday at BRIEF_HOUR, the week reviewed.
-crons = ["*/15 * * * *"]
+# One tick every minute: a skill suggestion the phone asked for, started at once (D7 as the owner
+# amended it on 2026-10-18: suggestions on tap, two a day). Every fifteenth minute, every job as
+# before (Part 28): a cue whose moment has come and the check-in pings at your own reminder times
+# (from the settings the phone copies); the day's line once today's sheet carries the morning
+# check-in, or from FALLBACK_TIME without one; on Sunday at BRIEF_HOUR, the week reviewed; the day's
+# progression reviews.
+crons = ["* * * * *"]
 
 [vars]
 TIMEZONE = "America/New_York"

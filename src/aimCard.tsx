@@ -474,23 +474,13 @@ export function AimCard({
       <p class="aim-facts">
         <Facts items={facts} />
       </p>
-      {learning?.current && (learning.practice?.sessions ?? 0) > 0 && (
-        <p class="calc-line" data-testid="aim-practice">
-          {practiceLine(learning.practice)}
-        </p>
-      )}
       {learning?.current?.safety && (
         <p class="calc-line" data-testid="aim-safety">
           {learning.current.safety} <span class="faint">{copy.coach.notMedical}</span>
         </p>
       )}
-      {learning?.coach && learning.current && !paused && (
-        <>
-          <SetupCoach coach={learning.coach.state} h={learning.coach.setup} named />
-          <ReviewCoach coach={learning.coach.state} current={learning.current} rhythm={learning.coach.rhythm} earlier={learning.earlier} onAnswer={learning.coach.onReview} />
-        </>
-      )}
 
+      {/* The Aims cards (the owner's words, 2026-10-17, done whole 2026-10-18): the actions first, at the same place on every card; then any decision the card asks of you; the counts under Details. */}
       {paused ? (
         <p class="note" data-testid="aim-paused">
           {c.paused}
@@ -576,15 +566,11 @@ export function AimCard({
         </>
       )}
 
-      {counts.length > 0 && (
-        <div class="calc">
-          {counts.map((x) => (
-            <p key={x.cue} class="calc-line" data-testid="aim-cue-count">
-              {fill(c.cueLine, { cue: c.cues[x.cue], started: String(x.started), n: String(x.n) })}
-            </p>
-          ))}
-          <p class="note faint no-gap">{c.cueNote}</p>
-        </div>
+      {learning?.coach && learning.current && !paused && (
+        <>
+          <SetupCoach coach={learning.coach.state} h={learning.coach.setup} named />
+          <ReviewCoach coach={learning.coach.state} current={learning.current} rhythm={learning.coach.rhythm} earlier={learning.earlier} onAnswer={learning.coach.onReview} />
+        </>
       )}
 
       {blocked && unblock && !open && !done && !paused && !unnamed && (
@@ -600,14 +586,20 @@ export function AimCard({
       )}
 
       <Disclosure label={d.details} testid="aim-details">
+        {learning?.current && (learning.practice?.sessions ?? 0) > 0 && (
+          <p class="calc-line" data-testid="aim-practice">
+            {practiceLine(learning.practice)}
+          </p>
+        )}
+        {hasEase && ease && (
+          <p class="calc-line faint" data-testid="aim-ease-line">
+            {fill(c.easeLine, { hard: String(ease.hard), right: String(ease.right), easy: String(ease.easy) })}
+          </p>
+        )}
+        <CueCounts counts={counts} />
         {cadence && <CadenceEditor c={cadence} />}
         {learning ? (
           <>
-            {hasEase && ease && (
-              <p class="calc-line faint" data-testid="aim-ease-line">
-                {fill(c.easeLine, { hard: String(ease.hard), right: String(ease.right), easy: String(ease.easy) })}
-              </p>
-            )}
             {learning.current && (
               <>
                 <div class="actions">
@@ -727,6 +719,22 @@ export function AimCard({
           </>
         )}
       </Disclosure>
+    </div>
+  )
+}
+
+/** Per cue, the plans made and how many were started, counts only: under a card's Details, headed (the Aims cards, 2026-10-18). */
+export function CueCounts({ counts }: { counts: readonly CueCount[] }) {
+  const c = copy.aims
+  if (!counts.length) return null
+  return (
+    <div class="calc" data-testid="aim-plans-by-cue">
+      <p class="calc-line ink">{c.cuesTitle}</p>
+      {counts.map((x) => (
+        <p key={x.cue} class="calc-line" data-testid="aim-cue-count">
+          {fill(c.cueLine, { cue: c.cues[x.cue], started: String(x.started), n: String(x.n) })}
+        </p>
+      ))}
     </div>
   )
 }

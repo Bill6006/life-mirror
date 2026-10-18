@@ -424,6 +424,20 @@ function audit(opts: { zoom: number }) {
       const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
       if (ox > 2 && oy > 2) issues.push(`targets overlap ${Math.round(ox)}×${Math.round(oy)}: "${a.s}" × "${b.s}"`)
     }
+  // A field's hint is read whole: one cut at the field's edge loses its words, as the evening note's did until
+  // 2026-10-18. A hint is no text node, so the runs above never see it; measured in the field's own font.
+  const pen = document.createElement('canvas').getContext('2d')
+  for (const f of document.querySelectorAll('input[placeholder]')) {
+    const field = f as HTMLInputElement
+    if (!pen || !field.placeholder || field.value || !field.getClientRects().length || getComputedStyle(field).visibility === 'hidden') continue
+    const cs = getComputedStyle(field)
+    pen.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    const room = field.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+    const need = pen.measureText(field.placeholder).width
+    if (need > room + 0.5) issues.push(`a field's hint is cut: "${field.placeholder}" needs ${Math.ceil(need)} px of ${Math.floor(room)}`)
+  }
+  // A phrase a label keeps whole stays on one line ("check-in?", never "check-" and "in?").
+  for (const k of document.querySelectorAll('.keep-together')) if (k.getClientRects().length > 1) issues.push(`a phrase kept together breaks across lines: "${k.textContent ?? ''}"`)
   return issues
 }
 

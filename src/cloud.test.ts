@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { BRAIN_APP, brainBriefOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
+import { BRAIN_APP, brainBriefOf, coachRunOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, peekBrain, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
 import { setBrainSwitch, setWriterModel } from './brainPrefs'
@@ -536,6 +536,48 @@ describe('the brain’s lines, read from the same database', () => {
     // Let it out: the nights of the journal a line drew on, days only, each once; never their words.
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', journal: ['2026-09-17', 'last night', '2026-09-17', 3] }))?.journal).toEqual(['2026-09-17'])
     expect(brainBriefOf('y', JSON.stringify({ day: '2026-09-18', text: 'T', journal: [] }))).not.toHaveProperty('journal')
+  })
+})
+
+describe('the skill coach’s suggestion runs, read from the bridge (D7 as amended 2026-10-18)', () => {
+  const bridgeRow = (id: string, body: Record<string, unknown>, synced_at: string, deleted: 0 | 1 = 0): CloudRow => ({ app: BRAIN_APP, store: 'bridge', id, day: '2026-09-18', body: JSON.stringify(body), updated_at: synced_at, deleted, device_id: 'worker', synced_at })
+  const task = (task: string, extra: Record<string, unknown> = {}) => ({ id: `task:2026-09-18:${task}`, kind: 'task', task, day: '2026-09-18', at: '2026-09-18T13:00:00.000Z', status: 'fired', trigger: 'ask', factsDay: '2026-09-18', askedModel: 'opus', firedAt: '2026-09-18T13:00:00.000Z', fireStatus: 200, sessionUrl: 'https://claude.ai/code/session_s', contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], asks: [7], ...extra })
+
+  it('keeps a suggestion run’s state and nothing of any other task, and writes none of the Worker’s rows', async () => {
+    const store = memoryStore()
+    await store.upsert([bridgeRow('task:2026-09-18:skill', task('skill'), '2026-09-18T13:00:01.000Z'), bridgeRow('task:2026-09-18:line', task('line', { writer: 'claude' }), '2026-09-18T13:00:02.000Z')])
+    await withToken(store)
+    await syncNow()
+    expect(await db.coachRuns.toArray()).toEqual([{ id: 'task:2026-09-18:skill', day: '2026-09-18', at: '2026-09-18T13:00:00.000Z', status: 'fired', firedAt: '2026-09-18T13:00:00.000Z', asks: [7] }])
+    // A refused fire: no firedAt, the routine's retry-after kept.
+    await store.upsert([bridgeRow('task:2026-09-18:skill', task('skill', { status: 'fallback', firedAt: undefined, fireStatus: 429, retryAfter: '600' }), '2026-09-18T13:01:00.000Z')])
+    await syncNow()
+    expect(await db.coachRuns.get('task:2026-09-18:skill')).toEqual({ id: 'task:2026-09-18:skill', day: '2026-09-18', at: '2026-09-18T13:00:00.000Z', status: 'fallback', retryAfter: '600', asks: [7] })
+    expect([...store.rows.values()].filter((r) => r.app === BRAIN_APP)).toHaveLength(2)
+    expect(coachRunOf('x', 'not json')).toBeNull()
+    expect(coachRunOf('x', JSON.stringify(task('progress')))).toBeNull()
+    expect(coachRunOf('x', JSON.stringify(task('skill', { status: 'done' })))).toBeNull()
+    expect(coachRunOf('x', JSON.stringify(task('skill', { asks: [3, 'x', 4.5, 9] })))?.asks).toEqual([3, 9])
+  })
+
+  it('looks at the few rows a waiting card names by key, and syncs only when one of them changed since the brain was last read', async () => {
+    const store = memoryStore()
+    await store.upsert([bridgeRow('task:2026-09-18:skill', task('skill'), '2026-09-18T13:00:01.000Z')])
+    await withToken(store)
+    await syncNow()
+    const keys = [{ store: 'proposals', id: 'ask:7' }, { store: 'bridge', id: 'task:2026-09-18:skill' }, { store: 'bridge', id: 'task:2026-09-18:skill.2' }]
+    const before = store.calls
+    expect(await peekBrain(keys)).toBe(false)
+    // One look, no pull: nothing new.
+    expect(store.calls - before).toBe(1)
+    await store.upsert([{ app: BRAIN_APP, store: 'proposals', id: 'ask:7', day: '2026-09-18', body: JSON.stringify({ askId: 7, aimId: 1, kind: 'setup', revision: 'r', day: '2026-09-18', at: '2026-09-18T13:02:00.000Z', suggestion: { skill: 'Ten words', how: 'One page.', why: 'It sticks.' } }), updated_at: '2026-09-18T13:02:00.000Z', deleted: 0, device_id: 'worker', synced_at: '2026-09-18T13:02:00.000Z' }])
+    expect(await peekBrain(keys)).toBe(true)
+    expect(await db.coachProposals.get('ask:7')).toMatchObject({ askId: 7, suggestion: { skill: 'Ten words' } })
+    // Offline, it looks at nothing.
+    setOnlineCheck(() => false)
+    const offline = store.calls
+    expect(await peekBrain(keys)).toBe(false)
+    expect(store.calls).toBe(offline)
   })
 })
 

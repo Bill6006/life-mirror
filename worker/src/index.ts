@@ -14,12 +14,13 @@ import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoa
 import { SKILL_COACH } from '../../src/coachShared'
 import { addDays, localTime } from './time'
 
-// The brain, as deployed: one cron, every fifteen minutes. Each tick sends a cue reminder or a
-// ping whose moment has come; starts the day's line once the morning check-in is on a sheet (or
-// from the fallback hour), through Claude when it is switched on, else the free model chain; and
-// on Sunday at the brief hour the week reviewed. The routine's run reaches the three /claude/
-// endpoints with the bridge key the agent proxy adds. By hand, with the run key, any job now, and
-// the reports: the lines written, and the bridge's tasks.
+// The brain, as deployed: one cron, every minute. Each minute answers a skill suggestion the phone
+// asked for (D7 as the owner amended it on 2026-10-18: suggestions on tap, two a day). Every fifteen
+// minutes, as before: a cue reminder or a ping whose moment has come; the day's line once the morning
+// check-in is on a sheet (or from the fallback hour), through Claude when it is switched on, else the
+// free model chain; on Sunday at the brief hour the week reviewed; and the day's progression reviews.
+// The routine's run reaches the three /claude/ endpoints with the bridge key the agent proxy adds. By
+// hand, with the run key, any job now, and the reports: the lines written, and the bridge's tasks.
 
 function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
@@ -42,11 +43,14 @@ function sender(env: Env): Sender | null {
   }
 }
 
-type Job = 'brief' | 'review' | 'cues' | 'coach' | 'commitments'
+type Job = 'brief' | 'review' | 'cues' | 'coach' | 'commitments' | 'suggestions'
 
-async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free', dry = false, coach?: { reason: string }): Promise<unknown> {
-  // Parts 40 and 41: closed, the skill coach's job returns before anything is opened or read, by hand or by schedule, and logs nothing.
-  if (job === 'commitments' && SKILL_COACH !== 'open') return { job, ran: false, reason: 'gated' }
+/** The ticks that run every job as before: each fifteen minutes. The minutes between answer suggestions alone. */
+export const onQuarter = (now: Date): boolean => now.getUTCMinutes() % 15 === 0
+
+async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: 'claude' | 'free', dry = false, coach?: { reason: string }, kind: 'review' | 'both' = 'both'): Promise<unknown> {
+  // Parts 40 and 41: closed, the skill coach's jobs return before anything is opened or read, by hand or by schedule, and log nothing.
+  if ((job === 'commitments' || job === 'suggestions') && SKILL_COACH !== 'open') return { job, ran: false, reason: 'gated' }
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
   if (job === 'cues') {
@@ -60,8 +64,15 @@ async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: '
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
+  if (job === 'suggestions') {
+    // The minute's check: a suggestion the phone asked for, started at once. Quiet when nothing is asked.
+    const result = await runCommitments(env, store, now, { kind: 'setup', force, dry })
+    if (result.reason !== 'nothing asked') console.log(JSON.stringify({ job, ...result }))
+    return { job, ...result }
+  }
   if (job === 'commitments') {
-    const result = await runCommitments(env, store, now, { force, dry, ...(coach ? { coach } : {}) })
+    // On a schedule, the fifteen-minute tick's part: the day's reviews. By hand, both kinds.
+    const result = await runCommitments(env, store, now, { kind, force, dry, ...(coach ? { coach } : {}) })
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
@@ -77,6 +88,14 @@ const handler: ExportedHandler<Env> = {
     // In turn, and each on its own: a failure in one never stops the next. Each decides for itself whether its moment has come.
     ctx.waitUntil(
       (async () => {
+        // D7 as amended 2026-10-18: each minute, first, a suggestion the phone asked for, started at once.
+        try {
+          await dispatch('suggestions', env, now)
+        } catch (e) {
+          console.log(JSON.stringify({ job: 'suggestions', error: e instanceof Error ? e.message : String(e) }))
+        }
+        // Every other job keeps its fifteen-minute tick, as before.
+        if (!onQuarter(now)) return
         let coach: { reason: string } | undefined
         for (const job of ['cues', 'brief', 'review', 'coach'] as const) {
           try {
@@ -86,9 +105,9 @@ const handler: ExportedHandler<Env> = {
             console.log(JSON.stringify({ job, error: e instanceof Error ? e.message : String(e) }))
           }
         }
-        // Parts 40 and 41: the skill coach last, after the coach has said whether it runs today. Closed, it does nothing.
+        // Parts 40 and 41: the day's reviews last, after the coach has said whether it runs today. Closed, it does nothing.
         try {
-          await dispatch('commitments', env, now, false, undefined, false, coach)
+          await dispatch('commitments', env, now, false, undefined, false, coach, 'review')
         } catch (e) {
           console.log(JSON.stringify({ job: 'commitments', error: e instanceof Error ? e.message : String(e) }))
         }
@@ -105,7 +124,7 @@ const handler: ExportedHandler<Env> = {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/health') return json({ ok: true, app: BRAIN_APP })
-    const m = /^\/run\/(brief|review|cues|coach|commitments)$/.exec(url.pathname)
+    const m = /^\/run\/(brief|review|cues|coach|commitments|suggestions)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       const w = url.searchParams.get('writer')
       if (w !== null && w !== 'claude' && w !== 'free') return json({ reason: 'writer must be claude or free' }, 400)

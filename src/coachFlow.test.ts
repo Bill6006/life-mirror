@@ -5,7 +5,7 @@ import { stepFor } from './aims'
 import { setBrainSwitch } from './brainPrefs'
 import { factSheet } from './brainFlow'
 import { anotherSuggestion, answerReview, askSuggestion, coachMode, coachStates, editedSuggestion, ensureReviews, skillCoachOpen, takeLikelyNext, useSuggestion, writeOwnSkill } from './coachFlow'
-import { proposalIdOf, revisionOf, type CoachProposal } from './coachShared'
+import { proposalIdOf, revisionOf, skillTaskIds, type CoachProposal, type CoachRun } from './coachShared'
 import { db, updateSettings, type Aim } from './db'
 import { factById } from './facts'
 import { recordOutcome } from './offerFlow'
@@ -241,6 +241,58 @@ describe('a suggestion for the current skill (Part 40)', () => {
     expect(now.rhythm).toEqual({ perWeek: 3, restDays: 1 })
     expect((await db.skills.toArray()).find((s) => s.id === now.currentSkillId)?.safety).toContain('Not medical advice')
     expect(dueOf({ rhythm: now.rhythm ?? null, schedule: [], paused: false, started: false, doneToday: false, partlyToday: false, planned: false, faith: false, practiceDays: [day(21)], today: day(22) }).state).toBe('resting')
+  })
+})
+
+describe('where a waiting suggestion stands (D7 as amended 2026-10-18: suggestions on tap, two a day)', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+  const run = (id: string, p: Partial<CoachRun>): CoachRun => ({ id, day: day(20), at: '2026-09-20T13:00:00.000Z', status: 'fired', asks: [], ...p })
+
+  it('usually ready in a few minutes while Claude is at it; not sent while the phone is offline; refused, with when it is tried again; or ended with no suggestion', async () => {
+    await withCloud()
+    const aim = await orrish()
+    const id = aim.id as number
+    const ask = (await askSuggestion(id, T(20, 9), undefined, 'open')) as number
+    const wait = async (online = true) => (await coachStates(day(20), 'open', online))?.get(id)?.wait
+    // Still queued on this phone: offline, not sent yet; online, it goes in a moment.
+    expect(await wait(false)).toEqual({ kind: 'unsent' })
+    expect(await wait()).toEqual({ kind: 'soon' })
+    await db.outbox.clear()
+    expect(await wait(false)).toEqual({ kind: 'soon' })
+    const [one] = skillTaskIds(day(20))
+    // The routine refused the fire at 13:01: tried again fifteen minutes later, or at its own retry-after when later.
+    await db.coachRuns.put(run(one, { at: '2026-09-20T13:01:00.000Z', status: 'fallback', asks: [ask] }))
+    expect(await wait()).toEqual({ kind: 'refused', retryAt: '2026-09-20T13:16:00.000Z' })
+    await db.coachRuns.put(run(one, { at: '2026-09-20T13:01:00.000Z', status: 'fallback', retryAfter: '3600', asks: [ask] }))
+    expect(await wait()).toEqual({ kind: 'refused', retryAt: '2026-09-20T14:01:00.000Z' })
+    // Taken on the next try: Claude at it.
+    await db.coachRuns.put(run(one, { at: '2026-09-20T14:01:00.000Z', status: 'fired', firedAt: '2026-09-20T14:01:00.000Z', asks: [ask] }))
+    expect(await wait()).toEqual({ kind: 'soon' })
+    // It reached Claude and ended with no suggestion for this ask.
+    await db.coachRuns.put(run(one, { at: '2026-09-20T14:01:00.000Z', status: 'fallback', firedAt: '2026-09-20T14:01:00.000Z', asks: [ask] }))
+    expect(await wait()).toEqual({ kind: 'failed' })
+    // The answer came: nothing waits, the suggestion shows.
+    await answer(ask, { suggestion })
+    expect(await wait()).toBeNull()
+  })
+
+  it('both of today’s runs reached Claude: it comes after midnight; a fire the routine refused used neither, and the next try carries this ask too', async () => {
+    await withCloud()
+    const aim = await orrish()
+    const id = aim.id as number
+    const [one, two] = skillTaskIds(day(20))
+    // Yesterday's two never count against today's.
+    await db.coachRuns.bulkPut(skillTaskIds(day(19)).map((rid) => run(rid, { day: day(19), status: 'written', firedAt: '2026-09-19T13:00:00.000Z', asks: [800] })))
+    await db.coachRuns.bulkPut([run(one, { status: 'written', firedAt: '2026-09-20T13:00:00.000Z', asks: [901] }), run(two, { status: 'fallback', asks: [902] })])
+    await askSuggestion(id, T(20, 10), undefined, 'open')
+    await db.outbox.clear()
+    const wait = async () => (await coachStates(day(20), 'open'))?.get(id)?.wait
+    expect(await wait()).toEqual({ kind: 'refused', retryAt: '2026-09-20T13:15:00.000Z' })
+    await db.coachRuns.put(run(two, { status: 'written', firedAt: '2026-09-20T13:20:00.000Z', asks: [902] }))
+    expect(await wait()).toEqual({ kind: 'tomorrow' })
   })
 })
 

@@ -39,8 +39,15 @@ function reply(url) {
   })
 }
 
+/**
+ * A moment by London's clock, the stand-in area's own (51.5, -0.1): its pages run in London's zone too, so the check reads
+ * the same on any machine (2026-10-18; it once passed only near UTC). British Summer Time holds through 2026-10-24, past
+ * every day here.
+ */
+const london = (month, day, hour, minute = 0) => new Date(Date.UTC(2026, month, day, hour - 1, minute))
+
 async function fresh(when, direction = true) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: 'dark' })
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: 'dark', timezoneId: 'Europe/London' })
   const page = await ctx.newPage()
   page.setDefaultTimeout(20000)
   page.on('pageerror', (e) => errors.push(String(e)))
@@ -113,10 +120,10 @@ const seed = (page, on, today, records = true) =>
         const rainy = d % 3 === 0
         for (const [block, p, h] of [['morning', 3, 7], ['evening', rainy ? 2 : 4, 19]]) {
           const answers = Object.fromEntries(asked.map((id) => [id, ['stress', 'overwhelm', 'irritation'].includes(id) ? 6 - p : p]))
-          const at = new Date(2026, 9, d, h, 40).toISOString()
+          const at = new Date(Date.UTC(2026, 9, d, h - 1, 40)).toISOString()
           tx.objectStore('checkins').add({ day, block, asked, startedAt: at, completedAt: at, updatedAt: at, answers, activeMs: 60_000 })
         }
-        tx.objectStore('days').put({ day, weekday: new Date(2026, 9, d).getDay(), withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:10', set: '18:20' }, changed: false, createdAt: `${day}T06:00:00.000Z`, weather: { rain: rainy ? 6.4 : 0.2, sun: d % 2 ? 8.5 : 2.5, high: 15, at: `${day}T08:00:00.000Z` } })
+        tx.objectStore('days').put({ day, weekday: new Date(Date.UTC(2026, 9, d)).getUTCDay(), withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:10', set: '18:20' }, changed: false, createdAt: `${day}T06:00:00.000Z`, weather: { rain: rainy ? 6.4 : 0.2, sun: d % 2 ? 8.5 : 2.5, high: 15, at: `${day}T08:00:00.000Z` } })
       }
       if (today) tx.objectStore('days').put({ day: today, weekday: 0, withHer: true, studyNight: false, churchDay: false, atOffice: false, pickupTime: null, soloUntil: '20:00', light: { rise: '07:12', set: '18:18' }, changed: false, createdAt: `${today}T06:00:00.000Z`, weather: { rain: 2.3, sun: 5, high: 15.6, at: `${today}T08:00:00.000Z`, hours: Array.from({ length: 24 }, (_, h) => (h === 13 || h === 14 ? 0.7 : 0)) } })
       const store = tx.objectStore('settings')
@@ -138,7 +145,7 @@ const seed = (page, on, today, records = true) =>
 try {
   {
     // A fresh install: off, its words first, Not now, then on: one request with nothing but the area and two dates.
-    const { ctx, page, asked } = await fresh(new Date(2026, 9, 18, 9, 30))
+    const { ctx, page, asked } = await fresh(london(9, 18, 9, 30))
     await tab(page, 'Settings')
     await page.getByTestId('settings-about').click()
     const commit = (await page.getByTestId('build-commit').textContent())?.trim()
@@ -176,7 +183,7 @@ try {
   }
   {
     // Sixteen days with weather: Evidence's comparisons, with their credit; switched off, none of it.
-    const { ctx, page } = await fresh(new Date(2026, 9, 18, 19, 30))
+    const { ctx, page } = await fresh(london(9, 18, 19, 30))
     await seed(page, true, null)
     await page.reload()
     await tab(page, 'Moves')
@@ -199,7 +206,7 @@ try {
   }
   {
     // Rain forecast for the hour, the switch on: the afternoon's draw sets the outdoor moves aside for rain.
-    const { ctx, page } = await fresh(new Date(2026, 9, 18, 13, 30), false)
+    const { ctx, page } = await fresh(london(9, 18, 13, 30), false)
     await seed(page, true, '2026-10-18')
     await page.reload()
     await page.getByRole('button', { name: /Check in/ }).click({ timeout: 8000 }).catch(() => undefined)

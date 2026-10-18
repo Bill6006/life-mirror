@@ -49,14 +49,9 @@ TABLE = [
          old="<LearningForm onAdd={(goal, method, about) => void addLearning(goal, method, '', about).then(onClose)} />",
          new="<LearningForm onAdd={(goal, method, about) => void addLearning(goal, method, '', about).then((id) => { if (id !== null) void askSuggestion(id); onClose() })} />",
          tests=[S], pattern=COACH),
-    dict(id='coach-when-after-line', file='src/coachCards.tsx',
-         old="{coach.afterLine ? c.whenAfterLine : c.whenSoon}",
-         new="{c.whenSoon}",
-         tests=[S], pattern=COACH),
-    dict(id='coach-when-line-read', file='src/coachFlow.ts',
-         old="const afterLine = !briefs.some((b) => b.kind === 'brief')",
-         new="const afterLine = briefs.length >= 0",
-         tests=[S], pattern=COACH),
+    # coach-when-after-line and coach-when-line-read retired 2026-10-18: the owner amended D7 ("Go on the new D7:
+    # suggestions on tap, two a day"), so no card says a suggestion comes after the day's line. The card's new words,
+    # usually ready in a few minutes, or why not yet and when, are audit_fixes_breaks.py's to guard.
     dict(id='coach-set-myself-opens', file='src/coachCards.tsx',
          old="            h.onOwn(askId)\n            onOwn?.()\n",
          new="            h.onOwn(askId)\n",

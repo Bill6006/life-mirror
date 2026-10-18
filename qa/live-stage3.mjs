@@ -1,6 +1,6 @@
 // Stage 3 on the live site, in fresh throwaway contexts with stand-in records only: nothing touches the
 // owner's data, and nothing is sent anywhere but the site itself (no cloud token is ever set).
-// Group 3, in the moment: Anything going on? after a two-step drop, and the evening's matching pattern.
+// Group 3, in the moment: Anything behind it? after a two-step drop, and the evening's matching pattern.
 // node live-stage3.mjs <expected short commit>
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium } from './common.mjs'
@@ -92,7 +92,7 @@ try {
     await tab(page, 'Now')
     // A morning two steps down on Mood: one optional line, writing the morning's own note.
     const opened = await page.getByRole('button', { name: /^Morning Logged/ }).click({ timeout: 8000 }).then(() => true, () => false)
-    check('the morning after a two-step drop asks Anything going on?', opened && (await seen(page.getByTestId('behind-it').filter({ hasText: 'Anything going on?' }))))
+    check('the morning after a two-step drop asks Anything behind it?', opened && (await seen(page.getByTestId('behind-it').filter({ hasText: 'Anything behind it?' }))))
     const typed = await page.getByTestId('behind-input').fill('A stand-in line', { timeout: 8000 }).then(() => true, () => false)
     if (typed) await page.getByTestId('behind-input').blur()
     await page.waitForTimeout(500)
@@ -111,14 +111,14 @@ try {
       return rows.find((r) => r.day === '2026-09-20' && r.block === 'morning')?.extras?.note ?? null
     })
     check('it writes the morning’s own note', note === 'A stand-in line', String(note))
-    // The evening with Stress high: the one pattern it matches, as Mirror words it, and no Anything going on?.
+    // The evening with Stress high: the one pattern it matches, as Mirror words it, and no Anything behind it?.
     await page.reload()
     await tab(page, 'Now')
     const evening = await page.getByRole('button', { name: /^Evening Logged/ }).click({ timeout: 8000 }).then(() => true, () => false)
     const card = page.getByTestId('pattern-card')
     check('the evening shows Evenings like this one', evening && (await seen(card.filter({ hasText: 'After an evening with stress high' }))))
     check('worded as an association, never a cause', ((await card.textContent().catch(() => '')) ?? '').includes('an association, never a cause'))
-    check('the evening never asks Anything going on?', (await page.getByTestId('behind-it').count()) === 0)
+    check('the evening never asks Anything behind it?', (await page.getByTestId('behind-it').count()) === 0)
     await ctx.close()
   }
   const others = [...hosts].filter((h) => h !== SITE)
