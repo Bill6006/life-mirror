@@ -1,0 +1,111 @@
+import 'fake-indexeddb/auto'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { morningPoints } from './associations'
+import { addDays } from './blocks'
+import { factSheet } from './brainFlow'
+import { askedLate, db, type CheckIn } from './db'
+import { factById, type Fact, type FactSheet } from './facts'
+import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
+import { askedReadings, turnOf } from './settings'
+import { chooseLine } from './situations'
+
+// Stage 3, item 5: what a day's check-ins ask. Motivation and Confidence in turn, one each morning
+// (part 4); after a morning that left the sleep readings unanswered, the afternoon asks them first,
+// late, and the record, the sheet and the line say so (part 2). The learning engine's comparisons go
+// on reading mornings alone.
+
+const DAY = '2026-09-18'
+const all = (block: 'morning' | 'afternoon', p: Position, ids: readonly ReadingId[] = blockReadings(block)): Answers => Object.fromEntries(ids.map((id) => [id, p]))
+const ci = (day: string, block: CheckIn['block'], answers: Answers, asked?: ReadingId[]): CheckIn => ({ day, block, answers, ...(asked ? { asked } : {}), startedAt: '', completedAt: 'x', updatedAt: '', activeMs: 30_000 })
+
+describe('Motivation and Confidence, asked in turn, one each morning (stage 3, item 5, part 4)', () => {
+  it('asks one of the two each morning, the other the next, and the rest of the morning as before', () => {
+    const today = askedReadings('morning', 'full', [], { day: DAY, morning: null })
+    const tomorrow = askedReadings('morning', 'full', [], { day: addDays(DAY, 1), morning: null })
+    expect(today.filter((id) => id === 'motivation' || id === 'confidence')).toEqual([turnOf(DAY)])
+    expect(tomorrow.filter((id) => id === 'motivation' || id === 'confidence')).toEqual([turnOf(addDays(DAY, 1))])
+    expect(turnOf(DAY)).not.toBe(turnOf(addDays(DAY, 1)))
+    expect(today).toHaveLength(12)
+    expect(today.filter((id) => id !== 'motivation' && id !== 'confidence')).toEqual(blockReadings('morning').filter((id) => id !== 'motivation' && id !== 'confidence'))
+  })
+
+  it('keeps three or four of each in any seven mornings, across months and years', () => {
+    for (const start of ['2026-09-18', '2026-12-28', '2027-02-25', '2028-02-26']) {
+      const week = Array.from({ length: 7 }, (_, k) => turnOf(addDays(start, k)))
+      expect(week.filter((t) => t === 'motivation').length).toBeGreaterThanOrEqual(3)
+      expect(week.filter((t) => t === 'confidence').length).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('leaves short depth, the afternoon and the evening as they were', () => {
+    expect(askedReadings('morning', 'short', [], { day: DAY, morning: null })).toEqual(['mood', 'stress', 'energy'].filter((id) => blockReadings('morning').includes(id as ReadingId)))
+    expect(askedReadings('evening', 'full', [], { day: DAY, morning: null })).toEqual(blockReadings('evening'))
+    expect(askedReadings('morning', 'full', [])).toEqual(blockReadings('morning'))
+  })
+})
+
+describe('sleep asked late, after a morning without it (stage 3, item 5, part 2)', () => {
+  it('asks the two sleep readings first at an afternoon after no morning, and only the one a morning left unanswered', () => {
+    expect(askedReadings('afternoon', 'full', [], { day: DAY, morning: null })).toEqual(['sleepHours', 'sleepQuality', ...blockReadings('afternoon')])
+    expect(askedReadings('afternoon', 'full', [], { day: DAY, morning: { answers: { sleepHours: 3 } } })).toEqual(['sleepQuality', ...blockReadings('afternoon')])
+    expect(askedReadings('afternoon', 'full', [], { day: DAY, morning: { answers: { sleepHours: 3, sleepQuality: 4 } } })).toEqual(blockReadings('afternoon'))
+  })
+
+  it('never at short depth, low-demand mode’s included, and never a sleep reading you retired', () => {
+    expect(askedReadings('afternoon', 'short', [], { day: DAY, morning: null })).not.toContain('sleepHours')
+    expect(askedReadings('afternoon', 'full', ['sleepHours'], { day: DAY, morning: null })).toEqual(['sleepQuality', ...blockReadings('afternoon')])
+  })
+
+  it('marks them asked late on the afternoon’s record alone', () => {
+    const asked = askedReadings('afternoon', 'full', [], { day: DAY, morning: null }) as ReadingId[]
+    expect(askedLate(ci(DAY, 'afternoon', {}, asked))).toEqual(['sleepHours', 'sleepQuality'])
+    expect(askedLate(ci(DAY, 'morning', {}, blockReadings('morning') as ReadingId[]))).toEqual([])
+    expect(askedLate(ci(DAY, 'afternoon', {}))).toEqual([])
+  })
+
+  it('never sets a late answer against the afternoon’s own readings: the comparisons read mornings alone', () => {
+    const short = (c: CheckIn) => (c.answers.sleepHours ?? 9) <= 2
+    const days = Array.from({ length: 12 }, (_, k) => addDays(DAY, -(k + 1)))
+    const late = days.flatMap((d) => [ci(d, 'morning', all('morning', 3, ['mood', 'energy', 'stress'])), ci(d, 'afternoon', { ...all('afternoon', 3), sleepHours: 1 }, ['sleepHours', 'sleepQuality', ...blockReadings('afternoon')])])
+    expect(morningPoints(late, DAY, short).filter((p) => p.event)).toHaveLength(0)
+    // The probe that could have said yes: the same nights answered in the morning are events.
+    const onTime = days.flatMap((d) => [ci(d, 'morning', { ...all('morning', 3, ['mood', 'energy', 'stress']), sleepHours: 1 }), ci(d, 'afternoon', all('afternoon', 3))])
+    expect(morningPoints(onTime, DAY, short).filter((p) => p.event)).toHaveLength(12)
+  })
+
+  it('has the short-night line say when the night was read, never “this morning” for a late answer', () => {
+    const today: Fact = { id: 'week.today', tags: [], text: 'Today is Friday.', values: { weekday: 'Friday', bedtime: '20:00', hour: 14 } }
+    const sheet = (late: boolean): FactSheet => ({ version: 1, day: DAY, builtAt: '', hour: 14, weeks: 3, days: 22, direction: null, said: [], facts: [today, { id: 'today.shortSleep', tags: ['sleep'], text: '', values: { position: 1, word: 'Under 5 hours', ...(late ? { late: 1 } : {}) } }] })
+    const line = (late: boolean) => chooseLine(sheet(late), [], [])
+    expect(line(false)?.situationId).toBe('short-night-today')
+    expect(line(false)?.text).toContain('Sleep read “Under 5 hours” this morning.')
+    expect(line(true)?.text).toContain('Sleep read “Under 5 hours” when asked late this afternoon.')
+    expect(factById(sheet(true), 'today.shortSleep')).toBeDefined()
+  })
+})
+
+describe('the day’s sheet when the night was read late (stage 3, item 5, part 2)', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+
+  it('carries the afternoon’s late answer as today’s short night, and says it was asked late, wherever it shows', async () => {
+    const asked = ['sleepHours', 'sleepQuality', ...blockReadings('afternoon')] as ReadingId[]
+    await db.checkins.add(ci(DAY, 'afternoon', { ...all('afternoon', 3), sleepHours: 1, sleepQuality: 2 }, asked))
+    const sheet = await factSheet(DAY, new Date(2026, 8, 18, 15, 0))
+    const short = factById(sheet, 'today.shortSleep')
+    expect(short?.values).toMatchObject({ position: 1, late: 1 })
+    expect(short?.text).toBe('Sleep hours read “Under 5 hours”, asked late at this afternoon’s check-in.')
+    expect(factById(sheet, 'context.sleepHours')?.text).toContain('(1 of 5), asked late, at the afternoon check-in')
+    expect(factById(sheet, 'context.sleepHours')?.values).toMatchObject({ late: 1 })
+  })
+
+  it('says nothing late of a night read in the morning', async () => {
+    await db.checkins.add(ci(DAY, 'morning', { ...all('morning', 3), sleepHours: 1 }, blockReadings('morning') as ReadingId[]))
+    const sheet = await factSheet(DAY, new Date(2026, 8, 18, 10, 0))
+    expect(factById(sheet, 'today.shortSleep')?.text).toBe('Sleep hours read “Under 5 hours” this morning.')
+    expect(factById(sheet, 'today.shortSleep')?.values).not.toHaveProperty('late')
+    expect(factById(sheet, 'context.sleepHours')?.text).not.toContain('asked late')
+  })
+})

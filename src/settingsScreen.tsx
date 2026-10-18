@@ -10,7 +10,7 @@ import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
 import { installApp, useInstallOffer } from './installOffer'
 import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
-import { activeBlocks, applyLowDemand, daylightFor, type Settings, type Weekday, sunPlace } from './settings'
+import { activeBlocks, applyLowDemand, daylightFor, OWN_CHIP_LABEL_MAX, OWN_CHIPS_MAX, ownChipsOf, type OwnChip, type Settings, type Weekday, sunPlace, withOwnChipAdded, withOwnChipRemoved } from './settings'
 import { parsePlace, placeText, sunLocal, type Place } from './sun'
 import { setTheme, THEMES, useTheme, type ThemeId } from './theme'
 import { Disclosure, LinkRow, SectionLabel, SubHead } from './ui'
@@ -220,6 +220,72 @@ function AutoPlaceNote({ settings }: { settings: Settings }) {
       {fill(copy.week.placeAuto, { rise: formatHHMM(sun.rise), set: formatHHMM(sun.set) })}
     </p>
   ) : null
+}
+
+/**
+ * Your own chips (stage 3, item 5): up to three short labels, each asked as one tap at the evening check-in. Where a
+ * label goes is said before it is saved; one removed stops being asked, and it and its taps stay on the record.
+ */
+function OwnChipsField({ chips, onAdd, onRemove }: { chips: readonly OwnChip[]; onAdd: (label: string) => void; onRemove: (id: string) => void }) {
+  const c = copy.ownChips
+  const [label, setLabel] = useState('')
+  const full = chips.length >= OWN_CHIPS_MAX
+  const add = () => {
+    if (!label.trim()) return
+    onAdd(label)
+    setLabel('')
+  }
+  return (
+    <>
+      <h2 class="section">{c.title}</h2>
+      <p class="note">{c.note}</p>
+      <div class="card" data-testid="own-chips">
+        {chips.length === 0 ? (
+          <p class="note faint in-card">{c.none}</p>
+        ) : (
+          <ul class="rows">
+            {chips.map((ch) => (
+              <li key={ch.id} class="row is-static" data-testid="own-chip-row">
+                <span class="row-main">{ch.label}</span>
+                <button type="button" class="textbtn" data-testid={`own-chip-remove-${ch.id}`} onClick={() => onRemove(ch.id)}>
+                  {c.remove}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {full ? (
+        <p class="note faint" data-testid="own-chips-full">
+          {c.full}
+        </p>
+      ) : (
+        <>
+          <p class="note faint" data-testid="own-chip-where">
+            {c.where}
+          </p>
+          <div class="add">
+            <input
+              class="input"
+              type="text"
+              maxLength={OWN_CHIP_LABEL_MAX}
+              placeholder={c.placeholder}
+              aria-label={c.placeholder}
+              value={label}
+              data-testid="own-chip-input"
+              onInput={(e) => setLabel((e.currentTarget as HTMLInputElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') add()
+              }}
+            />
+            <button type="button" class="pill-quiet" data-testid="own-chip-add" disabled={!label.trim()} onClick={add}>
+              {c.add}
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  )
 }
 
 /** Your direction, one line, kept on this phone; saved when you leave the field. */
@@ -467,13 +533,16 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
         )
       case 'extras':
         return (
-          <div class="card">
-            <SwitchRow label={copy.settings.extraWin} on={cur.extras.minimumWin} onChange={(on) => setExtra('minimumWin', on)} />
-            <SwitchRow label={copy.settings.extraCaffeine} on={cur.extras.caffeine} onChange={(on) => setExtra('caffeine', on)} />
-            <SwitchRow label={copy.settings.extraDinner} on={cur.extras.dinner} onChange={(on) => setExtra('dinner', on)} />
-            <SwitchRow label={copy.settings.extraPrivate} on={cur.extras.privateLog} onChange={(on) => setExtra('privateLog', on)} />
-            <SwitchRow label={copy.settings.extraFaith} note={copy.settings.faithNote} on={cur.extras.faith} onChange={(on) => setExtra('faith', on)} />
-          </div>
+          <>
+            <div class="card">
+              <SwitchRow label={copy.settings.extraWin} on={cur.extras.minimumWin} onChange={(on) => setExtra('minimumWin', on)} />
+              <SwitchRow label={copy.settings.extraCaffeine} on={cur.extras.caffeine} onChange={(on) => setExtra('caffeine', on)} />
+              <SwitchRow label={copy.settings.extraDinner} on={cur.extras.dinner} onChange={(on) => setExtra('dinner', on)} />
+              <SwitchRow label={copy.settings.extraPrivate} on={cur.extras.privateLog} onChange={(on) => setExtra('privateLog', on)} />
+              <SwitchRow label={copy.settings.extraFaith} note={copy.settings.faithNote} on={cur.extras.faith} onChange={(on) => setExtra('faith', on)} />
+            </div>
+            <OwnChipsField chips={ownChipsOf(cur)} onAdd={(label) => set((s) => withOwnChipAdded(s, label))} onRemove={(id) => set((s) => withOwnChipRemoved(s, id))} />
+          </>
         )
       case 'moves':
         return (

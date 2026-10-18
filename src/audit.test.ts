@@ -48,7 +48,7 @@ describe('chips that stop appearing', () => {
   it('stops a chip after thirty logged evenings without a tap, and one tap in Settings brings it back', () => {
     const evenings = Array.from({ length: CHIP_STRETCH }, (_, i) => ci(addDays(TODAY, -(i + 1)), 'evening', allAt(blockReadings('evening'), 3)))
     const states = chipStates(evenings, [], {}, TODAY)
-    expect(states).toHaveLength(10)
+    expect(states).toHaveLength(14)
     expect(chipRetired('nothingLanded', states)).toBe(true)
     expect(states.find((s) => s.id === 'nothingLanded')).toMatchObject({ evenings: 30, lastTap: null, retired: true })
     // One tap in the stretch keeps it.
@@ -62,6 +62,39 @@ describe('chips that stop appearing', () => {
     const away: DayContext = { day: evenings[3].day, weekday: 1, withHer: false, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '20:00', changed: true, createdAt: '' }
     expect(chipRetired('away', chipStates(evenings, [away], {}, TODAY))).toBe(false)
     expect(chipStates(evenings.slice(0, 10), [], {}, TODAY).every((s) => !s.retired)).toBe(true)
+  })
+})
+
+describe('the chips added in stage 3, item 5, counted only where shown', () => {
+  const NEWER = ['outside', 'sweet', 'caffeineLast', 'amongPeople'] as const
+  const shownAll = { chipsShown: { outside: true, sweet: true, caffeineLast: true, amongPeople: true } } as const
+  const evenings = (extras?: CheckIn['extras']) => Array.from({ length: CHIP_STRETCH }, (_, i) => ci(addDays(TODAY, -(i + 1)), 'evening', allAt(blockReadings('evening'), 3), extras))
+  const withCaffeine = (extras?: CheckIn['extras']) => evenings({ ...extras, caffeineIntake: { band: 1, at: '', since: null } })
+
+  it('never stops one over the record from before it existed', () => {
+    const states = chipStates(withCaffeine(), [], {}, TODAY)
+    for (const id of NEWER) expect(states.find((s) => s.id === id)).toMatchObject({ evenings: 0, retired: false })
+    // The probe that could have said yes: the same thirty check-ins with each shown and left untapped stop all four.
+    const shown = chipStates(withCaffeine(shownAll), [], {}, TODAY)
+    for (const id of NEWER) expect(chipRetired(id, shown)).toBe(true)
+  })
+
+  it('counts Something sweet and Out among people today by the day, wherever they were shown or tapped', () => {
+    // Shown at the afternoon and the evening of each of thirty days: thirty days, not sixty check-ins.
+    const days = evenings(shownAll).flatMap((c) => [c, { ...c, block: 'afternoon' as const }])
+    const states = chipStates(days, [], {}, TODAY)
+    expect(states.find((s) => s.id === 'sweet')).toMatchObject({ evenings: 30, retired: true })
+    expect(states.find((s) => s.id === 'amongPeople')).toMatchObject({ evenings: 30, retired: true })
+    // Sweet tapped at one afternoon keeps it; a day marked among people keeps that one.
+    const tapped = days.map((c, i) => (i === 7 ? { ...c, extras: { ...c.extras, sweet: true as const } } : c))
+    expect(chipRetired('sweet', chipStates(tapped, [], {}, TODAY))).toBe(false)
+    const among: DayContext = { day: days[9].day, weekday: 1, withHer: true, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '20:00', changed: true, createdAt: '', amongPeople: true }
+    expect(chipRetired('amongPeople', chipStates(days, [among], {}, TODAY))).toBe(false)
+  })
+
+  it('reads a tap as shown, so a tapped check-in is never left out', () => {
+    const states = chipStates([ci(addDays(TODAY, -1), 'evening', {}, { outside: true })], [], {}, TODAY)
+    expect(states.find((s) => s.id === 'outside')).toMatchObject({ evenings: 1, lastTap: addDays(TODAY, -1) })
   })
 })
 

@@ -4,7 +4,7 @@ import { BEFORE_MIN, comesBefore, type BeforePair } from './beforeDays'
 import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { allCheckIns } from './db'
+import { allCheckIns, askedLate } from './db'
 import { fill, weekdayInitial } from './format'
 import { MonthAgoCard, monthAgoData } from './monthScreen'
 import { useLive } from './live'
@@ -99,6 +99,12 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal }: { onWeek
           ))}
         </ul>
         <p class="calc-line caption">{fill(copy.mirror.todayCaption, { n: String(loggedToday) })}</p>
+        {/* Stage 3, item 5: a sleep reading the afternoon asked late, after a morning without it, said so under the chart. */}
+        {overlayId && all.some((c) => c.day === today.day && askedLate(c).includes(overlayId) && c.answers[overlayId] !== undefined) && (
+          <p class="calc-line caption" data-testid="overlay-late">
+            {fill(copy.mirror.overlayLate, { reading: readingById(overlayId).name })}
+          </p>
+        )}
       </div>
 
       <SectionLabel index={1}>{copy.mirror.week}</SectionLabel>

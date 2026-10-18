@@ -2,6 +2,7 @@ import { latestPlans } from './aims'
 import { addDays, daysBetween } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import type { Aim, BrainBrief, BriefLog, CoachPick, DayContext, Intention, Offer, Outcome, UseKind, UseRow } from './db'
+import { setAside } from './db'
 import { workerShown } from './shown'
 import type { Fact } from './factTypes'
 import { isFaithPractice } from './rhythm'
@@ -215,7 +216,8 @@ export function usageFacts(i: UseInput, today: string): Fact[] {
 
   // Suggestions skipped again and again: three skips or more, and at least half of those offered.
   // Her moves are her record's to read, whatever family they sit in.
-  const drawn = i.offers.filter((o) => (o.kind === 'block' || o.kind === 'pickup') && hasMove(o.moveId) && USE_FAMILIES[moveById(o.moveId).family] && moveById(o.moveId).with !== 'her')
+  // A move the app set aside when the day changed is no suggestion you skipped (stage 3, item 5).
+  const drawn = i.offers.filter((o) => (o.kind === 'block' || o.kind === 'pickup') && !setAside(o) && hasMove(o.moveId) && USE_FAMILIES[moveById(o.moveId).family] && moveById(o.moveId).with !== 'her')
   const s28 = windowOf(today, USAGE_DAYS.long, firstDay(drawn.map((o) => o.day)))
   if (s28) {
     const per = new Map<string, { offered: number; skipped: number }>()

@@ -7,6 +7,7 @@ import { BeforeRow } from './mirror'
 import { copy } from './copy'
 import {
   allCheckIns,
+  askedLate,
   askedOf,
   clearAnswer,
   deleteCheckIn,
@@ -25,13 +26,13 @@ import {
 import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
-import { LineInput, PrivateLog, TodayChips } from './extras'
+import { LineInput, PrivateLog, SweetChip, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { deferOutcome, isSession, offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
-import { activeBlocks, askedReadings, type Depth } from './settings'
+import { activeBlocks, askedReadings, SLEEP_READINGS, type Depth } from './settings'
 
 /** Pauses longer than this are not counted as answering time. */
 const ACTIVE_GAP_MS = 60_000
@@ -73,7 +74,9 @@ export function CheckInScreen({
   onClose: () => void
 }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
-  const ids = record ? askedOf(record) : askedReadings(block, depth, retired)
+  // Stage 3, item 5: what the day asks depends on its morning (sleep asked late) and the day (Motivation or Confidence in turn).
+  const morning = useLive(() => (block === 'morning' ? Promise.resolve(null) : getCheckIn(day, 'morning')), [day, block])
+  const ids = record ? askedOf(record) : askedReadings(block, depth, retired, { day, morning: morning ?? null })
   const total = ids.length
   const [local, setLocal] = useState<Answers>({})
   const [index, setIndex] = useState(only ? Math.max(0, ids.indexOf(only)) : 0)
@@ -90,6 +93,9 @@ export function CheckInScreen({
     const first = ids.findIndex((id) => (record?.answers ?? {})[id] === undefined)
     if (first > 0) setIndex(first)
   }, [record])
+
+  // Nothing to tap until the morning is known, so the first answer is saved with the readings the day asks.
+  if (morning === undefined) return <section class="screen" />
 
   // What happened to the open moves, one tap each, before the readings. Never for a single-reading change.
   const toAsk = only ? null : (pending.find((o) => !asked.has(o.id as number)) ?? null)
@@ -149,6 +155,11 @@ export function CheckInScreen({
         {reading.name}
       </h1>
       <p class="note">{reading.prompt}</p>
+      {block === 'afternoon' && SLEEP_READINGS.includes(id) && (
+        <p class="note faint" data-testid="asked-late">
+          {copy.checkin.askedLate}
+        </p>
+      )}
       {reading.help && (
         <p class="note faint" data-testid="reading-help">
           {reading.help}
@@ -301,6 +312,11 @@ export function SummaryScreen({
 
       {complete && <InTheMoment record={record} previous={previous} all={all} />}
 
+      {/* Stage 3, item 5: the optional taps sit just under the reading and what changed, above the move card. */}
+      {block !== 'evening' && <CaffeineCard day={day} block={block} />}
+      {block === 'afternoon' && complete && <SweetChip record={record} />}
+      {block !== 'evening' && <TodayChips day={day} block={block} onAway={onAway} />}
+
       {complete && offer && !settings.hideMoves && <MoveCard offer={offer} compact />}
 
       <h2 class="section">{copy.summary.readings}</h2>
@@ -311,7 +327,10 @@ export function SummaryScreen({
             return (
               <li key={id}>
                 <button type="button" class="row" data-testid="reading-row" onClick={() => onChange(id)}>
-                  <span class="row-main">{readingById(id).name}</span>
+                  <span class="row-main">
+                    {readingById(id).name}
+                    {askedLate(record).includes(id) && <span class="sub">{copy.summary.askedLate}</span>}
+                  </span>
                   <span class={p ? 'row-side ink' : 'row-side'}>{p ? headword(anchorFor(id, p)) : copy.summary.notLogged}</span>
                   <span class="chev" aria-hidden="true">›</span>
                 </button>
@@ -329,7 +348,6 @@ export function SummaryScreen({
         </div>
       )}
 
-      {block !== 'evening' && <CaffeineCard day={day} block={block} />}
       {block !== 'evening' && settings.extras.privateLog && placed.length > 0 && (
         <div class="card" data-testid="private-log-card">
           <ul class="rows">
@@ -337,8 +355,6 @@ export function SummaryScreen({
           </ul>
         </div>
       )}
-      {block !== 'evening' && <TodayChips day={day} onAway={onAway} />}
-
       {block === 'evening' && (
         <>
           <h2 class="section">{copy.summary.extras}</h2>

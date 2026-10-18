@@ -9,7 +9,7 @@ import { blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, orderB
 // People around (Part 20): today's shape decides whether an in-person rep may be offered; what
 // completed reps suggest is evidence, and the draw never reads it.
 
-const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'> => ({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, ...patch })
+const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople'> => ({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, ...patch })
 
 describe('tier 1: today’s shape, and nothing else', () => {
   it('puts people around on an office day’s working blocks, the church morning, and a daycare day’s drop-off and pickup blocks', () => {
@@ -18,6 +18,8 @@ describe('tier 1: today’s shape, and nothing else', () => {
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30' }), b as 'morning'))).toEqual([true, false, true])
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '15:00' }), b as 'morning'))).toEqual([true, true, false])
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({}), b as 'morning'))).toEqual([false, false, false])
+    // Out among people today (stage 3, item 5): around in every block.
+    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ amongPeople: true }), b as 'morning'))).toEqual([true, true, true])
     expect(peopleAround(null, 'morning')).toBe(false)
     // A day she is away holds no drop-off or pickup (Part 33); the office and the church morning still hold.
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false }), b as 'morning'))).toEqual([false, false, false])
@@ -69,6 +71,17 @@ describe('tier 1 in today’s state, and history that never touches it', () => {
     await ensureDayContext('2026-09-22', settings)
     await setDayContext('2026-09-22', { atOffice: true })
     expect((await todayState('2026-09-22', settings, new Date(2026, 8, 22, 9, 0))).peopleAround?.morning).toBe(true)
+  })
+
+  it('reads Out among people today: people around in every block, on that day alone (stage 3, item 5)', async () => {
+    const settings = await getSettings()
+    await ensureDayContext('2026-09-23', settings)
+    await ensureDayContext('2026-09-24', settings)
+    const at = new Date(2026, 8, 23, 19, 0)
+    expect((await todayState('2026-09-23', settings, at)).peopleAround?.evening).toBe(false)
+    await setDayContext('2026-09-23', { amongPeople: true })
+    expect((await todayState('2026-09-23', settings, at)).peopleAround).toEqual({ morning: true, afternoon: true, evening: true })
+    expect((await todayState('2026-09-24', settings, new Date(2026, 8, 24, 19, 0))).peopleAround?.evening).toBe(false)
   })
 
   it('offers the same candidates with and without eight weeks of in-person reps done in that context', async () => {

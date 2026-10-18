@@ -5,6 +5,7 @@ import { type Position, type Reading, type ReadingId, readings } from './reading
 import { CONTEXT_IDS, readingOf } from './score'
 import { pearson, spearman } from './stats'
 import { TEETH_COUNT_SINCE } from './necessities'
+import { chipShownAt } from './chips'
 
 // The audits, pure. The anchor swap guard: a pre-written alternate swaps in only after a long
 // stretch in which a phrase was never tapped, once per reading, never the middle, always logged
@@ -47,8 +48,8 @@ export function anchorSwapDue(reading: Reading, checkins: readonly CheckIn[], ex
   return null
 }
 
-export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'shower' | 'teeth' | 'food' | 'away' | 'caffeine'
-export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'shower', 'teeth', 'food', 'away', 'caffeine']
+export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'outside' | 'sweet' | 'shower' | 'teeth' | 'food' | 'away' | 'caffeine' | 'caffeineLast' | 'amongPeople'
+export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'outside', 'sweet', 'shower', 'teeth', 'food', 'away', 'caffeine', 'caffeineLast', 'amongPeople']
 
 export interface ChipState {
   id: ChipId
@@ -66,6 +67,8 @@ function tapped(id: ChipId, c: CheckIn, ctx: DayContext | undefined): boolean {
     case 'coolingOff':
     case 'bigSocial':
     case 'napped':
+    case 'outside':
+    case 'sweet':
       return Boolean(c.extras?.[id])
     case 'shower':
     case 'food':
@@ -77,6 +80,10 @@ function tapped(id: ChipId, c: CheckIn, ctx: DayContext | undefined): boolean {
       return Boolean(ctx && ctx.changed && !ctx.withHer)
     case 'caffeine':
       return Boolean(c.extras?.caffeineIntake)
+    case 'caffeineLast':
+      return c.extras?.caffeineIntake?.last !== undefined
+    case 'amongPeople':
+      return Boolean(ctx?.amongPeople)
   }
 }
 
@@ -86,12 +93,23 @@ export function chipStates(checkins: readonly CheckIn[], contexts: readonly DayC
   const logged = (block: 'morning' | 'evening') => checkins.filter((c) => c.block === block && c.day <= today).sort((a, b) => (a.day < b.day ? -1 : 1))
   const evenings = logged('evening')
   const shown = checkins.filter((c) => c.extras?.caffeineShown && c.day <= today).sort(compareSlots)
+  // The chips added from stage 3, item 5, count only the check-ins that showed them (Rule 2), so the record from before
+  // they existed never stops them. Something sweet and Out among people today are one tap a day, wherever tapped: they count days.
+  const showed = (id: string, also: (c: CheckIn) => boolean = () => false) => checkins.filter((c) => c.day <= today && (chipShownAt(id, c) || also(c))).sort(compareSlots)
+  const perDay = (list: CheckIn[]) => [...new Map(list.map((c) => [c.day, c])).values()]
+  const sweetDays = new Set(checkins.filter((c) => c.extras?.sweet).map((c) => c.day))
+  const newer: Partial<Record<ChipId, CheckIn[]>> = {
+    outside: showed('outside'),
+    sweet: perDay(showed('sweet')),
+    caffeineLast: showed('caffeineLast'),
+    amongPeople: perDay(showed('amongPeople', (c) => Boolean(ctx.get(c.day)?.amongPeople))),
+  }
   return CHIP_IDS.map((id) => {
     const broughtBack = chipsBack[id] ?? null
-    // The Caffeine item counts the check-ins it was shown in, any block; every other chip counts evenings.
+    // The Caffeine item counts the check-ins it was shown in, any block; every other chip before stage 3, item 5, counts evenings.
     // Teeth brushed today is a new question (2026-10-02): its thirty evenings start with it, never with the miss it replaced.
-    const since = (id === 'caffeine' ? shown : evenings).filter((c) => (!broughtBack || c.day >= broughtBack) && (id !== 'teeth' || c.day >= TEETH_COUNT_SINCE))
-    const taps = since.filter((c) => tapped(id, c, ctx.get(c.day)))
+    const since = (id === 'caffeine' ? shown : (newer[id] ?? evenings)).filter((c) => (!broughtBack || c.day >= broughtBack) && (id !== 'teeth' || c.day >= TEETH_COUNT_SINCE))
+    const taps = since.filter((c) => (id === 'sweet' ? sweetDays.has(c.day) : tapped(id, c, ctx.get(c.day))))
     const lastTap = taps.length ? taps[taps.length - 1].day : null
     const untapped = lastTap ? since.filter((c) => c.day > lastTap).length : since.length
     return { id, evenings: since.length, lastTap, retired: untapped >= CHIP_STRETCH, broughtBack }

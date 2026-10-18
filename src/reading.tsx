@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import type { Block, Slot } from './blocks'
 import { onBoard } from './caffeineRecord'
 import { copy } from './copy'
-import { askedOf, type CheckIn } from './db'
+import { askedLate, askedOf, type CheckIn } from './db'
 import { fill, formatDayShort, formatTime } from './format'
 import { anchorFor, headword, readingById } from './readings'
 import { Scale } from './scale'
@@ -138,7 +138,7 @@ export function ContextChips({ all, today, index }: { all: CheckIn[]; today: str
           const body = (
             <>
               <span class="ctx-k">
-                <Facts items={[readingById(v.id).name, old && copy.disclose.contextEarlier]} />
+                <Facts items={[readingById(v.id).name, old && copy.disclose.contextEarlier, askedLate(v.checkin).includes(v.id) && copy.disclose.contextLate]} />
               </span>
               <span class="ctx-v">{headword(anchorFor(v.id, v.position))}</span>
               {old && open && <span class="ctx-when">{fill(copy.disclose.context, { when: whenOf(v.checkin, today) })}</span>}

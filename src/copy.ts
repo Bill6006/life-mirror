@@ -6,6 +6,9 @@ export const copy = {
     title: 'Caffeine since your last check-in',
     titleMorning: 'Caffeine so far today',
     factLabel: 'Caffeine',
+    /** Stage 3, item 5: once caffeine is reported, when the last was. It describes the record and is never compared on its own. */
+    last: 'When was the last?',
+    lastOptions: { underHour: 'Under an hour ago', oneToThree: '1 to 3 hours ago', longer: 'Longer ago' },
     bands: { 1: 'Under 100 mg', 2: '100–199 mg', 3: '200–299 mg', 4: '300+ mg' },
     legacy: 'Recorded before amounts: caffeine, amount unknown.',
     onBoard: 'caffeine on board',
@@ -19,6 +22,8 @@ export const copy = {
     shorterHours: 'sleep read about {minutes} minutes shorter',
     lowerQuality: 'sleep quality read {q} of a step lower',
     ev: {
+      /** Stage 3, item 5. */
+      last: 'When the last caffeine was, as reported: {list}. It describes the record and is never compared on its own.',
       title: 'Caffeine',
       habit: 'Reported on {reported} of the last 28 days. Usual morning band: {usual}. Shown and left untapped: {untapped}, which is none reported, never a confirmed none.',
       usualNone: 'none yet',
@@ -190,6 +195,8 @@ export const copy = {
     officeToday: 'At the office today',
     homeToday: 'Working from home today',
     unwellToday: 'Unwell today',
+    /** Stage 3, item 5: the fourth exception chip (Part 20). */
+    amongPeople: 'Out among people today',
   },
   study: {
     fact: 'Study night',
@@ -270,6 +277,8 @@ export const copy = {
   },
   checkin: {
     progress: '{block} · {n} of {total}',
+    /** Stage 3, item 5: the morning went unanswered, so the afternoon asks the night's sleep first. */
+    askedLate: 'Asked late, about last night, since this morning went unanswered. The record marks it as asked late.',
     back: 'Back',
     close: 'Close',
     clear: 'Clear this answer',
@@ -294,6 +303,8 @@ export const copy = {
     patternNote: 'From your own record, as Mirror shows it: an association, never a cause.',
     /** Stage 3, group 4: the check-in's own note, shown back on its summary. */
     yourNote: 'Your note',
+    /** Stage 3, item 5: a sleep reading the afternoon asked late. */
+    askedLate: 'Asked late, about last night',
     quoted: '“{note}”',
   },
   since: {
@@ -342,6 +353,13 @@ export const copy = {
     coolingOff: 'Something rattled me today',
     bigSocial: 'A big social day today',
     napped: 'Napped today',
+    /** Stage 3, item 5: outdoor time, a yes with no minutes. */
+    outside: 'Outside a while today',
+    /** Stage 3, item 5: one optional tap at the afternoon and the evening. */
+    sweet: 'Something sweet since the last check-in?',
+    sweetTimes: '{times} before. The evening read {mean}, against {without} after afternoons that started the same ({k} and {m}).',
+    sweetNoNext: '{times} before. No evening readings after them yet.',
+    sweetUnmatched: '{times} before. The evening read {mean} ({k}); nothing yet to set it against.',
     heavyCaffeine: 'Heavy caffeine this morning',
     morningChips: 'This morning',
     morningNote: 'One statement about the morning, answered from your record: the afternoons after mornings like it. Dose and timing stay out; this is one tap.',
@@ -367,6 +385,8 @@ export const copy = {
     overlay: 'Overlay a context reading',
     overlayNone: 'Reading only',
     todayCaption: '{n} of 3 blocks logged · the reading out of 100 by block · an overlay shows a context reading on the same scale',
+    /** Stage 3, item 5: the afternoon's answer to a sleep reading, asked late. */
+    overlayLate: '{reading}: the afternoon’s answer was asked late, about last night.',
     weekCaption: 'Seven days · each dot one block · a gap is Not logged yet',
     heatCaption: 'Brighter is higher · an empty outline is Not logged yet · {days} days',
     togetherNote: 'Moving together is not causing.',
@@ -540,6 +560,8 @@ export const copy = {
     waitingWhen: { today: 'this {block}', yesterday: 'yesterday {block}', day: '{day}, {block}' },
     happened: 'What happened',
     passedOver: 'Passed over at the next check-in.',
+    /** Stage 3, item 5: a move drawn again after a Today, if different chip changed the day. */
+    redrawn: 'Drawn again for the day as it is now.',
     none: 'Log a check-in and one small move follows.',
     hidden: 'Moves stay hidden while Low-demand mode is on.',
     privateInline: {
@@ -578,10 +600,24 @@ export const copy = {
     passiveNo: "Didn't",
     note: 'One tap. What happened is recorded apart from what was offered.',
   },
+  // Stage 3, item 5: your own chips, under Settings → Evening extras.
+  ownChips: {
+    title: 'Your own chips',
+    note: 'Up to three, each a short label: asked as one tap at the evening check-in beside the others, and compared like them.',
+    none: 'None yet.',
+    placeholder: 'A short label',
+    add: 'Add',
+    remove: 'Remove',
+    full: 'Three is the most. Remove one to add another; a removed one keeps its record.',
+    where: 'A label is your own words. It is kept on this phone, and in your cloud copy when that is on, with your settings. No model reads it now. If a later update lets Claude read it, it is filed with your check-in notes, under that switch; the free models never read it.',
+  },
   readingsScreen: {
     easeName: 'How a learning session went',
     easeOn: 'Asked once after each session, never required.',
     easeRetired: 'Stopped appearing after twelve sessions running with no answer.',
+    expectName: 'A People rep against what you expected',
+    expectOn: 'Asked once after each People rep marked done, never required.',
+    expectRetired: 'Stopped appearing after twelve reps running with no answer.',
     title: 'Readings and chips',
     row: 'Readings and chips',
     rowNote: 'Retirement proposals, decided by you; chips that stopped appearing; anchor swaps.',
@@ -600,6 +636,7 @@ export const copy = {
     chipsNote: 'A chip you never tap stops appearing after thirty logged evenings. One tap here brings it back.',
     chipOn: 'appearing · last tapped {when}',
     chipNever: 'appearing · never tapped, {n} check-ins so far',
+    chipNeverOne: 'appearing · never tapped, 1 check-in so far',
     chipRetired: 'stopped after {n} check-ins without a tap',
     chipNames: {
       nothingLanded: 'Nothing landed today',
@@ -607,11 +644,15 @@ export const copy = {
       coolingOff: 'Something rattled me today',
       bigSocial: 'A big social day today',
       napped: 'Napped today',
+      outside: 'Outside a while today',
+      sweet: 'Something sweet',
+      caffeineLast: 'When was the last caffeine',
       shower: 'No shower today',
       teeth: 'Teeth brushed today',
       food: 'No proper meal today',
       away: 'She’s away today',
       caffeine: 'Caffeine',
+      amongPeople: 'Out among people today',
     },
     swaps: 'Anchor swaps',
     swapsNote: 'An alternate swaps in only after forty-five days in which a phrase was never tapped across thirty answers, once per reading, never the middle. Logged here and in the export key.',
@@ -629,6 +670,8 @@ export const copy = {
       coolingOff: 'something that rattled you',
       bigSocial: 'a big social day',
       napped: 'a nap',
+      outside: 'time outside',
+      sweet: 'something sweet',
       nothingLanded: 'a day when nothing landed',
       hardToSeePoint: 'a day when it was hard to see the point',
       necessity: 'a necessity missed',
@@ -692,6 +735,7 @@ export const copy = {
     control: 'What you control',
     notControl: 'What you don’t',
     controlNone: 'Nothing you control differs between your best days and the others yet.',
+    own: 'Your own chips, over the evenings that showed them',
     notControlNone: 'Nothing outside your control differs between your best days and the others yet.',
     diffLine: '{label}: {onBest} of {ofBest} best days, {onOthers} of {ofOthers} others',
     gapTitle: 'The gap',
@@ -788,6 +832,12 @@ export const copy = {
     nDays: '{n} days',
     notComparable: 'not comparable yet',
     associationNote: 'An association, never a cause. Counts, never streaks. Capped at Promising.',
+    // Stage 3, item 5: your own chips, by their labels, as the built-in chips are answered.
+    ownTitle: 'Your own chips',
+    ownNone: '{label}: not marked yet.',
+    ownNoNext: '{label}: {n} marked, with no morning after logged yet.',
+    ownLine: '{label}: {n} marked. The morning after read {with}, against {without} after evenings that started the same ({k} and {m}).',
+    ownUnmatched: '{label}: {n} marked. The morning after read {with} ({k}); no evening without it started the same yet.',
     privates: 'Private items',
     privateOff: 'Private items enter selection only when you turn that on under Settings → Moves. Off, nothing here is computed.',
     privateLine: {
@@ -844,6 +894,9 @@ export const copy = {
     pending: 'Pending',
     unanswered: 'Not answered',
     skipped: 'Skipped',
+    /** Stage 3, item 5: set aside by the app when a chip changed the day, never a skip of yours. */
+    dayChanged: 'Set aside: the day changed',
+    redrawn: 'drawn again for the changed day',
     coinFlip: 'coin flip',
     pickup: 'before pickup',
     study: 'study night',
@@ -1115,6 +1168,13 @@ export const copy = {
     yours: 'Your pick',
     why: {
       title: 'Why this rep',
+      /** Stage 3, item 5: this morning's Social energy narrowed the draw, and the draw is said among the reps it kept. */
+      steer: { remote: 'Social energy read low this morning, so today’s rep came from the calls and messages that fit.', inPerson: 'Social energy read high this morning, so today’s rep came from the reps in person that fit.' },
+      steered: {
+        draw: 'Drawn at random among those {n}, each with the same chance, kept with the step.',
+        leaning: 'Drawn among those {n}, leaning toward the ones you complete; every chance stays between one in ten and eight in ten, kept with the step.',
+        only: 'The one of them that fits now.',
+      },
       smaller: 'The smallest version of this stage, after two No answers in a row.',
       only: 'The one rep of this stage that fits now.',
       you: 'Your pick, through Change.',
@@ -1140,6 +1200,12 @@ export const copy = {
     repLine: '{rep} · done {done} · partly {partly} · no {no}',
     noReps: 'No rep marked yet.',
     lastRep: 'Last rep: {rep}, {when}',
+    /** Stage 3, item 5: one optional tap after a People rep is marked done; reflection only. */
+    expect: {
+      question: 'Easier than you expected, about as expected, or harder?',
+      options: { easier: 'Easier', asExpected: 'As expected', harder: 'Harder' },
+      counts: 'Against what you expected: {easier} easier, {asExpected} about as expected, {harder} harder.',
+    },
     pause: 'Pause the path',
     unpause: 'Take the path up again',
     paused: 'Paused: no row on Now and no step. The record is kept.',
@@ -1459,6 +1525,8 @@ export const copy = {
     fromFallback: 'Written by a free model under your Cloudflare account, {model}, from the day’s facts, standing in for Claude: {why}.',
     whyFirm: 'How firm: {firm}.',
     whyFirmAdaptive: 'How firm: {firm}, as Adaptive chose for this line.',
+    /** When the night's sleep was read (stage 3, item 5): at the morning check-in, or asked late at the afternoon's. */
+    shortNightWhen: { morning: 'this morning', late: 'when asked late this afternoon' },
     /** The counts under the direction, each in the singular at one (the wording defects, item q). */
     directionCounts: {
       studyOne: '1 study session',
@@ -1502,7 +1570,7 @@ export const copy = {
       'loop-closed': 'Yesterday’s line was about {name}; since then the record shows {what}. That is the loop closing⟨, and worth noticing||⟩.',
       'loop-planned': 'Yesterday’s line was about {name}: a plan was made, and its moment passed without a start. ⟨One plan says little about you and something about the moment; pin|One plan says little about you and something about the moment; pin|Pin⟩ the step, or a smaller one, to a moment that has held before.',
       'loop-open': 'Yesterday’s line was about {name}, and the record shows nothing on it since. ⟨If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.|If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.|Step too big? Pin its smaller version to a moment today. Suggestion wrong? Tap Not useful.⟩',
-      'short-night-today': 'Sleep read “{word}” this morning. Short sleep lowers mood more than it lowers thinking⟨, so read today’s numbers kindly; a nap under half an hour before mid-afternoon is the supported repair|, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair|: read today’s numbers in that light. The supported repair is a nap under half an hour before mid-afternoon⟩.',
+      'short-night-today': 'Sleep read “{word}” {when}. Short sleep lowers mood more than it lowers thinking⟨, so read today’s numbers kindly; a nap under half an hour before mid-afternoon is the supported repair|, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair|: read today’s numbers in that light. The supported repair is a nap under half an hour before mid-afternoon⟩.',
       'short-sleep-afternoons': 'Afternoons after short nights read {diff} against the others, {n} mornings. In one large cohort, regular sleep times went with better health than long sleep did.',
       'propose-test': 'The library holds {grade} for {move}, and your record has never tested it. ⟨One tap sets the test against nothing extra; its card will say what your record finds.|One tap sets the test against nothing extra; its card will say what your record finds.|Set it with one tap, against nothing extra; its card will say what your record finds.⟩',
     },
@@ -1851,6 +1919,8 @@ export const copy = {
     dateNote: 'Moves the path to Dating',
     context: 'from {when}',
     contextEarlier: 'earlier',
+    /** Stage 3, item 5: a sleep reading asked at the afternoon check-in after a morning without it. */
+    contextLate: 'asked late',
     repNotes: 'About this rep',
     more: 'More',
     less: 'Less',

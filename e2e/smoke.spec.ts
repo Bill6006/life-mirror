@@ -1020,9 +1020,11 @@ test('testing smarter: readings and chips are decided by you, no swap yet, the b
   await page.getByRole('button', { name: /^Readings and chips/ }).click()
   await expect(page.getByTestId('readings-screen')).toBeVisible()
   await expect(page.getByTestId('proposals-none')).toContainText('No proposal')
-  // Ten chips and, since Workstream 6, the one optional question on how a learning session went, which retires the same way.
-  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(11)
+  // Fourteen chips (four added in stage 3, item 5) and two optional questions that retire the same way: how a learning
+  // session went (Workstream 6), and a People rep against what you expected (stage 3, item 5).
+  await expect(page.locator('[data-testid^="chip-state-"]')).toHaveCount(16)
   await expect(page.getByTestId('chip-state-ease')).toContainText('How a learning session went')
+  await expect(page.getByTestId('chip-state-expect')).toContainText('A People rep against what you expected')
   await expect(page.locator('[data-testid^="chip-back-"]')).toHaveCount(0)
   await expect(page.getByTestId('swaps-none')).toContainText('No swap yet')
   await page.getByRole('button', { name: 'Done', exact: true }).click()
@@ -1240,6 +1242,205 @@ test('the exception chips sit on a morning summary too, and change today alone',
   await page.reload()
   await page.getByTestId('block-row').first().click()
   await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('stage 3, item 5: the optional taps sit above the move, and a chip that changes the day draws an untouched move again', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('move-card')).toBeVisible()
+  // Caffeine and Today, if different come under the reading and what changed, before the move card and the readings.
+  const top = (testid: string) => page.getByTestId(testid).first().evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
+  const [caffeine, chips, move, readings] = [await top('caffeine'), await top('chip-office'), await top('move-card'), await top('reading-row')]
+  expect(caffeine).toBeLessThan(move)
+  expect(chips).toBeLessThan(move)
+  expect(move).toBeLessThan(readings)
+  // Untouched, the move is drawn again when a chip changes the day, and the card says so.
+  await expect(page.getByTestId('move-redrawn')).toHaveCount(0)
+  await page.getByTestId('chip-office').click()
+  await expect(page.getByTestId('move-redrawn')).toHaveText('Drawn again for the day as it is now.')
+  // History keeps the first as set aside because the day changed, never as a skip of yours.
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^History/ }).click()
+  const rows = page.getByTestId('history-row')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.filter({ hasText: 'Set aside: the day changed' })).toHaveCount(1)
+  await expect(rows.filter({ hasText: 'drawn again for the changed day' })).toHaveCount(1)
+  await expect(rows.filter({ hasText: 'Skipped' })).toHaveCount(0)
+})
+
+test('stage 3, item 5: Out among people today, the fourth chip, kept for today alone', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  const chip = page.getByTestId('chip-among-people')
+  await expect(chip).toContainText('Out among people today')
+  await expect(chip).toHaveAttribute('aria-pressed', 'false')
+  // Seen and left, it is marked shown, so a day it was never on screen says nothing (Rule 2).
+  await chip.scrollIntoViewIfNeeded()
+  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'morning'))?.chipsShown as Record<string, true> | undefined)?.amongPeople).toBe(true)
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'true')
+  const days = await rowsOf<{ day: string; amongPeople?: boolean }>(page, 'days')
+  expect(days.filter((d) => d.amongPeople).map((d) => d.day)).toEqual(['2026-09-07'])
+})
+
+test('stage 3, item 5: after a morning without them, the afternoon asks the two sleep readings first, each marked asked late', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await expect(page.locator('#ci-title')).toHaveText('Sleep hours')
+  await expect(page.getByTestId('asked-late')).toContainText('Asked late, about last night')
+  await tapAnchor(page)
+  await expect(page.locator('#ci-title')).toHaveText('Sleep quality')
+  await expect(page.getByTestId('asked-late')).toBeVisible()
+  await tapAnchor(page)
+  await expect(page.getByTestId('asked-late')).toHaveCount(0)
+  await tapThrough(page)
+  const afternoon = (await rowsOf<{ day: string; block: string; asked: string[] }>(page, 'checkins')).find((c) => c.block === 'afternoon')
+  expect(afternoon?.asked.slice(0, 2)).toEqual(['sleepHours', 'sleepQuality'])
+  expect(afternoon?.asked).toHaveLength(9)
+  // The summary says so beside each.
+  await expect(page.getByTestId('reading-row').filter({ hasText: 'Sleep hours' })).toContainText('Asked late, about last night')
+  await expect(page.getByTestId('reading-row').filter({ hasText: 'Mood' })).not.toContainText('Asked late')
+})
+
+test('stage 3, item 5: each morning asks one of Motivation and Confidence, the other the next morning', async ({ page }) => {
+  const askedOn = async (d: number) => {
+    await page.clock.setFixedTime(new Date(2026, 8, d, 9, 5))
+    await page.goto('./')
+    await page.getByRole('button', { name: /Check in/ }).click()
+    await tapThrough(page)
+    const day = `2026-09-${String(d).padStart(2, '0')}`
+    return (await rowsOf<{ day: string; block: string; asked: string[] }>(page, 'checkins')).find((c) => c.day === day && c.block === 'morning')?.asked ?? []
+  }
+  const first = await askedOn(7)
+  const second = await askedOn(8)
+  expect(first).toHaveLength(12)
+  expect(second).toHaveLength(12)
+  const turn = (asked: string[]) => asked.filter((id) => id === 'motivation' || id === 'confidence')
+  expect(turn(first)).toHaveLength(1)
+  expect(turn(second)).toHaveLength(1)
+  expect(turn(first)[0]).not.toBe(turn(second)[0])
+})
+
+test('stage 3, item 5: Outside a while today and Something sweet, each marked shown once seen; sweet on the afternoon summary; When was the last? once caffeine is reported', async ({ page }) => {
+  // The morning: a band reported brings When was the last?, one optional tap.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('caffeine-last')).toHaveCount(0)
+  await page.getByTestId('caffeine-1').click()
+  await expect(page.getByTestId('caffeine-last')).toBeVisible()
+  await page.getByTestId('caffeine-last-oneToThree').click()
+  await expect(page.getByTestId('caffeine-last-oneToThree')).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'morning'))?.caffeineIntake as { last?: string } | undefined)?.last).toBe('oneToThree')
+  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'morning'))?.chipsShown as Record<string, true> | undefined)?.caffeineLast).toBe(true)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // The afternoon: Something sweet on its summary, seen and left.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  const sweet = page.getByTestId('chip-sweet')
+  await expect(sweet).toContainText('Something sweet since the last check-in?')
+  await sweet.scrollIntoViewIfNeeded()
+  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'afternoon'))?.chipsShown as Record<string, true> | undefined)?.sweet).toBe(true)
+  expect((await extrasOf(page, '2026-09-07', 'afternoon'))?.sweet).toBeUndefined()
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // The evening: Outside a while today among the chips, tapped, and answered from the record at once. The afternoon's
+  // moves are asked about first, and left for now or unanswered.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const ask = page.getByTestId('outcome-ask')
+  for (let i = 0; i < 30 && !(await page.getByTestId('extras').isVisible()); i++) {
+    await expect(page.getByTestId('extras').or(page.getByTestId('anchor').nth(2)).or(ask).first()).toBeVisible()
+    if (await ask.isVisible()) {
+      const heading = await ask.locator('h1').textContent()
+      await page.getByRole('button', { name: /^(Not now|Leave it unanswered)$/ }).click()
+      await expect(ask.locator('h1', { hasText: heading ?? '' })).toHaveCount(0)
+    } else if (!(await page.getByTestId('extras').isVisible())) await tapAnchor(page)
+  }
+  await expect(page.getByTestId('extras')).toBeVisible()
+  const outside = page.getByTestId('chip-outside')
+  await outside.scrollIntoViewIfNeeded()
+  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'evening'))?.chipsShown as Record<string, true> | undefined)?.outside).toBe(true)
+  await outside.click()
+  await expect(outside).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('extras').getByTestId('chip-answer').first()).toContainText('First time recorded')
+  expect((await extrasOf(page, '2026-09-07', 'evening'))?.outside).toBe(true)
+})
+
+test('stage 3, item 5: after a People rep is done, one optional tap against what you expected, counted under the path’s Details', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await page.getByRole('button', { name: /^Add a commitment/ }).click()
+  await page.getByTestId('aim-kind-path-social').click()
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.locator('[data-kind="path"]').getByTestId('aim-start').click()
+  await expect(page.locator('[data-kind="path"]').getByTestId('aim-started')).toBeVisible()
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 20))
+  await page.reload()
+  const row = page.locator('[data-kind="path"]')
+  await expect(row.getByTestId('path-expect-tap')).toHaveCount(0)
+  await row.getByTestId('aim-done').click()
+  await expect(row.getByTestId('aim-done-today')).toBeVisible()
+  const tap = row.getByTestId('path-expect-tap')
+  await expect(tap).toContainText('Easier than you expected, about as expected, or harder?')
+  await tap.getByTestId('path-expect-harder').click()
+  await expect(tap.getByTestId('path-expect-harder')).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => (await rowsOf<{ outcome: string; expectancy?: string; expectancyAsked?: boolean }>(page, 'outcomes')).map((x) => [x.outcome, x.expectancy, x.expectancyAsked])).toEqual([['done', 'harder', true]])
+  // It leaves with the screen, and the path's Details counts it.
+  await page.getByRole('button', { name: 'Aims', exact: true }).click()
+  await expect(page.getByTestId('path-expect-tap')).toHaveCount(0)
+  const card = page.locator('[data-kind="path"]')
+  await pathDetails(card)
+  await expect(card.getByTestId('path-expect')).toHaveText('Against what you expected: 0 easier, 0 about as expected, 1 harder.')
+})
+
+test('stage 3, item 5: your own chips, added in Settings after it says where a label goes, asked at the evening, answered on Evidence by label', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
+  await page.goto('./')
+  await settingsSection(page, 'extras')
+  const field = page.getByTestId('own-chips')
+  await expect(field).toContainText('None yet.')
+  await expect(page.getByTestId('own-chip-where')).toContainText('No model reads it now')
+  await expect(page.getByTestId('own-chip-add')).toBeDisabled()
+  for (const label of ['Stand-in one', 'Stand-in two', 'Stand-in three']) {
+    await page.getByTestId('own-chip-input').fill(label)
+    await page.getByTestId('own-chip-add').click()
+    await expect(field.getByTestId('own-chip-row').filter({ hasText: label })).toHaveCount(1)
+  }
+  // Three at most: the field gives way to the note.
+  await expect(page.getByTestId('own-chip-input')).toHaveCount(0)
+  await expect(page.getByTestId('own-chips-full')).toBeVisible()
+  await field.getByTestId('own-chip-row').filter({ hasText: 'Stand-in three' }).getByRole('button', { name: 'Remove' }).click()
+  await expect(field.getByTestId('own-chip-row')).toHaveCount(2)
+  await expect(page.getByTestId('own-chip-input')).toBeVisible()
+  await backToSettings(page)
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  // The evening asks the two left, after the built-in chips, by their labels.
+  await toEveningExtras(page)
+  const extras = page.getByTestId('extras')
+  await expect(extras.getByRole('button', { name: 'Stand-in three' })).toHaveCount(0)
+  const one = extras.getByRole('button', { name: 'Stand-in one' })
+  await one.scrollIntoViewIfNeeded()
+  await one.click()
+  await expect(one).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  // The next day, Evidence answers it by its label.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
+  await page.reload()
+  await page.getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('own-chip-evidence').filter({ hasText: 'Stand-in one' })).toHaveText('Stand-in one: 1 evening marked, with no morning after logged yet.')
+  await expect(page.getByTestId('own-chip-evidence').filter({ hasText: 'Stand-in two' })).toHaveText('Stand-in two: not marked yet.')
 })
 
 /** Reads one check-in's extras straight from the phone's store. */

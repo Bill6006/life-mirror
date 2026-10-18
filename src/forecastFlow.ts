@@ -4,6 +4,7 @@ import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
+import { chipShownAt } from './chips'
 import type { Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
 import { eveningWorkoutDays } from './workouts'
 import { observations, slotKey } from './learning'
@@ -14,6 +15,7 @@ import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, moved
 import { necessitiesMissed } from './necessities'
 import type { WeeklyAnalyses } from './weeklyFacts'
 import { awayDays, homeDaysOnly } from './awayFlow'
+import { ownChipsOf } from './settings'
 
 // Forecasts on the phone: written before their slot is logged and never rewritten; scored in
 // their own record once the slot is logged; the model named. The brief and the weekly view
@@ -72,7 +74,7 @@ async function forecastOnce(today: string): Promise<void> {
   })
 }
 
-export type LastNightKey = 'dinner' | 'caffeine' | 'coolingOff' | 'bigSocial' | 'napped' | 'nothingLanded' | 'hardToSeePoint' | 'necessity' | 'churchDay' | 'workout'
+export type LastNightKey = 'dinner' | 'caffeine' | 'coolingOff' | 'bigSocial' | 'napped' | 'outside' | 'sweet' | 'nothingLanded' | 'hardToSeePoint' | 'necessity' | 'churchDay' | 'workout'
 
 /** What yesterday's evening carried that the record can set this morning against: its extras and chips, a necessity missed, the church day, a workout finished that evening. */
 export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | undefined, workout: boolean): LastNightKey[] {
@@ -83,6 +85,8 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   if (ex.coolingOff) keys.push('coolingOff')
   if (ex.bigSocial) keys.push('bigSocial')
   if (ex.napped) keys.push('napped')
+  if (ex.outside) keys.push('outside')
+  if (ex.sweet) keys.push('sweet')
   if (ex.nothingLanded) keys.push('nothingLanded')
   if (ex.hardToSeePoint) keys.push('hardToSeePoint')
   if (necessitiesMissed(ex).length) keys.push('necessity')
@@ -166,7 +170,9 @@ export async function briefData(today: string): Promise<Brief> {
   const eve = checkins.find((c) => c.day === yesterday && c.block === 'evening')
   // Caffeine is set only against evenings where the item was seen and left: an evening nobody saw it enters neither side (Part 22).
   const caffeineKnown = (c: CheckIn) => Boolean(c.extras?.caffeine || c.extras?.caffeineIntake || c.extras?.caffeineShown)
-  const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside), key === 'caffeine' ? caffeineKnown : undefined) }))
+  // A chip from stage 3, item 5, likewise: only evenings that showed it (Rule 2).
+  const known = (key: LastNightKey) => (key === 'caffeine' ? caffeineKnown : key === 'outside' || key === 'sweet' ? (c: CheckIn) => chipShownAt(key, c) : undefined)
+  const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside), known(key)) }))
   const best = carried.filter((c) => c.assoc.diff !== null).sort((a, b) => b.assoc.times - a.assoc.times)[0] ?? carried[0] ?? null
   const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times } : null
   // Steady is a conclusion: it needs the same six logged blocks the warning does, or it says nothing.
@@ -278,7 +284,8 @@ export async function weeklyData(today: string): Promise<Weekly> {
   return {
     model,
     scorecard: scorecard(scores, checkins, declarations, stats),
-    best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day))),
+    // Your own chips (stage 3, item 5) on the view alone: the sheet's analyses above never take them.
+    best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day)), ownChipsOf(settings)),
     gap: gap(checkins, today),
     moved: movedThisWeek(checkins, today),
     lasts: whatLasts(obs, checkins),

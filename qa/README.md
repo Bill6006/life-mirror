@@ -21,13 +21,14 @@ red. Rules every runner keeps:
 | `batch2b_breaks.py` | batch 2b: the journal in the Brain, the coach's stated limits | 26 of 26; re-run against the UI cleanups' code and stage 3's, 26 of 26 |
 | `ui_cleanup_breaks.py` | the UI cleanups: Let it out in the note's card, the Aims cards, the skill coach's flow | 16 of 16; re-run against stage 3's code, 16 of 16 |
 | `stage3_breaks.py` | stage 3: group 3 (in the moment): Anything going on?, the evening's matching pattern; group 1 (the Brain with a memory): the memory of each line seen, the weekly view's facts, trends read by the week, their filing in the Worker and the free chain kept off them; group 2 (timing): the reminder's moment, the chips' order, the retired follow-up; group 4 (the record shown back): a check-in's note on its summary, Your words, the line left after a session, Her from the current rung, the month, the workouts read; the watched daylight test's race: a field just shown keeps what is typed into it | group 3, 10 of 10; groups 1 and 2, 47 of 47 (one first missed and its test made stronger, then caught); group 4, 27 of 27 (one first missed and its test made stronger, then caught); all 84 against group 4's final code, 84 of 84; the field race, 2 of 2 |
+| `stage3_item5_breaks.py` | stage 3, item 5 (the check-in and the readings put to use): a move drawn again when the day changes, Out among people today, sleep asked late, Motivation and Confidence in turn, Outside a while today, Something sweet and when the last caffeine was, the newer chips counted and compared only where shown, Social energy's steer, the expectancy tap, your own chips | 58 of 61 first: three missed and their tests made stronger, then caught, 61 of 61 |
 
 Run all of a runner's breaks with `python qa/batch2b_breaks.py`, or name ids to run only those:
 `python qa/batch2b_breaks.py coach-limits-said`.
 
-`ui_cleanup_breaks.py` and `stage3_breaks.py` guard with browser tests, which serve the built folder, so
-they rebuild the app after each replacement and after each restore; `stage3_breaks.py` runs Vitest for
-the breaks a unit test guards. `PW_CONFIG=<config>` picks the Playwright config.
+`ui_cleanup_breaks.py`, `stage3_breaks.py` and `stage3_item5_breaks.py` guard with browser tests, which serve
+the built folder, so they rebuild the app after each replacement and after each restore; the two stage 3
+runners run Vitest for the breaks a unit test guards. `PW_CONFIG=<config>` picks the Playwright config.
 
 ## Live checks (`live-*.mjs`, `common.mjs`)
 
@@ -46,13 +47,13 @@ itself, and threw no page error.
 | `live-stage3.mjs` | stage 3, group 3 | 8 of 8 against a local preview; 4 of 8 against the build before it, every feature check failing |
 | `live-stage3b.mjs` | stage 3, groups 1 and 2 | 8 of 8 against a local preview; 3 of 8 against the build before it, every feature check failing |
 | `live-stage3c.mjs` | stage 3, group 4 | 11 of 11 against a local preview; 2 of 11 against the build before it, every feature check failing |
+| `live-stage3d.mjs` | stage 3, item 5 | 13 of 13 against a local preview, three times; 2 of 13 against the build before it, every feature check failing |
 
 Wait for each element before reading it. Two of batch 2b's first misses were the script reading the
 screen before it rendered.
 
-`LIVE_URL=<url>` points `live-ui-cleanups.mjs`, `live-stage3.mjs`, `live-stage3b.mjs` and `live-stage3c.mjs` at a
-local preview to prove the script itself, and `CHROMIUM_PATH=<path>` launches a browser where Playwright's own is
-not installed.
+`LIVE_URL=<url>` points `live-ui-cleanups.mjs` and the four `live-stage3*.mjs` scripts at a local preview to prove
+the script itself, and `CHROMIUM_PATH=<path>` launches a browser where Playwright's own is not installed.
 
 ## Snapshot pairing (`snappair.py`)
 

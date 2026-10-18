@@ -16,7 +16,7 @@ import { installIdFloors } from './idFloors'
 import { clearPending, installPendingCopy } from './pendingCopy'
 import { installFreshIds } from './freshIds'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { remindedKey, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
+import { remindedKey, SLEEP_READINGS, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
 import type { UseKind } from './useShared'
 import type { Area, PlaceKind, Where } from './location'
@@ -27,13 +27,17 @@ import { awayMode, awayOn, type GateMode } from './postWindowFlow'
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
 export type WinOutcome = 'done' | 'partly' | 'no'
-export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine' | 'napped'
+export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine' | 'napped' | 'outside' | 'sweet'
 export type NecessityKey = 'shower' | 'teeth' | 'food'
 export type Necessities = Partial<Record<NecessityKey, true>>
 
 /** Caffeine for one check-in window (Part 21): 1 under 100 mg, 2 100–199, 3 200–299, 4 300 or more. */
 export type CaffeineBand = 1 | 2 | 3 | 4
 export const CAFFEINE_BANDS: readonly CaffeineBand[] = [1, 2, 3, 4]
+
+/** When the last caffeine was, asked on the Caffeine card once some is reported (stage 3, item 5): it describes the record and is never compared on its own. */
+export type CaffeineLast = 'underHour' | 'oneToThree' | 'longer'
+export const CAFFEINE_LAST: readonly CaffeineLast[] = ['underHour', 'oneToThree', 'longer']
 
 export interface Extras {
   /** Before 2026-09-23: "Caffeine after midday", a yes on the evening. Read now as some caffeine, amount unknown. */
@@ -42,7 +46,7 @@ export interface Extras {
    * Caffeine reported for this check-in's window: its band, when it was tapped, and when the window
    * began (the previous check-in's completion that day, or null for the day's first: since waking).
    */
-  caffeineIntake?: { band: CaffeineBand; at: string; since: string | null }
+  caffeineIntake?: { band: CaffeineBand; at: string; since: string | null; last?: CaffeineLast }
   /** The Caffeine item was on screen for this window on its own day. Untapped, that means none reported, never a confirmed zero. */
   caffeineShown?: true
   dinner?: true
@@ -57,6 +61,10 @@ export interface Extras {
   heavyCaffeine?: true
   /** Napped today: the one daytime sleep the record cannot otherwise see, on the evening check-in. */
   napped?: true
+  /** Outside a while today (stage 3, item 5): outdoor time on the record, a yes with no minutes. */
+  outside?: true
+  /** Something sweet since the last check-in (stage 3, item 5): asked at the afternoon and the evening, one tap. */
+  sweet?: true
   /**
    * Phase 11: the necessities signal. A tap marks a miss; silence is not evidence. Never offered as a move, never celebrated.
    * Teeth left it on 2026-10-02 for teethBrushed; an older record's teeth miss stays here as it was: not brushed, and nothing about how often.
@@ -70,6 +78,13 @@ export interface Extras {
   private?: Record<string, true>
   /** Private items on screen at this check-in, keyed by item id (Pass 3): an item never shown enters no comparison (Rule 2). */
   privateShown?: Record<string, true>
+  /** Your own chips tapped at this check-in (stage 3, item 5), keyed by chip id. Their labels live only in the settings record. */
+  own?: Record<string, true>
+  /**
+   * The chips added from stage 3, item 5, on screen at this check-in, by id: a chip never shown enters no comparison
+   * and no count of check-ins without a tap, so the check-ins from before it existed say nothing (Rule 2).
+   */
+  chipsShown?: Record<string, true>
 }
 
 /** Each day's context, written from the week's shape when the day begins; changing today never rewrites the past. */
@@ -102,6 +117,8 @@ export interface DayContext {
    * a day's own and one of the learning's contexts. Absent means not marked, never well.
    */
   unwell?: boolean
+  /** Out among people today (stage 3, item 5; Part 20, tier 1): people are around in every block, for today alone. Absent means not marked. */
+  amongPeople?: boolean
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string
@@ -245,20 +262,33 @@ export interface Offer {
   paths?: PathId[]
   setting?: SettingKind
   rule?: PickRule
+  /** Stage 3, item 5: the draw this morning's Social energy narrowed, toward a call or a message, or in person. */
+  steer?: 'remote' | 'inPerson'
   stage?: number
   /** Recorded after the fact with "Did it already": a session done away from the app, started and done at the same moment. */
   logged?: boolean
   skippedAt: string | null
   /** "Not now" on its question at a check-in: asked once more at the next one, where leaving it is said plainly (stage 1, item i). */
   deferredAt?: string
-  /** Skip's reason, given only with "Not home" on a move that needs the house (post-window, gated); absent on every other skip. */
-  skipReason?: 'notHome'
+  /**
+   * Skip's reason, given only with "Not home" on a move that needs the house (post-window, gated); absent on every other skip.
+   * "dayChanged" is never a skip of yours (stage 3, item 5): an untouched move the app set aside and drew again after a Today,
+   * if different chip changed the day it was drawn on. No count of skips, follow-through or offers shows it.
+   */
+  skipReason?: 'notHome' | 'dayChanged'
   /** Set once the outcome has been asked, answered or not. */
   closedAt: string | null
   /** What the draw knew when it was made (requirement 2, the foundations): absent on offers drawn before, and on sessions you chose. */
   draw?: DrawRecord
   /** When the move's card was first on screen long enough to be read, on Now (requirement 2): absent until it is. */
   seenAt?: string
+  /** Drawn again for the day as it now is, after a Today, if different chip set the move before it aside (stage 3, item 5). */
+  redrawn?: true
+}
+
+/** A move the app set aside when the day changed under it (stage 3, item 5): not a skip of yours, and not an offer any count shows. */
+export function setAside(o: Pick<Offer, 'skipReason'>): boolean {
+  return o.skipReason === 'dayChanged'
 }
 
 /** A test card, written before any comparison and never edited. A change is a new card. */
@@ -399,6 +429,10 @@ export interface Outcome {
   ease?: Ease
   /** One optional line about the session, in your words. */
   note?: string
+  /** A People rep against what you expected, one optional tap after Done (stage 3, item 5; Part 25): reflection only, never evidence, never a stage or a draw. */
+  expectancy?: Expectancy
+  /** The expectancy tap was on screen after this rep: a dozen running with no answer, and it stops appearing. */
+  expectancyAsked?: true
   /** Sync safety (2026-10-02): the offer this answered, when a later offer took its id; offerId is then its negative, so it joins no move. */
   lostOfferId?: number
   /** The answer's reason, never collapsed (requirement 2): done, partly, No for no time, No for didn't want, a No with no reason, or left unanswered. Absent on answers from before. */
@@ -450,6 +484,9 @@ export const JOURNAL_MAX = 20_000
 
 /** How a session went, in your own sense of it: harder than it should be, about right, or easy now. */
 export type Ease = 'hard' | 'right' | 'easy'
+/** A People rep against what you expected (stage 3, item 5): easier, about as expected, or harder. */
+export type Expectancy = 'easier' | 'asExpected' | 'harder'
+export const EXPECTANCIES: readonly Expectancy[] = ['easier', 'asExpected', 'harder']
 
 export type AimKind = 'certification' | 'person' | 'practice' | 'path'
 
@@ -1039,6 +1076,11 @@ export function askedOf(c: Pick<CheckIn, 'block' | 'asked'>): readonly ReadingId
   return c.asked ?? blockReadings(c.block)
 }
 
+/** The sleep readings an afternoon asked late, after a morning that left them unanswered (stage 3, item 5). */
+export function askedLate(c: Pick<CheckIn, 'block' | 'asked'>): readonly ReadingId[] {
+  return c.block === 'afternoon' ? askedOf(c).filter((id) => SLEEP_READINGS.includes(id)) : []
+}
+
 export function isComplete(c: Pick<CheckIn, 'block' | 'asked' | 'answers'>): boolean {
   return askedOf(c).every((id) => c.answers[id] !== undefined)
 }
@@ -1125,12 +1167,26 @@ export function setCaffeine(slot: Slot, asked: readonly ReadingId[], band: Caffe
       const earlier = (await db.checkins.where('day').equals(slot.day).toArray())
         .filter((c) => c.completedAt && blockIndex(c.block) < blockIndex(slot.block))
         .sort((a, b) => blockIndex(b.block) - blockIndex(a.block))[0]
-      extras.caffeineIntake = { band, at, since: earlier?.completedAt ?? null }
+      const last = rec.extras?.caffeineIntake?.last
+      extras.caffeineIntake = { band, at, since: earlier?.completedAt ?? null, ...(last ? { last } : {}) }
     }
     extras.caffeineShown = true
     rec.extras = extras
     rec.updatedAt = at
     rec.id = await db.checkins.put(rec)
+  })
+}
+
+/** When the last caffeine was, on a check-in that reported some (stage 3, item 5); null takes the answer back. */
+export function setCaffeineLast(slot: Slot, last: CaffeineLast | null): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const rec = await getCheckIn(slot.day, slot.block)
+    const intake = rec?.extras?.caffeineIntake
+    if (!rec || !intake) return
+    const { last: _was, ...rest } = intake
+    rec.extras = { ...rec.extras, caffeineIntake: last === null ? rest : { ...rest, last } }
+    rec.updatedAt = new Date().toISOString()
+    await db.checkins.put(rec)
   })
 }
 
@@ -1140,6 +1196,19 @@ export function markCaffeineShown(slot: Slot): Promise<void> {
     const rec = await getCheckIn(slot.day, slot.block)
     if (!rec || rec.extras?.caffeineShown) return
     rec.extras = { ...(rec.extras ?? {}), caffeineShown: true }
+    rec.updatedAt = new Date().toISOString()
+    await db.checkins.put(rec)
+  })
+}
+
+/** Marks chips as on screen at a check-in, once each (stage 3, item 5), and only on a check-in that exists: a chip shown and left is known, and silence stays silence (Rule 2). */
+export function markChipsShown(slot: Slot, ids: readonly string[]): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const rec = await getCheckIn(slot.day, slot.block)
+    const shown = rec?.extras?.chipsShown ?? {}
+    const fresh = ids.filter((id) => !shown[id])
+    if (!rec || !fresh.length) return
+    rec.extras = { ...(rec.extras ?? {}), chipsShown: { ...shown, ...Object.fromEntries(fresh.map((id) => [id, true as const])) } }
     rec.updatedAt = new Date().toISOString()
     await db.checkins.put(rec)
   })
@@ -1203,6 +1272,20 @@ export function markPrivateShown(slot: Slot, asked: readonly ReadingId[], itemId
     r.extras = { ...(r.extras ?? {}), privateShown: { ...shown, ...Object.fromEntries(fresh.map((id) => [String(id), true as const])) } }
     r.updatedAt = now
     r.id = await db.checkins.put(r)
+  })
+}
+
+/** One of your own chips tapped, or the tap taken back (stage 3, item 5). */
+export function setOwnChip(slot: Slot, asked: readonly ReadingId[], chipId: string, on: boolean): Promise<void> {
+  return db.transaction('rw', db.checkins, async () => {
+    const now = new Date().toISOString()
+    const rec = (await getCheckIn(slot.day, slot.block)) ?? newCheckIn(slot, asked, now)
+    const own: Record<string, true> = { ...(rec.extras?.own ?? {}) }
+    if (on) own[chipId] = true
+    else delete own[chipId]
+    rec.extras = { ...(rec.extras ?? {}), own }
+    rec.updatedAt = now
+    rec.id = await db.checkins.put(rec)
   })
 }
 
@@ -1299,7 +1382,7 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
 }
 
 /** Changes today alone. */
-export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay' | 'atOffice' | 'unwell'>>): Promise<void> {
+export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay' | 'atOffice' | 'unwell' | 'amongPeople'>>): Promise<void> {
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
     if (!existing) return

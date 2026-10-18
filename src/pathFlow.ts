@@ -1,6 +1,6 @@
 import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { moveById, type PathId } from './catalogue'
-import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type CoachPick, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
+import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type CoachPick, type Expectancy, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
 import { keysOf, planFor } from './aims'
 import { coachPickFor, pathById, pathKey, pathsHolding, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
 import type { CoachBlock } from './factTypes'
@@ -119,6 +119,7 @@ export function resumePath(aim: Aim, pick: RepPick, stage: number, now: Date = n
       paths: paths.length ? [...paths] : [aim.path as PathId],
       setting: pick.setting,
       rule: pick.rule,
+      ...(pick.steer ? { steer: pick.steer } : {}),
       stage,
       skippedAt: null,
       closedAt: null,
@@ -293,4 +294,16 @@ export function saveMonthlyCheck(answers: MonthlyCheck['answers'], now: Date = n
     if (existing?.id !== undefined) await db.monthlyChecks.update(existing.id, { answers, day, at: now.toISOString() })
     else await db.monthlyChecks.add({ month, day, answers, at: now.toISOString() })
   })
+}
+
+/** A People rep against what you expected (stage 3, item 5): one optional tap after Done, reflection only. A second tap replaces the first; null takes it back. */
+export async function setExpectancy(offerId: number, e: Expectancy | null): Promise<void> {
+  const x = await db.outcomes.where('offerId').equals(offerId).first()
+  if (x?.id !== undefined) await db.outcomes.update(x.id, { expectancy: e ?? undefined })
+}
+
+/** The expectancy tap was on screen after this rep: written once, so a dozen running unanswered can stop it appearing. */
+export async function markExpectancyAsked(offerId: number): Promise<void> {
+  const x = await db.outcomes.where('offerId').equals(offerId).first()
+  if (x?.id !== undefined && !x.expectancyAsked) await db.outcomes.update(x.id, { expectancyAsked: true })
 }

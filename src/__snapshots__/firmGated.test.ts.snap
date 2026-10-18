@@ -28,7 +28,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "partly-honest": "Partly, {n} times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
   "propose-test": "The library holds {grade} for {move}, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
   "say-when": "{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
-  "short-night-today": "Sleep read “{word}” this morning. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
+  "short-night-today": "Sleep read “{word}” {when}. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
   "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
   "social-recovery": "Mornings after a big social event read {diff} under the others, {n} times: an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
   "steady-moving": "Steady, {inside} of {of} blocks inside the usual, and {name} moved this week. Progress that is recorded carries part of the effect by itself.",

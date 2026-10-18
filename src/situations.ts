@@ -585,7 +585,8 @@ export const SITUATIONS: readonly Situation[] = [
     cooldownDays: 3,
     test: (sheet) => {
       const f = factById(sheet, 'today.shortSleep')
-      return f ? { factIds: [f.id], strength: 0.7, vars: { word: s(str(f, 'word')) } } : null
+      // Stage 3, item 5: a night read late, at the afternoon check-in, never said as this morning's.
+      return f ? { factIds: [f.id], strength: 0.7, vars: { word: s(str(f, 'word')), when: num(f, 'late') === 1 ? copy.brain.shortNightWhen.late : copy.brain.shortNightWhen.morning } } : null
     },
   },
   {

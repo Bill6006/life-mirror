@@ -1,6 +1,6 @@
 import { addDays, blockIndex, BLOCKS, daysBetween, parseDay, type Block } from './blocks'
 import { copy } from './copy'
-import type { CaffeineBand, CheckIn } from './db'
+import { CAFFEINE_LAST, type CaffeineBand, type CaffeineLast, type CheckIn } from './db'
 import { fill } from './format'
 import { indexCheckIns, slotKey } from './learning'
 import { readingOf } from './score'
@@ -388,6 +388,8 @@ export interface CaffeineEvidence {
   reported: ReportedComparison
   /** Days before today the item recorded anything: the old yes/no rows stay until this reaches 28. */
   itemDays: number
+  /** When the last caffeine was, as reported, counted (stage 3, item 5): description only, never compared. */
+  last: Record<CaffeineLast, number>
   weeks: number
 }
 
@@ -400,6 +402,7 @@ export function caffeineEvidence(checkins: readonly CheckIn[], today: string): C
     byMorningBand: byMorningBand(checkins, today, weeks),
     reported: reportedAgainstUntapped(checkins, today, weeks),
     itemDays: itemDays(checkins, today),
+    last: Object.fromEntries(CAFFEINE_LAST.map((l) => [l, checkins.filter((c) => c.day <= today && c.extras?.caffeineIntake?.last === l).length])) as Record<CaffeineLast, number>,
     weeks,
   }
 }

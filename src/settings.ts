@@ -92,6 +92,8 @@ export interface Settings {
   chipsBack: Record<string, string>
   /** Workstream 6: the day you brought back the question on how a learning session went, after it stopped appearing unused; null until then. */
   easeBack: string | null
+  /** Stage 3, item 5: when you brought back the expectancy tap after a People rep, after it stopped appearing unused; null until then. */
+  expectancyBack: string | null
   /** Learned weights for the reading out of 100, applied only once a weight card holds up. */
   weights: Record<string, number> | null
   /** Daylight hours, HH:MM: a move that needs daylight is offered only inside them. Used while no place is set. */
@@ -110,6 +112,8 @@ export interface Settings {
   partnerOnline: boolean
   /** Away from home (post-window, gated): the trip you set, first and last day. Absent until one is set, and never set while the gate is closed. */
   away?: AwayRange
+  /** Your own chips (stage 3, item 5): short labels you typed, each asked as one tap at the evening check-in. A removed one keeps its record. Absent until the first. */
+  ownChips?: OwnChip[]
   updatedAt: string
 }
 
@@ -143,6 +147,7 @@ export const DEFAULT_SETTINGS: Settings = {
   readingDecisions: {},
   chipsBack: {},
   easeBack: null,
+  expectancyBack: null,
   daylight: { from: '07:00', to: '19:00' },
   place: null,
   location: { on: false, area: null },
@@ -175,6 +180,7 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     readingDecisions: stored.readingDecisions ?? {},
     chipsBack: stored.chipsBack ?? {},
     easeBack: typeof stored.easeBack === 'string' ? stored.easeBack : null,
+    expectancyBack: typeof stored.expectancyBack === 'string' ? stored.expectancyBack : null,
     weights: stored.weights ?? null,
     daylight: { ...DEFAULT_SETTINGS.daylight, ...(stored.daylight ?? {}) },
     place: placeOf(stored.place),
@@ -184,12 +190,80 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
   }
 }
 
+/** One of your own chips (stage 3, item 5): its label is your own words, and no model reads it yet. */
+export interface OwnChip {
+  id: string
+  label: string
+  createdAt: string
+  /** When you removed it: it stops being asked, and its taps stay on the record. */
+  removedAt: string | null
+}
+
+/** At most three of your own chips at once (Rule 17), each a short label. */
+export const OWN_CHIPS_MAX = 3
+export const OWN_CHIP_LABEL_MAX = 40
+
+/** Your own chips as stored, every one that reads whole, removed ones included; the stored list itself is never rewritten here. */
+export function allOwnChips(s: Pick<Settings, 'ownChips'>): OwnChip[] {
+  if (!Array.isArray(s.ownChips)) return []
+  return s.ownChips.filter((c): c is OwnChip => Boolean(c) && typeof c.id === 'string' && c.id !== '' && typeof c.label === 'string' && c.label.trim() !== '' && typeof c.createdAt === 'string' && (c.removedAt === null || typeof c.removedAt === 'string'))
+}
+
+/** Your own chips still asked: not removed. */
+export function ownChipsOf(s: Pick<Settings, 'ownChips'>): OwnChip[] {
+  return allOwnChips(s).filter((c) => c.removedAt === null)
+}
+
+/** The settings with one more of your chips, trimmed to its length; unchanged while three are asked or the label is empty. Stored entries are kept as they are. */
+export function withOwnChipAdded<S extends Pick<Settings, 'ownChips'>>(s: S, label: string, now: Date = new Date()): S {
+  const text = label.trim().slice(0, OWN_CHIP_LABEL_MAX).trim()
+  if (!text || ownChipsOf(s).length >= OWN_CHIPS_MAX) return s
+  const id = `${now.getTime().toString(36)}${Math.floor(Math.random() * 36 ** 4).toString(36)}`
+  return { ...s, ownChips: [...(Array.isArray(s.ownChips) ? s.ownChips : []), { id, label: text, createdAt: now.toISOString(), removedAt: null }] }
+}
+
+/** The settings with one of your chips removed: it stops being asked, and it and its taps stay on the record. */
+export function withOwnChipRemoved<S extends Pick<Settings, 'ownChips'>>(s: S, id: string, now: Date = new Date()): S {
+  if (!Array.isArray(s.ownChips)) return s
+  return { ...s, ownChips: s.ownChips.map((c) => (c && c.id === id && c.removedAt === null ? { ...c, removedAt: now.toISOString() } : c)) }
+}
+
 export const SHORT_READINGS: readonly ReadingId[] = ['mood', 'energy', 'stress']
 
-/** The readings a block asks at a given depth, in the block's own order, less any context reading you retired. */
-export function askedReadings(block: Block, depth: Depth, retired: readonly string[] = []): readonly ReadingId[] {
+/** The two sleep readings: the morning's, about the night before. */
+export const SLEEP_READINGS: readonly ReadingId[] = ['sleepHours', 'sleepQuality']
+
+/**
+ * Motivation and Confidence, asked in turn, one each morning, day by day (stage 3, item 5): the one a day asks.
+ * The other is not asked that morning, never missing or skipped.
+ */
+export function turnOf(day: string): 'motivation' | 'confidence' {
+  const [y, m, d] = day.split('-').map(Number)
+  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000) % 2 === 0 ? 'motivation' : 'confidence'
+}
+
+/** What a day's readings depend on beyond the block (stage 3, item 5): the day, and its morning check-in, or null when there is none. */
+export interface AskedDay {
+  day: string
+  morning: Pick<CheckIn, 'answers'> | null
+}
+
+/**
+ * The readings a block asks at a given depth, in the block's own order, less any context reading you retired.
+ * Given the day (stage 3, item 5), at full depth: the morning asks Motivation or Confidence in turn, and an
+ * afternoon after a morning that left a sleep reading unanswered asks it first, late, about the night before.
+ * Short depth, low-demand mode's included, asks its three readings alone.
+ */
+export function askedReadings(block: Block, depth: Depth, retired: readonly string[] = [], at?: AskedDay): readonly ReadingId[] {
   const all = blockReadings(block).filter((id) => !retired.includes(id))
-  return depth === 'short' ? all.filter((id) => SHORT_READINGS.includes(id)) : all
+  if (depth === 'short') return all.filter((id) => SHORT_READINGS.includes(id))
+  if (!at) return all
+  if (block === 'morning') {
+    const notToday = turnOf(at.day) === 'motivation' ? 'confidence' : 'motivation'
+    return all.filter((id) => id !== notToday)
+  }
+  if (block === 'afternoon') return [...SLEEP_READINGS.filter((id) => !retired.includes(id) && at.morning?.answers[id] === undefined), ...all]
+  return all
 }
 
 /** A stored place, kept only when both numbers are in range; anything else is no place. */

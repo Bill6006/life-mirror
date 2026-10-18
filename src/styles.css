@@ -2664,6 +2664,16 @@ button.chip {
   margin-bottom: 10px;
 }
 
+/* Stage 3, item 5: When was the last?, under the bands' help, its chips spaced as the bands are. */
+.caffeine-last {
+  margin-top: 14px;
+}
+
+.caffeine-last .chips {
+  gap: 11px 6px;
+  margin-top: 8px;
+}
+
 /* Part 27: the monthly check's questions and its fixed help. */
 .check-question {
   margin: 12px 0 0;

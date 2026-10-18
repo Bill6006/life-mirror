@@ -8,9 +8,9 @@ import { minutesOf } from './settings'
 
 // People around (Part 20). Two tiers that never merge.
 //
-// Tier 1 is today's own day record, exceptions included: the two chips on the summaries rewrite
-// today alone, both ways, so an office day worked from home has no one at the office and a home day
-// marked at the office has. Since Pass 3 (the owner's word) it is context for a path's reps, never
+// Tier 1 is today's own day record, exceptions included: the chips on the summaries rewrite today
+// alone, both ways, so an office day worked from home has no one at the office, a home day marked at
+// the office has, and a day marked Out among people today has people around in every block. Since Pass 3 (the owner's word) it is context for a path's reps, never
 // a gate: where it puts no one around, an in-person rep still fits and would mean going out, at lunch,
 // on an errand or to something later. The day's draw with no path on still reads it as a gate.
 //
@@ -20,7 +20,7 @@ import { minutesOf } from './settings'
 // which still gates the draw and shapes a path's context. The draw never reads it, so history can
 // neither widen nor narrow what is offered.
 
-type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'>
+type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople'>
 
 /** The block a time of day falls in. */
 export function blockOfTime(hhmm: string): Block {
@@ -33,6 +33,8 @@ export function blockOfTime(hhmm: string): Block {
 /** Tier 1: whether today's shape puts other adults around in a block. Anything the record does not say is not around; for a path's reps that would mean going out, never out of reach (Pass 3). */
 export function peopleAround(ctx: Shape | null | undefined, block: Block): boolean {
   if (!ctx) return false
+  // Out among people today (stage 3, item 5): around in every block, for today alone.
+  if (ctx.amongPeople) return true
   if (ctx.atOffice && (block === 'morning' || block === 'afternoon')) return true
   if (ctx.churchDay && block === 'morning') return true
   const pickup = heldPickup(ctx)

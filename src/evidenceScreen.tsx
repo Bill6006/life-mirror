@@ -10,6 +10,9 @@ import { NOTHING } from './offers'
 import { readingById } from './readings'
 import { MIN_PER_ARM } from './tiers'
 import { HARD_MEASURES } from './workouts'
+import { allCheckIns, getSettings } from './db'
+import { ownChipAnswer } from './ownChips'
+import { ownChipsOf } from './settings'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
 // learned; the weight card; the observational associations; and the plain line about months
@@ -85,6 +88,47 @@ function CardBlock({ e }: { e: CardEvidence }) {
       </div>
       <p class="move-source">{fill(c.card, { id: String(card.id), date: formatWhen(card.createdAt) })}</p>
     </li>
+  )
+}
+
+/**
+ * Your own chips (stage 3, item 5), each by its label, answered from your record like for like as the built-in chips are:
+ * the mornings after evenings that showed it and carried it, against those that showed it and started the same. Read here
+ * on the phone alone: nothing of it goes to the day's sheet.
+ */
+function OwnChipsEvidence({ today }: { today: string }) {
+  const settings = useLive(getSettings, [])
+  const all = useLive(allCheckIns, [])
+  if (!settings || !all) return null
+  const own = ownChipsOf(settings)
+  if (own.length === 0) return null
+  const c = copy.evidence
+  return (
+    <>
+      <h2 class="section">{c.ownTitle}</h2>
+      <div class="card pad">
+        <div class="calc">
+          {own.map((ch) => {
+            const a = ownChipAnswer(all, ch.id, today)
+            const n = a.times === 1 ? c.oneEvening : fill(c.nEvenings, { n: String(a.times) })
+            const line =
+              a.times === 0
+                ? fill(c.ownNone, { label: ch.label })
+                : a.withEvent.mean === null
+                  ? fill(c.ownNoNext, { label: ch.label, n })
+                  : a.without.mean === null
+                    ? fill(c.ownUnmatched, { label: ch.label, n, with: pctOf(a.withEvent.mean), k: String(a.withEvent.n) })
+                    : fill(c.ownLine, { label: ch.label, n, with: pctOf(a.withEvent.mean), without: pctOf(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+            return (
+              <p key={ch.id} class="calc-line" data-testid="own-chip-evidence">
+                {line}
+              </p>
+            )
+          })}
+        </div>
+        <p class="note faint no-gap">{c.associationNote}</p>
+      </div>
+    </>
   )
 }
 
@@ -207,6 +251,8 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
           </div>
         </>
       )}
+
+      <OwnChipsEvidence today={today} />
 
       <CaffeineEvidenceCard ev={ev.caffeine} />
 

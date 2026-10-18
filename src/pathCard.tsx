@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { kindIcon, planState, PlanTap, RowFrame, startedWhen, When, useQuarterMinute } from './aimCard'
 import { Icon } from './icons'
 import { ClampText, Disclosure, Facts, StageProgress } from './ui'
@@ -7,12 +7,12 @@ import { lastLine, type CueCount } from './aims'
 import { blockAt, type Block } from './blocks'
 import { hasMove, moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
 import { copy } from './copy'
-import { db, getDayContext, getSettings, type Aim, type Cue, type DayContext, type Intention, type Offer } from './db'
+import { db, EXPECTANCIES, getDayContext, getSettings, type Aim, type Cue, type DayContext, type Expectancy, type Intention, type Offer } from './db'
 import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
-import { setPathPick } from './pathFlow'
-import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, stageWords, whyThisRep, type PathToday } from './pathStage'
+import { markExpectancyAsked, setExpectancy, setPathPick } from './pathFlow'
+import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, socialEnergyOn, stageWords, whyThisRep, type PathToday } from './pathStage'
 import { carriedByContext, carriedLine, dayKindOf, orderByEvidence } from './people'
 
 // A path on the screen (Part 24). On Now, one People row: the rep, its one line, its minutes and
@@ -37,9 +37,45 @@ export interface PathShared {
   paths?: readonly PathId[]
   /** On a path's card, when today's one People rep is another path's: that path, and whether the rep counts for this one too. */
   elsewhere?: { path: PathId; shared: boolean } | null
+  /** Stage 3, item 5: whether to ask, after a rep is marked done here, how it went against what you expected. */
+  askExpect?: boolean
   onResume: () => void
   onChange: () => void
   onPlan: (cue: Cue, time: string) => void
+}
+
+/**
+ * Against what you expected, one optional tap after a People rep is marked done (stage 3, item 5; Part 25): reflection
+ * only, never evidence, never a stage or a draw. It shows once, where Done was tapped, and leaves with the screen; a tap
+ * on the answer given takes it back.
+ */
+function ExpectTap({ offerId }: { offerId: number }) {
+  const c = copy.path.expect
+  const [chosen, setChosen] = useState<Expectancy | null>(null)
+  useEffect(() => void markExpectancyAsked(offerId), [offerId])
+  return (
+    <div class="ease" data-testid="path-expect-tap">
+      <span class="sub">{c.question}</span>
+      <span class="when" role="group" aria-label={c.question}>
+        {EXPECTANCIES.map((e) => (
+          <button
+            key={e}
+            type="button"
+            class={chosen === e ? 'when-chip is-on' : 'when-chip'}
+            aria-pressed={chosen === e}
+            data-testid={`path-expect-${e}`}
+            onClick={() => {
+              const next = chosen === e ? null : e
+              setChosen(next)
+              void setExpectancy(offerId, next)
+            }}
+          >
+            {c.options[e]}
+          </button>
+        ))}
+      </span>
+    </div>
+  )
 }
 
 function whereWords(s: SettingKind): string {
@@ -128,6 +164,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
   const c = copy.path
   useQuarterMinute()
   const [planOpen, setPlanOpen] = useState(false)
+  const [justDone, setJustDone] = useState<number | null>(null)
   const rep = repOf(p)
   const canDone = p.openOffer !== null && doneOpen(p.openOffer)
   const setting = p.open ? (p.openOffer?.setting ?? null) : (p.pt.pick?.setting ?? null)
@@ -187,7 +224,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
         p.open ? (
           canDone &&
           p.openOffer && (
-            <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(p.openOffer as Offer)}>
+            <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => doneHere(p.openOffer as Offer, setJustDone)}>
               {copy.move.done}
             </button>
           )
@@ -220,6 +257,9 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
         )
       }
       below={
+        done && p.askExpect && justDone !== null ? (
+          <ExpectTap key={justDone} offerId={justDone} />
+        ) : (
         !p.open &&
         !done &&
         rep &&
@@ -236,10 +276,15 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
             />
             {planOpen && <RepNotes path={p.pt.path} rep={rep} />}
           </>
-        )
+        ))
       }
     />
   )
+}
+
+/** Done on a People rep, here: recorded, and remembered as just done, so the expectancy tap shows where it was tapped. */
+function doneHere(offer: Offer, setJustDone: (id: number) => void): void {
+  void recordDoneNow(offer).then((ok) => ok && setJustDone(offer.id as number))
 }
 
 /**
@@ -248,11 +293,12 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
  * counts and what does not, why this rep, a warm-up note), a declared date on the Partner path, and
  * the path's settings with Pause and Remove. This month's prompts stay in front.
  */
-export function PathCard(p: PathShared & { today: string; counts: readonly CueCount[]; due?: boolean; onPause: (paused: boolean) => void; onRemove: () => void; prompts?: ComponentChildren; dates?: ComponentChildren; settings?: ComponentChildren }) {
+export function PathCard(p: PathShared & { today: string; counts: readonly CueCount[]; expect?: Record<Expectancy, number> | null; due?: boolean; onPause: (paused: boolean) => void; onRemove: () => void; prompts?: ComponentChildren; dates?: ComponentChildren; settings?: ComponentChildren }) {
   const c = copy.path
   const d = copy.disclose
   useQuarterMinute()
   const [planOpen, setPlanOpen] = useState(false)
+  const [justDone, setJustDone] = useState<number | null>(null)
   const path = p.pt.path
   const stage = path.stages.find((s) => s.n === p.pt.state.stage)
   const rep = repOf(p)
@@ -333,7 +379,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
                   {p.openOffer ? fill(copy.aims.startedCard, { when: startedWhen(p.openOffer) }) : copy.aims.started}
                 </span>
                 {canDone && p.openOffer && (
-                  <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => void recordDoneNow(p.openOffer as Offer)}>
+                  <button type="button" class="textbtn ink" data-testid="aim-done" onClick={() => doneHere(p.openOffer as Offer, setJustDone)}>
                     {copy.move.done}
                   </button>
                 )}
@@ -357,6 +403,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               </>
             )}
           </div>
+          {done && p.askExpect && justDone !== null && <ExpectTap key={justDone} offerId={justDone} />}
           {!p.open && !done && rep && (pending || planOpen) && (
             <>
               <When
@@ -446,6 +493,12 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               {fill(c.lastRep, { rep: moveById(last.moveId).name, when: lastLine('done', last.day, p.today) })}
             </p>
           )}
+          {/* Stage 3, item 5: the expectancy tap's answers, counted here alone; reflection, never evidence. */}
+          {p.expect && (
+            <p class="calc-line" data-testid="path-expect">
+              {fill(c.expect.counts, { easier: String(p.expect.easier), asExpected: String(p.expect.asExpected), harder: String(p.expect.harder) })}
+            </p>
+          )}
         </div>
         <div data-testid="path-settings">
           {p.settings}
@@ -480,13 +533,14 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
   const marks = useLive(() => db.pathMarks.toArray(), [])
   const settings = useLive(getSettings, [])
   const ctx = useLive(() => getDayContext(day), [day])
-  if (aim === undefined || !others || !offers || !outcomes || !contexts || !marks || !settings || ctx === undefined) return <section class="screen" />
+  const todays = useLive(() => db.checkins.where('day').equals(day).toArray(), [day])
+  if (aim === undefined || !others || !offers || !outcomes || !contexts || !marks || !settings || ctx === undefined || !todays) return <section class="screen" />
   if (aim === null || aim.kind !== 'path') {
     onClose()
     return <section class="screen" />
   }
   const c = copy.path
-  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, marks, online: settings.partnerOnline, faithHidden: settings.hideFaith })
+  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, socialEnergy: socialEnergyOn(todays, day), marks, online: settings.partnerOnline, faithHidden: settings.hideFaith })
   const carried = carriedByContext(offers, outcomes, contexts, day)
   const list = orderByEvidence(pt.elig.stageReps, dayKindOf(day, ctx), block, carried)
   return (

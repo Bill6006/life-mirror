@@ -116,6 +116,11 @@ export function morningPoints(checkins: readonly CheckIn[], today: string, isEve
     })
 }
 
+/** An afternoon's statement, like for like (stage 3, item 5): the evenings after afternoons that carried it, against the evenings after afternoons that started the same. */
+export function afternoonAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include?: (c: CheckIn) => boolean): Association {
+  return likeForLike(afternoonPoints(checkins, today, isEvent, include))
+}
+
 /** A morning's statement, like for like: the afternoons after mornings that carried it, against the afternoons after mornings that started the same. */
 export function morningAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): Association {
   return likeForLike(morningPoints(checkins, today, isEvent))

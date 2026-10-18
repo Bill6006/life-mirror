@@ -230,6 +230,11 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
     <div class={compact ? 'card pad move-card compact' : 'card pad move-card'} data-testid="move-card" data-kind={offer.kind} data-move-key={compact ? undefined : `${offer.id}:${offer.at}`}>
       {head}
       {title}
+      {offer.redrawn && (
+        <p class="move-state muted" data-testid="move-redrawn">
+          {c.redrawn}
+        </p>
+      )}
       {about}
 
       {/* Why this, the evidence, why not that, what the record says of a private item, and the test: one tap away, in the same words. */}

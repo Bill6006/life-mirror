@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { NavRow } from './controls'
 import { copy } from './copy'
-import { getSettings } from './db'
+import { getSettings, setAside } from './db'
 import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { MoveCard } from './moveCard'
@@ -72,7 +72,7 @@ export function HistoryScreen({ onClose }: { onClose: () => void }) {
         <div class="card">
           <ul class="rows">
             {entries.map(({ offer, card, outcome, moveName }) => {
-              const status = offer.skippedAt ? h.skipped : outcome ? (outcome.outcome ? copy.extras.winOutcome[outcome.outcome] : h.unanswered) : h.pending
+              const status = setAside(offer) ? h.dayChanged : offer.skippedAt ? h.skipped : outcome ? (outcome.outcome ? copy.extras.winOutcome[outcome.outcome] : h.unanswered) : h.pending
               return (
                 <li key={offer.id} class="row is-static history-row" data-testid="history-row">
                   <span class="row-main">
@@ -81,7 +81,8 @@ export function HistoryScreen({ onClose }: { onClose: () => void }) {
                       {formatDayShort(offer.day)} · {copy.blocks[offer.block]}
                       {away?.has(offer.day) ? ` · ${h.away}` : ''}
                       {offer.kind === 'pickup' ? ` · ${h.pickup}` : offer.kind === 'study' ? ` · ${h.study}` : offer.kind === 'step' ? ` · ${h.step}` : offer.kind === 'unblock' ? ` · ${h.unblock}` : ` · ${readingById(offer.target).name}`}
-                      {offer.coinFlip ? ` · ${h.coinFlip}` : ''} · {fill(h.offer, { id: String(offer.id) })} ·{' '}
+                      {offer.coinFlip ? ` · ${h.coinFlip}` : ''}
+                      {offer.redrawn ? ` · ${h.redrawn}` : ''} · {fill(h.offer, { id: String(offer.id) })} ·{' '}
                       {card ? fill(h.card, { id: String(card.id), window: copy.catalogue.windows[card.window as keyof typeof copy.catalogue.windows] ?? card.window }) : h.noCard} ·{' '}
                       {outcome ? fill(h.outcome, { id: String(outcome.id) }) : h.noOutcome}
                       {outcome?.why ? ` · ${copy.ask.why[outcome.why]}` : ''}

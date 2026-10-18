@@ -1,11 +1,11 @@
 import { compareSlots } from './blocks'
-import { type Aim, type AnchorSwap, askedOf, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import { type Aim, type AnchorSwap, askedOf, setAside, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
 import { anchorFor, readings, type Position } from './readings'
 import { INGREDIENTS } from './score'
-import type { Settings } from './settings'
+import { allOwnChips, type Settings } from './settings'
 import { necessitiesMissed } from './necessities'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 
@@ -102,6 +102,11 @@ function yesNo(v: boolean): string {
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {
   const exportedAt = new Date().toISOString()
   const names = new Map(items.map((it) => [String(it.id), it.name]))
+  // Your own chips (stage 3, item 5), every one, removed ones included: the check-ins keep only their ids.
+  const ownAll = allOwnChips(settings)
+  const ownLabels = new Map(ownAll.map((ch) => [ch.id, ch.label]))
+  const ownLabel = (id: string) => ownLabels.get(id) ?? `chip ${id}`
+  const shownNames = (c: CheckIn) => Object.keys(c.extras?.chipsShown ?? {}).map((k) => (k.startsWith('own:') ? `own: ${ownLabel(k.slice(4))}` : k))
   // The Partner path stays out unless ticked (Part 27): its commitment, its plans, its steps, and a line that cites it.
   const partner = opts.includePartner === true
   const partnerAims = new Set((aims?.aims ?? []).filter((a) => a.kind === 'path' && a.path === 'partner').map((a) => a.id))
@@ -125,13 +130,18 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       nothingLandedToday: Boolean(c.extras?.nothingLanded),
       hardToSeeThePointToday: Boolean(c.extras?.hardToSeePoint),
       nappedToday: Boolean(c.extras?.napped),
+      outsideToday: Boolean(c.extras?.outside),
+      sweetSinceLastCheckIn: Boolean(c.extras?.sweet),
       coolingOffEvent: Boolean(c.extras?.coolingOff),
       bigSocialEvent: Boolean(c.extras?.bigSocial),
       heavyCaffeineThisMorning: Boolean(c.extras?.heavyCaffeine),
       caffeineBand: c.extras?.caffeineIntake?.band ?? null,
       caffeineAt: c.extras?.caffeineIntake?.at ?? null,
+      caffeineLast: c.extras?.caffeineIntake?.last ?? null,
       caffeineSince: c.extras?.caffeineIntake?.since ?? null,
       caffeineShown: Boolean(c.extras?.caffeineShown),
+      chipsShown: shownNames(c),
+      ownChips: Object.keys(c.extras?.own ?? {}).map(ownLabel),
       necessitiesMissed: necessitiesMissed(c.extras),
       teethBrushed: c.extras?.teethBrushed ?? null,
       note: c.extras?.note ?? null,
@@ -159,8 +169,11 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         swaps: (records?.anchorSwaps ?? []).map((s) => ({ reading: s.reading, position: s.position, from: s.from, to: s.to, on: s.at, answers: s.answers, stretchDays: s.stretchDays })),
         retiredReadings: settings.retiredReadings,
         weights: settings.weights,
-        caffeine: 'caffeineBand is the band reported for the window from caffeineSince (null: since waking) to caffeineAt: 1 under 100 mg, 2 100 to 199, 3 200 to 299, 4 300 or more. caffeineShown without a band means the item was seen and none was reported, never a confirmed none. caffeineAfterMidday and heavyCaffeineThisMorning are the older yes/no records: some caffeine, amount unknown.',
-        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday'],
+        caffeine: 'caffeineBand is the band reported for the window from caffeineSince (null: since waking) to caffeineAt: 1 under 100 mg, 2 100 to 199, 3 200 to 299, 4 300 or more. caffeineShown without a band means the item was seen and none was reported, never a confirmed none. caffeineAfterMidday and heavyCaffeineThisMorning are the older yes/no records: some caffeine, amount unknown. caffeineLast is when the last caffeine was, as reported once some was (underHour, oneToThree, longer): it describes the record and is never compared.',
+        expectancy: 'expectancy is a People rep against what you expected (easier, asExpected, harder), one optional tap after Done: reflection only, never evidence, and it never moves a stage or a draw.',
+        chipsShown: 'chipsShown names the chips added in stage 3 (outside, sweet, caffeineLast, amongPeople, and your own as own: and its label) that were on screen at the check-in. Shown and left untapped is a no for that check-in; not shown says nothing either way.',
+        ownChips: 'ownChips lists your own chips by the label you typed, each asked as one tap at the evening check-in; removedAt is when you stopped one, and its taps stay. A check-in’s ownChips names those tapped there.',
+        events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday', 'outsideToday', 'sweetSinceLastCheckIn'],
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
         useLog: 'How Life Mirror was used, in its own words: appOpened (launch, or return after five minutes away), screen (which one), checkinOpened and checkinLeft (the block), lineAction, lineWhy, notification (its kind) and changePicked, each with its day and time. Never content, never anything outside the app. The Partner path’s own screens are left out unless the Partner path is included. usage is what Claude may be given of it: counts over windows ending the day before, what was observed and never why.',
       },
@@ -180,10 +193,12 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ? {
             offers: offers.map((o) => {
               const x = records.outcomes.find((y) => y.offerId === o.id)
-              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null, cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null, ...(homeOnlyOn() && o.skipReason ? { skipReason: o.skipReason } : {}) }
+              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null && !setAside(o), cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, expectancy: x?.expectancy ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null, ...(homeOnlyOn() && o.skipReason === 'notHome' ? { skipReason: o.skipReason } : {}), ...(setAside(o) ? { setAside: 'the day changed' } : {}), ...(o.redrawn ? { redrawn: true } : {}) }
             }),
             // The days marked Unwell today (the owner's decision, 2026-10-10).
             unwellDays: (records.days ?? []).filter((d) => d.unwell).map((d) => d.day),
+            // The days marked Out among people today (stage 3, item 5).
+            amongPeopleDays: (records.days ?? []).filter((d) => d.amongPeople).map((d) => d.day),
             // Away from home (post-window, gated): the days a trip shaped, with what the week gave them; closed, not a key.
             ...(awayOn() ? { awayFromHome: (records.days ?? []).filter((d) => d.awayFromHome).map((d) => ({ day: d.day, held: d.awayFromHome?.held ?? null })) } : {}),
             // Answers whose move a reused id took (sync safety, 2026-10-02): kept whole, under no move.
@@ -224,6 +239,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ...(awayOn() && settings.away ? { away: { from: settings.away.from, to: settings.away.to } } : {}),
       },
       ...(opts.includePrivate ? { privateItems: items.map((it) => it.name), privateAskedAt: items.map((it) => ({ name: it.name, blocks: blocksOf(it) })) } : {}),
+      ownChips: ownAll.map((ch) => ({ label: ch.label, createdAt: ch.createdAt, removedAt: ch.removedAt })),
       ...(aims
         ? {
             aims: {
@@ -262,12 +278,17 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     'hard_to_see_the_point_today',
     'heavy_caffeine_this_morning',
     'napped_today',
+    'outside_today',
+    'sweet_since_last_check_in',
     'caffeine_band',
     'caffeine_since',
     'caffeine_at',
     'caffeine_shown',
+    'caffeine_last',
+    'chips_shown',
     'note',
     ...privateItems.map((it) => `private: ${it.name}`),
+    ...ownAll.map((ch) => `own: ${ch.label}`),
   ]
   const rows = sorted.map((c) => [
     c.day,
@@ -282,19 +303,25 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
     yesNo(Boolean(c.extras?.hardToSeePoint)),
     yesNo(Boolean(c.extras?.heavyCaffeine)),
     yesNo(Boolean(c.extras?.napped)),
+    yesNo(Boolean(c.extras?.outside)),
+    yesNo(Boolean(c.extras?.sweet)),
     c.extras?.caffeineIntake ? String(c.extras.caffeineIntake.band) : '',
     c.extras?.caffeineIntake?.since ?? '',
     c.extras?.caffeineIntake?.at ?? '',
     yesNo(Boolean(c.extras?.caffeineShown)),
+    c.extras?.caffeineIntake?.last ?? '',
+    shownNames(c).join('; '),
     c.extras?.note ?? '',
     ...privateItems.map((it) => yesNo(Boolean(c.extras?.private?.[String(it.id)]))),
+    ...ownAll.map((ch) => yesNo(Boolean(c.extras?.own?.[ch.id]))),
   ])
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
 
-  const offerHeader = ['id', 'kind', 'day', 'block', 'situation', 'target', 'move', 'coin_flip', 'passive', 'skipped', 'card_id', 'outcome', 'why', 'passive_outcome', 'ease', 'note']
+  // set_aside: a move the app set aside when the day changed under it, never a skip of yours (stage 3, item 5).
+  const offerHeader = ['id', 'kind', 'day', 'block', 'situation', 'target', 'move', 'coin_flip', 'passive', 'skipped', 'set_aside', 'card_id', 'outcome', 'why', 'passive_outcome', 'expectancy', 'ease', 'note']
   const offerRows = offers.map((o) => {
     const x = records?.outcomes.find((y) => y.offerId === o.id)
-    return [String(o.id ?? ''), o.kind, o.day, o.block, o.situationKey, o.target, o.moveId, yesNo(o.coinFlip), o.passiveId ?? '', yesNo(o.skippedAt !== null), String(o.cardId ?? ''), x?.outcome ?? '', x?.why ?? '', x?.passiveOutcome ?? '', x?.ease ?? '', x?.note ?? '']
+    return [String(o.id ?? ''), o.kind, o.day, o.block, o.situationKey, o.target, o.moveId, yesNo(o.coinFlip), o.passiveId ?? '', yesNo(o.skippedAt !== null && !setAside(o)), yesNo(setAside(o)), String(o.cardId ?? ''), x?.outcome ?? '', x?.why ?? '', x?.passiveOutcome ?? '', x?.expectancy ?? '', x?.ease ?? '', x?.note ?? '']
   })
   const offersCsv = [offerHeader, ...offerRows].map((r) => r.map(csvCell).join(',')).join('\n') + '\n'
 

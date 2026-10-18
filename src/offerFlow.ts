@@ -10,6 +10,7 @@ import {
   getCheckIn,
   getSettings,
   isComplete,
+  setAside,
   type Card,
   type Ease,
   type Offer,
@@ -301,8 +302,9 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const tested = await db.cards.where('situationKey').equals(situation.key).filter(onPurpose).toArray()
     const obs = tested.length ? observations(await db.checkins.toArray(), await db.offers.toArray(), await db.outcomes.toArray()) : []
     const scheduled = scheduledMoves(tested, obs)
-    // After a skip here, Skip promised another move: the replacement is drawn among real moves alone (D6).
-    const replacing = (await db.offers.where('day').equals(day).filter((o) => o.block === block && o.kind === 'block' && o.skippedAt !== null).count()) > 0
+    // After a skip here, Skip promised another move: the replacement is drawn among real moves alone (D6). A move set aside
+    // because the day changed was no skip of yours, so its new draw may still be Nothing extra (stage 3, item 5).
+    const replacing = (await db.offers.where('day').equals(day).filter((o) => o.block === block && o.kind === 'block' && o.skippedAt !== null && !setAside(o)).count()) > 0
     const drawn = candidatesFor(situation, t)
     const base = withWindowPenalty(replacing ? { ...drawn, candidates: drawn.candidates.filter((c) => c.id !== NOTHING) } : drawn, situation.target)
     const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
@@ -491,6 +493,28 @@ export async function skipOffer(offer: Offer, reason: 'notHome' | null = null): 
   if (offer.kind === 'block') return ensureOffer(offer.day, offer.block)
   if (offer.kind === 'pickup') return ensurePickupOffer(new Date())
   return null
+}
+
+/**
+ * After a Today, if different chip changes the day (stage 3, item 5): this block's move, while its block is open and
+ * nobody has touched it (no answer, no skip, not put off), is set aside, marked "the day changed", and drawn again
+ * under the day as it now is. Set aside is the app's change, never your skip: no count of skips or offers shows it,
+ * and the learning engine reads it no more than any skipped offer. Each change draws again at most once. Returns
+ * the new move, or null when nothing was drawn again.
+ */
+export function redrawForDay(day: string, block: Block, now: Date = new Date(), rng?: Rng): Promise<Offer | null> {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims], async () => {
+    const slot = blockAt(now)
+    if (slot.day !== day || slot.block !== block) return null
+    const offer = await offerForSlot(day, block)
+    if (!offer || offer.id === undefined || offer.closedAt !== null || offer.deferredAt) return null
+    if ((await db.outcomes.where('offerId').equals(offer.id).count()) > 0) return null
+    await db.offers.update(offer.id, { skippedAt: now.toISOString(), skipReason: 'dayChanged' as const })
+    const next = await ensureOffer(day, block, rng)
+    if (next?.id === undefined) return null
+    await db.offers.update(next.id, { redrawn: true as const })
+    return { ...next, redrawn: true as const }
+  })
 }
 
 /**

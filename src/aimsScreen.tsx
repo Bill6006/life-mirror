@@ -7,7 +7,8 @@ import { keptByCue } from './planMoment'
 import { dueOf, inStudyTime, isFaithPractice, rankOf, rhythmOf, scheduleOf, type Rhythm } from './rhythm'
 import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pausePath, peopleRowOf, resumePath } from './pathFlow'
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
-import { lightOnlyDay, partnerOnly, pathName, pathToday, type PathToday } from './pathStage'
+import { expectancyCounts, expectancyRetired } from './expectancy'
+import { lightOnlyDay, partnerOnly, pathName, pathToday, socialEnergyOn, type PathToday } from './pathStage'
 import { PartnerDates, PartnerPrompts, PartnerSettings } from './partnerScreen'
 import { blockAt } from './blocks'
 import { families, type PathId } from './catalogue'
@@ -50,7 +51,7 @@ function useAims() {
   // Parts 40 and 41: each learning commitment's skill coach; null while their gate is closed.
   const skillCoach = useLive(() => coachStates(today), [today])
   if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks || skillCoach === undefined) return null
-  return { aims, skills, marks, open, records, intentions, ctx: withCheckIns(ctx, settings), today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach }
+  return { aims, skills, marks, open, records, intentions, ctx: withCheckIns(ctx, settings), today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), socialEnergy: socialEnergyOn(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach }
 }
 
 /** A learning commitment's own view: the practice on its current skill, the skills before it newest first with their sessions, the proofs the retired ladder recorded (read only), and the taps only you make. */
@@ -108,14 +109,16 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     if (data && skillCoachOpen()) void ensureReviews(data.today)
   }, [data?.today, answered])
   if (!data) return null
-  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, coach, skillCoach } = data
+  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, socialEnergy, coach, skillCoach } = data
   const easeOff = easeRetired(records.offers, records.outcomes, settings.easeBack ?? null)
+  // Stage 3, item 5: the People rep's expectancy tap, until it has gone unused a dozen times running.
+  const expectOff = expectancyRetired(records.outcomes, settings.expectancyBack ?? null)
   const aims = compact ? data.aims.filter((a) => !a.pausedAt) : data.aims
   if (aims.length === 0) return null
   const studyAims = aims.filter((a) => a.kind === 'certification')
   const socialOn = aims.some((a) => a.kind === 'path' && a.path === 'social')
   // The paths computed once for this block: their cards, and the one People row between them (Part 27).
-  const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, marks: pathMarks, online: settings.partnerOnline, lightOnly, faithHidden: settings.hideFaith })
+  const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, socialEnergy, marks: pathMarks, online: settings.partnerOnline, lightOnly, faithHidden: settings.hideFaith })
   const views = aims.filter(pathOn).map(todayFor)
   const people = peopleRowOf(views, open, today, block, coach)
   // One plan and one reminder for the People row, whichever path holds it.
@@ -140,6 +143,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       carried: pt.pick ? null : carriedFor(offers, outcomes, contexts, today, block, ctx),
       paths,
       elsewhere,
+      askExpect: !expectOff,
       onResume: () => pt.pick && void resumePath(aim, pt.pick, pt.elig.stage, new Date(), paths),
       onChange: () => onChangeRep?.(aim),
       onPlan: (cue: Cue, time: string) => void planAim(planHolder ?? aim, cue, time, new Date(), planLabel(pt)),
@@ -176,6 +180,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
             {...pathShared(aim, owns && people ? { ...pt, pick: people.pick } : pt, owns && people ? people.paths : [pt.path.id], elsewhere)}
             today={today}
             counts={cueCounts(intentions, aim.id as number)}
+            expect={expectancyCounts(pt.entries, records.outcomes)}
             due={aim.id === dueAimId}
             onPause={(paused) => void pausePath(aim.id as number, paused)}
             onRemove={() => onRemove?.(aim)}

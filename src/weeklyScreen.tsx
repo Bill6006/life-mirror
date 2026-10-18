@@ -170,6 +170,18 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
                   </p>
                 ))}
               </div>
+              {w.best.own && w.best.own.length > 0 && (
+                <>
+                  <p class="move-meta">{c.own}</p>
+                  <div class="calc" data-testid="best-own">
+                    {w.best.own.map((d, i) => (
+                      <p key={i} class="calc-line">
+                        {fill(c.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
+                      </p>
+                    ))}
+                  </div>
+                </>
+              )}
               <p class="move-meta">{c.notControl}</p>
               <div class="calc">
                 {w.best.uncontrolled.length === 0 && (

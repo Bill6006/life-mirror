@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { addDays, parseDay, type Block, type Slot } from './blocks'
-import { coolingOffDuration } from './associations'
+import { afternoonAssociation, coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
 import { CaffeineCard } from './caffeine'
 import { useSyncedText } from './controls'
-import { chipAnswer, type ChipKey } from './chips'
+import { chipAnswer, chipShownAt, SHOWN_CHIPS, type ChipKey } from './chips'
+import { useChipsSeen } from './chipsSeen'
 import { RECOVERY_GAP } from './catalogue'
 import { copy } from './copy'
 import {
@@ -25,10 +26,12 @@ import {
   setNecessity,
   setTeethBrushed,
   setNote,
+  setOwnChip,
   setPrivateLogged,
   setWin,
   updateSettings,
   winFor,
+  type CheckIn,
   type ExtraKey,
   type PrivateItem,
   type WinOutcome,
@@ -36,16 +39,18 @@ import {
 import { fill, formatDayShort } from './format'
 import { awayOn } from './postWindowFlow'
 import { awayStatus } from './awayFlow'
-import { syncRecoveryGap } from './offerFlow'
+import { redrawForDay, syncRecoveryGap } from './offerFlow'
 import { useLive } from './live'
 import { teethOf, TEETH_COUNTS, type TeethBrushed } from './necessities'
 import type { ReadingId } from './readings'
-import { askedReadings, type Weekday } from './settings'
+import { askedReadings, ownChipsOf, type Weekday } from './settings'
+import { ownChipAnswer, ownChipRetired, ownChipStates, ownShownKey } from './ownChips'
+import type { Association } from './associations'
 import { journalFor, saveJournal } from './journal'
 import { Disclosure } from './ui'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
-const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped']
+const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'outside', 'sweet']
 
 /**
  * The evening's optional extras, one tap each, every tap saved at once. Skipping costs one
@@ -54,6 +59,15 @@ const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOf
  */
 /** How many times a chip was marked before, said as a sentence starts it: Once, or 3 times (stage 1, item q). */
 const timesBefore = (n: number) => (n === 1 ? copy.extras.timesOnce : fill(copy.extras.timesN, { n: String(n) }))
+
+/** A chip's answer from your own record, in words: first time, the times with no morning after, unmatched, or like for like. */
+function chipAnswerWords(a: Association): string {
+  const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
+  if (a.times === 0) return copy.extras.chipFirst
+  if (a.withEvent.mean === null) return fill(copy.extras.chipTimesNoNext, { times: timesBefore(a.times) })
+  if (a.without.mean === null) return fill(copy.extras.chipUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
+  return fill(copy.extras.chipTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+}
 
 export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; block: Block; onDone: () => void; onAway?: () => void }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
@@ -69,14 +83,20 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
   // The final checklist: whether this evening's move carries the recovery gap, and whether today is a church day to ask about.
   const gapTonight = useLive(() => db.offers.where('day').equals(day).filter((o) => o.kind === 'block' && o.block === 'evening' && o.skippedAt === null && o.passiveId === RECOVERY_GAP).count(), [day])
   const churchToday = contexts?.some((c) => c.day === day && c.churchDay === true) ?? false
+  // Phase 12: a chip untapped across thirty logged evenings stops appearing; Settings brings it back.
+  const states = settings && all && contexts ? chipStates(all, contexts, settings.chipsBack, day) : []
+  const showing = (id: Parameters<typeof chipRetired>[0]) => !chipRetired(id, states)
+  // Stage 3, item 5: your own chips still asked and not stopped; they and the newer built-in chips on screen are marked once seen.
+  const ownAll = settings ? ownChipsOf(settings) : []
+  const ownStates = settings && all ? ownChipStates(all, ownAll, settings.chipsBack, day) : []
+  const own = ownAll.filter((ch) => !ownChipRetired(ch.id, ownStates))
+  const chipsRef = useRef<HTMLDivElement>(null)
+  useChipsSeen(chipsRef, { day, block }, record && settings && all && contexts ? [...CHIPS.filter((k) => SHOWN_CHIPS.includes(k) && showing(k)), ...own.map((ch) => ownShownKey(ch.id))].filter((k) => !record.extras?.chipsShown?.[k]) : [])
 
   if (record === undefined || !settings || !items || !all || !contexts || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
-  // Phase 12: a chip untapped across thirty logged evenings stops appearing; Settings brings it back.
-  const states = chipStates(all, contexts, settings.chipsBack, day)
-  const showing = (id: Parameters<typeof chipRetired>[0]) => !chipRetired(id, states)
 
   const slot = { day, block }
-  const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings)
+  const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings, { day, morning: all.find((c) => c.day === day && c.block === 'morning') ?? null })
   const ex = record?.extras ?? {}
   const toggle = (key: ExtraKey) => {
     // Today marked a big social day, or the mark taken back: this evening's move carries the recovery gap from now, or no longer.
@@ -131,23 +151,14 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
       )}
 
       <h2 class="section">{copy.extras.chips}</h2>
-      <div class="card">
+      <div class="card" ref={chipsRef}>
         <ul class="rows">
           {CHIPS.filter(showing).map((key) => {
             const on = Boolean(ex[key])
-            const a = chipAnswer(all, key, day)
-            const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
-            const answer =
-              a.times === 0
-                ? copy.extras.chipFirst
-                : a.withEvent.mean === null
-                  ? fill(copy.extras.chipTimesNoNext, { times: timesBefore(a.times) })
-                  : a.without.mean === null
-                    ? fill(copy.extras.chipUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
-                    : fill(copy.extras.chipTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+            const answer = chipAnswerWords(chipAnswer(all, key, day))
             const cooling = key === 'coolingOff' && on ? coolingOffDuration(all, day) : null
             return (
-              <li key={key}>
+              <li key={key} data-chip={key}>
                 <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`chip-${key}`} onClick={() => toggle(key)}>
                   <span class="anchor-mark" aria-hidden="true" />
                   <span class="row-main">{copy.extras[key]}</span>
@@ -172,6 +183,23 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
               </li>
             )
           })}
+          {/* Stage 3, item 5: your own chips, by their labels, after the built-in ones. */}
+          {own.map((ch) => {
+            const on = Boolean(ex.own?.[ch.id])
+            return (
+              <li key={ch.id} data-chip={ownShownKey(ch.id)}>
+                <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`own-chip-${ch.id}`} onClick={() => void setOwnChip(slot, asked, ch.id, !on)}>
+                  <span class="anchor-mark" aria-hidden="true" />
+                  <span class="row-main">{ch.label}</span>
+                </button>
+                {on && (
+                  <div class="calc chip-answer" data-testid="chip-answer">
+                    <p class="calc-line">{chipAnswerWords(ownChipAnswer(all, ch.id, day))}</p>
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       </div>
 
@@ -188,7 +216,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
         </ul>
       </div>
 
-      <TodayChips day={day} onAway={onAway} />
+      <TodayChips day={day} block={block} onAway={onAway} />
 
       <h2 class="section">{copy.extras.noteLabel}</h2>
       {/* Let it out sits directly under the note, in the same card: one compact row, not a card of its own. */}
@@ -219,7 +247,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
  * never on Now (Rules 19 and 20), on every block's summary, since the away flag decides what is
  * offered all day. Each changes today alone.
  */
-export function TodayChips({ day, onAway }: { day: string; onAway?: () => void }) {
+export function TodayChips({ day, block, onAway }: { day: string; block: Block; onAway?: () => void }) {
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
   const contexts = useLive(() => db.days.toArray(), [])
@@ -227,31 +255,39 @@ export function TodayChips({ day, onAway }: { day: string; onAway?: () => void }
     if (settings) void ensureDayContext(day, settings)
   }, [settings?.updatedAt, day])
   const ctx = useLive(() => getDayContext(day), [day])
+  const record = useLive(() => getCheckIn(day, block), [day, block])
+  const states = settings && all && contexts ? chipStates(all, contexts, settings.chipsBack, day) : []
+  // Stage 3, item 5: Out among people today is marked once seen at this check-in.
+  const cardRef = useRef<HTMLDivElement>(null)
+  useChipsSeen(cardRef, { day, block }, record && ctx && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])
   if (!settings || !all || !contexts || !ctx) return null
-  const states = chipStates(all, contexts, settings.chipsBack, day)
   const weekday = parseDay(day).getDay() as Weekday
   const office = settings.week.officeDays[weekday]
   // Away from home (post-window, gated): one row to the trip's own screen; on a trip's day the office row gives way to it. Closed, the rows are as they were.
   const away = awayOn() && onAway !== undefined
   const trip = away ? awayStatus(settings.away, day) : null
   const onTripToday = away && Boolean(ctx.awayFromHome)
+  // Stage 3, item 5: a chip that changes the day draws this block's move again when nobody has touched it.
+  const change = (patch: Parameters<typeof setDayContext>[1]) => void setDayContext(day, patch).then(() => redrawForDay(day, block))
   return (
     <>
       <h2 class="section">{copy.today.context}</h2>
-      <div class="card">
+      <div class="card" ref={cardRef}>
         <ul class="rows">
-          {!chipRetired('away', states) && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => void setDayContext(day, { withHer: !ctx.withHer })} />}
+          {!chipRetired('away', states) && <ExtraRow label={copy.today.awayToday} on={!ctx.withHer} onLabel={copy.extras.yes} testid="chip-away" onClick={() => change({ withHer: !ctx.withHer })} />}
           {!onTripToday && (
             <ExtraRow
               label={office ? copy.today.homeToday : copy.today.officeToday}
               on={Boolean(ctx.atOffice) !== office}
               onLabel={copy.extras.yes}
               testid="chip-office"
-              onClick={() => void setDayContext(day, { atOffice: !ctx.atOffice })}
+              onClick={() => change({ atOffice: !ctx.atOffice })}
             />
           )}
           {/* Unwell today (the owner's decision, 2026-10-10): optional, today alone, and never retired, since a rare mark is still the one that matters. */}
-          <ExtraRow label={copy.today.unwellToday} on={Boolean(ctx.unwell)} onLabel={copy.extras.yes} testid="chip-unwell" onClick={() => void setDayContext(day, { unwell: !ctx.unwell })} />
+          <ExtraRow label={copy.today.unwellToday} on={Boolean(ctx.unwell)} onLabel={copy.extras.yes} testid="chip-unwell" onClick={() => change({ unwell: !ctx.unwell })} />
+          {/* Out among people today (stage 3, item 5): people around in every block, for today alone; it stops appearing like the others. */}
+          {!chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople} on={Boolean(ctx.amongPeople)} onLabel={copy.extras.yes} testid="chip-among-people" chip="amongPeople" onClick={() => change({ amongPeople: !ctx.amongPeople })} />}
           {away && <ExtraRow label={copy.away.row} on={onTripToday} onLabel={trip?.state === 'away' ? fill(copy.away.untilShort, { to: formatDayShort(trip.range.to) }) : ''} testid="chip-away-from-home" onClick={() => onAway?.()} />}
         </ul>
       </div>
@@ -299,15 +335,59 @@ export function PrivateLog({ slot, asked, items, logged }: { slot: Slot; asked: 
   )
 }
 
-function ExtraRow({ label, on, onLabel, indent = false, testid, onClick }: { label: string; on: boolean; onLabel: string; indent?: boolean; testid?: string; onClick: () => void }) {
+function ExtraRow({ label, on, onLabel, indent = false, testid, chip, onClick }: { label: string; on: boolean; onLabel: string; indent?: boolean; testid?: string; chip?: string; onClick: () => void }) {
   return (
-    <li>
+    <li data-chip={chip}>
       <button type="button" class={`row anchor${on ? ' is-picked' : ''}${indent ? ' is-indent' : ''}`} aria-pressed={on} data-testid={testid} onClick={onClick}>
         <span class="anchor-mark" aria-hidden="true" />
         <span class="row-main">{label}</span>
         <span class="row-side ink">{on ? onLabel : ''}</span>
       </button>
     </li>
+  )
+}
+
+/**
+ * Something sweet since the last check-in? on an afternoon's summary (stage 3, item 5), as the evening has it among
+ * its chips: one optional tap, answered at once from your own record, like for like, the evenings after afternoons
+ * that carried it against the evenings after afternoons that started the same. Untapped, it stops appearing like the others.
+ */
+export function SweetChip({ record }: { record: CheckIn }) {
+  const settings = useLive(getSettings, [])
+  const all = useLive(allCheckIns, [])
+  const shown = settings !== undefined && all !== undefined && !chipRetired('sweet', chipStates(all, [], settings.chipsBack, record.day))
+  const cardRef = useRef<HTMLDivElement>(null)
+  useChipsSeen(cardRef, { day: record.day, block: record.block }, shown && !record.extras?.chipsShown?.sweet ? ['sweet'] : [])
+  if (!shown || !all) return null
+  const on = Boolean(record.extras?.sweet)
+  const a = afternoonAssociation(all, record.day, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c))
+  const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
+  const answer =
+    a.times === 0
+      ? copy.extras.chipFirst
+      : a.withEvent.mean === null
+        ? fill(copy.extras.sweetNoNext, { times: timesBefore(a.times) })
+        : a.without.mean === null
+          ? fill(copy.extras.sweetUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
+          : fill(copy.extras.sweetTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+  return (
+    <>
+      <div class="card" ref={cardRef}>
+        <ul class="rows">
+          <li data-chip="sweet">
+            <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid="chip-sweet" onClick={() => void setExtra({ day: record.day, block: record.block }, askedOf(record), 'sweet', !on)}>
+              <span class="anchor-mark" aria-hidden="true" />
+              <span class="row-main">{copy.extras.sweet}</span>
+            </button>
+            {on && (
+              <div class="calc chip-answer" data-testid="chip-answer">
+                <p class="calc-line">{answer}</p>
+              </div>
+            )}
+          </li>
+        </ul>
+      </div>
+    </>
   )
 }
 

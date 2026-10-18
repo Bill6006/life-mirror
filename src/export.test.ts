@@ -145,3 +145,52 @@ describe('something to learn, whole, in your own file (Workstream 6; Parts 40 an
     expect(out.aims).not.toHaveProperty('coach')
   })
 })
+
+describe('stage 3, item 5, in your own file', () => {
+  const day = '2026-09-12'
+  const evening: CheckIn = { day, block: 'evening', answers: allAt(blockReadings('evening'), 3), startedAt: '', completedAt: `${day}T22:00:00.000Z`, updatedAt: '', activeMs: 1000, extras: { outside: true, sweet: true, caffeineIntake: { band: 1, at: `${day}T21:00:00.000Z`, since: null, last: 'oneToThree' }, chipsShown: { outside: true, sweet: true, caffeineLast: true } } }
+  const base = { kind: 'block', day, block: 'afternoon', at: `${day}T15:00:00.000Z`, situationKey: 'afternoon:mood', target: 'mood', stance: '', band: '', reading: 0, cardId: null, coinFlip: false, passiveId: null, whyNot: null, closedAt: null } as const
+  const asideOffer = { ...base, id: 1, moveId: 'walk-ten', candidates: ['walk-ten'], skippedAt: `${day}T15:05:00.000Z`, skipReason: 'dayChanged' } as const
+  const redrawn = { ...base, id: 2, moveId: 'nap-ten', candidates: ['nap-ten'], skippedAt: null, redrawn: true } as const
+  const records = { offers: [asideOffer, redrawn], outcomes: [], cards: [], declarations: [], days: [{ day, weekday: 6, withHer: true, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '20:00', changed: true, createdAt: '', amongPeople: true }] } as unknown as RecordsData
+
+  it('carries the new chips, when the last caffeine was, which chips were shown, and the days among people', () => {
+    const bundle = buildExport([evening], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records)
+    const out = JSON.parse(bundle.json)
+    expect(out.checkins[0].extras).toMatchObject({ outsideToday: true, sweetSinceLastCheckIn: true, caffeineLast: 'oneToThree', chipsShown: ['outside', 'sweet', 'caffeineLast'] })
+    expect(out.key.events).toEqual(expect.arrayContaining(['outsideToday', 'sweetSinceLastCheckIn']))
+    expect(out.key.chipsShown).toContain('not shown says nothing')
+    expect(out.amongPeopleDays).toEqual([day])
+    const [head, row] = bundle.csv.split('\n')
+    const cell = (name: string) => row.split(',')[head.split(',').indexOf(name)]
+    expect([cell('outside_today'), cell('sweet_since_last_check_in'), cell('caffeine_last'), cell('chips_shown')]).toEqual(['yes', 'yes', 'oneToThree', 'outside; sweet; caffeineLast'])
+  })
+
+  it('carries your own chips by their labels, a removed one with its taps, and names them where they were shown', () => {
+    const settings = { ...DEFAULT_SETTINGS, ownChips: [{ id: 'a1', label: 'Stand-in one', createdAt: '2026-09-01T00:00:00.000Z', removedAt: null }, { id: 'b2', label: 'Stand-in two', createdAt: '2026-09-01T00:00:00.000Z', removedAt: '2026-09-10T00:00:00.000Z' }] }
+    const tapped: CheckIn = { ...evening, extras: { own: { a1: true, b2: true }, chipsShown: { 'own:a1': true } } }
+    const bundle = buildExport([tapped], [], [], settings, { includePrivate: false })
+    const out = JSON.parse(bundle.json)
+    expect(out.ownChips).toEqual([
+      { label: 'Stand-in one', createdAt: '2026-09-01T00:00:00.000Z', removedAt: null },
+      { label: 'Stand-in two', createdAt: '2026-09-01T00:00:00.000Z', removedAt: '2026-09-10T00:00:00.000Z' },
+    ])
+    expect(out.checkins[0].extras).toMatchObject({ ownChips: ['Stand-in one', 'Stand-in two'], chipsShown: ['own: Stand-in one'] })
+    const [head, row] = bundle.csv.split('\n')
+    const cell = (name: string) => row.split(',')[head.split(',').indexOf(name)]
+    expect([cell('own: Stand-in one'), cell('own: Stand-in two')]).toEqual(['yes', 'yes'])
+  })
+
+  it('shows a move set aside when the day changed as the app’s, never a skip, and the one drawn again as such', () => {
+    const bundle = buildExport([], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records)
+    const out = JSON.parse(bundle.json)
+    expect(out.offers[0]).toMatchObject({ skipped: false, setAside: 'the day changed' })
+    expect(out.offers[1]).toMatchObject({ skipped: false, redrawn: true })
+    expect(out.offers[1]).not.toHaveProperty('setAside')
+    const [head, aside, again] = bundle.offersCsv.trim().split('\n').map((l) => l.split(','))
+    const col = (r: string[], name: string) => r[head.indexOf(name)]
+    // The file writes yes, or leaves the cell empty.
+    expect([col(aside, 'skipped'), col(aside, 'set_aside')]).toEqual(['', 'yes'])
+    expect([col(again, 'skipped'), col(again, 'set_aside')]).toEqual(['', ''])
+  })
+})

@@ -1376,3 +1376,176 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+/**
+ * Stage 3, item 5, the check-in and the readings put to use: a Monday whose morning was short (so the afternoon asked
+ * the night's sleep late), its move drawn again when a chip changed the day, caffeine reported with when the last
+ * was; an afternoon that carried something sweet; an evening outside, with your own chips, three kept; two weeks of
+ * evenings that showed the newer chips; and the Social path, with reps answered against what was expected and
+ * today's under way.
+ */
+async function seedPutToUse(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 9, 19, 19, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      afternoon: ['sleepHours', 'sleepQuality', 'mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins', 'offers', 'outcomes', 'aims', 'settings'], 'readwrite')
+    const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const put = (date: Date, block: string, p: number, asked: string[], extras?: Record<string, unknown>) => {
+      const answers: Record<string, number> = {}
+      for (const id of asked) answers[id] = ['stress', 'overwhelm', 'irritation'].includes(id) ? 6 - p : p
+      const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), block === 'morning' ? 7 : block === 'afternoon' ? 13 : 19, 10)
+      const done = new Date(at.getTime() + 95_000).toISOString()
+      tx.objectStore('checkins').add({ day: key(date), block, asked, startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000, ...(extras ? { extras } : {}) })
+    }
+    const shown = { outside: true, sweet: true, 'own:c1': true, 'own:c2': true, 'own:c3': true }
+    for (let d = 1; d <= 18; d++) {
+      const date = new Date(2026, 9, d)
+      put(date, 'morning', 2 + (d % 3), blocks.morning)
+      put(date, 'evening', 2 + ((d + 1) % 3), blocks.evening, { chipsShown: shown, ...(d % 2 ? { outside: true } : {}), ...(d % 3 === 0 ? { sweet: true } : {}), own: d % 2 ? { c1: true } : { c2: true } })
+    }
+    const today = new Date(2026, 9, 19)
+    put(today, 'morning', 3, ['mood', 'energy', 'stress'], { caffeineIntake: { band: 2, at: new Date(2026, 9, 19, 7, 12).toISOString(), since: null, last: 'oneToThree' }, chipsShown: { caffeineLast: true, amongPeople: true }, caffeineShown: true })
+    put(today, 'afternoon', 3, blocks.afternoon, { sweet: true, chipsShown: { sweet: true } })
+    put(today, 'evening', 4, blocks.evening, { outside: true, own: { c1: true }, chipsShown: shown })
+    const move = (id: number, extra: Record<string, unknown>) => ({ id, kind: 'block', day: key(today), block: 'morning', at: new Date(2026, 9, 19, 7, 13).toISOString(), situationKey: 'morning:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: 'walk-ten', cardId: null, candidates: ['walk-ten', 'glass-of-water'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: null, ...extra })
+    tx.objectStore('offers').add(move(901, { skippedAt: new Date(2026, 9, 19, 7, 14).toISOString(), skipReason: 'dayChanged' }))
+    tx.objectStore('offers').add(move(902, { moveId: 'glass-of-water', redrawn: true }))
+    // The Social path: three reps done and answered against what was expected, and today's under way since 9:00.
+    tx.objectStore('aims').add({ id: 95, kind: 'path', path: 'social', stepMoveId: null, createdAt: new Date(2026, 9, 1, 9).toISOString(), archivedAt: null })
+    const rep = (id: number, d: number, closed: boolean) => ({ id, kind: 'step', day: key(new Date(2026, 9, d)), block: 'morning', at: new Date(2026, 9, d, 9).toISOString(), situationKey: 'aim:path:social', target: 'mood', stance: '', band: '', reading: 0, moveId: 'eye-contact-stranger', minutes: 2, cardId: null, candidates: ['eye-contact-stranger'], coinFlip: false, passiveId: null, whyNot: null, paths: ['social'], setting: 'errand', rule: 'draw', chosenBy: 'app', stage: 1, propensity: 1, propensities: { 'eye-contact-stranger': 1 }, skippedAt: null, closedAt: closed ? new Date(2026, 9, d, 9, 30).toISOString() : null })
+    ;[[911, 13, 'easier'], [912, 15, 'harder'], [913, 17, 'asExpected']].forEach(([id, d, e]) => {
+      tx.objectStore('offers').add(rep(id as number, d as number, true))
+      tx.objectStore('outcomes').add({ offerId: id, moveId: 'eye-contact-stranger', day: key(new Date(2026, 9, d as number)), block: 'morning', at: new Date(2026, 9, d as number, 9, 30).toISOString(), outcome: 'done', why: null, passiveOutcome: null, expectancy: e, expectancyAsked: true })
+    })
+    tx.objectStore('offers').add(rep(920, 19, false))
+    const store = tx.objectStore('settings')
+    const row = await new Promise<Record<string, unknown>>((res, rej) => {
+      const q = store.get(1)
+      q.onsuccess = () => res(q.result as Record<string, unknown>)
+      q.onerror = () => rej(q.error)
+    })
+    const c = (id: string, label: string) => ({ id, label, createdAt: new Date(2026, 9, 1, 9).toISOString(), removedAt: null })
+    store.put({ ...row, ownChips: [c('c1', 'Stand-in one'), c('c2', 'A stand-in label of forty characters ok'), c('c3', 'Three')] })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+/** One of today's check-ins, opened from Now's row for its block. */
+const blockSummary = (name: string) => async (p: Page) => {
+  await p.getByTestId('block-row').filter({ hasText: name }).click()
+  await expect(p.getByTestId('give-back').or(p.getByTestId('reading-row')).first()).toBeVisible()
+}
+
+const PUT_TO_USE: typeof STATES = [
+  {
+    name: 'Summary, the optional taps above a move drawn again',
+    tab: 'Now',
+    open: async (p) => {
+      await blockSummary('Morning')(p)
+      await expect(p.getByTestId('move-redrawn')).toBeVisible()
+      await expect(p.getByTestId('caffeine-last')).toBeVisible()
+      await expect(p.getByTestId('chip-among-people')).toBeVisible()
+    },
+  },
+  {
+    name: 'Summary, the night read late and something sweet',
+    tab: 'Now',
+    open: async (p) => {
+      await blockSummary('Afternoon')(p)
+      await expect(p.getByTestId('reading-row').filter({ hasText: 'Asked late' }).first()).toBeVisible()
+      await expect(p.getByTestId('chip-sweet')).toHaveAttribute('aria-pressed', 'true')
+    },
+  },
+  {
+    name: 'Evening extras, the newer chips and your own',
+    tab: 'Now',
+    open: async (p) => {
+      await blockSummary('Evening')(p)
+      await p.getByRole('button', { name: 'Change the extras' }).click()
+      await expect(p.getByTestId('chip-outside')).toHaveAttribute('aria-pressed', 'true')
+      await expect(p.getByTestId('extras').getByRole('button', { name: 'A stand-in label of forty characters ok' })).toBeVisible()
+    },
+  },
+  { name: 'Settings, your own chips, three kept', tab: 'Settings', open: async (p) => p.getByTestId('settings-extras').click() },
+  { name: 'Readings and chips, with your own', tab: 'Settings', open: async (p) => p.getByTestId('settings-readings').click() },
+  {
+    name: 'Evidence, your own chips',
+    tab: 'Moves',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evidence/ }).click()
+      await expect(p.getByTestId('own-chip-evidence').first()).toBeVisible()
+    },
+  },
+  {
+    name: 'Aims, the path’s Details with what was expected',
+    tab: 'Aims',
+    open: async (p) => {
+      const card = p.locator('[data-kind="path"]')
+      await card.getByTestId('path-details').click()
+      await expect(card.getByTestId('path-expect')).toBeVisible()
+    },
+  },
+  {
+    name: 'Now, a People rep done, against what was expected',
+    tab: 'Now',
+    open: async (p) => {
+      // Today's rep under way again, then marked done here: the tap shows where Done was tapped.
+      await p.evaluate(async () => {
+        const dbx = await new Promise<IDBDatabase>((res, rej) => {
+          const r = indexedDB.open('life-mirror')
+          r.onsuccess = () => res(r.result)
+          r.onerror = () => rej(r.error)
+        })
+        const tx = dbx.transaction(['offers', 'outcomes'], 'readwrite')
+        const all = await new Promise<Array<{ id: number; offerId: number }>>((res) => {
+          const q = tx.objectStore('outcomes').getAll()
+          q.onsuccess = () => res(q.result)
+        })
+        for (const x of all.filter((y) => y.offerId === 920)) tx.objectStore('outcomes').delete(x.id)
+        const offer = await new Promise<Record<string, unknown>>((res) => {
+          const q = tx.objectStore('offers').get(920)
+          q.onsuccess = () => res(q.result)
+        })
+        tx.objectStore('offers').put({ ...offer, closedAt: null })
+        await new Promise<void>((res) => (tx.oncomplete = () => res()))
+        dbx.close()
+      })
+      await p.reload()
+      await tab(p, 'Now')
+      await p.locator('[data-kind="path"]').getByTestId('aim-done').click()
+      await expect(p.getByTestId('path-expect-tap')).toBeVisible()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the check-in and the readings put to use, their new screens and states read, fit and can be tapped, at three widths`, async ({ page }, info) => {
+    test.setTimeout(420_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedPutToUse(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, PUT_TO_USE, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

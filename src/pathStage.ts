@@ -319,6 +319,8 @@ export interface RepPick {
   leaning: boolean
   /** Part 27: which of the Partner path's reps the People row's slot rule drew among: its own, or those it shares with Social. */
   turn?: 'own' | 'shared'
+  /** Stage 3, item 5: this morning's Social energy narrowed the draw, toward a call or a message, or toward in person. */
+  steer?: 'remote' | 'inPerson'
   /** Part 32: the coach's one line of today's version, shown under the rep. */
   version?: string
 }
@@ -406,11 +408,50 @@ export function pickRep(path: Path, eligible: readonly Move[], entries: readonly
   return { moveId: m.id, setting: settingFor(m, path, entries, today, out), rule: 'draw', chosenBy: 'app', candidates, propensities: chances, leaning }
 }
 
+/** Stage 3, item 5: low Social energy (Empty or Low) steers toward a call or a message, high (Up for it or Drawn out) toward in person; otherwise none. */
+export function steerOf(socialEnergy: number | null | undefined): 'remote' | 'inPerson' | null {
+  if (socialEnergy === null || socialEnergy === undefined) return null
+  return socialEnergy <= 2 ? 'remote' : socialEnergy >= 4 ? 'inPerson' : null
+}
+
+/** This morning's Social energy, as the morning check-in answered it, or null. */
+export function socialEnergyOn(checkins: readonly CheckIn[], day: string): number | null {
+  return checkins.find((c) => c.day === day && c.block === 'morning')?.answers.socialEnergy ?? null
+}
+
+/**
+ * Whether a rep is of a steer's kind (Part 20's with): toward a call or a message, a rep that reaches someone remotely
+ * and can be done that way; toward in person, a rep that needs an adult there in person.
+ */
+export function ofSteer(m: Pick<Move, 'settings' | 'with'>, steer: 'remote' | 'inPerson'): boolean {
+  return steer === 'remote' ? !inPerson(m) && (m.settings ?? []).includes('remote') : inPerson(m)
+}
+
+/**
+ * The app's draw, steered (stage 3, item 5). Only a draw is steered: the path's own rules, the smaller version after
+ * refusals and the one rep that fits, stand. The steer narrows the reps that fit before the draw, when one of its kind
+ * fits, so each chance is still recorded among the reps it was drawn from; toward a call or a message, a rep that could
+ * also be met in person is done as a call or a message. It never touches the stage, and a call or a message is still a
+ * rep of it (Part 24: unblock, don't downgrade).
+ */
+export function steeredPick(path: Path, eligible: readonly Move[], steer: 'remote' | 'inPerson' | null, entries: readonly PathEntry[], today: string, draw: number, stage: number, out: boolean): RepPick | null {
+  const pick = pickRep(path, eligible, entries, today, draw, stage, out)
+  if (!steer || pick?.rule !== 'draw') return pick
+  const kept = eligible.filter((m) => ofSteer(m, steer))
+  const toward = steer === 'remote' ? kept.map((m) => ({ ...m, settings: ['remote'] as SettingKind[] })) : kept
+  const narrows = kept.length < eligible.length || (steer === 'remote' && kept.some((m) => (m.settings ?? []).some((k) => k !== 'remote')))
+  if (!kept.length || !narrows) return pick
+  const steered = pickRep(path, toward, entries, today, draw, stage, out)
+  return steered ? { ...steered, steer } : pick
+}
+
 /** Why this rep, in one line: the rule that chose it, and where, when the rep can happen in more than one kind of setting. */
 export function whyThisRep(pick: RepPick): string {
   const c = copy.path.why
-  const rule =
-    pick.rule === 'smaller'
+  // Stage 3, item 5: a steered draw is said among the reps the steer kept.
+  const rule = pick.steer && (pick.rule === 'draw' || pick.rule === 'only')
+    ? `${c.steer[pick.steer]} ${pick.rule === 'only' ? c.steered.only : fill(pick.leaning ? c.steered.leaning : c.steered.draw, { n: String(pick.candidates.length) })}`
+    : pick.rule === 'smaller'
       ? c.smaller
       : pick.rule === 'only'
         ? c.only
@@ -423,7 +464,8 @@ export function whyThisRep(pick: RepPick): string {
               : pick.rule === 'coach+draw'
                 ? c.coachDraw
                 : fill(pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
-  const kinds = hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
+  // Toward a call or a message, the rep is done as one: no other kind of setting to say.
+  const kinds = pick.steer === 'remote' ? ['remote'] : hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
   const said = pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
   return pick.turn ? `${c.turn[pick.turn]} ${said}` : said
 }
@@ -522,9 +564,11 @@ export interface PathTodayInput {
   aim: Aim
   offers: readonly Offer[]
   outcomes: readonly Outcome[]
-  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'> | null
+  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople'> | null
   day: string
   block: Block
+  /** Stage 3, item 5: this morning's Social energy, 1 Empty to 5 Drawn out, or null when it was not answered. */
+  socialEnergy?: number | null
   /** Part 27: the path's declarations: stages, date days and milestones. */
   marks?: readonly PathMark[]
   /** Part 27: the Partner path's online channel is on. */
@@ -563,7 +607,7 @@ export function pathToday(i: PathTodayInput): PathToday {
       ? yours(moveById(today.partly))
       : mine
         ? yours(mine)
-        : pickRep(path, elig.eligible, entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage, !around)
+        : steeredPick(path, elig.eligible, steerOf(i.socialEnergy), entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage, !around)
   return { aim: i.aim, path, entries, state, elig, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly }
 }
 

@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'preact/hooks'
 import { blockAt, type Block } from './blocks'
 import { chipRetired, chipStates } from './audit'
 import { copy } from './copy'
-import { allCheckIns, askedOf, CAFFEINE_BANDS, db, getCheckIn, getSettings, markCaffeineShown, setCaffeine, type CaffeineBand, type CheckIn } from './db'
+import { allCheckIns, askedOf, CAFFEINE_BANDS, CAFFEINE_LAST, db, getCheckIn, getSettings, markCaffeineShown, setCaffeine, setCaffeineLast, type CaffeineBand, type CheckIn } from './db'
 import { Disclosure } from './ui'
+import { useChipsSeen } from './chipsSeen'
 import { useLive } from './live'
 import { askedReadings } from './settings'
 
@@ -55,9 +56,14 @@ export function CaffeineCard({ day, block }: { day: string; block: Block }) {
     return () => io.disconnect()
   }, [showing, record?.id, shownAlready, day, block, today])
 
+  // Stage 3, item 5: When was the last? once some is reported, marked once seen; it stops appearing after going unused.
+  const lastShowing = showing && Boolean(record?.extras?.caffeineIntake) && all !== undefined && contexts !== undefined && settings !== undefined && !chipRetired('caffeineLast', chipStates(all, contexts, settings.chipsBack, day))
+  useChipsSeen(ref, { day, block }, lastShowing && !record?.extras?.chipsShown?.caffeineLast ? ['caffeineLast'] : [])
+
   if (!showing || !settings) return null
-  const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings)
+  const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings, { day, morning: (all ?? []).find((c) => c.day === day && c.block === 'morning') ?? null })
   const current = record?.extras?.caffeineIntake?.band ?? null
+  const lastNow = record?.extras?.caffeineIntake?.last ?? null
   const legacy = !current && (record?.extras?.caffeine || record?.extras?.heavyCaffeine)
   const c = copy.caffeine
   return (
@@ -86,6 +92,19 @@ export function CaffeineCard({ day, block }: { day: string; block: Block }) {
         <p class="note faint no-gap" data-testid="caffeine-help">
           {block === 'morning' ? c.helpMorning : c.help}
         </p>
+        {/* Stage 3, item 5: once some is reported, when the last was; it follows the bands' help, before their examples. */}
+        {lastShowing && (
+          <div class="caffeine-last" data-testid="caffeine-last" data-chip="caffeineLast">
+            <p class="note faint no-gap">{c.last}</p>
+            <div class="chips" role="group" aria-label={c.last}>
+              {CAFFEINE_LAST.map((l) => (
+                <button key={l} type="button" class={lastNow === l ? 'when-chip is-on' : 'when-chip'} aria-pressed={lastNow === l} data-testid={`caffeine-last-${l}`} onClick={() => void setCaffeineLast({ day, block }, lastNow === l ? null : l)}>
+                  {c.lastOptions[l]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <Disclosure label={c.examples} testid="caffeine-examples" class="caffeine-examples">
           <ul class="caffeine-example-list">
             {CAFFEINE_BANDS.map((band) => (

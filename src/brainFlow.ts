@@ -4,7 +4,7 @@ import { addDays, blockAt, BLOCKS, blockStart, dayKey, daysBetween, type Block }
 import { heldBedtime, heldPickup } from './dayShape'
 import type { CoachBlock } from './factTypes'
 import { coachRow, pathOn, peopleRowOf } from './pathFlow'
-import { coachBlock, lightOnlyDay, pathToday, type PathToday } from './pathStage'
+import { coachBlock, lightOnlyDay, pathToday, socialEnergyOn, type PathToday } from './pathStage'
 import { citedFacts, readBrainPrefs, type CitedFact, type LineAction, type LineCue, type WriterModel } from './brainShared'
 import { copy } from './copy'
 import { clockTimesIn, fill } from './format'
@@ -128,7 +128,7 @@ async function pathRecord(day: string): Promise<PathRecord> {
 function pathViews(r: PathRecord, day: string, now: Date): PathToday[] {
   const { block } = blockAt(now)
   const lightOnly = lightOnlyDay(r.checkins, day)
-  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, marks: r.marks, online: r.online, lightOnly, faithHidden: r.faithHidden }))
+  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, socialEnergy: socialEnergyOn(r.checkins, day), marks: r.marks, online: r.online, lightOnly, faithHidden: r.faithHidden }))
 }
 
 /**

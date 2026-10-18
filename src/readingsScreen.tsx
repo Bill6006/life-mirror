@@ -1,4 +1,5 @@
 import { easeRetired } from './aims'
+import { expectancyRetired } from './expectancy'
 import { chipStates, readingProposals, type ChipId } from './audit'
 import { blockAt } from './blocks'
 import { copy } from './copy'
@@ -6,6 +7,8 @@ import { allCheckIns, db, getSettings, updateSettings } from './db'
 import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { readingById } from './readings'
+import { ownChipStates, ownShownKey } from './ownChips'
+import { ownChipsOf } from './settings'
 
 // Settings → Readings and chips: retirement proposals with both conditions and their numbers,
 // decided by you and never automatic; the readings retired, each with one tap back; the chips
@@ -19,10 +22,15 @@ export function ReadingsScreen({ onClose }: { onClose: () => void }) {
   const swaps = useLive(() => db.anchorSwaps.toArray(), [])
   // Workstream 6: the question on how a learning session went retires as a chip does, and comes back the same way.
   const easeOff = useLive(async () => easeRetired(await db.offers.toArray(), await db.outcomes.toArray(), (await getSettings()).easeBack), [])
-  if (!settings || !checkins || !contexts || !swaps || easeOff === undefined) return <section class="screen" />
+  // Stage 3, item 5: the People rep's expectancy tap the same.
+  const expectOff = useLive(async () => expectancyRetired(await db.outcomes.toArray(), (await getSettings()).expectancyBack), [])
+  if (!settings || !checkins || !contexts || !swaps || easeOff === undefined || expectOff === undefined) return <section class="screen" />
   const c = copy.readingsScreen
   const proposals = readingProposals(checkins, settings.retiredReadings, settings.readingDecisions, today)
   const chips = chipStates(checkins, contexts, settings.chipsBack, today)
+  // Stage 3, item 5: your own chips the same, by their labels.
+  const own = ownChipsOf(settings)
+  const ownStates = ownChipStates(checkins, own, settings.chipsBack, today)
   const retire = (id: string) => void updateSettings((s) => ({ ...s, retiredReadings: [...new Set([...s.retiredReadings, id])] }))
   const keep = (id: string) => void updateSettings((s) => ({ ...s, readingDecisions: { ...s.readingDecisions, [id]: today } }))
   const bringBackReading = (id: string) => void updateSettings((s) => ({ ...s, retiredReadings: s.retiredReadings.filter((r) => r !== id) }))
@@ -93,10 +101,23 @@ export function ReadingsScreen({ onClose }: { onClose: () => void }) {
             <li key={s.id} class="row is-static" data-testid={`chip-state-${s.id}`}>
               <span class="row-main">
                 {c.chipNames[s.id]}
-                <span class="sub">{s.retired ? fill(c.chipRetired, { n: String(s.evenings) }) : s.lastTap ? fill(c.chipOn, { when: formatDayShort(s.lastTap) }) : fill(c.chipNever, { n: String(s.evenings) })}</span>
+                <span class="sub">{s.retired ? fill(c.chipRetired, { n: String(s.evenings) }) : s.lastTap ? fill(c.chipOn, { when: formatDayShort(s.lastTap) }) : s.evenings === 1 ? c.chipNeverOne : fill(c.chipNever, { n: String(s.evenings) })}</span>
               </span>
               {s.retired && (
                 <button type="button" class="textbtn" data-testid={`chip-back-${s.id}`} onClick={() => bringBackChip(s.id)}>
+                  {c.bringBack}
+                </button>
+              )}
+            </li>
+          ))}
+          {ownStates.map((s, i) => (
+            <li key={s.id} class="row is-static" data-testid={`chip-state-own-${s.id}`}>
+              <span class="row-main">
+                {own[i].label}
+                <span class="sub">{s.retired ? fill(c.chipRetired, { n: String(s.evenings) }) : s.lastTap ? fill(c.chipOn, { when: formatDayShort(s.lastTap) }) : s.evenings === 1 ? c.chipNeverOne : fill(c.chipNever, { n: String(s.evenings) })}</span>
+              </span>
+              {s.retired && (
+                <button type="button" class="textbtn" data-testid={`chip-back-own-${s.id}`} onClick={() => void updateSettings((st) => ({ ...st, chipsBack: { ...st.chipsBack, [ownShownKey(s.id)]: today } }))}>
                   {c.bringBack}
                 </button>
               )}
@@ -109,6 +130,17 @@ export function ReadingsScreen({ onClose }: { onClose: () => void }) {
             </span>
             {easeOff && (
               <button type="button" class="textbtn" data-testid="chip-back-ease" onClick={() => void updateSettings((st) => ({ ...st, easeBack: new Date().toISOString() }))}>
+                {c.bringBack}
+              </button>
+            )}
+          </li>
+          <li class="row is-static" data-testid="chip-state-expect">
+            <span class="row-main">
+              {c.expectName}
+              <span class="sub">{expectOff ? c.expectRetired : c.expectOn}</span>
+            </span>
+            {expectOff && (
+              <button type="button" class="textbtn" data-testid="chip-back-expect" onClick={() => void updateSettings((st) => ({ ...st, expectancyBack: new Date().toISOString() }))}>
                 {c.bringBack}
               </button>
             )}

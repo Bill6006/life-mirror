@@ -1,5 +1,6 @@
 import { bandsLabel, windowsLabel, type CaffeineEvidence, type ReadingComparison, type ReportedComparison, type SleepComparison } from './caffeineRecord'
 import { copy } from './copy'
+import { CAFFEINE_LAST } from './db'
 import { fill } from './format'
 
 // Evidence → Caffeine (Part 22): the habit line, each comparison with its counts, and the notes
@@ -130,6 +131,11 @@ export function CaffeineEvidenceCard({ ev }: { ev: CaffeineEvidence }) {
           <SleepLines title={c.byLatestWindow} cmp={ev.byLatestWindow} label={windowsLabel} testid="caffeine-latest" />
           <ReadingLines title={c.byMorningBand} cmp={ev.byMorningBand} label={bandsLabel} units={[c.units.morning, c.units.mornings]} unmatched={c.unmatchedMorning} testid="caffeine-morning" />
           <ReportedLines cmp={ev.reported} />
+          {CAFFEINE_LAST.some((l) => ev.last[l] > 0) && (
+            <p class="calc-line" data-testid="caffeine-last-counts">
+              {fill(c.last, { list: CAFFEINE_LAST.filter((l) => ev.last[l] > 0).map((l) => `${copy.caffeine.lastOptions[l].toLowerCase()} ${ev.last[l]}`).join(', ') })}
+            </p>
+          )}
         </div>
         <p class="note faint no-gap">{c.note}</p>
       </div>

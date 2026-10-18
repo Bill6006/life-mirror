@@ -1,6 +1,6 @@
 import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block } from './blocks'
-import { doneBySetting, pathName, pathToday, stageWords } from './pathStage'
-import { associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
+import { doneBySetting, pathName, pathToday, socialEnergyOn, stageWords } from './pathStage'
+import { afternoonAssociation, associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
 import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, latestPlans, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
 import { dueOf, intervalOf, isFaithPractice, rhythmOf, scheduleOf } from './rhythm'
 import { hasMove, isParked, isPathOnly, isProposed, moveById, OBSERVED_ONLY, PASSIVE, type SettingKind } from './catalogue'
@@ -10,7 +10,9 @@ import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
 import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
+import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
+import { chipShownAt } from './chips'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { sittingOf } from './ladder'
@@ -408,7 +410,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (latest && CONTEXT_IDS.includes(id)) {
       const p = latest.answers[id] as 1 | 2 | 3 | 4 | 5
       const word = headword(anchorFor(id, p))
-      facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : id === 'motivation' ? 'mood' : 'social'], `${named(reading)} read “${word}” (${p} of 5) at the ${latest.block} check-in on ${latest.day}, ${ageWords(daysBetween(latest.day, today))}.`, { position: p, word, day: latest.day, block: latest.block, ageDays: daysBetween(latest.day, today) }))
+      // A sleep reading asked late, at an afternoon check-in after a morning without it, says so (stage 3, item 5).
+      const late = askedLate(latest).includes(id)
+      facts.push(fact(`context.${id}`, [id === 'loneliness' ? 'loneliness' : id === 'sleepHours' || id === 'sleepQuality' ? 'sleep' : id === 'hunger' ? 'hunger' : id === 'motivation' ? 'mood' : 'social'], `${named(reading)} read “${word}” (${p} of 5)${late ? ', asked late,' : ''} at the ${latest.block} check-in on ${latest.day}, ${ageWords(daysBetween(latest.day, today))}.`, { position: p, word, day: latest.day, block: latest.block, ageDays: daysBetween(latest.day, today), ...(late ? { late: 1 } : {}) }))
     }
     // Read by the week (stage 3, group 1): the seven days to yesterday against the seven before, each with its count, and
     // none said until each week holds three answers.
@@ -438,7 +442,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const ln = i.brief.lastNight
     const event = copy.brief.lastNightEvents[ln.key]
     facts.push(
-      fact('lastNight', ['evening', 'recovery', ln.key === 'churchDay' ? 'church' : ln.key === 'bigSocial' ? 'social-event' : ln.key === 'napped' ? 'nap' : ln.key === 'workout' ? 'workout' : ln.key === 'caffeine' ? 'caffeine' : 'evening'], ln.with === null || ln.without === null ? `Last night carried ${event}; ${ln.n} evenings like it so far, nothing to compare yet.` : `Last night carried ${event}; the mornings after evenings like it read ${round(ln.with)} against ${round(ln.without)} without, ${ln.n} evenings.`, { key: ln.key, with: round(ln.with), without: round(ln.without), n: ln.n }, { n: ln.n }),
+      fact('lastNight', ['evening', 'recovery', ln.key === 'churchDay' ? 'church' : ln.key === 'bigSocial' ? 'social-event' : ln.key === 'napped' ? 'nap' : ln.key === 'outside' ? 'nature' : ln.key === 'workout' ? 'workout' : ln.key === 'caffeine' ? 'caffeine' : 'evening'], ln.with === null || ln.without === null ? `Last night carried ${event}; ${ln.n} evenings like it so far, nothing to compare yet.` : `Last night carried ${event}; the mornings after evenings like it read ${round(ln.with)} against ${round(ln.without)} without, ${ln.n} evenings.`, { key: ln.key, with: round(ln.with), without: round(ln.without), n: ln.n }, { n: ln.n }),
     )
   }
   if (i.brief.warning?.warning) {
@@ -459,7 +463,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
   // Offers over the last seven days, and the null offer over the record.
   const since = addDays(today, -6)
   const outcomeOf = new Map(i.outcomes.map((x) => [x.offerId, x]))
-  const recent = i.offers.filter((o) => o.day >= since && o.day <= today && (o.kind === 'block' || o.kind === 'pickup'))
+  // A move the app set aside when the day changed was neither offered to you nor skipped (stage 3, item 5).
+  const recent = i.offers.filter((o) => o.day >= since && o.day <= today && (o.kind === 'block' || o.kind === 'pickup') && !setAside(o))
   const tally = { offered: recent.length, done: 0, partly: 0, no: 0, skipped: 0, unanswered: 0 }
   for (const o of recent) {
     const x = o.id === undefined ? undefined : outcomeOf.get(o.id)
@@ -487,6 +492,12 @@ export function buildFactSheet(i: FactInput): FactSheet {
   chip('assoc.eveningWorkout.sleep', ['workout', 'sleep'], 'an evening workout', i.evidence.eveningWorkout?.sleep ?? null, 'Sleep quality the mornings after')
   if (i.evidence.hardWorkout) facts.push(hardFact(i.evidence.hardWorkout))
   chip('assoc.napped', ['nap', 'sleep'], 'a nap', associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped)), 'Mornings after')
+  // Outside a while today (stage 3, item 5): tagged nature, the tag the library's daylight, nature-walk, nature-attention and green-exercise cards carry.
+  // Each chip from stage 3, item 5, is compared only at the check-ins that showed it (Rule 2).
+  chip('assoc.outside', ['nature'], 'time outside', associationFor(i.checkins, today, (c) => Boolean(c.extras?.outside), (c) => chipShownAt('outside', c)), 'Mornings after')
+  // Something sweet (stage 3, item 5), each against the next check-in. No tags: the library holds no card on it.
+  chip('assoc.sweet', [], 'something sweet in the afternoon', afternoonAssociation(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c)), 'Evenings after')
+  chip('assoc.sweet.evening', [], 'something sweet in the evening', associationFor(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c)), 'Mornings after')
   // Sleep is answered every full morning and is the largest lever on the day: short nights set against the afternoons that follow, like for like.
   chip('assoc.shortSleep', ['sleep', 'afternoon', 'energy'], 'a short night (under six hours)', morningAssociation(i.checkins, today, (c) => (c.answers.sleepHours ?? 9) <= SHORT_SLEEP), 'Afternoons after')
   // Pass 3: an item is compared at each check-in it is placed in, over that check-in's own window; the evening's fact keeps its id.
@@ -542,7 +553,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const id = aim.id as number
     const study = aim.kind === 'certification'
     // The sheet the free models read never takes in the Partner path (Part 27): a Partner-only rep done today changes nothing here, though the People row and the coach know it (D4).
-    const pt = aim.kind === 'path' ? pathToday({ aim, offers: pathOffers, outcomes: i.outcomes, ctx, day: today, block }) : null
+    const pt = aim.kind === 'path' ? pathToday({ aim, offers: pathOffers, outcomes: i.outcomes, ctx, day: today, block, socialEnergy: socialEnergyOn(i.checkins, today) }) : null
     const name = pt ? pathName(pt.path) : (aim.name ?? copy.aims.kinds[aim.kind])
     const step = pt?.pick ? sittingOf(moveById(pt.pick.moveId)) : stepFor(aim, i.skills, i.marks, studyAims)
     // Something to learn (Workstream 6): its current skill and the practice on it; the retired ladder is history, not a fact of today.
@@ -723,10 +734,14 @@ export function buildFactSheet(i: FactInput): FactSheet {
 
   const morning = i.checkins.find((c) => c.day === today && c.block === 'morning')
   facts.push(...caffeineFacts(i.checkins, i.evidence.caffeine, today))
-  const slept = morning?.answers.sleepHours
+  // After a morning without it, the night's hours asked late at the afternoon check-in, and said so (stage 3, item 5).
+  const afternoon = i.checkins.find((c) => c.day === today && c.block === 'afternoon')
+  const lateSlept = afternoon && askedLate(afternoon).includes('sleepHours') ? afternoon.answers.sleepHours : undefined
+  const slept = morning?.answers.sleepHours ?? lateSlept
   if (slept !== undefined && slept <= SHORT_SLEEP) {
     const word = headword(anchorFor('sleepHours', slept))
-    facts.push(fact('today.shortSleep', ['sleep', 'morning', 'mood'], `Sleep hours read “${word}” this morning.`, { position: slept, word }))
+    const late = morning?.answers.sleepHours === undefined
+    facts.push(fact('today.shortSleep', ['sleep', 'morning', 'mood'], late ? `Sleep hours read “${word}”, asked late at this afternoon’s check-in.` : `Sleep hours read “${word}” this morning.`, { position: slept, word, ...(late ? { late: 1 } : {}) }))
   }
 
   // The cadence of the record itself: check-ins completed per week. Logging less can be an early sign of letting the whole thing go.

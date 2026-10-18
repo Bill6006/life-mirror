@@ -3,7 +3,7 @@ import { awayDays, homeDaysOnly } from './awayFlow'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
 import { associationBy, associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, liveMoves, moveById, PASSIVE } from './catalogue'
-import { allCheckIns, db, getSettings, privateItems, updateSettings, type BeliefRow, type Card, type CheckIn, type Declaration, type Outcome, type TagBeliefRow } from './db'
+import { allCheckIns, db, getSettings, privateItems, setAside, updateSettings, type BeliefRow, type Card, type CheckIn, type Declaration, type Outcome, type TagBeliefRow } from './db'
 import { cardFromHypothesis, parseHypothesis, type Parsed } from './hypothesis'
 import { decayAfterStop, energyCost, FLAT, moveBelief, nothingBelief, observations, priorOf, signFlips, spillover, tagBeliefs, type Belief, type MoveBelief, type Observation, type TagBelief } from './learning'
 import { NOTHING } from './offers'
@@ -235,7 +235,8 @@ export async function evidence(today: string): Promise<Evidence> {
   const hardMeasures = Object.fromEntries(HARD_MEASURES.map((id) => [id, associationBy(checkins, today, onHard, (m) => m.answers[id] ?? null)])) as Record<HardMeasure, Association>
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
   const weeks = first ? Math.floor((Math.max(0, (Date.parse(today) - Date.parse(first)) / 86_400_000) + 1) / 7) : 0
-  const nulls = offers.filter((o) => o.moveId === NOTHING)
+  // A Nothing extra the app set aside when the day changed was never offered to you (stage 3, item 5).
+  const nulls = offers.filter((o) => o.moveId === NOTHING && !setAside(o))
   const outcomeOf = new Map(outcomes.map((x) => [x.offerId, x]))
   const nothing = { offered: nulls.length, done: nulls.filter((o) => o.id !== undefined && outcomeOf.get(o.id)?.outcome === 'done').length, skipped: nulls.filter((o) => o.skippedAt !== null).length }
   return {

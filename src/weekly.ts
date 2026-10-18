@@ -8,6 +8,9 @@ import type { ReadingId } from './readings'
 import { INGREDIENT_IDS, INGREDIENTS, readingOf, type Band } from './score'
 import type { CardStats } from './tiers'
 import { necessitiesMissed } from './necessities'
+import { chipShownAt } from './chips'
+import { ownShownAt } from './ownChips'
+import type { OwnChip } from './settings'
 
 // The weekly view, pure: the scorecard, best-days, the gap as numbers, what moved this week,
 // what lasts and what does not, catalogue health, and the extension prompt the app writes
@@ -91,6 +94,8 @@ export interface BestDays {
   top: string[]
   controlled: Difference[]
   uncontrolled: Difference[]
+  /** Your own chips (stage 3, item 5), each by its label over the days that showed it: for the weekly view on the phone alone, never the day's sheet. */
+  own?: Difference[]
 }
 
 function share(d: Difference): number {
@@ -102,9 +107,9 @@ function share(d: Difference): number {
  * passive items, the chips, the necessities) and what you don't (the weekday, last night's
  * sleep, who was around). Silent under twenty days, and always says how many it rests on.
  */
-export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set()): BestDays {
+export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set(), own: readonly OwnChip[] = []): BestDays {
   const readings = dayReadings(checkins, today)
-  if (readings.length < BEST_DAYS_MIN) return { days: readings.length, threshold: BEST_DAYS_MIN, silent: true, top: [], controlled: [], uncontrolled: [] }
+  if (readings.length < BEST_DAYS_MIN) return { days: readings.length, threshold: BEST_DAYS_MIN, silent: true, top: [], controlled: [], uncontrolled: [], own: [] }
   const sorted = [...readings].sort((a, b) => b.value - a.value)
   const k = Math.max(2, Math.round(sorted.length * BEST_SHARE))
   const top = sorted.slice(0, k).map((d) => d.day)
@@ -130,14 +135,17 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   const evening = (day: string) => byDay.get(day)?.find((c) => c.block === 'evening')
   // Caffeine from reported bands (Part 22e), counted over the days the item recorded anything, so a
   // day with nothing known is in neither count. The old yes/no rows stay until the item has 28 days.
-  const known = (d: string) => (byDay.get(d) ?? []).some((c) => c.extras?.caffeineIntake || c.extras?.caffeineShown)
-  const countKnown = (label: string, has: (day: string) => boolean): Difference => ({
+  const caffeineKnown = (d: string) => (byDay.get(d) ?? []).some((c) => c.extras?.caffeineIntake || c.extras?.caffeineShown)
+  const countOver = (known: (day: string) => boolean) => (label: string, has: (day: string) => boolean): Difference => ({
     label,
     onBest: top.filter((d) => known(d) && has(d)).length,
     ofBest: top.filter(known).length,
     onOthers: others.filter((d) => known(d) && has(d)).length,
     ofOthers: others.filter(known).length,
   })
+  const countKnown = countOver(caffeineKnown)
+  // A chip from stage 3, item 5, likewise counts only the days that showed it (Rule 2).
+  const countShown = (key: string, has: (day: string) => boolean, label: string) => countOver((d) => (byDay.get(d) ?? []).some((c) => chipShownAt(key, c)))(label, has)
   const legacyCaffeine = itemDays(checkins, today) < HABIT_DAYS
   if (legacyCaffeine) controlled.push(count('caffeine after midday', (d) => Boolean(evening(d)?.extras?.caffeine)))
   controlled.push(countKnown('at least 200 mg of caffeine reported', (d) => dayCaffeine(byDay.get(d) ?? [], d).floor >= 200))
@@ -146,6 +154,8 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   controlled.push(count('nothing landed', (d) => Boolean(evening(d)?.extras?.nothingLanded)))
   controlled.push(count('hard to see the point', (d) => Boolean(evening(d)?.extras?.hardToSeePoint)))
   controlled.push(count('a nap', (d) => Boolean(evening(d)?.extras?.napped)))
+  controlled.push(countShown('outside', (d) => Boolean(evening(d)?.extras?.outside), 'time outside'))
+  controlled.push(countShown('sweet', (d) => Boolean(byDay.get(d)?.some((c) => c.extras?.sweet)), 'something sweet'))
   controlled.push(count('a necessity missed', (d) => necessitiesMissed(evening(d)?.extras).length > 0))
 
   const ctx = new Map(contexts.map((c) => [c.day, c]))
@@ -166,7 +176,11 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
       .filter((d) => d.onBest + d.onOthers > 0)
       .sort((a, b) => Math.abs(share(b)) - Math.abs(share(a)))
       .slice(0, 4)
-  return { days: readings.length, threshold: BEST_DAYS_MIN, silent: false, top, controlled: pick(controlled), uncontrolled: pick(uncontrolled) }
+  // Your own chips, each over the evenings that showed it, kept apart from the lists the day's sheet reads.
+  const ownDiffs = own
+    .map((ch) => countOver((d) => (byDay.get(d) ?? []).some((c) => c.block === 'evening' && ownShownAt(ch.id, c)))(ch.label, (d) => Boolean(evening(d)?.extras?.own?.[ch.id])))
+    .filter((d) => d.ofBest + d.ofOthers > 0)
+  return { days: readings.length, threshold: BEST_DAYS_MIN, silent: false, top, controlled: pick(controlled), uncontrolled: pick(uncontrolled), own: ownDiffs }
 }
 
 export interface Gap {
