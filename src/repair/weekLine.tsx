@@ -1,16 +1,17 @@
 import { copy } from '../copy'
 import { fill } from '../format'
 import { useLive } from '../live'
+import { guardRepair } from './breaker'
 import { answerWeek, weekState } from './flow'
-import { repairOn } from './gate'
+import { useRepairOn } from './gate'
 
 /**
  * The learning week on Now (stage R3): the invitation while one stands, Yes and Not now, or a quiet line while a week
  * runs. Nothing while the learning repair is closed on this phone.
  */
 export function WeekLine({ day }: { day: string }) {
-  const on = repairOn()
-  const state = useLive(() => (on ? weekState(day) : Promise.resolve(null)), [day, on])
+  const on = useRepairOn()
+  const state = useLive(() => (on ? guardRepair(day, () => weekState(day), null) : Promise.resolve(null)), [day, on])
   if (!state) return null
   const c = copy.learningWeek
   if (state.invitation)

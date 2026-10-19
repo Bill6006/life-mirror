@@ -270,10 +270,10 @@ export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:
 
 /**
  * The learning repair (the 16 requirements agreed 2026-10-10; the stress test passed by requirement 14's rule, 2026-10-19):
- * its engine draws the moves and makes the calls. Gated while it is built, stage by stage (R1–R5); stage R6 opens it, the
- * Worker first, once every stage is verified. Shared with the Worker, whose facts follow it.
+ * its engine draws the moves and makes the calls. Gated while it was built, stage by stage (R1–R5 and R4b); stage R6 opened
+ * it, the Worker first, once every stage was verified. Shared with the Worker, whose facts follow it.
  */
-export const LEARNING_REPAIR: 'gated' | 'open' = 'gated'
+export const LEARNING_REPAIR: 'gated' | 'open' = 'open'
 
 /**
  * Pass 4: how big a line says an effect is may not outrun its cards, and the record's own

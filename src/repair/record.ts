@@ -1,6 +1,7 @@
 import { addDays, BLOCKS, daysBetween, parseDay, type Block } from '../blocks'
 import { NOTHING, type Window } from '../catalogue'
 import { isComplete, setAside, type CheckIn, type DayContext as AppDay, type Offer, type Outcome } from '../db'
+import { faultForTests } from './breaker'
 import { EngineB, IN_APP, type BConfig, type CallB } from './engine'
 import type { ReadingId } from '../readings'
 import type { Rng } from './stats'
@@ -102,6 +103,7 @@ const slotKey = (day: string, block: Block) => `${day}|${block}`
  * and its draw, if any, is left out: the state a new draw at that slot is made from.
  */
 export function buildEngine(r: RepairRecord, through: string, stopBefore: Block | null = null, rng: Rng = Math.random, cfg: BConfig = IN_APP, onLearn: ((d: number, calls: CallB[]) => void) | null = null, epochIn: string | null = null, declared: { moveId: string; target: ReadingId; window: Window }[] = []): Built {
+  if (faultForTests()) throw new TypeError('a stand-in for a record no test foresaw')
   const complete = r.checkins.filter((c) => isComplete(c) && c.day <= through).sort((a, b) => (a.day === b.day ? BLOCKS.indexOf(a.block) - BLOCKS.indexOf(b.block) : a.day < b.day ? -1 : 1))
   const epoch = epochIn ?? complete[0]?.day ?? through
   const index = (day: string) => daysBetween(epoch, day)
@@ -160,6 +162,7 @@ let cached: { key: string; built: Built } | null = null
  * the engine: a draw rebuilds its own (`buildEngine` with the slot to stop before).
  */
 export function builtThrough(r: RepairRecord, through: string): Built {
+  if (faultForTests()) throw new TypeError('a stand-in for a record no test foresaw')
   const key = `${through}|${fingerprint(JSON.stringify([r.checkins, r.offers, r.outcomes, r.days, [...r.weekAnswers]]))}`
   if (cached?.key === key) return cached.built
   const built = buildEngine(r, through)

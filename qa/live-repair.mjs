@@ -1,11 +1,13 @@
-// The learning repair on the live site, in its preview, in fresh throwaway contexts with stand-in records only: nothing
-// touches the owner's data, and nothing is sent anywhere but the site itself (no cloud token is ever set). The preview
-// opens only in an automated browser holding its key; the owner's phone sees the repair closed until stage R6.
+// The learning repair on the live site, in fresh throwaway contexts with stand-in records only: nothing touches the owner's
+// data, and nothing is sent anywhere but the site itself (no cloud token is ever set). Since stage R6 it is open as it
+// ships, so a context with no test key sees it as the owner's phone does; only an automated browser holding the test key
+// at 0 sees it closed, and one holding the stand-in fault key sees every rebuild throw, so the breaker can be checked.
 // Stage R2: a check-in's move drawn by the repair's engine, every chance kept with its version. Stage R3: the learning
 // week's invitation on Now, and Yes starting a week. Stage R4: Evidence's tests by rung with the track record at their
 // head, the move card's rung and its test's words, the Moves door and the Legend. Stage R5: the sheet the phone keeps for
 // the Brain carries the repair's tests and its track record. Stage R4b: a passive item's association at Promising proposes
 // a one-tap test, and the tap sets it. Closed: no week, Evidence's cards, and none of the repair's facts on the sheet.
+// Stage R6: Now's and Evidence's words follow the switch, and the breaker keeps a check-in's move drawn when a rebuild throws.
 // node live-repair.mjs <expected short commit> [screenshot folder]
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium } from './common.mjs'
@@ -37,12 +39,14 @@ const WHEN = new Date(2026, 8, 24, 13, 30)
  * chances. With `effect`, each draw is a fair coin fixed by its slot and stress reads lowest after a walk; with `seed`, the
  * page's random draws are fixed, so today's check-in draws the same move every run.
  */
-async function fresh(preview, { days = 10, effect = false, seed = null } = {}) {
+async function fresh(mode, { days = 10, effect = false, seed = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: 'dark' })
   await ctx.addInitScript(
-    ({ on, seed }) => {
+    ({ mode, seed }) => {
       localStorage.setItem('lm.inStep', '1')
-      if (on) localStorage.setItem('life-mirror.preview.learningRepair', '1')
+      // 'owner': no test key, as the owner's phone runs it; 'closed': the test key at 0; 'fault': every rebuild throws.
+      if (mode === 'closed') localStorage.setItem('life-mirror.preview.learningRepair', '0')
+      if (mode === 'fault') localStorage.setItem('life-mirror.test.repairFault', '1')
       if (seed !== null) {
         let x = seed
         Math.random = () => {
@@ -51,7 +55,7 @@ async function fresh(preview, { days = 10, effect = false, seed = null } = {}) {
         }
       }
     },
-    { on: preview, seed },
+    { mode, seed },
   )
   const page = await ctx.newPage()
   page.setDefaultTimeout(20000)
@@ -192,7 +196,7 @@ const tab = async (page, name) => {
 
 try {
   {
-    const { ctx, page } = await fresh(true)
+    const { ctx, page } = await fresh('owner')
     await tab(page, 'Settings')
     await page.getByTestId('settings-about').click()
     const commit = (await page.getByTestId('build-commit').textContent())?.trim()
@@ -200,7 +204,7 @@ try {
     await page.goto(LIVE)
     const invite = page.getByTestId('week-invite')
     const offered = await seen(invite)
-    check('in the preview, a learning week is offered on Now once a running test has fitted three recent days', offered)
+    check('with no test key, as the owner’s phone runs it, a learning week is offered on Now once a running test has fitted three recent days', offered)
     if (offered) {
       check('it asks "A learning week?", with Yes and Not now', ((await invite.textContent().catch(() => '')) ?? '').includes('A learning week?') && (await page.getByTestId('week-yes').count()) === 1 && (await page.getByTestId('week-not-now').count()) === 1)
       await shot(invite, 'r3-week-invite')
@@ -219,11 +223,17 @@ try {
     check('today’s check-in move is drawn by the repair’s engine', offer?.draw?.engine === 'repair-1', String(offer?.draw?.engine))
     const sum = offer ? Object.values(offer.propensities ?? {}).reduce((a, b) => a + b, 0) : 0
     check('every chance kept, nothing extra among them, summing to one', !!offer && offer.candidates.includes('nothing') && Math.abs(sum - 1) < 1e-9, `${offer?.candidates?.length} candidates, sum ${sum}`)
+    // Stage R6: Now says how the repair picks, and counts its tests under way.
+    const knows = page.getByTestId('knows')
+    await knows.getByTestId('knows-more').click().catch(() => {})
+    const knowsText = (await knows.textContent().catch(() => '')) ?? ''
+    check('Now says how the repair picks: every move that fits keeps a chance, and its tests under way', knowsText.includes('Every move that fits keeps a chance of being drawn') && /(\d+ tests|one test) under way/.test(knowsText), knowsText.slice(0, 60))
+    await shot(knows, 'r6-knows')
     await ctx.close()
   }
   {
     // Stage R4: fourteen days of a strong walk effect on stress, and today's draw fixed on a real move.
-    const { ctx, page } = await fresh(true, { days: 14, effect: true, seed: 11 })
+    const { ctx, page } = await fresh('owner', { days: 14, effect: true, seed: 11 })
     await checkIn(page)
     const offer = await todaysOffer(page)
     const card = page.getByTestId('move-card').first()
@@ -257,6 +267,9 @@ try {
     const cardTexts = await page.getByTestId('evidence-card').allTextContents()
     check('no test card and no tier on Evidence while the repair is on; only passive items’ cards, under Rode alongside', hasTrack && (await page.getByRole('heading', { name: 'Cards', exact: true }).count()) === 0 && cardTexts.every((t) => t.includes('a passive item')), `${cardTexts.length} passive cards`)
     if (hasTrack) await shot(walk, 'r4-evidence-walk')
+    // Stage R6: Nothing today keeps its counts and says what nothing extra is now; today's tag lending is not shown.
+    const nothingLine = ((await page.getByTestId('nothing-line').textContent().catch(() => '')) ?? '').trim()
+    check('Nothing today says what nothing extra is now, and today’s tag lending is not shown', /Every move’s test compares the move with nothing extra\.$/.test(nothingLine) && (await page.getByRole('heading', { name: 'What the tags have learned' }).count()) === 0, nothingLine.slice(-50))
     await page.reload()
     await tab(page, 'Settings')
     await page.getByTestId('settings-legend').click()
@@ -267,19 +280,40 @@ try {
     await ctx.close()
   }
   {
-    const { ctx, page } = await fresh(false, { days: 14, effect: true })
+    const { ctx, page } = await fresh('closed', { days: 14, effect: true })
     check('closed, Now shows no learning week', (await page.getByTestId('week-invite').count()) === 0 && (await page.getByTestId('week-running').count()) === 0)
+    const closedKnows = page.getByTestId('knows')
+    await closedKnows.getByTestId('knows-more').click().catch(() => {})
+    check('closed by the test key, Now says how today’s engine picks', ((await closedKnows.textContent().catch(() => '')) ?? '').includes('one offer in five is a fair coin flip'))
     const closedIds = (await sheetIds(page)) ?? []
     check('closed, the sheet for the Brain carries none of the repair’s facts', closedIds.length > 5 && !closedIds.some((x) => x.startsWith('ladder.') || x === 'track'), `${closedIds.length} facts`)
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click()
     check('closed, Evidence shows its cards and no track record, as before', (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && (await page.getByTestId('track-record').count()) === 0)
+    check('closed, Evidence shows what the tags have learned, and Nothing today as before', (await seen(page.getByRole('heading', { name: 'What the tags have learned' }))) && /Kept to, it is measured like any move over the next block\.$/.test(((await page.getByTestId('nothing-line').textContent().catch(() => '')) ?? '').trim()))
+    await ctx.close()
+  }
+  {
+    // Stage R6, the breaker: the test browsers' stand-in for a record no test foresaw, every rebuild throwing.
+    const { ctx, page } = await fresh('fault', { days: 10 })
+    const knows = page.getByTestId('knows')
+    await knows.getByTestId('knows-more').click().catch(() => {})
+    check('with every rebuild throwing, Now redraws as before the switch', ((await knows.textContent().catch(() => '')) ?? '').includes('one offer in five is a fair coin flip') && (await page.getByTestId('week-invite').count()) === 0)
+    await checkIn(page)
+    const offer = await todaysOffer(page)
+    check('and a check-in still draws a move, by today’s engine', /^engine-/.test(offer?.draw?.engine ?? ''), String(offer?.draw?.engine))
+    await tab(page, 'Moves')
+    await page.getByRole('button', { name: /^Evidence/ }).click()
+    const fault = page.getByTestId('repair-fault')
+    const said = await seen(fault)
+    check('Evidence shows its cards as before, with one line saying the repair could not read the record', said && (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && /^The learning repair could not read your record 2 times since \w{3}, \w{3} \d{1,2}/.test(((await fault.textContent().catch(() => '')) ?? '').trim()))
+    if (said) await shot(fault, 'r6-fault-line')
     await ctx.close()
   }
   {
     // Stage R4b: a passive item's association at Promising proposes a one-tap test. Fourteen days that read alike, the
     // recovery gap riding alongside on alternate evenings with social energy high the morning after, and its card.
-    const { ctx, page } = await fresh(true, { days: 0 })
+    const { ctx, page } = await fresh('owner', { days: 0 })
     await page.evaluate(async () => {
       const blocks = {
         morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],

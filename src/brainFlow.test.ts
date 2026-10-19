@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addAim, addSkill, planAim, resumeAim, studyAims } from './aimFlow'
 import { stepFor } from './aims'
 import { recordDoneNow } from './offerFlow'
@@ -10,6 +10,7 @@ import { dayGuard } from './brainShared'
 import { db, ensureDayContext, getDayContext, getSettings, setDayContext, updateSettings } from './db'
 import { factById } from './facts'
 import { clockTimesIn } from './format'
+import { closeRepair } from './repair/testGate'
 
 // The brain on the phone, end to end on a seeded record: the sheet built from the record, the
 // day's line chosen once and logged, the tap filed under it, the facts row written only when
@@ -387,6 +388,7 @@ describe('the line, acted on', () => {
     await db.open()
     await ensureDayContext(DAY, await getSettings())
   })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('takes its plan tap away once that commitment’s session is started or done today: nothing is left to plan (Workstream 6)', async () => {
     await addAim('certification', null, 'Veltish', 'language')
@@ -404,6 +406,8 @@ describe('the line, acted on', () => {
   })
 
   it('does what it says in one tap, says why it said it, sets a test once, and makes the check-in lighter', async () => {
+    // Today's engine, the learning repair's fallback, sets a test with one tap; the repair closed, as the browser tests set it (R6).
+    closeRepair()
     await addAim('certification', null, 'Veltish', 'language')
     await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, NOW)
@@ -432,6 +436,17 @@ describe('the line, acted on', () => {
     expect(await applyLineAction(DAY, { kind: 'depth', value: 'short' }, NOW)).toBe(true)
     expect((await getSettings()).depth).toBe('short')
     expect((await lineActionState(DAY, { kind: 'depth', value: 'short' }, NOW))?.state).toBe('done')
+  })
+
+  it('under the learning repair, sets no test: the draw already tests every move, so a test tap is gone and nothing is written (R6)', async () => {
+    const test: LineAction = { kind: 'test', moveId: 'walk-ten' }
+    expect(await lineActionState(DAY, test, NOW)).toEqual({ state: 'gone' })
+    expect(await applyLineAction(DAY, test, NOW)).toBe(false)
+    expect(await db.cards.count()).toBe(0)
+    expect(lineTiming(test, await lineActionState(DAY, test, NOW), NOW)).toBe('forToday')
+    // The same tap with the repair closed is there to take.
+    closeRepair()
+    expect((await lineActionState(DAY, test, NOW))?.state).toBe('open')
   })
 
   it('shows under Why the facts as they stood when the line was said, never the day’s sheet rewritten since (stage 1, item l)', async () => {
@@ -465,6 +480,8 @@ describe('the line, acted on', () => {
   })
 
   it('titles the line by when it is meant to be acted on, from its action alone (owner, 2026-09-23)', async () => {
+    // A test tap is today's engine's (R6): the repair closed, as the browser tests set it.
+    closeRepair()
     await addAim('certification', null, 'Veltish', 'language')
     const at = (h: number, m = 0) => new Date(2026, 8, 18, h, m)
     const timing = async (action: LineAction | null, now: Date) => lineTiming(action, await lineActionState(DAY, action, now), now)

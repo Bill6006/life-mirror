@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { activeAims, addAim, resumeAim } from './aimFlow'
 import { stepFor } from './aims'
 import { db, ensureDayContext, getSettings, saveAnswer, setDayContext, updateSettings, type Aim, type CheckIn, type Offer } from './db'
@@ -7,6 +7,8 @@ import { ensureOffer, ensurePickupOffer, markOfferSeen, recordDoneNow, recordOut
 import { NOTHING } from './offers'
 import { drawContextOf, drawRecordOf, ENGINE_VERSION, outcomeReasonOf } from './provenance'
 import { blockReadings } from './readings'
+import { REPAIR_ENGINE } from './repair/record'
+import { closeRepair } from './repair/testGate'
 
 // Requirement 2 of the learning design agreed 2026-10-10, the foundations: each decision point
 // recorded at the time, since history recorded without them cannot be rebuilt. Recorded only:
@@ -67,13 +69,18 @@ describe('the foundations, as the phone records them', () => {
     await db.open()
     await ensureDayContext(DAY, await getSettings())
   })
+  afterEach(() => vi.unstubAllGlobals())
 
-  it('keeps what each draw knew on the offer, the day marked unwell among it', async () => {
+  // Drawn by the learning repair, open since R6, and by today's engine, its fallback, with the repair closed as the browser
+  // tests set it: the same record of what the draw knew, each naming the engine that drew.
+  for (const mode of ['open', 'closed'] as const)
+  it(`keeps what each draw knew on the offer, the day marked unwell among it (the learning repair ${mode})`, async () => {
+    if (mode === 'closed') closeRepair()
     await setDayContext(DAY, { unwell: true })
     for (const id of asked) await saveAnswer({ day: DAY, block: 'afternoon' }, asked, id, 3, 500)
     const offer = (await ensureOffer(DAY, 'afternoon', () => 0.3)) as Offer
     const stored = (await db.offers.get(offer.id as number)) as Offer
-    expect(stored.draw?.engine).toBe(ENGINE_VERSION)
+    expect(stored.draw?.engine).toBe(mode === 'open' ? REPAIR_ENGINE : ENGINE_VERSION)
     expect(Object.keys(stored.draw?.beliefs ?? {}).sort()).toEqual([...stored.candidates].sort())
     expect(Object.values(stored.draw?.excluded ?? {}).flat().length).toBeGreaterThan(0)
     for (const id of stored.candidates) expect(Object.values(stored.draw?.excluded ?? {}).flat()).not.toContain(id)

@@ -14,7 +14,8 @@ import { Disclosure, Tag } from './ui'
 import { needsHome } from './homeOnly'
 import { homeOnlyOn } from './postWindowFlow'
 import { repairEvidence, testOf } from './repair/evidence'
-import { repairOn } from './repair/gate'
+import { guardRepair } from './repair/breaker'
+import { useRepairOn } from './repair/gate'
 import { rungWords } from './repair/words'
 import { windowOfMove } from './repair/world'
 
@@ -56,10 +57,10 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   const counts = useLive(() => offerCounts(offer.situationKey, offer.moveId), [offer.situationKey, offer.moveId, outcome?.id])
   // The card's own tier, as Evidence shows it; never a fixed word (Part 33). While the learning repair is on (stage R4), the
   // drawn move's own test for the moment's reading and window, by its rung on the evidence ladder; nothing extra has none.
-  const repair = repairOn()
+  const repair = useRepairOn()
   const tier = useLive(() => (repair || offer.cardId === null ? Promise.resolve(null) : tierOfCard(offer.cardId, offer.day)), [repair, offer.cardId, offer.day, outcome?.id])
   const rung = useLive(
-    () => (repair && !nothing ? repairEvidence(offer.day).then((ev) => testOf(ev, offer.moveId, offer.target, windowOfMove(offer.moveId, offer.target))) : Promise.resolve(null)),
+    () => (repair && !nothing ? guardRepair(offer.day, () => repairEvidence(offer.day).then((ev) => testOf(ev, offer.moveId, offer.target, windowOfMove(offer.moveId, offer.target))), null) : Promise.resolve(null)),
     [repair, nothing, offer.moveId, offer.target, offer.day, outcome?.id],
   )
   const target = readingById(offer.target)

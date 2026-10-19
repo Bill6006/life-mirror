@@ -567,8 +567,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
       backed.push(m)
     }
   }
-  // Each with what a test of it can measure and when (item 6): a test always measures what its line speaks of.
-  if (days >= 14 && backed.length) {
+  // Each with what a test of it can measure and when (item 6): a test always measures what its line speaks of. Not while
+  // the learning repair is on (R6): its draw tests every move with a declared test from the first day and makes no coin
+  // flip, so no move is one "the record has never tested", and a card set now would gather no fair evidence.
+  if (!i.repair && days >= 14 && backed.length) {
     const can = backed.map((m) => ({ m, t: testableOf(m) }))
     const words = can.map(({ m, t }) => `${moveById(m).name} (${m}${t.readings.length ? `; can test ${t.readings.join(' or ')} in the ${t.blocks.join(' or ')}` : '; no reading a test can measure'})`)
     facts.push(fact('untested', ['monitoring'], `Moves the library backs that the record has never tested: ${words.join(', ')}.`, { moves: backed.join(','), count: backed.length, ...Object.fromEntries(can.map(({ m, t }) => [`tests_${m}`, `${t.readings.join(',')}@${t.blocks.join(',')}`])) }))

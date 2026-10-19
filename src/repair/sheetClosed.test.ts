@@ -1,13 +1,15 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays } from '../blocks'
 import { factSheet } from '../brainFlow'
-import { LEARNING_REPAIR } from '../brainShared'
 import { db } from '../db'
+import { repairOn } from './gate'
 import { START, walkRecord } from './fixtures'
+import { closeRepair } from './testGate'
 
-// The learning repair closed, as it ships until stage R6: the phone's fact sheet carries none of its facts, so the Worker's
-// prompts read exactly as before (stage R5).
+// The learning repair closed, as it shipped until stage R6 and as its breaker leaves it: the phone's fact sheet carries none
+// of its facts, so the Worker's prompts read exactly as before (stage R5). Since R6 it is closed here as the browser tests
+// close it.
 
 const DAY = addDays(START, 14)
 
@@ -16,9 +18,11 @@ describe('the sheet, with the repair closed', () => {
     await db.delete()
     await db.open()
   })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('carries no ladder fact and no track record', async () => {
-    expect(LEARNING_REPAIR).toBe('gated')
+    closeRepair()
+    expect(repairOn()).toBe(false)
     const r = walkRecord(14, true)
     await db.checkins.bulkAdd(r.checkins.map((c) => ({ ...c })))
     await db.offers.bulkAdd(r.offers.map((o) => ({ ...o })))

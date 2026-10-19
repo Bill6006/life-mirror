@@ -571,7 +571,9 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
   const evidence = card.getByTestId('move-evidence')
   await expect(evidence.getByText('Why this')).toBeVisible()
   await expect(evidence.getByText('Testing')).toBeVisible()
-  await expect(evidence.getByText('Little evidence')).toBeVisible()
+  // Its own test's rung, as the learning repair (open since R6) calls it: nothing called yet on a first check-in; or, when
+  // the draw (unseeded here) falls on nothing extra, what every move is measured against.
+  await expect(evidence.getByText('No call yet').or(evidence.getByText('Nothing extra: what each move is measured against.'))).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
   // Now shows it and the honest line; Skip says it shows another, and does, at once: a real move, never Nothing today (D6).
@@ -891,6 +893,8 @@ test('aims: something to learn in its own words, held above the move, Start aske
 })
 
 test('learning: Evidence shows a card with its tier, the two new chips answer from the record, and an imported hypothesis is a card and nothing else', async ({ page }) => {
+  // Today's engine, the learning repair's fallback since R6: its cards, tiers and imported hypotheses, the repair closed by the test key.
+  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '0'))
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
@@ -3260,7 +3264,8 @@ test('stage 1, item p: Now’s “how much it knows” line is counted from the 
   await expect(knows).toContainText('offers drawn from research')
   await knows.getByTestId('knows-more').click()
   await expect(knows).toContainText('no move tried yet')
-  await expect(knows).toContainText('no test set')
+  // The learning repair's tests, open since R6: none under way on a first day.
+  await expect(knows).toContainText('no test under way yet')
 })
 
 test('stage 1, item q: an unfinished check-in’s summary offers to continue the readings', async ({ page }) => {
@@ -3473,7 +3478,8 @@ test('the foundations: a move drawn keeps what its draw knew, and is marked seen
   await tapThrough(page)
   const morning = async () => (await rowsOf<{ id: number; block: string; kind: string; seenAt?: string; draw?: { engine: string; beliefs: Record<string, unknown>; context: { weekday: number } } }>(page, 'offers')).find((o) => o.block === 'morning' && o.kind === 'block')
   const drawn = await morning()
-  expect(drawn?.draw?.engine).toMatch(/^engine-/)
+  // Drawn by the learning repair, open as it ships since R6, with its version on the draw's record.
+  expect(drawn?.draw?.engine).toBe('repair-1')
   expect(Object.keys(drawn?.draw?.beliefs ?? {}).length).toBeGreaterThan(0)
   expect(drawn?.draw?.context.weekday).toBe(1)
   // Not seen until its card has been on Now: the summary's compact card is not the card on Now.

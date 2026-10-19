@@ -3,6 +3,7 @@ import { copy } from '../copy'
 import { fill, formatDayShort } from '../format'
 import { useLive } from '../live'
 import { readingById } from '../readings'
+import { guardRepair } from './breaker'
 import { repairEvidence, type RepairEvidence, type TestShown, type TrackLine } from './evidence'
 import { rungWords } from './words'
 
@@ -119,7 +120,8 @@ function HelpsBlock({ ev }: { ev: RepairEvidence }) {
 
 /** What helps you, the track record and the tests, in place of the cards. */
 export function RepairTests({ today }: { today: string }) {
-  const ev = useLive(() => repairEvidence(today), [today])
+  // A rebuild that throws trips the repair's breaker (R6): nothing here, and Evidence redraws as before the switch.
+  const ev = useLive(() => guardRepair(today, () => repairEvidence(today), null), [today])
   if (!ev) return null
   const c = copy.repairEvidence
   return (

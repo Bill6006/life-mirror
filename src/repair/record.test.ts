@@ -38,8 +38,8 @@ const offer = (over: Partial<Offer> = {}): Offer => ({
 const outcome = (over: Partial<Outcome> = {}): Outcome => ({ offerId: 1, moveId: 'walk-ten', day: '2026-09-01', block: 'morning', at: 'x', outcome: 'done', why: null, passiveOutcome: null, ...over })
 
 describe('the switch', () => {
-  it('ships gated: the learning repair opens at stage R6, once every stage is verified', () => {
-    expect(LEARNING_REPAIR).toBe('gated')
+  it('ships open: stage R6 opened the learning repair, once every stage was verified', () => {
+    expect(LEARNING_REPAIR).toBe('open')
   })
 })
 

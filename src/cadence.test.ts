@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { activeAims, addAim, addLearning, logSession, pauseAim, planAim, resumeAim, setRhythm, setSchedule, studyAims } from './aimFlow'
 import { stepFor } from './aims'
 import { factSheet } from './brainFlow'
@@ -9,6 +9,7 @@ import { recordDoneNow } from './offerFlow'
 import { mayNudge, validateAction } from './brainShared'
 import { factById, type Fact, type FactSheet } from './facts'
 import { rankLines } from './situations'
+import { closeRepair } from './repair/testGate'
 
 // Workstream 6, Part 39: the sheet says each commitment's rhythm or fixed days and what they make of
 // today; a paused one says nothing; the phone's own lines never nudge a rest day, a week whose
@@ -28,6 +29,7 @@ describe('rhythm on the sheet', () => {
     await db.open()
     await ensureDayContext(DAY, await getSettings())
   })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('says a rest day, a due day and a met week in counts, and fixed days with the next one', async () => {
     await addLearning('Learn a cartwheel', 'Line drills', 'Land on the line', '', new Date(2026, 8, 20, 9, 0))
@@ -107,6 +109,10 @@ describe('rhythm on the sheet', () => {
       const day = `2026-09-${String(d).padStart(2, '0')}`
       await db.checkins.add({ day, block: 'evening', answers: { mood: 3 }, startedAt: `${day}T23:00:00.000Z`, completedAt: `${day}T23:01:00.000Z`, updatedAt: `${day}T23:01:00.000Z`, activeMs: 60_000 })
     }
+    // Under the learning repair no test is proposed at all: its draw tests every move from the first day (R6).
+    expect(factById(await factSheet(DAY, NOW), 'untested')).toBeUndefined()
+    // Today's engine, its fallback, proposes tests: the repair closed, as the browser tests set it.
+    closeRepair()
     const untested = factById(await factSheet(DAY, NOW), 'untested')
     const moves = String(untested?.values.moves ?? '').split(',').filter(Boolean)
     expect(moves.length).toBeGreaterThan(0)

@@ -25,6 +25,9 @@ import { blockReadings, type Answers, type Position } from './readings'
 // Closed here by standing in for the shared gate (open as it ships since stage 1, 2026-10-16), so each
 // test below reads the feature closed, then opened through the preview, exactly as it always did.
 vi.mock('./postWindow', async (original) => ({ ...(await original<typeof import('./postWindow')>()), HOME_ONLY: 'gated', AWAY_FROM_HOME: 'gated' }))
+// The learning repair, open since stage R6 (2026-10-19), draws by its own engine and adds its facts to the sheet on purpose;
+// this file holds what the post-window gates guard, so it reads today's engine, the repair's fallback, with the repair closed.
+vi.mock('./brainShared', async (original) => ({ ...(await original<typeof import('./brainShared')>()), LEARNING_REPAIR: 'gated' }))
 
 const DAY = '2026-10-07'
 const NOW = new Date(2026, 9, 7, 7, 45)

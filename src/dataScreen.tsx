@@ -15,6 +15,7 @@ import { USAGE_TO_CLAUDE } from './brainShared'
 import type { Fact } from './factTypes'
 import type { UseSummary } from './usageFacts'
 import { usageFactsToday, useSummary } from './useRead'
+import { useRepairOn } from './repair/gate'
 
 /** Rule 13 of the plan: anything recorded can be exported or deleted. Rule 11: private items stay out unless ticked, and so does the Partner path (Part 27). */
 /** A screen's name for the use log's list: a tab, a Settings section, or a sub-screen. */
@@ -102,6 +103,8 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [word, setWord] = useState('')
   const [cloudFailed, setCloudFailed] = useState(false)
   const [hypothesis, setHypothesis] = useState('')
+  // Under the learning repair a pasted hypothesis would make a card nothing reads (R6): the section says why instead.
+  const repair = useRepairOn()
   const [imported, setImported] = useState<string | null>(null)
   const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() }, pathMarks: await db.pathMarks.toArray(), reflections: await db.reflections.toArray(), monthlyChecks: await db.monthlyChecks.toArray(), useLog: await db.useLog.toArray(), days: await db.days.toArray(), places: await db.places.toArray(), journal: await db.journal.toArray(), claims: await db.claims.toArray() }), [])
   const use = useLive(() => useSummary(blockAt(new Date()).day), [])
@@ -174,31 +177,39 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
       </div>
 
       <h2 class="section">{copy.data.importTitle}</h2>
-      <div class="card pad">
-        <p class="note">{copy.data.importNote}</p>
-        <input class="input" type="text" placeholder={copy.data.importPlaceholder} value={hypothesis} data-testid="hypothesis-input" onInput={(e) => setHypothesis((e.currentTarget as HTMLInputElement).value)} />
-        <div class="actions">
-          <button
-            type="button"
-            class="pill-quiet"
-            data-testid="hypothesis-add"
-            disabled={!hypothesis.trim()}
-            onClick={() =>
-              void importHypothesis(hypothesis).then((r) => {
-                setImported(r.ok ? copy.data.importDone : copy.data.importErrors[r.error])
-                if (r.ok) setHypothesis('')
-              })
-            }
-          >
-            {copy.data.importButton}
-          </button>
-        </div>
-        {imported && (
-          <p class="note no-gap" data-testid="hypothesis-result">
-            {imported}
+      {repair ? (
+        <div class="card pad">
+          <p class="note no-gap" data-testid="hypothesis-repair">
+            {copy.data.importRepair}
           </p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div class="card pad">
+          <p class="note">{copy.data.importNote}</p>
+          <input class="input" type="text" placeholder={copy.data.importPlaceholder} value={hypothesis} data-testid="hypothesis-input" onInput={(e) => setHypothesis((e.currentTarget as HTMLInputElement).value)} />
+          <div class="actions">
+            <button
+              type="button"
+              class="pill-quiet"
+              data-testid="hypothesis-add"
+              disabled={!hypothesis.trim()}
+              onClick={() =>
+                void importHypothesis(hypothesis).then((r) => {
+                  setImported(r.ok ? copy.data.importDone : copy.data.importErrors[r.error])
+                  if (r.ok) setHypothesis('')
+                })
+              }
+            >
+              {copy.data.importButton}
+            </button>
+          </div>
+          {imported && (
+            <p class="note no-gap" data-testid="hypothesis-result">
+              {imported}
+            </p>
+          )}
+        </div>
+      )}
 
       <h2 class="section">{copy.data.deleteTitle}</h2>
       <div class="card pad">

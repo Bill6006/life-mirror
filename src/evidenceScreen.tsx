@@ -1,4 +1,4 @@
-import { blockAt } from './blocks'
+import { addDays, blockAt } from './blocks'
 import { PathEvidence } from './pathEvidence'
 import { CaffeineEvidenceCard } from './caffeineEvidence'
 import { hasMove, moveById } from './catalogue'
@@ -16,8 +16,9 @@ import { ownChipsOf } from './settings'
 import type { Association } from './associations'
 import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
 import type { ComponentChildren } from 'preact'
+import { FAULT_SHOWN_DAYS, guardRepair, repairFaults } from './repair/breaker'
 import { repairEvidence } from './repair/evidence'
-import { repairOn } from './repair/gate'
+import { useRepairOn } from './repair/gate'
 import { passiveTestReading, passiveTestRuns, passiveTestSince, startPassiveTest, testablePassive } from './repair/passive'
 import { RepairTests } from './repair/testsSection'
 
@@ -107,7 +108,7 @@ function CardBlock({ e, children }: { e: CardEvidence; children?: ComponentChild
  */
 function AlongsideCards({ cards, today }: { cards: readonly CardEvidence[]; today: string }) {
   const settings = useLive(getSettings, [])
-  const ev = useLive(() => repairEvidence(today), [today])
+  const ev = useLive(() => guardRepair(today, () => repairEvidence(today), null), [today])
   if (cards.length === 0 || !settings || !ev) return null
   const r = copy.repairEvidence
   return (
@@ -232,12 +233,28 @@ function WeatherEvidence({ today }: { today: string }) {
   )
 }
 
+/**
+ * The learning repair's breaker (stage R6): when a rebuild of the record threw on this phone in the last four weeks, one
+ * quiet line says so, and that the suggestions after it were drawn the earlier way until the app was opened again.
+ */
+function RepairFaultLine({ today }: { today: string }) {
+  const f = repairFaults()
+  if (!f || f.last < addDays(today, -FAULT_SHOWN_DAYS)) return null
+  const r = copy.repairEvidence
+  return (
+    <p class="note faint" data-testid="repair-fault">
+      {f.count === 1 ? fill(r.faultOne, { date: formatDayShort(f.last) }) : fill(r.faultMany, { n: String(f.count), first: formatDayShort(f.first), date: formatDayShort(f.last) })}
+    </p>
+  )
+}
+
 export function EvidenceScreen({ onClose }: { onClose: () => void }) {
   const today = blockAt(new Date()).day
   const ev = useLive(() => evidence(today), [today])
   const c = copy.evidence
   // The learning repair (stage R4): its tests by rung on the evidence ladder, with its track record, in place of the cards.
-  const repair = repairOn()
+  // Its breaker (R6) closes it for the session if a rebuild throws, and the screen then redraws as before the switch.
+  const repair = useRepairOn()
   const r = copy.repairEvidence
   if (!ev) return <section class="screen" />
   const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
@@ -251,6 +268,7 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
       <p class="note">{repair ? r.intro : c.intro}</p>
       <p class="note faint">{repair ? r.register : c.register}</p>
       <p class="note faint">{repair ? r.rungsNote : copy.movesTab.tiersNote}</p>
+      <RepairFaultLine today={today} />
 
       {repair ? (
         <>
@@ -280,21 +298,27 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
       <div class="card pad">
         <div class="calc">
           <p class="calc-line" data-testid="nothing-line">
-            {fill(c.nothingLine, { offered: String(ev.nothing.offered), done: String(ev.nothing.done), skipped: String(ev.nothing.skipped) })}
+            {fill(repair ? r.nothingLine : c.nothingLine, { offered: String(ev.nothing.offered), done: String(ev.nothing.done), skipped: String(ev.nothing.skipped) })}
           </p>
         </div>
       </div>
 
-      <h2 class="section">{c.tagsTitle}</h2>
-      <div class="card pad">
-        <div class="calc">
-          {ev.tags.map((t) => (
-            <p key={t.id} class="calc-line">
-              {fill(c.tagLine, { name: copy.catalogue.tagNames[t.id as keyof typeof copy.catalogue.tagNames] ?? t.id, research: steps(t.research.mean), record: t.record ? steps(t.record.mean) : c.tagNone, n: String(Math.round((t.record?.n ?? 0) * 10) / 10) })}
-            </p>
-          ))}
-        </div>
-      </div>
+      {/* Today's tag lending, which requirement 7's one belief model replaces: while the repair is on, the tags' part sits
+          inside each test's pooled belief, and this section is not shown (R6). */}
+      {!repair && (
+        <>
+          <h2 class="section">{c.tagsTitle}</h2>
+          <div class="card pad" data-testid="tags-learned">
+            <div class="calc">
+              {ev.tags.map((t) => (
+                <p key={t.id} class="calc-line">
+                  {fill(c.tagLine, { name: copy.catalogue.tagNames[t.id as keyof typeof copy.catalogue.tagNames] ?? t.id, research: steps(t.research.mean), record: t.record ? steps(t.record.mean) : c.tagNone, n: String(Math.round((t.record?.n ?? 0) * 10) / 10) })}
+                </p>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <h2 class="section">{c.weights}</h2>
       <div class="card pad">

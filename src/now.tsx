@@ -11,6 +11,9 @@ import { Icon } from './icons'
 import { useLive } from './live'
 import { knowsCounts } from './learningFlow'
 import { MoveCard } from './moveCard'
+import { guardRepair } from './repair/breaker'
+import { repairEvidence } from './repair/evidence'
+import { useRepairOn } from './repair/gate'
 import { WeekLine } from './repair/weekLine'
 import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
@@ -92,12 +95,17 @@ function Status({ windows, today, onOpen, onCheckIn }: { windows: readonly Today
   )
 }
 
-/** How much the moves know: one line, and how they pick one tap behind it, in the same words as before. */
-function Knows({ weeks, counts }: { weeks: number; counts: { tried: number; tests: number } | undefined }) {
+/**
+ * How much the moves know: one line, and how they pick one tap behind it. While the learning repair is on (R6), the words
+ * behind the tap describe its draw, and its tests are those with fair draws on both sides; the line itself holds for both.
+ */
+function Knows({ weeks, counts, day }: { weeks: number; counts: { tried: number; tests: number } | undefined; day: string }) {
   const c = copy.move
+  const repair = useRepairOn()
+  const underWay = useLive(() => (repair ? guardRepair(day, () => repairEvidence(day).then((ev) => ev.shown.length + ev.quiet.length), null) : Promise.resolve(null)), [repair, day])
   const w = weeks === 1 ? c.weeksOne : fill(c.weeksMany, { n: String(weeks) })
   const tried = counts?.tried ?? 0
-  const tests = counts?.tests ?? 0
+  const tests = repair ? (underWay ?? 0) : (counts?.tests ?? 0)
   const basis = tried === 0 ? c.knowsResearch : tried === 1 ? c.knowsCorrectedOne : fill(c.knowsCorrected, { n: String(tried) })
   const [lead, rest] = fill(c.knowsShort, { weeks: w, basis }).split(' · ')
   return (
@@ -105,11 +113,17 @@ function Knows({ weeks, counts }: { weeks: number; counts: { tried: number; test
       <Facts items={[lead, rest]} />
       <Disclosure label={copy.disclose.knowsMore} testid="knows-more">
         <p class="note faint no-gap">
-          {fill(c.knows, {
-            weeks: w,
-            tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
-            tests: tests === 0 ? c.knowsTestsNone : tests === 1 ? c.knowsTestsOne : fill(c.knowsTestsN, { n: String(tests) }),
-          })}
+          {repair
+            ? fill(c.knowsRepair, {
+                weeks: w,
+                tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
+                tests: tests === 0 ? c.knowsUnderWayNone : tests === 1 ? c.knowsUnderWayOne : fill(c.knowsUnderWayN, { n: String(tests) }),
+              })
+            : fill(c.knows, {
+                weeks: w,
+                tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
+                tests: tests === 0 ? c.knowsTestsNone : tests === 1 ? c.knowsTestsOne : fill(c.knowsTestsN, { n: String(tests) }),
+              })}
         </p>
       </Disclosure>
     </div>
@@ -274,7 +288,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckI
           and with nothing to tap it keeps to its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? (reason) => void skipOffer(offer, reason ?? null) : undefined} waiting={offer !== here} />}
       {!settings.hideMoves && <WeekLine day={today.day} />}
-      {!settings.hideMoves && <Knows weeks={weeks ?? 0} counts={knows} />}
+      {!settings.hideMoves && <Knows weeks={weeks ?? 0} counts={knows} day={today.day} />}
 
       <ContextChips all={all} today={today.day} index={1} />
 

@@ -30,6 +30,7 @@ import { rainSoon } from './weather'
 import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
+import { guardRepair } from './repair/breaker'
 import { repairEvidence } from './repair/evidence'
 import { repairDraw } from './repair/flow'
 import { repairOn } from './repair/gate'
@@ -316,9 +317,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
     const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))
     const draw = rng ?? Math.random
-    // The learning repair (stage R2, behind its switch): its engine, rebuilt from the record, draws from the day's own
-    // candidates and keeps every chance. A replacement after a skip stays today's, drawn among real moves alone.
-    const made = repairOn() && !replacing ? await repairDraw(checkin, situation, t, drawn.candidates.map((c) => c.id), draw) : null
+    // The learning repair (stage R2; open since R6): its engine, rebuilt from the record, draws from the day's own
+    // candidates and keeps every chance. A replacement after a skip stays today's, drawn among real moves alone. If the
+    // rebuild throws, its breaker closes it for the session and today's engine draws, as before the switch (R6).
+    const made = repairOn() && !replacing ? await guardRepair(day, () => repairDraw(checkin, situation, t, drawn.candidates.map((c) => c.id), draw), null) : null
     const choice = made ? { id: made.offer.moveId, coinFlip: false, samples: {}, runnerUp: null } : chooseFor(set, beliefs, draw)
     if (!choice) return null
     const odds = made ? made.offer.chances : propensities(set.candidates, beliefs, draw)
@@ -403,7 +405,8 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
  */
 async function passiveCoinFor(moveId: string, day: string, settings: Settings, rng: Rng): Promise<{ moveId: string; rode: boolean; chance: number } | null> {
   if (!repairOn() || !testablePassive(moveId) || passiveTestSince(settings, moveId, day) === null) return null
-  if (!passiveTestRuns(settings, moveId, day, (await repairEvidence(day)).shown)) return null
+  const ev = await guardRepair(day, () => repairEvidence(day), null)
+  if (!ev || !passiveTestRuns(settings, moveId, day, ev.shown)) return null
   return { moveId, rode: rng() < PASSIVE_COIN, chance: PASSIVE_COIN }
 }
 

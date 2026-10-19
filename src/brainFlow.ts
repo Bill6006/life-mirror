@@ -21,6 +21,7 @@ import { cardById, type ClaimCard } from './library'
 import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
+import { guardRepairNow } from './repair/breaker'
 import { repairEvidenceFrom } from './repair/evidence'
 import { repairOn } from './repair/gate'
 
@@ -63,8 +64,8 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27).
   const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith }, day)
   // Stage R5: the learning repair's tests and track record, read from the same record, only while the repair is on; closed,
-  // the sheet is as it was.
-  const repair = repairOn() ? repairEvidenceFrom({ checkins, offers, outcomes, days: contexts, weekAnswers: new Map(contexts.filter((c) => c.weekAnswer).map((c) => [c.day, c.weekAnswer === 'yes'])) }, day) : undefined
+  // the sheet is as it was. A rebuild that throws trips the repair's breaker, and the sheet is then as it was closed (R6).
+  const repair = repairOn() ? guardRepairNow(day, () => repairEvidenceFrom({ checkins, offers, outcomes, days: contexts, weekAnswers: new Map(contexts.filter((c) => c.weekAnswer).map((c) => [c.day, c.weekAnswer === 'yes'])) }, day), undefined) : undefined
   const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
@@ -365,7 +366,9 @@ export async function lineActionState(day: string, action: LineAction | null, no
     const s = await getSettings()
     return s.depth === 'short' ? { state: 'done' } : s.lowDemand ? { state: 'gone' } : { state: 'open' }
   }
-  if (!hypothesisOf(action)) return { state: 'gone' }
+  // Under the learning repair every move with a declared test is tested by the draw from the first day, and the draw makes
+  // no coin flip, so a card set now would gather no fair evidence: the tap is no longer there (R6).
+  if (!hypothesisOf(action) || repairOn()) return { state: 'gone' }
   return (await db.cards.filter((c) => c.moveId === action.moveId).count()) > 0 ? { state: 'done' } : { state: 'open' }
 }
 

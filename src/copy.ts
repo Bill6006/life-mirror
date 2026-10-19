@@ -127,10 +127,15 @@ export const copy = {
     nearestLine: '{move}, for {target} over the {window} · since {date} · {rung}',
     nearestNone: 'No open test has randomized draws on both sides yet.',
     alongsideTitle: 'Rode alongside',
-    testItWhat: 'Test it on {reading} over the {window}: on the days it fits, a fair coin decides whether it rides alongside, so its effect there is read as any move’s is, until its test is established or 45 days pass.',
+    testItWhat: 'Test it on {reading} over the {window}, a reading a test can measure: on the days it fits, a fair coin decides whether it rides alongside, so its effect there is read as any move’s is, until its test is established or 45 days pass.',
     testIt: 'Test it',
     testRunning: 'Being tested since {date}: on the days it fits, a fair coin decides whether it rides alongside.',
     trackTitle: 'Track record',
+    /** Evidence's Nothing today while the repair is on (R6): what nothing extra is now. */
+    nothingLine: 'Offered {offered} times, done {done}, skipped {skipped}. Every move’s test compares the move with nothing extra.',
+    /** The repair's breaker (R6): a rebuild of the record threw on this phone. */
+    faultOne: 'On {date} the learning repair could not read your record, so the suggestions after it were drawn the earlier way until the app was opened again.',
+    faultMany: 'The learning repair could not read your record {n} times since {first}, the last on {date}. Each time, the suggestions after it were drawn the earlier way until the app was opened again.',
     title: 'Tests',
     none: 'Nothing tested yet. A test starts once a move has been both offered and held back at moments it fitted.',
     rungs: { none: 'No call yet', early: 'Early sign', likely: 'Likely', established: 'Established' },
@@ -673,6 +678,11 @@ export const copy = {
     knowsTestsNone: 'no test set',
     knowsTestsOne: 'one test set',
     knowsTestsN: '{n} tests set',
+    /** While the learning repair is on (R6): how its draw picks, and its tests with fair draws on both sides. */
+    knowsRepair: 'How much it knows: {weeks} of record, {tried} and {tests}. Each offer is drawn by what each move that fits is expected to do for the moment’s reading: research corrected by your record, older evidence fading over months, weighed by how often you do the move, less its effort. Every move that fits keeps a chance of being drawn, and so does nothing extra, so each offer is a fair comparison; nothing here is a claim until its test says so.',
+    knowsUnderWayNone: 'no test under way yet',
+    knowsUnderWayOne: 'one test under way',
+    knowsUnderWayN: '{n} tests under way',
   },
   ask: {
     title: 'Last time, one small move',
@@ -1472,6 +1482,8 @@ export const copy = {
     exportFailed: 'The share sheet did not open. Try again from the installed app.',
     importTitle: 'Import a hypothesis',
     importNote: 'An outside hypothesis enters only as a card to test, never as something to believe. Paste one line of JSON: move, alternative, target, context, as in {"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}.',
+    /** While the learning repair is on (R6): a pasted hypothesis would make a card nothing reads. */
+    importRepair: 'While the learning repair is on, every move is tested against nothing extra from the first day, at the moments it fits, so a hypothesis needs no card of its own. What each move does shows on Evidence, by its rung.',
     importPlaceholder: 'One line of JSON',
     importButton: 'Add the card',
     importDone: 'Card written. It shows under Moves → Evidence and nowhere else.',

@@ -1,9 +1,10 @@
 import { copy } from './copy'
-import { repairOn } from './repair/gate'
+import { useRepairOn } from './repair/gate'
 
 /** Rule 1 of the plan: facts, calculations and conclusions always look different. */
 export function LegendScreen({ onClose }: { onClose: () => void }) {
   const c = copy.legend
+  const repair = useRepairOn()
   return (
     <section class="screen">
       <header class="screen-head">
@@ -22,7 +23,7 @@ export function LegendScreen({ onClose }: { onClose: () => void }) {
         </div>
         <div class="legend-item last">
           <h2 class="title-sm">{c.conclusions}</h2>
-          <p class="note no-gap">{repairOn() ? copy.repairEvidence.legendConclusions : c.conclusionsNote}</p>
+          <p class="note no-gap">{repair ? copy.repairEvidence.legendConclusions : c.conclusionsNote}</p>
         </div>
       </div>
 
