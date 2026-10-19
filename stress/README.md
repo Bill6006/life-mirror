@@ -28,6 +28,10 @@ Every gate passed, S2 on 10,000 people among them, except C2: the belief interva
 sparse looks, against 90 %. Today's engine stays; the smallest correction is in that write-up, and judging it again
 is the owner's decision.
 
+**Then, at the owner's word, the correction judged once more (2026-10-19, fresh seeds from 400001): PASS, all 23
+gates**, in `RESULTS-6.md`. The stress test has passed by the rule the owner chose, and the learning repair is built
+next.
+
 ## What is here
 
 | File | What it is |
@@ -36,6 +40,7 @@ is the owner's decision.
 | `RESULTS.md` | The first verdict, the judge's output verbatim, the sensitivity runs and the eight-part report. |
 | `RESULTS-2.md` | The verdict after the three corrections: the corrections, the re-settled values, the judge's output verbatim, its independent recount and the report. |
 | `RESULTS-3.md` | The learning week and C3's correction, tuned on seeds 1–1000: the probe that could have said yes, the realistic week and lower rates, and why the last fresh range stays unread. |
+| `RESULTS-6.md` | The verdict by requirement 14's rule after C2's correction, read once more on fresh seeds: PASS, both judges' output verbatim. |
 | `RESULTS-5.md` | The verdict by requirement 14's rule, read once on fresh seeds: both judges' output verbatim, why C2 failed, and the smallest correction. |
 | `RESULTS-4.md` | The design search on seeds 1–1000: every design tried on C1's full step, the probes with the right test from day one, the strongest design's full run with the judge's output verbatim, and why every remaining failure is speed. |
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
@@ -52,6 +57,7 @@ is the owner's decision.
 | `results4.py` | The design search's runs of C1's full step: the table in `RESULTS-4.md`, each file's settings printed beside it. |
 | `validate.sh` | The verdict run: every scenario once, on a range of validation seeds never read before. |
 | `validate14.sh` | The verdict run by requirement 14's rule: the design `RESULTS-4.md` settled, at the sizes that let every gate decide. |
+| `validate14b.sh` | The same, once more after C2's correction, on fresh seeds from 400001. |
 | `summary.ts`, `tune.ts` | Reading a run while settling values on the tuning seeds. |
 | `probeA.ts`, `probeB.ts` | A first look at one simulated person through each engine. |
 
