@@ -314,6 +314,14 @@ test('the breaker, end to end: a rebuild that throws still leaves a move drawn, 
   const [offer] = await offersOf(page, todayKey())
   expect(offer.draw?.engine).toMatch(/^engine-/)
   expect(offer.candidates).toContain(offer.moveId)
+  // Back to Now, whichever block the runner's clock is in: an evening's check-in ends on its summary, with a Done of its own.
+  await expect
+    .poll(async () => {
+      if (await page.locator('nav.tabs').isVisible()) return true
+      await page.getByRole('button', { name: 'Done', exact: true }).first().click({ timeout: 2000 }).catch(() => {})
+      return page.locator('nav.tabs').isVisible()
+    })
+    .toBe(true)
   // Evidence, in the same session: as before the switch, and the line saying what happened.
   await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
   await expect(page.getByRole('button', { name: /^Evidence/ })).toContainText('Every card with its tier, counts and interval')

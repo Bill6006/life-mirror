@@ -644,6 +644,26 @@ const WIDTHS: { w: number; zoom: number; label: string }[] = [
   { w: 300, zoom: 1.3, label: '390 at 130%' },
 ]
 
+/**
+ * Waits until the screen holds still: its blocks, the scroll and the move cue the same over two reads a fifth of a second
+ * apart, longer than the cue's own settling (160 ms). The cue fits its tap area to what passes under it while the page
+ * moves, so a screen still drawing (the learning repair's lines arrive after its rebuild) is read once it has settled.
+ */
+async function settled(page: Page): Promise<void> {
+  let last = ''
+  for (let i = 0; i < 25; i++) {
+    const now = await page.evaluate(() => {
+      const screen = document.querySelector('section.screen')
+      const blocks = screen ? [screen, ...screen.children].map((e) => { const r = e.getBoundingClientRect(); return `${Math.round(r.top)}:${Math.round(r.height)}` }).join(',') : ''
+      const cue = document.querySelector('[data-testid="move-cue"]')?.getBoundingClientRect()
+      return `${Math.round(window.scrollY)}|${blocks}|${cue ? `${Math.round(cue.left)},${Math.round(cue.top)},${Math.round(cue.height)}` : ''}`
+    })
+    if (now === last) return
+    last = now
+    await page.waitForTimeout(200)
+  }
+}
+
 /** Each state, reloaded, reached and audited at one width; what it breaks is added to found. */
 async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typeof WIDTHS)[number], found: string[]): Promise<void> {
   for (const s of states) {
@@ -656,6 +676,7 @@ async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typ
     if (s.open) await s.open(page)
     await page.waitForTimeout(250)
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
+    if (await page.getByTestId('move-cue').count()) await settled(page)
     const issues = await page.evaluate(audit, { zoom: width.zoom })
     for (const i of issues) found.push(`${width.label} · ${s.name} · ${i}`)
   }
