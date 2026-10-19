@@ -105,14 +105,20 @@ try {
     check('the build stamp is the pushed commit', commit === want, `shows ${commit}`)
     await page.goto(LIVE)
     const invite = page.getByTestId('week-invite')
-    check('in the preview, a learning week is offered on Now once a running test has fitted three recent days', await seen(invite))
-    check('it asks "A learning week?", with Yes and Not now', ((await invite.textContent().catch(() => '')) ?? '').includes('A learning week?') && (await page.getByTestId('week-yes').count()) === 1 && (await page.getByTestId('week-not-now').count()) === 1)
-    await shot(invite, 'r3-week-invite')
-    await page.getByTestId('week-yes').click()
-    const running = page.getByTestId('week-running')
-    check('Yes starts a week: "Learning week · day 1 of 7"', await seen(running.filter({ hasText: 'Learning week · day 1 of 7' })))
-    check('and the invitation goes', (await page.getByTestId('week-invite').count()) === 0)
-    await shot(running, 'r3-week-running')
+    const offered = await seen(invite)
+    check('in the preview, a learning week is offered on Now once a running test has fitted three recent days', offered)
+    if (offered) {
+      check('it asks "A learning week?", with Yes and Not now', ((await invite.textContent().catch(() => '')) ?? '').includes('A learning week?') && (await page.getByTestId('week-yes').count()) === 1 && (await page.getByTestId('week-not-now').count()) === 1)
+      await shot(invite, 'r3-week-invite')
+      await page.getByTestId('week-yes').click()
+      const running = page.getByTestId('week-running')
+      check('Yes starts a week: "Learning week · day 1 of 7"', await seen(running.filter({ hasText: 'Learning week · day 1 of 7' })))
+      check('and the invitation goes', (await page.getByTestId('week-invite').count()) === 0)
+      await shot(running, 'r3-week-running')
+    } else {
+      // Nothing to answer: each check that needs the invitation fails, and the run goes on.
+      for (const name of ['it asks "A learning week?", with Yes and Not now', 'Yes starts a week: "Learning week · day 1 of 7"', 'and the invitation goes']) check(name, false, 'no invitation shown')
+    }
     // A check-in today: its move drawn by the repair's engine.
     await page.getByRole('button', { name: /Check in/ }).click()
     for (let i = 0; i < 40; i++) {
