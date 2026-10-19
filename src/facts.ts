@@ -21,6 +21,8 @@ import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
 import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, INGREDIENTS, readingOf } from './score'
 import { usageFacts } from './usageFacts'
+import type { RepairEvidence } from './repair/evidence'
+import { repairFacts } from './repair/facts'
 import type { Where } from './location'
 import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
 
@@ -78,6 +80,8 @@ export interface FactInput {
   weekly?: WeeklyAnalyses
   /** Stage 3, item 6: the weather's switch is on. Absent, no weather fact is written and the sheet is as it was. */
   weatherOn?: boolean
+  /** Stage R5: the learning repair's tests and track record, only while the repair is on. Absent, the sheet is as it was. */
+  repair?: RepairEvidence
 }
 
 /**
@@ -544,6 +548,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const n = c.stats.n.done + c.stats.n.alternative
     facts.push(fact(`test.${c.card.id}`, ['monitoring'], `Card: ${move} against ${alt} on ${readingById(c.card.target).name} in ${c.card.situationKey}: ${c.stats.tier}, ${n} observations.`, { move, moveId: c.card.moveId, alternative: alt, target: readingById(c.card.target).name, tier: c.stats.tier, n, situation: c.card.situationKey }, { n, tier: c.stats.tier }))
   }
+
+  // Stage R5: the learning repair's tests on the evidence ladder and its own track record, beside the cards, only while the
+  // repair is on (requirement 16). Findings the owner can act on come first.
+  if (i.repair) facts.push(...repairFacts(i.repair))
 
   // What the library backs and the record has never tested: a test the brain may propose, one tap to set.
   const tested = new Set(i.evidence.cards.map((c) => c.card.moveId))

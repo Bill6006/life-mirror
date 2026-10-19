@@ -118,8 +118,9 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
                           ? ['commitments', 'faith', 'her']
                           : f.id === 'people.seen'
                             ? ['tier2']
-                            : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test'
-                              ? ['factSheet']
+                            : head === 'week' || head === 'trip' || f.id === 'direction' || f.id === 'record' || f.id === 'untested' || head === 'test' || head === 'ladder' || f.id === 'track'
+                              ? // The learning repair's tests on the ladder and its track record (stage R5) are the test cards' graded successors.
+                                ['factSheet']
                               : ['dayRecord']
   return f.tags.includes('faith') && !own.includes('faith') ? [...own, 'faith'] : own
 }

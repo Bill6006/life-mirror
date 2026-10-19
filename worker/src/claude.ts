@@ -6,7 +6,7 @@ import { checkCoach, rowOf } from './coachCheck'
 import { surfaceGuard, type Surface } from './surface'
 import type { Env } from './env'
 import { loadLibrary, retrieve } from './library'
-import { claudeBriefingText, claudeInstructions, coachBriefingText, journalRules, parseOutput } from './prompt'
+import { claudeBriefingText, claudeInstructions, coachBriefingText, hasLadder, journalRules, parseOutput } from './prompt'
 import { journalDaysOf, journalRefusal, withoutNightDates, type ServedEntry } from '../../src/journalCheck'
 import { coachFirmness, DEFAULT_FIRMNESS, HOW_FIRM, type Firmness, type FirmnessPref } from '../../src/firmness'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, contextFor, gatesFrom, loadCatalogue, logUsageOnSheet, parseContextQuery, partnerBearsOn, privateNames, READABLE, readCategory, readOnDemand, sheetForClaude, type Access, type Catalogue } from './retrieval'
@@ -345,7 +345,7 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
     task: t.task,
     day: t.day,
     askedModel: t.askedModel,
-    instructions: claudeInstructions(t.task as 'line' | 'review', b.firm),
+    instructions: claudeInstructions(t.task as 'line' | 'review', b.firm, hasLadder(b.sheet)),
     briefing: text,
     answer,
     post: { path: '/claude/line', body: { task: t.task, day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },

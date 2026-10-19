@@ -3,7 +3,9 @@
 // opens only in an automated browser holding its key; the owner's phone sees the repair closed until stage R6.
 // Stage R2: a check-in's move drawn by the repair's engine, every chance kept with its version. Stage R3: the learning
 // week's invitation on Now, and Yes starting a week. Stage R4: Evidence's tests by rung with the track record at their
-// head, the move card's rung and its test's words, the Moves door and the Legend. Closed: no week, and Evidence's cards.
+// head, the move card's rung and its test's words, the Moves door and the Legend. Stage R5: the sheet the phone keeps for
+// the Brain carries the repair's tests and its track record. Closed: no week, Evidence's cards, and none of the repair's
+// facts on the sheet.
 // node live-repair.mjs <expected short commit> [screenshot folder]
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium } from './common.mjs'
@@ -139,6 +141,31 @@ async function checkIn(page) {
   await page.waitForTimeout(800)
 }
 
+/** The ids on the fact sheet the phone keeps for the Worker today, once the app has written it (stage R5). */
+async function sheetIds(page) {
+  for (let i = 0; i < 30; i++) {
+    const ids = await page.evaluate(async () => {
+      const n = new Date()
+      const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+      const dbx = await new Promise((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const row = await new Promise((res) => {
+        const q = dbx.transaction(['facts'], 'readonly').objectStore('facts').get(today)
+        q.onsuccess = () => res(q.result)
+        q.onerror = () => res(null)
+      })
+      dbx.close()
+      return row?.sheet?.facts?.map((f) => f.id) ?? null
+    })
+    if (ids) return ids
+    await page.waitForTimeout(300)
+  }
+  return null
+}
+
 /** Today's offers, as the phone holds them. */
 async function todaysOffer(page) {
   return page.evaluate(async () => {
@@ -216,7 +243,13 @@ try {
     await door.click()
     const track = page.getByTestId('track-record')
     const hasTrack = await seen(track)
-    check('Evidence opens with the track record, in requirement 15’s words', hasTrack && /^(No early sign has resolved yet\.|Of \d+ early signs, \d+ held\.)/.test(((await page.getByTestId('track-early').textContent().catch(() => '')) ?? '').trim()))
+    // Stage R4, part 2: Evidence opens with what helps you, then the tests nearest finishing, each with the day it began.
+    const firstSection = hasTrack ? ((await page.locator('h2.section').first().textContent()) ?? '').trim() : ''
+    const walkHelps = page.getByTestId('helps-reading').filter({ hasText: 'Stress' }).getByTestId('helps-move').filter({ hasText: 'A ten-minute walk, now:' })
+    check('Evidence opens with what helps you: the walk under Stress, its record pooled with research, research beside it', firstSection === 'What helps you' && /your record pooled with research \(\+0\.40\)/.test(((await walkHelps.textContent().catch(() => '')) ?? '')), firstSection)
+    check('then the tests nearest finishing, each with the day it began', / · since \w{3}, \w{3} \d{1,2} · /.test(((await page.getByTestId('nearest-test').filter({ hasText: 'A ten-minute walk, now, for Stress' }).textContent().catch(() => '')) ?? '')))
+    if (hasTrack) await shot(page.getByTestId('what-helps'), 'r4-what-helps')
+    check('the track record, in requirement 15’s words', hasTrack && /^(No early sign has resolved yet\.|Of \d+ early signs, \d+ held\.)/.test(((await page.getByTestId('track-early').textContent().catch(() => '')) ?? '').trim()))
     const walk = page.getByTestId('repair-test').filter({ hasText: 'A ten-minute walk, now' }).filter({ hasText: 'for Stress over the next block' })
     const rung = hasTrack ? ((await walk.getByTestId('repair-rung').textContent().catch(() => '')) ?? '').trim() : ''
     check('the walk’s test on stress, run by the queue, calls that it helps', /^(Early sign|Likely|Established): helps/.test(rung) && ((await walk.textContent().catch(() => '')) ?? '').includes('being tested now'), rung)
@@ -226,11 +259,16 @@ try {
     await tab(page, 'Settings')
     await page.getByTestId('settings-legend').click()
     check('the Legend names the rungs', await seen(page.getByText(/always with its rung/), 5000))
+    // Stage R5: the sheet the phone keeps for the Worker carries the repair's tests and its track record.
+    const ids = (await sheetIds(page)) ?? []
+    check('the sheet for the Brain carries the walk’s test on the ladder and the track record', ids.includes('ladder.walk-ten.stress') && ids.includes('track'), `${ids.filter((x) => x.startsWith('ladder.')).length} ladder facts`)
     await ctx.close()
   }
   {
     const { ctx, page } = await fresh(false, { days: 14, effect: true })
     check('closed, Now shows no learning week', (await page.getByTestId('week-invite').count()) === 0 && (await page.getByTestId('week-running').count()) === 0)
+    const closedIds = (await sheetIds(page)) ?? []
+    check('closed, the sheet for the Brain carries none of the repair’s facts', closedIds.length > 5 && !closedIds.some((x) => x.startsWith('ladder.') || x === 'track'), `${closedIds.length} facts`)
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click()
     check('closed, Evidence shows its cards and no track record, as before', (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && (await page.getByTestId('track-record').count()) === 0)

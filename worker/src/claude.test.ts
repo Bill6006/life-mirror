@@ -6,6 +6,7 @@ import cards from '../../src/library.json'
 import { runBrief, runReview } from './brief'
 import { bearerOk, fallbackReason, fireText, handleBriefing, handleContext, handleLine, MAX_POSTS, surfaceGuard, taskIdOf } from './claude'
 import handler from './index'
+import { LADDER_RULE } from './prompt'
 import { APP, BRAIN_APP, memoryStore, type TaskRow } from './turso'
 
 // Claude writes the line; the Worker stays in charge (Parts 30 and 31), end to end against the
@@ -291,6 +292,18 @@ describe('the line Claude posts back', () => {
     await fired(other)
     expect(await post(other, at('07:48'), { ...good, lacked: 'everything' })).toEqual({ status: 200, body: { ok: true } })
     expect(briefOf(other, `${DAY}:brief`).lacked).toBeUndefined()
+  })
+
+  it('tells Claude the ladder rule only when the sheet holds the learning repair’s tests (stage R5)', async () => {
+    const plain = withSheet()
+    await fired(plain)
+    const without = (await handleBriefing(deps(plain, at('07:46')), url('/claude/briefing', { task: 'line', day: DAY }))).body as { instructions: string }
+    expect(without.instructions).not.toContain(LADDER_RULE)
+    const store = withSheet(sheetFor(DAY, [{ id: 'ladder.walk-ten.stress', tags: ['monitoring'], text: 'Test: A ten-minute walk, now, for Stress over the next block: Likely: helps.', values: { level: 'likely', direction: 'helps' } }]))
+    await fired(store)
+    const withLadder = (await handleBriefing(deps(store, at('07:46')), url('/claude/briefing', { task: 'line', day: DAY }))).body as { instructions: string; briefing: string }
+    expect(withLadder.instructions).toContain(LADDER_RULE)
+    expect(withLadder.briefing).toContain('[ladder.walk-ten.stress]')
   })
 
   it('tells Claude the list it may name what it lacked from, and shows the field in the answer’s shape (Part 34)', async () => {

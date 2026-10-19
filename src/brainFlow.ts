@@ -21,6 +21,8 @@ import { cardById, type ClaimCard } from './library'
 import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
+import { repairEvidenceFrom } from './repair/evidence'
+import { repairOn } from './repair/gate'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
@@ -60,7 +62,10 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
   // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27).
   const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith }, day)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}) })
+  // Stage R5: the learning repair's tests and track record, read from the same record, only while the repair is on; closed,
+  // the sheet is as it was.
+  const repair = repairOn() ? repairEvidenceFrom({ checkins, offers, outcomes, days: contexts, weekAnswers: new Map(contexts.filter((c) => c.weekAnswer).map((c) => [c.day, c.weekAnswer === 'yes'])) }, day) : undefined
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
   const said = log.filter((l) => l.situationId !== null && wasShown(l, brainBriefs)).map((l) => ({ day: l.day, situationId: l.situationId }))

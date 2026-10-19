@@ -314,6 +314,45 @@ export function evidenceWordingRefusal(text: string, factIds: readonly string[],
   return null
 }
 
+/** The learning repair's tests on the evidence ladder (stage R5): facts the phone sends only while the repair is on. */
+export function isLadderFact(id: string): boolean {
+  return id.startsWith('ladder.')
+}
+
+const LADDER_RANK: Record<string, number> = { none: 0, early: 1, likely: 2, established: 3 }
+
+/** Words that call an effect reliable: only an established call may stand under them. */
+export const RELIABLE_WORDS = /\b(reliabl[ey]|proven|proved|consistent(?:ly)?|dependabl[ey]|without fail|every time|for sure|definitely|certainly|guaranteed?|always (?:helps|works|lifts|eases|calms))\b/i
+/** Words that keep an effect a possibility, as an early sign or a likely call is said. */
+export const LADDER_HEDGE = /\b(early sign|signs? (?:of|that)|may|might|could|seems?|looks? like|appears? to|likely|probably|tends? to|so far|for now|leans? toward)\b/i
+/** Words that say a move helps the reading it is tested on. Verbs only, so "work" or "a calm evening" never count. */
+export const HELP_WORDS = /\b(help(?:s|ed|ing)?|lifts|lifted|eases|eased|calms|calmed|improv(?:e|es|ed)|boost(?:s|ed)?|works|worked)\b/i
+/** A help word under a negation within three words: "not yet shown to help", "doesn't seem to work". */
+const NEGATED_HELP = /\b(?:not|n['’]t|never|no longer|nor|without)\b(?:\W+\w+){0,3}?\W+(?:help|lift|ease|calm|improve|boost|work)\w*/gi
+
+/**
+ * Why a text speaks of a test more firmly than its rung allows, or null (stage R5; requirement 8: "The ladder governs the
+ * Brain's words, how strongly a move is put, and what may be called reliable."). It reads only the cited ladder facts: no
+ * call yet claims no effect; an early sign or a likely call is said as such, or hedged; only an established call may be
+ * called reliable; and a call that hurts or makes little difference is never said to help. Saying it does not help is honest.
+ */
+export function ladderWordingRefusal(text: string, factIds: readonly string[], sheet: Pick<FactSheet, 'facts'>): string | null {
+  const cited = sheet.facts.filter((f) => isLadderFact(f.id) && factIds.includes(f.id))
+  if (!cited.length) return null
+  const rank = (f: Fact) => LADDER_RANK[String(f.values.level ?? 'none')] ?? 0
+  const reliable = RELIABLE_WORDS.exec(text)
+  if (reliable && !cited.some((f) => f.values.level === 'established')) return `says "${reliable[0]}" of a test below established: only an established call may be called reliable`
+  const help = HELP_WORDS.exec(text.replace(NEGATED_HELP, ' '))
+  if (!help) return null
+  const called = cited.filter((f) => f.values.level !== 'none' && f.values.direction)
+  if (!called.length) return `says "${help[0]}" of a test with no call yet`
+  const helping = called.filter((f) => f.values.direction === 'helps')
+  if (!helping.length) return `says "${help[0]}" of a test whose call does not say it helps`
+  const best = Math.max(...helping.map(rank))
+  if (best < LADDER_RANK.established && !LADDER_HEDGE.test(text)) return `says "${help[0]}" as settled of a test at ${best === 1 ? 'an early sign' : 'likely'}: say it as an early sign, or likely`
+  return null
+}
+
 export function placeRefusal(text: string): string | null {
   return PLACE_CAUSE.test(text) && !USAGE_HEDGE.test(text) ? 'speaks of a place as the cause of a reading; say what went with it' : null
 }
@@ -446,6 +485,11 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   // Stage 3, item 6: a line citing the weather keeps it as context, never the cause.
   if (factIds.some(isWeatherFact)) {
     const why = weatherRefusal(text)
+    if (why) return why
+  }
+  // Stage R5: a line citing the learning repair's tests speaks of their effect no more firmly than their rungs allow.
+  if (factIds.some(isLadderFact)) {
+    const why = ladderWordingRefusal(text, factIds, sheet)
     if (why) return why
   }
   const numbers = numbersRefusal(text, sheet, factIds)

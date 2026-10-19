@@ -1,6 +1,6 @@
 import { isUsageFact } from '../../src/useShared'
 import { EVIDENCE_WORDING, GRADE_PHRASES, isLocationFact, isMemoryFact, isWeatherFact, isWeeklyFact, LACKED, LACKED_MEANS, LINE_CUES, MAX_LACKED, MAX_WORDS, MODES, REVIEW_PART_WORDS, REVIEW_QUESTION_WORDS } from '../../src/brainShared'
-import type { RankedLine } from '../../src/factTypes'
+import type { FactSheet, RankedLine } from '../../src/factTypes'
 import type { Firmness, FirmnessPref } from '../../src/firmness'
 import type { CoachCoreKey, LineBriefing, Said } from './briefing'
 import { COACH_WORDS } from './coachCheck'
@@ -155,25 +155,37 @@ const PICK_FIELD = ['"version": "..."}', '"version": "...", "firmness": "..."}']
 export const EVIDENCE_RULE = `- Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.`
 const LAST_RULE = '- Plain words, second person, no headings, no lists, no emoji.'
 
+/**
+ * The learning repair (stage R5): its tests on the evidence ladder, the facts ladder.*, and its track record, the fact
+ * track. Said only to a writer whose sheet holds a ladder fact, so while the repair is closed every prompt reads exactly as
+ * before.
+ */
+export const LADDER_RULE = `- The facts ladder.* are the engine's own randomised tests, each on a rung of the evidence ladder: speak of a move's effect no more firmly than its rung. No call yet claims no effect; an early sign is said as an early sign, or with may or might; a likely call as likely; only an established call may be called reliable or proven; and a move whose call hurts or makes little difference is never said to help. The fact track says how its earlier calls have held.`
+
+/** Whether a sheet holds the learning repair's tests: only then is the ladder rule said. */
+export function hasLadder(sheet: Pick<FactSheet, 'facts'>): boolean {
+  return sheet.facts.some((f) => f.id.startsWith('ladder.'))
+}
+
 /** A system text with the evidence rule, once its gate is open; exactly as before while it is closed. */
-export function withEvidenceRule(system: string, gate: 'gated' | 'open' = EVIDENCE_WORDING): string {
-  return gate === 'open' ? system.replace(LAST_RULE, () => `${EVIDENCE_RULE}\n${LAST_RULE}`) : system
+export function withEvidenceRule(system: string, gate: 'gated' | 'open' = EVIDENCE_WORDING, ladder = false): string {
+  return gate === 'open' ? system.replace(LAST_RULE, () => `${EVIDENCE_RULE}\n${ladder ? `${LADDER_RULE}\n` : ''}${LAST_RULE}`) : system
 }
 
 /** The free chain's system prompts: as they were, or with How firm once its gate is open, and the evidence rule once its own is. */
-export function lineSystem(firm?: FirmnessPref | null): string {
-  return withEvidenceRule(firm ? firmed(SYSTEM, firmBlock(firm, 'candidates'), ...TEXT_FIELD) : SYSTEM)
+export function lineSystem(firm?: FirmnessPref | null, ladder = false): string {
+  return withEvidenceRule(firm ? firmed(SYSTEM, firmBlock(firm, 'candidates'), ...TEXT_FIELD) : SYSTEM, EVIDENCE_WORDING, ladder)
 }
 
-export function reviewSystem(firm?: FirmnessPref | null): string {
-  return withEvidenceRule(firm ? firmed(REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD) : REVIEW_SYSTEM)
+export function reviewSystem(firm?: FirmnessPref | null, ladder = false): string {
+  return withEvidenceRule(firm ? firmed(REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD) : REVIEW_SYSTEM, EVIDENCE_WORDING, ladder)
 }
 
 /** Claude's instructions for a task, served with the briefing (Parts 30 to 32); with How firm once its gate is open (Pass 2), and the evidence rule for a line or a review once its own is (Pass 4). */
-export function claudeInstructions(task: 'line' | 'review' | 'coach', firm?: FirmnessPref | null): string {
-  if (!firm) return task === 'line' ? withEvidenceRule(CLAUDE_LINE_SYSTEM) : task === 'review' ? withEvidenceRule(CLAUDE_REVIEW_SYSTEM) : CLAUDE_COACH_SYSTEM
-  if (task === 'line') return withEvidenceRule(firmed(CLAUDE_LINE_SYSTEM, firmBlock(firm, 'line'), ...TEXT_FIELD))
-  if (task === 'review') return withEvidenceRule(firmed(CLAUDE_REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD))
+export function claudeInstructions(task: 'line' | 'review' | 'coach', firm?: FirmnessPref | null, ladder = false): string {
+  if (!firm) return task === 'line' ? withEvidenceRule(CLAUDE_LINE_SYSTEM, EVIDENCE_WORDING, ladder) : task === 'review' ? withEvidenceRule(CLAUDE_REVIEW_SYSTEM, EVIDENCE_WORDING, ladder) : CLAUDE_COACH_SYSTEM
+  if (task === 'line') return withEvidenceRule(firmed(CLAUDE_LINE_SYSTEM, firmBlock(firm, 'line'), ...TEXT_FIELD), EVIDENCE_WORDING, ladder)
+  if (task === 'review') return withEvidenceRule(firmed(CLAUDE_REVIEW_SYSTEM, firmBlock(firm, 'review'), ...CHANGE_FIELD), EVIDENCE_WORDING, ladder)
   return firmed(CLAUDE_COACH_SYSTEM, firmBlock(firm, 'coach'), ...PICK_FIELD)
 }
 
@@ -270,7 +282,7 @@ function userContent(task: string, b: LineBriefing): string {
 /** The first call: three candidate lines for the day, from the briefing alone. */
 export function buildMessages(b: LineBriefing): Message[] {
   return [
-    { role: 'system', content: lineSystem(b.firm) },
+    { role: 'system', content: lineSystem(b.firm, hasLadder(b.sheet)) },
     { role: 'user', content: userContent(`One line for ${b.forDay}, the day ahead: three candidates.`, b) },
   ]
 }
@@ -286,7 +298,7 @@ export function buildChoiceMessages(b: LineBriefing, candidates: readonly { mode
 
 export function buildReviewMessages(b: LineBriefing): Message[] {
   return [
-    { role: 'system', content: reviewSystem(b.firm) },
+    { role: 'system', content: reviewSystem(b.firm, hasLadder(b.sheet)) },
     { role: 'user', content: userContent(`The weekly review, written on ${b.forDay}: three parts, for the week that ended and the one that begins.`, b) },
   ]
 }

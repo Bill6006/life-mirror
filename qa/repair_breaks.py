@@ -60,6 +60,19 @@ ES = 'src/evidenceScreen.tsx'
 MC = 'src/moveCard.tsx'
 MS = 'src/movesScreen.tsx'
 LG = 'src/legend.tsx'
+HT = 'src/repair/helps.test.ts'
+TS = 'src/repair/testsSection.tsx'
+BF = 'src/brainFlow.ts'
+RF = 'src/repair/facts.ts'
+LW = 'src/ladderWording.test.ts'
+FX = 'src/repair/facts.test.ts'
+SH = 'src/repair/sheet.test.ts'
+SC = 'src/repair/sheetClosed.test.ts'
+WR = 'worker/src/retrieval.ts'
+WP = 'worker/src/prompt.ts'
+WC = 'worker/src/claude.ts'
+LT = 'worker/src/ladder.test.ts'
+CT = 'worker/src/claude.test.ts'
 FL = 'src/repair/flow.ts'
 WL = 'src/repair/weekLine.tsx'
 GA = 'src/repair/gate.ts'
@@ -206,6 +219,81 @@ TABLE = [
     dict(id='legend-rungs', file=LG, tests=[RS],
          old="repairOn() ? copy.repairEvidence.legendConclusions",
          new="false ? copy.repairEvidence.legendConclusions"),
+    dict(id='helps-best-first', file=EV, tests=[HT],
+         old="sort((a, b) => b.belief - a.belief || a.key.localeCompare(b.key))",
+         new="sort((a, b) => a.key.localeCompare(b.key))"),
+    dict(id='helps-only-helping', file=EV, tests=[HT],
+         old="h.target === target && h.belief > 0",
+         new="h.target === target"),
+    dict(id='helps-three-at-most', file=EV, tests=[HT],
+         old="a.key.localeCompare(b.key)).slice(0, 3) }))",
+         new="a.key.localeCompare(b.key)).slice(0, 4) }))"),
+    dict(id='research-beside', file=EV, tests=[HT],
+         old="research: hasMove(t.moveId) ? moveById(t.moveId).prior.effect : 0",
+         new="research: 0"),
+    dict(id='nearest-open-only', file=EV, tests=[HT],
+         old="all.filter((n) => n.level !== 'established')",
+         new="all.filter(() => true)"),
+    dict(id='nearest-three-at-most', file=EV, tests=[HT],
+         old="b.nearness - a.nearness || a.key.localeCompare(b.key)).slice(0, 3)",
+         new="b.nearness - a.nearness || a.key.localeCompare(b.key)).slice(0, 4)"),
+    dict(id='nearness-of-little', file=EV, tests=[HT],
+         old="margin > 0 ? margin / (Math.abs(beta) + half) : 0",
+         new="0"),
+    dict(id='began-first-decision', file=EV, tests=[HT],
+         old="began: dayOf(t.decisions[0].d)",
+         new="began: dayOf(t.decisions[t.decisions.length - 1].d)"),
+    dict(id='began-names-the-day', file=EV, tests=[HT],
+         old="return evidenceOf(built.engine, (d) => addDays(built.epoch, d))",
+         new="return evidenceOf(built.engine)"),
+    dict(id='helps-opens-evidence', file=TS, tests=[RS],
+         old="      <HelpsBlock ev={ev} />\n",
+         new=""),
+    dict(id='ladder-only-cited', file=BS, tests=[LW],
+         old="const cited = sheet.facts.filter((f) => isLadderFact(f.id) && factIds.includes(f.id))",
+         new="const cited = sheet.facts.filter((f) => isLadderFact(f.id))"),
+    dict(id='ladder-reliable-established', file=BS, tests=[LW],
+         old="if (reliable && !cited.some((f) => f.values.level === 'established'))",
+         new="if (false && reliable)"),
+    dict(id='ladder-negation-honest', file=BS, tests=[LW],
+         old="const help = HELP_WORDS.exec(text.replace(NEGATED_HELP, ' '))",
+         new="const help = HELP_WORDS.exec(text)"),
+    dict(id='ladder-no-call', file=BS, tests=[LW],
+         old="const called = cited.filter((f) => f.values.level !== 'none' && f.values.direction)",
+         new="const called = cited"),
+    dict(id='ladder-direction', file=BS, tests=[LW],
+         old="const helping = called.filter((f) => f.values.direction === 'helps')",
+         new="const helping = called"),
+    dict(id='ladder-hedged-below-established', file=BS, tests=[LW],
+         old="if (best < LADDER_RANK.established && !LADDER_HEDGE.test(text))",
+         new="if (false)"),
+    dict(id='ladder-every-line', file=BS, tests=[LW],
+         old="  if (factIds.some(isLadderFact)) {\n    const why = ladderWordingRefusal(text, factIds, sheet)",
+         new="  if (false) {\n    const why = ladderWordingRefusal(text, factIds, sheet)"),
+    dict(id='ladder-on-the-sheet', file=BF, tests=[SH],
+         old=", ...(repair ? { repair } : {}) })",
+         new=" })"),
+    dict(id='ladder-sheet-open-only', file=BF, tests=[SC],
+         old="const repair = repairOn() ? repairEvidenceFrom(",
+         new="const repair = true ? repairEvidenceFrom("),
+    dict(id='ladder-act-first', file=RF, tests=[FX],
+         old="return group(a) - group(b) || ",
+         new="return "),
+    dict(id='ladder-filed-with-the-sheet', file=WR, tests=[LT],
+         old=" || head === 'ladder' || f.id === 'track'",
+         new=""),
+    dict(id='ladder-rule-only-with-ladder', file=WP, tests=[LT],
+         old="return sheet.facts.some((f) => f.id.startsWith('ladder.'))",
+         new="return true"),
+    dict(id='ladder-rule-free-line', file=WP, tests=[LT],
+         old="{ role: 'system', content: lineSystem(b.firm, hasLadder(b.sheet)) }",
+         new="{ role: 'system', content: lineSystem(b.firm) }"),
+    dict(id='ladder-rule-free-review', file=WP, tests=[LT],
+         old="{ role: 'system', content: reviewSystem(b.firm, hasLadder(b.sheet)) }",
+         new="{ role: 'system', content: reviewSystem(b.firm) }"),
+    dict(id='ladder-rule-claude', file=WC, tests=[CT],
+         old="instructions: claudeInstructions(t.task as 'line' | 'review', b.firm, hasLadder(b.sheet)),",
+         new="instructions: claudeInstructions(t.task as 'line' | 'review', b.firm),"),
 ]
 
 
