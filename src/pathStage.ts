@@ -5,7 +5,7 @@ import type { CoachBlock } from './factTypes'
 import type { Aim, CheckIn, CoachPick, DayContext, Offer, Outcome, PathMark } from './db'
 import { fill } from './format'
 import { heldPickup } from './dayShape'
-import { inPerson, peopleAround } from './people'
+import { inPerson, outAmongPeople, peopleAround } from './people'
 
 // The path commitment (Part 24), the pure part: the stage a path stands on, derived from the
 // record and never stored; the reps that fit this block by their own prerequisites (Pass 3); the
@@ -564,7 +564,7 @@ export interface PathTodayInput {
   aim: Aim
   offers: readonly Offer[]
   outcomes: readonly Outcome[]
-  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople'> | null
+  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'> | null
   day: string
   block: Block
   /** Stage 3, item 5: this morning's Social energy, 1 Empty to 5 Drawn out, or null when it was not answered. */
@@ -690,10 +690,10 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
 }
 
 /** Today's shape for a block, in words, from the day record alone (tier 1). */
-export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer'> | null, block: Block): string {
+export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'> | null, block: Block): string {
   const c = copy.path.shape
   if (!ctx) return c.unknown
-  const why = ctx.atOffice && block !== 'evening' ? c.office : ctx.churchDay && block === 'morning' ? c.church : heldPickup(ctx) && peopleAround(ctx, block) ? c.daycare : null
+  const why = ctx.atOffice && block !== 'evening' ? c.office : ctx.churchDay && block === 'morning' ? c.church : heldPickup(ctx) && peopleAround(ctx, block) ? c.daycare : outAmongPeople(ctx) ? c.amongPeople : null
   return why ? fill(c.around, { why }) : c.nobody
 }
 

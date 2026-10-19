@@ -251,15 +251,6 @@ export const SHORT_READINGS: readonly ReadingId[] = ['mood', 'energy', 'stress']
 /** The two sleep readings: the morning's, about the night before. */
 export const SLEEP_READINGS: readonly ReadingId[] = ['sleepHours', 'sleepQuality']
 
-/**
- * Motivation and Confidence, asked in turn, one each morning, day by day (stage 3, item 5): the one a day asks.
- * The other is not asked that morning, never missing or skipped.
- */
-export function turnOf(day: string): 'motivation' | 'confidence' {
-  const [y, m, d] = day.split('-').map(Number)
-  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000) % 2 === 0 ? 'motivation' : 'confidence'
-}
-
 /** What a day's readings depend on beyond the block (stage 3, item 5): the day, and its morning check-in, or null when there is none. */
 export interface AskedDay {
   day: string
@@ -268,18 +259,15 @@ export interface AskedDay {
 
 /**
  * The readings a block asks at a given depth, in the block's own order, less any context reading you retired.
- * Given the day (stage 3, item 5), at full depth: the morning asks Motivation or Confidence in turn, and an
- * afternoon after a morning that left a sleep reading unanswered asks it first, late, about the night before.
- * Short depth, low-demand mode's included, asks its three readings alone.
+ * Given the day (stage 3, item 5), at full depth: an afternoon after a morning that left a sleep reading unanswered asks
+ * it first, late, about the night before. Every morning asks both Motivation and Confidence (the owner's fix of
+ * 2026-10-19: never one in turn to save a tap); mornings before it asked them in turn, and keep their
+ * "Not asked". Short depth, low-demand mode's included, asks its three readings alone.
  */
 export function askedReadings(block: Block, depth: Depth, retired: readonly string[] = [], at?: AskedDay): readonly ReadingId[] {
   const all = blockReadings(block).filter((id) => !retired.includes(id))
   if (depth === 'short') return all.filter((id) => SHORT_READINGS.includes(id))
   if (!at) return all
-  if (block === 'morning') {
-    const notToday = turnOf(at.day) === 'motivation' ? 'confidence' : 'motivation'
-    return all.filter((id) => id !== notToday)
-  }
   if (block === 'afternoon') return [...SLEEP_READINGS.filter((id) => !retired.includes(id) && at.morning?.answers[id] === undefined), ...all]
   return all
 }

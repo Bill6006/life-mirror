@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto'
+import Dexie from 'dexie'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, BLOCKS } from './blocks'
 import { awayDays, awayStatus, endAway, homeDaysOnly, setAway } from './awayFlow'
@@ -6,7 +7,7 @@ import { factSheet } from './brainFlow'
 import { dayGuard, HOME_WORDS, shapeFor, validateAction } from './brainShared'
 import type { FactSheet } from './factTypes'
 import { liveMoves, moveById } from './catalogue'
-import { awayShaped, awayUnshaped, contextFromWeek, db, ensureDayContext, getSettings, updateSettings, type CheckIn, type DayContext, type Offer } from './db'
+import { awayShaped, awayUnshaped, contextFromWeek, db, ensureDayContext, getSettings, setDayContext, updateSettings, type CheckIn, type DayContext, type Offer } from './db'
 import { factById, tripFact } from './facts'
 import { chooseModel, forecastsDue, type Chosen } from './forecast'
 import { HOME_ONLY_MOVES, needsHome } from './homeOnly'
@@ -30,6 +31,28 @@ vi.mock('./postWindow', async (original) => ({ ...(await original<typeof import(
 
 
 const HOME_KEY = 'life-mirror.preview.homeOnly'
+
+/**
+ * The owner's tap, landing just as a writer has read the day and before it writes it back (2026-10-19): in a
+ * transaction of its own, as a tap is. `skip`: the reads of the day to let pass first. `done` says how many landed.
+ */
+function tapAfterRead(day: string, patch: Parameters<typeof setDayContext>[1], skip = 0) {
+  const read = db.days.get.bind(db.days)
+  const taps: Promise<void>[] = []
+  let seen = 0
+  const spy = vi.spyOn(db.days, 'get').mockImplementation(((key: string) => {
+    const r = read(key)
+    if (key === day && seen++ === skip) taps.push(Dexie.ignoreTransaction(() => setDayContext(day, patch)))
+    return r
+  }) as unknown as typeof db.days.get)
+  return {
+    done: async () => {
+      await Promise.all(taps)
+      spy.mockRestore()
+      return taps.length
+    },
+  }
+}
 const AWAY_KEY = 'life-mirror.preview.away'
 
 /** An automated browser with the previews on: the way a test opens a gate that ships closed. */
@@ -211,6 +234,22 @@ describe('a trip’s day, shaped', () => {
     expect(awayStatus((await getSettings()).away, addDays(W, 2))).toBeNull()
   })
 
+  it('never undoes a chip tapped while the trip reshapes the day, set or ended (2026-10-19)', async () => {
+    preview()
+    vi.useFakeTimers({ now: new Date(`${W}T09:00:00`), toFake: ['Date'] })
+    await ensureDayContext(W, await weekWithOffice())
+    const setting = tapAfterRead(W, { unwell: true })
+    expect(await setAway(W, addDays(W, 2))).toBeNull()
+    expect(await setting.done()).toBe(1)
+    expect(await db.days.get(W)).toMatchObject({ unwell: true, changed: true, atOffice: false })
+    expect((await db.days.get(W))?.awayFromHome).toBeDefined()
+    const ending = tapAfterRead(W, { amongPeople: true })
+    await endAway()
+    expect(await ending.done()).toBe(1)
+    expect(await db.days.get(W)).toMatchObject({ unwell: true, amongPeople: true, atOffice: true })
+    expect((await db.days.get(W))?.awayFromHome).toBeUndefined()
+  })
+
   it('says a trip set ahead, and none once it has passed or while the gate is closed', () => {
     const r = { from: '2026-10-20', to: '2026-10-25', setAt: '' }
     expect(awayStatus(r, '2026-10-15', 'open')).toEqual({ state: 'ahead', range: r })
@@ -289,22 +328,22 @@ describe('the sheet on a trip', () => {
     await db.open()
   })
 
-  it('says the day is away from home, today and tomorrow, and the trip, once the gate is open', async () => {
+  it('says the day is out of town, today and tomorrow, and the trip, once the gate is open (renamed at the owner’s word, 2026-10-19)', async () => {
     preview()
     const s = await updateSettings((x) => ({ ...x, week: { ...x.week, officeDays: { ...x.week.officeDays, 3: true } }, away: { from: D, to: addDays(D, 4), setAt: '' } }))
     await db.days.put(contextFromWeek(D, s))
     await db.checkins.bulkAdd(BLOCKS.map((b) => checkin(addDays(D, -1), b)))
     const sheet = await factSheet(D, new Date(`${D}T08:00:00`))
     const today = factById(sheet, 'week.today')
-    expect(today?.text).toContain('away from home on a trip')
+    expect(today?.text).toContain('out of town, traveling')
     expect(today?.text).not.toContain('at the office')
     expect(today?.values).toMatchObject({ trip: 1, office: 0, daycare: 0 })
     expect(factById(sheet, 'week.tomorrow')?.values).toMatchObject({ trip: 1 })
     const trip = factById(sheet, 'trip')
     expect(trip?.values).toMatchObject({ state: 'away', from: D, to: addDays(D, 4), a0: 1 })
-    expect(trip?.text).toContain('You are away from home on a trip')
+    expect(trip?.text).toContain('You are out of town, traveling')
     // The day guard holds a line to it.
-    expect(dayGuard('Open the windows at home for ten minutes.', sheet, D)).toMatch(/away from home/)
+    expect(dayGuard('Open the windows at home for ten minutes.', sheet, D)).toMatch(/out of town/)
     expect(dayGuard('A walk on the beach before lunch.', sheet, D)).toBeNull()
     expect(shapeFor(sheet, D)?.trip).toBe(true)
   })
@@ -339,7 +378,7 @@ describe('the weekly readings, with a trip on the sheet', () => {
     const sheet = SITUATION_SHEETS['commitment-thinning']()
     const before = phoneReview(sheet, [])
     const after = phoneReview({ ...sheet, facts: [...sheet.facts, trip([0, 0, 0, 4])] }, [])
-    expect(after.didNot).toContain('A trip away from home held 4 of these seven days')
+    expect(after.didNot).toContain('A trip out of town held 4 of these seven days')
     expect(after.didNot).not.toBe(before.didNot)
   })
 })
@@ -380,7 +419,7 @@ describe('the day guard, once a sheet says the day is a trip’s', () => {
     const sheet = (trip: boolean) => ({ version: 1, day: '2026-10-14', builtAt: '', hour: 8, weeks: 4, days: 30, direction: null, said: [], shortlist: [], facts: [{ id: 'week.today', tags: [], text: '', values: { weekday: 'Wednesday', daycare: 0, office: 0, church: 0, studyNight: 0, ...(trip ? { trip: 1 } : {}) } }] }) as never
     for (const l of ['Open the windows at home.', 'Clear the kitchen counter in your kitchen.', 'Tidy one surface around the house.']) {
       expect(HOME_WORDS.test(l), l).toBe(true)
-      expect(dayGuard(l, sheet(true), '2026-10-14')).toMatch(/away from home on a trip/)
+      expect(dayGuard(l, sheet(true), '2026-10-14')).toMatch(/out of town, traveling/)
       expect(dayGuard(l, sheet(false), '2026-10-14')).toBeNull()
     }
     expect(dayGuard('A walk by the water before lunch.', sheet(true), '2026-10-14')).toBeNull()
@@ -490,7 +529,7 @@ describe('no plan on a trip’s day', () => {
     const aim = sheet.facts.find((f) => f.id.startsWith('aim.')) as { id: string }
     const action = { kind: 'plan', aimId: Number(aim.id.slice(4)), cue: 'afterBedtime' }
     expect(validateAction(action, sheet, sheet.day)).toMatchObject({ ok: true })
-    expect(validateAction(action, withTrip(sheet), sheet.day)).toMatchObject({ ok: false, reason: expect.stringContaining('away from home on a trip') })
+    expect(validateAction(action, withTrip(sheet), sheet.day)).toMatchObject({ ok: false, reason: expect.stringContaining('out of town, traveling') })
     // No day named, or another day the sheet does not shape: as before.
     expect(validateAction(action, withTrip(sheet))).toMatchObject({ ok: true })
     expect(validateAction({ kind: 'depth', value: 'short' }, withTrip(sheet), sheet.day).ok).toBe(validateAction({ kind: 'depth', value: 'short' }, sheet, sheet.day).ok)

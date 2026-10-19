@@ -4,12 +4,12 @@ import { hasMove, moveById, moves } from './catalogue'
 import { db, ensureDayContext, getSettings, setDayContext, type DayContext, type Offer, type Outcome } from './db'
 import { candidatesFor, type Situation } from './offers'
 import { todayState } from './offerFlow'
-import { blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, orderByEvidence, peopleAround, uncoveredContexts } from './people'
+import { blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, officeDayAtOffice, orderByEvidence, outAmongPeople, peopleAround, uncoveredContexts } from './people'
 
 // People around (Part 20): today's shape decides whether an in-person rep may be offered; what
 // completed reps suggest is evidence, and the draw never reads it.
 
-const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople'> => ({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, ...patch })
+const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'> => ({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, ...patch })
 
 describe('tier 1: today’s shape, and nothing else', () => {
   it('puts people around on an office day’s working blocks, the church morning, and a daycare day’s drop-off and pickup blocks', () => {
@@ -26,6 +26,26 @@ describe('tier 1: today’s shape, and nothing else', () => {
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false, atOffice: true }), b as 'morning'))).toEqual([true, true, false])
     expect(blockOfTime('17:30')).toBe('evening')
     expect(blockOfTime('12:00')).toBe('afternoon')
+  })
+
+  it('reads a scheduled office day at the office as out among people, in every block, without asking (2026-10-19)', () => {
+    const blocks = ['morning', 'afternoon', 'evening'] as const
+    // Scheduled at the office, and not marked Working from home.
+    const office = ctx({ officeDay: true, atOffice: true })
+    expect(blocks.map((b) => peopleAround(office, b))).toEqual([true, true, true])
+    expect([outAmongPeople(office), officeDayAtOffice(office)]).toEqual([true, true])
+    // Marked Working from home: nothing inferred, and the owner's answer stands either way.
+    const home = ctx({ officeDay: true, atOffice: false })
+    expect(blocks.map((b) => peopleAround(home, b))).toEqual([false, false, false])
+    expect([outAmongPeople(home), officeDayAtOffice(home)]).toEqual([false, false])
+    expect(blocks.map((b) => peopleAround(ctx({ officeDay: true, atOffice: false, amongPeople: true }), b))).toEqual([true, true, true])
+    // A home day marked at the office is no scheduled office day: the question is still asked.
+    const marked = ctx({ officeDay: false, atOffice: true })
+    expect(blocks.map((b) => peopleAround(marked, b))).toEqual([true, true, false])
+    expect([outAmongPeople(marked), officeDayAtOffice(marked)]).toEqual([false, false])
+    // A day made before the record kept it reads as before, until the week fills it in.
+    expect(officeDayAtOffice(ctx({ atOffice: true }))).toBe(false)
+    expect([outAmongPeople(null), officeDayAtOffice(undefined)]).toEqual([false, false])
   })
 
   it('tags every move that needs another person, and only those: in person, remote, or her', () => {
@@ -82,6 +102,49 @@ describe('tier 1 in today’s state, and history that never touches it', () => {
     await setDayContext('2026-09-23', { amongPeople: true })
     expect((await todayState('2026-09-23', settings, at)).peopleAround).toEqual({ morning: true, afternoon: true, evening: true })
     expect((await todayState('2026-09-24', settings, new Date(2026, 8, 24, 19, 0))).peopleAround?.evening).toBe(false)
+  })
+
+  it('keeps on the day whether the week scheduled it at the office, and lets the inference follow the office chip both ways (2026-10-19)', async () => {
+    const settings = await getSettings()
+    const officeWeek = { ...settings, week: { ...settings.week, officeDays: { ...settings.week.officeDays, 1: true } } }
+    // A Monday the week holds at the office, in the evening: people are around, inferred.
+    await ensureDayContext('2026-09-21', officeWeek)
+    expect((await db.days.get('2026-09-21'))?.officeDay).toBe(true)
+    const evening = new Date(2026, 8, 21, 19, 0)
+    expect((await todayState('2026-09-21', officeWeek, evening)).peopleAround).toEqual({ morning: true, afternoon: true, evening: true })
+    // Working from home: the inference is gone, and the owner's own mark is never written by it.
+    await setDayContext('2026-09-21', { atOffice: false })
+    expect((await todayState('2026-09-21', officeWeek, evening)).peopleAround).toEqual({ morning: false, afternoon: false, evening: false })
+    expect((await db.days.get('2026-09-21'))?.amongPeople).toBeUndefined()
+    // At the office again: it comes back.
+    await setDayContext('2026-09-21', { atOffice: true })
+    expect((await todayState('2026-09-21', officeWeek, evening)).peopleAround?.evening).toBe(true)
+    expect((await db.days.get('2026-09-21'))?.amongPeople).toBeUndefined()
+  })
+
+  it('fills in a day made before it from the week, once, and never touches a choice in it (2026-10-19)', async () => {
+    const settings = await getSettings()
+    const officeWeek = { ...settings, week: { ...settings.week, officeDays: { ...settings.week.officeDays, 1: true } } }
+    // A Monday's record as an older version made it: no officeDay, and marked Working from home by hand.
+    await ensureDayContext('2026-09-21', officeWeek)
+    const made = (await db.days.get('2026-09-21')) as DayContext
+    const { officeDay: _gone, ...older } = made
+    await db.days.put({ ...older, atOffice: false, changed: true, updatedAt: '2026-09-21T07:00:00.000Z' })
+    expect((await db.days.get('2026-09-21'))?.officeDay).toBeUndefined()
+    const read = await ensureDayContext('2026-09-21', officeWeek)
+    expect(read.officeDay).toBe(true)
+    const kept = (await db.days.get('2026-09-21')) as DayContext
+    expect([kept.officeDay, kept.atOffice, kept.changed, kept.updatedAt]).toEqual([true, false, true, '2026-09-21T07:00:00.000Z'])
+    // Read again under a week that has since changed: what the day kept stands.
+    await ensureDayContext('2026-09-21', settings)
+    expect((await db.days.get('2026-09-21'))?.officeDay).toBe(true)
+    // A day only made from the week stays one: the fill-in is no change by hand.
+    await ensureDayContext('2026-09-22', settings)
+    const { officeDay: _none, ...olderTuesday } = (await db.days.get('2026-09-22')) as DayContext
+    await db.days.put(olderTuesday)
+    await ensureDayContext('2026-09-22', settings)
+    const tuesday = (await db.days.get('2026-09-22')) as DayContext
+    expect([tuesday.officeDay, tuesday.changed, tuesday.updatedAt]).toEqual([false, false, undefined])
   })
 
   it('offers the same candidates with and without eight weeks of in-person reps done in that context', async () => {

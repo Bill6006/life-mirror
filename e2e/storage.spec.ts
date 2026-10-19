@@ -360,6 +360,68 @@ test('a phone whose database is cleared gets every record back, hands out no id 
   await c.context.close()
 })
 
+// The owner's fixes of 2026-10-19: a choice made by hand survives tab changes, reloads, sync, recalibration and the app
+// reopening. What this phone alone keeps, Location Context and its places, has a second copy in local storage; and a day
+// changed by hand comes back from the cloud over the copy Now makes again from the week before the sync has run.
+test('a database the browser cleared keeps this phone’s own choices, Location Context on with its places, and a day changed by hand (2026-10-19)', async ({ browser }) => {
+  test.setTimeout(180_000)
+  const cloud = new Cloud()
+  const DAY = '2026-03-09'
+  const at = async (p: Phone) => {
+    await p.context.grantPermissions(['geolocation'])
+    await p.context.setGeolocation({ latitude: 51.50722, longitude: -0.1275, accuracy: 25 })
+  }
+  // A Monday the week holds at home.
+  const a = await phone(browser, cloud, new Date(2026, 2, 9, 9, 5))
+  await at(a)
+  await connectPhone(a, cloud)
+  // Location Context turned on, and Home named where the phone is.
+  await openSettings(a.page, 'settings-location')
+  await a.page.getByTestId('location-switch').click()
+  await expect(a.page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+  await a.page.getByTestId('location-name-home').click()
+  await expect(a.page.getByTestId('location-name-status')).toHaveText('Named. It is known from now on.')
+  // The day changed by hand: at the office today, and synced.
+  await a.page.goto('./')
+  await checkIn(a.page)
+  await a.page.getByTestId('block-row').first().click()
+  await a.page.getByTestId('chip-office').click()
+  await expect(a.page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
+  await a.page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  await expect.poll(() => cloud.live('days').some((r) => r.id === DAY && JSON.parse(r.body as string).atOffice === true), { timeout: 30_000 }).toBe(true)
+  const state = await a.context.storageState()
+  expect(a.errors).toEqual([])
+  await a.context.close()
+
+  // The browser clears the database and keeps local storage. The restore is slow: Now makes the day again from the week meanwhile.
+  cloud.hold()
+  const b = await phone(browser, cloud, new Date(2026, 2, 9, 9, 40), state)
+  await at(b)
+  await b.page.goto('./')
+  await expect.poll(async () => (await localRows(b.page, 'days')).find((d) => d.day === DAY)?.atOffice).toBe(false)
+  // Location Context is still on, and Home still named, before the cloud has answered at all.
+  await openSettings(b.page, 'settings-location')
+  await expect(b.page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+  await expect(b.page.getByTestId('location-place')).toHaveCount(1)
+  await expect(b.page.getByTestId('location-place')).toContainText('Home')
+  // The restore lets go: the day comes back as the owner left it, in the record and on its summary.
+  const before = cloud.touches
+  cloud.letGo()
+  await expect.poll(() => cloud.touches, { timeout: 30_000 }).toBeGreaterThan(before)
+  await expect.poll(async () => (await localRows(b.page, 'days')).find((d) => d.day === DAY)?.atOffice, { timeout: 30_000 }).toBe(true)
+  expect(cloud.live('days').filter((r) => r.id === DAY).map((r) => JSON.parse(r.body as string).atOffice)).toEqual([true])
+  // Reopened: all of it stands.
+  await b.page.reload()
+  await b.page.getByTestId('block-row').first().click()
+  await expect(b.page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
+  await b.page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  await openSettings(b.page, 'settings-location')
+  await expect(b.page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+  await expect(b.page.getByTestId('location-place')).toContainText('Home')
+  expect(b.errors).toEqual([])
+  await b.context.close()
+})
+
 // Sync safety, second part (2026-10-02). On the phone one queued deletion went up with no body; the
 // table refused it and every batch with it, and hours later the browser cleared the database with
 // the day's changes still waiting: a move answered Done on its card, and what rode alongside it.

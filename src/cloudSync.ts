@@ -4,7 +4,8 @@ import type { CoachProposal, CoachRun } from './coachShared'
 import { isFirmness } from './firmness'
 import type { BrainBrief, BrainRead, CoachPick } from './db'
 import { useEffect, useState } from 'preact/hooks'
-import { APP, dayOf, markSilent, onOutboxChange, outboxDelete, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
+import { APP, dayOf, markSilent, onOutboxChange, outboxDelete, outboxPut, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
+import { bodyByHand } from './dayChoice'
 import { captureFloors, maxIds } from './idFloors'
 import { unlinkLost } from './lostLinks'
 import { forgetPending, keepQueued, pendingRows } from './pendingCopy'
@@ -13,7 +14,7 @@ import { libsqlStore, type CloudRow, type CloudStore, type StoreFactory } from '
 import { OUTSIDE_APP, OUTSIDE_STORE, outsideDayOf } from './outsideRow'
 import { copy } from './copy'
 import { fill } from './format'
-import { db, getSettings, updateSettings } from './db'
+import { dayByHand, db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
 import { withDefaults, type Settings } from './settings'
 import { appendLog, clearMark, clearMirror, latestNotice, raiseFloors, readDeviceMirror, readMark, readMirror, tokenStorage, writeDeviceMirror, writeMark, writeMirror, type TokenEvent, type TokenMark } from './tokenVault'
@@ -363,7 +364,7 @@ async function retire(store: string, id: string, body: Record<string, unknown>, 
  * The settings record has its own rule (its token must never leave the phone).
  */
 const FIRST_READ: Record<string, (local: Record<string, unknown>) => boolean> = {
-  days: (local) => local.changed === true,
+  days: (local) => dayByHand(local),
   herSkills: () => true,
   brainPrefs: () => true,
   facts: () => false,
@@ -373,6 +374,20 @@ const FIRST_READ: Record<string, (local: Record<string, unknown>) => boolean> = 
 async function setAside(store: string, id: string, body: Record<string, unknown>): Promise<void> {
   const now = new Date().toISOString()
   await db.outbox.add({ store: 'superseded', key: `${store}:${id}@${now}`, op: 'put', body: JSON.stringify({ store, id, body, at: now }), day: dayOf(body), updatedAt: now, at: now })
+}
+
+/**
+ * A day this phone only made from the week's shape, against a copy of it changed by hand (2026-10-19): the copy changed by
+ * hand stands, whatever the stamps say. After the browser cleared the database, Now makes today again before the sync has
+ * run, and the owner's own choices for the day are in the cloud's copy, or in the second copy of the queue.
+ */
+function givesWayToPulled(local: Record<string, unknown>, row: Pick<CloudRow, 'body' | 'deleted'>): boolean {
+  return !dayByHand(local) && !row.deleted && bodyByHand(row.body)
+}
+
+/** The other way: a day changed by hand here against a copy only made from the week, which never replaces it, whatever its stamp. */
+function keepsAgainstPulled(local: Record<string, unknown>, row: Pick<CloudRow, 'body' | 'deleted'>): boolean {
+  return dayByHand(local) && !row.deleted && Boolean(row.body) && !bodyByHand(row.body)
 }
 
 /** Applies one pulled row when the remote is newer than what this phone holds; silently, never queued. `first`: this storage's first read of the cloud. */
@@ -386,7 +401,12 @@ async function applyRow(row: CloudRow, tx: { cloudRows: typeof db.cloudRows; fir
     // A new install made this record before it read the cloud (2026-10-03): the cloud's stands, and is
     // never written over; this phone's is kept aside whole when it holds what you entered.
     if (FIRST_READ[row.store](local)) await setAside(row.store, row.id, local)
-  } else if (local !== undefined) {
+  } else if (local !== undefined && !(row.store === 'days' && givesWayToPulled(local, row))) {
+    // A day changed by hand here never gives way to a copy only made from the week: the cloud is set right from this phone.
+    if (row.store === 'days' && keepsAgainstPulled(local, row)) {
+      await db.outbox.add(outboxPut(row.store, row.id, local, new Date().toISOString()))
+      return
+    }
     const localStamp = typeof local.updatedAt === 'string' && local.updatedAt ? local.updatedAt : null
     // The settings record exists on every phone from the first tap; on a fresh install, before the
     // cloud has seen this phone's copy, the cloud's is the one to restore.
@@ -472,7 +492,10 @@ export async function putBackPending(): Promise<number> {
     const queued = new Set((await db.outbox.toArray()).map((r) => `${r.store}|${r.key}`))
     for (const row of kept) {
       const k = `${row.store}|${row.key}`
-      if (queued.has(k)) continue
+      // A day queued since only because Now made it again from the week gives way to the change by hand kept here (2026-10-19).
+      const madeAgain = row.store === 'days' && queued.has(k) && givesWayToPulled(((await db.days.get(row.key)) ?? {}) as Record<string, unknown>, { body: row.op === 'delete' ? null : (row.body ?? null), deleted: row.op === 'delete' ? 1 : 0 })
+      if (madeAgain) await db.outbox.where('[store+key]').equals([row.store, row.key]).delete()
+      else if (queued.has(k)) continue
       const known = await db.cloudRows.get([row.store, row.key])
       // The cloud has it, or something newer: the copy had only missed its leaving the queue.
       if (known && known.updatedAt >= row.updatedAt) {

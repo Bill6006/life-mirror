@@ -38,7 +38,8 @@ CL = 'src/cloud.test.ts'
 REFUSED = 'a fire the routine refused before any session'
 CLOUD_ON = 'the skill coach with its cloud copy on'
 AIMS = 'the Aims cards with real history'
-NOT_ASKED = 'a morning did not ask is marked'
+# Restated 2026-10-19: since every morning asks both, the test seeds mornings from before, which asked one in turn.
+NOT_ASKED = 'that asked one of Motivation and Confidence keeps the other marked'
 AUDIT = 'nocturne: every screen and opened state'
 
 TABLE = [

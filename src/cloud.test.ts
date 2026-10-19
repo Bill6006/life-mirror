@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
 import { BRAIN_APP, brainBriefOf, coachRunOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, peekBrain, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
-import { addPrivateItem, archivePrivateItem, db, getSettings, saveAnswer, setWin, updateSettings, wipeEverything } from './db'
+import { addPrivateItem, archivePrivateItem, db, ensureDayContext, getSettings, saveAnswer, setDayContext, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
 import { setBrainSwitch, setWriterModel } from './brainPrefs'
 import { DEVICE_KEY, MARK_KEY, MIRROR_KEY, latestNotice, memoryKeyValue, readLog, setTokenStorageForTests, type KeyValue } from './tokenVault'
@@ -626,5 +626,77 @@ describe('the Brain settings and what Claude read (Part 30)', () => {
     await store.upsert([{ ...brainRow('coach', '2026-09-24:coach', pick, '2026-09-24T16:00:00.000Z'), deleted: 1 }])
     await syncNow()
     expect(await db.coachPicks.count()).toBe(0)
+  })
+})
+
+describe('a day you changed, through a cleared database (2026-10-19)', () => {
+  // The owner's fix of 2026-10-19: a choice made by hand survives tab changes, reloads, sync, recalibration and the app reopening.
+  // The phone's browser has cleared the app's database before; local storage, the token's second copy among it, survived.
+  let phone: KeyValue
+  beforeEach(() => {
+    phone = memoryKeyValue()
+    setTokenStorageForTests(phone)
+    markInStep()
+  })
+  afterEach(() => setTokenStorageForTests(null))
+
+  /** The browser clears the app's database, and the app starts again. */
+  async function clearDatabase(): Promise<void> {
+    await db.delete()
+    await db.open()
+    resetCloudForTests()
+  }
+
+  it('comes back as you left it, though Now made the day again from the week before the sync ran', async () => {
+    const store = memoryStore()
+    setStoreFactory(async () => store)
+    await saveToken(TOKEN)
+    await ensureDayContext(DAY, await getSettings())
+    // At the office today, on a day the week does not hold one: a change by hand.
+    await setDayContext(DAY, { atOffice: true })
+    expect(await syncNow()).toBe('done')
+
+    await clearDatabase()
+    // Now opens first, and makes the day again from the week's shape: no office.
+    await ensureDayContext(DAY, await getSettings())
+    expect((await db.days.get(DAY))?.atOffice).toBe(false)
+    expect(await syncNow()).toBe('done')
+    expect((await db.days.get(DAY))?.atOffice).toBe(true)
+    expect((await db.days.get(DAY))?.changed).toBe(true)
+    // The day made again never reached the cloud: its copy still holds the change, and nothing is left queued.
+    const cloudDay = [...store.rows.values()].find((r) => r.store === 'days' && r.id === DAY)
+    expect(JSON.parse(cloudDay?.body ?? '{}').atOffice).toBe(true)
+    expect(await db.outbox.where('[store+key]').equals(['days', DAY]).count()).toBe(0)
+  })
+
+  it('comes back from the queue when the change had not reached the cloud yet', async () => {
+    const store = memoryStore()
+    setStoreFactory(async () => store)
+    await saveToken(TOKEN)
+    await ensureDayContext(DAY, await getSettings())
+    expect(await syncNow()).toBe('done')
+    // Marked Unwell, and the database cleared before the change was sent.
+    await setDayContext(DAY, { unwell: true })
+    await clearDatabase()
+    await ensureDayContext(DAY, await getSettings())
+    expect(await syncNow()).toBe('done')
+    expect((await db.days.get(DAY))?.unwell).toBe(true)
+  })
+
+  it('keeps the later of two changed copies, and never gives a change made here to a copy only made from the week', async () => {
+    const store = memoryStore()
+    setStoreFactory(async () => store)
+    await saveToken(TOKEN)
+    await ensureDayContext(DAY, await getSettings())
+    await setDayContext(DAY, { unwell: true })
+    expect(await syncNow()).toBe('done')
+    const later = (await db.days.get(DAY))?.updatedAt as string
+    expect(typeof later).toBe('string')
+    // The cloud's copy turned older and only made from the week: written over it, stamped before the change here.
+    store.rows.forEach((r, k) => {
+      if (r.store === 'days' && r.id === DAY) store.rows.set(k, { ...r, body: JSON.stringify({ ...JSON.parse(r.body ?? '{}'), unwell: false, changed: false, updatedAt: undefined }), updated_at: '2099-01-01T00:00:00.000Z', synced_at: '2099-01-01T00:00:00.000Z', device_id: 'other-phone' })
+    })
+    expect(await syncNow()).toBe('done')
+    expect((await db.days.get(DAY))?.unwell).toBe(true)
   })
 })

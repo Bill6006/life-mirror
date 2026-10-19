@@ -16,7 +16,7 @@ const catalogue: Catalogue = new Map((catalogueJson as unknown as { moves: { id:
 const f = (id: string, text: string, values: Fact['values'] = {}, tags: string[] = []): Fact => ({ id, tags, text, values })
 const LOCATION: Fact[] = [
   f('location.today', 'Where today has been so far, as Life Mirror saw it while open: the morning at Home, then at Work.', { day: DAY, morning: 'home,work' }),
-  f('location.yesterday', 'Where yesterday was, as Life Mirror saw it while open: the afternoon away from home, in a different area.', { day: '2026-10-19', afternoon: 'away' }),
+  f('location.yesterday', 'Where yesterday was, as Life Mirror saw it while open: the afternoon out of town, in a different area.', { day: '2026-10-19', afternoon: 'away' }),
 ]
 const base: FactSheet = { version: 1, day: DAY, builtAt: `${DAY}T11:41:00.000Z`, hour: 7, weeks: 3, days: 22, direction: null, said: [], shortlist: [], facts: [f('week.today', 'Today is Tuesday.', {}, ['cue']), f('week.tomorrow', 'Tomorrow is Wednesday.', { day: '2026-10-21' }, ['cue'])] }
 const withLocation: FactSheet = { ...base, facts: [...base.facts, ...LOCATION] }

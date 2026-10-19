@@ -20,7 +20,21 @@ import { minutesOf } from './settings'
 // which still gates the draw and shapes a path's context. The draw never reads it, so history can
 // neither widen nor narrow what is offered.
 
-type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople'>
+type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'>
+
+/**
+ * Out among people today, as the day stands (the owner's fix of 2026-10-19): marked so, or a day the week scheduled at the
+ * office and not marked Working from home, which needs no asking. People are around in every block of it.
+ */
+export function outAmongPeople(ctx: Pick<DayContext, 'atOffice' | 'amongPeople' | 'officeDay'> | null | undefined): boolean {
+  if (!ctx) return false
+  return ctx.amongPeople === true || officeDayAtOffice(ctx)
+}
+
+/** A day the week scheduled at the office, and not marked Working from home: Out among people is not asked on it. */
+export function officeDayAtOffice(ctx: Pick<DayContext, 'atOffice' | 'officeDay'> | null | undefined): boolean {
+  return ctx?.officeDay === true && ctx.atOffice === true
+}
 
 /** The block a time of day falls in. */
 export function blockOfTime(hhmm: string): Block {
@@ -33,8 +47,8 @@ export function blockOfTime(hhmm: string): Block {
 /** Tier 1: whether today's shape puts other adults around in a block. Anything the record does not say is not around; for a path's reps that would mean going out, never out of reach (Pass 3). */
 export function peopleAround(ctx: Shape | null | undefined, block: Block): boolean {
   if (!ctx) return false
-  // Out among people today (stage 3, item 5): around in every block, for today alone.
-  if (ctx.amongPeople) return true
+  // Out among people today (stage 3, item 5): around in every block, for today alone; on an office day, without asking.
+  if (outAmongPeople(ctx)) return true
   if (ctx.atOffice && (block === 'morning' || block === 'afternoon')) return true
   if (ctx.churchDay && block === 'morning') return true
   const pickup = heldPickup(ctx)

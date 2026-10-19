@@ -123,7 +123,7 @@ function nameOfMove(id: string, label?: string): string {
 }
 
 /** How a kind of place is said (Part 43): a kind, never a coordinate or an address. */
-const WHERE_WORDS: Record<Where, string> = { home: 'at Home', work: 'at Work', church: 'at Church', regular: 'at a regular place', out: 'out, at no place you named', away: 'away from home, in a different area' }
+const WHERE_WORDS: Record<Where, string> = { home: 'at Home', work: 'at Work', church: 'at Church', regular: 'at a regular place', out: 'out, at no place you named', away: 'out of town, in a different area' }
 
 /**
  * Where a day's parts were spent, as Location Context saw them while Life Mirror was open, in order:
@@ -348,12 +348,12 @@ export function tripFact(range: AwayRange | null, contexts: readonly DayContext[
   if (state === null) return null
   const text =
     state === 'away'
-      ? `You are away from home on a trip, ${span}: on its days your week's office, daycare, church and study days do not hold, nothing you committed to is due, and ${notRead}.`
+      ? `You are out of town, traveling, ${span}: on its days your week's office, daycare, church and study days do not hold, nothing you committed to is due, and ${notRead}.`
       : state === 'ahead'
-        ? `A trip away from home is set for ${span}.`
+        ? `A trip out of town is set for ${span}.`
         : state === 'back'
-          ? `A trip away from home, ${span}, has ended; ${notRead}.`
-          : `${a3 + a2 + a1 + a0} of the last 28 days were away from home on a trip; ${notRead}.`
+          ? `A trip out of town, ${span}, has ended; ${notRead}.`
+          : `${a3 + a2 + a1 + a0} of the last 28 days were out of town, traveling; ${notRead}.`
   return fact('trip', ['monitoring', 'habit'], text, { state, from: range && state !== 'past' ? range.from : null, to: range && state !== 'past' ? range.to : null, a3, a2, a1, a0 })
 }
 
@@ -377,7 +377,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const bedtime = heldBedtime(ctx)
     // Away from home (post-window): a trip's day says so, and only while its gate is open.
     const trip = i.away !== undefined && Boolean(ctx.awayFromHome)
-    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', trip ? 'away from home on a trip' : ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a preferred study day' : null, bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
+    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', trip ? 'out of town, traveling' : ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a preferred study day' : null, bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
     facts.push(
       fact('week.today', ['cue', 'evening'], parts.filter(Boolean).join('; ') + '.', {
         weekday,
@@ -401,7 +401,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const tpickup = heldPickup(tctx)
     const tbedtime = heldBedtime(tctx)
     const ttrip = i.away !== undefined && Boolean(tctx.awayFromHome)
-    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', ttrip ? 'away from home on a trip' : tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a preferred study day' : null, tbedtime ? `her bedtime ${tbedtime}` : null]
+    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', ttrip ? 'out of town, traveling' : tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a preferred study day' : null, tbedtime ? `her bedtime ${tbedtime}` : null]
     facts.push(
       fact('week.tomorrow', ['cue'], tparts.filter(Boolean).join('; ') + '.', {
         day: tday,
@@ -419,7 +419,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   }
   const yctx = i.contexts.find((c) => c.day === yesterday)
   const ytrip = i.away !== undefined && Boolean(yctx?.awayFromHome)
-  if (yctx) facts.push(fact('week.yesterday', ['recovery'], `Yesterday was ${yctx.churchDay ? 'a church day' : 'not a church day'}, ${yctx.withHer ? 'with her' : 'without her'}${yctx.studyNight ? ', a preferred study day' : ''}${ytrip ? ', away from home on a trip' : ''}.`, { church: yctx.churchDay ? 1 : 0, studyNight: yctx.studyNight ? 1 : 0, withHer: yctx.withHer ? 1 : 0, ...(ytrip ? { trip: 1 } : {}) }))
+  if (yctx) facts.push(fact('week.yesterday', ['recovery'], `Yesterday was ${yctx.churchDay ? 'a church day' : 'not a church day'}, ${yctx.withHer ? 'with her' : 'without her'}${yctx.studyNight ? ', a preferred study day' : ''}${ytrip ? ', out of town, traveling' : ''}.`, { church: yctx.churchDay ? 1 : 0, studyNight: yctx.studyNight ? 1 : 0, withHer: yctx.withHer ? 1 : 0, ...(ytrip ? { trip: 1 } : {}) }))
   if (i.away !== undefined) {
     const t = tripFact(i.away.range, i.contexts, today)
     if (t) facts.push(t)
@@ -673,7 +673,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
         : faith
           ? ''
           : rhythm
-            ? `; rhythm ${rhythm.perWeek} a week${rhythm.restDays ? ` with ${plural(rhythm.restDays, 'rest day', 'rest days')} between` : ''}${due?.week !== undefined ? `, ${plural(due.week, 'practice day', 'practice days')} in the seven before today` : ''}${due?.state === 'resting' ? ', so today is a rest day' : due?.state === 'due' ? ', so it is due today' : due?.state === 'notDue' ? ', so this week’s are in' : due?.state === 'away' ? ', and today is away from home, so nothing is due' : ''}`
+            ? `; rhythm ${rhythm.perWeek} a week${rhythm.restDays ? ` with ${plural(rhythm.restDays, 'rest day', 'rest days')} between` : ''}${due?.week !== undefined ? `, ${plural(due.week, 'practice day', 'practice days')} in the seven before today` : ''}${due?.state === 'resting' ? ', so today is a rest day' : due?.state === 'due' ? ', so it is due today' : due?.state === 'notDue' ? ', so this week’s are in' : due?.state === 'away' ? ', and today is out of town, so nothing is due' : ''}`
             : '; no rhythm set, so no count makes it due'
     const practiceText = practice && practice.sessions > 0 ? `${plural(practice.sessions, 'session', 'sessions')} on it on ${plural(practice.days, 'day', 'different days')}${practice.since ? ` since ${practice.since}` : ''}` : 'no session on it yet'
     const planText = plan ? `; planned today ${copy.aims.cues[plan.cue].toLowerCase()} at ${plan.time}${plan.offerId !== null ? ', started' : ', not started'}` : '; no plan today'

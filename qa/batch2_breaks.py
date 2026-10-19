@@ -17,7 +17,7 @@ NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 TABLE = [
     dict(id='draw-record-pickup', file='src/offerFlow.ts', old="      draw: drawRecord,\n      day,\n", new="      day,\n",
          tests=['src/provenance.test.ts'], pattern='keeps what the pickup draw knew'),
-    dict(id='draw-record-block', file='src/offerFlow.ts', old="      closedAt: null,\n      draw: drawRecord,\n", new="      closedAt: null,\n",
+    dict(id='draw-record-block', file='src/offerFlow.ts', old="      closedAt: null,\n      draw: made ? { ...drawRecord, engine: REPAIR_ENGINE } : drawRecord,\n", new="      closedAt: null,\n",
          tests=['src/provenance.test.ts'], pattern='keeps what each draw knew on the offer'),
     dict(id='draw-context-unwell', file='src/provenance.ts', old="    unwell: Boolean(ctx?.unwell),\n", new="    unwell: false,\n",
          tests=['src/provenance.test.ts'], pattern='takes the day’s context'),

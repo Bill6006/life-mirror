@@ -554,7 +554,7 @@ export function validateAction(raw: unknown, sheet: FactSheet, forDay?: string, 
   if (typeof raw !== 'object') return { ok: false, reason: 'action is not an object' }
   const a = raw as Record<string, unknown>
   if (a.kind === 'plan') {
-    if (forDay && shapeFor(sheet, forDay)?.trip) return { ok: false, reason: 'action plan: that day is away from home on a trip, when nothing is due; leave the action out' }
+    if (forDay && shapeFor(sheet, forDay)?.trip) return { ok: false, reason: 'action plan: that day is out of town, traveling, when nothing is due; leave the action out' }
     const aimId = typeof a.aimId === 'number' ? a.aimId : Number(a.aimId)
     const aim = Number.isInteger(aimId) ? sheet.facts.find((f) => f.id === `aim.${aimId}`) : undefined
     if (!aim) return { ok: false, reason: `action plan: no commitment aim.${String(a.aimId)} on the sheet` }
@@ -651,7 +651,7 @@ export function dayGuard(text: string, sheet: FactSheet, forDay: string): string
     if (!w.holds(shape)) return `speaks of ${w.what}, which ${shape.weekday} ${forDay} does not hold`
   }
   // Away from home (post-window): only a sheet that says the day is a trip's ever bars these words.
-  if (shape?.trip && HOME_WORDS.test(text)) return `speaks of home, and ${shape.weekday} ${forDay} is away from home on a trip`
+  if (shape?.trip && HOME_WORDS.test(text)) return `speaks of home, and ${shape.weekday} ${forDay} is out of town, traveling`
   if (sheet.showPrivate !== true) {
     for (const f of sheet.facts) {
       if (!f.id.startsWith('private.')) continue

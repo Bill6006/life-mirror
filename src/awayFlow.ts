@@ -21,13 +21,19 @@ export function awayStatus(range: AwayRange | null | undefined, today: string, m
   return null
 }
 
-/** Today's day record follows the trip: shaped when today is inside it, given back when it is not. A day not yet seen is shaped when it begins. */
+/**
+ * Today's day record follows the trip: shaped when today is inside it, given back when it is not. A day not yet seen is
+ * shaped when it begins. The day is read again inside the write, after the settings, so a chip tapped meanwhile is never
+ * undone by an older copy of the day (2026-10-19).
+ */
 async function reshapeToday(today: string): Promise<void> {
-  const ctx = await db.days.get(today)
-  if (!ctx) return
   const range = (await getSettings()).away
-  const next = onTrip(range, today) ? awayShaped(ctx) : awayUnshaped(ctx)
-  if (next !== ctx) await db.days.put(next)
+  await db.transaction('rw', db.days, async () => {
+    const ctx = await db.days.get(today)
+    if (!ctx) return
+    const next = onTrip(range, today) ? awayShaped(ctx) : awayUnshaped(ctx)
+    if (next !== ctx) await db.days.put(next)
+  })
 }
 
 /**

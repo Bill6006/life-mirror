@@ -1,9 +1,10 @@
 import 'fake-indexeddb/auto'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import Dexie from 'dexie'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bodyForCloud } from './cloudOutbox'
-import { db, getSettings, updateSettings } from './db'
+import { db, ensureDayContext, getSettings, setDayContext, updateSettings } from './db'
 import { cellBlock, geohash } from './location'
-import { answerQuestion, bestFix, forgetAll, nameHere, pendingQuestion, sense, turnOff, turnOn } from './locationFlow'
+import { answerQuestion, bestFix, forgetAll, nameHere, pendingQuestion, recordWhere, sense, turnOff, turnOn } from './locationFlow'
 import { daylightFor } from './settings'
 import { sunLocal } from './sun'
 
@@ -36,6 +37,28 @@ async function everything(): Promise<string> {
   return out.join('\n')
 }
 
+/**
+ * The owner's tap, landing just as a writer has read the day and before it writes it back (2026-10-19): in a
+ * transaction of its own, as a tap is. `skip`: the reads of the day to let pass first. `done` says how many landed.
+ */
+function tapAfterRead(day: string, patch: Parameters<typeof setDayContext>[1], skip = 0) {
+  const read = db.days.get.bind(db.days)
+  const taps: Promise<void>[] = []
+  let seen = 0
+  const spy = vi.spyOn(db.days, 'get').mockImplementation(((key: string) => {
+    const r = read(key)
+    if (key === day && seen++ === skip) taps.push(Dexie.ignoreTransaction(() => setDayContext(day, patch)))
+    return r
+  }) as unknown as typeof db.days.get)
+  return {
+    done: async () => {
+      await Promise.all(taps)
+      spy.mockRestore()
+      return taps.length
+    },
+  }
+}
+
 const tracesOf = (p: { lat: number; lon: number }) => [String(p.lat), String(p.lon), p.lat.toFixed(3), p.lon.toFixed(3), ...cellBlock(p.lat, p.lon).map((c) => c.slice(0, 5))]
 
 describe('Location Context on the phone', () => {
@@ -46,6 +69,16 @@ describe('Location Context on the phone', () => {
   })
   afterEach(() => {
     Reflect.deleteProperty(globalThis, 'navigator')
+  })
+
+  it('never undoes a chip tapped while the day’s place is being written (2026-10-19)', async () => {
+    const settings = await getSettings()
+    // A Tuesday the week holds at the office, marked Working from home as the place is written.
+    await ensureDayContext('2026-10-20', settings)
+    const tapped = tapAfterRead('2026-10-20', { atOffice: false }, 1)
+    expect(await recordWhere('2026-10-20', 'morning', 'out', settings)).toBe(true)
+    expect(await tapped.done()).toBe(1)
+    expect(await db.days.get('2026-10-20')).toMatchObject({ atOffice: false, changed: true, where: { morning: ['out'] } })
   })
 
   it('notes the kind of place for the part of the day, and keeps no coordinate, no map cell and no trail', async () => {
@@ -218,5 +251,78 @@ describe('Location Context on the phone', () => {
     await sense(edge, at(20, 9))
     const all = await everything()
     expect(all).not.toContain(geohash(edge.lat, edge.lon, 6))
+  })
+})
+
+describe('naming a place when the quick reading is too rough (the owner’s fix of 2026-10-19)', () => {
+  // A phone whose quick reading is two kilometres across, and whose watched positions come one by one: the tap had waited
+  // with nothing on screen for up to thirty-five seconds.
+  type Fix = { lat: number; lon: number; accuracy: number }
+  let cleared = 0
+  function stubWatch(quick: Fix, watched: (Fix | 'denied')[]) {
+    cleared = 0
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        geolocation: {
+          getCurrentPosition: (ok: (p: unknown) => void) => ok({ coords: { latitude: quick.lat, longitude: quick.lon, accuracy: quick.accuracy } }),
+          watchPosition: (ok: (p: unknown) => void, fail: (e: unknown) => void) => {
+            watched.forEach((f, i) => setTimeout(() => (f === 'denied' ? fail({ code: 1 }) : ok({ coords: { latitude: f.lat, longitude: f.lon, accuracy: f.accuracy } })), 10 * (i + 1)))
+            return 7
+          },
+          clearWatch: () => void cleared++,
+        },
+        permissions: { query: async () => ({ state: 'granted' }) },
+      },
+    })
+  }
+
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    await updateSettings((s) => ({ ...s, location: { on: true, area: null } }))
+  })
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, 'navigator')
+    vi.useRealTimers()
+  })
+
+  it('watches the phone’s positions until one is good enough, passing on how rough each is, and names the place', async () => {
+    stubWatch({ ...HOME, accuracy: 2000 }, [{ ...HOME, accuracy: 900 }, { ...HOME, accuracy: 40 }, { ...HOME, accuracy: 10 }])
+    const seen: number[] = []
+    expect(await nameHere('home', null, at(20, 20), (a) => seen.push(a))).toBe('named')
+    expect(seen).toEqual([2000, 900, 40])
+    expect(cleared).toBe(1)
+    expect((await db.places.toArray()).map((p) => p.kind)).toEqual(['home'])
+  })
+
+  it('ends the wait itself when the phone never answers, after half a minute, keeping the quick reading: too rough', async () => {
+    vi.useFakeTimers()
+    stubWatch({ ...HOME, accuracy: 2000 }, [])
+    const named = nameHere('home', null, at(20, 20))
+    await vi.advanceTimersByTimeAsync(29_000)
+    let settled = false
+    void named.then(() => (settled = true))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1_500)
+    expect(await named).toBe('coarse')
+    expect(cleared).toBe(1)
+    // The stand-in database runs on timers of its own: real ones again before it is read.
+    vi.useRealTimers()
+    expect(await db.places.count()).toBe(0)
+  })
+
+  it('keeps the best position seen when none is good enough: too rough to name a place by', async () => {
+    vi.useFakeTimers()
+    stubWatch({ ...HOME, accuracy: 3000 }, [{ ...HOME, accuracy: 1200 }, { ...HOME, accuracy: 800 }])
+    const named = nameHere('home', null, at(20, 20))
+    await vi.advanceTimersByTimeAsync(31_000)
+    expect(await named).toBe('coarse')
+  })
+
+  it('says a refusal at once', async () => {
+    stubWatch({ ...HOME, accuracy: 3000 }, ['denied'])
+    expect(await nameHere('home', null, at(20, 20))).toBe('denied')
   })
 })

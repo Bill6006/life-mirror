@@ -6,7 +6,7 @@ import { copy } from './copy'
 import { getDayContext, getSettings } from './db'
 import { fill, formatDayShort, formatHHMM } from './format'
 import { useLive } from './live'
-import { PLACE_KINDS, type PlaceKind, type Where } from './location'
+import { PLACE_ACCURACY, PLACE_KINDS, type PlaceKind, type Where } from './location'
 import { answerQuestion, forgetAll, forgetPlace, nameHere, namedPlaces, pendingQuestion, permissionState, renamePlace, turnOff, turnOn, type LocationStatus } from './locationFlow'
 import { daylightFor, sunPlace } from './settings'
 import { sunLocal } from './sun'
@@ -31,6 +31,8 @@ export function LocationSection() {
   const [status, setStatus] = useState<LocationStatus | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: number; kind: PlaceKind; label: string } | null>(null)
+  // Naming a place (2026-10-19): which tap is reading, so the screen says so at once and the buttons wait for it.
+  const [reading, setReading] = useState<PlaceKind | null>(null)
   const on = settings?.location.on === true
   // A refusal the phone gave to an actual reading stands over an unasked state the permission query may still report.
   useEffect(() => {
@@ -53,9 +55,20 @@ export function LocationSection() {
   }
 
   async function name(kind: PlaceKind) {
-    setMsg(null)
-    const r = await nameHere(kind)
-    setMsg(c.named[r])
+    if (reading) return
+    setReading(kind)
+    setMsg(c.reading)
+    try {
+      const r = await nameHere(kind, null, new Date(), (accuracy) => {
+        if (accuracy > PLACE_ACCURACY) setMsg(fill(c.readingRough, { n: String(Math.round(accuracy)), within: String(PLACE_ACCURACY) }))
+      })
+      setMsg(c.named[r])
+    } catch (e) {
+      // Every outcome is said, a failure that throws among them: never a tap that seems to do nothing.
+      setMsg(fill(c.namedFailed, { error: e instanceof Error ? e.message : String(e) }))
+    } finally {
+      setReading(null)
+    }
   }
 
   return (
@@ -73,12 +86,14 @@ export function LocationSection() {
           <p class="setting-label">{c.nameHere}</p>
           <div class="chips" role="group" aria-label={c.nameHere}>
             {PLACE_KINDS.map((k) => (
-              <button key={k} type="button" class="when-chip" data-testid={`location-name-${k}`} onClick={() => void name(k)}>
+              <button key={k} type="button" class={reading === k ? 'when-chip is-on' : 'when-chip'} aria-busy={reading === k} disabled={reading !== null} data-testid={`location-name-${k}`} onClick={() => void name(k)}>
                 {c.kinds[k]}
               </button>
             ))}
           </div>
-          <p class="note faint no-gap">{msg ?? c.nameHereNote}</p>
+          <p class="note faint no-gap" data-testid="location-name-status" aria-live="polite">
+            {msg ?? c.nameHereNote}
+          </p>
         </div>
       )}
 

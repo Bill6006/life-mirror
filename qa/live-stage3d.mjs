@@ -1,6 +1,7 @@
 // Stage 3, item 5, the check-in and the readings put to use, on the live site, in fresh throwaway contexts with
 // stand-in records only: nothing touches the owner's data, and nothing is sent anywhere but the site itself (no
-// cloud token is ever set). One of Motivation and Confidence each morning; the optional taps above the move, and an
+// cloud token is ever set). Both Motivation and Confidence each morning (one in turn until the owner's fix of
+// 2026-10-19, this check restated with it); the optional taps above the move, and an
 // untouched move drawn again when a chip changes the day; Out among people today; When was the last?; the two sleep
 // readings asked late after a morning without them; Outside a while today and Something sweet; your own chips; and
 // the expectancy tap after a People rep.
@@ -94,7 +95,7 @@ const top = (page, testid) => page.getByTestId(testid).first().evaluate((el) => 
 
 try {
   {
-    // A Monday morning: one of Motivation and Confidence asked; the optional taps above the move; a chip draws it again.
+    // A Monday morning: both Motivation and Confidence asked; the optional taps above the move; a chip draws it again.
     const { ctx, page } = await fresh(new Date(2026, 9, 19, 9, 5))
     await tab(page, 'Settings')
     await page.getByTestId('settings-about').click()
@@ -104,7 +105,7 @@ try {
     const done = await checkIn(page)
     const morning = (await rowsOf(page, 'checkins')).find((c) => c.block === 'morning')
     const turn = (morning?.asked ?? []).filter((id) => id === 'motivation' || id === 'confidence')
-    check('the morning asks twelve readings, one of Motivation and Confidence', done && morning?.asked.length === 12 && turn.length === 1, `${morning?.asked.length} asked, ${turn.join(', ')}`)
+    check('the morning asks thirteen readings, both Motivation and Confidence', done && morning?.asked.length === 13 && turn.length === 2, `${morning?.asked.length} asked, ${turn.join(', ')}`)
     const [caffeine, chips, move, readings] = [await top(page, 'caffeine'), await top(page, 'chip-office'), await top(page, 'move-card'), await top(page, 'reading-row')]
     check('Caffeine and Today, if different sit above the move, and the move above the readings', caffeine >= 0 && chips >= 0 && caffeine < move && chips < move && move < readings, `${caffeine} ${chips} ${move} ${readings}`)
     check('Out among people today is the fourth Today chip', (await text(page.getByTestId('chip-among-people'))).includes('Out among people today'))

@@ -41,7 +41,7 @@ export async function answerWeek(today: string, yes: boolean): Promise<void> {
   await db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(today)
     if (!existing) return
-    await db.days.put({ ...existing, weekAnswer: yes ? 'yes' : 'notNow' })
+    await db.days.put({ ...existing, weekAnswer: yes ? 'yes' : 'notNow', updatedAt: new Date().toISOString() })
   })
 }
 

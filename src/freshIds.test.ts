@@ -153,6 +153,26 @@ describe('a new install used before its token is pasted', () => {
     expect(aside.map((a) => `${a.store}:${a.id}:${a.body.atOffice}`)).toEqual(['days:2026-03-12:false'])
   })
 
+  it('a learning week answered before the token is a change by hand too, and kept aside whole (2026-10-19)', async () => {
+    markInStep()
+    const store = memoryStore()
+    await connect(store)
+    const settings = await getSettings()
+    await ensureDayContext('2026-03-12', settings)
+    await setDayContext('2026-03-12', { atOffice: true })
+    expect(await syncNow()).toBe('done')
+
+    await clearSiteData()
+    // Before the token: the day answered a learning week, as a version from before the stamp kept it, not marked changed.
+    await ensureDayContext('2026-03-12', settings)
+    await db.days.update('2026-03-12', { weekAnswer: 'yes' })
+    await connect(store)
+    expect(await syncNow()).toBe('done')
+    expect((await db.days.get('2026-03-12'))?.atOffice).toBe(true)
+    const aside = [...store.rows.values()].filter((r) => r.store === 'superseded').map((r) => JSON.parse(r.body as string) as { store: string; id: string; body: { weekAnswer?: string } })
+    expect(aside.map((a) => `${a.store}:${a.id}:${a.body.weekAnswer}`)).toEqual(['days:2026-03-12:yes'])
+  })
+
   it('a win made before the token, on a day the cloud also holds one, is made one by the latest, and the other kept aside', async () => {
     markInStep()
     const store = memoryStore()

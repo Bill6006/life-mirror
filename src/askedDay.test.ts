@@ -6,35 +6,33 @@ import { factSheet } from './brainFlow'
 import { askedLate, db, notAskedInTurn, type CheckIn } from './db'
 import { factById, type Fact, type FactSheet } from './facts'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { askedReadings, turnOf } from './settings'
+import { askedReadings } from './settings'
 import { chooseLine } from './situations'
 
-// Stage 3, item 5: what a day's check-ins ask. Motivation and Confidence in turn, one each morning
-// (part 4); after a morning that left the sleep readings unanswered, the afternoon asks them first,
-// late, and the record, the sheet and the line say so (part 2). The learning engine's comparisons go
-// on reading mornings alone.
+// Stage 3, item 5: what a day's check-ins ask. Both Motivation and Confidence every morning since the
+// owner's fix of 2026-10-19 (part 4 had them in turn, one each morning; those mornings keep their "Not
+// asked"); after a morning that left the sleep readings unanswered, the afternoon asks them first, late,
+// and the record, the sheet and the line say so (part 2). The learning engine's comparisons go on reading
+// mornings alone.
 
 const DAY = '2026-09-18'
 const all = (block: 'morning' | 'afternoon', p: Position, ids: readonly ReadingId[] = blockReadings(block)): Answers => Object.fromEntries(ids.map((id) => [id, p]))
 const ci = (day: string, block: CheckIn['block'], answers: Answers, asked?: ReadingId[]): CheckIn => ({ day, block, answers, ...(asked ? { asked } : {}), startedAt: '', completedAt: 'x', updatedAt: '', activeMs: 30_000 })
 
-describe('Motivation and Confidence, asked in turn, one each morning (stage 3, item 5, part 4)', () => {
-  it('asks one of the two each morning, the other the next, and the rest of the morning as before', () => {
-    const today = askedReadings('morning', 'full', [], { day: DAY, morning: null })
-    const tomorrow = askedReadings('morning', 'full', [], { day: addDays(DAY, 1), morning: null })
-    expect(today.filter((id) => id === 'motivation' || id === 'confidence')).toEqual([turnOf(DAY)])
-    expect(tomorrow.filter((id) => id === 'motivation' || id === 'confidence')).toEqual([turnOf(addDays(DAY, 1))])
-    expect(turnOf(DAY)).not.toBe(turnOf(addDays(DAY, 1)))
-    expect(today).toHaveLength(12)
-    expect(today.filter((id) => id !== 'motivation' && id !== 'confidence')).toEqual(blockReadings('morning').filter((id) => id !== 'motivation' && id !== 'confidence'))
+describe('Motivation and Confidence, both every morning (the owner’s fix of 2026-10-19)', () => {
+  it('asks both every morning, day after day, and the rest of the morning as before: all thirteen', () => {
+    for (let k = 0; k < 7; k++) {
+      const morning = askedReadings('morning', 'full', [], { day: addDays(DAY, k), morning: null })
+      expect(morning.filter((id) => id === 'motivation' || id === 'confidence')).toEqual(blockReadings('morning').filter((id) => id === 'motivation' || id === 'confidence'))
+      expect(morning).toEqual(blockReadings('morning'))
+      expect(morning).toHaveLength(13)
+    }
   })
 
-  it('keeps three or four of each in any seven mornings, across months and years', () => {
-    for (const start of ['2026-09-18', '2026-12-28', '2027-02-25', '2028-02-26']) {
-      const week = Array.from({ length: 7 }, (_, k) => turnOf(addDays(start, k)))
-      expect(week.filter((t) => t === 'motivation').length).toBeGreaterThanOrEqual(3)
-      expect(week.filter((t) => t === 'confidence').length).toBeGreaterThanOrEqual(3)
-    }
+  it('keeps "Not asked" on a morning from before, which asked one of the two', () => {
+    const before = blockReadings('morning').filter((id) => id !== 'confidence') as ReadingId[]
+    expect(notAskedInTurn(ci(DAY, 'morning', all('morning', 3, before), before))).toBe('confidence')
+    expect(notAskedInTurn(ci(DAY, 'morning', all('morning', 3), [...blockReadings('morning')]))).toBeNull()
   })
 
   it('leaves short depth, the afternoon and the evening as they were', () => {

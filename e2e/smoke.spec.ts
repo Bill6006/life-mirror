@@ -240,11 +240,11 @@ test('a check-in gives back a reading, survives a relaunch, and can be changed o
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
 
-  // On a fresh install, every block feeding all six ingredients: the morning asks 12 (Motivation or Confidence,
-  // in turn, since stage 3, item 5), the afternoon 9 (its 7, after the two sleep readings asked late, since no
+  // On a fresh install, every block feeding all six ingredients: the morning asks 13 (Motivation and Confidence both,
+  // the owner's fix of 2026-10-19), the afternoon 9 (its 7, after the two sleep readings asked late, since no
   // morning answered them) and the evening 8.
   const taps = await tapThrough(page)
-  expect([8, 9, 12]).toContain(taps)
+  expect([8, 9, 13]).toContain(taps)
 
   // The card: the reading out of 100 with its recipe, and the change since last time.
   const card = page.getByTestId('give-back')
@@ -1300,6 +1300,61 @@ test('stage 3, item 5: Out among people today, the fourth chip, kept for today a
   expect(days.filter((d) => d.amongPeople).map((d) => d.day)).toEqual(['2026-09-07'])
 })
 
+test('the owner’s fix of 2026-10-19: on a scheduled office day Out among people reads Yes and is not asked, until Working from home is marked', async ({ page }) => {
+  // The Sunday before, the week is set to hold Mondays at the office.
+  await page.clock.setFixedTime(new Date(2026, 8, 6, 12, 0))
+  await page.goto('./')
+  await settingsSection(page, 'week')
+  const monday = page.getByTestId('office-days').getByRole('button', { name: 'Monday', exact: true })
+  await monday.click()
+  await expect(monday).toHaveAttribute('aria-pressed', 'true')
+  await backToSettings(page)
+  // Monday morning, the day seen for the first time.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  const office = page.getByTestId('chip-office')
+  await expect(office).toContainText('Working from home today')
+  await expect(office).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('chip-unwell')).toBeVisible()
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+  // Never on screen, so never marked shown (Rule 2), and the inference writes nothing of the owner's.
+  const dayRow = async () => (await rowsOf<{ day: string; officeDay?: boolean; atOffice?: boolean; amongPeople?: boolean }>(page, 'days')).find((d) => d.day === '2026-09-07')
+  expect(await dayRow()).toMatchObject({ officeDay: true, atOffice: true })
+  expect((await dayRow())?.amongPeople).toBeUndefined()
+  expect(((await extrasOf(page, '2026-09-07', 'morning'))?.chipsShown as Record<string, true> | undefined)?.amongPeople).toBeUndefined()
+  // Working from home: the question is asked, and the owner's answer stands.
+  await office.click()
+  await expect(office).toHaveAttribute('aria-pressed', 'true')
+  const among = page.getByTestId('chip-among-people')
+  await expect(among).toContainText('Out among people today')
+  await expect(among).toHaveAttribute('aria-pressed', 'false')
+  await among.click()
+  await expect(among).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => (await dayRow())?.amongPeople).toBe(true)
+  // At the office again: the question goes, the inference is back, and a reload keeps the day as left.
+  await office.click()
+  await expect(office).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+  await expect.poll(async () => (await dayRow())?.atOffice).toBe(true)
+  await page.reload()
+  await page.getByTestId('block-row').first().click()
+  await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+  // The week changed later leaves today as it was made: still a scheduled office day, its row and the inference agreeing.
+  await page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  await settingsSection(page, 'week')
+  await monday.click()
+  await expect(monday).toHaveAttribute('aria-pressed', 'false')
+  await backToSettings(page)
+  await page.getByRole('button', { name: 'Now', exact: true }).click()
+  await page.getByTestId('block-row').first().click()
+  await expect(page.getByTestId('chip-office')).toContainText('Working from home today')
+  await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+})
+
 test('stage 3, item 5: after a morning without them, the afternoon asks the two sleep readings first, each marked asked late', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 5))
   await page.goto('./')
@@ -1320,7 +1375,7 @@ test('stage 3, item 5: after a morning without them, the afternoon asks the two 
   await expect(page.getByTestId('reading-row').filter({ hasText: 'Mood' })).not.toContainText('Asked late')
 })
 
-test('stage 3, item 5: each morning asks one of Motivation and Confidence, the other the next morning', async ({ page }) => {
+test('the owner’s fix of 2026-10-19: every morning asks both Motivation and Confidence, never one in turn', async ({ page }) => {
   const askedOn = async (d: number) => {
     await page.clock.setFixedTime(new Date(2026, 8, d, 9, 5))
     await page.goto('./')
@@ -1329,44 +1384,53 @@ test('stage 3, item 5: each morning asks one of Motivation and Confidence, the o
     const day = `2026-09-${String(d).padStart(2, '0')}`
     return (await rowsOf<{ day: string; block: string; asked: string[] }>(page, 'checkins')).find((c) => c.day === day && c.block === 'morning')?.asked ?? []
   }
-  const first = await askedOn(7)
-  const second = await askedOn(8)
-  expect(first).toHaveLength(12)
-  expect(second).toHaveLength(12)
-  const turn = (asked: string[]) => asked.filter((id) => id === 'motivation' || id === 'confidence')
-  expect(turn(first)).toHaveLength(1)
-  expect(turn(second)).toHaveLength(1)
-  expect(turn(first)[0]).not.toBe(turn(second)[0])
+  for (const d of [7, 8]) {
+    const asked = await askedOn(d)
+    expect(asked).toHaveLength(13)
+    expect(asked.filter((id) => id === 'motivation' || id === 'confidence')).toEqual(['motivation', 'confidence'])
+  }
+  await expect(page.getByTestId('reading-not-asked')).toHaveCount(0)
 })
 
-test('stage 3, item 5: the one of Motivation and Confidence a morning did not ask is marked “not asked”: on its summary, on Now beside its last answer, and on Mirror’s overlay (the owner’s words, shown since 2026-10-18)', async ({ page }) => {
-  const morningOf = async (d: number) => {
-    await page.clock.setFixedTime(new Date(2026, 8, d, 9, 5))
-    await page.goto('./')
-    await page.getByRole('button', { name: /Check in/ }).click()
-    await tapThrough(page)
-    const day = `2026-09-${String(d).padStart(2, '0')}`
-    return (await rowsOf<{ day: string; block: string; asked: string[] }>(page, 'checkins')).find((c) => c.day === day && c.block === 'morning')?.asked ?? []
+test('stage 3, item 5: a morning from before the owner’s fix of 2026-10-19 that asked one of Motivation and Confidence keeps the other marked “not asked”: on its summary, on Now beside its last answer, and on Mirror’s overlay; the next morning asks both and marks neither', async ({ page }) => {
+  // Two mornings from before, as they were kept: Confidence asked on the first, Motivation on the second.
+  const inTurn = (day: string, one: 'motivation' | 'confidence') => {
+    const c = levelCheckIn(day, 'morning', 3) as { asked: string[]; answers: Record<string, number> }
+    return { ...c, asked: [...c.asked, one], answers: { ...c.answers, [one]: 3 } }
   }
-  await morningOf(7)
-  const asked = await morningOf(8)
-  const today = asked.includes('motivation') ? 'Motivation' : 'Confidence'
-  const other = today === 'Motivation' ? 'Confidence' : 'Motivation'
-  // The summary lists the readings asked, then the other, marked, and why.
+  await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))
+  await page.goto('./')
+  await seedRows(page, 'checkins', [inTurn('2026-09-07', 'confidence'), inTurn('2026-09-08', 'motivation')])
+  await page.reload()
+  // Its summary lists the readings asked, then the other, marked, and why.
+  await page.getByTestId('block-row').first().click()
   const row = page.getByTestId('reading-not-asked')
   await expect(row).toHaveCount(1)
-  await expect(row).toContainText(other)
+  await expect(row).toContainText('Confidence')
   await expect(row).toContainText('Not asked')
-  await expect(row).toContainText(`Asked in turn with ${today}, one each morning`)
+  await expect(row).toContainText('Mornings then asked it in turn with Motivation')
   await page.getByRole('button', { name: 'Done', exact: true }).first().click()
-  // Now: its last answer, yesterday morning's, marked not asked today; the one asked today is never marked.
-  await expect(page.getByTestId('context-cell').filter({ hasText: other })).toContainText('not asked today')
-  await expect(page.getByTestId('context-cell').filter({ hasText: today })).not.toContainText('not asked')
+  // Now: Confidence's last answer, the morning before's, marked not asked today; Motivation, asked, is never marked.
+  await expect(page.getByTestId('context-cell').filter({ hasText: 'Confidence' })).toContainText('not asked today')
+  await expect(page.getByTestId('context-cell').filter({ hasText: 'Motivation' })).not.toContainText('not asked')
   // Mirror: picked as the overlay, it says why today's line for it is empty.
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
-  await page.getByRole('button', { name: other, exact: true }).click()
-  await expect(page.getByTestId('overlay-not-asked')).toHaveText(`${other}: not asked today. Motivation and Confidence are asked in turn, one each morning.`)
-  await page.getByRole('button', { name: today, exact: true }).click()
+  await page.getByRole('button', { name: 'Confidence', exact: true }).click()
+  await expect(page.getByTestId('overlay-not-asked')).toHaveText('Confidence: not asked this morning, which asked Motivation and Confidence in turn.')
+  await page.getByRole('button', { name: 'Motivation', exact: true }).click()
+  await expect(page.getByTestId('overlay-not-asked')).toHaveCount(0)
+  // The next morning asks both, so nothing is marked, anywhere.
+  await page.clock.setFixedTime(new Date(2026, 8, 9, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await expect(page.getByTestId('reading-not-asked')).toHaveCount(0)
+  const asked = (await rowsOf<{ day: string; block: string; asked: string[] }>(page, 'checkins')).find((c) => c.day === '2026-09-09' && c.block === 'morning')?.asked ?? []
+  expect(asked.filter((id) => id === 'motivation' || id === 'confidence')).toEqual(['motivation', 'confidence'])
+  await page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  await expect(page.getByTestId('context-cell').filter({ hasText: 'Confidence' })).not.toContainText('not asked')
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: 'Confidence', exact: true }).click()
   await expect(page.getByTestId('overlay-not-asked')).toHaveCount(0)
 })
 
@@ -2139,6 +2203,67 @@ test('Location Context: off until turned on, kinds of place only, the sun where 
   // Nothing in the phone's store holds a coordinate or a map cell of either place.
   const dump = await storeDump(page)
   expect(dump).not.toMatch(/51\.507|51\.513|-0\.127|-0\.098|gcpvj|gcpvn/)
+})
+
+/**
+ * The phone's location, stood in for on the open page (2026-10-19): the quick read answers after `quickMs` with `quick`
+ * metres across, or throws; a watch then gives each of `watched` in turn, `stepMs` apart; all of them at `where`.
+ */
+async function phoneLocation(page: Page, plan: { quick: number | 'throws'; quickMs?: number; watched?: number[]; stepMs?: number; where?: [number, number] }): Promise<void> {
+  await page.evaluate((p) => {
+    const [latitude, longitude] = p.where ?? [51.50722, -0.1275]
+    const at = (accuracy: number) => ({ coords: { latitude, longitude, accuracy }, timestamp: Date.now() })
+    const g = navigator.geolocation as unknown as Record<string, unknown>
+    g.getCurrentPosition = (ok: (x: unknown) => void) => {
+      if (p.quick === 'throws') throw new Error('the location service stopped')
+      const quick = p.quick
+      setTimeout(() => ok(at(quick)), p.quickMs ?? 0)
+    }
+    g.watchPosition = (ok: (x: unknown) => void) => {
+      ;(p.watched ?? []).forEach((a, i) => setTimeout(() => ok(at(a)), (i + 1) * (p.stepMs ?? 200)))
+      return 1
+    }
+    g.clearWatch = () => undefined
+  }, plan)
+}
+
+test('the owner’s fix of 2026-10-19: naming a place says at once that it is reading, waits with its buttons, follows a rough reading until it is good enough, and says every outcome', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await context.setGeolocation({ latitude: 51.50722, longitude: -0.1275, accuracy: 25 })
+  await page.clock.setFixedTime(new Date(2026, 9, 20, 14, 0))
+  await page.goto('./')
+  await settingsSection(page, 'location')
+  await page.getByTestId('location-switch').click()
+  await expect(page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+  const status = page.getByTestId('location-name-status')
+  await expect(status).toHaveText('Once, where you are; from then on it is known. A place you come back to on three different days is asked about once.')
+  // A slow phone: the tap says so at once, and every button waits for it.
+  await phoneLocation(page, { quick: 25, quickMs: 1500 })
+  await page.getByTestId('location-name-home').click()
+  await expect(status).toHaveText('Reading where you are. This can take up to half a minute.')
+  await expect(page.getByTestId('location-name-home')).toHaveAttribute('aria-busy', 'true')
+  for (const k of ['home', 'work', 'church', 'regular']) await expect(page.getByTestId(`location-name-${k}`)).toBeDisabled()
+  // And they look it: the faint ink of the note under them, while the one reading stays lit.
+  const ink = (testid: string) => page.getByTestId(testid).evaluate((e) => getComputedStyle(e).color)
+  const faint = await ink('location-name-status')
+  expect(await ink('location-name-work')).toBe(faint)
+  expect(await ink('location-name-home')).not.toBe(faint)
+  await expect(status).toHaveText('Named. It is known from now on.')
+  await expect(page.getByTestId('location-place')).toContainText('Home')
+  await expect(page.getByTestId('location-name-work')).toBeEnabled()
+  expect(await ink('location-name-work')).not.toBe(faint)
+  // A rough first reading: how rough is said as it improves, until one is good enough to name by.
+  await phoneLocation(page, { quick: 1800, watched: [900, 30], stepMs: 700, where: [51.51391, -0.09875] })
+  await page.getByTestId('location-name-work').click()
+  await expect(status).toHaveText('Still reading: the phone’s position is 1800 metres across so far, and a place needs one within 500.')
+  await expect(status).toHaveText('Still reading: the phone’s position is 900 metres across so far, and a place needs one within 500.')
+  await expect(status).toHaveText('Named. It is known from now on.')
+  await expect(page.getByTestId('location-places')).toContainText('Work')
+  // A failure that throws is said too, never a tap that seems to do nothing.
+  await phoneLocation(page, { quick: 'throws' })
+  await page.getByTestId('location-name-church').click()
+  await expect(status).toHaveText('Reading where you are did not work (the location service stopped). Try again in a moment.')
+  await expect(page.getByTestId('location-name-church')).toBeEnabled()
 })
 
 test('Location Context refused by the phone: said plainly, nothing read, the sun at the place you typed (Part 43)', async ({ page, context }) => {

@@ -216,6 +216,20 @@ describe('the record, the card’s counts and the coach block', () => {
     expect(Object.keys(atWork ?? {})).toEqual(COACH_BLOCK_KEYS.filter((k) => k !== 'requiresGoingOut'))
     expect(coachBlock([], ctx, '2026-09-20', 'evening')).toBeNull()
   })
+
+  it('reads a scheduled office day at the office as out among people into its evening, and says why; worked from home, nobody (2026-10-19)', () => {
+    const aim = { id: 7, kind: 'path' as const, path: 'social' as const, stepMoveId: null, createdAt: '2026-09-01T00:00:00.000Z', archivedAt: null }
+    const at = (ctx: { atOffice: boolean; churchDay: boolean; pickupTime: null; withHer: boolean; officeDay: boolean }) => coachBlock([pathToday({ aim, offers: [], outcomes: [], ctx, day: '2026-09-21', block: 'evening' })], ctx, '2026-09-21', 'evening')
+    const office = at({ atOffice: true, churchDay: false, pickupTime: null, withHer: true, officeDay: true })
+    expect(office?.shape).toBe('People around by today’s shape: out among people today')
+    expect(Object.keys(office ?? {})).not.toContain('requiresGoingOut')
+    const home = at({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, officeDay: true })
+    expect(home?.shape).toBe('Nobody around by today’s shape')
+    expect(home?.requiresGoingOut).toBe(true)
+    // An office morning still says the office.
+    const ctx = { atOffice: true, churchDay: false, pickupTime: null, withHer: true, officeDay: true }
+    expect(coachBlock([pathToday({ aim, offers: [], outcomes: [], ctx, day: '2026-09-21', block: 'morning' })], ctx, '2026-09-21', 'morning')?.shape).toBe('People around by today’s shape: the office')
+  })
 })
 
 describe('honest learning on the path (Part 25)', () => {

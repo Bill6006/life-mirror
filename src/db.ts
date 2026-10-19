@@ -14,6 +14,7 @@ import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } fro
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { installIdFloors } from './idFloors'
 import { clearPending, installPendingCopy } from './pendingCopy'
+import { clearChoicesCopy, installChoicesWatch } from './choicesWatch'
 import { installFreshIds } from './freshIds'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, SLEEP_READINGS, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
@@ -113,6 +114,11 @@ export interface DayContext {
   churchDay: boolean
   /** At the office rather than at home, from the week's office days; the exception is one chip inside the check-in. Older days lack it and read as home. */
   atOffice?: boolean
+  /**
+   * Whether the week scheduled this day at the office, as the day was made (the owner's fix of 2026-10-19): on such a day,
+   * not marked Working from home, Out among people reads Yes and is not asked. A day made before it gains it from the week.
+   */
+  officeDay?: boolean
   pickupTime: string | null
   soloUntil: string
   /** Part 35: the day's sunrise and sunset where you are, HH:MM, when a place was set as the day began: its light, kept for the record. */
@@ -142,6 +148,12 @@ export interface DayContext {
   weekAnswer?: 'yes' | 'notNow'
   /** Set when you changed today by hand. */
   changed: boolean
+  /**
+   * When a change by hand last touched the day (2026-10-19): a chip, or the answer to a learning week. Absent on a day
+   * only made from the week's shape. The sync keeps the later of two changed copies, and a copy only made from the week
+   * gives way to one changed by hand: after the browser cleared the database, Now makes today again before the sync runs.
+   */
+  updatedAt?: string
   createdAt: string
   /** The Worker's lines and reviews first shown on screen this day, by their key, with the moment: only a line seen was said (stage 1, item m). Absent until one is. */
   shown?: Record<string, string>
@@ -185,7 +197,8 @@ export interface PlaceCandidate {
 
 /** Part 43: this phone's own values for place recognition: the fingerprint key, the area for the sun, the day a place was last asked about. */
 export interface PlaceMeta {
-  key: 'secret' | 'area' | 'askedOn'
+  /** dbMark (2026-10-19): this database's own mark, matched by the second copy of this phone's choices (phoneChoices.ts). */
+  key: 'secret' | 'area' | 'askedOn' | 'dbMark'
   value: string
 }
 
@@ -1102,6 +1115,8 @@ class LifeMirrorDB extends Dexie {
     installPendingCopy(this)
     installFreshIds(this)
     installIdFloors(this)
+    // This phone's own choices keep a second copy in local storage (2026-10-19): phoneChoices.ts.
+    installChoicesWatch(this)
   }
 }
 
@@ -1394,6 +1409,7 @@ export function contextFromWeek(day: string, settings: Settings, createdAt: stri
     studyNight: w.studyNights[weekday],
     churchDay: w.churchDay === weekday,
     atOffice: w.officeDays[weekday],
+    officeDay: w.officeDays[weekday],
     // The pickup, and the daycare day it implies, hold on the daycare days you set.
     pickupTime: w.daycareDays[weekday] ? w.pickupTime : null,
     soloUntil: w.soloUntil,
@@ -1418,25 +1434,35 @@ export function awayUnshaped(ctx: DayContext): DayContext {
   return { ...rest, ...awayFromHome.held }
 }
 
-/** Writes today's context from the week's shape the first time the day is seen; later shape edits never touch it. */
+/**
+ * Writes today's context from the week's shape the first time the day is seen; later shape edits never touch it. A day
+ * made before the record kept whether the week scheduled it at the office gains that from the week, once (2026-10-19).
+ */
 export function ensureDayContext(day: string, settings: Settings): Promise<DayContext> {
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
-    if (existing) return existing
+    if (existing) {
+      if (existing.officeDay !== undefined) return existing
+      const officeDay = settings.week.officeDays[parseDay(day).getDay() as Weekday]
+      await db.days.update(day, { officeDay })
+      return { ...existing, officeDay }
+    }
     const ctx = contextFromWeek(day, settings)
     await db.days.put(ctx)
     return ctx
   })
 }
 
-/** Changes today alone. */
+/** Changes today alone, stamped as a change by hand. */
 export function setDayContext(day: string, patch: Partial<Pick<DayContext, 'withHer' | 'studyNight' | 'churchDay' | 'atOffice' | 'unwell' | 'amongPeople'>>): Promise<void> {
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
     if (!existing) return
-    await db.days.put({ ...existing, ...patch, changed: true })
+    await db.days.put({ ...existing, ...patch, changed: true, updatedAt: new Date().toISOString() })
   })
 }
+
+export { dayByHand } from './dayChoice'
 
 // Tomorrow's minimum win
 
@@ -1508,7 +1534,7 @@ export async function setPrivateBlocks(id: number, blocks: readonly Block[]): Pr
 
 /** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back, the second copy of what was queued included. */
 export function wipeEverything(): Promise<void> {
-  return wipeTables().then(clearPending)
+  return wipeTables().then(clearPending).then(clearChoicesCopy)
 }
 
 function wipeTables(): Promise<void> {

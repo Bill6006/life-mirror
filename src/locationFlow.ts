@@ -1,6 +1,7 @@
 import { addDays, blockAt, parseDay, type Block } from './blocks'
 import { db, ensureDayContext, getSettings, updateSettings, type KnownPlace, type PlaceCandidate } from './db'
 import { areaOf, AREA_ACCURACY, ASK_AFTER_DAYS, CANDIDATE_KEEP_DAYS, cellBlock, farApart, fingerprints, guessKind, MAX_CANDIDATES, newSecret, PLACE_ACCURACY, SNOOZE_DAYS, type Area, type PlaceKind, type Where } from './location'
+import { keepChoices } from './phoneChoices'
 import type { Settings, Weekday } from './settings'
 import { sunLocal } from './sun'
 
@@ -42,6 +43,48 @@ export function readFix(timeoutMs = 20_000, precise = false): Promise<Fix | { er
     )
   })
 }
+
+/**
+ * A precise reading for naming a place (2026-10-19): the phone's positions watched until one is good enough to know a
+ * place by, or the time is up, keeping the best seen. Each position is passed on as it comes, so the screen can say how
+ * rough it still is. Ended at once: no position is followed after it.
+ */
+export function watchForFix(timeoutMs: number, onFix: (accuracy: number) => void = () => {}): Promise<Fix | { error: 'denied' | 'unavailable' | 'timeout' }> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return resolve({ error: 'unavailable' })
+    let best: Fix | null = null
+    let done = false
+    let id: number | null = null
+    const finish = (r: Fix | { error: 'denied' | 'unavailable' | 'timeout' }) => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      if (id !== null) navigator.geolocation.clearWatch(id)
+      resolve(r)
+    }
+    // The time is kept here, not by the phone: a phone that never answers still ends the wait.
+    const timer = setTimeout(() => finish(best ?? { error: 'timeout' }), timeoutMs)
+    id = navigator.geolocation.watchPosition(
+      (p) => {
+        // A position that comes after the wait has ended is no part of it.
+        if (done) return
+        const fix = { lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }
+        if (!best || fix.accuracy < best.accuracy) best = fix
+        onFix(fix.accuracy)
+        if (fix.accuracy <= PLACE_ACCURACY) finish(fix)
+      },
+      (e) => {
+        if (done) return
+        if (e.code === 1) finish({ error: 'denied' })
+        else if (e.code === 2 && !best) finish({ error: 'unavailable' })
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
+    )
+  })
+}
+
+/** How long naming a place waits for a precise position: half a minute. */
+export const NAMING_WAIT_MS = 30_000
 
 /** The quick reading, and when it is too rough to know a place by, one precise try: used and let go the same way. */
 export async function bestFix(): Promise<Fix | { error: 'denied' | 'unavailable' | 'timeout' }> {
@@ -199,16 +242,20 @@ export function watchLocation(page: Visibility = document, clock: () => Date = (
 /** Turns Location Context on: the phone asks you, once, and the first reading is taken. What the phone answered comes back. */
 export async function turnOn(now: Date = new Date()): Promise<LocationStatus> {
   await updateSettings((s) => ({ ...s, location: { ...s.location, on: true } }))
+  // Kept at once: the reading below can take its time, and the choice is made already (2026-10-19).
+  await keepChoices()
   const fix = await bestFix()
   if ('error' in fix) return fix.error === 'denied' ? 'denied' : fix.error === 'unavailable' ? 'unavailable' : 'prompt'
   lastRead = now.getTime()
   await sense(fix, now)
+  await keepChoices()
   return 'granted'
 }
 
 /** Turns it off: nothing more is read, and the sun goes back to the place you typed. What it learned stays until you forget it. */
 export async function turnOff(): Promise<void> {
   await updateSettings((s) => ({ ...s, location: { ...s.location, on: false } }))
+  await keepChoices()
 }
 
 /** The one question, when a place has been seen on three different days and none was asked today: the place and what it looks like. */
@@ -232,14 +279,24 @@ export async function answerQuestion(candidateId: number, answer: PlaceKind | 'n
     await db.placeCandidates.delete(candidateId)
     cells = c.cells
   })
+  await keepChoices()
   // Answered while standing there: the out the last reading added here becomes the place's kind.
   const was = answer === 'later' || answer === 'none' ? null : addedHere(today, block, cells)
   if (was && answer !== 'later' && answer !== 'none') await recordWhere(today, block, answer, await getSettings(), was)
 }
 
-/** One-time setup: names where you are now. A place you had already named here is renamed instead; nothing is asked about it again. */
-export async function nameHere(kind: PlaceKind, label: string | null = null, now: Date = new Date()): Promise<'named' | LocationStatus | 'coarse'> {
-  const fix = await bestFix()
+/**
+ * One-time setup: names where you are now. A place you had already named here is renamed instead; nothing is asked about it
+ * again. A quick reading first; when it is too rough, the phone's positions are watched for up to half a minute, each
+ * passed on to `onFix` (2026-10-19: the tap had waited with nothing on screen).
+ */
+export async function nameHere(kind: PlaceKind, label: string | null = null, now: Date = new Date(), onFix: (accuracy: number) => void = () => {}): Promise<'named' | LocationStatus | 'coarse'> {
+  const quick = await readFix(10_000)
+  if ('error' in quick && quick.error === 'denied') return 'denied'
+  if (!('error' in quick)) onFix(quick.accuracy)
+  const watched = !('error' in quick) && quick.accuracy <= PLACE_ACCURACY ? quick : await watchForFix(NAMING_WAIT_MS, onFix)
+  // The better of the two: a watch that brought nothing better leaves the quick reading, if there was one.
+  const fix = 'error' in watched ? ('error' in quick || watched.error === 'denied' ? watched : quick) : !('error' in quick) && quick.accuracy < watched.accuracy ? quick : watched
   if ('error' in fix) return fix.error === 'denied' ? 'denied' : fix.error === 'unavailable' ? 'unavailable' : 'prompt'
   if (fix.accuracy > PLACE_ACCURACY) return 'coarse'
   const cells = await fingerprints(await secret(), cellBlock(fix.lat, fix.lon))
@@ -251,6 +308,7 @@ export async function nameHere(kind: PlaceKind, label: string | null = null, now
     else await db.places.add({ kind, cells, area, learnedAt: now.toISOString(), ...(kind === 'regular' && label ? { label: label.slice(0, 40) } : {}) })
     for (const c of await db.placeCandidates.toArray()) if (c.cells.some((x) => cells.includes(x))) await db.placeCandidates.delete(c.id as number)
   })
+  await keepChoices()
   const settings = await getSettings()
   const { day, block } = blockAt(now)
   await recordWhere(day, block, kind, settings, addedHere(day, block, cells))
@@ -260,10 +318,12 @@ export async function nameHere(kind: PlaceKind, label: string | null = null, now
 /** What a named place is called: its kind, and your own word for a regular place. */
 export async function renamePlace(id: number, kind: PlaceKind, label: string | null = null): Promise<void> {
   await db.places.update(id, { kind, label: kind === 'regular' && label ? label.slice(0, 40) : undefined })
+  await keepChoices()
 }
 
 export async function forgetPlace(id: number): Promise<void> {
   await db.places.delete(id)
+  await keepChoices()
 }
 
 /** Everything it learned, gone from this phone: the places, the places being learned, the key and the area. What the days recorded stays in their record. */
@@ -271,9 +331,11 @@ export async function forgetAll(): Promise<void> {
   await db.transaction('rw', [db.places, db.placeCandidates, db.placeMeta], async () => {
     await db.places.clear()
     await db.placeCandidates.clear()
-    await db.placeMeta.clear()
+    // Everything but the database's own mark, which tells this database from one the browser cleared (phoneChoices.ts).
+    await db.placeMeta.where('key').noneOf(['dbMark']).delete()
   })
   await updateSettings((s) => ({ ...s, location: { ...s.location, area: null } }))
+  await keepChoices()
 }
 
 /** The places named, for Settings and the export: their kinds and your words, never their fingerprints. */

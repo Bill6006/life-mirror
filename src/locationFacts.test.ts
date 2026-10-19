@@ -16,7 +16,7 @@ describe('the location facts', () => {
 
   it('say each part of the day in order, a change within a part as “then”, and nothing for a part it did not see', () => {
     expect(whereWords({ morning: ['home'], afternoon: ['work', 'home'] })).toEqual({ text: 'the morning at Home; the afternoon at Work, then at Home', values: { morning: 'home', afternoon: 'work,home' } })
-    expect(whereWords({ evening: ['away'] })?.text).toBe('the evening away from home, in a different area')
+    expect(whereWords({ evening: ['away'] })?.text).toBe('the evening out of town, in a different area')
     expect(whereWords({ afternoon: ['regular', 'out'] })?.text).toBe('the afternoon at a regular place, then out, at no place you named')
     expect(whereWords(undefined)).toBeNull()
     expect(whereWords({})).toBeNull()

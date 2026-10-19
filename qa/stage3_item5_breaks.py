@@ -40,7 +40,6 @@ EXP = 'src/export.test.ts'
 REDRAW = 'a chip that changes the day draws an untouched move again'
 AMONG = 'Out among people today, the fourth chip'
 LATE = 'the afternoon asks the two sleep readings first'
-TURN = 'each morning asks one of Motivation and Confidence'
 CHIPS = 'Outside a while today and Something sweet'
 EXPECT = 'after a People rep is done, one optional tap'
 OWN = 'your own chips, added in Settings'
@@ -96,16 +95,17 @@ TABLE = [
          new="skipped: o.skippedAt !== null,",
          tests=[EXP], pattern='shows a move set aside'),
     # Part 7: Out among people today.
+    # Restated 2026-10-19: Out among people is read through outAmongPeople since the owner's office-day fix.
     dict(id='among-people-around', file='src/people.ts',
-         old="  if (ctx.amongPeople) return true\n",
-         new="",
+         old="  return ctx.amongPeople === true || officeDayAtOffice(ctx)\n",
+         new="  return officeDayAtOffice(ctx)\n",
          tests=[PE], pattern='reads Out among people today'),
     dict(id='among-people-chip', file='src/extras.tsx',
-         old="{!chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
-         new="{false && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
+         old="{!atOfficeToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
+         new="{false && !atOfficeToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
          tests=[S], pattern=AMONG),
     dict(id='among-people-seen', file='src/extras.tsx',
-         old="useChipsSeen(cardRef, { day, block }, record && ctx && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])",
+         old="useChipsSeen(cardRef, { day, block }, record && ctx && !atOfficeToday && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])",
          new="useChipsSeen(cardRef, { day, block }, [])",
          tests=[S], pattern=AMONG),
     # Part 2: sleep asked late.
@@ -149,19 +149,13 @@ TABLE = [
          old="{askedLate(record).includes(id) && <span class=\"sub\">{copy.summary.askedLate}</span>}",
          new="",
          tests=[S], pattern=LATE),
-    # Part 4: Motivation and Confidence in turn.
-    dict(id='turn-one-a-morning', file='src/settings.ts',
-         old="    return all.filter((id) => id !== notToday)\n",
-         new="    return all\n",
-         tests=[A], pattern='asks one of the two each morning'),
-    dict(id='turn-day-by-day', file='src/settings.ts',
-         old="/ 86_400_000) % 2 === 0 ? 'motivation' : 'confidence'",
-         new="/ 86_400_000) % 1 === 0 ? 'motivation' : 'confidence'",
-         tests=[A], pattern='asks one of the two each morning'),
-    dict(id='turn-on-the-phone', file='src/checkin.tsx',
+    # Part 4's turns were withdrawn at the owner's word on 2026-10-19 (both every morning, never one in turn to save a
+    # tap): six_fixes_breaks.py carries both-every-morning. The day still reaches
+    # the phone's check-in, for the sleep readings asked late.
+    dict(id='late-on-the-phone', file='src/checkin.tsx',
          old="askedReadings(block, depth, retired, { day, morning: morning ?? null })",
          new="askedReadings(block, depth, retired)",
-         tests=[S], pattern=TURN),
+         tests=[S], pattern=LATE),
     # Parts 5 and 8, and Rule 2: the newer chips, counted and compared only where shown.
     dict(id='shown-compare', file='src/chips.ts',
          old="  if (!SHOWN_CHIPS.includes(key)) return true\n",

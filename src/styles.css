@@ -2627,6 +2627,13 @@ button.chip {
   color: var(--ink);
 }
 
+/* A chip that waits (2026-10-19: naming a place reads first) looks it, in the faint ink of every disabled control; the one
+   reading stays lit. */
+.when-chip:disabled:not(.is-on) {
+  color: var(--faint);
+  cursor: default;
+}
+
 /* Workstream 6: how a learning session went, one optional tap after it, and a skill's own words. */
 .when.method-unsure {
   margin-bottom: 14px;

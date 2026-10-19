@@ -16,8 +16,9 @@ import { blockReadings, type Answers, type Position } from './readings'
 // Away from home) were built behind gates, opened at stage 1 (2026-10-16). With both closed, as here
 // by standing in for the shared gate, held fixed (recorded before either was built, again at stage 1
 // with that stage's own changes, again at stage 3, group 1, 2026-10-17, whose trends read by the
-// week and weekly view facts move the sheet on purpose, and again at stage R7, 2026-10-19, whose three
-// honesty checks add three weekly facts and nothing else, each read line by line): the day's sheet the
+// week and weekly view facts move the sheet on purpose, again at stage R7, 2026-10-19, whose three
+// honesty checks add three weekly facts and nothing else, and again with the owner's fixes of that day,
+// whose day records keep whether the week scheduled them at the office, each read line by line): the day's sheet the
 // monitored prompts are built from, the coach block, every draw, every candidate set and every day's
 // shape must not move by a byte. The record
 // already holds what the features would store once open (a trip saved in Settings, days shaped by

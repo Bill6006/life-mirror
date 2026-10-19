@@ -157,8 +157,12 @@ test('Away from home, previewed: set in its own screen, said on Now and in the c
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   const row = page.getByTestId('settings-away')
   await expect(row).toContainText('Not set')
+  // Renamed at the owner's word (2026-10-19), its meaning kept: away from the normal local area.
+  await expect(row).toContainText('Out of town / traveling')
   await row.click()
   await expect(page.getByTestId('away-screen')).toBeVisible()
+  await expect(page.getByTestId('away-screen')).toContainText('Out of town / traveling')
+  await expect(page.getByTestId('away-screen')).toContainText('Away from your normal local area, not at work, a park or a store nearby.')
   await expect(page.getByTestId('away-from')).toHaveValue('2026-10-14')
 
   // The last day is needed, and three weeks at most.
@@ -170,7 +174,7 @@ test('Away from home, previewed: set in its own screen, said on Now and in the c
   await page.getByTestId('away-to').fill('2026-10-17')
   await page.getByTestId('away-save').click()
   await expect(page.getByTestId('away-problem')).toHaveCount(0)
-  await expect(page.getByTestId('away-status')).toHaveText('Away from home until Saturday, October 17.')
+  await expect(page.getByTestId('away-status')).toHaveText('Out of town until Saturday, October 17.')
 
   // Only the dates are kept; today is shaped by the trip, the week's office and daycare set aside.
   const [settings] = await rowsOf<{ away?: { from: string; to: string } }>(page, 'settings')
@@ -185,11 +189,12 @@ test('Away from home, previewed: set in its own screen, said on Now and in the c
 
   // Now: one row, to the trip's screen.
   await page.getByRole('button', { name: 'Now', exact: true }).click()
-  await expect(page.getByTestId('away-line')).toContainText('Away from home until Saturday, October 17.')
+  await expect(page.getByTestId('away-line')).toContainText('Out of town until Saturday, October 17.')
 
   // The check-in's day rows: the trip's row says until when, and the office row gives way to it.
   await checkIn(page)
   await expect(page.getByTestId('chip-away-from-home')).toContainText('until Sat, Oct 17')
+  await expect(page.getByTestId('chip-away-from-home')).toContainText('Out of town / traveling')
   await expect(page.getByTestId('chip-office')).toHaveCount(0)
   await page.getByTestId('chip-away-from-home').click()
   await expect(page.getByTestId('away-screen')).toBeVisible()
@@ -214,7 +219,7 @@ test('Away from home, previewed: set in its own screen, said on Now and in the c
   await page.getByTestId('settings-away').click()
   await page.getByTestId('away-to').fill('2026-10-16')
   await page.getByTestId('away-save').click()
-  await expect(page.getByTestId('away-status')).toHaveText('Away from home until Friday, October 16.')
+  await expect(page.getByTestId('away-status')).toHaveText('Out of town until Friday, October 16.')
   await page.clock.setFixedTime(new Date(2026, 9, 15, 9, 0))
   await page.reload()
   await page.getByRole('button', { name: 'Now', exact: true }).click()

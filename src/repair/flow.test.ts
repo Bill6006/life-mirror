@@ -126,6 +126,13 @@ describe('an answer to a learning week', () => {
     expect(day?.withHer).toBe(true)
     expect(day?.churchDay).toBe(true)
   })
+
+  it('stamps the day as changed by hand, so a copy only made from the week never replaces it (2026-10-19)', async () => {
+    await ensureDayContext(START, await getSettings())
+    expect((await db.days.get(START))?.updatedAt).toBeUndefined()
+    await answerWeek(START, true)
+    expect(typeof (await db.days.get(START))?.updatedAt).toBe('string')
+  })
 })
 
 describe('a test of the recovery gap at the evening’s draw (stage R4b)', () => {

@@ -1,6 +1,7 @@
 import type Dexie from 'dexie'
 import type { DBCore, DBCoreMutateRequest, DBCoreMutateResponse, DBCoreTable, DBCoreTransaction } from 'dexie'
 import type { OutboxRow } from './cloudOutbox'
+import { bodyByHand } from './dayChoice'
 import { maxIds } from './idFloors'
 import { raiseFloors, tokenStorage } from './tokenVault'
 
@@ -157,6 +158,10 @@ function apply(changes: readonly Change[]): void {
   const copy = readPending()
   for (const c of changes) {
     if (c.kind === 'put') {
+      // A day made again from the week's shape never takes the place of a change by hand kept for it (2026-10-19): after the
+      // browser cleared the database, Now makes today again, and the change it would replace is the one to put back.
+      const have = copy.rows[rowKey(c.row)]
+      if (c.row.store === 'days' && have && bodyByHand(have.row.body) && !bodyByHand(c.row.body)) continue
       copy.rows[rowKey(c.row)] = { id: c.id, row: c.row }
       continue
     }

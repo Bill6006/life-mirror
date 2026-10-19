@@ -928,7 +928,7 @@ const POST_WINDOW: typeof STATES = [
     tab: 'Moves',
     open: async (p) => {
       await click(/^History/)(p)
-      await expect(p.getByText('away from home').first()).toBeVisible()
+      await expect(p.getByText('out of town').first()).toBeVisible()
     },
   },
 ]

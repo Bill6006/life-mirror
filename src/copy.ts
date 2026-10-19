@@ -396,9 +396,12 @@ export const copy = {
     yourNote: 'Your note',
     /** Stage 3, item 5: a sleep reading the afternoon asked late. */
     askedLate: 'Asked late, about last night',
-    /** Stage 3, item 5: Motivation and Confidence take turns, one each morning; the other is marked so (the owner's words). */
+    /**
+     * Stage 3, item 5: a morning that asked Motivation and Confidence in turn marks the other so (the owner's words). Since
+     * the owner's fix of 2026-10-19 every morning asks both, so only a morning from before is marked.
+     */
     notAsked: 'Not asked',
-    notAskedWhy: 'Asked in turn with {other}, one each morning',
+    notAskedWhy: 'Mornings then asked it in turn with {other}',
     quoted: '“{note}”',
   },
   since: {
@@ -482,7 +485,7 @@ export const copy = {
     todayCaption: '{n} of 3 blocks logged · the reading out of 100 by block · an overlay shows a context reading on the same scale',
     /** Stage 3, item 5: the afternoon's answer to a sleep reading, asked late. */
     overlayLate: '{reading}: the afternoon’s answer was asked late, about last night.',
-    overlayNotAsked: '{reading}: not asked today. Motivation and Confidence are asked in turn, one each morning.',
+    overlayNotAsked: '{reading}: not asked this morning, which asked Motivation and Confidence in turn.',
     weekCaption: 'Seven days · each dot one block · a gap is Not logged yet',
     heatCaption: 'Brighter is higher · an empty outline is Not logged yet · {days} days',
     togetherNote: 'Moving together is not causing.',
@@ -751,7 +754,7 @@ export const copy = {
       studyNight: 'study nights',
       unwell: 'unwell days',
       amongPeople: 'days out among people',
-      away: 'days away from home',
+      away: 'days out of town',
       weekend: 'weekends',
       shortNight: 'days after a short night',
     },
@@ -1027,9 +1030,9 @@ export const copy = {
   },
   /** Away from home (post-window, gated; agreed 2026-10-04): a trip's own screen, its row and its line. */
   away: {
-    title: 'Away from home',
+    title: 'Out of town / traveling',
     back: 'Back',
-    about: 'For a trip: its first and last day. On those days your week’s office, daycare, church and study days don’t hold, the moves that need the house wait, nothing you committed to is due, and the days aren’t read as a drop in your check-ins or commitments. Check-ins and reminders stay as they are. Only the dates are kept, never where.',
+    about: 'Away from your normal local area, not at work, a park or a store nearby. For a trip: its first and last day. On those days your week’s office, daycare, church and study days don’t hold, the moves that need the house wait, nothing you committed to is due, and the days aren’t read as a drop in your check-ins or commitments. Check-ins and reminders stay as they are. Only the dates are kept, never where.',
     from: 'First day away',
     to: 'Last day away',
     ends: 'The last day is needed: the trip ends by itself after it. Three weeks at most.',
@@ -1037,12 +1040,12 @@ export const copy = {
     change: 'Change the dates',
     end: 'End it today',
     remove: 'Remove the trip',
-    until: 'Away from home until {to}.',
+    until: 'Out of town until {to}.',
     untilShort: 'until {to}',
     untilRow: 'Until {to}',
     aheadRow: '{from} to {to}',
     ahead: 'A trip is set: {from} to {to}.',
-    row: 'Away from home',
+    row: 'Out of town / traveling',
     off: 'Not set',
     problems: {
       noStart: 'Give the first day.',
@@ -1056,7 +1059,7 @@ export const copy = {
     title: 'History',
     count: '{n} offers',
     /** A day a trip shaped (post-window, gated). */
-    away: 'away from home',
+    away: 'out of town',
     empty: 'No moves offered yet. Complete a check-in and one follows.',
     offer: 'Offer {id}',
     card: 'Card {id} · {window}',
@@ -1114,7 +1117,7 @@ export const copy = {
     rhythmWeek: '{n} this week · {per} a week',
     resting: 'a rest day',
     /** A day away from home (post-window, gated). */
-    away: 'away from home, so nothing is due',
+    away: 'out of town, so nothing is due',
     setSkill: 'Set it',
     withMethod: 'With {method}',
     practice: '{sessions} on {days} since {since}',
@@ -1422,6 +1425,8 @@ export const copy = {
       office: 'the office',
       church: 'church',
       daycare: 'drop-off or pickup',
+      /** Out among people today, marked or, on an office day, without asking (2026-10-19). */
+      amongPeople: 'out among people today',
       around: 'People around by today’s shape: {why}',
       nobody: 'Nobody around by today’s shape',
     },
@@ -1695,7 +1700,7 @@ export const copy = {
       nothingYet: 'Nothing to set against the week yet.',
       missedCadence: 'Check-ins: {now} this week against {before} the week before.',
       /** Away from home (post-window, gated): a week a trip held, said once instead of what it could not hold. */
-      tripWeek: 'A trip away from home held {n} of these seven days, so nothing is set against them.',
+      tripWeek: 'A trip out of town held {n} of these seven days, so nothing is set against them.',
       noneHeld: 'No commitment had a step started in the last seven days.',
       noneMissed: 'Every commitment had a step started.',
       noChange: 'Nothing the record supports changing; keep the cues that hold.',
@@ -1847,6 +1852,10 @@ export const copy = {
     },
     nameHere: 'Name where you are now',
     nameHereNote: 'Once, where you are; from then on it is known. A place you come back to on three different days is asked about once.',
+    /** Naming a place (2026-10-19): said at once, while the phone finds where you are. */
+    reading: 'Reading where you are. This can take up to half a minute.',
+    readingRough: 'Still reading: the phone’s position is {n} metres across so far, and a place needs one within {within}.',
+    namedFailed: 'Reading where you are did not work ({error}). Try again in a moment.',
     kinds: { home: 'Home', work: 'Work', church: 'Church', regular: 'A regular place', none: 'Not one to note' },
     known: 'Places it knows',
     knownNone: 'None yet.',
@@ -1860,7 +1869,7 @@ export const copy = {
       named: 'Named. It is known from now on.',
       denied: 'The phone did not allow it: Location Context needs the phone’s permission.',
       unavailable: 'This phone gave no location just now.',
-      prompt: 'The phone gave no location just now. Try again in a moment.',
+      prompt: 'The phone gave no location just now. If its own location setting is off, turn it on, then try again.',
       granted: 'Named.',
       coarse: 'The reading was too rough to know a place by. Try again in a moment, or near a window.',
     },
@@ -1876,7 +1885,7 @@ export const copy = {
     forgetAll: 'Forget everything it learned',
     forgetAllNote: 'The places, the ones being learned, the key and the area, gone from this phone. What each day noted stays in its record.',
     forgotten: 'Forgotten.',
-    where: { home: 'Home', work: 'Work', church: 'Church', regular: 'a regular place', out: 'out, at no place you named', away: 'away from home, in a different area' },
+    where: { home: 'Home', work: 'Work', church: 'Church', regular: 'a regular place', out: 'out, at no place you named', away: 'out of town, in a different area' },
     whereAt: '{where} in the {block}',
     question: {
       eyebrow: 'A place you come back to',
@@ -2111,7 +2120,7 @@ export const copy = {
     contextEarlier: 'earlier',
     /** Stage 3, item 5: a sleep reading asked at the afternoon check-in after a morning without it. */
     contextLate: 'asked late',
-    /** Stage 3, item 5: Motivation or Confidence, the one this morning did not ask, in turn: its last answer, so marked. */
+    /** Stage 3, item 5: Motivation or Confidence, the one a morning from before 2026-10-19 did not ask, in turn: its last answer, so marked. */
     contextNotAsked: 'not asked today',
     repNotes: 'About this rep',
     more: 'More',
