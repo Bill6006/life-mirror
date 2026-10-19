@@ -1,7 +1,7 @@
 import { addDays, BLOCKS, daysBetween, parseDay, type Block } from '../blocks'
 import { NOTHING, type Window } from '../catalogue'
 import { isComplete, setAside, type CheckIn, type DayContext as AppDay, type Offer, type Outcome } from '../db'
-import { EngineB, REPAIR, type BConfig, type CallB } from './engine'
+import { EngineB, IN_APP, type BConfig, type CallB } from './engine'
 import type { ReadingId } from '../readings'
 import type { Rng } from './stats'
 import type { Answered, DayContext, Response } from './world'
@@ -90,7 +90,7 @@ const slotKey = (day: string, block: Block) => `${day}|${block}`
  * in its order and each draw made at it replayed and answered. With `stopBefore`, the check-in at that slot is observed
  * and its draw, if any, is left out: the state a new draw at that slot is made from.
  */
-export function buildEngine(r: RepairRecord, through: string, stopBefore: Block | null = null, rng: Rng = Math.random, cfg: BConfig = REPAIR, onLearn: ((d: number, calls: CallB[]) => void) | null = null, epochIn: string | null = null, declared: { moveId: string; target: ReadingId; window: Window }[] = []): Built {
+export function buildEngine(r: RepairRecord, through: string, stopBefore: Block | null = null, rng: Rng = Math.random, cfg: BConfig = IN_APP, onLearn: ((d: number, calls: CallB[]) => void) | null = null, epochIn: string | null = null, declared: { moveId: string; target: ReadingId; window: Window }[] = []): Built {
   const complete = r.checkins.filter((c) => isComplete(c) && c.day <= through).sort((a, b) => (a.day === b.day ? BLOCKS.indexOf(a.block) - BLOCKS.indexOf(b.block) : a.day < b.day ? -1 : 1))
   const epoch = epochIn ?? complete[0]?.day ?? through
   const index = (day: string) => daysBetween(epoch, day)
@@ -122,4 +122,31 @@ export function buildEngine(r: RepairRecord, through: string, stopBefore: Block 
     }
   }
   return { engine, epoch, index, ids }
+}
+
+/** Two 32-bit FNV-1a hashes of a string, joined: a record's fingerprint. */
+function fingerprint(text: string): string {
+  let a = 0x811c9dc5
+  let b = 0x01000193
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    a = Math.imul(a ^ c, 0x01000193)
+    b = Math.imul(b ^ c, 0x5bd1e995) ^ (b >>> 15)
+  }
+  return `${(a >>> 0).toString(36)}.${(b >>> 0).toString(36)}.${text.length}`
+}
+
+let cached: { key: string; built: Built } | null = null
+
+/**
+ * The engine rebuilt through a day, for reading only (the week's line, Evidence, the move card): kept while the record
+ * and the day stand still, so the screens that read it at once rebuild it once. Never drawn from, since a draw changes
+ * the engine: a draw rebuilds its own (`buildEngine` with the slot to stop before).
+ */
+export function builtThrough(r: RepairRecord, through: string): Built {
+  const key = `${through}|${fingerprint(JSON.stringify([r.checkins, r.offers, r.outcomes, r.days, [...r.weekAnswers]]))}`
+  if (cached?.key === key) return cached.built
+  const built = buildEngine(r, through)
+  cached = { key, built }
+  return built
 }

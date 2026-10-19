@@ -135,6 +135,13 @@ export interface BConfig {
    * record most favour run first.
    */
   queueScore: 'explore' | 'benefit'
+  /**
+   * Requirement 15's thresholds: "The simulation's rates stand until enough calls resolve. Thresholds loosen only when
+   * the record shows calls holding, and tighten when it does not." On, a rung whose own record shows its calls not
+   * holding tightens (its allowed error halves), and returns to the simulation's value once they hold again; never looser.
+   * Off, the thresholds are the simulation's alone, as the verdict judged them. The track record is kept either way.
+   */
+  trackRule: boolean
 }
 
 export const B_DEFAULT: BConfig = {
@@ -176,11 +183,12 @@ export const B_DEFAULT: BConfig = {
   priorTau: 0,
   alphaWeights: 'even',
   queueScore: 'explore',
+  trackRule: false,
 }
 
 /**
- * The design the stress test passed by requirement 14's rule, read once on fresh seeds (stress/RESULTS-6.md): the settings
- * the app runs. The week's acceptance rate is the stress test's model of the owner; in the app the owner answers.
+ * The design the stress test passed by requirement 14's rule, read once on fresh seeds (stress/RESULTS-6.md). The week's
+ * acceptance rate is the stress test's model of the owner; in the app the owner answers.
  */
 export const REPAIR: BConfig = {
   ...B_DEFAULT,
@@ -195,6 +203,13 @@ export const REPAIR: BConfig = {
   queueSize: 2,
   lw: { accept: 0.5, length: 7, gap: 0, gapNo: 7, tests: 2, always: false },
 }
+
+/**
+ * The settings the app runs (stage R4): the design the stress test passed, with requirement 15's threshold rule on. The
+ * rule only tightens a rung whose own record shows its calls not holding, and never loosens one past the simulation's
+ * value (stress/track15.sh compares it with the passing design on every tuning scenario).
+ */
+export const IN_APP: BConfig = { ...REPAIR, trackRule: true }
 
 /**
  * Rule 16: whether study, faith, church, time with her, the partner and the people paths happen is the
@@ -322,7 +337,7 @@ export interface Test {
   fitAll: Fit | null
   level: Level
   direction: Direction
-  ctxCalls: { context: string; value: 0 | 1; level: Level; direction: Direction; est: number }[]
+  ctxCalls: { context: string; value: 0 | 1; level: Level; direction: Direction; est: number; p: number }[]
   /** The day the test entered the queue, null while it never has; and whether it left without a conclusion. */
   queuedAt: number | null
   expired: boolean
@@ -351,9 +366,130 @@ export interface CallB {
   n1: number
   n0: number
   revised: boolean
-  ctx: { context: string; value: 0 | 1; level: Level; direction: Direction; est: number }[]
+  ctx: { context: string; value: 0 | 1; level: Level; direction: Direction; est: number; p: number }[]
   /** The probability of the direction called, from the belief. */
   pDir: number
+}
+
+/** A rung of the ladder that makes a call. */
+export type Rung = 'early' | 'likely' | 'established'
+const RUNG_RANK: Record<Level, number> = { none: 0, early: 1, likely: 2, established: 3 }
+
+/**
+ * Requirement 15: "Every early sign, likely and established call is kept with its date, level and probability, and
+ * resolved later." A call is kept the first time a test, or one of its context values, reaches a rung in a direction,
+ * unless a call of that direction at that rung or higher is still open. It resolves on its own test's evidence: held when
+ * the test reaches a higher rung in the same direction, or, for an established call, when it has stood sixty days; not
+ * held when the test reaches any rung in another direction, or an established call is withdrawn (revised).
+ */
+export interface TrackCall {
+  /** The test's key, and for a context call its context and value. */
+  key: string
+  ctx: string | null
+  rung: Rung
+  direction: Exclude<Direction, null>
+  day: number
+  /** The probability of the direction called, from the belief. */
+  p: number
+  /** True when it held, false when it did not, null while it stays open; and the day it resolved. */
+  held: boolean | null
+  resolved: number | null
+}
+
+/** How often each rung is right, as the stress test's criteria promise and the verdict kept (stress/CRITERIA.md). */
+export const TESTED_RATES: Readonly<Record<Rung, number>> = { early: 2 / 3, likely: 4 / 5, established: 19 / 20 }
+/** How many of a rung's calls must resolve before its own record can move its threshold. */
+export const TRACK_ENOUGH = 10
+/** Days an established call stands, never withdrawn nor contradicted, to count as held (C13's sixty days). */
+export const TRACK_STANDS = 60
+
+/** P(X ≤ k) for X binomial(n, p). */
+function binomCdf(k: number, n: number, p: number): number {
+  if (p <= 0) return 1
+  if (p >= 1) return k >= n ? 1 : 0
+  let s = 0
+  let logC = 0
+  for (let i = 0; i <= k; i++) {
+    if (i > 0) logC += Math.log((n - i + 1) / i)
+    s += Math.exp(logC + i * Math.log(p) + (n - i) * Math.log(1 - p))
+  }
+  return s
+}
+
+/** The upper end of the exact two-sided 95 % interval of a share, k of n (Clopper and Pearson 1934). */
+export function heldUpper(k: number, n: number): number {
+  if (n <= 0 || k >= n) return 1
+  let lo = k / n
+  let hi = 1
+  for (let i = 0; i < 60; i++) {
+    const p = (lo + hi) / 2
+    if (binomCdf(k, n, p) > 0.025) lo = p
+    else hi = p
+  }
+  return (lo + hi) / 2
+}
+
+/**
+ * One test's (or context value's) calls on one day: each open call resolved on today's call, and a new call kept when
+ * today's is a rung in a direction no open call of that rung or higher already holds. `revisedOn` is the day the test's
+ * established call was last withdrawn, or null. Resolved calls are marked in place; the calls still open are returned.
+ */
+export function trackStep(open: readonly TrackCall[], key: string, ctx: string | null, level: Level, direction: Direction, d: number, p: number, revisedOn: number | null): { still: TrackCall[]; opened: TrackCall | null } {
+  const still: TrackCall[] = []
+  for (const c of open) {
+    let held: boolean | null = null
+    if (level !== 'none' && direction !== c.direction) held = false
+    else if (c.rung === 'established' && revisedOn !== null && revisedOn > c.day) held = false
+    else if (RUNG_RANK[level] > RUNG_RANK[c.rung] && direction === c.direction) held = true
+    else if (c.rung === 'established' && d - c.day >= TRACK_STANDS) held = true
+    if (held === null) still.push(c)
+    else {
+      c.held = held
+      c.resolved = d
+    }
+  }
+  let opened: TrackCall | null = null
+  if (level !== 'none' && direction !== null && !still.some((c) => c.direction === direction && RUNG_RANK[c.rung] >= RUNG_RANK[level])) {
+    opened = { key, ctx, rung: level, direction, day: d, p, held: null, resolved: null }
+    still.push(opened)
+  }
+  return { still, opened }
+}
+
+/**
+ * The thresholds in force (requirement 15): the simulation's own, or, for a rung its record has tightened, its allowed
+ * error halved: the probability an early sign or a likely call needs, and the share of established's error rate kept.
+ */
+export function rungThresholds(cfg: Pick<BConfig, 'tauEarly' | 'tauLikely'>, tight: Readonly<Record<Rung, boolean>>): { early: number; likely: number; estScale: number } {
+  return {
+    early: tight.early ? 1 - (1 - cfg.tauEarly) / 2 : cfg.tauEarly,
+    likely: tight.likely ? 1 - (1 - cfg.tauLikely) / 2 : cfg.tauLikely,
+    estScale: tight.established ? 0.5 : 1,
+  }
+}
+
+/**
+ * Requirement 15: "The simulation's rates stand until enough calls resolve. Thresholds loosen only when the record shows
+ * calls holding, and tighten when it does not." Once ten of a rung's calls have resolved, the rung tightens while the
+ * exact 95 % interval of its share held lies wholly below the rate tested for it, and returns to the simulation's value
+ * once the share held is back at that rate. It never loosens past the simulation's value, which requirement 8 fixes in
+ * advance ("Thresholds are fixed in advance, from the simulation."). Returns the rungs tightened from today.
+ */
+export function tightenFrom(track: readonly TrackCall[], before: Readonly<Record<Rung, boolean>>): Record<Rung, boolean> {
+  const out: Record<Rung, boolean> = { early: false, likely: false, established: false }
+  for (const r of ['early', 'likely', 'established'] as const) {
+    let n = 0
+    let k = 0
+    for (const c of track) {
+      if (c.rung !== r || c.held === null) continue
+      n++
+      if (c.held) k++
+    }
+    if (n < TRACK_ENOUGH) out[r] = false
+    else if (before[r]) out[r] = k / n < TESTED_RATES[r]
+    else out[r] = heldUpper(k, n) < TESTED_RATES[r]
+  }
+  return out
 }
 
 export interface OfferMadeB {
@@ -437,6 +573,10 @@ export class EngineB {
   private lwUntil = -1
   private lwNext = 0
   readonly lwStats = { invited: 0, accepted: 0, days: 0, checkins: 0, moveOffers: 0 }
+  /** Requirement 15: every call kept, the ones still open by test (and context value), and the rungs the record has tightened. */
+  private readonly track: TrackCall[] = []
+  private readonly openTrack = new Map<string, TrackCall[]>()
+  private tight: Record<Rung, boolean> = { early: false, likely: false, established: false }
   private readonly answerOf: ((d: number) => boolean | null) | null
   private readonly dayOf: (d: number) => string
   /** The day an invitation to a learning week stands unanswered, or null: the app shows it until it is answered. */
@@ -467,12 +607,55 @@ export class EngineB {
     this.alphaTest = cfg.declareAll ? cfg.alphaSystem / this.allTests : cfg.alphaSystem / cfg.queueCap
   }
 
-  /** A test's error rates: its confidence sequence's, and the lower rungs', each its part of the system's. */
+  /** A test's error rates: its confidence sequence's, and the lower rungs', each its part of the system's; established's halved while its record has tightened it. */
   private ratesOf(t: Test): { est: number; likely: number; early: number } {
     const cfg = this.cfg
-    if (!cfg.declareAll) return { est: this.alphaTest, likely: cfg.alphaLikely, early: cfg.alphaEarly }
+    const estScale = rungThresholds(cfg, this.tight).estScale
+    if (!cfg.declareAll) return { est: this.alphaTest * estScale, likely: cfg.alphaLikely, early: cfg.alphaEarly }
     const share = cfg.alphaWeights === 'research' ? weightOf(t.moveId) / this.allWeight : 1 / this.allTests
-    return { est: cfg.alphaSystem * share, likely: cfg.alphaLikely * cfg.queueCap * share, early: cfg.alphaEarly * cfg.queueCap * share }
+    return { est: cfg.alphaSystem * share * estScale, likely: cfg.alphaLikely * cfg.queueCap * share, early: cfg.alphaEarly * cfg.queueCap * share }
+  }
+
+  /** The probability a lower rung's belief needs: the simulation's, or its allowed error halved while the record has tightened it. */
+  private tauOf(r: 'early' | 'likely'): number {
+    return rungThresholds(this.cfg, this.tight)[r]
+  }
+
+  /** Requirement 15's thresholds, from the record kept through yesterday (`tightenFrom`). */
+  private tighten(): void {
+    this.tight = tightenFrom(this.track, this.tight)
+  }
+
+  /** Requirement 15: today's calls of every test and context value, each kept the first time and resolved on its own test's evidence. */
+  private trackDay(d: number): void {
+    for (const t of this.tests.values()) {
+      this.trackOne(t.key, null, t.level, t.direction, d, this.pDirOf(t), t.revised ? t.csStart : null)
+      for (const c of t.ctxCalls) this.trackOne(t.key, `${c.context}=${c.value}`, c.level, c.direction, d, c.p, null)
+    }
+  }
+
+  private trackOne(key: string, ctx: string | null, level: Level, direction: Direction, d: number, p: number, revisedOn: number | null): void {
+    const id = ctx === null ? key : `${key}|${ctx}`
+    const open = this.openTrack.get(id)
+    if (!open && level === 'none') return
+    const { still, opened } = trackStep(open ?? [], key, ctx, level, direction, d, p, revisedOn)
+    if (opened) this.track.push(opened)
+    this.openTrack.set(id, still)
+  }
+
+  /** The engine's own calls, kept and resolved (requirement 15). */
+  trackRecord(): readonly TrackCall[] {
+    return this.track
+  }
+
+  /** The rungs the record has tightened today (requirement 15). */
+  tightened(): Readonly<Record<Rung, boolean>> {
+    return this.tight
+  }
+
+  /** The tests the queue runs now, by key. */
+  runningKeys(): string[] {
+    return this.queue.map((t) => t.key)
   }
 
   private testFor(moveId: string, target: ReadingId, window: Window): Test {
@@ -859,6 +1042,7 @@ export class EngineB {
   /** The daily run: resolve every decision whose outcome slots have passed, fit, believe, and call. */
   learn(d: number): CallB[] {
     this.today = d
+    if (this.cfg.trackRule) this.tighten()
     this.trainPredictions(d)
     const lastSlotPassed = d * 3 - 1
     for (const t of this.tests.values()) {
@@ -936,6 +1120,7 @@ export class EngineB {
       this.call(t)
       if ((t.queuedAt !== null || this.cfg.declareAll) && t.n1 >= 1 && t.n0 >= 1) calls.push(this.callOf(t))
     }
+    this.trackDay(d)
     this.tendQueue(d)
     this.tendWeek(d)
     return calls
@@ -1246,8 +1431,8 @@ export class EngineB {
         return null
       }
       const rates = this.ratesOf(t)
-      const likely = rung(rates.likely, cfg.tauLikely)
-      const early = likely ? null : rung(rates.early, cfg.tauEarly)
+      const likely = rung(rates.likely, this.tauOf('likely'))
+      const early = likely ? null : rung(rates.early, this.tauOf('early'))
       t.level = likely ? 'likely' : early ? 'early' : 'none'
       t.direction = likely ?? early
     }
@@ -1279,18 +1464,25 @@ export class EngineB {
         } else if (m0 >= cfg.minPerArm && m1 >= cfg.minPerArm) {
           const opts: [number, Direction][] = [[pp, 'helps'], [1 - pp, 'hurts'], [lit, 'little']]
           opts.sort((a, b) => b[0] - a[0])
-          level = opts[0][0] >= cfg.tauLikely ? 'likely' : opts[0][0] >= cfg.tauEarly ? 'early' : 'none'
+          level = opts[0][0] >= this.tauOf('likely') ? 'likely' : opts[0][0] >= this.tauOf('early') ? 'early' : 'none'
           direction = level === 'none' ? null : opts[0][1]
         }
-        t.ctxCalls.push({ context: k, value: val, level, direction, est })
+        const p = direction === 'helps' ? pp : direction === 'hurts' ? 1 - pp : direction === 'little' ? lit : 0
+        t.ctxCalls.push({ context: k, value: val, level, direction, est, p })
       }
     })
   }
 
+  /** The probability of the direction a test calls, from its belief; 0 while it calls none. */
+  private pDirOf(t: Test): number {
+    if (t.direction === null) return 0
+    const pPos = pAbove(t.post, 0)
+    return t.direction === 'helps' ? pPos : t.direction === 'hurts' ? 1 - pPos : pWithin(t.post, this.cfg.delta)
+  }
+
   private callOf(t: Test): CallB {
     const f = t.fitAll
-    const pPos = pAbove(t.post, 0)
-    const pDir = t.direction === 'helps' ? pPos : t.direction === 'hurts' ? 1 - pPos : t.direction === 'little' ? pWithin(t.post, this.cfg.delta) : 0
+    const pDir = this.pDirOf(t)
     return { key: t.key, moveId: t.moveId, target: t.target, cls: t.cls, window: t.window, level: t.level, direction: t.direction, theta: t.theta, thetaSe: t.thetaSe, itt: f?.beta ?? null, csLo: f ? f.beta - f.csHalf : null, csHi: f ? f.beta + f.csHalf : null, compliance: t.compliance, nDays: f?.nDays ?? 0, n1: t.n1, n0: t.n0, revised: t.revised, ctx: t.ctxCalls, pDir }
   }
 

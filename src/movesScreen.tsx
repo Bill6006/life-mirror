@@ -10,6 +10,7 @@ import { deleteOutcome, offerForSlot, offerHistory, pendingOffers, pickupOfferNo
 import { readingById } from './readings'
 import { ScreenHead } from './ui'
 import { awayDays } from './awayFlow'
+import { repairOn } from './repair/gate'
 
 /** The Moves tab: the live move with why and testing, then the doors to History and the catalogue. */
 export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory: () => void; onCatalogue: () => void; onEvidence: () => void }) {
@@ -41,7 +42,7 @@ export function MovesScreen({ onHistory, onCatalogue, onEvidence }: { onHistory:
       {/* The doors, each with one line; the note on how tiers are computed now sits inside Evidence, where the tiers are. */}
       <div class="card doors">
         <ul class="rows">
-          <NavRow label={copy.evidence.title} note={copy.movesTab.evidenceDoor} onClick={onEvidence} />
+          <NavRow label={copy.evidence.title} note={repairOn() ? copy.repairEvidence.door : copy.movesTab.evidenceDoor} onClick={onEvidence} />
           <NavRow label={copy.history.title} note={copy.movesTab.historyDoor} onClick={onHistory} />
           <NavRow label={copy.catalogue.read} note={copy.movesTab.catalogueDoor} onClick={onCatalogue} />
         </ul>

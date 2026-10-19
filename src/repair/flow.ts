@@ -2,7 +2,7 @@ import { db, ensureDayContext, getSettings, isComplete, type CheckIn } from '../
 import type { Belief } from '../learning'
 import { NOTHING, type Situation, type TodayState } from '../offers'
 import { pMean, REPAIR, type OfferMadeB } from './engine'
-import { answeredOf, buildEngine, contextOf, type RepairRecord } from './record'
+import { answeredOf, buildEngine, builtThrough, contextOf, type RepairRecord } from './record'
 import type { Rng } from './stats'
 import { windowOfMove } from './world'
 
@@ -24,7 +24,7 @@ export interface WeekState {
 }
 
 export function weekStateFrom(r: RepairRecord, today: string): WeekState {
-  const built = buildEngine(r, today)
+  const built = builtThrough(r, today)
   const d = built.index(today)
   const until = built.engine.weekUntil
   const length = REPAIR.lw?.length ?? 7

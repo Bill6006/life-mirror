@@ -1687,13 +1687,22 @@ for (const theme of THEMES) {
  * days of check-ins, each with a draw between the walk and nothing extra, so a running test has fitted three recent days.
  * The invitation first, never answered; then Yes, and the running week with its Details open.
  */
-async function seedLearningWeek(page: Page): Promise<void> {
+async function seedLearningWeek(page: Page, { days = 10, effect = false }: { days?: number; effect?: boolean } = {}): Promise<void> {
   await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '1'))
   await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
-  await page.evaluate(async () => {
+  await page.evaluate(async ({ days, effect }) => {
+    // With `effect`, each draw a fair coin fixed by its slot (mulberry32's step), and stress lowest after a walk.
+    const coin = (slot: number) => {
+      let a = (slot * 7919 + 13) | 0
+      a = (a + 0x6d2b79f5) | 0
+      let t = Math.imul(a ^ (a >>> 15), 1 | a)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296 < 0.5
+    }
+    let last: string | null = null
     const fits = ['walk-ten|mood|nextBlock', 'walk-ten|energy|nextBlock', 'walk-ten|stress|nextBlock']
     const blocks: Record<string, string[]> = {
       morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
@@ -1708,7 +1717,7 @@ async function seedLearningWeek(page: Page): Promise<void> {
     })
     const tx = dbx.transaction(['checkins', 'offers', 'outcomes'], 'readwrite')
     let k = 0
-    for (let d = 10; d >= 1; d--) {
+    for (let d = days; d >= 1; d--) {
       const date = new Date(2026, 8, 24 - d)
       const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
       for (const block of Object.keys(blocks)) {
@@ -1717,9 +1726,11 @@ async function seedLearningWeek(page: Page): Promise<void> {
         blocks[block].forEach((id, ri) => {
           answers[id] = 1 + ((k + ri) % 5)
         })
+        if (effect && last !== null) answers.stress = last === 'walk-ten' ? 1 : 5
         const done = new Date(new Date(2026, 8, 24 - d, hours[block], 40).getTime() + 95_000).toISOString()
         tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
-        const moveId = k % 2 ? 'walk-ten' : 'nothing'
+        const moveId = effect ? (coin(k - 1) ? 'walk-ten' : 'nothing') : k % 2 ? 'walk-ten' : 'nothing'
+        last = moveId
         const offerId = await new Promise<number>((res) => {
           const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done, fits })
           q.onsuccess = () => res(q.result as number)
@@ -1732,7 +1743,7 @@ async function seedLearningWeek(page: Page): Promise<void> {
       tx.onerror = () => rej(tx.error)
     })
     dbx.close()
-  })
+  }, { days, effect })
   await page.reload()
 }
 
@@ -1777,6 +1788,61 @@ for (const theme of THEMES) {
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
       await walk(page, theme, WEEK_RUNNING, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+/**
+ * The learning repair's screens (stage R4), in its preview: fourteen days of a strong walk effect on stress, then a check-in
+ * today. Evidence with the tests by rung, the track record at their head and the tests with no call opened; the move card's
+ * Why with its rung.
+ */
+const REPAIR_SCREENS: typeof STATES = [
+  {
+    name: 'Evidence, the repair’s tests and track record',
+    tab: 'Moves',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evidence/ }).click()
+      await expect(p.getByTestId('track-record')).toBeVisible()
+      await expect(p.getByTestId('repair-test').first()).toBeVisible()
+      const quiet = p.getByTestId('repair-quiet')
+      if (await quiet.count()) await quiet.locator('summary').click()
+    },
+  },
+  {
+    name: 'Now, the move card’s Why with its rung',
+    tab: 'Now',
+    open: async (p) => {
+      const card = p.getByTestId('move-card').first()
+      await card.getByTestId('move-why').click()
+      await expect(card.getByTestId('move-tier')).toBeVisible()
+      await card.scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the repair's tests, track record and move card read, fit and can be tapped, at three widths (the repair's preview)`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    // A real move drawn at today's check-in, the same every run.
+    await page.addInitScript(() => {
+      let x = 11
+      Math.random = () => {
+        x = (x * 16807) % 2147483647
+        return x / 2147483647
+      }
+    })
+    await seedLearningWeek(page, { days: 14, effect: true })
+    await page.getByRole('button', { name: /Check in/ }).first().click()
+    await tapThrough(page)
+    await page.getByRole('button', { name: 'Done', exact: true }).click()
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, REPAIR_SCREENS, width, found)
     }
     writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
     expect(found, found.join('\n')).toEqual([])

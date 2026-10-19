@@ -46,7 +46,7 @@ next.
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
 | `scenarios.ts` | The simulated people of the criteria's list, one scenario each. |
 | `engineA.ts` | Today's engine, replayed. The draw mirrors `offerFlow.ensureOffer` and the daily run mirrors `learningFlow.runLearning`, calling the committed functions in `src/`. |
-| `engineB.ts` | The agreed design (requirements 1–16), prototyped, with the three corrections; the learning week (`lw`), C3's correction (`estimator: 'ht'`, or `'hybrid'` for sparse tests) and the design search's settings (`declareAll`, `alphaWeights`, `queueScore`, `keepEarly`, `lw.gapNo`, `hybridMin`), all off by default. |
+| `engineB.ts` | The agreed design (requirements 1–16), prototyped, with the three corrections; the learning week (`lw`), C3's correction (`estimator: 'ht'`, or `'hybrid'` for sparse tests) and the design search's settings (`declareAll`, `alphaWeights`, `queueScore`, `keepEarly`, `lw.gapNo`, `hybridMin`), all off by default. Since 2026-10-19 it keeps requirement 15's track record of its own calls, which changes no call, and holds the rule that tightens a rung its record shows not holding (`trackRule`), off by default. |
 | `stats.ts` | The seeded generator and the small statistics both engines and the judge use. |
 | `run.ts` | One person through one engine, and what the metrics need from it. |
 | `pool.ts` | Many people over worker threads; it also merges parts of one run. |
@@ -59,7 +59,9 @@ next.
 | `validate14.sh` | The verdict run by requirement 14's rule: the design `RESULTS-4.md` settled, at the sizes that let every gate decide. |
 | `validate14b.sh` | The same, once more after C2's correction, on fresh seeds from 400001. |
 | `summary.ts`, `tune.ts` | Reading a run while settling values on the tuning seeds. |
-| `equivalence.ts` | The learning repair's guarantee: the stress test's people run through the judged engine and the app's copy (`src/repair/engine.ts`), live, replayed from the record, and rebuilt from app-shaped records by `src/repair/record.ts`; the same offers, chances, calls and week on every day. `perturb` is its own break. |
+| `equivalence.ts` | The learning repair's guarantee: the stress test's people run through the judged engine and the app's copy (`src/repair/engine.ts`), live, replayed from the record, and rebuilt from app-shaped records by `src/repair/record.ts`; the same offers, chances, calls, week and track record on every day. `DESIGN=app` runs both engines with the app's settings (the passing design with requirement 15's rule on). `perturb` is its own break. |
+| `track15.sh` | Requirement 15's rule against the passing design: every tuning scenario on seeds 1–1000 with the rule on (or, given `false`, off), then compared person by person with the passing design's own tuning run. |
+| `compare.ts` | Two results folders compared person by person: every run the second holds, against the same run in the first. |
 | `probeA.ts`, `probeB.ts` | A first look at one simulated person through each engine. |
 
 ## Running it

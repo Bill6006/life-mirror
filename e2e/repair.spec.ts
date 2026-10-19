@@ -26,11 +26,21 @@ const FITS = ['walk-ten|mood|nextBlock', 'walk-ten|energy|nextBlock', 'walk-ten|
 
 /**
  * Days of a record written straight into the phone's store: each check-in complete, each with a draw between the walk and
- * nothing extra at even chances, seen, answered and closed, the walk's tests fitting it.
+ * nothing extra at even chances, seen, answered and closed, the walk's tests fitting it. With `effect`, each draw is a fair
+ * coin fixed by its slot, and stress reads lowest at the check-in after a walk and highest after nothing extra.
  */
-async function seedRepairRecord(page: Page, days: number): Promise<void> {
+async function seedRepairRecord(page: Page, days: number, effect = false): Promise<void> {
   await page.evaluate(
-    async ({ n, fits }) => {
+    async ({ n, fits, effect }) => {
+      // The slot's number mixed (mulberry32's step): a fair coin with no pattern running through it.
+      const coin = (slot: number) => {
+        let a = (slot * 7919 + 13) | 0
+        a = (a + 0x6d2b79f5) | 0
+        let t = Math.imul(a ^ (a >>> 15), 1 | a)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296 < 0.5
+      }
+      let last: string | null = null
       const blocks: Record<string, string[]> = {
         morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
         afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
@@ -54,10 +64,12 @@ async function seedRepairRecord(page: Page, days: number): Promise<void> {
           blocks[block].forEach((id, ri) => {
             answers[id] = 1 + ((k + ri) % 5)
           })
+          if (effect && last !== null) answers.stress = last === 'walk-ten' ? 1 : 5
           const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 40)
           const done = new Date(at.getTime() + 95_000).toISOString()
           tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
-          const moveId = k % 2 ? 'walk-ten' : 'nothing'
+          const moveId = effect ? (coin(k - 1) ? 'walk-ten' : 'nothing') : k % 2 ? 'walk-ten' : 'nothing'
+          last = moveId
           const offerId = await new Promise<number>((res) => {
             const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done, fits })
             q.onsuccess = () => res(q.result as number)
@@ -71,7 +83,7 @@ async function seedRepairRecord(page: Page, days: number): Promise<void> {
       })
       dbx.close()
     },
-    { n: days, fits: FITS },
+    { n: days, fits: FITS, effect },
   )
 }
 
@@ -149,4 +161,94 @@ test('closed, the phone shows no week and draws as before', async ({ page }) => 
   await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
   await expect(page.getByTestId('week-invite')).toHaveCount(0)
   await expect(page.getByTestId('week-running')).toHaveCount(0)
+})
+
+/** The rung words a test can show, and the old tiers it must never show while the repair is on. */
+const RUNG = /^(No call yet|(Early sign|Likely|Established): (helps|little difference|hurts))( · revised)?$/
+const TIERS = ['Little evidence', 'Unclear', 'Promising', 'Holds up', 'Unhelpful here']
+
+test('Evidence shows the repair’s tests by rung, its track record at their head, in place of the cards (stage R4)', async ({ page }) => {
+  await start(page)
+  await seedRepairRecord(page, 14, true)
+  await page.reload()
+  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Evidence/ })).toContainText('Every test with its rung, counts and interval')
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('track-record')).toBeVisible()
+  await expect(page.getByTestId('track-early')).toHaveText(/^(No early sign has resolved yet\.|Of \d+ early signs, \d+ held\.)/)
+  // The walk's test on stress, after fourteen days of a strong effect: a call that helps, run by the queue.
+  const walk = page.getByTestId('repair-test').filter({ hasText: 'A ten-minute walk, now' }).filter({ hasText: 'for Stress over the next block' })
+  await expect(walk).toHaveCount(1)
+  await expect(walk.getByTestId('repair-rung')).toHaveText(/^(Early sign|Likely|Established): helps/)
+  await expect(walk).toContainText('being tested now')
+  await expect(walk).toContainText(/offered \d+ times and held back \d+, each with the reading after it, over \d+ days/)
+  for (const rung of await page.getByTestId('repair-rung').allTextContents()) expect(rung).toMatch(RUNG)
+  await expect(page.getByTestId('evidence-card')).toHaveCount(0)
+  await expect(page.getByTestId('evidence')).not.toContainText('coin-flip slice')
+  // The Legend names the rungs, not the tiers.
+  await page.reload()
+  await page.locator('nav.tabs').getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByTestId('settings-legend').click()
+  await expect(page.getByText(/always with its rung/)).toBeVisible()
+  await expect(page.getByText(/always with its evidence tier/)).toHaveCount(0)
+})
+
+test('closed, Evidence shows its cards and no track record, as before', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.removeItem('life-mirror.preview.learningRepair')
+    } catch {
+      // nothing to remove
+    }
+  })
+  await start(page)
+  await seedRepairRecord(page, 14, true)
+  await page.reload()
+  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Evidence/ })).toContainText('Every card with its tier, counts and interval')
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toBeVisible()
+  await expect(page.getByTestId('track-record')).toHaveCount(0)
+  await expect(page.getByTestId('repair-test')).toHaveCount(0)
+})
+
+test('the move card names the drawn move’s own test by its rung, never a tier (stage R4)', async ({ page }) => {
+  // The page's random draws fixed, so the check-in's move is the same every run.
+  await page.addInitScript((seed) => {
+    let x = seed
+    Math.random = () => {
+      x = (x * 16807) % 2147483647
+      return x / 2147483647
+    }
+  }, 11)
+  // A fixed afternoon, so the record's days, and with them the draw, are the same whatever day the test runs.
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+  await start(page)
+  await seedRepairRecord(page, 14, true)
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  for (let i = 0; i < 40; i++) {
+    if (await page.getByTestId('give-back').isVisible()) break
+    if (await page.getByTestId('extras').isVisible()) break
+    if (await page.locator('#ci-title').isVisible()) await page.getByTestId('anchor').nth(1).click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(150)
+  }
+  await page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  await expect.poll(async () => (await offersOf(page, '2026-09-24')).length).toBeGreaterThan(0)
+  const [offer] = await offersOf(page, '2026-09-24')
+  expect(offer.draw?.engine).toBe('repair-1')
+  // The seed above draws a real move; nothing extra has no test of its own and shows no rung.
+  expect(offer.moveId).not.toBe('nothing')
+  // The evidence sits one tap away, under Why.
+  const card = page.getByTestId('move-card').first()
+  await card.getByTestId('move-why').click()
+  const tier = card.getByTestId('move-tier')
+  await expect(tier).toBeVisible()
+  const words = ((await tier.textContent()) ?? '').trim()
+  expect(words).toMatch(RUNG)
+  expect(TIERS).not.toContain(words)
+  // Its test is the repair's own: a fair draw each time the move fits, never an old card against one alternative.
+  const testing = card.locator('.calc-line.testing')
+  await expect(testing).toContainText('a fair draw decides whether it is offered')
+  await expect(testing).not.toContainText(/Card \d+/)
 })

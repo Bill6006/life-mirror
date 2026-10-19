@@ -3,7 +3,7 @@ import { moveById, NOTHING, type Strength } from '../src/catalogue'
 import type { CheckIn, DayContext as AppDay, Offer, Outcome } from '../src/db'
 import { blockReadings } from '../src/readings'
 import { buildEngine, contextOf } from '../src/repair/record'
-import { EngineB as AppEngine, REPAIR, type OfferMadeB } from '../src/repair/engine'
+import { EngineB as AppEngine, IN_APP, REPAIR, type OfferMadeB } from '../src/repair/engine'
 import type { Response as AppResponse } from '../src/repair/world'
 import { EngineB as JudgedEngine } from './engineB'
 import { scenarioById, type Scenario } from './scenarios'
@@ -11,7 +11,8 @@ import { stream, type Rng } from './stats'
 import { DAYS, World, type Answered, type DayContext, type Response } from './world'
 
 // The learning repair's equivalence check: the engine the app runs (src/repair/engine.ts) against the engine the stress
-// test judged (stress/engineB.ts), on the same simulated people, with the passing design (REPAIR).
+// test judged (stress/engineB.ts), on the same simulated people, with the passing design (REPAIR), or with DESIGN=app the
+// design as the app runs it (IN_APP: the passing design with requirement 15's threshold rule on, in both engines).
 //
 //   live:   the app's engine drawing for itself, side by side with the judged one on identical worlds: the same offers,
 //           the same chances, and the same calls on every day;
@@ -23,12 +24,15 @@ import { DAYS, World, type Answered, type DayContext, type Response } from './wo
 //           same calls on every day. (The app knows short sleep only from an answered morning, so its contexts can differ
 //           from the simulated world's on a missed morning, by design; the two are compared like for like.)
 //
-// node stress/.out/equivalence.mjs [people per scenario] [perturb]   — exits 1 on the first difference.
+// Each path's track record of its own calls (requirement 15) is compared too.
+//
+// [DESIGN=app] node stress/.out/equivalence.mjs [people per scenario] [perturb]   — exits 1 on the first difference.
 // "perturb" is the check's own break: the app's engine runs with the research prior's vague part 0.01 wider, and every
 // scenario must then come out DIFFERENT.
 
 const people = Number(process.argv[2] ?? 20)
-const APP_CFG = process.argv[3] === 'perturb' ? { ...REPAIR, vague: REPAIR.vague + 0.01 } : REPAIR
+const BASE = process.env.DESIGN === 'app' ? IN_APP : REPAIR
+const APP_CFG = process.argv[3] === 'perturb' ? { ...BASE, vague: BASE.vague + 0.01 } : BASE
 const SCENARIOS = ['large', 'null', 'mixed', 'moderate', 'sparse-large', 'multi-day', 'change', 'with-her-only', 'prior-zero', 'next-morning', 'missing-large', 'pool-split']
 
 function withPriors<T>(s: Scenario, f: () => T): T {
@@ -70,14 +74,14 @@ const fail = (what: string) => {
 function runOne(s: Scenario, seed: number): void {
   const away = new Set(s.params.away)
   const declared = s.declared ?? []
-  const judged = new JudgedEngine(stream(seed, 'engineB'), REPAIR, away, declared, stream(seed, 'optin'))
+  const judged = new JudgedEngine(stream(seed, 'engineB'), BASE, away, declared, stream(seed, 'optin'))
   // The app's engine draws from its own copy of the same streams; its week answers are logged by day for the replay.
   const appOptIn = stream(seed, 'optin')
   let usedOn: number | null = null
   let lastAnswer: boolean | null = null
   const loggingOptIn: Rng = () => {
     const u = appOptIn()
-    lastAnswer = u < (REPAIR.lw?.accept ?? 0)
+    lastAnswer = u < (BASE.lw?.accept ?? 0)
     return u
   }
   const app = new AppEngine(stream(seed, 'engineB'), APP_CFG, away, declared, loggingOptIn)
@@ -126,6 +130,11 @@ function runOne(s: Scenario, seed: number): void {
     }
   }
   void usedOn
+  const track = (e: { trackRecord(): readonly unknown[] }) => JSON.stringify(e.trackRecord())
+  if (track(judged) !== track(app)) {
+    fail(`${s.id} seed ${seed}: the live track records differ`)
+    return
+  }
 
   // The record: the live run as the app keeps it, rebuilt by the app's own code.
   const checkins: CheckIn[] = []
@@ -146,7 +155,7 @@ function runOne(s: Scenario, seed: number): void {
   }
   for (const [d] of answers) if (!days.has(dayOf(d))) days.set(dayOf(d), { day: dayOf(d), weekday: 0, withHer: false, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '' } as AppDay)
   const fromRecord: string[] = []
-  buildEngine({ checkins, offers, outcomes, days: [...days.values()], weekAnswers: new Map([...answers].map(([d, v]) => [dayOf(d), v])) }, dayOf(DAYS - 1), null, stream(seed, 'unused'), APP_CFG, (_d, calls) => fromRecord.push(JSON.stringify(calls)), dayOf(0), declared)
+  const built = buildEngine({ checkins, offers, outcomes, days: [...days.values()], weekAnswers: new Map([...answers].map(([d, v]) => [dayOf(d), v])) }, dayOf(DAYS - 1), null, stream(seed, 'unused'), APP_CFG, (_d, calls) => fromRecord.push(JSON.stringify(calls)), dayOf(0), declared)
   const morningOf = new Map(checkins.filter((c) => c.block === 'morning').map((c) => [c.day, c]))
   const appCtx = (d: number) => contextOf(dayOf(d), days.get(dayOf(d)), morningOf.get(dayOf(d)))
   const direct = new AppEngine(stream(seed, 'unused'), APP_CFG, away, declared, null, (d) => answers.get(d) ?? null)
@@ -165,6 +174,11 @@ function runOne(s: Scenario, seed: number): void {
         direct.respond(id, rec.response as AppResponse)
       }
     }
+  }
+
+  if (track(built.engine) !== track(direct)) {
+    fail(`${s.id} seed ${seed}: the track record rebuilt from the app's record differs from a direct replay's`)
+    return
   }
 
   // The replay: a fresh app engine fed only the record.
@@ -197,6 +211,7 @@ function runOne(s: Scenario, seed: number): void {
   // app's next live draw.
   const week = (e: AppEngine) => JSON.stringify({ invited: e.lwStats.invited, accepted: e.lwStats.accepted, days: e.lwStats.days })
   if (week(replay) !== week(app)) fail(`${s.id} seed ${seed}: the replayed week differs from the live one (${week(replay)} / ${week(app)})`)
+  else if (track(replay) !== track(app)) fail(`${s.id} seed ${seed}: the replayed track record differs from the live one`)
 }
 
 for (const id of SCENARIOS) {

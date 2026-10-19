@@ -15,6 +15,8 @@ import { ownChipAnswer } from './ownChips'
 import { ownChipsOf } from './settings'
 import type { Association } from './associations'
 import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
+import { repairOn } from './repair/gate'
+import { RepairTests } from './repair/testsSection'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
 // learned; the weight card; the observational associations; and the plain line about months
@@ -183,6 +185,9 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
   const today = blockAt(new Date()).day
   const ev = useLive(() => evidence(today), [today])
   const c = copy.evidence
+  // The learning repair (stage R4): its tests by rung on the evidence ladder, with its track record, in place of the cards.
+  const repair = repairOn()
+  const r = copy.repairEvidence
   if (!ev) return <section class="screen" />
   const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
@@ -192,21 +197,27 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
         <p class="eyebrow">{c.title}</p>
         <p class="date">{fill(c.observationsLine, { n: String(ev.observations), weeks: String(ev.weeks) })}</p>
       </header>
-      <p class="note">{c.intro}</p>
-      <p class="note faint">{c.register}</p>
-      <p class="note faint">{copy.movesTab.tiersNote}</p>
+      <p class="note">{repair ? r.intro : c.intro}</p>
+      <p class="note faint">{repair ? r.register : c.register}</p>
+      <p class="note faint">{repair ? r.rungsNote : copy.movesTab.tiersNote}</p>
 
-      <h2 class="section">{c.cards}</h2>
-      {ev.cards.length === 0 ? (
-        <p class="note">{c.none}</p>
+      {repair ? (
+        <RepairTests today={today} />
       ) : (
-        <div class="card">
-          <ul class="moves">
-            {ev.cards.map((e) => (
-              <CardBlock key={e.card.id} e={e} />
-            ))}
-          </ul>
-        </div>
+        <>
+          <h2 class="section">{c.cards}</h2>
+          {ev.cards.length === 0 ? (
+            <p class="note">{c.none}</p>
+          ) : (
+            <div class="card">
+              <ul class="moves">
+                {ev.cards.map((e) => (
+                  <CardBlock key={e.card.id} e={e} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       <PathEvidence />

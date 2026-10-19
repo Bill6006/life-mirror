@@ -13,6 +13,10 @@ import { INGREDIENTS } from './score'
 import { Disclosure, Tag } from './ui'
 import { needsHome } from './homeOnly'
 import { homeOnlyOn } from './postWindowFlow'
+import { repairEvidence, testOf } from './repair/evidence'
+import { repairOn } from './repair/gate'
+import { rungWords } from './repair/testsSection'
+import { windowOfMove } from './repair/world'
 
 function times(n: number): string {
   return n === 1 ? copy.move.once : n === 2 ? copy.move.twice : fill(copy.move.nTimes, { n: String(n) })
@@ -50,8 +54,14 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   const move = nothing ? null : moveById(offer.moveId)
   const card = useLive(() => cardById(offer.cardId), [offer.cardId])
   const counts = useLive(() => offerCounts(offer.situationKey, offer.moveId), [offer.situationKey, offer.moveId, outcome?.id])
-  // The card's own tier, as Evidence shows it; never a fixed word (Part 33).
-  const tier = useLive(() => (offer.cardId === null ? Promise.resolve(null) : tierOfCard(offer.cardId, offer.day)), [offer.cardId, offer.day, outcome?.id])
+  // The card's own tier, as Evidence shows it; never a fixed word (Part 33). While the learning repair is on (stage R4), the
+  // drawn move's own test for the moment's reading and window, by its rung on the evidence ladder; nothing extra has none.
+  const repair = repairOn()
+  const tier = useLive(() => (repair || offer.cardId === null ? Promise.resolve(null) : tierOfCard(offer.cardId, offer.day)), [repair, offer.cardId, offer.day, outcome?.id])
+  const rung = useLive(
+    () => (repair && !nothing ? repairEvidence(offer.day).then((ev) => testOf(ev, offer.moveId, offer.target, windowOfMove(offer.moveId, offer.target))) : Promise.resolve(null)),
+    [repair, nothing, offer.moveId, offer.target, offer.day, outcome?.id],
+  )
   const target = readingById(offer.target)
   const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
   const whyNot = reasonText(offer)
@@ -122,13 +132,13 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       ? c.whyPickup
       : nothing
         ? fill(INGREDIENTS[offer.target] === 'down' ? c.whyNothingDown : c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
-        : fill(INGREDIENTS[offer.target] === 'down' ? c.whyLineDown : c.whyLine, { target: target.name, arrow, window: windowOf(card?.window ?? 'nextBlock') })
+        : fill(INGREDIENTS[offer.target] === 'down' ? c.whyLineDown : c.whyLine, { target: target.name, arrow, window: windowOf(repair ? windowOfMove(offer.moveId, offer.target) : (card?.window ?? 'nextBlock')) })
   const shownPrivates = (privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
 
   const head = (
     <div class="move-head">
       <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
-      {card && <Tag>{c.testing}</Tag>}
+      {(repair ? rung?.running : card) && <Tag>{c.testing}</Tag>}
     </div>
   )
   const title = (
@@ -165,7 +175,20 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       <div class="ev">
         <span class="calc-key">{c.evidence}</span>
         <span class="calc-line">
-          <span class="tier" data-testid="move-tier">{copy.evidence.tiers[tier ?? 'little']}</span> {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
+          {repair ? (
+            !nothing && (
+              <>
+                <span class="tier" data-testid="move-tier">
+                  {rungWords(rung?.level ?? 'none', rung?.direction ?? null)}
+                </span>{' '}
+              </>
+            )
+          ) : (
+            <>
+              <span class="tier" data-testid="move-tier">{copy.evidence.tiers[tier ?? 'little']}</span>{' '}
+            </>
+          )}
+          {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
         </span>
       </div>
       {whyNot && (
@@ -184,18 +207,24 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       <div class="ev test">
         <span class="calc-key">{c.testing}</span>
         <span class="calc-line testing">
-          {card === undefined
-            ? '…'
-            : card === null
-              ? c.testingNone
-              : fill(c.testingLine, {
-                  move: move?.name ?? c.nothing,
-                  alternative: moveById(card.alternativeId).name,
-                  target: target.name.toLowerCase(),
-                  window: windowOf(card.window),
-                  id: String(card.id),
-                  date: formatWhen(card.createdAt),
-                })}
+          {repair
+            ? offer.kind === 'pickup'
+              ? copy.repairEvidence.testingPickup
+              : nothing
+              ? copy.repairEvidence.testingNothing
+              : `${fill(copy.repairEvidence.testingLine, { move: move?.name ?? '', target: target.name.toLowerCase(), window: windowOf(windowOfMove(offer.moveId, offer.target)) })}${rung?.running ? ` ${copy.repairEvidence.testingNow}` : ''}`
+            : card === undefined
+              ? '…'
+              : card === null
+                ? c.testingNone
+                : fill(c.testingLine, {
+                    move: move?.name ?? c.nothing,
+                    alternative: moveById(card.alternativeId).name,
+                    target: target.name.toLowerCase(),
+                    window: windowOf(card.window),
+                    id: String(card.id),
+                    date: formatWhen(card.createdAt),
+                  })}
           {offer.coinFlip && ` ${c.coinFlip}`}
         </span>
       </div>
