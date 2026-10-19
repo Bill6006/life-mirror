@@ -1,26 +1,21 @@
 import { hasMove, moveById } from '../catalogue'
 import { copy } from '../copy'
-import { fill } from '../format'
+import { fill, formatDayShort } from '../format'
 import { useLive } from '../live'
 import { readingById } from '../readings'
-import type { Direction, Level } from './engine'
-import { repairEvidence, type TestShown, type TrackLine } from './evidence'
+import { repairEvidence, type RepairEvidence, type TestShown, type TrackLine } from './evidence'
+import { rungWords } from './words'
 
-// Moves → Evidence while the learning repair is on (stage R4): each test with its rung on the evidence ladder in place of
-// the tiers (requirement 8), and the engine's own track record at their head (requirement 15). Facts plain, calculations
-// behind a single rule, conclusions behind a double rule with their rung, as the rest of Evidence.
+// Moves → Evidence while the learning repair is on (stage R4): it opens with what helps you and the tests nearest
+// finishing (part 2), then the engine's own track record (requirement 15) and each test with its rung on the evidence
+// ladder in place of the tiers (requirement 8). Facts plain, calculations behind a single rule, conclusions behind a
+// double rule with their rung, as the rest of Evidence.
 
 function steps(x: number): string {
   const r = Math.round(x * 100) / 100
   return `${r > 0 ? '+' : ''}${r.toFixed(2)}`
 }
 
-/** A call in words: "Early sign: helps", or "No call yet". */
-export function rungWords(level: Level, direction: Direction): string {
-  const c = copy.repairEvidence
-  if (level === 'none' || direction === null) return c.rungs.none
-  return fill(c.call, { rung: c.rungs[level], direction: c.directions[direction] })
-}
 
 const nameOf = (moveId: string) => (hasMove(moveId) ? moveById(moveId).name : moveId)
 const windowOf = (w: string) => copy.catalogue.windows[w as keyof typeof copy.catalogue.windows] ?? w
@@ -77,13 +72,59 @@ function TrackBlock({ lines }: { lines: TrackLine[] }) {
   )
 }
 
-/** The tests and their track record, in place of the cards. */
+/**
+ * What helps you (stage R4, part 2): per reading, the moves the pooled belief says help, research's estimate beside each;
+ * then the tests nearest finishing, each with the day it began, never a projected finish.
+ */
+function HelpsBlock({ ev }: { ev: RepairEvidence }) {
+  const c = copy.repairEvidence
+  return (
+    <>
+      <h2 class="section">{c.helpsTitle}</h2>
+      <div class="card pad" data-testid="what-helps">
+        {ev.helps.length === 0 ? (
+          <p class="note no-gap">{c.helpsNone}</p>
+        ) : (
+          ev.helps.map((g) => (
+            <div key={g.target} class="calc" data-testid="helps-reading">
+              <p class="calc-line">
+                <span class="calc-key">{readingById(g.target).name}</span>
+              </p>
+              {g.moves.map((m) => (
+                <p key={m.key} class="calc-line" data-testid="helps-move">
+                  {fill(c.helpsLine, { move: nameOf(m.moveId), belief: steps(m.belief), research: steps(m.research), rung: rungWords(m.level, m.direction) })}
+                </p>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+      <h2 class="section">{c.nearestTitle}</h2>
+      <div class="card pad" data-testid="nearest">
+        {ev.nearest.length === 0 ? (
+          <p class="note no-gap">{c.nearestNone}</p>
+        ) : (
+          <div class="calc">
+            {ev.nearest.map((n) => (
+              <p key={n.key} class="calc-line" data-testid="nearest-test">
+                {fill(c.nearestLine, { move: nameOf(n.moveId), target: readingById(n.target).name, window: windowOf(n.window), date: formatDayShort(n.began), rung: rungWords(n.level, n.direction) })}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+/** What helps you, the track record and the tests, in place of the cards. */
 export function RepairTests({ today }: { today: string }) {
   const ev = useLive(() => repairEvidence(today), [today])
   if (!ev) return null
   const c = copy.repairEvidence
   return (
     <>
+      <HelpsBlock ev={ev} />
       <h2 class="section">{c.trackTitle}</h2>
       <TrackBlock lines={ev.track} />
       <h2 class="section">{c.title}</h2>

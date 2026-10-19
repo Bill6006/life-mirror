@@ -15,7 +15,7 @@ import { needsHome } from './homeOnly'
 import { homeOnlyOn } from './postWindowFlow'
 import { repairEvidence, testOf } from './repair/evidence'
 import { repairOn } from './repair/gate'
-import { rungWords } from './repair/testsSection'
+import { rungWords } from './repair/words'
 import { windowOfMove } from './repair/world'
 
 function times(n: number): string {
