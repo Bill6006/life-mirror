@@ -59,6 +59,7 @@ next.
 | `validate14.sh` | The verdict run by requirement 14's rule: the design `RESULTS-4.md` settled, at the sizes that let every gate decide. |
 | `validate14b.sh` | The same, once more after C2's correction, on fresh seeds from 400001. |
 | `summary.ts`, `tune.ts` | Reading a run while settling values on the tuning seeds. |
+| `equivalence.ts` | The learning repair's guarantee: the stress test's people run through the judged engine and the app's copy (`src/repair/engine.ts`), live, replayed from the record, and rebuilt from app-shaped records by `src/repair/record.ts`; the same offers, chances, calls and week on every day. `perturb` is its own break. |
 | `probeA.ts`, `probeB.ts` | A first look at one simulated person through each engine. |
 
 ## Running it

@@ -30,6 +30,9 @@ import { rainSoon } from './weather'
 import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
+import { LEARNING_REPAIR } from './brainShared'
+import { repairDraw } from './repair/flow'
+import { REPAIR_ENGINE } from './repair/record'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
 // card (what is being tested, written first), and the outcome (what happened).
@@ -311,9 +314,13 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
     const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))
     const draw = rng ?? Math.random
-    const choice = chooseFor(set, beliefs, draw)
+    // The learning repair (stage R2, behind its switch): its engine, rebuilt from the record, draws from the day's own
+    // candidates and keeps every chance. A replacement after a skip stays today's, drawn among real moves alone.
+    const made = LEARNING_REPAIR === 'open' && !replacing ? await repairDraw(checkin, situation, t, drawn.candidates.map((c) => c.id), draw) : null
+    const choice = made ? { id: made.offer.moveId, coinFlip: false, samples: {}, runnerUp: null } : chooseFor(set, beliefs, draw)
     if (!choice) return null
-    const odds = propensities(set.candidates, beliefs, draw)
+    const odds = made ? made.offer.chances : propensities(set.candidates, beliefs, draw)
+    const drawnFrom = made ? made.offer.candidates : set.candidates.map((c) => c.id)
     const history = await db.offers.where('situationKey').equals(situation.key).filter((o) => o.skippedAt === null).toArray()
     const expected = await mostRecentlyDoneIn(situation.key)
     const now = new Date().toISOString()
@@ -353,7 +360,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const whyNot = whyNotThat(expected, choice, set)
     // Requirement 2: what the draw knew, recorded now, since it cannot be rebuilt later.
     const [dayNow, checkinsNow] = await Promise.all([db.days.get(day), db.checkins.toArray()])
-    const drawRecord = drawRecordOf({ excluded: drawn.excluded, candidates: set.candidates.map((c) => c.id), belief: beliefs, target: situation.target, window: choice.id === NOTHING ? null : windowFor(choice.id, situation.target), context: drawContextOf(dayNow, checkinsNow, day), checkins: checkinsNow, day, block })
+    const drawRecord = drawRecordOf({ excluded: drawn.excluded, candidates: drawnFrom, belief: made ? made.belief : beliefs, target: situation.target, window: choice.id === NOTHING ? null : windowFor(choice.id, situation.target), context: drawContextOf(dayNow, checkinsNow, day), checkins: checkinsNow, day, block })
 
     const offer: Offer = {
       kind: 'block',
@@ -367,7 +374,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       reading: situation.reading,
       moveId: choice.id,
       cardId,
-      candidates: set.candidates.map((c) => c.id),
+      candidates: drawnFrom,
       coinFlip: choice.coinFlip,
       passiveId: passive?.id ?? null,
       whyNot: whyNot ? { moveId: whyNot.moveId, reason: whyNot.reason } : null,
@@ -375,7 +382,9 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       propensities: odds,
       skippedAt: null,
       closedAt: null,
-      draw: drawRecord,
+      draw: made ? { ...drawRecord, engine: REPAIR_ENGINE } : drawRecord,
+      ...(made && made.offer.fits.length ? { fits: made.offer.fits } : {}),
+      ...(made?.offer.week ? { week: true as const } : {}),
     }
     offer.id = await db.offers.add(offer)
     return offer

@@ -303,6 +303,10 @@ export interface Offer {
   seenAt?: string
   /** Drawn again for the day as it now is, after a Today, if different chip set the move before it aside (stage 3, item 5). */
   redrawn?: true
+  /** The learning repair's draw (stage R2): the running tests (by key) whose move fitted this check-in, where a learning week could run them. Absent on every other draw. */
+  fits?: string[]
+  /** The learning repair's draw made inside a learning week: an even coin between its running tests' moves and nothing extra. */
+  week?: true
 }
 
 /** A move the app set aside when the day changed under it (stage 3, item 5): not a skip of yours, and not an offer any count shows. */

@@ -269,6 +269,13 @@ export function usageRefusal(text: string): string | null {
 export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:work|home|church|the office|a regular place|away)|(?:work|home|church|the office|being away) (?:makes?|made|causes?|caused|drains?|drained|lifts?|lifted|gives?|gave)|caus(?:e|es|ed|ing)|affect(?:s|ed|ing)?)\b/i
 
 /**
+ * The learning repair (the 16 requirements agreed 2026-10-10; the stress test passed by requirement 14's rule, 2026-10-19):
+ * its engine draws the moves and makes the calls. Gated while it is built, stage by stage (R1–R5); stage R6 opens it, the
+ * Worker first, once every stage is verified. Shared with the Worker, whose facts follow it.
+ */
+export const LEARNING_REPAIR: 'gated' | 'open' = 'gated'
+
+/**
  * Pass 4: how big a line says an effect is may not outrun its cards, and the record's own
  * comparisons are never said to have caused what happened. Gated, since it changes what the
  * monitored lines are refused for: it opens with the owner's word after the 2026-10-04 report.
