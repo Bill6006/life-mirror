@@ -99,6 +99,15 @@ export const copy = {
     solid: 'Solid',
     firing: 'Firing',
   },
+  /** The learning repair's week (stage R3): the invitation on Now, and the line while a week runs. */
+  learningWeek: {
+    title: 'A learning week?',
+    what: 'For seven days, some suggestions are a coin toss between a move and nothing extra, to see what changes things for you. Skip still works on every one.',
+    yes: 'Yes',
+    notNow: 'Not now',
+    running: 'Learning week · day {n} of 7',
+    runningWhat: 'Some suggestions this week are a coin toss between a move and nothing extra. Skip still works on every one.',
+  },
   now: {
     /** The cue above the tab bar while a move on Now is still lower down, unseen (final UI polish, 2026-09-26). */
     cueOne: '1 move below',

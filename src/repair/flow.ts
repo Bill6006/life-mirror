@@ -1,7 +1,7 @@
-import { db, isComplete, type CheckIn } from '../db'
+import { db, ensureDayContext, getSettings, isComplete, type CheckIn } from '../db'
 import type { Belief } from '../learning'
 import { NOTHING, type Situation, type TodayState } from '../offers'
-import { pMean, type OfferMadeB } from './engine'
+import { pMean, REPAIR, type OfferMadeB } from './engine'
 import { answeredOf, buildEngine, contextOf, type RepairRecord } from './record'
 import type { Rng } from './stats'
 import { windowOfMove } from './world'
@@ -9,10 +9,40 @@ import { windowOfMove } from './world'
 // The learning repair in the app (stage R2): the record read whole, the engine rebuilt from it, and a draw made at a
 // check-in from the day's own candidates. Behind LEARNING_REPAIR (brainShared.ts) until stage R6 opens it.
 
-/** The app's whole record as the repair reads it. The owner's answers to a learning week come with stage R3. */
+/** The app's whole record as the repair reads it, the owner's answers to a learning week among it (stage R3). */
 export async function repairRecord(): Promise<RepairRecord> {
   const [checkins, offers, outcomes, days] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.days.toArray()])
-  return { checkins, offers, outcomes, days, weekAnswers: new Map() }
+  return { checkins, offers, outcomes, days, weekAnswers: new Map(days.filter((d) => d.weekAnswer).map((d) => [d.day, d.weekAnswer === 'yes'])) }
+}
+
+/** Where the learning week stands today (stage R3). */
+export interface WeekState {
+  /** An invitation to a learning week stands today, unanswered. */
+  invitation: boolean
+  /** The running week's day, 1 to 7, or null while none runs. */
+  weekDay: number | null
+}
+
+export function weekStateFrom(r: RepairRecord, today: string): WeekState {
+  const built = buildEngine(r, today)
+  const d = built.index(today)
+  const until = built.engine.weekUntil
+  const length = REPAIR.lw?.length ?? 7
+  return { invitation: built.engine.invitationDue === d, weekDay: d < until ? d - (until - length) + 1 : null }
+}
+
+export async function weekState(today: string): Promise<WeekState> {
+  return weekStateFrom(await repairRecord(), today)
+}
+
+/** The owner's answer to today's invitation, kept on the day's own record and synced with it; the record is made first if the day has none yet, so a tap is never lost. */
+export async function answerWeek(today: string, yes: boolean): Promise<void> {
+  await ensureDayContext(today, await getSettings())
+  await db.transaction('rw', db.days, async () => {
+    const existing = await db.days.get(today)
+    if (!existing) return
+    await db.days.put({ ...existing, weekAnswer: yes ? 'yes' : 'notNow' })
+  })
 }
 
 export interface RepairDraw {

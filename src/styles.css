@@ -1810,6 +1810,19 @@ a.chip {
   margin: 4px 0 10px;
 }
 
+/* The learning week's running line on Now (stage R3): one line in its own card, as much space below as above. */
+.calc.week-running {
+  margin-bottom: 0;
+}
+
+.calc.week-running > summary.calc-line {
+  margin-bottom: 0;
+}
+
+.calc.week-running > p {
+  margin: 8px 0 0;
+}
+
 .evidence .calc-key,
 .ev-k {
   font-family: var(--font-label);

@@ -442,6 +442,11 @@ export class EngineB {
   /** The day an invitation to a learning week stands unanswered, or null: the app shows it until it is answered. */
   invitationDue: number | null = null
 
+  /** The day the running learning week ends (exclusive): a week runs while the day's index is below it. */
+  get weekUntil(): number {
+    return this.lwUntil
+  }
+
   /**
    * @param answerOf The app's own answers to the learning week's invitations, by day: true for Yes, false for Not now, null
    *   while unanswered. Absent in the stress test, whose people answer from `optIn`.

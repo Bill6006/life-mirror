@@ -138,6 +138,8 @@ export interface DayContext {
   amongPeople?: boolean
   /** Stage 3, item 6: the day's weather where you were, from Open-Meteo while its switch was on; values only, never the area. Absent means unknown, never dry. */
   weather?: DayWeather
+  /** The learning repair (stage R3): the owner's answer, that day, to the invitation to a learning week. Absent means none was given. */
+  weekAnswer?: 'yes' | 'notNow'
   /** Set when you changed today by hand. */
   changed: boolean
   createdAt: string

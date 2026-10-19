@@ -30,8 +30,8 @@ import { rainSoon } from './weather'
 import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
-import { LEARNING_REPAIR } from './brainShared'
 import { repairDraw } from './repair/flow'
+import { repairOn } from './repair/gate'
 import { REPAIR_ENGINE } from './repair/record'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
@@ -316,7 +316,7 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const draw = rng ?? Math.random
     // The learning repair (stage R2, behind its switch): its engine, rebuilt from the record, draws from the day's own
     // candidates and keeps every chance. A replacement after a skip stays today's, drawn among real moves alone.
-    const made = LEARNING_REPAIR === 'open' && !replacing ? await repairDraw(checkin, situation, t, drawn.candidates.map((c) => c.id), draw) : null
+    const made = repairOn() && !replacing ? await repairDraw(checkin, situation, t, drawn.candidates.map((c) => c.id), draw) : null
     const choice = made ? { id: made.offer.moveId, coinFlip: false, samples: {}, runnerUp: null } : chooseFor(set, beliefs, draw)
     if (!choice) return null
     const odds = made ? made.offer.chances : propensities(set.candidates, beliefs, draw)

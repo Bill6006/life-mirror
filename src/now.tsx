@@ -11,6 +11,7 @@ import { Icon } from './icons'
 import { useLive } from './live'
 import { knowsCounts } from './learningFlow'
 import { MoveCard } from './moveCard'
+import { WeekLine } from './repair/weekLine'
 import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
 import { activeBlocks } from './settings'
@@ -272,6 +273,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckI
       {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6),
           and with nothing to tap it keeps to its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? (reason) => void skipOffer(offer, reason ?? null) : undefined} waiting={offer !== here} />}
+      {!settings.hideMoves && <WeekLine day={today.day} />}
       {!settings.hideMoves && <Knows weeks={weeks ?? 0} counts={knows} />}
 
       <ContextChips all={all} today={today.day} index={1} />

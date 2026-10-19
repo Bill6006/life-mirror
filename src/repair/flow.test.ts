@@ -10,7 +10,7 @@ import { ensureOffer, recordOutcome, skipOffer } from '../offerFlow'
 import { NOTHING } from '../offers'
 import { ENGINE_VERSION } from '../provenance'
 import { blockReadings, type Position } from '../readings'
-import { repairRecord } from './flow'
+import { answerWeek, repairRecord } from './flow'
 import { buildEngine, isDraw, REPAIR_ENGINE } from './record'
 
 // The learning repair's draw in the app (stage R2): its engine, rebuilt from the record, draws at a check-in from the
@@ -99,5 +99,30 @@ describe('the repair draws at a check-in', () => {
     expect(replacement.draw?.engine).toBe(ENGINE_VERSION)
     expect(replacement.candidates).not.toContain(NOTHING)
     expect(isDraw(replacement)).toBe(false)
+  })
+})
+
+describe('an answer to a learning week', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+  })
+
+  it('lands on the day’s record, even one that did not exist yet, and is read back', async () => {
+    expect(await db.days.get(START)).toBeUndefined()
+    await answerWeek(START, true)
+    expect((await db.days.get(START))?.weekAnswer).toBe('yes')
+    await answerWeek(addDays(START, 1), false)
+    expect((await repairRecord()).weekAnswers).toEqual(new Map([[START, true], [addDays(START, 1), false]]))
+  })
+
+  it('keeps everything else the day’s record held', async () => {
+    await ensureDayContext(START, await getSettings())
+    await db.days.update(START, { withHer: true, churchDay: true })
+    await answerWeek(START, false)
+    const day = await db.days.get(START)
+    expect(day?.weekAnswer).toBe('notNow')
+    expect(day?.withHer).toBe(true)
+    expect(day?.churchDay).toBe(true)
   })
 })

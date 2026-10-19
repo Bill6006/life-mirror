@@ -1681,3 +1681,104 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+/**
+ * The learning repair's week (stage R3), in its preview (only an automated browser holding the preview key opens it): ten
+ * days of check-ins, each with a draw between the walk and nothing extra, so a running test has fitted three recent days.
+ * The invitation first, never answered; then Yes, and the running week with its Details open.
+ */
+async function seedLearningWeek(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '1'))
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const fits = ['walk-ten|mood|nextBlock', 'walk-ten|energy|nextBlock', 'walk-ten|stress|nextBlock']
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const hours: Record<string, number> = { morning: 7, afternoon: 13, evening: 19 }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins', 'offers', 'outcomes'], 'readwrite')
+    let k = 0
+    for (let d = 10; d >= 1; d--) {
+      const date = new Date(2026, 8, 24 - d)
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      for (const block of Object.keys(blocks)) {
+        k++
+        const answers: Record<string, number> = {}
+        blocks[block].forEach((id, ri) => {
+          answers[id] = 1 + ((k + ri) % 5)
+        })
+        const done = new Date(new Date(2026, 8, 24 - d, hours[block], 40).getTime() + 95_000).toISOString()
+        tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
+        const moveId = k % 2 ? 'walk-ten' : 'nothing'
+        const offerId = await new Promise<number>((res) => {
+          const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done, fits })
+          q.onsuccess = () => res(q.result as number)
+        })
+        tx.objectStore('outcomes').add({ offerId, moveId, day, block, at: done, outcome: 'done', why: null, passiveOutcome: null, seen: true })
+      }
+    }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+const WEEK_OFFERED: typeof STATES = [
+  {
+    name: 'Now, a learning week offered',
+    tab: 'Now',
+    open: async (p) => {
+      await expect(p.getByTestId('week-invite')).toBeVisible()
+      await p.getByTestId('week-invite').scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+const WEEK_RUNNING: typeof STATES = [
+  {
+    name: 'Now, a learning week running, its Details open',
+    tab: 'Now',
+    open: async (p) => {
+      const running = p.getByTestId('week-running')
+      await expect(running).toBeVisible()
+      await running.locator('summary').click()
+      await expect(running.locator('details p')).toBeVisible()
+      await running.scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the learning week, offered and running, reads, fits and can be tapped, at three widths (the repair's preview)`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedLearningWeek(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, WEEK_OFFERED, width, found)
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByTestId('week-yes').click()
+    await expect(page.getByTestId('week-running')).toBeVisible()
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, WEEK_RUNNING, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
