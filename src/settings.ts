@@ -122,8 +122,16 @@ export interface Settings {
   ownChips?: OwnChip[]
   /** The learning repair (stage R4b): the passive items you set a test of, each with the day it began. Absent until the first. */
   repairPassiveTests?: { moveId: string; since: string }[]
+  /**
+   * The honesty checks (stage R7): your answer on two readings that moved together almost always, by the pair (its two ids
+   * joined by "+", in order), with the day you gave it. Keep both, or a request to reword one or merge them. Absent until the first.
+   */
+  togetherAnswers?: Record<string, { choice: TogetherChoice; day: string }>
   updatedAt: string
 }
+
+/** What you may answer when two readings moved together almost always (requirement 3). */
+export type TogetherChoice = 'keep' | 'reword' | 'merge'
 
 const NO_DAY: Record<Weekday, boolean> = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }
 const WEEKDAYS_ONLY: Record<Weekday, boolean> = { 0: false, 1: true, 2: true, 3: true, 4: true, 5: true, 6: false }

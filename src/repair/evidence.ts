@@ -188,6 +188,11 @@ export async function repairEvidence(today: string): Promise<RepairEvidence> {
   return repairEvidenceFrom(await repairRecord(), today)
 }
 
+/** The weekly scorecard's count (stage R7): the tests with fair draws on both sides, and the calls resolved and held. */
+export function trackSummary(ev: Pick<RepairEvidence, 'shown' | 'quiet' | 'track'>): { underWay: number; resolved: number; held: number } {
+  return { underWay: ev.shown.length + ev.quiet.length, resolved: ev.track.reduce((s, t) => s + t.resolved, 0), held: ev.track.reduce((s, t) => s + t.held, 0) }
+}
+
 /** The move card's line: the drawn move's own test, for the moment's reading and window, if it has one. */
 export function testOf(ev: RepairEvidence, moveId: string, target: ReadingId, window: Window): TestShown | null {
   const key = `${moveId}|${target}|${window}`

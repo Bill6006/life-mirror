@@ -28,6 +28,18 @@ describe('the sheet, with the repair on', () => {
     await db.open()
   })
 
+  it('gives the weekly scorecard the learning repair’s count while it is on (stage R7)', async () => {
+    const r = walkRecord(14, true)
+    await db.checkins.bulkAdd(r.checkins.map((c) => ({ ...c })))
+    await db.offers.bulkAdd(r.offers.map((o) => ({ ...o })))
+    await db.outcomes.bulkAdd(r.outcomes.map((o) => ({ ...o })))
+    await db.days.bulkAdd(r.days.map((d) => ({ ...d })))
+    const sheet = await factSheet(DAY, new Date(2026, 8, 15, 13, 30))
+    const scorecard = sheet.facts.find((f) => f.id === 'weekly.scorecard')
+    expect(scorecard?.text).toMatch(/the learning repair's tests under way \d+, calls resolved \d+, held \d+;/)
+    expect(scorecard?.values.testsUnderWay).toBeGreaterThan(0)
+  })
+
   it('carries the repair’s tests and its track record, the test that helps first, the record after them', async () => {
     await seed()
     const sheet = await factSheet(DAY, new Date(2026, 8, 15, 13, 30))

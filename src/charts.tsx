@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { BLOCKS, type Block } from './blocks'
 import { copy } from './copy'
-import { formatDayTiny, formatTime, weekdayShort } from './format'
+import { formatDayTiny, formatTime, weekdayInitial, weekdayShort } from './format'
 import { valuePlacement, whiskerParts } from './chartGeometry'
 import type { ContextPoint, DayValues } from './series'
 
@@ -228,6 +228,9 @@ const WHISKER_GAP = 1.3
 const TICK_GUTTER = 26
 const BAND_GUTTER = 68
 
+/** The least space kept between two days' names, in pixels: closer, the days are named by their initials. */
+const DAY_GAP = 4
+
 /**
  * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
  * names, and the seven days across the rest. One flat step per day at the expected reading with
@@ -238,6 +241,11 @@ const BAND_GUTTER = 68
  */
 export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: readonly number[] }) {
   const [ref, W] = useWidth(320)
+  // Each day is named in short ("Wed") where its name fits its column, and by its initial where it would not: a narrow
+  // phone with its text zoomed leaves under twenty pixels a day (found 2026-10-19). The names are measured as drawn,
+  // in whichever face the theme gives them, before the first paint and again once the fonts have loaded.
+  const svg = useRef<SVGSVGElement>(null)
+  const [initials, setInitials] = useState<{ width: number; on: boolean }>({ width: 0, on: false })
   const H = 136
   const top = 10
   const bottom = 114
@@ -250,6 +258,22 @@ export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: reado
   const startOf = (i: number) => x0 + i * step
   const endOf = (i: number) => x0 + (i + 1) * step
   const centreOf = (i: number) => x0 + (i + 0.5) * step
+  const named = initials.width === W ? initials.on : false
+  useLayoutEffect(() => {
+    if (initials.width === W || !svg.current) return
+    const fits = [...svg.current.querySelectorAll<SVGTextElement>('text.wa-day')].every((t) => t.getComputedTextLength() <= step - DAY_GAP)
+    setInitials({ width: W, on: !fits })
+  })
+  useLayoutEffect(() => {
+    let live = true
+    // A face that arrives late changes the names' widths: measured again once it has.
+    void document.fonts?.ready.then(() => {
+      if (live) setInitials({ width: 0, on: false })
+    })
+    return () => {
+      live = false
+    }
+  }, [])
   /** A value's baseline: just above its step, or just under it when the step is too near the top. */
   const labelY = (v: number) => valuePlacement(y(v), top).y
   const isLow = (i: number) => low.includes(i)
@@ -273,7 +297,7 @@ export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: reado
 
   return (
     <div ref={ref} class="chart-box">
-      <svg class="chart" viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={copy.weekly.ahead}>
+      <svg ref={svg} class="chart" viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={copy.weekly.ahead}>
         <rect class="wa-pane" x={left} y={top} width={right - left} height={bottom - top} />
         {BAND_ROWS.map((b, i) => (
           <rect key={b.band} class={i % 2 === 0 ? 'wa-row' : 'wa-row is-dim'} x={x0} y={y(b.at + BAND_HALF)} width={right - x0} height={y(b.at - BAND_HALF) - y(b.at + BAND_HALF)} />
@@ -328,7 +352,7 @@ export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: reado
         )}
         {rows.map((d, i) => (
           <text key={`d${d.day}`} class={isLow(i) ? 'wa-day is-low' : 'wa-day'} x={centreOf(i)} y={bottom + 16} text-anchor="middle">
-            {weekdayShort(d.day)}
+            {named ? weekdayInitial(d.day) : weekdayShort(d.day)}
           </text>
         ))}
       </svg>

@@ -12,6 +12,7 @@ import { WeekReviewCard } from './weekReview'
 import { Disclosure } from './ui'
 import { readingById } from './readings'
 import type { Moved } from './weekly'
+import { missingLines, missLines, togetherLine } from './honesty/words'
 
 // Mirror → The weekly view (final UI polish, 2026-09-26): the week ahead (its line, the graph, always
 // shown, and its range), the week reviewed, what moved this week, the baseline and the gap; then the
@@ -206,9 +207,39 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             <p class="calc-line" data-testid="hit-rate">
               {sc.scored ? fill(c.hitRate, { rate: pct(sc.hitRate), n: String(sc.scored), miss: num(sc.averageMiss, 1) }) : c.hitRateNone}
             </p>
-            <p class="calc-line">{fill(c.declared, { declared: String(sc.declared), replicated: String(sc.replicated) })}</p>
+            {/* While the learning repair is on, its own count in place of today's engine's experiments (stage R7). */}
+            <p class="calc-line" data-testid="scorecard-tests">{sc.repair ? fill(c.declaredRepair, { underWay: String(sc.repair.underWay), resolved: String(sc.repair.resolved), held: String(sc.repair.held) }) : fill(c.declared, { declared: String(sc.declared), replicated: String(sc.replicated) })}</p>
             <p class="calc-line">{fill(c.gaveBack, { gaveBack: String(sc.gaveBack), all: String(sc.checkins) })}</p>
             <p class="calc-line">{fill(c.answering, { m: seconds(sc.medianAnswerMs.morning), a: seconds(sc.medianAnswerMs.afternoon), e: seconds(sc.medianAnswerMs.evening) })}</p>
+          </div>
+        </div>
+      </Disclosure>
+
+      {/* The honesty checks the record runs on itself (stage R7), among the diagnostics: readings that move together this
+          month, where the forecast misses, and whether what goes missing follows how you were. How things moved, never why. */}
+      <Disclosure label={copy.honesty.title} testid="weekly-honesty">
+        <div class="card pad" data-testid="honesty">
+          <p class="note faint">{copy.honesty.note}</p>
+          <div class="calc">
+            {w.checks.together.length === 0 ? (
+              <p class="calc-line" data-testid="honesty-together">
+                <span class="calc-key">{copy.honesty.togetherTitle}</span> · {copy.honesty.togetherNone}
+              </p>
+            ) : (
+              w.checks.together.map((p) => (
+                <p key={p.key} class="calc-line" data-testid="honesty-together">
+                  <span class="calc-key">{copy.honesty.togetherTitle}</span> · {togetherLine(p)} {copy.honesty.togetherWhere}
+                </p>
+              ))
+            )}
+            {missLines(w.checks.misses).map((line) => (
+              <p key={line} class="calc-line" data-testid="honesty-misses">
+                <span class="calc-key">{copy.honesty.missesTitle}</span> · {line}
+              </p>
+            ))}
+            <p class="calc-line" data-testid="honesty-missing">
+              <span class="calc-key">{copy.honesty.missingTitle}</span> · {missingLines(w.checks.missing).join(' ')}
+            </p>
           </div>
         </div>
       </Disclosure>

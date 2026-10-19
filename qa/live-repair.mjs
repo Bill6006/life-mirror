@@ -298,7 +298,8 @@ try {
     const { ctx, page } = await fresh('fault', { days: 10 })
     const knows = page.getByTestId('knows')
     await knows.getByTestId('knows-more').click().catch(() => {})
-    check('with every rebuild throwing, Now redraws as before the switch', ((await knows.textContent().catch(() => '')) ?? '').includes('one offer in five is a fair coin flip') && (await page.getByTestId('week-invite').count()) === 0)
+    // Now redraws once the breaker trips, a moment after the first read throws: wait for its words before reading them.
+    check('with every rebuild throwing, Now redraws as before the switch', (await seen(knows.filter({ hasText: 'one offer in five is a fair coin flip' }))) && (await page.getByTestId('week-invite').count()) === 0)
     await checkIn(page)
     const offer = await todaysOffer(page)
     check('and a check-in still draws a move, by today’s engine', /^engine-/.test(offer?.draw?.engine ?? ''), String(offer?.draw?.engine))
@@ -306,7 +307,7 @@ try {
     await page.getByRole('button', { name: /^Evidence/ }).click()
     const fault = page.getByTestId('repair-fault')
     const said = await seen(fault)
-    check('Evidence shows its cards as before, with one line saying the repair could not read the record', said && (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && /^The learning repair could not read your record 2 times since \w{3}, \w{3} \d{1,2}/.test(((await fault.textContent().catch(() => '')) ?? '').trim()))
+    check('Evidence shows its cards as before, with one line saying the repair could not read the record', said && (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && /^The learning repair could not read your record 2 times on \w{3}, \w{3} \d{1,2}\./.test(((await fault.textContent().catch(() => '')) ?? '').trim()))
     if (said) await shot(fault, 'r6-fault-line')
     await ctx.close()
   }

@@ -40,13 +40,22 @@ export interface Scorecard {
   averageMiss: number | null
   declared: number
   replicated: number
+  /** While the learning repair is on: its tests under way, and its calls resolved and held (requirement 15). */
+  repair: RepairTrack | null
   gaveBack: number
   checkins: number
   medianAnswerMs: Record<Block, number | null>
 }
 
 /** Forecast hit rate against the target, the average miss, experiments declared against replicated, check-ins that gave something back, answering time per block. */
-export function scorecard(scores: readonly ForecastScore[], checkins: readonly CheckIn[], declarations: readonly Declaration[], stats: readonly CardStats[]): Scorecard {
+/** The learning repair's own count for the scorecard: its tests with fair draws on both sides, and its calls resolved and held. */
+export interface RepairTrack {
+  underWay: number
+  resolved: number
+  held: number
+}
+
+export function scorecard(scores: readonly ForecastScore[], checkins: readonly CheckIn[], declarations: readonly Declaration[], stats: readonly CardStats[], repair: RepairTrack | null = null): Scorecard {
   const dayAhead = scores.filter((s) => s.horizon === 1)
   const hits = dayAhead.filter((s) => s.hit).length
   const misses = dayAhead.filter((s) => !s.hit).map((s) => Math.abs(s.error))
@@ -60,6 +69,7 @@ export function scorecard(scores: readonly ForecastScore[], checkins: readonly C
     averageMiss: mean(misses),
     declared: declarations.length,
     replicated,
+    repair,
     gaveBack: complete.length,
     checkins: checkins.length,
     medianAnswerMs,

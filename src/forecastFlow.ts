@@ -5,13 +5,18 @@ import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor } from './associations'
 import { chipShownAt } from './chips'
-import type { Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
+import type { AnchorSwap, Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
+import { checksAsShown, honestyChecks, type HonestyChecks } from './honesty/checks'
+import { guardRepair } from './repair/breaker'
+import { repairEvidence, trackSummary } from './repair/evidence'
+import { repairOn } from './repair/gate'
+import type { Frequency, Settings } from './settings'
 import { eveningWorkoutDays } from './workouts'
 import { observations, slotKey } from './learning'
 import type { ReadingId } from './readings'
 import { evaluateCards } from './tiers'
 import { baselineShift, type Shift } from './shift'
-import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type Scorecard } from './weekly'
+import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type RepairTrack, type Scorecard } from './weekly'
 import { necessitiesMissed } from './necessities'
 import type { WeeklyAnalyses } from './weeklyFacts'
 import { awayDays, homeDaysOnly } from './awayFlow'
@@ -223,6 +228,8 @@ export interface Weekly {
   /** True when the model has no weekday term, so the days ahead come out alike by construction. */
   weekAheadAlike: boolean
   shift: Shift | null
+  /** The honesty checks the record runs on itself (stage R7). */
+  checks: HonestyChecks
 }
 
 /** The records the weekly view's analyses are computed from. */
@@ -236,6 +243,12 @@ export interface WeeklyRecords {
   scores: readonly ForecastScore[]
   outside: readonly { day: string }[]
   hideFaith: boolean
+  /** Stage R7: the wording changes, the frequency asked for and the owner's answers on readings that move together. */
+  swaps: readonly AnchorSwap[]
+  frequency: Frequency
+  togetherAnswers: Settings['togetherAnswers']
+  /** While the learning repair is on, its own count for the scorecard; null otherwise. */
+  repair: RepairTrack | null
 }
 
 /**
@@ -246,18 +259,19 @@ export function weeklyAnalyses(r: WeeklyRecords, today: string): WeeklyAnalyses 
   const obs = observations(r.checkins, r.offers, r.outcomes)
   const stats = evaluateCards(r.cards.filter((c) => c.origin !== 'weight'), obs, r.declarations)
   return {
-    scorecard: scorecard(r.scores, r.checkins, r.declarations, stats),
+    scorecard: scorecard(r.scores, r.checkins, r.declarations, stats, r.repair),
     best: bestDays(r.checkins, r.offers, r.outcomes, r.contexts, today, new Set(r.outside.map((o) => o.day))),
     gap: gap(r.checkins, today),
     moved: movedThisWeek(r.checkins, today),
     lasts: whatLasts(obs, r.checkins),
     health: catalogueHealth(r.offers, r.outcomes, recentSituations(r.offers, today), new Set(r.hideFaith ? ['faith'] : [])),
+    checks: honestyChecks(r, today),
   }
 }
 
 /** Everything the weekly view shows, from the records at the moment of asking. */
 export async function weeklyData(today: string): Promise<Weekly> {
-  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings, outside, aims] = await Promise.all([
+  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings, outside, aims, swaps] = await Promise.all([
     allCheckIns(),
     db.offers.toArray(),
     db.outcomes.toArray(),
@@ -269,7 +283,10 @@ export async function weeklyData(today: string): Promise<Weekly> {
     getSettings(),
     db.outside.toArray(),
     db.aims.toArray(),
+    db.anchorSwaps.toArray(),
   ])
+  // The scorecard's count follows the learning repair while it is on (stage R7); its breaker closes it if a rebuild throws.
+  const repair = repairOn() ? await guardRepair(today, () => repairEvidence(today).then(trackSummary), null) : null
   const obs = observations(checkins, offers, outcomes)
   const effectCards = cards.filter((c) => c.origin !== 'weight')
   const stats = evaluateCards(effectCards, obs, declarations)
@@ -283,7 +300,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
   const model = (latest?.model as ModelId | undefined) ?? null
   return {
     model,
-    scorecard: scorecard(scores, checkins, declarations, stats),
+    scorecard: scorecard(scores, checkins, declarations, stats, repair),
     // Your own chips (stage 3, item 5) on the view alone: the sheet's analyses above never take them.
     best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day)), ownChipsOf(settings)),
     gap: gap(checkins, today),
@@ -298,6 +315,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     weekAheadLow: lowestAhead(weekAhead, model),
     weekAheadAlike: model !== null && !tellsWeekdaysApart(model),
     shift: baselineShift(dayReadings(checkins, today), today),
+    checks: checksAsShown(honestyChecks({ checkins, offers, outcomes, contexts, scores, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers }, today), settings.hideFaith),
   }
 }
 

@@ -1973,3 +1973,110 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+/**
+ * Stage R7: twenty-five days in which Mood and Energy were given one position together at every check-in, every other
+ * reading its own course, so the readings that move together put a pair to you.
+ */
+async function seedTwins(page: Page): Promise<void> {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const own = (i: number, id: string) => {
+      let h = 0
+      for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) | 0
+      const x = Math.sin(i * 12.9898 + h * 0.0078233) * 43758.5453
+      return 1 + Math.floor((x - Math.floor(x)) * 5)
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins'], 'readwrite')
+    const today = new Date()
+    for (let i = 0; i < 25; i++) {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (i + 1))
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      for (const block of ['morning', 'evening'] as const) {
+        const answers: Record<string, number> = {}
+        for (const id of blocks[block]) answers[id] = own(i * 2 + (block === 'evening' ? 1 : 0), id)
+        answers.energy = answers.mood
+        const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), block === 'morning' ? 7 : 19, 40).toISOString()
+        tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: at, completedAt: at, updatedAt: at, answers, activeMs: 60_000 })
+      }
+    }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+const TOGETHER_ASKED: typeof STATES = [
+  {
+    name: 'Readings and chips, two readings that move together, put to you',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-readings').click()
+      const pair = p.getByTestId('together-pair').first()
+      await expect(pair).toBeVisible()
+      await pair.scrollIntoViewIfNeeded()
+    },
+  },
+  {
+    name: 'The weekly view, its checks on the record open',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^The weekly view/ }).click()
+      await p.getByTestId('weekly-honesty').click()
+      await p.getByTestId('honesty').scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+const TOGETHER_ANSWERED: typeof STATES = [
+  {
+    name: 'Readings and chips, a request to reword listed',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-readings').click()
+      const request = p.getByTestId('together-request').first()
+      await expect(request).toBeVisible()
+      await request.scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: readings that move together, put to you and answered, read, fit and can be tapped, at three widths (stage R7)`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedTwins(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, TOGETHER_ASKED, width, found)
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    // The last state walked is a screen of its own, without the tab bar: back to Now first.
+    await page.reload()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByTestId('settings-readings').click()
+    await page.getByTestId('together-pair').first().getByTestId('together-reword').click()
+    await expect(page.getByTestId('together-request').first()).toBeVisible()
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, TOGETHER_ANSWERED, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

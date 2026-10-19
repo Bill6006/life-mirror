@@ -21,6 +21,8 @@ import { repairEvidence } from './repair/evidence'
 import { useRepairOn } from './repair/gate'
 import { passiveTestReading, passiveTestRuns, passiveTestSince, startPassiveTest, testablePassive } from './repair/passive'
 import { RepairTests } from './repair/testsSection'
+import { missingNow } from './honesty/flow'
+import { leanOf, missingLine } from './honesty/words'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
 // learned; the weight card; the observational associations; and the plain line about months
@@ -243,7 +245,7 @@ function RepairFaultLine({ today }: { today: string }) {
   const r = copy.repairEvidence
   return (
     <p class="note faint" data-testid="repair-fault">
-      {f.count === 1 ? fill(r.faultOne, { date: formatDayShort(f.last) }) : fill(r.faultMany, { n: String(f.count), first: formatDayShort(f.first), date: formatDayShort(f.last) })}
+      {f.count === 1 ? fill(r.faultOne, { date: formatDayShort(f.last) }) : f.first === f.last ? fill(r.faultManyOneDay, { n: String(f.count), date: formatDayShort(f.last) }) : fill(r.faultMany, { n: String(f.count), first: formatDayShort(f.first), date: formatDayShort(f.last) })}
     </p>
   )
 }
@@ -256,6 +258,8 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
   // Its breaker (R6) closes it for the session if a rebuild throws, and the screen then redraws as before the switch.
   const repair = useRepairOn()
   const r = copy.repairEvidence
+  // Requirement 13 (stage R7): when what goes missing follows how you were or the day, the estimates here say so.
+  const missing = useLive(() => missingNow(today), [today])
   if (!ev) return <section class="screen" />
   const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
@@ -269,6 +273,11 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
       <p class="note faint">{repair ? r.register : c.register}</p>
       <p class="note faint">{repair ? r.rungsNote : copy.movesTab.tiersNote}</p>
       <RepairFaultLine today={today} />
+      {missing && missing.relations.length > 0 && (
+        <p class="note" data-testid="missing-pattern">
+          {fill(copy.honesty.evidenceLine, { line: missing.relations.map(missingLine).join(' '), lean: copy.honesty.leans[leanOf(missing) ?? 'other'] })}
+        </p>
+      )}
 
       {repair ? (
         <>

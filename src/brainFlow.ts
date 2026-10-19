@@ -22,7 +22,7 @@ import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
 import { guardRepairNow } from './repair/breaker'
-import { repairEvidenceFrom } from './repair/evidence'
+import { repairEvidenceFrom, trackSummary } from './repair/evidence'
 import { repairOn } from './repair/gate'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
@@ -51,7 +51,7 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   ])
   // Parts 40 and 41: the reviews waiting for an answer, read only while their gate is open; closed, the sheet is as it was.
   // Pass 2: How firm is read only while its gate is open; closed, the ranking is said as it always was.
-  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow, cards, declarations, scores] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined), db.cards.toArray(), db.declarations.toArray(), db.forecastScores.toArray()])
+  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow, cards, declarations, scores, swaps] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined), db.cards.toArray(), db.declarations.toArray(), db.forecastScores.toArray(), db.anchorSwaps.toArray()])
   const firmPref = firmPrefOf(firmOn(firm) ? readBrainPrefs(prefsRow) : undefined, firm)
   const reviews = new Map<number, { days: number; reason: 'ordinary' | 'struggle' }>()
   for (const a of asks) {
@@ -61,11 +61,12 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27).
-  const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith }, day)
   // Stage R5: the learning repair's tests and track record, read from the same record, only while the repair is on; closed,
   // the sheet is as it was. A rebuild that throws trips the repair's breaker, and the sheet is then as it was closed (R6).
   const repair = repairOn() ? guardRepairNow(day, () => repairEvidenceFrom({ checkins, offers, outcomes, days: contexts, weekAnswers: new Map(contexts.filter((c) => c.weekAnswer).map((c) => [c.day, c.weekAnswer === 'yes'])) }, day), undefined) : undefined
+  // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27); with
+  // stage R7's honesty checks, and the scorecard's count following the learning repair while it is on.
+  const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers, repair: repair ? trackSummary(repair) : null }, day)
   const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).

@@ -2,8 +2,12 @@ import type { Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import type { Fact } from './factTypes'
+import { formatDayShort } from './format'
 import { readingById } from './readings'
 import type { BestDays, Difference, FamilyHealth, Gap, Lasts, Moved, Scorecard } from './weekly'
+import type { HonestyChecks } from './honesty/checks'
+import type { MissCandidate } from './honesty/misses'
+import { leanOf, missingLines, missLine, missLines, togetherLine } from './honesty/words'
 
 // The weekly view's analyses as facts, for the Sunday review (stage 3, group 1): the scorecard,
 // best days, the gap as numbers, what moved this week, what lasts, and catalogue health, each with
@@ -20,6 +24,8 @@ export interface WeeklyAnalyses {
   moved: { reading: { thisWeek: number | null; lastWeek: number | null; delta: number | null }; ingredients: Moved[] }
   lasts: Lasts
   health: FamilyHealth[]
+  /** The honesty checks the record runs on itself (stage R7). */
+  checks: HonestyChecks
 }
 
 type Kind = 'general' | 'faith' | 'social' | 'partner'
@@ -50,8 +56,9 @@ function scorecardFact(s: Scorecard): Fact {
   return {
     id: 'weekly.scorecard',
     tags: [],
-    text: `The scorecard, from the weekly view: ${hit}; experiments declared ${s.declared}, replicated ${s.replicated}; check-ins that gave something back: ${s.gaveBack} of ${s.checkins}; median answering time: morning ${said(m)}, afternoon ${said(a)}, evening ${said(e)}.`,
-    values: { scored: s.scored, hitRate: pct, target: 60, averageMiss: miss, declared: s.declared, replicated: s.replicated, gaveBack: s.gaveBack, checkins: s.checkins, morningSeconds: m, afternoonSeconds: a, eveningSeconds: e },
+    // While the learning repair is on, its own count in place of today's engine's experiments (stage R7).
+    text: `The scorecard, from the weekly view: ${hit}; ${s.repair ? `the learning repair's tests under way ${s.repair.underWay}, calls resolved ${s.repair.resolved}, held ${s.repair.held}` : `experiments declared ${s.declared}, replicated ${s.replicated}`}; check-ins that gave something back: ${s.gaveBack} of ${s.checkins}; median answering time: morning ${said(m)}, afternoon ${said(a)}, evening ${said(e)}.`,
+    values: { scored: s.scored, hitRate: pct, target: 60, averageMiss: miss, ...(s.repair ? { testsUnderWay: s.repair.underWay, callsResolved: s.repair.resolved, callsHeld: s.repair.held } : { declared: s.declared, replicated: s.replicated }), gaveBack: s.gaveBack, checkins: s.checkins, morningSeconds: m, afternoonSeconds: a, eveningSeconds: e },
   }
 }
 
@@ -175,7 +182,47 @@ function healthFacts(health: readonly FamilyHealth[]): Fact[] {
   return out
 }
 
-/** The weekly facts, in the view's order of reading: the scorecard, the gap, what moved, best days, what lasts, catalogue health. */
+/**
+ * The honesty checks as facts (stage R7), in the view's own words: the readings that moved together this month and the
+ * owner's standing requests; where the forecast's misses clustered; whether missing follows how the owner was. Each says
+ * how things moved and what that would mean, never a cause.
+ */
+function checksFacts(c: HonestyChecks): Fact[] {
+  // Every number a fact says is in its values, and each date as the words it is said in, so the validator can ground it.
+  const tv: Fact['values'] = { flagged: c.together.length, requests: c.requests.length, days: 30 }
+  c.together.forEach((p, i) => Object.assign(tv, { [`p${i + 1}Rho`]: r2(p.rho), [`p${i + 1}N`]: p.n }))
+  c.requests.forEach((r, i) => Object.assign(tv, { [`r${i + 1}Asked`]: r.day }))
+  const together: Fact = {
+    id: 'weekly.together',
+    tags: [],
+    text: `Readings that move together, from the weekly view: ${c.together.length ? c.together.map(togetherLine).join(' ') : 'no two readings moved together almost always over the last thirty days.'}${c.requests.length ? ` Standing requests: ${c.requests.map((r) => `${r.choice === 'reword' ? 'reword one of' : 'merge'} ${readingById(r.a).name} and ${readingById(r.b).name} (asked ${r.day})`).join('; ')}.` : ''}`,
+    values: tv,
+  }
+  const clusterValues = (list: readonly MissCandidate[], v: Fact['values']) =>
+    list.forEach((x, i) => {
+      Object.assign(v, { [`c${i + 1}In`]: x.missesIn, [`c${i + 1}Of`]: x.slotsIn, [`c${i + 1}Out`]: x.missesOut, [`c${i + 1}OutOf`]: x.slotsOut })
+      if (x.cause.kind === 'trend' || x.cause.kind === 'wording') Object.assign(v, { [`c${i + 1}Since`]: formatDayShort(x.cause.since) })
+    })
+  // A cluster after one move names it: a faith practice or a Social path rep goes in a fact of its own, as everywhere here.
+  const ofKind = (k: Kind) => c.misses.clusters.filter((x) => (x.cause.kind === 'move' ? kindOf(x.cause.moveId) : 'general') === k)
+  const general = ofKind('general')
+  const mv: Fact['values'] = { days: 56, slots: c.misses.slots, misses: c.misses.misses, clusters: general.length }
+  clusterValues(general, mv)
+  const misses: Fact = { id: 'weekly.misses', tags: [], text: `Where the forecast misses, from the weekly view: ${missLines({ ...c.misses, clusters: general }).join(' ')}`, values: mv }
+  const apart: Fact[] = (['faith', 'social'] as const)
+    .filter((k) => ofKind(k).length > 0)
+    .map((k) => {
+      const v: Fact['values'] = { clusters: ofKind(k).length }
+      clusterValues(ofKind(k), v)
+      return { id: `weekly.misses.${k}`, tags: [], text: `Where the forecast misses, from the weekly view, after ${SUFFIX[k]}: ${ofKind(k).map(missLine).join(' ')}`, values: v }
+    })
+  const gv: Fact['values'] = { days: 56, slots: c.missing.slots, missed: c.missing.missed, started: c.missing.started, unanswered: c.missing.unanswered, relations: c.missing.relations.length, lean: leanOf(c.missing) ?? 'none' }
+  c.missing.relations.forEach((x, i) => Object.assign(gv, { [`m${i + 1}In`]: x.missingIn, [`m${i + 1}Of`]: x.slotsIn, [`m${i + 1}Out`]: x.missingOut, [`m${i + 1}OutOf`]: x.slotsOut }))
+  const missing: Fact = { id: 'weekly.missing', tags: [], text: `What goes missing, from the weekly view: ${missingLines(c.missing).join(' ')}`, values: gv }
+  return [together, misses, ...apart, missing]
+}
+
+/** The weekly facts, in the view's order of reading: the scorecard, the gap, what moved, best days, what lasts, catalogue health, the checks on the record. */
 export function weeklyFacts(w: WeeklyAnalyses): Fact[] {
-  return [scorecardFact(w.scorecard), gapFact(w.gap), movedFact(w.moved), ...bestFacts(w.best), ...lastsFacts(w.lasts), ...healthFacts(w.health)]
+  return [scorecardFact(w.scorecard), gapFact(w.gap), movedFact(w.moved), ...bestFacts(w.best), ...lastsFacts(w.lasts), ...healthFacts(w.health), ...checksFacts(w.checks)]
 }

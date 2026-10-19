@@ -67,7 +67,7 @@ describe('the Brain’s memory and the weekly view on the day’s sheet', () => 
   it('says the weekly view’s analyses over the steps the sheet may count, never the Partner path’s', async () => {
     const sheet = await factSheet(DAY, NOW)
     const weekly = sheet.facts.filter((f) => f.id.startsWith('weekly.'))
-    expect(weekly.map((f) => f.id)).toEqual(['weekly.scorecard', 'weekly.gap', 'weekly.moved', 'weekly.best', 'weekly.lasts', 'weekly.health', 'weekly.health.faith'])
+    expect(weekly.map((f) => f.id)).toEqual(['weekly.scorecard', 'weekly.gap', 'weekly.moved', 'weekly.best', 'weekly.lasts', 'weekly.health', 'weekly.health.faith', 'weekly.together', 'weekly.misses', 'weekly.missing'])
     expect(weekly.every((f) => f.tags.length === 0)).toBe(true)
     // The view itself counts every step, the Partner path's rep among them: a probe that could say yes.
     const view = await weeklyData(DAY)
@@ -78,8 +78,8 @@ describe('the Brain’s memory and the weekly view on the day’s sheet', () => 
   })
 
   it('computes them over the steps the sheet may count, so a Partner path rep never takes a place from another', async () => {
-    const [checkins, offers, outcomes, cards, declarations, contexts, scores, outside] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.cards.toArray(), db.declarations.toArray(), db.days.toArray(), db.forecastScores.toArray(), db.outside.toArray()])
-    const best = (over: readonly Offer[]) => weeklyFacts(weeklyAnalyses({ checkins, offers: over, outcomes, cards, declarations, contexts, scores, outside, hideFaith: false }, DAY)).find((f) => f.id === 'weekly.best')
+    const [checkins, offers, outcomes, cards, declarations, contexts, scores, outside, swaps] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.cards.toArray(), db.declarations.toArray(), db.days.toArray(), db.forecastScores.toArray(), db.outside.toArray(), db.anchorSwaps.toArray()])
+    const best = (over: readonly Offer[]) => weeklyFacts(weeklyAnalyses({ checkins, offers: over, outcomes, cards, declarations, contexts, scores, outside, hideFaith: false, swaps, frequency: 'three', togetherAnswers: undefined, repair: null }, DAY)).find((f) => f.id === 'weekly.best')
     const sheet = await factSheet(DAY, NOW)
     expect(sheet.facts.find((f) => f.id === 'weekly.best')).toEqual(best(offers.filter(onTheSheet)))
     expect(Object.keys(best(offers.filter(onTheSheet))?.values ?? {}).filter((k) => /^c\d$/.test(k))).toHaveLength(4)
@@ -88,10 +88,11 @@ describe('the Brain’s memory and the weekly view on the day’s sheet', () => 
   })
 
   it('computes each analysis exactly as the weekly view does, given the same steps', async () => {
-    const [checkins, offers, outcomes, cards, declarations, contexts, scores, outside, settings] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.cards.toArray(), db.declarations.toArray(), db.days.toArray(), db.forecastScores.toArray(), db.outside.toArray(), getSettings()])
+    const [checkins, offers, outcomes, cards, declarations, contexts, scores, outside, settings, swaps] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.cards.toArray(), db.declarations.toArray(), db.days.toArray(), db.forecastScores.toArray(), db.outside.toArray(), getSettings(), db.anchorSwaps.toArray()])
     const view = await weeklyData(DAY)
-    const same = weeklyAnalyses({ checkins, offers, outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith }, DAY)
+    // The learning repair's count is read the one way both take it (stage R7); the view's is the one to match.
+    const same = weeklyAnalyses({ checkins, offers, outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers, repair: view.scorecard.repair }, DAY)
     expect(same.best.controlled.length).toBeGreaterThan(0)
-    expect(same).toEqual({ scorecard: view.scorecard, best: view.best, gap: view.gap, moved: view.moved, lasts: view.lasts, health: view.health })
+    expect(same).toEqual({ scorecard: view.scorecard, best: view.best, gap: view.gap, moved: view.moved, lasts: view.lasts, health: view.health, checks: view.checks })
   })
 })

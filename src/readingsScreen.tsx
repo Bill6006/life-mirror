@@ -3,16 +3,75 @@ import { expectancyRetired } from './expectancy'
 import { chipStates, readingProposals, type ChipId } from './audit'
 import { blockAt } from './blocks'
 import { copy } from './copy'
-import { allCheckIns, db, getSettings, updateSettings } from './db'
+import { allCheckIns, db, getSettings, updateSettings, type CheckIn } from './db'
 import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { readingById } from './readings'
 import { ownChipStates, ownShownKey } from './ownChips'
-import { ownChipsOf } from './settings'
+import { ownChipsOf, type Settings, type TogetherChoice } from './settings'
+import { togetherFlags, togetherRequests } from './honesty/together'
+import { togetherLine } from './honesty/words'
 
 // Settings → Readings and chips: retirement proposals with both conditions and their numbers,
 // decided by you and never automatic; the readings retired, each with one tap back; the chips
-// that stopped appearing, each with one tap back; and the anchor swaps, logged and dated.
+// that stopped appearing, each with one tap back; and the anchor swaps, logged and dated. Since stage R7, readings that
+// move together almost always, put to you once a month, with your answer and your standing requests.
+
+/**
+ * Requirement 3's monthly check (stage R7): two readings that moved together almost always over the last thirty days, put
+ * to you at most once a month, with your three answers; and your standing requests to reword one or merge them.
+ */
+function TogetherSection({ checkins, settings, today }: { checkins: readonly CheckIn[]; settings: Settings; today: string }) {
+  const h = copy.honesty
+  const flags = togetherFlags(checkins, today, settings.togetherAnswers)
+  const requests = togetherRequests(settings.togetherAnswers)
+  const answer = (key: string, choice: TogetherChoice) => void updateSettings((s) => ({ ...s, togetherAnswers: { ...(s.togetherAnswers ?? {}), [key]: { choice, day: today } } }))
+  return (
+    <>
+      <h2 class="section">{h.togetherTitle}</h2>
+      <p class="note">{h.togetherNote}</p>
+      <div class="card pad">
+        {flags.length === 0 ? (
+          <p class="note no-gap" data-testid="together-none">
+            {h.togetherNone}
+          </p>
+        ) : (
+          flags.map((p) => (
+            <div key={p.key} class="conclusion" data-testid="together-pair">
+              <p class="calc-line">{togetherLine(p)}</p>
+              <div class="actions">
+                <button type="button" class="pill-quiet" data-testid="together-keep" onClick={() => answer(p.key, 'keep')}>
+                  {h.keep}
+                </button>
+                <button type="button" class="pill-quiet" data-testid="together-reword" onClick={() => answer(p.key, 'reword')}>
+                  {h.reword}
+                </button>
+                <button type="button" class="pill-quiet" data-testid="together-merge" onClick={() => answer(p.key, 'merge')}>
+                  {h.merge}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      {requests.length > 0 && (
+        <>
+          <h2 class="section">{h.requestsTitle}</h2>
+          <div class="card pad">
+            <div class="calc">
+              {requests.map((r) => (
+                <p key={r.key} class="calc-line" data-testid="together-request">
+                  {fill(h.requestLine[r.choice], { a: readingById(r.a).name, b: readingById(r.b).name, date: formatDayShort(r.day) })}
+                </p>
+              ))}
+            </div>
+            <p class="note faint no-gap">{h.requestsNote}</p>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
 
 export function ReadingsScreen({ onClose }: { onClose: () => void }) {
   const today = blockAt(new Date()).day
@@ -74,6 +133,8 @@ export function ReadingsScreen({ onClose }: { onClose: () => void }) {
           })
         )}
       </div>
+
+      <TogetherSection checkins={checkins} settings={settings} today={today} />
 
       <h2 class="section">{c.retired}</h2>
       <div class="card">

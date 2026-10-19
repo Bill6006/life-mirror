@@ -328,8 +328,8 @@ test('the breaker, end to end: a rebuild that throws still leaves a move drawn, 
   await page.getByRole('button', { name: /^Evidence/ }).click()
   await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toBeVisible()
   await expect(page.getByTestId('repair-test')).toHaveCount(0)
-  // The start and the reload after the stand-in record are two starts of the app, each tripping the breaker once.
-  await expect(page.getByTestId('repair-fault')).toHaveText(/^The learning repair could not read your record 2 times since \w{3}, \w{3} \d{1,2}, the last on \w{3}, \w{3} \d{1,2}\. Each time, the suggestions after it were drawn the earlier way until the app was opened again\.$/)
+  // The start and the reload after the stand-in record are two starts of the app, each tripping the breaker once, on one day.
+  await expect(page.getByTestId('repair-fault')).toHaveText(/^The learning repair could not read your record 2 times on \w{3}, \w{3} \d{1,2}\. Each time, the suggestions after it were drawn the earlier way until the app was opened again\.$/)
 })
 
 test('the breaker: a trip kept on this phone shows one quiet line at the head of Evidence, for four weeks after the last (R6)', async ({ page }) => {
