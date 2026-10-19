@@ -15,7 +15,10 @@ import { ownChipAnswer } from './ownChips'
 import { ownChipsOf } from './settings'
 import type { Association } from './associations'
 import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
+import type { ComponentChildren } from 'preact'
+import { repairEvidence } from './repair/evidence'
 import { repairOn } from './repair/gate'
+import { passiveTestReading, passiveTestRuns, passiveTestSince, startPassiveTest, testablePassive } from './repair/passive'
 import { RepairTests } from './repair/testsSection'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
@@ -36,7 +39,7 @@ function nameOf(id: string): string {
   return hasMove(id) ? moveById(id).name : id
 }
 
-function CardBlock({ e }: { e: CardEvidence }) {
+function CardBlock({ e, children }: { e: CardEvidence; children?: ComponentChildren }) {
   const c = copy.evidence
   const { card, stats } = e
   const target = readingById(card.target).name
@@ -91,7 +94,55 @@ function CardBlock({ e }: { e: CardEvidence }) {
         {e.decay && <p class="calc-line">{fill(c.decay, { days: String(e.decay.daysHeld), runs: String(e.decay.runs) })}</p>}
       </div>
       <p class="move-source">{fill(c.card, { id: String(card.id), date: formatWhen(card.createdAt) })}</p>
+      {children}
     </li>
+  )
+}
+
+/**
+ * The learning repair (stage R4b): with it on, the passive items' cards keep their association words under "Rode alongside",
+ * as R4's design said. Under one at Promising whose item the repair can test, with no test of it running, one line says what
+ * a test would do, with one tap to set it ("a one-tap test proposed when an association turns Promising", agreed
+ * 2026-10-09); while one runs, the line says so.
+ */
+function AlongsideCards({ cards, today }: { cards: readonly CardEvidence[]; today: string }) {
+  const settings = useLive(getSettings, [])
+  const ev = useLive(() => repairEvidence(today), [today])
+  if (cards.length === 0 || !settings || !ev) return null
+  const r = copy.repairEvidence
+  return (
+    <>
+      <h2 class="section">{r.alongsideTitle}</h2>
+      <div class="card">
+        <ul class="moves">
+          {cards.map((e) => {
+            const since = passiveTestSince(settings, e.card.moveId, today)
+            const runs = since !== null && passiveTestRuns(settings, e.card.moveId, today, ev.shown)
+            const at = passiveTestReading(e.card.moveId)
+            const offer = !runs && e.stats.tier === 'promising' && testablePassive(e.card.moveId) && at !== null
+            return (
+              <CardBlock key={e.card.id} e={e}>
+                {runs && since && (
+                  <p class="note no-gap passive-test" data-testid="passive-test-running">
+                    {fill(r.testRunning, { date: formatDayShort(since) })}
+                  </p>
+                )}
+                {offer && at && (
+                  <div class="passive-test" data-testid="passive-test-offer">
+                    <p class="note">{fill(r.testItWhat, { reading: readingById(at.target).name, window: copy.catalogue.windows[at.window as keyof typeof copy.catalogue.windows] ?? at.window })}</p>
+                    <div class="actions">
+                      <button type="button" class="pill-quiet" data-testid="passive-test-start" onClick={() => void startPassiveTest(e.card.moveId, today)}>
+                        {r.testIt}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </CardBlock>
+            )
+          })}
+        </ul>
+      </div>
+    </>
   )
 }
 
@@ -202,7 +253,10 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
       <p class="note faint">{repair ? r.rungsNote : copy.movesTab.tiersNote}</p>
 
       {repair ? (
-        <RepairTests today={today} />
+        <>
+          <RepairTests today={today} />
+          <AlongsideCards cards={ev.cards.filter((e) => e.card.origin === 'passive')} today={today} />
+        </>
       ) : (
         <>
           <h2 class="section">{c.cards}</h2>

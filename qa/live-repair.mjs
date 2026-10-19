@@ -4,8 +4,8 @@
 // Stage R2: a check-in's move drawn by the repair's engine, every chance kept with its version. Stage R3: the learning
 // week's invitation on Now, and Yes starting a week. Stage R4: Evidence's tests by rung with the track record at their
 // head, the move card's rung and its test's words, the Moves door and the Legend. Stage R5: the sheet the phone keeps for
-// the Brain carries the repair's tests and its track record. Closed: no week, Evidence's cards, and none of the repair's
-// facts on the sheet.
+// the Brain carries the repair's tests and its track record. Stage R4b: a passive item's association at Promising proposes
+// a one-tap test, and the tap sets it. Closed: no week, Evidence's cards, and none of the repair's facts on the sheet.
 // node live-repair.mjs <expected short commit> [screenshot folder]
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium } from './common.mjs'
@@ -253,7 +253,9 @@ try {
     const walk = page.getByTestId('repair-test').filter({ hasText: 'A ten-minute walk, now' }).filter({ hasText: 'for Stress over the next block' })
     const rung = hasTrack ? ((await walk.getByTestId('repair-rung').textContent().catch(() => '')) ?? '').trim() : ''
     check('the walk’s test on stress, run by the queue, calls that it helps', /^(Early sign|Likely|Established): helps/.test(rung) && ((await walk.textContent().catch(() => '')) ?? '').includes('being tested now'), rung)
-    check('no card and no tier on Evidence while the repair is on', hasTrack && (await page.getByTestId('evidence-card').count()) === 0)
+    // The cards' section and their tiers are gone; only a passive item's card stays, under Rode alongside (stage R4b).
+    const cardTexts = await page.getByTestId('evidence-card').allTextContents()
+    check('no test card and no tier on Evidence while the repair is on; only passive items’ cards, under Rode alongside', hasTrack && (await page.getByRole('heading', { name: 'Cards', exact: true }).count()) === 0 && cardTexts.every((t) => t.includes('a passive item')), `${cardTexts.length} passive cards`)
     if (hasTrack) await shot(walk, 'r4-evidence-walk')
     await page.reload()
     await tab(page, 'Settings')
@@ -272,6 +274,67 @@ try {
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click()
     check('closed, Evidence shows its cards and no track record, as before', (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && (await page.getByTestId('track-record').count()) === 0)
+    await ctx.close()
+  }
+  {
+    // Stage R4b: a passive item's association at Promising proposes a one-tap test. Fourteen days that read alike, the
+    // recovery gap riding alongside on alternate evenings with social energy high the morning after, and its card.
+    const { ctx, page } = await fresh(true, { days: 0 })
+    await page.evaluate(async () => {
+      const blocks = {
+        morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+        afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+        evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+      }
+      const hours = { morning: 7, afternoon: 13, evening: 19 }
+      const dbx = await new Promise((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const tx = dbx.transaction(['checkins', 'offers', 'outcomes', 'cards'], 'readwrite')
+      const today = new Date()
+      let k = 0
+      let gapYesterday = false
+      for (let d = 14; d >= 1; d--) {
+        const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - d)
+        const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        for (const block of Object.keys(blocks)) {
+          k++
+          const answers = {}
+          for (const id of blocks[block]) answers[id] = 3
+          if (block === 'morning') answers.socialEnergy = gapYesterday ? 5 : 1
+          const done = new Date(new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 40).getTime() + 95_000).toISOString()
+          tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
+          const moveId = k % 2 ? 'walk-ten' : 'nothing'
+          const gap = block === 'evening' && d % 2 === 0
+          const offerId = await new Promise((res) => {
+            const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: gap ? 'recovery-gap' : null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done })
+            q.onsuccess = () => res(q.result)
+          })
+          tx.objectStore('outcomes').add({ offerId, moveId, day, block, at: done, outcome: 'done', why: null, passiveOutcome: gap ? 'done' : null, seen: true })
+          if (block === 'evening') gapYesterday = gap
+        }
+      }
+      tx.objectStore('cards').add({ createdAt: new Date(today.getTime() - 14 * 86_400_000).toISOString(), situationKey: 'passive:evening', block: 'evening', target: 'socialEnergy', moveId: 'recovery-gap', alternativeId: 'nothing', window: 'nextMorning', worthwhile: 1, origin: 'passive' })
+      await new Promise((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+      })
+      dbx.close()
+    })
+    await page.reload()
+    await tab(page, 'Moves')
+    await page.getByRole('button', { name: /^Evidence/ }).click()
+    const gapCard = page.getByTestId('evidence-card').filter({ hasText: 'Keep the evening after a big social day empty' })
+    const offer = gapCard.getByTestId('passive-test-offer')
+    const proposed = await seen(offer)
+    check('Rode alongside: the recovery gap’s association at Promising proposes a one-tap test on energy the next morning', proposed && ((await offer.textContent().catch(() => '')) ?? '').includes('Test it on Energy over the next morning'))
+    if (proposed) {
+      await shot(gapCard, 'r4b-proposed')
+      await offer.getByTestId('passive-test-start').click()
+    }
+    check('one tap sets it, and the card says it is being tested', await seen(gapCard.getByTestId('passive-test-running').filter({ hasText: 'Being tested since Thu, Sep 24' })))
     await ctx.close()
   }
   const others = [...hosts].filter((h) => h !== SITE)

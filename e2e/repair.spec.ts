@@ -258,3 +258,90 @@ test('the move card names the drawn move’s own test by its rung, never a tier 
   await expect(testing).toContainText('a fair draw decides whether it is offered')
   await expect(testing).not.toContainText(/Card \d+/)
 })
+
+/**
+ * Days whose check-ins all read alike, each with a draw between the walk and nothing extra; on alternate evenings the
+ * recovery gap rode alongside and was done, and social energy read high the next morning, low after the others; the gap's
+ * own card, as the app writes it when it first rides along.
+ */
+async function seedGapRecord(page: Page, days: number): Promise<void> {
+  await page.evaluate(async (n) => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const hours: Record<string, number> = { morning: 7, afternoon: 13, evening: 19 }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins', 'offers', 'outcomes', 'cards'], 'readwrite')
+    const now = new Date()
+    let k = 0
+    let gapYesterday = false
+    for (let d = n; d >= 1; d--) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d)
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      for (const block of Object.keys(blocks)) {
+        k++
+        const answers: Record<string, number> = {}
+        for (const id of blocks[block]) answers[id] = 3
+        if (block === 'morning') answers.socialEnergy = gapYesterday ? 5 : 1
+        const done = new Date(new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 40).getTime() + 95_000).toISOString()
+        tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
+        const moveId = k % 2 ? 'walk-ten' : 'nothing'
+        const gap = block === 'evening' && d % 2 === 0
+        const offerId = await new Promise<number>((res) => {
+          const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: gap ? 'recovery-gap' : null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done })
+          q.onsuccess = () => res(q.result as number)
+        })
+        tx.objectStore('outcomes').add({ offerId, moveId, day, block, at: done, outcome: 'done', why: null, passiveOutcome: gap ? 'done' : null, seen: true })
+        if (block === 'evening') gapYesterday = gap
+      }
+    }
+    tx.objectStore('cards').add({ createdAt: new Date(now.getTime() - n * 86_400_000).toISOString(), situationKey: 'passive:evening', block: 'evening', target: 'socialEnergy', moveId: 'recovery-gap', alternativeId: 'nothing', window: 'nextMorning', worthwhile: 1, origin: 'passive' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  }, days)
+}
+
+test('a passive item’s association at Promising proposes a one-tap test, and the tap sets it (stage R4b)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+  await start(page)
+  await seedGapRecord(page, 14)
+  await page.reload()
+  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByRole('heading', { name: 'Rode alongside', exact: true })).toBeVisible()
+  const gap = page.getByTestId('evidence-card').filter({ hasText: 'Keep the evening after a big social day empty' })
+  await expect(gap.getByTestId('tier')).toContainText('Promising')
+  const offer = gap.getByTestId('passive-test-offer')
+  await expect(offer).toContainText('Test it on Energy over the next morning')
+  await offer.getByTestId('passive-test-start').click()
+  await expect(gap.getByTestId('passive-test-running')).toContainText('Being tested since Thu, Sep 24')
+  await expect(gap.getByTestId('passive-test-offer')).toHaveCount(0)
+})
+
+test('closed, the passive item’s card stays among the cards, with no test proposed', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.removeItem('life-mirror.preview.learningRepair')
+    } catch {
+      // nothing to remove
+    }
+  })
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+  await start(page)
+  await seedGapRecord(page, 14)
+  await page.reload()
+  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
+  await page.getByRole('button', { name: /^Evidence/ }).click()
+  await expect(page.getByTestId('evidence-card').filter({ hasText: 'Keep the evening after a big social day empty' })).toBeVisible()
+  await expect(page.getByTestId('passive-test-offer')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Rode alongside', exact: true })).toHaveCount(0)
+})

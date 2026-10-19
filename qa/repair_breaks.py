@@ -73,6 +73,8 @@ WP = 'worker/src/prompt.ts'
 WC = 'worker/src/claude.ts'
 LT = 'worker/src/ladder.test.ts'
 CT = 'worker/src/claude.test.ts'
+AT = 'src/repair/alongside.test.ts'
+PS = 'src/repair/passive.ts'
 FL = 'src/repair/flow.ts'
 WL = 'src/repair/weekLine.tsx'
 GA = 'src/repair/gate.ts'
@@ -294,6 +296,57 @@ TABLE = [
     dict(id='ladder-rule-claude', file=WC, tests=[CT],
          old="instructions: claudeInstructions(t.task as 'line' | 'review', b.firm, hasLadder(b.sheet)),",
          new="instructions: claudeInstructions(t.task as 'line' | 'review', b.firm),"),
+    dict(id='coin-at-its-chance', file=E, tests=[AT],
+         old="const dec: Decision = { d, slot: here, A, pi: chance,",
+         new="const dec: Decision = { d, slot: here, A, pi: 0.4,"),
+    dict(id='coin-takes-no-queue-place', file=E, tests=[AT],
+         old="  replayAlongside(a: Answered, d: number, c: DayContext, moveId: string, rode: boolean, chance: number): number {\n    const here = slotOf(d, a.block)",
+         new="  replayAlongside(a: Answered, d: number, c: DayContext, moveId: string, rode: boolean, chance: number): number {\n    for (const x of this.readingsOf(moveId)) this.testFor(moveId, x.target, x.window).eligibleDays.push(d)\n    const here = slotOf(d, a.block)"),
+    dict(id='coin-rebuilt', file=R, tests=[AT],
+         old="      if (o.passiveCoin) {\n        const coin = engine.replayAlongside(",
+         new="      if (false as boolean) {\n        const coin = engine.replayAlongside("),
+    dict(id='coin-answer-read', file=R, tests=[AT],
+         old="  const did = outcome?.passiveOutcome ?? null",
+         new="  const did = null"),
+    dict(id='coin-at-the-draw', file=OF, tests=[FT],
+         old="    const coin = assigned ? await passiveCoinFor(assigned.id, day, settings, draw) : null",
+         new="    const coin = null as { moveId: string; rode: boolean; chance: number } | null"),
+    dict(id='coin-no-carries-nothing', file=OF, tests=[FT],
+         old="const passive = coin ? (coin.rode ? assigned : null) : (assigned ?? pickPassive(",
+         new="const passive = coin ? assigned : (assigned ?? pickPassive("),
+    dict(id='coin-only-while-a-test-runs', file=OF, tests=[FT],
+         old="passiveTestSince(settings, moveId, day) === null) return null\n  if (!passiveTestRuns(settings, moveId, day, (await repairEvidence(day)).shown)) return null",
+         new="false) return null"),
+    dict(id='coin-on-a-late-mark', file=OF, tests=[FT],
+         old="      const coin = await passiveCoinFor(RECOVERY_GAP, day, await getSettings(), rng)\n      if (coin) {",
+         new="      const coin = null as { moveId: string; rode: boolean; chance: number } | null\n      if (coin) {"),
+    dict(id='coin-mark-taken-back', file=OF, tests=[FT],
+         old="    if (!marked && evening.passiveCoin) {\n      await db.offers.update(evening.id, { passiveCoin: undefined, ...(carries ? { passiveId: null } : {}) })\n      return false\n    }\n",
+         new=""),
+    dict(id='passive-needs-a-test', file=PS, tests=[AT],
+         old="testsOfMove(moveId).length > 0",
+         new="true"),
+    dict(id='passive-test-forty-five-days', file=PS, tests=[AT],
+         old="day >= addDays(set.since, PASSIVE_TEST_DAYS)",
+         new="day >= addDays(set.since, PASSIVE_TEST_DAYS + 1)"),
+    dict(id='passive-test-stops-established', file=PS, tests=[AT],
+         old=" && !tests.some((t) => t.moveId === moveId && t.level === 'established')",
+         new=""),
+    dict(id='passive-tap-replaces', file=PS, tests=[AT],
+         old="...(s.repairPassiveTests ?? []).filter((t) => t.moveId !== moveId),",
+         new="...(s.repairPassiveTests ?? []),"),
+    dict(id='passive-proposed-at-promising', file=ES, tests=[RS],
+         old="const offer = !runs && e.stats.tier === 'promising' && testablePassive(e.card.moveId) && at !== null",
+         new="const offer = false"),
+    dict(id='passive-cards-shown', file=ES, tests=[RS],
+         old="          <AlongsideCards cards={ev.cards.filter((e) => e.card.origin === 'passive')} today={today} />\n",
+         new=""),
+    dict(id='passive-test-said-running', file=ES, tests=[RS],
+         old="{runs && since && (",
+         new="{false && ("),
+    dict(id='passive-test-target', file=ES, tests=[TH, '-g', 'passive item'],
+         old='class="pill-quiet" data-testid="passive-test-start"',
+         new='data-testid="passive-test-start"'),
 ]
 
 

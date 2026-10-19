@@ -120,6 +120,8 @@ export interface Settings {
   away?: AwayRange
   /** Your own chips (stage 3, item 5): short labels you typed, each asked as one tap at the evening check-in. A removed one keeps its record. Absent until the first. */
   ownChips?: OwnChip[]
+  /** The learning repair (stage R4b): the passive items you set a test of, each with the day it began. Absent until the first. */
+  repairPassiveTests?: { moveId: string; since: string }[]
   updatedAt: string
 }
 

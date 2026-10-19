@@ -1848,3 +1848,107 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+/**
+ * A passive item's one-tap test (stage R4b), in the repair's preview: fourteen days that read alike, the recovery gap riding
+ * alongside on alternate evenings with social energy high the morning after, and its card. Evidence's "Rode alongside" with
+ * the proposal, then, once tapped, the line that says the test runs.
+ */
+async function seedGapRecord(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '1'))
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  await page.evaluate(async () => {
+    const blocks: Record<string, string[]> = {
+      morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+      afternoon: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm'],
+      evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+    }
+    const hours: Record<string, number> = { morning: 7, afternoon: 13, evening: 19 }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['checkins', 'offers', 'outcomes', 'cards'], 'readwrite')
+    let k = 0
+    let gapYesterday = false
+    for (let d = 14; d >= 1; d--) {
+      const date = new Date(2026, 8, 24 - d)
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      for (const block of Object.keys(blocks)) {
+        k++
+        const answers: Record<string, number> = {}
+        for (const id of blocks[block]) answers[id] = 3
+        if (block === 'morning') answers.socialEnergy = gapYesterday ? 5 : 1
+        const done = new Date(new Date(2026, 8, 24 - d, hours[block], 40).getTime() + 95_000).toISOString()
+        tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
+        const moveId = k % 2 ? 'walk-ten' : 'nothing'
+        const gap = block === 'evening' && d % 2 === 0
+        const offerId = await new Promise<number>((res) => {
+          const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: gap ? 'recovery-gap' : null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done })
+          q.onsuccess = () => res(q.result as number)
+        })
+        tx.objectStore('outcomes').add({ offerId, moveId, day, block, at: done, outcome: 'done', why: null, passiveOutcome: gap ? 'done' : null, seen: true })
+        if (block === 'evening') gapYesterday = gap
+      }
+    }
+    tx.objectStore('cards').add({ createdAt: new Date(2026, 8, 10, 19, 0).toISOString(), situationKey: 'passive:evening', block: 'evening', target: 'socialEnergy', moveId: 'recovery-gap', alternativeId: 'nothing', window: 'nextMorning', worthwhile: 1, origin: 'passive' })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+}
+
+const GAP_OFFERED: typeof STATES = [
+  {
+    name: 'Evidence, a passive item’s one-tap test proposed',
+    tab: 'Moves',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evidence/ }).click()
+      const offer = p.getByTestId('passive-test-offer')
+      await expect(offer).toBeVisible()
+      await offer.scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+const GAP_RUNNING: typeof STATES = [
+  {
+    name: 'Evidence, a passive item’s test running',
+    tab: 'Moves',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evidence/ }).click()
+      const running = p.getByTestId('passive-test-running')
+      await expect(running).toBeVisible()
+      await running.scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: a passive item's test, proposed and running, reads, fits and can be tapped, at three widths (the repair's preview)`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await seedGapRecord(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, GAP_OFFERED, width, found)
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByTestId('passive-test-start').click()
+    await expect(page.getByTestId('passive-test-running')).toBeVisible()
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, GAP_RUNNING, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

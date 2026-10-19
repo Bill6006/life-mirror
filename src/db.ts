@@ -309,6 +309,11 @@ export interface Offer {
   fits?: string[]
   /** The learning repair's draw made inside a learning week: an even coin between its running tests' moves and nothing extra. */
   week?: true
+  /**
+   * The learning repair (stage R4b): a passive item's fair coin while its test ran, on a moment its own rule would have had it
+   * ride alongside: whether it did, and the chance the coin had. Absent on every other offer.
+   */
+  passiveCoin?: { moveId: string; rode: boolean; chance: number }
 }
 
 /** A move the app set aside when the day changed under it (stage 3, item 5): not a skip of yours, and not an offer any count shows. */

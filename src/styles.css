@@ -1823,6 +1823,11 @@ a.chip {
   margin: 8px 0 0;
 }
 
+/* A passive item's one-tap test under its card on Evidence (stage R4b): set apart from the card's own source line. */
+.passive-test {
+  margin-top: 12px;
+}
+
 .evidence .calc-key,
 .ev-k {
   font-family: var(--font-label);

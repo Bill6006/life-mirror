@@ -969,6 +969,29 @@ export class EngineB {
     return this.recordDraw(a, d, c, target, (p.get(NOTHING) as number) > 0 ? real.filter((id) => (p.get(id) as number) > 0) : [], chosen, p)
   }
 
+  /**
+   * A passive item's fair coin while its test runs (stage R4b): whether it rode alongside the moment's move, recorded for
+   * each of its readings as a randomized decision at the chance the coin had, exactly as a draw's decision for the move at
+   * that chance would be; only the item's own tests receive it. The moment is not counted toward the queue: the queue
+   * chooses which tests the draw runs, and a passive item is never drawn, so its test must take no place there. Returns its
+   * id here, for its response.
+   */
+  replayAlongside(a: Answered, d: number, c: DayContext, moveId: string, rode: boolean, chance: number): number {
+    const here = slotOf(d, a.block)
+    const offerId = this.nextId++
+    const decisions: Decision[] = []
+    const A: 0 | 1 = rode ? 1 : 0
+    const ctx: [boolean, boolean, boolean, boolean] = [c.withHer, c.office, c.weekend, c.shortSleep]
+    for (const { target, window } of this.readingsOf(moveId)) {
+      const test = this.testFor(moveId, target, window)
+      const dec: Decision = { d, slot: here, A, pi: chance, yhat: this.predict(target, window, here), x: this.features(c, A), outSlots: reach(d, a.block, window).map(([s]) => s), seen: null, fraction: null, away: this.away.has(d), resolved: false, ctx }
+      test.decisions.push(dec)
+      decisions.push(dec)
+    }
+    this.offers.push({ id: offerId, moveId: rode ? moveId : NOTHING, d, block: a.block, decisions })
+    return offerId
+  }
+
   /** A running test the learning week can run at this moment: open, not a committed practice, not believed to hurt, and its move fits on its own reading. */
   private fitsWeek(tt: Test, s: Situation, t: TodayState, offeredClasses: ReadonlySet<Cls>): boolean {
     if (tt.established || tt.cls === 'multi' || committed(tt.moveId) || lowTest(tt)) return false

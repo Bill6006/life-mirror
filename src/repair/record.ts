@@ -83,6 +83,17 @@ export function responseOf(o: Offer, outcome: Outcome | undefined): Response {
   return { seen: true, did: answered ? (outcome?.outcome ?? null) : null, why: outcome?.why ?? null, answered }
 }
 
+/**
+ * What became of a passive item's coin (stage R4b): seen as the card it rode on was seen; when it rode alongside, done or not
+ * as the answer about it says; when it did not, nothing to answer.
+ */
+export function alongsideResponseOf(o: Offer, outcome: Outcome | undefined): Response {
+  const card = responseOf(o, outcome)
+  if (!o.passiveCoin?.rode) return { seen: card.seen, did: null, why: null, answered: card.seen }
+  const did = outcome?.passiveOutcome ?? null
+  return { seen: card.seen, did, why: null, answered: did !== null }
+}
+
 const slotKey = (day: string, block: Block) => `${day}|${block}`
 
 /**
@@ -119,6 +130,11 @@ export function buildEngine(r: RepairRecord, through: string, stopBefore: Block 
       const id = engine.replayOffer(a, d, context, o.target, o.candidates, o.moveId, o.propensities ?? {}, o.fits ?? [], o.week ?? false)
       ids.set(o.id as number, id)
       engine.respond(id, responseOf(o, outcomeOf.get(o.id as number)))
+      // Stage R4b: a passive item's fair coin at the same moment, read as a randomized decision for the item's own test.
+      if (o.passiveCoin) {
+        const coin = engine.replayAlongside(a, d, context, o.passiveCoin.moveId, o.passiveCoin.rode, o.passiveCoin.chance)
+        engine.respond(coin, alongsideResponseOf(o, outcomeOf.get(o.id as number)))
+      }
     }
   }
   return { engine, epoch, index, ids }

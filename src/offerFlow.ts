@@ -30,8 +30,10 @@ import { rainSoon } from './weather'
 import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
+import { repairEvidence } from './repair/evidence'
 import { repairDraw } from './repair/flow'
 import { repairOn } from './repair/gate'
+import { PASSIVE_COIN, passiveTestRuns, passiveTestSince, testablePassive } from './repair/passive'
 import { REPAIR_ENGINE } from './repair/record'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
@@ -350,7 +352,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const passiveHistory = await db.offers.filter((o) => o.passiveId !== null).toArray()
     // The recovery gap rides along only on the evening of a day marked a big social day (today's own chip); otherwise the least-offered passive item does.
     const assigned = block === 'evening' && (await bigSocialToday(day)) && !t.offeredToday.includes(RECOVERY_GAP) ? moveById(RECOVERY_GAP) : null
-    const passive = assigned ?? pickPassive(block, t, passiveHistory.map((o) => ({ moveId: o.passiveId as string, at: o.at })))
+    // The learning repair (stage R4b): while a test of the item runs, a fair coin decides whether it rides alongside, its chance
+    // kept; on the coin's no nothing rides alongside, so the test compares the item with nothing alongside.
+    const coin = assigned ? await passiveCoinFor(assigned.id, day, settings, draw) : null
+    const passive = coin ? (coin.rode ? assigned : null) : (assigned ?? pickPassive(block, t, passiveHistory.map((o) => ({ moveId: o.passiveId as string, at: o.at }))))
     // A passive item is its own experiment, in the same moment but on another target: its card is written too.
     if (passive) {
       const pKey = `passive:${block}`
@@ -385,10 +390,21 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       draw: made ? { ...drawRecord, engine: REPAIR_ENGINE } : drawRecord,
       ...(made && made.offer.fits.length ? { fits: made.offer.fits } : {}),
       ...(made?.offer.week ? { week: true as const } : {}),
+      ...(coin ? { passiveCoin: coin } : {}),
     }
     offer.id = await db.offers.add(offer)
     return offer
   })
+}
+
+/**
+ * A passive item's fair coin (stage R4b), on a moment its own rule would have it ride alongside: only while the repair is on
+ * and a test of the item runs (set, inside its time, not yet established). Null otherwise, and the item rides by its rule.
+ */
+async function passiveCoinFor(moveId: string, day: string, settings: Settings, rng: Rng): Promise<{ moveId: string; rode: boolean; chance: number } | null> {
+  if (!repairOn() || !testablePassive(moveId) || passiveTestSince(settings, moveId, day) === null) return null
+  if (!passiveTestRuns(settings, moveId, day, (await repairEvidence(day)).shown)) return null
+  return { moveId, rode: rng() < PASSIVE_COIN, chance: PASSIVE_COIN }
 }
 
 /**
@@ -397,8 +413,8 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
  * moment of the mark, while nothing has been answered about what rides alongside; taken back, it
  * comes off again. Never onto a move it conflicts with. True when the evening's move carries it.
  */
-export async function syncRecoveryGap(day: string, marked: boolean): Promise<boolean> {
-  return db.transaction('rw', [db.offers, db.outcomes, db.cards], async () => {
+export async function syncRecoveryGap(day: string, marked: boolean, rng: Rng = Math.random): Promise<boolean> {
+  return db.transaction('rw', [db.offers, db.outcomes, db.cards, db.settings, db.checkins, db.days], async () => {
     const evenings = await db.offers.where('day').equals(day).filter((o) => o.kind === 'block' && o.block === 'evening' && o.skippedAt === null).toArray()
     const evening = evenings.sort((a, b) => (a.at < b.at ? 1 : -1))[0]
     if (!evening || evening.id === undefined) return false
@@ -406,10 +422,22 @@ export async function syncRecoveryGap(day: string, marked: boolean): Promise<boo
     // Once what rides alongside was answered, it stays as it was answered.
     const answered = await db.outcomes.where('offerId').equals(evening.id).first()
     if (answered && answered.passiveOutcome !== null) return carries
+    // The learning repair (stage R4b): the mark taken back, the evening is no longer a moment the coin may decide.
+    if (!marked && evening.passiveCoin) {
+      await db.offers.update(evening.id, { passiveCoin: undefined, ...(carries ? { passiveId: null } : {}) })
+      return false
+    }
+    // A mark made once the coin has decided keeps what it decided.
+    if (marked && evening.passiveCoin) return carries
     if (marked && !carries) {
       const gap = moveById(RECOVERY_GAP)
       if (gap.conflicts.includes(evening.moveId)) return false
-      await db.offers.update(evening.id, { passiveId: RECOVERY_GAP })
+      // While a test of the gap runs, a fair coin decides whether it joins; on the coin's no nothing rides alongside.
+      const coin = await passiveCoinFor(RECOVERY_GAP, day, await getSettings(), rng)
+      if (coin) {
+        await db.offers.update(evening.id, { passiveCoin: coin, passiveId: coin.rode ? RECOVERY_GAP : null })
+        if (!coin.rode) return false
+      } else await db.offers.update(evening.id, { passiveId: RECOVERY_GAP })
       const has = await db.cards.where('situationKey').equals('passive:evening').filter((c) => c.moveId === RECOVERY_GAP).first()
       if (!has) await db.cards.add({ createdAt: new Date().toISOString(), situationKey: 'passive:evening', block: 'evening', target: gap.targets[0].reading, moveId: RECOVERY_GAP, alternativeId: NOTHING, window: gap.targets[0].window, worthwhile: 1, origin: 'passive' })
       return true
