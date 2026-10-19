@@ -116,6 +116,11 @@ export interface BConfig {
    */
   multiFloor: number | null
   /**
+   * How far one person's effect may sit from the average research reports, in steps: added in quadrature to the research
+   * prior's own spread (the starting effect checked for scale, requirement 7). 0 keeps the research spread alone.
+   */
+  priorTau: number
+  /**
    * With every test declared on day one, how the system's error rate is shared among them: evenly, or in proportion
    * to the effect research expects of each test's move, fixed before any data (weighted Bonferroni; Genovese, Roeder
    * and Wasserman 2006). Every test keeps a part, never less than a move expected to give 0.05 step would.
@@ -165,6 +170,7 @@ export const B_DEFAULT: BConfig = {
   declareAll: false,
   keepEarly: false,
   multiFloor: null,
+  priorTau: 0,
   alphaWeights: 'even',
   queueScore: 'explore',
 }
@@ -450,7 +456,7 @@ export class EngineB {
   private priorFor(t: Test, shift: number): { w: number[]; m: number[]; s: number[] } {
     const m = hasMove(t.moveId) ? moveById(t.moveId) : null
     const mu = (m?.prior.effect ?? 0) + shift
-    const sd = m ? PRIOR_SD[m.source.strength] : 1
+    const sd = m ? Math.sqrt(PRIOR_SD[m.source.strength] ** 2 + this.cfg.priorTau ** 2) : 1
     return { w: [1 - this.cfg.vague, this.cfg.vague], m: [mu, 0], s: [sd, this.cfg.vagueSd] }
   }
 

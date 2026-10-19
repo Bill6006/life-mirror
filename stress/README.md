@@ -22,6 +22,12 @@ strongest inside the agreed principles across all 34 scenarios. It holds every s
 every check on honesty, and fails every criterion that asks how soon a call is reached; S2 cannot be judged on so
 few calls. The last fresh range stays unread, and what happens next is the owner's decision.
 
+**Then the verdict by requirement 14's rule (read once, 2026-10-18, fresh seeds from 300001): FAIL on one gate of
+23**, in `RESULTS-5.md`. The owner decided that the engine is judged with the safeguards first and its speed reported.
+Every gate passed, S2 on 10,000 people among them, except C2: the belief intervals covered the truth in 89.1 % of
+sparse looks, against 90 %. Today's engine stays; the smallest correction is in that write-up, and judging it again
+is the owner's decision.
+
 ## What is here
 
 | File | What it is |
@@ -30,6 +36,7 @@ few calls. The last fresh range stays unread, and what happens next is the owner
 | `RESULTS.md` | The first verdict, the judge's output verbatim, the sensitivity runs and the eight-part report. |
 | `RESULTS-2.md` | The verdict after the three corrections: the corrections, the re-settled values, the judge's output verbatim, its independent recount and the report. |
 | `RESULTS-3.md` | The learning week and C3's correction, tuned on seeds 1–1000: the probe that could have said yes, the realistic week and lower rates, and why the last fresh range stays unread. |
+| `RESULTS-5.md` | The verdict by requirement 14's rule, read once on fresh seeds: both judges' output verbatim, why C2 failed, and the smallest correction. |
 | `RESULTS-4.md` | The design search on seeds 1–1000: every design tried on C1's full step, the probes with the right test from day one, the strongest design's full run with the judge's output verbatim, and why every remaining failure is speed. |
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
 | `scenarios.ts` | The simulated people of the criteria's list, one scenario each. |
@@ -39,10 +46,12 @@ few calls. The last fresh range stays unread, and what happens next is the owner
 | `run.ts` | One person through one engine, and what the metrics need from it. |
 | `pool.ts` | Many people over worker threads; it also merges parts of one run. |
 | `metrics.ts` | The judge: the frozen criteria, read on the validation runs. |
+| `verdict14.ts` | The verdict by requirement 14's rule: every clause read as `metrics.ts` reads it, each a gate or a reported value. |
 | `recount.py` | An independent recount of the judge's headline numbers from the raw runs, in another language. |
 | `results3.py` | The learning-week runs read the way the judge reads the criteria: every number in `RESULTS-3.md`. |
 | `results4.py` | The design search's runs of C1's full step: the table in `RESULTS-4.md`, each file's settings printed beside it. |
 | `validate.sh` | The verdict run: every scenario once, on a range of validation seeds never read before. |
+| `validate14.sh` | The verdict run by requirement 14's rule: the design `RESULTS-4.md` settled, at the sizes that let every gate decide. |
 | `summary.ts`, `tune.ts` | Reading a run while settling values on the tuning seeds. |
 | `probeA.ts`, `probeB.ts` | A first look at one simulated person through each engine. |
 
