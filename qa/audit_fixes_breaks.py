@@ -141,8 +141,8 @@ TABLE = [
          new="    behindIt: 'Anything going on?',",
          tests=[S], pattern='after a reading worsens by two steps'),
     dict(id='phrase-allowed-alone', file='src/copy.test.ts',
-         old="const ownersWords = ['Anything behind it?']",
-         new="const ownersWords: string[] = []",
+         old="const ownersWords = ['Anything behind it?', 'The evidence behind this has changed']",
+         new="const ownersWords = ['The evidence behind this has changed']",
          tests=['src/copy.test.ts'], pattern='contains no verdict words'),
     # 3. Not asked.
     dict(id='not-asked-named', file='src/db.ts',

@@ -100,7 +100,47 @@ export interface SeedTurn {
   tier?: 'quick' | 'standard' | 'deep'
   kind?: string
   state?: 'answered' | 'waiting' | 'cancelled'
-  claude?: { status: 'answered' | 'failed'; text?: string; facts?: { id: string; text: string }[]; model?: string }
+  claude?: { status: 'answered' | 'failed'; text?: string; facts?: { id: string; text: string }[]; model?: string; test?: string; noteOffer?: boolean }
+}
+
+/** A note kept from Ask, written straight into the phone's store (stage A3). */
+export async function seedNote(page: Page, text: string, day: string, turnId = 1): Promise<void> {
+  await page.evaluate(
+    async ({ text, day, turnId }) => {
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const tx = dbx.transaction(['notes'], 'readwrite')
+      const at = `${day}T13:05:00.000Z`
+      tx.objectStore('notes').add({ day, text, from: 'ask', turnId, createdAt: at, updatedAt: at })
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+      })
+      dbx.close()
+    },
+    { text, day, turnId },
+  )
+}
+
+/** Every row of one of the phone's stores, as the browser holds it. */
+export async function storeRows<T>(page: Page, name: string): Promise<T[]> {
+  return page.evaluate(async (name) => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const rows = await new Promise<unknown[]>((res, rej) => {
+      const q = dbx.transaction([name], 'readonly').objectStore(name).getAll()
+      q.onsuccess = () => res(q.result)
+      q.onerror = () => rej(q.error)
+    })
+    dbx.close()
+    return rows
+  }, name) as Promise<T[]>
 }
 
 /** A thread with its turns written straight into the phone's store, and Claude's answers into the brain's rows the phone keeps (stage A2). */
@@ -124,7 +164,7 @@ export async function seedTurns(page: Page, title: string, turns: SeedTurn[], at
           const q = tx.objectStore('askTurns').add({ threadId, day, at: when, question: t.question, tier: t.tier ?? 'standard', state: t.state ?? 'waiting', kind: t.kind ?? 'typed', version: 'earlier', cited: [], updatedAt: when })
           q.onsuccess = () => res(q.result as number)
         })
-        if (t.claude) tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at: when, status: t.claude.status, ...(t.claude.text ? { text: t.claude.text, factIds: (t.claude.facts ?? []).map((f) => f.id), cardIds: [], facts: t.claude.facts ?? [] } : {}), ...(t.claude.model ? { model: t.claude.model } : {}) })
+        if (t.claude) tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at: when, status: t.claude.status, ...(t.claude.text ? { text: t.claude.text, factIds: (t.claude.facts ?? []).map((f) => f.id), cardIds: [], facts: t.claude.facts ?? [] } : {}), ...(t.claude.model ? { model: t.claude.model } : {}), ...(t.claude.test ? { test: t.claude.test } : {}), ...(t.claude.noteOffer ? { noteOffer: true } : {}) })
       }
       await new Promise<void>((res, rej) => {
         tx.oncomplete = () => res()

@@ -10,7 +10,8 @@ let ev: RepairEvidence
 vi.mock('../repair/evidence', async (original) => ({ ...(await original<typeof import('../repair/evidence')>()), repairEvidence: async () => ev }))
 
 const { db, updateSettings } = await import('../db')
-const { allThreads, askAbout, askAgain, askAllowance, askDeep, askExplain, askStarter, askTyped, askWaits, cancelTurn, deleteThread, lastRead, reachedAny, searchThreads, settleAskTurns } = await import('./flow')
+const { allThreads, askAbout, askAgain, askAllowance, askDeep, askExplain, askSooner, askStarter, askTyped, askWaits, cancelTurn, deleteThread, keepNote, lastRead, reachedAny, removeNote, searchThreads, settleAskTurns, testOfTurn } = await import('./flow')
+const { repairRecord } = await import('../repair/flow')
 const { answerIdOf, askTaskIds } = await import('./shared')
 
 const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'likely', direction: 'helps', revised: false, belief: 0.3, theta: 0.4, lo: 0.1, hi: 0.7, offered: 6, heldBack: 5, days: 11, ctx: [], running: true, began: '2026-10-01', ...over })
@@ -146,6 +147,77 @@ describe('Ask Life Mirror on the phone', () => {
     expect((await askWaits(at(9, 3))).get(turn.id as number)?.kind).not.toBe('cloud')
     expect(reachedAny([turn.id as number], [], await db.askRuns.toArray())).toBe(true)
     expect(reachedAny([turn.id as number + 1], [], await db.askRuns.toArray())).toBe(false)
+  })
+
+  it('marks the one test a question names by both its move and its reading, and only that, for the queue (stage A3)', async () => {
+    const named = (await askTyped('Does walking help my mood?', null, at(9), { sheet: false })) as number
+    expect((await db.askTurns.where('threadId').equals(named).first())?.asked).toEqual([{ key: 'walk-ten|mood|nextBlock', day: '2026-10-19' }])
+    // A move alone, or a reading alone, names no test.
+    const vague = (await askTyped('Does walking help?', null, at(9, 5), { sheet: false })) as number
+    expect((await db.askTurns.where('threadId').equals(vague).first())?.asked).toBeUndefined()
+    // "Ask about this" attaches one test: it is asked about too.
+    await askAbout({ keys: ['walk-ten|mood|nextBlock'] }, 'evidence', 'About A ten-minute walk, now', at(10))
+    const [about] = await allThreads()
+    expect(about.turns[0].asked).toEqual([{ key: 'walk-ten|mood|nextBlock', day: '2026-10-19' }])
+    // Only keys and days reach the engine's record, never a question.
+    const r = await repairRecord()
+    expect(r.asked).toEqual([{ key: 'walk-ten|mood|nextBlock', day: '2026-10-19' }, { key: 'walk-ten|mood|nextBlock', day: '2026-10-19' }])
+    expect(JSON.stringify(r)).not.toContain('Does walking help')
+  })
+
+  it('marks nothing for a question naming two tests, "Ask about this" attaching two, or a test already established (stage A3)', async () => {
+    ev = { ...ev, shown: [test_({}), test_({ key: 'walk-ten|energy|nextBlock', target: 'energy' })] }
+    const two = (await askTyped('Does walking help my mood or my energy?', null, at(9), { sheet: false })) as number
+    expect((await db.askTurns.where('threadId').equals(two).first())?.asked).toBeUndefined()
+    await askAbout({ keys: ['walk-ten|mood|nextBlock', 'walk-ten|energy|nextBlock'] }, 'brain', 'About the day’s line', at(10))
+    // A test the read no longer shows is asked about in name only.
+    await askAbout({ keys: ['nap-ten|focus|nextBlock'] }, 'evidence', 'About a test no longer shown', at(10, 30))
+    expect((await db.askTurns.toArray()).flatMap((t) => t.asked ?? [])).toEqual([])
+    ev = { ...ev, shown: [test_({ level: 'established' })] }
+    const done = (await askTyped('Does walking help my mood?', null, at(11), { sheet: false })) as number
+    expect((await db.askTurns.where('threadId').equals(done).first())?.asked).toBeUndefined()
+  })
+
+  it('marks no test over seven days, which never waits in the queue; its card still opens (stage A3)', async () => {
+    ev = { ...ev, shown: [test_({ key: 'cancel-one-thing|stress|sevenDays', moveId: 'cancel-one-thing', target: 'stress', window: 'sevenDays' })] }
+    const thread = (await askTyped('Does cancelling a subscription help my stress?', null, at(9), { sheet: false })) as number
+    const [turn] = await db.askTurns.where('threadId').equals(thread).toArray()
+    expect(testOfTurn(turn, undefined, ev)?.key).toBe('cancel-one-thing|stress|sevenDays')
+    expect(turn.asked).toBeUndefined()
+  })
+
+  it('"Test it" names the test a turn asks about, short of established; "Test it sooner" marks it once a day (stage A3)', async () => {
+    const thread = (await askTyped('Does walking help my mood?', null, at(9), { sheet: false })) as number
+    const [turn] = await db.askTurns.where('threadId').equals(thread).toArray()
+    expect(testOfTurn(turn, undefined, ev)?.key).toBe('walk-ten|mood|nextBlock')
+    expect(testOfTurn(turn, undefined, { ...ev, shown: [test_({ level: 'established' })] })).toBeNull()
+    // The answer's own test comes first, before the one the question names.
+    const both = { ...ev, shown: [test_({}), test_({ key: 'walk-ten|energy|nextBlock', target: 'energy' })] }
+    expect(testOfTurn(turn, { test: 'walk-ten|energy|nextBlock' }, both)?.key).toBe('walk-ten|energy|nextBlock')
+    expect(testOfTurn({ ...turn, question: 'Anything?' }, { test: 'walk-ten|mood|nextBlock' }, ev)?.key).toBe('walk-ten|mood|nextBlock')
+    // "Ask about this" offers a card for the one test it attaches, and only a typed question's words name one.
+    expect(testOfTurn({ kind: 'about', keys: ['walk-ten|mood|nextBlock'], question: 'About it' }, undefined, both)?.key).toBe('walk-ten|mood|nextBlock')
+    expect(testOfTurn({ kind: 'about', keys: ['walk-ten|mood|nextBlock', 'walk-ten|energy|nextBlock'], question: 'About A ten-minute walk, now, for Mood' }, undefined, both)).toBeNull()
+    await askSooner(turn.id as number, 'walk-ten|mood|nextBlock', at(12))
+    await askSooner(turn.id as number, 'walk-ten|mood|nextBlock', at(13))
+    expect((await db.askTurns.get(turn.id as number))?.asked).toEqual([{ key: 'walk-ten|mood|nextBlock', day: '2026-10-19' }])
+    await askSooner(turn.id as number, 'walk-ten|mood|nextBlock', new Date(2026, 9, 20, 9))
+    expect((await db.askTurns.get(turn.id as number))?.asked).toHaveLength(2)
+  })
+
+  it('keeps a note in the owner’s own words, of today, from Ask; nothing for no words (stage A3)', async () => {
+    const thread = (await askTyped('The neighbours had a party until two.', null, at(9), { sheet: false })) as number
+    const [turn] = await db.askTurns.where('threadId').equals(thread).toArray()
+    expect(await keepNote(turn.id as number, '   ', at(9, 5))).toBeNull()
+    const id = (await keepNote(turn.id as number, ' The neighbours had a party until two. ', at(9, 5))) as number
+    expect(await db.notes.get(id)).toMatchObject({ day: '2026-10-19', text: 'The neighbours had a party until two.', from: 'ask', turnId: turn.id })
+    // Deleting the conversation keeps what was made from it ("Anything you made from it stays").
+    await deleteThread(thread)
+    expect(await db.notes.get(id)).toMatchObject({ text: 'The neighbours had a party until two.' })
+    // Removed at the owner's tap: gone from this phone, and a tombstone for the cloud copy.
+    await removeNote(id)
+    expect(await db.notes.get(id)).toBeUndefined()
+    expect((await db.outbox.toArray()).filter((r) => r.op === 'delete' && r.store === 'notes').map((r) => r.key)).toEqual([String(id)])
   })
 
   it('answers nothing when the record cannot be read, and writes nothing', async () => {

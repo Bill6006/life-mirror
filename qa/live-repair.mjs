@@ -297,9 +297,14 @@ try {
     // Stage R6, the breaker: the test browsers' stand-in for a record no test foresaw, every rebuild throwing.
     const { ctx, page } = await fresh('fault', { days: 10 })
     const knows = page.getByTestId('knows')
-    await knows.getByTestId('knows-more').click().catch(() => {})
-    // Now redraws once the breaker trips, a moment after the first read throws: wait for its words before reading them.
-    check('with every rebuild throwing, Now redraws as before the switch', (await seen(knows.filter({ hasText: 'one offer in five is a fair coin flip' }))) && (await page.getByTestId('week-invite').count()) === 0)
+    // Now redraws once the breaker trips, a moment after the first read throws, and the redraw can fold the panel opened
+    // before it (2026-10-20: one run in three read it folded): open it again until its words show, three tries at most.
+    let redrawn = false
+    for (let i = 0; i < 3 && !redrawn; i++) {
+      await knows.getByTestId('knows-more').click().catch(() => {})
+      redrawn = await seen(knows.filter({ hasText: 'one offer in five is a fair coin flip' }), 5000)
+    }
+    check('with every rebuild throwing, Now redraws as before the switch', redrawn && (await page.getByTestId('week-invite').count()) === 0)
     await checkIn(page)
     const offer = await todaysOffer(page)
     check('and a check-in still draws a move, by today’s engine', /^engine-/.test(offer?.draw?.engine ?? ''), String(offer?.draw?.engine))

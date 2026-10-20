@@ -294,7 +294,7 @@ export function scheduledMoves(cards: readonly Card[], obs: readonly Observation
  * then the offer. Returns the live offer, or null when nothing fits or moves are hidden.
  */
 export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims], async () => {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims, db.askTurns], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const existing = await offerForSlot(day, block)
@@ -417,7 +417,7 @@ async function passiveCoinFor(moveId: string, day: string, settings: Settings, r
  * comes off again. Never onto a move it conflicts with. True when the evening's move carries it.
  */
 export async function syncRecoveryGap(day: string, marked: boolean, rng: Rng = Math.random): Promise<boolean> {
-  return db.transaction('rw', [db.offers, db.outcomes, db.cards, db.settings, db.checkins, db.days], async () => {
+  return db.transaction('rw', [db.offers, db.outcomes, db.cards, db.settings, db.checkins, db.days, db.askTurns], async () => {
     const evenings = await db.offers.where('day').equals(day).filter((o) => o.kind === 'block' && o.block === 'evening' && o.skippedAt === null).toArray()
     const evening = evenings.sort((a, b) => (a.at < b.at ? 1 : -1))[0]
     if (!evening || evening.id === undefined) return false
@@ -544,7 +544,7 @@ export async function skipOffer(offer: Offer, reason: 'notHome' | null = null): 
  * the new move, or null when nothing was drawn again.
  */
 export function redrawForDay(day: string, block: Block, now: Date = new Date(), rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims], async () => {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims, db.askTurns], async () => {
     const slot = blockAt(now)
     if (slot.day !== day || slot.block !== block) return null
     const offer = await offerForSlot(day, block)

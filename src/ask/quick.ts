@@ -2,11 +2,12 @@ import { hasMove, moveById } from '../catalogue'
 import { copy } from '../copy'
 import { fill, formatDayShort } from '../format'
 import { readingById, type ReadingId } from '../readings'
-import type { Direction, Level } from '../repair/engine'
+import { clsOf, type Direction, type Level } from '../repair/engine'
 import type { RepairEvidence, TestShown, TrackLine } from '../repair/evidence'
 import { rungWords } from '../repair/words'
 import { INGREDIENT_IDS } from '../score'
 import { changesOf, citeOf, evidenceVersion, testsOf, type FindingChange } from './evidence'
+import { contextNamed } from './match'
 import type { AskCitation, AskStarter, QuickAnswer } from './types'
 
 // The quick tier (Ask Life Mirror, stage A1, 2026-10-19; the agreed design's points 3 and 9): the starters and "Ask about
@@ -14,6 +15,36 @@ import type { AskCitation, AskStarter, QuickAnswer } from './types'
 // app. No Claude, no number the engine did not produce, and every finding in the words its rung allows.
 
 const words = () => copy.askMirror
+
+/**
+ * Whether asking can lift a test in the queue (stage A3): the queue takes no test over seven days (the engine's
+ * `waitingRanked`), which is drawn on its own days instead. src/ask/asked.test.ts holds the two together.
+ */
+export const liftable = (t: Pick<TestShown, 'window'>): boolean => clsOf(t.window as Parameters<typeof clsOf>[0]) !== 'multi'
+
+/**
+ * "Test it sooner" on a test's card (stage A3): when it was last asked about, and the button on any day it was not; for a
+ * test over seven days, why asking cannot bring it sooner, and no button.
+ */
+export function soonerOf(t: Pick<TestShown, 'window'>, asked: string | null, today: string): { ownDays: string | null; asked: string | null; button: boolean } {
+  if (!liftable(t)) return { ownDays: words().testOwnDays, asked: null, button: false }
+  return { ownDays: null, asked: asked ? fill(words().soonerDone, { date: formatDayShort(asked) }) : null, button: asked !== today }
+}
+
+/**
+ * "Test it"'s line for a context a typed question names (stage A3; point 13: "maps to one of requirement 7's pre-declared
+ * contexts, never a new silo"): that context's own call of the test, or that it has none of its own yet. Null when the
+ * question names none.
+ */
+export function testContextLine(t: TestShown, question: string): string | null {
+  const named = contextNamed(question)
+  if (!named) return null
+  const w = words()
+  const context = copy.repairEvidence.contexts[named.context][named.value]
+  const own = t.ctx.find((x) => x.context === named.context && x.value === named.value)
+  return own ? fill(w.testContext, { context, call: rungWords(own.level, own.direction) }) : fill(w.testContextNone, { context })
+}
+
 const nameOf = (moveId: string) => (hasMove(moveId) ? moveById(moveId).name : moveId)
 const windowOf = (w: string) => copy.catalogue.windows[w as keyof typeof copy.catalogue.windows] ?? w
 const readingName = (id: string) => readingById(id as ReadingId).name

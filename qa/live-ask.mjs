@@ -3,6 +3,9 @@
 // ships: no Ask button, even in an automated browser, without the test key. In its preview: the question box and only
 // the starters with something to say; "What do you know" answered at once from the repair's read; its thread in Recent; a
 // typed question waiting with the findings its words name, and cancelled; "Ask about this" from Evidence, and back.
+// Stage A2: Claude's answer with the findings it cited, and no checked answer said plainly. Stage A3: "Test it" for a
+// question naming one test, with the context it names and the asking kept; "Add this as a note", kept, listed under Your
+// words and removed there.
 // node live-ask.mjs <expected short commit> [screenshot folder]
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium, tab } from './common.mjs'
@@ -141,6 +144,8 @@ async function seedClaude(page) {
     }
     await one('Does a nap help my energy?', { status: 'answered', text: 'A stand-in answer, as Claude would write one.', factIds: ['ladder.nap-ten.energy'], cardIds: [], facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5' })
     await one('Why are my mornings flat?', { status: 'failed', reason: 'a stand-in' })
+    // Stage A3: an answer that names a test and marks the question as a note.
+    await one('The neighbours had a party until two.', { status: 'answered', text: 'A stand-in answer: that is a note of the night, not a reading.', factIds: [], cardIds: [], facts: [], model: 'claude-opus-5-5', test: 'walk-ten|mood|nextBlock', noteOffer: true })
     await new Promise((res, rej) => {
       tx.oncomplete = () => res()
       tx.onerror = () => rej(tx.error)
@@ -225,6 +230,34 @@ try {
     await page.getByTestId('ask-past-open').click()
     await page.getByTestId('ask-thread-row').filter({ hasText: 'Why are my mornings flat?' }).click()
     check('no checked answer is said plainly, never an unchecked one', (await text(page.getByTestId('ask-no-checked'))).startsWith('Couldn’t produce a checked answer.') && (await page.getByTestId('ask-claude').count()) === 0)
+    // Stage A3: a question naming one test and a context; "Test it" opens its card.
+    await page.locator('.sub-head .back').click()
+    await page.getByTestId('ask-box').fill('Does a walk help my mood on office days?')
+    await page.getByTestId('ask-send').click()
+    await page.getByTestId('ask-test-it').click()
+    const card = await text(page.getByTestId('ask-test-card'))
+    check('"Test it" opens the test’s card: against nothing extra, its unit, the second measure, the fixed thresholds, pre-registered', card.startsWith('The test this asks about') && card.includes('A ten-minute walk, now, for Mood over the next block') && card.includes('compared with nothing extra') && card.includes('Each check-in where it fits is its own draw.') && card.includes('as a second measure') && card.includes('the same thresholds for every test') && card.includes('or for 45 days, longer while it shows at least an early sign of helping') && card.includes('Pre-registered on'), card.slice(0, 100))
+    check('the context the question names is the test’s own, read on those days', (await text(page.getByTestId('ask-test-context'))).startsWith('At the office: no call of its own yet.'))
+    check('the question itself asked about the test today: said, and no second tap offered today', (await text(page.getByTestId('ask-sooner-done'))).startsWith('Asked about on') && (await page.getByTestId('ask-sooner').count()) === 0)
+    await shot(page.getByTestId('ask-test-card'), 'ask-test-card')
+    // "Add this as a note" under an answer that marks a stated fact; kept, it is listed under Your words, and removed there.
+    await page.locator('.sub-head .back').click()
+    await page.getByTestId('ask-past-open').click()
+    await page.getByTestId('ask-thread-row').filter({ hasText: 'The neighbours had a party' }).click()
+    check('an answer marking a stated fact offers "Add this as a note", and "Test it" for the test it names', (await seen(page.getByTestId('ask-note'))) && (await seen(page.getByTestId('ask-test-it'))))
+    await page.getByTestId('ask-note').click()
+    check('the note starts as the question’s own words', (await page.getByTestId('ask-note-text').inputValue()) === 'The neighbours had a party until two.')
+    await shot(page.getByTestId('ask-note-edit'), 'ask-note-edit')
+    await page.getByTestId('ask-note-keep').click()
+    check('kept, it says so and where it is', (await text(page.getByTestId('ask-note-kept'))).includes('with your words under Mirror'), await text(page.getByTestId('ask-note-kept')))
+    for (let i = 0; i < 4 && !(await page.getByTestId('words-door').isVisible()); i++) await page.locator('.sub-head .back').click()
+    await page.getByTestId('words-door').click()
+    check('Your words lists the kept note', (await text(page.getByTestId('words-kept-note'))).includes('The neighbours had a party until two.'))
+    await shot(page.getByTestId('words'), 'ask-words-kept')
+    await page.getByTestId('words-kept-remove').click()
+    check('removing it asks for a second tap', (await text(page.getByTestId('words-kept-remove'))) === 'Tap again to remove it')
+    await page.getByTestId('words-kept-remove').click()
+    check('and then it is gone', await page.getByTestId('words-kept').first().waitFor({ state: 'detached', timeout: 8000 }).then(() => true, () => false))
     await ctx.close()
   }
 

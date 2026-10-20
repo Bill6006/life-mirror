@@ -615,6 +615,8 @@ export function askAnswerOf(id: string, body: string): AskAnswer | null {
       ...(texts(r.model, 100) ? { model: texts(r.model, 100) as string } : {}),
       ...(texts(r.askedModel, 40) ? { askedModel: texts(r.askedModel, 40) as string } : {}),
       ...(texts(r.reason, 300) ? { reason: texts(r.reason, 300) as string } : {}),
+      ...(typeof r.test === 'string' && /^[\w-]+\|[a-zA-Z]+\|[a-zA-Z]+$/.test(r.test) ? { test: r.test } : {}),
+      ...(r.noteOffer === true ? { noteOffer: true } : {}),
     }
   } catch {
     return null

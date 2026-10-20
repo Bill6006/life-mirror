@@ -219,6 +219,16 @@ export const IN_APP: BConfig = { ...REPAIR, trackRule: true }
 const COMMITTED_FAMILIES = new Set(['study', 'faith', 'fatherhood', 'partner', 'people', 'charisma'])
 const committed = (moveId: string): boolean => !hasMove(moveId) || moveId === 'time-with-her' || moveId === 'church-early' || COMMITTED_FAMILIES.has(moveById(moveId).family)
 
+/** The asked term's half-life in days (Ask Life Mirror, stage A3; point 14: "it fades unless the owner asks again"). */
+export const ASKED_HALF_LIFE = 7
+
+/** How much asking still lifts a test on day `d`, from the days it was asked: 1 on the day of the newest mark made by then, halving every seven days; 0 with none. */
+export function askedLift(days: readonly number[], d: number): number {
+  let newest = -1
+  for (const x of days) if (x <= d && x > newest) newest = x
+  return newest < 0 ? 0 : 0.5 ** ((d - newest) / ASKED_HALF_LIFE)
+}
+
 export type Cls = 'next' | 'day' | 'multi'
 export const clsOf = (w: Window): Cls => (w === 'nextBlock' ? 'next' : w === 'sevenDays' ? 'multi' : 'day')
 export type { Direction, Level }
@@ -340,6 +350,8 @@ export interface Test {
   ctxCalls: { context: string; value: 0 | 1; level: Level; direction: Direction; est: number; p: number }[]
   /** The day the test entered the queue, null while it never has; and whether it left without a conclusion. */
   queuedAt: number | null
+  /** Entered the queue on the asked term's lift (Ask Life Mirror, stage A3): while it holds its place, no other test is lifted in. */
+  lifted?: boolean
   expired: boolean
   /** Eligible moments of the move, by day: how available it is. */
   eligibleDays: number[]
@@ -592,7 +604,8 @@ export class EngineB {
    *   while unanswered. Absent in the stress test, whose people answer from `optIn`.
    * @param dayOf The day each index names: the app's real days, or the stress test's fixed calendar when absent.
    */
-  constructor(rng: Rng, cfg: BConfig = B_DEFAULT, awayDays: ReadonlySet<number> = new Set(), declared: { moveId: string; target: ReadingId; window: Window }[] = [], optIn: Rng | null = null, answerOf: ((d: number) => boolean | null) | null = null, dayOf: ((d: number) => string) | null = null) {
+  constructor(rng: Rng, cfg: BConfig = B_DEFAULT, awayDays: ReadonlySet<number> = new Set(), declared: { moveId: string; target: ReadingId; window: Window }[] = [], optIn: Rng | null = null, answerOf: ((d: number) => boolean | null) | null = null, dayOf: ((d: number) => string) | null = null, asked: readonly { key: string; d: number }[] = []) {
+    for (const m of asked) this.ask(m.key, m.d)
     this.rng = rng
     this.cfg = cfg
     this.away = awayDays
@@ -1224,18 +1237,42 @@ export class EngineB {
     // With every test declared on day one the error rate is already shared by them all, so the cap does not bind.
     const capped = () => !this.cfg.declareAll && this.queuedEver >= this.cfg.queueCap
     if (this.queue.length >= size || capped()) return
-    const busy = new Set(this.queue.map((t) => t.moveId))
-    for (const t of this.waitingRanked(d)) {
-      if (this.queue.length >= size || capped() || busy.has(t.moveId)) continue
-      if (!this.mayEnter(t, d)) continue
-      this.enter(t, d)
-      this.queue.push(t)
-      busy.add(t.moveId)
+    const places = this.placesFor(d)
+    while (this.queue.length < size && !capped()) {
+      const p = places.next()
+      if (p.done) break
+      if (p.value.lifted) p.value.t.lifted = true
+      this.enter(p.value.t, d)
+      this.queue.push(p.value.t)
     }
   }
 
-  /** The tests waiting for a place, best first by the queue's own score (requirement 11). Read alone, it changes nothing. */
-  private waitingRanked(d: number): Test[] {
+  /**
+   * The tests that take the queue's free places on day `d`, in order, by its own score and rule, one per move and none of
+   * a move being run. The asked term lifts a test only while no test that entered on its lift holds a place (stage A3:
+   * "capped, so one topic cannot crowd out the rest"). Each is chosen once the one before it is taken, so tending the
+   * queue and reading its next run this one rule.
+   */
+  private *placesFor(d: number): Generator<{ t: Test; lifted: boolean }> {
+    const taken = new Set(this.queue.map((t) => t.moveId))
+    let lifts = !this.queue.some((t) => t.lifted)
+    const next = (withLifts: boolean) => this.waitingRanked(d, withLifts).find((t) => !taken.has(t.moveId) && this.mayEnter(t, d))
+    for (;;) {
+      const t = next(lifts)
+      if (!t) return
+      // It entered on its lift when, without it, another test would have taken this place.
+      const lifted = lifts && this.askedLift(t, d) > 0 && next(false)?.key !== t.key
+      if (lifted) lifts = false
+      taken.add(t.moveId)
+      yield { t, lifted }
+    }
+  }
+
+  /**
+   * The tests waiting for a place, best first by the queue's own score (requirement 11), with the asked term's lift when
+   * `lifts`: a lift of 1 puts a test above every other, and it halves every seven days. Read alone, it changes nothing.
+   */
+  private waitingRanked(d: number, lifts = true): Test[] {
     const busy = new Set(this.queue.map((t) => t.moveId))
     const declaredWaiting = new Set([...this.tests.values()].filter((t) => t.queuedAt === null && this.isDeclared(t)).map((t) => t.moveId))
     const options = [...this.tests.values()].filter((t) => t.queuedAt === null && !busy.has(t.moveId) && t.cls !== 'multi' && (!declaredWaiting.has(t.moveId) || this.isDeclared(t)))
@@ -1245,7 +1282,29 @@ export class EngineB {
       const sd = Math.sqrt(Math.max(0, t.post.w.reduce((a, w, k) => a + w * (t.post.s[k] ** 2 + t.post.m[k] ** 2), 0) - pMean(t.post) ** 2))
       return recent * Math.max(0, pMean(t.post) * t.compliance + 0.5 * sd)
     }
-    return options.sort((a, b) => score(b) - score(a))
+    const scores = new Map(options.map((t) => [t, score(t)]))
+    if (!lifts || !this.asked.size) return options.sort((a, b) => (scores.get(b) as number) - (scores.get(a) as number))
+    const top = Math.max(0, ...scores.values()) + 1
+    const ranked = new Map(options.map((t) => [t, (scores.get(t) as number) + this.askedLift(t, d) * top]))
+    return options.sort((a, b) => (ranked.get(b) as number) - (ranked.get(a) as number))
+  }
+
+  /**
+   * The asked term (Ask Life Mirror, stage A3; the agreed design's point 14): the days the owner asked to have each test
+   * sooner, by key. The queue alone reads it, to rank tests waiting for a place: never the beliefs, the ladder, the
+   * certification or the estimates, and every offer's chance is recorded as before.
+   */
+  private readonly asked = new Map<string, number[]>()
+
+  /** The owner asked, on day `d`, to have the test sooner. */
+  ask(key: string, d: number): void {
+    this.asked.set(key, [...(this.asked.get(key) ?? []), d])
+  }
+
+  /** How much the asking still lifts a test on day `d` (`askedLift`). */
+  private askedLift(t: Test, d: number): number {
+    const days = this.asked.get(t.key)
+    return days ? askedLift(days, d) : 0
   }
 
   /** A waiting test may take a place once its move fitted on at least four of the last 28 days. */
@@ -1260,12 +1319,11 @@ export class EngineB {
    */
   queueNext(n = 2): Test[] {
     const out: Test[] = []
-    const busy = new Set(this.queue.map((t) => t.moveId))
-    for (const t of this.waitingRanked(this.today)) {
-      if (out.length >= n) break
-      if (busy.has(t.moveId) || !this.mayEnter(t, this.today)) continue
-      out.push(t)
-      busy.add(t.moveId)
+    const places = this.placesFor(this.today)
+    while (out.length < n) {
+      const p = places.next()
+      if (p.done) break
+      out.push(p.value.t)
     }
     return out
   }

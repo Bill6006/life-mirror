@@ -109,6 +109,15 @@ describe('how the app is used, in your own file (Follow-up F1)', () => {
     const withClaude = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, { ...records, ask: { ...ask, answers: [{ id: 'turn:9', turnId: 9, threadId: 7, day: '2026-10-19', at: '2026-10-19T15:00:00.000Z', status: 'answered' as const, text: 'A walk likely helps your stress.', factIds: ['ladder.walk-ten.stress'], cardIds: [], model: 'claude-opus-5-5' }] } }).json)
     expect(withClaude.ask.turns[0].claude).toEqual({ status: 'answered', at: '2026-10-19T15:00:00.000Z', text: 'A walk likely helps your stress.', factIds: ['ladder.walk-ten.stress'], cardIds: [], model: 'claude-opus-5-5' })
     expect(out.ask.turns[0]).not.toHaveProperty('claude')
+    // Notes kept from Ask, each on its day, in the owner's own words (stage A3).
+    const withNotes = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, { ...records, ask: { ...ask, notes: [{ id: 4, day: '2026-10-19', text: 'The neighbours had a party.', from: 'ask' as const, turnId: 9, createdAt: '2026-10-19T13:05:00.000Z', updatedAt: '2026-10-19T13:05:00.000Z' }] } }).json)
+    expect(withNotes.notes).toEqual([{ day: '2026-10-19', text: 'The neighbours had a party.', from: 'ask', question: 9, createdAt: '2026-10-19T13:05:00.000Z' }])
+    expect(withNotes.key.notes).toMatch(/never a reading or a finding/)
+    // A turn's asked marks, keys and days, as the key says (stage A3).
+    const withAsked = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, { ...records, ask: { ...ask, turns: [{ ...ask.turns[0], asked: [{ key: 'walk-ten|stress|nextBlock', day: '2026-10-19' }] }] } }).json)
+    expect(withAsked.ask.turns[0].asked).toEqual([{ key: 'walk-ten|stress|nextBlock', day: '2026-10-19' }])
+    expect(out.ask.turns[0]).not.toHaveProperty('asked')
+    expect(out.key.ask).toMatch(/A turn’s asked lists the tests you asked about/)
   })
 
   it('leaves the Partner path’s own screens out unless the Partner path is included (Part 27)', () => {

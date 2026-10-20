@@ -5,8 +5,8 @@ import { formatDayShort } from '../format'
 import type { RepairEvidence, TestShown, TrackLine } from '../repair/evidence'
 import { changesOf, citeOf, evidenceVersion, threadState } from './evidence'
 import { askMode, askOn } from './gate'
-import { matchFindings } from './match'
-import { aboutAnswer, changedAnswer, keysOfLine, knowAnswer, nextAnswer, startersShown } from './quick'
+import { contextNamed, matchFindings } from './match'
+import { aboutAnswer, changedAnswer, keysOfLine, knowAnswer, nextAnswer, soonerOf, startersShown, testContextLine } from './quick'
 import type { AskTurn } from './types'
 
 // Ask Life Mirror's quick tier (stage A1, 2026-10-19), on stand-in reads of the repair: the evidence version and what
@@ -192,6 +192,38 @@ describe('a typed question, while it waits', () => {
     expect(matchFindings('walking or energy', ev).map((t) => t.key)).toEqual(['walk-ten|mood|nextBlock', 'nap-ten|energy|nextBlock'])
     // Words every name shares name nothing.
     expect(matchFindings('ten minutes now', ev)).toEqual([])
+  })
+
+  it('names one of the pre-declared contexts by its own words, and its other value apart; none for two (stage A3)', () => {
+    expect(contextNamed('Does walking help my mood on office days?')).toEqual({ context: 'office', value: 1 })
+    expect(contextNamed('Does walking help when I am not at the office?')).toEqual({ context: 'office', value: 0 })
+    expect(contextNamed('Do naps help on days I work from home?')).toEqual({ context: 'office', value: 0 })
+    expect(contextNamed('Does a nap help my energy after a short night?')).toEqual({ context: 'shortSleep', value: 1 })
+    expect(contextNamed('What about weekends?')).toEqual({ context: 'weekend', value: 1 })
+    expect(contextNamed('And on weekdays?')).toEqual({ context: 'weekend', value: 0 })
+    expect(contextNamed('Is it different without her?')).toEqual({ context: 'withHer', value: 0 })
+    expect(contextNamed('Is it different with her?')).toEqual({ context: 'withHer', value: 1 })
+    // Two contexts, or both values of one, name no single context; nor do words naming none.
+    expect(contextNamed('On weekends at the office?')).toBeNull()
+    expect(contextNamed('Weekends or weekdays?')).toBeNull()
+    expect(contextNamed('Does walking help my mood?')).toBeNull()
+  })
+
+  it('says when a test was last asked about and offers "Test it sooner" on any day it was not; of a test over seven days, why asking cannot bring it sooner (stage A3)', () => {
+    const t = { window: 'nextBlock' as const }
+    expect(soonerOf(t, null, '2026-10-20')).toEqual({ ownDays: null, asked: null, button: true })
+    expect(soonerOf(t, '2026-10-20', '2026-10-20')).toEqual({ ownDays: null, asked: `Asked about on ${formatDayShort('2026-10-20')}: that lifts this test in the queue, fading over a few weeks unless you ask again. It changes no threshold and nothing already recorded.`, button: false })
+    expect(soonerOf(t, '2026-10-19', '2026-10-20')).toMatchObject({ asked: expect.stringContaining(formatDayShort('2026-10-19')), button: true })
+    expect(soonerOf({ window: 'sevenDays' }, '2026-10-19', '2026-10-20')).toEqual({ ownDays: 'A test over seven days never waits in the queue: it is drawn on its own days, so asking cannot bring it sooner.', asked: null, button: false })
+  })
+
+  it('gives "Test it" that context’s own call of the test, or says it has none of its own yet; nothing for no context (stage A3)', () => {
+    const t = { ...walkMood, ctx: [{ context: 'office', value: 1 as const, level: 'likely' as const, direction: 'helps' as const }] }
+    expect(testContextLine(t, 'Does walking help my mood on office days?')).toBe('At the office: Likely: helps. This is the same test, read on those days alone.')
+    // The other value of that context has no call of its own here.
+    expect(testContextLine(t, 'Does walking help my mood when I work from home?')).toBe('Not at the office: no call of its own yet. Those days count in this same test with all the others, and get a call of their own once the record shows they differ.')
+    expect(testContextLine(t, 'Does walking help my mood after a short night?')).toMatch(/^After a short night: no call of its own yet\./)
+    expect(testContextLine(t, 'Does walking help my mood?')).toBeNull()
   })
 })
 

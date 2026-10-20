@@ -1934,6 +1934,15 @@ a.chip {
   gap: 6px;
 }
 
+/* Stage A3: the test a question asks about, its card set off as a calculation; the note's own words, editable before kept. */
+.ask-test {
+  margin-top: 10px;
+}
+
+.ask-note-edit {
+  margin-top: 10px;
+}
+
 .setting {
   padding: 14px 0;
   border-bottom: 1px solid var(--hair);

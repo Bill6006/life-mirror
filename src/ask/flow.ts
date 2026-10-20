@@ -5,12 +5,13 @@ import { copy } from '../copy'
 import { db, getSettings } from '../db'
 import { fill } from '../format'
 import { guardRepair } from '../repair/breaker'
-import { repairEvidence, type RepairEvidence } from '../repair/evidence'
+import { repairEvidence, type RepairEvidence, type TestShown } from '../repair/evidence'
 import { repairOn } from '../repair/gate'
-import { citeOf, evidenceVersion } from './evidence'
+import { citeOf, evidenceVersion, testsOf } from './evidence'
+import { testsNamed } from './match'
 import { allowanceUsed, answerIdOf, ASK_ANSWERS_A_DAY, askTaskIds, askWaitOf, deepTaskId, roomFor, type AskAnswer, type AskRun, type AskWait } from './shared'
-import { aboutAnswer, changedAnswer, keysOfLine, knowAnswer, nextAnswer, type Laid, type LastRead } from './quick'
-import type { AboutSource, AskStarter, AskThread, AskTurn } from './types'
+import { aboutAnswer, changedAnswer, keysOfLine, knowAnswer, liftable, nextAnswer, type Laid, type LastRead } from './quick'
+import type { AboutSource, AskStarter, AskThread, AskTurn, KeptNote } from './types'
 
 // Ask Life Mirror on the phone (stage A1, 2026-10-19): threads begun from a starter, from "Ask about this", or from a typed
 // question; the quick tier answering at once; a typed question kept waiting for Claude (stage A2); asking again, cancelling
@@ -78,7 +79,7 @@ export async function askAbout(ref: AboutRef, source: AboutSource, question: str
   const ev = await askEvidence(now)
   if (!ev) return null
   const keys = 'keys' in ref ? [...ref.keys] : keysOfLine(ref.factIds, ev)
-  const turn = answeredTurn(question, 'about', aboutAnswer(keys, ev, question), ev, now, [...keys])
+  const turn = { ...answeredTurn(question, 'about', aboutAnswer(keys, ev, question), ev, now, [...keys]), ...askedMarks(keys.length === 1 ? keys : [], ev, now) }
   return startThread({ day: turn.day, at: turn.at, title: question, from: { kind: 'about', source, keys: [...keys] } }, turn)
 }
 
@@ -106,10 +107,56 @@ export async function askTyped(raw: string, threadId: number | null, now: Date =
   if (!question) return null
   const ev = await askEvidence(now)
   const at = now.toISOString()
-  const turn: Omit<AskTurn, 'id' | 'threadId'> = { day: blockAt(now).day, at, question, tier: 'standard', state: 'waiting', kind: 'typed', version: ev ? evidenceVersion(ev) : '', cited: [], updatedAt: at }
+  const named = ev ? testsNamed(question, ev) : []
+  const turn: Omit<AskTurn, 'id' | 'threadId'> = { day: blockAt(now).day, at, question, tier: 'standard', state: 'waiting', kind: 'typed', version: ev ? evidenceVersion(ev) : '', cited: [], updatedAt: at, ...(ev ? askedMarks(named.length === 1 ? [named[0].key] : [], ev, now) : {}) }
   const id = threadId === null ? await startThread({ day: turn.day, at, title: question, from: { kind: 'typed' } }, turn) : (await db.askTurns.add({ ...turn, threadId }), threadId)
   await sheetNow(now, opts)
   return id
+}
+
+/**
+ * The asked mark a question leaves (stage A3, point 14): the one test it names by both its move and its reading, or the
+ * one "Ask about this" attaches, when that test is not established. Keys and days alone.
+ */
+function askedMarks(keys: readonly string[], ev: Pick<RepairEvidence, 'shown' | 'quiet'>, now: Date): Pick<AskTurn, 'asked'> {
+  const tests = testsOf(ev)
+  const open = keys.filter((k) => tests.has(k) && tests.get(k)?.level !== 'established')
+  // A test over seven days never waits in the queue: asking about it lifts nothing, so it is not marked.
+  const queued = open.filter((k) => liftable(tests.get(k) as TestShown))
+  return queued.length ? { asked: queued.map((key) => ({ key, day: blockAt(now).day })) } : {}
+}
+
+/** The one test a turn asks about, for "Test it" (point 13): the answer's own, the one "Ask about this" attached, or the one its words name; never an established one. */
+export function testOfTurn(t: Pick<AskTurn, 'kind' | 'keys' | 'question'>, answer: Pick<AskAnswer, 'test'> | undefined, ev: Pick<RepairEvidence, 'shown' | 'quiet'>) {
+  const tests = testsOf(ev)
+  const named = t.kind === 'typed' ? testsNamed(t.question, ev) : []
+  const key = answer?.test ?? (t.kind === 'about' && (t.keys ?? []).length === 1 ? (t.keys ?? [])[0] : named.length === 1 ? named[0].key : undefined)
+  const test = key ? tests.get(key) : undefined
+  return test && test.level !== 'established' ? test : null
+}
+
+/** "Test it sooner" (point 14): the owner's tap, an asked mark on the turn for that test, today. Nothing recorded changes. */
+export async function askSooner(turnId: number, key: string, now: Date = new Date()): Promise<void> {
+  const day = blockAt(now).day
+  await db.transaction('rw', db.askTurns, async () => {
+    const t = await db.askTurns.get(turnId)
+    if (!t || (t.asked ?? []).some((m) => m.key === key && m.day === day)) return
+    await db.askTurns.put({ ...t, asked: [...(t.asked ?? []), { key, day }], updatedAt: now.toISOString() })
+  })
+}
+
+/** A note kept from Ask, removed at the owner's tap: from this phone, and from the cloud copy by its tombstone. */
+export async function removeNote(id: number): Promise<void> {
+  await db.notes.delete(id)
+}
+
+/** "Add this as a note" (point 12): the owner's own words, kept as a note of today, from Ask. Null for nothing to keep. */
+export async function keepNote(turnId: number, raw: string, now: Date = new Date()): Promise<number | null> {
+  const text = raw.trim().slice(0, QUESTION_MAX)
+  if (!text) return null
+  const at = now.toISOString()
+  const note: KeptNote = { day: blockAt(now).day, text, from: 'ask', turnId, createdAt: at, updatedAt: at }
+  return (await db.notes.add(note)) as number
 }
 
 /** "Explain this to me" (point 4): a standard question in the same thread, its packet the quick answer above it. */

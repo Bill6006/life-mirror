@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { seedRecord, seedThread, seedTurns } from './askSeed'
+import { seedNote, seedRecord, seedThread, seedTurns, storeRows } from './askSeed'
 
 // Ask Life Mirror in the browser (stage A1, 2026-10-19), in its preview: only an automated browser holding the test key at 1
 // opens it while it is built. The question box and the starters that have something to say; a starter's answer laid out by
@@ -148,6 +148,8 @@ test('the export carries every conversation under its own key, each answer as la
   await page.addInitScript(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }))
   await start(page, 0)
   await seedThread(page, 'What do you know about me so far?', 'know', [], daysBefore(1))
+  // A note kept from Ask (stage A3).
+  await seedNote(page, 'A stand-in note, kept from Ask.', '2026-09-23')
   await page.reload()
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByTestId('settings-data').click()
@@ -158,6 +160,7 @@ test('the export carries every conversation under its own key, each answer as la
   expect(out.ask.turns).toHaveLength(1)
   expect(out.ask.turns[0]).toMatchObject({ question: 'What do you know about me so far?', state: 'answered', answer: [{ title: null, lines: ['As it stood then.'] }] })
   expect(out.key.ask).toMatch(/Nothing here is evidence/)
+  expect(out.notes).toEqual([{ day: '2026-09-23', text: 'A stand-in note, kept from Ask.', from: 'ask', question: 1, createdAt: '2026-09-23T13:05:00.000Z' }])
 })
 
 test('Claude’s answer, when it comes, shows with the findings it cited, and its thread then reads answered (stage A2)', async ({ page }) => {
@@ -172,6 +175,9 @@ test('Claude’s answer, when it comes, shows with the findings it cited, and it
   await expect(page.getByTestId('ask-claude-cited')).toContainText('Test: a stand-in fact, as the run read it.')
   await expect(claude).toContainText('Written by Claude (claude-opus-5-5).')
   await expect(page.getByTestId('ask-waiting')).toHaveCount(0)
+  // An answer that marks no stated fact offers no note; a test already established offers no "Test it" (stage A3).
+  await expect(page.getByTestId('ask-note')).toHaveCount(0)
+  await expect(page.getByTestId('ask-test-it')).toHaveCount(0)
   // The phone marks its own question answered.
   await page.locator('.sub-head .back').click()
   await expect(page.getByTestId('ask-thread-row')).toContainText('answered')
@@ -227,6 +233,86 @@ test('a thread at its size limit suggests a new one, and sums nothing up (stage 
   await expect(page.getByTestId('ask-turn')).toHaveCount(8)
   await expect(page.getByTestId('ask-too-long')).toContainText('ask in a new one from Ask')
   await expect(page.getByTestId('ask-thread').getByTestId('ask-box')).toHaveCount(0)
+})
+
+test('a question naming one test offers "Test it": its card, the context it names, and the asking kept, asked again on a later day (stage A3)', async ({ page }) => {
+  await start(page)
+  await openAsk(page)
+  await page.getByTestId('ask-box').fill('Does a walk help my mood on office days?')
+  await page.getByTestId('ask-send').click()
+  await expect(page.getByTestId('ask-thread')).toBeVisible()
+  await page.getByTestId('ask-test-it').click()
+  const card = page.getByTestId('ask-test-card')
+  await expect(card).toContainText('A ten-minute walk, now, for Mood over the next block')
+  await expect(card).toContainText('It is compared with nothing extra at the moments it fits')
+  await expect(card).toContainText('Each check-in where it fits is its own draw.')
+  await expect(card).toContainText('The reading out of 100 is read alongside it, as a second measure.')
+  await expect(card).toContainText('the same thresholds for every test')
+  await expect(page.getByTestId('ask-test-stop')).toHaveText('In the queue it runs until its call is established, or for 45 days, longer while it shows at least an early sign of helping.')
+  await expect(card).toContainText('Pre-registered on')
+  // The context the question names is the test's own, read on those days: none of its own yet on this record.
+  await expect(page.getByTestId('ask-test-context')).toContainText('At the office: no call of its own yet.')
+  // The question itself asked about the test today: said, and no second tap offered today.
+  await expect(page.getByTestId('ask-sooner-done')).toContainText('Asked about on Thu, Sep 24')
+  await expect(page.getByTestId('ask-sooner')).toHaveCount(0)
+  // The next day, "Test it sooner" asks again; a second tap that day adds nothing.
+  await page.clock.setFixedTime(new Date(WHEN.getTime() + 86_400_000))
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-thread-row').click()
+  await page.getByTestId('ask-test-it').click()
+  await page.getByTestId('ask-sooner').click()
+  await expect(page.getByTestId('ask-sooner')).toHaveCount(0)
+  await expect(page.getByTestId('ask-sooner-done')).toContainText('Asked about on Fri, Sep 25')
+  const turns = await storeRows<{ asked?: { key: string; day: string }[] }>(page, 'askTurns')
+  expect(turns.flatMap((t) => t.asked ?? [])).toEqual([
+    { key: 'walk-ten|mood|nextBlock', day: '2026-09-24' },
+    { key: 'walk-ten|mood|nextBlock', day: '2026-09-25' },
+  ])
+})
+
+test('an answer that marks a stated fact offers "Add this as a note": the question’s own words, editable, kept on its day; and the test the answer names (stage A3)', async ({ page }) => {
+  await start(page)
+  await seedTurns(page, 'The neighbours had a party until two.', [{ question: 'The neighbours had a party until two.', claude: { status: 'answered', text: 'That is a note of the night, not a reading.\nA ten-minute walk is being tested on your mood.', facts: [{ id: 'ladder.walk-ten.mood', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5', test: 'walk-ten|mood|nextBlock', noteOffer: true } }], daysBefore(0))
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-thread-row').click()
+  // The test the answer names, though the question names none.
+  await expect(page.getByTestId('ask-test-it')).toBeVisible()
+  await page.getByTestId('ask-note').click()
+  await expect(page.getByTestId('ask-note-text')).toHaveValue('The neighbours had a party until two.')
+  // "Not now" keeps nothing.
+  await page.getByTestId('ask-note-not-now').click()
+  await expect(page.getByTestId('ask-note-edit')).toHaveCount(0)
+  expect(await storeRows(page, 'notes')).toEqual([])
+  await page.getByTestId('ask-note').click()
+  await page.getByTestId('ask-note-text').fill('The neighbours had a loud party until two.')
+  await page.getByTestId('ask-note-keep').click()
+  await expect(page.getByTestId('ask-note-kept')).toContainText('Kept as a note on Thu, Sep 24, with your words under Mirror.')
+  expect(await storeRows(page, 'notes')).toEqual([expect.objectContaining({ day: '2026-09-24', text: 'The neighbours had a loud party until two.', from: 'ask' })])
+  // Kept, it reads kept after a reload, and is offered no more.
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-thread-row').click()
+  await expect(page.getByTestId('ask-note-kept')).toBeVisible()
+  await expect(page.getByTestId('ask-note')).toHaveCount(0)
+  // With the owner's words under Mirror, removable at a second tap; removed, the conversation offers it again.
+  // Back from the conversation to Ask, and from Ask to Mirror.
+  await page.locator('.sub-head .back').click()
+  await page.locator('.sub-head .back').click()
+  await page.getByTestId('words-door').click()
+  const kept = page.getByTestId('words-kept')
+  await expect(kept).toHaveCount(1)
+  await expect(page.getByTestId('words-kept-note')).toContainText('The neighbours had a loud party until two.')
+  await page.getByTestId('words-kept-remove').click()
+  await expect(page.getByTestId('words-kept-remove')).toHaveText('Tap again to remove it')
+  await page.getByTestId('words-kept-remove').click()
+  await expect(kept).toHaveCount(0)
+  expect(await storeRows(page, 'notes')).toEqual([])
+  await page.locator('.sub-head .back').click()
+  await page.getByTestId('ask-open').click()
+  await page.getByTestId('ask-thread-row').click()
+  await expect(page.getByTestId('ask-note')).toBeVisible()
 })
 
 test('Recent keeps two rows whatever the count; Past conversations lists every one, searchable, and deletes after a confirmation', async ({ page }) => {

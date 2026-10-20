@@ -613,6 +613,11 @@ describe('Ask Life Mirror’s runs and Claude’s answers, read from the brain (
     expect(askAnswerOf('x', JSON.stringify({ turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'answered' }))).toBeNull()
     expect(askAnswerOf('x', JSON.stringify({ turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'failed', reason: 'no run could answer it' }))).toEqual({ id: 'x', turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'failed', reason: 'no run could answer it' })
     expect(askAnswerOf('x', 'not json')).toBeNull()
+    // Stage A3: the one test an answer names, and the note it offers; anything else of the kind is left out.
+    expect(askAnswerOf('x', JSON.stringify({ turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'answered', text: 'T.', test: 'walk-ten|stress|nextBlock', noteOffer: true }))).toMatchObject({ test: 'walk-ten|stress|nextBlock', noteOffer: true })
+    const odd = askAnswerOf('x', JSON.stringify({ turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'answered', text: 'T.', test: 'not a key', noteOffer: 'yes' }))
+    expect(odd).not.toHaveProperty('test')
+    expect(odd).not.toHaveProperty('noteOffer')
     // What Claude read for a question is shown with the rest.
     expect(brainReadOf('r', JSON.stringify({ day: '2026-10-20', at: 'a', task: 'ask', category: 'notes', count: 2, bytes: 90, via: 'context' }))).toMatchObject({ task: 'ask', count: 2 })
     expect(brainReadOf('r', JSON.stringify({ day: '2026-10-20', at: 'a', task: 'deep', category: 'notes', count: 2, bytes: 90, via: 'context' }))).toMatchObject({ task: 'deep' })

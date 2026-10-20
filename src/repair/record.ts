@@ -24,6 +24,8 @@ export interface RepairRecord {
   days: readonly AppDay[]
   /** The owner's answers to the learning week's invitations, by day: true for Yes, false for Not now. */
   weekAnswers: ReadonlyMap<string, boolean>
+  /** Ask Life Mirror's asked marks (stage A3): a test's key and the day it was asked about, and nothing else of a question. */
+  asked?: readonly { key: string; day: string }[]
 }
 
 export interface Built {
@@ -109,7 +111,9 @@ export function buildEngine(r: RepairRecord, through: string, stopBefore: Block 
   const index = (day: string) => daysBetween(epoch, day)
   const dayRec = new Map(r.days.map((d) => [d.day, d]))
   const away = new Set(r.days.filter((d) => d.awayFromHome && d.day >= epoch).map((d) => index(d.day)))
-  const engine = new EngineB(rng, cfg, away, declared, null, (d) => r.weekAnswers.get(addDays(epoch, d)) ?? null, (d) => addDays(epoch, d))
+  // Every mark as it is: the engine counts one only from its own day on (askedLift).
+  const asked = (r.asked ?? []).map((m) => ({ key: m.key, d: index(m.day) }))
+  const engine = new EngineB(rng, cfg, away, declared, null, (d) => r.weekAnswers.get(addDays(epoch, d)) ?? null, (d) => addDays(epoch, d), asked)
   const checkinAt = new Map(complete.map((c) => [slotKey(c.day, c.block), c]))
   const drawAt = new Map<string, Offer>()
   for (const o of [...r.offers].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))) if (isDraw(o) && !drawAt.has(slotKey(o.day, o.block))) drawAt.set(slotKey(o.day, o.block), o)
@@ -163,7 +167,7 @@ let cached: { key: string; built: Built } | null = null
  */
 export function builtThrough(r: RepairRecord, through: string): Built {
   if (faultForTests()) throw new TypeError('a stand-in for a record no test foresaw')
-  const key = `${through}|${fingerprint(JSON.stringify([r.checkins, r.offers, r.outcomes, r.days, [...r.weekAnswers]]))}`
+  const key = `${through}|${fingerprint(JSON.stringify([r.checkins, r.offers, r.outcomes, r.days, [...r.weekAnswers], r.asked ?? []]))}`
   if (cached?.key === key) return cached.built
   const built = buildEngine(r, through)
   cached = { key, built }

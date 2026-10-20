@@ -11,8 +11,10 @@ import { windowOfMove } from './world'
 
 /** The app's whole record as the repair reads it, the owner's answers to a learning week among it (stage R3). */
 export async function repairRecord(): Promise<RepairRecord> {
-  const [checkins, offers, outcomes, days] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.days.toArray()])
-  return { checkins, offers, outcomes, days, weekAnswers: new Map(days.filter((d) => d.weekAnswer).map((d) => [d.day, d.weekAnswer === 'yes'])) }
+  const [checkins, offers, outcomes, days, turns] = await Promise.all([db.checkins.toArray(), db.offers.toArray(), db.outcomes.toArray(), db.days.toArray(), db.askTurns.toArray()])
+  // Ask Life Mirror's asked marks (stage A3): keys and days alone; nothing else of a question reaches the engine.
+  const asked = turns.flatMap((t) => (t.asked ?? []).map((m) => ({ key: m.key, day: m.day })))
+  return { checkins, offers, outcomes, days, weekAnswers: new Map(days.filter((d) => d.weekAnswer).map((d) => [d.day, d.weekAnswer === 'yes'])), ...(asked.length ? { asked } : {}) }
 }
 
 /** Where the learning week stands today (stage R3). */

@@ -6,17 +6,18 @@ import { copy } from '../copy'
 import { db } from '../db'
 import { fill, formatDayShort, formatTime } from '../format'
 import { useLive } from '../live'
-import type { RepairEvidence } from '../repair/evidence'
+import { clsOf, IN_APP } from '../repair/engine'
+import type { RepairEvidence, TestShown } from '../repair/evidence'
 import { rungWords } from '../repair/words'
 import { readingById, type ReadingId } from '../readings'
 import { hasMove, moveById } from '../catalogue'
 import { SubHead } from '../ui'
 import { changesOf, threadState } from './evidence'
-import { allThreads, askAbout, askAgain, askAllowance, askDeep, askEvidence, askExplain, askStarter, askTyped, askWaitingKeys, askWaits, cancelTurn, deleteThread, lastRead, QUESTION_MAX, reachedAny, searchThreads, settleAskTurns, type AboutRef, type ThreadWhole } from './flow'
+import { allThreads, askAbout, askAgain, askAllowance, askDeep, askEvidence, askExplain, askSooner, askStarter, askTyped, askWaitingKeys, askWaits, cancelTurn, deleteThread, keepNote, lastRead, QUESTION_MAX, reachedAny, searchThreads, settleAskTurns, testOfTurn, type AboutRef, type ThreadWhole } from './flow'
 import { matchFindings } from './match'
-import { changeLines, startersShown } from './quick'
+import { changeLines, soonerOf, startersShown, testContextLine } from './quick'
 import { DEEP_COUNTS, THREAD_TURNS_MAX, type AskAnswer, type AskWait } from './shared'
-import type { AboutSource, AskStarter, AskTurn } from './types'
+import type { AboutSource, AskStarter, AskTurn, KeptNote } from './types'
 
 // Ask Life Mirror's screen (stage A1, 2026-10-19; the agreed design's points 3 to 8): the question box first, the starters
 // that have something real to say, Recent's two newest threads and one link to the rest. It never grows with history. A
@@ -100,11 +101,105 @@ function ClaudeAnswer({ a }: { a: AskAnswer }) {
   )
 }
 
-/** A turn: its question, then its answer as laid out or Claude's, or where it stands while it waits; and the marker. */
-function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain }: { t: AskTurn; ev: RepairEvidence | null | undefined; answer?: AskAnswer; wait?: AskWait; onAgain: () => void; onCancel: () => void; onExplain?: () => void }) {
+/** "Test it" (point 13): the test a question asks about, its card, when it was last asked about, and "Test it sooner" (point 14) on any day it was not. */
+function TestIt({ test, question, asked, onSooner }: { test: TestShown; question: string | null; asked: string | null; onSooner: () => void }) {
   const c = w()
+  const [open, setOpen] = useState(false)
+  // A context the question names is one of the pre-declared ones: that context's own reading of this test, never a new one.
+  const contextLine = question ? testContextLine(test, question) : null
+  const sooner = soonerOf(test, asked, blockAt(new Date()).day)
+  if (!open)
+    return (
+      <div class="actions">
+        <button type="button" class="pill-quiet" data-testid="ask-test-it" onClick={() => setOpen(true)}>
+          {c.testIt}
+        </button>
+      </div>
+    )
+  return (
+    <div class="calc ask-test" data-testid="ask-test-card">
+      <p class="calc-line ink">{c.testTitle}</p>
+      <p class="calc-line">{fill(c.finding, { move: nameOf(test.moveId), reading: readingById(test.target as ReadingId).name, window: copy.catalogue.windows[test.window as keyof typeof copy.catalogue.windows] ?? test.window, call: rungWords(test.level, test.direction) })}</p>
+      <p class="calc-line">{c.testCompare}</p>
+      <p class="calc-line">{c.testUnit[clsOf(test.window)]}</p>
+      <p class="calc-line">{c.testSecondary}</p>
+      <p class="calc-line">{c.testRule}</p>
+      <p class="calc-line" data-testid="ask-test-stop">
+        {fill(c.testStop, { days: String(IN_APP.queueMaxDays) })}
+      </p>
+      {test.began && <p class="calc-line">{fill(c.testRegistered, { date: formatDayShort(test.began) })}</p>}
+      {contextLine && (
+        <p class="calc-line" data-testid="ask-test-context">
+          {contextLine}
+        </p>
+      )}
+      {sooner.ownDays && (
+        <p class="calc-line" data-testid="ask-test-own-days">
+          {sooner.ownDays}
+        </p>
+      )}
+      {sooner.asked && (
+        <p class="calc-line" data-testid="ask-sooner-done">
+          {sooner.asked}
+        </p>
+      )}
+      {sooner.button && (
+        <div class="actions">
+          <button type="button" class="pill-quiet" data-testid="ask-sooner" onClick={onSooner}>
+            {c.sooner}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** "Add this as a note" (point 12): the question's own words, editable, kept as a note of today; or when it was kept. */
+function KeepNote({ question, kept, onKeep }: { question: string; kept: KeptNote | null; onKeep: (text: string) => Promise<void> }) {
+  const c = w()
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState(question)
+  if (kept)
+    return (
+      <p class="note faint no-gap" data-testid="ask-note-kept">
+        {fill(c.noteKept, { date: formatDayShort(kept.day) })}
+      </p>
+    )
+  if (!open)
+    return (
+      <div class="actions">
+        <button type="button" class="pill-quiet" data-testid="ask-note" onClick={() => setOpen(true)}>
+          {c.noteOffer}
+        </button>
+      </div>
+    )
+  return (
+    <div class="ask-note-edit" data-testid="ask-note-edit">
+      <label class="setting-label" for="ask-note-text">
+        {c.noteLabel}
+      </label>
+      <textarea id="ask-note-text" class="input note-input" rows={3} maxLength={QUESTION_MAX} value={text} data-testid="ask-note-text" onInput={(e) => setText((e.currentTarget as HTMLTextAreaElement).value)} />
+      <button type="button" class="pill-ink" data-testid="ask-note-keep" disabled={!text.trim()} onClick={() => void onKeep(text)}>
+        {c.noteKeep}
+      </button>
+      <div class="actions">
+        <button type="button" class="textbtn" data-testid="ask-note-not-now" onClick={() => setOpen(false)}>
+          {c.noteNotNow}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** A turn: its question, then its answer as laid out or Claude's, or where it stands while it waits; and the marker. */
+function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain, kept, onKeep }: { t: AskTurn; ev: RepairEvidence | null | undefined; answer?: AskAnswer; wait?: AskWait; onAgain: () => void; onCancel: () => void; onExplain?: () => void; kept: KeptNote | null; onKeep: (text: string) => Promise<void> }) {
+  const c = w()
+  const test = ev && t.state !== 'cancelled' ? testOfTurn(t, answer, ev) : null
+  const asked = test ? ([...(t.asked ?? [])].filter((m) => m.key === test.key).sort((a, b) => (a.day < b.day ? 1 : -1))[0]?.day ?? null) : null
   const changes = ev && t.state === 'answered' ? changesOf(t.cited, ev) : []
   const claude = t.tier !== 'quick'
+  // "Test it" stands under the answer: under Claude's, or the app's, or while the question waits, under the findings its words name.
+  const testIt = test && t.id !== undefined ? <TestIt test={test} question={t.kind === 'typed' ? t.question : null} asked={asked} onSooner={() => void askSooner(t.id as number, test.key)} /> : null
   return (
     <div class="card pad ask-turn" data-testid="ask-turn" data-state={t.state}>
       <p class="ask-question" data-testid="ask-question">
@@ -132,6 +227,7 @@ function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain }: { t: AskTur
         </div>
       )}
       {claude && answer?.status === 'answered' && <ClaudeAnswer a={answer} />}
+      {claude && answer?.status === 'answered' && (answer.noteOffer || kept) && <KeepNote question={t.question} kept={kept} onKeep={onKeep} />}
       {claude && answer?.status === 'failed' && (
         <>
           <p class="note no-gap" data-testid="ask-no-checked">
@@ -140,12 +236,14 @@ function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain }: { t: AskTur
           <Matches t={t} ev={ev} title={c.matchesTitle} />
         </>
       )}
+      {!(t.state === 'waiting' && !answer) && testIt}
       {t.state === 'waiting' && !answer && (
         <>
           <p class="note no-gap" data-testid="ask-waiting" data-wait={wait?.kind ?? ''}>
             {waitWords(wait)}
           </p>
           <Matches t={t} ev={ev} title={c.matchesTitle} />
+          {testIt}
           <div class="actions">
             <button type="button" class="textbtn" data-testid="ask-cancel" onClick={onCancel}>
               {c.cancel}
@@ -251,6 +349,7 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
   const all = useLive(allThreads, [])
   const last = useLive(lastRead, [])
   const answers = useLive(() => db.askAnswers.toArray(), [])
+  const notes = useLive(() => db.notes.toArray(), [])
   const runs = useLive(() => db.askRuns.toArray(), [])
   const waits = useLive(() => askWaits(), [tick])
   const allowance = useLive(() => askAllowance(), [tick])
@@ -303,6 +402,8 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
                 onAgain={() => void askAgain(t.id as number).then((ok) => (ok ? setTick((n) => n + 1) : setFailed(true)))}
                 onCancel={() => void cancelTurn(t.id as number)}
                 onExplain={allowance && t.kind === 'know' && t.state === 'answered' && !full ? () => void askExplain(view.id).then(() => setTick((n) => n + 1)) : undefined}
+                kept={(notes ?? []).find((n) => n.turnId === t.id) ?? null}
+                onKeep={async (text) => void (await keepNote(t.id as number, text))}
               />
             ))}
             {full ? (

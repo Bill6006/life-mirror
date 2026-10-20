@@ -69,4 +69,21 @@ export interface AskTurn {
   cited: AskCitation[]
   /** When the turn last changed, so its cloud copy keeps the latest. */
   updatedAt: string
+  /**
+   * Stage A3 (point 14): the tests asked about, each with the day: the one a question names by both its move and its
+   * reading, and each "Test it sooner". Only these keys and days reach the learning engine, never the question.
+   */
+  asked?: { key: string; day: string }[]
+}
+
+/** A note kept from Ask (stage A3, point 12): the owner's own words, kept as a note of a day. A note, never a reading or a finding. */
+export interface KeptNote {
+  id?: number
+  day: string
+  text: string
+  from: 'ask'
+  /** The question it was kept from. */
+  turnId?: number
+  createdAt: string
+  updatedAt: string
 }

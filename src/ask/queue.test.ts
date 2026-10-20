@@ -80,5 +80,7 @@ describe('the next tests the queue would take', () => {
 describe('Ask’s record', () => {
   it('is synced: its threads and their questions go to the owner’s own cloud copy, like the rest of the record', () => {
     expect(SYNCED_STORES).toEqual(expect.arrayContaining(['askThreads', 'askTurns']))
+    // And the notes kept from it (stage A3).
+    expect(SYNCED_STORES).toContain('notes')
   })
 })

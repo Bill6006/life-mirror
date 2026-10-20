@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { seedRecord as seedAskRecord, seedThread, seedTurns } from './askSeed'
+import { seedNote, seedRecord as seedAskRecord, seedThread, seedTurns } from './askSeed'
 
 // The three themes (Rule 15, revised 2026-09-24): each one checked on every major screen and the
 // states its taps open, at the phone's width, a narrower phone, and a width that stands for text
@@ -2157,6 +2157,45 @@ const ASK_STATES: typeof STATES = [
     },
   },
   {
+    name: 'Ask, Test it’s card with the context the question names (stage A3)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'office days' }).click()
+      await p.getByTestId('ask-test-it').click()
+      await expect(p.getByTestId('ask-test-context')).toBeVisible()
+    },
+  },
+  {
+    name: 'Ask, Add this as a note, open (stage A3)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'The neighbours had a party' }).click()
+      await p.getByTestId('ask-note').click()
+      await expect(p.getByTestId('ask-note-edit')).toBeVisible()
+    },
+  },
+  {
+    name: 'Your words, with a note kept from Ask (stage A3)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('words-door').click()
+      await expect(p.getByTestId('words-kept')).toBeVisible()
+    },
+  },
+  {
+    name: 'Your words, removing a note kept from Ask (stage A3)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('words-door').click()
+      await p.getByTestId('words-kept-remove').click()
+      await expect(p.getByTestId('words-kept-remove')).toHaveText('Tap again to remove it')
+    },
+  },
+  {
     name: 'Ask, Past conversations',
     tab: 'Mirror',
     open: async (p) => {
@@ -2188,7 +2227,7 @@ const ASK_STATES: typeof STATES = [
 ]
 
 for (const theme of THEMES) {
-  test(`${theme}: Ask Life Mirror’s screens read, fit and can be tapped, at three widths (stages A1 and A2, in its preview)`, async ({ page }, info) => {
+  test(`${theme}: Ask Life Mirror’s screens read, fit and can be tapped, at three widths (stages A1 to A3, in its preview)`, async ({ page }, info) => {
     test.setTimeout(300_000)
     // A cloud copy the database never answers, so the day's allowance and the deep tier show (stage A2).
     await page.route(/turso\.io/, (route) => route.abort())
@@ -2212,6 +2251,10 @@ for (const theme of THEMES) {
     await seedThread(page, 'What do you know about me so far?', 'know', [{ key: 'walk-ten|stress|nextBlock', level: 'established', direction: 'hurts', revised: false, lo: null, hi: null }], new Date(when.getTime() - 3 * 86_400_000).toISOString())
     await seedTurns(page, 'Does a nap help my energy?', [{ question: 'Does a nap help my energy?', claude: { status: 'answered', text: 'A stand-in answer of a few sentences, long enough to wrap at the narrowest width, as Claude would write one from the record.\nAnd a second paragraph, shorter.', facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact as the run read it, long enough to wrap across the narrowest width of the audit.' }], model: 'claude-opus-5-5' } }], new Date(when.getTime() - 2 * 86_400_000).toISOString())
     await seedTurns(page, 'Why are my mornings flat?', [{ question: 'Why are my mornings flat?', claude: { status: 'failed' } }], new Date(when.getTime() - 86_400_000).toISOString())
+    // Stage A3: a question naming one test and a context, an answer offering a note, and a note kept before.
+    await seedNote(page, 'A stand-in note kept from Ask, long enough to wrap at the narrowest width of the audit, in the owner’s own words.', '2026-09-20')
+    await seedTurns(page, 'Does a walk help my mood on office days?', [{ question: 'Does a walk help my mood on office days?' }], new Date(when.getTime() - 4 * 86_400_000).toISOString())
+    await seedTurns(page, 'The neighbours had a party until two, and the music was loud enough to wake me twice.', [{ question: 'The neighbours had a party until two, and the music was loud enough to wake me twice.', claude: { status: 'answered', text: 'A stand-in answer: that is a note of the night, not a reading.', model: 'claude-opus-5-5', noteOffer: true } }], new Date(when.getTime() - 5 * 86_400_000).toISOString())
     await page.reload()
     // A question waiting, as one typed while Claude's answers wait for their stage.
     await page.getByRole('button', { name: 'Mirror', exact: true }).click()
