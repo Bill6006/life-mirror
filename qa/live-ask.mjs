@@ -250,7 +250,14 @@ try {
     await shot(page.getByTestId('ask-note-edit'), 'ask-note-edit')
     await page.getByTestId('ask-note-keep').click()
     check('kept, it says so and where it is', (await text(page.getByTestId('ask-note-kept'))).includes('with your words under Mirror'), await text(page.getByTestId('ask-note-kept')))
-    for (let i = 0; i < 4 && !(await page.getByTestId('words-door').isVisible()); i++) await page.locator('.sub-head .back').click()
+    // Back to Mirror: each screen drawn before it is read, the words row or a way back.
+    for (let i = 0; i < 4; i++) {
+      const door = page.getByTestId('words-door')
+      const back = page.locator('.sub-head .back')
+      await door.or(back).first().waitFor({ state: 'visible' })
+      if (await door.isVisible()) break
+      await back.click()
+    }
     await page.getByTestId('words-door').click()
     check('Your words lists the kept note', (await text(page.getByTestId('words-kept-note'))).includes('The neighbours had a party until two.'))
     await shot(page.getByTestId('words'), 'ask-words-kept')
