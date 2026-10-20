@@ -105,12 +105,17 @@ async function offersOf(page: Page, day: string): Promise<{ moveId: string; cand
   }, day)
 }
 
-const todayKey = () => {
-  const n = new Date()
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
-}
+/**
+ * A fixed afternoon for every test that starts here, so the block and the stand-in days are the same whatever hour the
+ * runner keeps (2026-10-19: a run between midnight and four in the morning, UTC, found the app's day still the day before,
+ * its evening already seeded, and no check-in to open).
+ */
+const WHEN = new Date(2026, 8, 24, 13, 30)
+
+const todayKey = () => `${WHEN.getFullYear()}-${String(WHEN.getMonth() + 1).padStart(2, '0')}-${String(WHEN.getDate()).padStart(2, '0')}`
 
 async function start(page: Page): Promise<void> {
+  await page.clock.setFixedTime(WHEN)
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
@@ -182,7 +187,7 @@ test('Evidence shows the repair’s tests by rung, its track record at their hea
   await expect(stressHelps.getByTestId('helps-move').filter({ hasText: 'A ten-minute walk, now:' })).toContainText(/steps when done, your record pooled with research \(\+0\.40\) · (Early sign|Likely|Established): helps/)
   await expect(page.getByTestId('nearest-test').filter({ hasText: 'A ten-minute walk, now, for Stress over the next block' })).toContainText(/· since \w{3}, \w{3} \d{1,2} ·/)
   await expect(page.getByTestId('track-record')).toBeVisible()
-  await expect(page.getByTestId('track-early')).toHaveText(/^(No early sign has resolved yet\.|Of \d+ early signs, \d+ held\.)/)
+  await expect(page.getByTestId('track-early')).toHaveText(/^(No early sign has resolved yet\.|Of \d+ early signs?, \d+ held\.)/)
   // The walk's test on stress, after fourteen days of a strong effect: a call that helps, run by the queue.
   const walk = page.getByTestId('repair-test').filter({ hasText: 'A ten-minute walk, now' }).filter({ hasText: 'for Stress over the next block' })
   await expect(walk).toHaveCount(1)
@@ -335,8 +340,7 @@ test('the breaker, end to end: a rebuild that throws still leaves a move drawn, 
 test('the breaker: a trip kept on this phone shows one quiet line at the head of Evidence, for four weeks after the last (R6)', async ({ page }) => {
   // Stand-in trips, as the breaker keeps them: a count, the first and last day, the error's name.
   const dayAgo = (n: number) => {
-    const d = new Date()
-    const at = new Date(d.getFullYear(), d.getMonth(), d.getDate() - n)
+    const at = new Date(WHEN.getFullYear(), WHEN.getMonth(), WHEN.getDate() - n)
     return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`
   }
   const keep = (faults: object) =>
