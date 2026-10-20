@@ -755,8 +755,10 @@ export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly Clai
   const cited = citations(o, sheet, cards)
   if (typeof cited === 'string') return { ok: false, reason: cited }
   const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords, evidence, true) ?? firmnessRefusal(text)
-  if (why) return { ok: false, reason: why }
-  return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds } }
+  if (!why) return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds } }
+  // Too long, and anything else as well: both said at once, so the one retry can mend both.
+  const also = why.endsWith(`at most ${maxWords}`) ? (refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(text)) : null
+  return { ok: false, reason: also ? `${why}; and ${also}` : why }
 }
 
 /** The review's follow-up question (the journal, agreed 2026-10-15): at most this many words. */

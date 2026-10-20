@@ -244,7 +244,8 @@ describe('the briefing and the answer (open, in these tests only)', () => {
     expect(body.briefing.indexOf('[ladder.walk-ten.stress]')).toBeLessThan(body.briefing.indexOf('[ladder.nap-ten.energy]'))
     expect(body.context.categories).not.toContain('brainHistory')
     expect(body.context.categories).not.toContain('usageEvents')
-    expect(body.instructions).toContain('at most 220 words')
+    expect(body.instructions).toContain('the validator refuses more than 220')
+    expect(body.instructions).toContain('Of a test with no call yet, say only that there is no call yet')
     expect(body.briefing).toContain('WHAT WOULD SETTLE A TEST')
     expect(namedFirst(sheet(DAY), 'naps and energy').facts.map((f) => f.id).slice(0, 2)).toEqual(['ladder.nap-ten.energy', 'week.today'])
   })
@@ -303,6 +304,11 @@ describe('the answer’s checks', () => {
     expect(validateAsk({ text, factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sheet(DAY), [], 220)).toMatchObject({ ok: true })
     expect(validateAsk({ text: 'The evidence says your days are calm.', factIds: ['week.today'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: 'speaks of evidence without citing a card' })
     expect(validateOutput({ mode: 'strategy', text, factIds: ['ladder.walk-ten.stress'], cardIds: [], action: null }, sheet(DAY), [], 60)).toMatchObject({ ok: false, reason: 'speaks of evidence without citing a card' })
+  })
+
+  it('say every reason at once when an answer is too long and wrong besides, so the one retry can mend both', () => {
+    const long = `${'Your record so far. '.repeat(60)}The nap eased your energy.`
+    expect(validateAsk({ text: long, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: '245 words; at most 220; and says "eased" of a test with no call yet' })
   })
 
   it('hold an answer to its words and its citations', () => {
