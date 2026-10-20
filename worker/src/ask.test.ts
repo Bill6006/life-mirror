@@ -209,6 +209,17 @@ describe('the runs (open, in these tests only)', () => {
     expect(answerOf(store, turn.id)).toMatchObject({ status: 'failed', reason: '2 runs reached Claude with no checked answer' })
   })
 
+  it('reads the day before’s sheet while the phone has not opened today, each fact marked with the day it describes', async () => {
+    const store = record()
+    const next = addDays(DAY, 1)
+    const r = routine()
+    expect(await runAsks(env, store, at('01:00', next), { dry: true, question: 'How is my walking test going?', fireFetcher: r.f })).toMatchObject({ ran: true })
+    expect(await taskOf(store, askTaskIds(next)[0])).toMatchObject({ day: next, factsDay: DAY })
+    const b = await handleAskBriefing(deps(store, at('01:01', next), 'gated'), new URL(`https://w.test/claude/briefing?task=ask&day=${next}`))
+    expect(b.status).toBe(200)
+    expect((b.body as { briefing: string }).briefing).toContain(`These facts were built on ${DAY}`)
+  })
+
   it('lets go a question waiting longer than three days, said as one no run could answer', async () => {
     const store = record()
     const old = asked(store, 'Does a walk help my stress?', { day: addDays(DAY, -3), at: `${addDays(DAY, -3)}T13:00:00.000Z` })

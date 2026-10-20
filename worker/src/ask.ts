@@ -96,10 +96,12 @@ async function noAnswer(store: Store, turn: AskTurn & { id: number }, reason: st
 
 /** Marks the run, then fires the routine with no personal text: the task, the day and the model alias. The mark comes first, since a fire has no idempotency key. */
 async function startAskTask(env: AsksEnv, store: Store, now: Date, task: AskTask, id: string, day: string, extra: Pick<TaskRow, 'turns' | 'question'>, opts: AsksOptions): Promise<AsksResult> {
-  const [prefsRow, prev] = await Promise.all([store.readRecord('brainPrefs', 'prefs'), store.readTask(id)])
+  const [prefsRow, prev, todays] = await Promise.all([store.readRecord('brainPrefs', 'prefs'), store.readTask(id), store.readFacts(day)])
   const prefs = readBrainPrefs(prefsRow)
   const at = now.toISOString()
-  const row: TaskRow = { id, kind: 'task', task, day, at, status: 'firing', trigger: opts.force || opts.dry ? 'forced' : 'ask', factsDay: day, askedModel: prefs.writerModel, ...(opts.force || opts.dry ? { forced: true } : {}), fires: (prev ? (prev.fires ?? 1) : 0) + 1, contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], ...extra, ...(opts.dry ? { dry: true } : {}) }
+  // The day's sheet, or the day before's while the phone has not opened today: each fact then says the day it describes.
+  const factsDay = todays ? day : addDays(day, -1)
+  const row: TaskRow = { id, kind: 'task', task, day, at, status: 'firing', trigger: opts.force || opts.dry ? 'forced' : 'ask', factsDay, askedModel: prefs.writerModel, ...(opts.force || opts.dry ? { forced: true } : {}), fires: (prev ? (prev.fires ?? 1) : 0) + 1, contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], ...extra, ...(opts.dry ? { dry: true } : {}) }
   await store.writeTask(row)
   const f = await fire(env, fireText(task, day, prefs.writerModel), opts.fireFetcher)
   const turn = extra.turns?.[0]
