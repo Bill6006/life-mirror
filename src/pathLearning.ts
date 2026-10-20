@@ -1,10 +1,10 @@
-import { seeded as seededRng } from './bandit'
+import { seeded as seededRng } from './rng'
 import type { Block } from './blocks'
 import type { CheckIn } from './db'
-import { indexCheckIns, slotKey, windowSlots } from './learning'
+import { indexCheckIns, slotKey, windowSlots } from './observe'
 import type { PathEntry } from './pathStage'
 import { readingOf } from './score'
-import { bootstrapDiff, type Arm } from './tiers'
+import { bootstrapDiff, type Arm } from './bootstrap'
 
 // Honest learning on the path (Part 25): the reps keep teaching the app without pretending a
 // judged pick is a fair comparison. Only steps the app drew between two or more reps, with every

@@ -1,4 +1,5 @@
 import type { Effort } from './catalogue'
+import type { Rng } from './rng'
 
 // Selection is a contextual bandit, as the plan's bar states it. Each candidate has a belief
 // about its effect on the target in this situation; the app samples from every belief and
@@ -24,8 +25,6 @@ export const COIN_FLIP_RATE = 0.2
 
 /** Starting effort is the top selection field: with equal beliefs, the lower effort wins the draw more often. */
 export const EFFORT_PENALTY: Readonly<Record<Effort, number>> = { low: 0, medium: 0.5, high: 1 }
-
-export type Rng = () => number
 
 /** A standard normal draw from a uniform source. */
 export function gaussian(rng: Rng): number {
@@ -68,11 +67,3 @@ export function choose(candidates: readonly Candidate[], beliefs: (id: string) =
   return { id: ranked[0].id, coinFlip: false, samples, runnerUp: ranked[1]?.id ?? null }
 }
 
-/** A small deterministic generator for tests. */
-export function seeded(seed: number): Rng {
-  let s = seed >>> 0
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
-    return s / 4294967296
-  }
-}

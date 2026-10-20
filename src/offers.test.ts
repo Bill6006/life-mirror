@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { choose, COIN_FLIP_RATE, FLAT, seeded, type Candidate } from './bandit'
+import { choose, COIN_FLIP_RATE, FLAT, type Candidate } from './bandit'
+import { seeded } from './rng'
 import { CHARISMA_LADDER, isParked, moveById, moves, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn } from './db'
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, standingSetups, whyNotThat, type TodayState } from './offers'

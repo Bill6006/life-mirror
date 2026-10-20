@@ -1,7 +1,7 @@
 import { addDays, daysBetween, type Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
-import { forecast, indexCheckIns, slotKey } from './learning'
+import { forecast, indexCheckIns, slotKey } from './observe'
 import { bandOf, pointsFor, readingOf, type Band } from './score'
 import type { Position, ReadingId } from './readings'
 

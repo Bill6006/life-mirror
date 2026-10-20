@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { adaptiveDiff, armEstimate, normalTail, propensities, zFor, type Opportunity } from './adaptive'
-import { seeded } from './bandit'
+import { seeded } from './rng'
 import type { Card } from './db'
-import type { Observation } from './learning'
+import type { Observation } from './observe'
 import { declarationsDue, evaluateCards } from './tiers'
 
 const opp = (arm: Opportunity['arm'], effect: number, eMove: number, eAlternative: number): Opportunity => ({ arm, effect, weight: 1, eMove, eAlternative })

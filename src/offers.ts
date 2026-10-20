@@ -5,7 +5,8 @@ import { needsHome } from './homeOnly'
 import { inPerson } from './people'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band } from './score'
-import { choose, type Belief, type Candidate, type Choice, type Rng } from './bandit'
+import { choose, type Belief, type Candidate, type Choice } from './bandit'
+import { type Rng } from './rng'
 import { minutesOf } from './settings'
 
 // The situation and the candidate set, as the plan's bar states them. A situation is a block

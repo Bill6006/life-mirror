@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { skillSessions } from './coachShared'
 import type { CheckIn, DayContext, Offer, Outcome } from './db'
-import { observations } from './learning'
+import { observations } from './observe'
 import { peopleRepToday } from './pathStage'
 import { carriedByContext } from './people'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'

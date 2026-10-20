@@ -1,7 +1,7 @@
 import { BLOCKS, type Block } from '../src/blocks'
 import { hasMove, liveMoves, moveById, rungOf, type Window } from '../src/catalogue'
 import type { CheckIn } from '../src/db'
-import { noTimeCeiling, PRIOR_SD } from '../src/learning'
+import { noTimeCeiling, PRIOR_SD } from '../src/observe'
 import { candidatesFor, NOTHING, screen, situationOf, standingSetups, type Situation, type TodayState } from '../src/offers'
 import { blockReadings, type ReadingId } from '../src/readings'
 import { INGREDIENT_IDS, INGREDIENTS } from '../src/score'

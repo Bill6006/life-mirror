@@ -1,4 +1,5 @@
-import { COIN_FLIP_RATE, EFFORT_PENALTY, gaussian, type Belief, type Candidate, type Rng } from './bandit'
+import { COIN_FLIP_RATE, EFFORT_PENALTY, gaussian, type Belief, type Candidate } from './bandit'
+import { type Rng } from './rng'
 
 // Confirmatory inference built for adaptively collected data, after Hadad, Wager, Athey and
 // colleagues (2021): every offer records the probability each candidate had of being offered,

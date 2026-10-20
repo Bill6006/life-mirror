@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addDays, daysBetween } from './blocks'
 import type { CheckIn, Forecast } from './db'
 import { BACKTEST_DAYS, backtest, chooseModel, dayBeside, earlyWarning, errorBand, flatWeek, forecastsDue, horizonBand, loggedDays, lowestAhead, predict, scoresDue, tellsWeekdaysApart, valuesByKey, visibleBefore, weekAheadRows } from './forecast'
-import { slotKey } from './learning'
+import { slotKey } from './observe'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
 const allAt = (ids: readonly ReadingId[], p: Position): Answers => Object.fromEntries(ids.map((id) => [id, p]))

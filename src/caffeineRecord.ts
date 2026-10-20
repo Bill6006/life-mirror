@@ -2,7 +2,7 @@ import { addDays, blockIndex, BLOCKS, daysBetween, parseDay, type Block } from '
 import { copy } from './copy'
 import { CAFFEINE_LAST, type CaffeineBand, type CaffeineLast, type CheckIn } from './db'
 import { fill } from './format'
-import { indexCheckIns, slotKey } from './learning'
+import { indexCheckIns, slotKey } from './observe'
 import { readingOf } from './score'
 
 // What the record may say about caffeine (Part 22). Pure functions over check-ins.

@@ -2,7 +2,7 @@ import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
 import { propensities } from './adaptive'
-import type { Rng } from './bandit'
+import type { Rng } from './rng'
 import { hasMove, LADDERS, moveById, RECOVERY_GAP } from './catalogue'
 import {
   db,
@@ -22,7 +22,7 @@ import {
 import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotThat, windowFor, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { parseRungId, RUNG_MINUTES } from './ladder'
-import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from './learning'
+import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from './observe'
 import { pathOn } from './pathFlow'
 import { beliefsFor, bigSocialToday } from './learningFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'

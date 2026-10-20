@@ -1,6 +1,6 @@
 import { addDays, BLOCKS, daysBetween, type Block } from './blocks'
 import type { CheckIn, Forecast, ForecastScore } from './db'
-import { slotKey } from './learning'
+import { slotKey } from './observe'
 import { readingOf } from './score'
 
 // Forecasts are ranges, not claims. "As you usually are" is chosen daily from a few candidate

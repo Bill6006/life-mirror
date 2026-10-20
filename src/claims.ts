@@ -1,6 +1,7 @@
 import type { Card, Claim } from './db'
 import { ENGINE_VERSION } from './provenance'
-import type { CardStats, Tier } from './tiers'
+import type { CardStats } from './tiers'
+import type { Tier } from './weights'
 
 // Requirement 15 of the learning design agreed 2026-10-10, its record begun with the foundations: every
 // call the engine makes about a test is kept with its day and level, so it can be resolved later and the

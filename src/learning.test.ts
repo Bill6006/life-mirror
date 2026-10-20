@@ -1,30 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { moveById } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
-import {
-  combine,
-  DECLINED_EFFECT,
-  DECLINED_WEIGHT,
-  forecast,
-  indexCheckIns,
-  isThin,
-  moveBelief,
-  noTimeCeiling,
-  observations,
-  OBSERVATION_SD,
-  priorOf,
-  PRIOR_SD,
-  recordOf,
-  shrink,
-  signFlips,
-  signedEffect,
-  tagBeliefs,
-  THIN_WEIGHT,
-  nothingBelief,
-  windowSlots,
-  type Belief,
-  type MoveBelief,
-} from './learning'
+import { combine, moveBelief, OBSERVATION_SD, priorOf, recordOf, shrink, signFlips, tagBeliefs, nothingBelief, type Belief, type MoveBelief } from './learning'
+import { DECLINED_EFFECT, DECLINED_WEIGHT, forecast, indexCheckIns, isThin, noTimeCeiling, observations, PRIOR_SD, signedEffect, THIN_WEIGHT, windowSlots } from './observe'
 import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 

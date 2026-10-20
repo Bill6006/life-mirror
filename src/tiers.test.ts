@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Card, CheckIn, Declaration } from './db'
-import type { Observation } from './learning'
+import type { Observation } from './observe'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { onPurpose, scheduledMoves } from './offerFlow'
-import { declarationsDue, evaluateCards, evaluateWeightCard, hasItsEight, holmLevels, proposeWeights, weightPairs } from './tiers'
+import { declarationsDue, evaluateCards, hasItsEight, holmLevels } from './tiers'
+import { evaluateWeightCard, proposeWeights, weightPairs } from './weights'
 
 // Fixture records reproduce each tier exactly: the draw is seeded, so the intervals are the
 // same every run. Confirmatory claims rest on the coin-flip slice.

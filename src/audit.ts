@@ -1,6 +1,6 @@
 import { addDays, BLOCKS, compareSlots } from './blocks'
 import type { AnchorSwap, CheckIn, DayContext } from './db'
-import { indexCheckIns, slotKey } from './learning'
+import { indexCheckIns, slotKey } from './observe'
 import { type Position, type Reading, type ReadingId, readings } from './readings'
 import { CONTEXT_IDS, readingOf } from './score'
 import { pearson, spearman } from './stats'
