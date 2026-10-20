@@ -1893,7 +1893,7 @@ export const copy = {
     read: 'What Claude read',
     readNote: 'Counts and sizes only, never what was read.',
     readNone: 'Nothing read yet.',
-    tasks: { line: 'the day’s line', review: 'the week’s review', coach: 'the coach', skill: 'a suggestion for what to practise', progress: 'a progression review' },
+    tasks: { line: 'the day’s line', review: 'the week’s review', coach: 'the coach', skill: 'a suggestion for what to practise', progress: 'a progression review', ask: 'a question you asked', deep: '“Coach me on everything”' },
     testRun: '{task}, a test run',
     readItem: '{category} {count}, {size}',
     lacked: 'What Claude said it lacked',

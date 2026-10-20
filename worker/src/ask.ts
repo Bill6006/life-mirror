@@ -366,7 +366,7 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   if (!built.ok) return built.reply
   const { t, turn, sheet, cards, access, words, question } = built.run
   const answer = typeof o.answer === 'string' ? safeJson(o.answer) : o.answer
-  let verdict: { ok: true; value: { text: string; factIds: string[]; cardIds: string[] } } | { ok: false; reason: string } = validateAsk(answer, sheet, cards, words)
+  let verdict: { ok: true; value: { text: string; factIds: string[]; cardIds: string[] } } | { ok: false; reason: string } = validateAsk(answer, sheet, cards, words, undefined, question)
   if (verdict.ok) {
     const names = sheet.showPrivate === true ? [] : await privateNames(deps.store)
     // The Partner path bears on an answer only when the question or a cited fact is about it.

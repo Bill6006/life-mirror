@@ -750,18 +750,32 @@ export interface AskOutput {
  * allowance a line does not have: an answer citing the owner's own tests (ladder.*) may speak of their evidence, and of
  * the research their facts carry beside them, without a library card.
  */
-export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords: number, evidence = EVIDENCE_WORDING === 'open'): { ok: true; value: AskOutput } | { ok: false; reason: string } {
+export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords: number, evidence = EVIDENCE_WORDING === 'open', question = ''): { ok: true; value: AskOutput } | { ok: false; reason: string } {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const text = typeof o.text === 'string' ? o.text.trim() : ''
   if (!text) return { ok: false, reason: 'no text' }
   const cited = citations(o, sheet, cards)
   if (typeof cited === 'string') return { ok: false, reason: cited }
-  const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords, evidence, true) ?? firmnessRefusal(text)
-  if (!why) return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds } }
+  const long = words(text) > maxWords ? `${words(text)} words; at most ${maxWords}` : null
+  // The person's own words, quoted back from the question ("I've read “helps most” as…"), are theirs, never a claim of the answer's.
+  const own = withoutQuoted(text, question)
+  const why = refusal(own, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(own)
+  if (!long && !why) return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds } }
   // Too long, and anything else as well: both said at once, so the one retry can mend both.
-  const also = why.endsWith(`at most ${maxWords}`) ? (refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(text)) : null
-  return { ok: false, reason: also ? `${why}; and ${also}` : why }
+  return { ok: false, reason: long && why ? `${long}; and ${why}` : ((long ?? why) as string) }
+}
+
+/** A text less each quoted phrase (two words or more) that is the question's own, so a quote of the person is never read as a claim; a single quoted word still is. */
+export function withoutQuoted(text: string, question: string): string {
+  const fold = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+  const q = fold(question)
+  if (!q) return text
+  // Double quotes only, straight or curly: a single quote mark is also an apostrophe.
+  return text.replace(/"([^"]{1,120})"|“([^”]{1,120})”/g, (m, a?: string, b?: string) => {
+    const inner = fold(a ?? b ?? '')
+    return inner.includes(' ') && q.includes(inner) ? ' ' : m
+  })
 }
 
 /** The review's follow-up question (the journal, agreed 2026-10-15): at most this many words. */

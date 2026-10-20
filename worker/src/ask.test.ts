@@ -319,6 +319,14 @@ describe('the answer’s checks', () => {
     expect(validateAsk({ text: 'Your note says 7.', factIds: ['note.x'], cardIds: [] }, sh, [], 220)).toEqual({ ok: false, reason: 'the number 7 is not in the cited facts' })
   })
 
+  it('read a quote of the person’s own question as theirs, never as the answer’s claim', () => {
+    const quoted = 'I’ve read “what helps me” as any move tested so far: the nap’s test has no call yet.'
+    expect(validateAsk({ text: quoted, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220, undefined, 'What helps me?')).toMatchObject({ ok: true })
+    expect(validateAsk({ text: quoted, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220, undefined, 'How are my tests?')).toEqual({ ok: false, reason: 'says "helps" of a test with no call yet' })
+    // A single quoted word is no quote of the person: it still counts.
+    expect(validateAsk({ text: 'The nap “helps”, I think.', factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220, undefined, 'What helps me?')).toEqual({ ok: false, reason: 'says "helps" of a test with no call yet' })
+  })
+
   it('hold an answer to its words and its citations', () => {
     expect(validateAsk({ text: 'a '.repeat(230), factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sheet(DAY), [], 220)).toMatchObject({ ok: false, reason: expect.stringMatching(/words; at most 220/) })
     expect(validateAsk({ text: 'A walk likely helps your stress.', factIds: ['ladder.unknown.mood'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: 'fact "ladder.unknown.mood" is not on the sheet' })

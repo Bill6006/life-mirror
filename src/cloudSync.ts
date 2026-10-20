@@ -1,6 +1,7 @@
 import { citedFactsOf, lackedOf } from './brainShared'
 import { journalDaysOf } from './journalCheck'
 import type { CoachProposal, CoachRun } from './coachShared'
+import type { AskAnswer, AskRun } from './ask/shared'
 import { isFirmness } from './firmness'
 import type { BrainBrief, BrainRead, CoachPick } from './db'
 import { useEffect, useState } from 'preact/hooks'
@@ -102,8 +103,10 @@ const READS_STORE = 'reads'
 const COACH_STORE = 'coach'
 /** The skill coach's proposals (Parts 40 and 41): one per ask. None is written while their gate is closed. */
 const PROPOSALS_STORE = 'proposals'
-/** The Worker's own record of each run on the bridge; the phone keeps the skill coach's suggestion runs (D7 as amended 2026-10-18). */
+/** The Worker's own record of each run on the bridge; the phone keeps the skill coach's suggestion runs (D7 as amended 2026-10-18), and Ask's runs (stage A2). */
 const BRIDGE_STORE = 'bridge'
+/** Ask Life Mirror's checked answers from Claude (stage A2): one per turn. None is written while its gate is closed. */
+const ASK_ANSWERS_STORE = 'askAnswers'
 
 const texts = (v: unknown, n: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null)
 const rhythmIn = (v: unknown): { perWeek: number; restDays: number } | null => {
@@ -189,7 +192,7 @@ export function brainBriefOf(id: string, body: string): BrainBrief | null {
 export function brainReadOf(id: string, body: string): BrainRead | null {
   try {
     const r = JSON.parse(body) as Partial<BrainRead>
-    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review' && r.task !== 'coach' && r.task !== 'skill' && r.task !== 'progress')) return null
+    if (typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.category !== 'string' || (r.task !== 'line' && r.task !== 'review' && r.task !== 'coach' && r.task !== 'skill' && r.task !== 'progress' && r.task !== 'ask' && r.task !== 'deep')) return null
     const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
     return { id, day: r.day, at: r.at, task: r.task, category: r.category, count: n(r.count), bytes: n(r.bytes), via: r.via === 'context' ? 'context' : 'briefing', ...(r.dry === true ? { dry: true } : {}) }
   } catch {
@@ -580,6 +583,44 @@ export function coachRunOf(id: string, body: string): CoachRun | null {
   }
 }
 
+/** One of Ask's runs from the Worker's bridge row (stage A2): what it was, where it stands, and the turn it carried. A run by hand on a stand-in question carries none, and is not kept. */
+export function askRunOf(id: string, body: string): AskRun | null {
+  try {
+    const r = JSON.parse(body) as Record<string, unknown>
+    const statuses: readonly string[] = ['firing', 'fired', 'written', 'refused', 'fallback']
+    if (r.kind !== 'task' || (r.task !== 'ask' && r.task !== 'deep') || r.dry === true || typeof r.day !== 'string' || typeof r.at !== 'string' || typeof r.status !== 'string' || !statuses.includes(r.status)) return null
+    const turns = Array.isArray(r.turns) ? (r.turns as unknown[]).filter((t): t is number => Number.isInteger(t)) : []
+    if (!turns.length) return null
+    return { id, task: r.task, day: r.day, at: r.at, status: r.status as AskRun['status'], ...(typeof r.firedAt === 'string' ? { firedAt: r.firedAt } : {}), ...(typeof r.retryAfter === 'string' ? { retryAfter: r.retryAfter } : {}), turns }
+  } catch {
+    return null
+  }
+}
+
+/** Claude's checked answer to a turn, as the Worker stored it (stage A2); or the word that no checked answer came. */
+export function askAnswerOf(id: string, body: string): AskAnswer | null {
+  try {
+    const r = JSON.parse(body) as Record<string, unknown>
+    if (!Number.isInteger(r.turnId) || !Number.isInteger(r.threadId) || typeof r.day !== 'string' || typeof r.at !== 'string' || (r.status !== 'answered' && r.status !== 'failed')) return null
+    const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+    if (r.status === 'answered' && !texts(r.text, 4000)) return null
+    return {
+      id,
+      turnId: r.turnId as number,
+      threadId: r.threadId as number,
+      day: r.day,
+      at: r.at,
+      status: r.status,
+      ...(r.status === 'answered' ? { text: texts(r.text, 4000) as string, factIds: ids(r.factIds), cardIds: ids(r.cardIds), facts: citedFactsOf(r.facts) } : {}),
+      ...(texts(r.model, 100) ? { model: texts(r.model, 100) as string } : {}),
+      ...(texts(r.askedModel, 40) ? { askedModel: texts(r.askedModel, 40) as string } : {}),
+      ...(texts(r.reason, 300) ? { reason: texts(r.reason, 300) as string } : {}),
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * The skill coach's wait (D7 as amended 2026-10-18: the phone checks for the answer every 20 seconds):
  * a look at a few of the brain's rows by their keys alone, one row read each, and a whole sync only when
@@ -635,12 +676,21 @@ async function pullBrain(store: CloudStore): Promise<number> {
     const meta = await getBrainMeta()
     const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
     if (!rows.length) break
-    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.askAnswers, db.askRuns, db.cloudMeta], async () => {
       for (const row of rows) {
         if (row.store === BRIDGE_STORE) {
           const run = row.deleted || !row.body ? null : coachRunOf(row.id, row.body)
           if (run) await db.coachRuns.put(run)
           else if (row.deleted) await db.coachRuns.delete(row.id)
+          const ask = row.deleted || !row.body ? null : askRunOf(row.id, row.body)
+          if (ask) await db.askRuns.put(ask)
+          else if (row.deleted) await db.askRuns.delete(row.id)
+          continue
+        }
+        if (row.store === ASK_ANSWERS_STORE) {
+          const a = row.deleted || !row.body ? null : askAnswerOf(row.id, row.body)
+          if (a) await db.askAnswers.put(a)
+          else await db.askAnswers.delete(row.id)
           continue
         }
         if (row.store === PROPOSALS_STORE) {

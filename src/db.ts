@@ -3,6 +3,7 @@ import type { DrawRecord, OutcomeReason } from './provenance'
 import type { OutsideSession } from './outsideRow'
 import type { CoachAsk, CoachProposal, CoachRun } from './coachShared'
 import type { AskThread, AskTurn } from './ask/types'
+import type { AskAnswer, AskRun } from './ask/shared'
 import type { Firmness } from './firmness'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
@@ -765,7 +766,7 @@ export interface BrainRead {
   id: string
   day: string
   at: string
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
   category: string
   count: number
   bytes: number
@@ -907,6 +908,8 @@ class LifeMirrorDB extends Dexie {
   journal!: Table<JournalEntry, number>
   askThreads!: Table<AskThread, number>
   askTurns!: Table<AskTurn, number>
+  askAnswers!: Table<AskAnswer, string>
+  askRuns!: Table<AskRun, string>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1118,6 +1121,11 @@ class LifeMirrorDB extends Dexie {
     this.version(21).stores({
       askThreads: '++id, day, at',
       askTurns: '++id, threadId, day, at',
+    })
+    // Ask Life Mirror (stage A2, 2026-10-20): Claude's checked answers and the day's runs, read from the brain's rows. Never synced up.
+    this.version(22).stores({
+      askAnswers: 'id, turnId',
+      askRuns: 'id, day',
     })
     installOutbox(this)
     installPendingCopy(this)
