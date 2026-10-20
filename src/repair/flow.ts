@@ -1,13 +1,15 @@
 import { db, ensureDayContext, getSettings, isComplete, type CheckIn } from '../db'
-import type { Belief } from '../learning'
 import { NOTHING, type Situation, type TodayState } from '../offers'
-import { pMean, REPAIR, type OfferMadeB } from './engine'
+import type { DrawBelief } from '../provenance'
+import type { ReadingId } from '../readings'
+import { pMean, REPAIR, type OfferMadeB, type Test } from './engine'
 import { answeredOf, buildEngine, builtThrough, contextOf, type RepairRecord } from './record'
 import type { Rng } from './stats'
 import { windowOfMove } from './world'
 
 // The learning repair in the app (stage R2): the record read whole, the engine rebuilt from it, and a draw made at a
-// check-in from the day's own candidates. Behind LEARNING_REPAIR (brainShared.ts) until stage R6 opens it.
+// check-in from the day's own candidates; and since the old engine was retired (2026-10-20), the replacement after a skip
+// and the pickup-time move, drawn aside.
 
 /** The app's whole record as the repair reads it, the owner's answers to a learning week among it (stage R3). */
 export async function repairRecord(): Promise<RepairRecord> {
@@ -50,7 +52,19 @@ export async function answerWeek(today: string, yes: boolean): Promise<void> {
 export interface RepairDraw {
   offer: OfferMadeB
   /** Each candidate's belief at the draw, as the draw record keeps it (requirement 2): the test's on the moment's reading. */
-  belief: (id: string) => Belief
+  belief: (id: string) => DrawBelief
+}
+
+/** Each candidate's belief on a reading, as a draw record keeps it: its test's, at that reading's own window. */
+function beliefOn(tests: ReadonlyMap<string, Test>, target: ReadingId): (id: string) => DrawBelief {
+  return (id) => {
+    if (id === NOTHING) return { mean: 0, sd: 0, n: 0 }
+    const test = tests.get(`${id}|${target}|${windowOfMove(id, target)}`)
+    if (!test) return { mean: 0, sd: 1, n: 0 }
+    const m = pMean(test.post)
+    const v = test.post.w.reduce((a, w, k) => a + w * (test.post.s[k] ** 2 + test.post.m[k] ** 2), 0) - m * m
+    return { mean: m, sd: Math.sqrt(Math.max(0, v)), n: test.n1 + test.n0 }
+  }
 }
 
 /**
@@ -62,16 +76,33 @@ export function repairDrawFrom(r: RepairRecord, checkin: CheckIn, situation: Sit
   const morning = r.checkins.find((c) => c.day === checkin.day && c.block === 'morning' && isComplete(c))
   const context = contextOf(checkin.day, r.days.find((x) => x.day === checkin.day), morning)
   const offer = built.engine.drawAt(answeredOf(checkin), built.index(checkin.day), context, situation, t, candidates)
-  const tests = built.engine.testsNow()
-  const belief = (id: string): Belief => {
-    if (id === NOTHING) return { mean: 0, sd: 0, n: 0 }
-    const test = tests.get(`${id}|${situation.target}|${windowOfMove(id, situation.target)}`)
-    if (!test) return { mean: 0, sd: 1, n: 0 }
-    const m = pMean(test.post)
-    const v = test.post.w.reduce((a, w, k) => a + w * (test.post.s[k] ** 2 + test.post.m[k] ** 2), 0) - m * m
-    return { mean: m, sd: Math.sqrt(Math.max(0, v)), n: test.n1 + test.n0 }
-  }
-  return { offer, belief }
+  return { offer, belief: beliefOn(built.engine.testsNow(), situation.target) }
+}
+
+/** A move the new engine drew outside the comparisons, with what it knew: the record keeps both (requirement 2). */
+export interface RepairAside {
+  moveId: string
+  chances: Record<string, number>
+  /** The candidates it drew among, after its day rule. */
+  candidates: string[]
+  belief: (id: string) => DrawBelief
+}
+
+/**
+ * A draw outside the comparisons (the owner's requirement of 2026-10-20): a replacement after a skip, or the pickup-time
+ * move. The engine is rebuilt through the whole day so far, the moment's own draw included, so its day rule sees every
+ * move offered today. Null when no candidate is left.
+ */
+export function repairAsideFrom(r: RepairRecord, day: string, target: ReadingId, candidates: readonly string[], rng: Rng): RepairAside | null {
+  const built = buildEngine(r, day, null, rng)
+  const made = built.engine.drawAside(built.index(day), target, candidates)
+  if (!made) return null
+  return { moveId: made.moveId, chances: made.chances, candidates: Object.keys(made.chances), belief: beliefOn(built.engine.testsNow(), target) }
+}
+
+/** The same, from the record as it stands. */
+export async function repairAside(day: string, target: ReadingId, candidates: readonly string[], rng: Rng): Promise<RepairAside | null> {
+  return repairAsideFrom(await repairRecord(), day, target, candidates, rng)
 }
 
 /** The repair's draw from the record as it stands. */

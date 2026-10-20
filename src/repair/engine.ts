@@ -231,6 +231,15 @@ export function askedLift(days: readonly number[], d: number): number {
 
 export type Cls = 'next' | 'day' | 'multi'
 export const clsOf = (w: Window): Cls => (w === 'nextBlock' ? 'next' : w === 'sevenDays' ? 'multi' : 'day')
+
+/**
+ * Whether a move may be drawn outside the comparisons (a replacement after a skip, the pickup-time move) on a day whose
+ * offered window classes are given: a move for the next block, or one with a day's window when none was offered that
+ * day; never one over several days, which only a check-in's draw starts, on its days.
+ */
+export function asideFits(cls: Cls, offeredClasses: ReadonlySet<Cls>): boolean {
+  return cls === 'next' || (cls === 'day' && !offeredClasses.has('day'))
+}
 export type { Direction, Level }
 
 /** The pre-declared contexts (requirement 7), each centred at a fixed share so the general effect is the effect at the usual mix. */
@@ -863,7 +872,7 @@ export class EngineB {
     const here = slotOf(d, a.block)
     let candidates = [...candidatesIn]
     // A day's window is randomized per day: one such move a day. Several days run in blocks with a gap after, one at a time (requirement 6).
-    const offeredClasses = new Set(this.offers.filter((o) => o.d === d && o.moveId !== NOTHING).map((o) => clsOf(windowOfMove(o.moveId, situation.target))))
+    const offeredClasses = this.classesOn(d, situation.target)
     // The learning week (requirement 11): a running test's move is offered on its own declared reading at every moment it
     // fits, whatever reading is lowest now. Still one suggestion per check-in, no new check-in (Rule 17), no committed
     // practice (Rule 16), and each move at most once a day.
@@ -887,12 +896,32 @@ export class EngineB {
         const tt = this.testFor(id, target, window)
         if (tt.eligibleDays[tt.eligibleDays.length - 1] !== d) tt.eligibleDays.push(d)
       }
+    const { p, low } = this.chancesAmong(situation.target, candidates, real, own)
+    let u = this.rng()
+    let chosen = NOTHING
+    for (const id of candidates) {
+      u -= p.get(id) as number
+      if (u < 0) {
+        chosen = id
+        break
+      }
+    }
+    const offerId = this.recordDraw(a, d, c, situation.target, real, chosen, p)
+    return { id: offerId, moveId: chosen, propensity: p.get(chosen) as number, chances: Object.fromEntries(p), fits, week: false, target: situation.target, candidates, lowMoves: low }
+  }
+
+  /**
+   * Each candidate's chance, one rule for a check-in's draw and a draw outside the comparisons: Thompson by expected net
+   * benefit on the moment's own reading (the effect when done, times the chance of doing it, less its cost), and
+   * requirement 10's floors. With no "nothing extra" among the candidates, the best real move takes each draw.
+   */
+  private chancesAmong(target: ReadingId, candidates: readonly string[], real: readonly string[], own: ReadonlyMap<string, Test>): { p: Map<string, number>; low: string[] } {
     const active = new Set(this.queue.map((x) => x.moveId))
-    // Thompson by expected net benefit on the moment's own reading: the effect when done, times the chance of doing it, less its cost.
+    const hasNothing = candidates.includes(NOTHING)
     const wins = new Map<string, number>(candidates.map((id) => [id, 0]))
     for (let k = 0; k < this.cfg.draws; k++) {
-      let best = NOTHING
-      let bestV = 0
+      let best = hasNothing ? NOTHING : real[0]
+      let bestV = hasNothing ? 0 : -Infinity
       for (const id of real) {
         const tt = own.get(id) as Test
         const v = drawMixture(tt.post, this.rng) * tt.compliance - (COST[moveById(id).effort] ?? 0)
@@ -910,15 +939,44 @@ export class EngineB {
     // Requirement 10's floors, each kept whole: "nothing extra", every test's comparison; a running test's move; and every
     // other move its own fair minimum, never shared away as more moves become candidates. The draws share the rest.
     const floors = new Map<string, number>()
-    const everyday = (id: string) => (this.cfg.multiFloor !== null && clsOf(windowOfMove(id, situation.target)) === 'multi' ? this.cfg.multiFloor : this.cfg.explore)
+    const everyday = (id: string) => (this.cfg.multiFloor !== null && clsOf(windowOfMove(id, target)) === 'multi' ? this.cfg.multiFloor : this.cfg.explore)
     for (const id of candidates) floors.set(id, id === NOTHING ? this.cfg.nothingFloor : low.includes(id) ? this.cfg.explore * this.cfg.lowFloorShare : active.has(id) ? this.cfg.activeFloor : everyday(id))
     // Every set of chances stays valid: floors never take more than 0.9 of the whole.
     const floorSum = [...floors.values()].reduce((a, b) => a + b, 0)
     const scale = floorSum > 0.9 ? 0.9 / floorSum : 1
     const free = 1 - floorSum * scale
-    const p = new Map(candidates.map((id) => [id, (floors.get(id) as number) * scale + (free * (wins.get(id) ?? 0)) / this.cfg.draws]))
+    return { p: new Map(candidates.map((id) => [id, (floors.get(id) as number) * scale + (free * (wins.get(id) ?? 0)) / this.cfg.draws])), low }
+  }
+
+  /** The window classes already offered on day `d`: the comparisons' moves, and the moves offered outside them. */
+  private classesOn(d: number, target: ReadingId): Set<Cls> {
+    return new Set([...this.offers.filter((o) => o.d === d && o.moveId !== NOTHING), ...this.aside.filter((o) => o.d === d)].map((o) => clsOf(windowOfMove(o.moveId, target))))
+  }
+
+  /** Moves offered outside the comparisons, by day: noted for the day's rules alone, never read as a decision. */
+  private readonly aside: { d: number; moveId: string }[] = []
+
+  /** A move offered outside the comparisons on day `d` (a replacement after a skip, the pickup-time move), from the record. */
+  noteAside(d: number, moveId: string): void {
+    this.aside.push({ d, moveId })
+  }
+
+  /**
+   * A move drawn outside the comparisons (the owner's requirement of 2026-10-20: every production job on the new engine):
+   * a replacement after a skip, among real moves alone, or the pickup-time move. By the same chances as a check-in's draw,
+   * under the same day rule (one move with a day's window a day); a move over several days is never drawn here, since only
+   * a check-in's draw starts one on its days. Nothing is recorded as a decision, so it is never read as a comparison.
+   * Null with no candidate left.
+   */
+  drawAside(d: number, target: ReadingId, candidatesIn: readonly string[]): { moveId: string; chances: Record<string, number> } | null {
+    const offeredClasses = this.classesOn(d, target)
+    const candidates = candidatesIn.filter((id) => id === NOTHING || asideFits(clsOf(windowOfMove(id, target)), offeredClasses))
+    const real = candidates.filter((id) => id !== NOTHING)
+    if (!real.length) return null
+    const own = new Map(real.map((id) => [id, this.testFor(id, target, windowOfMove(id, target))]))
+    const { p } = this.chancesAmong(target, candidates, real, own)
     let u = this.rng()
-    let chosen = NOTHING
+    let chosen = candidates[candidates.length - 1]
     for (const id of candidates) {
       u -= p.get(id) as number
       if (u < 0) {
@@ -926,8 +984,7 @@ export class EngineB {
         break
       }
     }
-    const offerId = this.recordDraw(a, d, c, situation.target, real, chosen, p)
-    return { id: offerId, moveId: chosen, propensity: p.get(chosen) as number, chances: Object.fromEntries(p), fits, week: false, target: situation.target, candidates, lowMoves: low }
+    return { moveId: chosen, chances: Object.fromEntries(p) }
   }
 
   /**

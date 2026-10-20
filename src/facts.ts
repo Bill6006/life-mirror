@@ -3,20 +3,19 @@ import { doneBySetting, pathName, pathToday, socialEnergyOn, stageWords } from '
 import { afternoonAssociation, associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
 import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, latestPlans, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
 import { dueOf, intervalOf, isFaithPractice, rhythmOf, scheduleOf } from './rhythm'
-import { hasMove, isParked, isPathOnly, isProposed, moveById, OBSERVED_ONLY, PASSIVE, type SettingKind } from './catalogue'
-import { library } from './library'
+import { hasMove, moveById, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
-import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
+import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
 import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
 import { chipShownAt } from './chips'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { sittingOf } from './ladder'
-import type { Evidence } from './learningFlow'
+import type { Evidence } from './evidenceFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById, type ReadingId } from './readings'
 import { bandOf, CONTEXT_IDS, INGREDIENT_IDS, INGREDIENTS, readingOf } from './score'
@@ -50,6 +49,8 @@ export interface FactInput {
   contexts: DayContext[]
   brief: Brief
   evidence: Evidence
+  /** The stored cards, read for a past line's test ask alone. */
+  cards: readonly Pick<Card, 'moveId' | 'createdAt'>[]
   aims: Aim[]
   skills: Skill[]
   marks: RungMark[]
@@ -80,7 +81,7 @@ export interface FactInput {
   weekly?: WeeklyAnalyses
   /** Stage 3, item 6: the weather's switch is on. Absent, no weather fact is written and the sheet is as it was. */
   weatherOn?: boolean
-  /** Stage R5: the learning repair's tests and track record, only while the repair is on. Absent, the sheet is as it was. */
+  /** Stage R5: the learning engine's tests and track record. Absent when the engine failed: the sheet then carries no test facts. */
   repair?: RepairEvidence
 }
 
@@ -541,40 +542,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
     if (f) facts.push({ ...f, values: { ...f.values, name: p.name, alternative: nameOfMove(p.alternativeId), ...(p.block === 'evening' ? {} : { block: p.block }) } })
   }
 
-  // Cards: what is being tested, and where each stands.
-  for (const c of i.evidence.cards) {
-    const move = nameOfMove(c.card.moveId)
-    const alt = nameOfMove(c.card.alternativeId)
-    const n = c.stats.n.done + c.stats.n.alternative
-    facts.push(fact(`test.${c.card.id}`, ['monitoring'], `Card: ${move} against ${alt} on ${readingById(c.card.target).name} in ${c.card.situationKey}: ${c.stats.tier}, ${n} observations.`, { move, moveId: c.card.moveId, alternative: alt, target: readingById(c.card.target).name, tier: c.stats.tier, n, situation: c.card.situationKey }, { n, tier: c.stats.tier }))
-  }
-
-  // Stage R5: the learning repair's tests on the evidence ladder and its own track record, beside the cards, only while the
-  // repair is on (requirement 16). Findings the owner can act on come first.
+  // The learning engine's tests on the evidence ladder and its own track record (stage R5; requirement 16), while it can
+  // read the record. Findings the owner can act on come first.
   if (i.repair) facts.push(...repairFacts(i.repair))
-
-  // What the library backs and the record has never tested: a test the brain may propose, one tap to set.
-  const tested = new Set(i.evidence.cards.map((c) => c.card.moveId))
-  const backed: string[] = []
-  for (const card of library) {
-    if (card.status !== 'admitted') continue
-    for (const m of card.moves ?? []) {
-      if (!hasMove(m) || tested.has(m) || backed.includes(m)) continue
-      const move = moveById(m)
-      // A path's own reps are offered through its row alone, so no test is proposed for them (Part 24). Nor for a faith
-      // practice: a test offers its move more often, and faith is offered, never pushed (Rule 10; stage 1, item g).
-      if (isParked(move) || isProposed(move) || isPathOnly(move) || PASSIVE.has(m) || OBSERVED_ONLY.has(m) || move.family === 'faith' || move.hiddenWith === 'faith') continue
-      backed.push(m)
-    }
-  }
-  // Each with what a test of it can measure and when (item 6): a test always measures what its line speaks of. Not while
-  // the learning repair is on (R6): its draw tests every move with a declared test from the first day and makes no coin
-  // flip, so no move is one "the record has never tested", and a card set now would gather no fair evidence.
-  if (!i.repair && days >= 14 && backed.length) {
-    const can = backed.map((m) => ({ m, t: testableOf(m) }))
-    const words = can.map(({ m, t }) => `${moveById(m).name} (${m}${t.readings.length ? `; can test ${t.readings.join(' or ')} in the ${t.blocks.join(' or ')}` : '; no reading a test can measure'})`)
-    facts.push(fact('untested', ['monitoring'], `Moves the library backs that the record has never tested: ${words.join(', ')}.`, { moves: backed.join(','), count: backed.length, ...Object.fromEntries(can.map(({ m, t }) => [`tests_${m}`, `${t.readings.join(',')}@${t.blocks.join(',')}`])) }))
-  }
 
   // Commitments: the step, the last fact, what blocked it, today's plan, the cues' record, the ladder's shape.
   const studyAims = i.aims.filter((a) => a.kind === 'certification')
@@ -872,7 +842,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   }
 
   // Stage 3, group 1: the Brain's memory of the lines seen in the last 30 days, and the weekly view's analyses for the Sunday review.
-  facts.push(...memoryFacts({ today, log: i.log, brainBriefs: i.brainBriefs, contexts: i.contexts, feedback: i.feedback, intentions: i.intentions, offers: i.offers, outcomes: i.outcomes, checkins: i.checkins, cards: i.evidence.cards.map((c) => c.card), aims: i.aims }))
+  facts.push(...memoryFacts({ today, log: i.log, brainBriefs: i.brainBriefs, contexts: i.contexts, feedback: i.feedback, intentions: i.intentions, offers: i.offers, outcomes: i.outcomes, checkins: i.checkins, cards: i.cards, aims: i.aims }))
   if (i.weekly) facts.push(...weeklyFacts(i.weekly))
   if (i.weatherOn) facts.push(...weatherFacts(i.checkins, i.contexts, today))
 
@@ -927,8 +897,3 @@ function ageWords(days: number): string {
   return days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
 }
 
-/** What a test of a move can measure (item 6): the readings out of 100 among its targets, and the parts of the day it fits. */
-function testableOf(moveId: string): { readings: string[]; blocks: string[] } {
-  const move = moveById(moveId)
-  return { readings: [...new Set(move.targets.map((t) => t.reading).filter((r) => INGREDIENTS[r] !== undefined))], blocks: [...move.when] }
-}

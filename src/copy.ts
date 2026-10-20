@@ -108,8 +108,8 @@ export const copy = {
     running: 'Learning week · day {n} of 7',
     runningWhat: 'Some suggestions this week are a coin toss between a move and nothing extra. Skip still works on every one.',
   },
-  // The learning repair on Evidence (stage R4): each test with its rung on the evidence ladder in place of the tiers
-  // (requirement 8), and its own track record at their head (requirement 15). Shown only while the repair is on.
+  // The learning engine on Evidence (stage R4): each test with its rung on the evidence ladder (requirement 8), and its own
+  // track record at their head (requirement 15).
   repairEvidence: {
     intro: 'Each move is tested on the reading it is meant to help, from the suggestions drawn fairly at the moments it fitted. Only those draws can make a call established.',
     register: 'Facts are plain. Calculations carry a single rule on the left. Conclusions carry a double rule, and always their rung.',
@@ -131,12 +131,14 @@ export const copy = {
     testIt: 'Test it',
     testRunning: 'Being tested since {date}: on the days it fits, a fair coin decides whether it rides alongside.',
     trackTitle: 'Track record',
-    /** Evidence's Nothing today while the repair is on (R6): what nothing extra is now. */
+    /** Evidence's Nothing today (R6): what nothing extra is now. */
     nothingLine: 'Offered {offered} times, done {done}, skipped {skipped}. Every move’s test compares the move with nothing extra.',
-    /** The repair's breaker (R6): a rebuild of the record threw on this phone. */
-    faultOne: 'On {date} the learning repair could not read your record, so the suggestions after it were drawn the earlier way until the app was opened again.',
-    faultMany: 'The learning repair could not read your record {n} times since {first}, the last on {date}. Each time, the suggestions after it were drawn the earlier way until the app was opened again.',
-    faultManyOneDay: 'The learning repair could not read your record {n} times on {date}. Each time, the suggestions after it were drawn the earlier way until the app was opened again.',
+    /** The engine's failure (R6; no fallback since 2026-10-20): a rebuild of the record threw on this phone. */
+    faultOne: 'On {date} the learning engine could not read your record, so no move was offered until the app was opened again. Moves are never drawn any other way.',
+    faultMany: 'The learning engine could not read your record {n} times since {first}, the last on {date}. Each time, no move was offered until the app was opened again. Moves are never drawn any other way.',
+    faultManyOneDay: 'The learning engine could not read your record {n} times on {date}. Each time, no move was offered until the app was opened again. Moves are never drawn any other way.',
+    /** The owner's requirement of 2026-10-20: the engine's failure shown in place of what it would show, with no move offered. */
+    failedNow: 'The learning engine could not read your record just now, so its tests are not shown and no move is offered. Moves are never drawn any other way. It tries again the next time you open the app.',
     title: 'Tests',
     none: 'Nothing tested yet. A test starts once a move has been both offered and held back at moments it fitted.',
     rungs: { none: 'No call yet', early: 'Early sign', likely: 'Likely', established: 'Established' },
@@ -738,8 +740,6 @@ export const copy = {
     once: 'once',
     twice: 'twice',
     nTimes: '{n} times',
-    testingLine: '{move} against {alternative}, for {target} over the {window}. Card {id}, written {date}. A worthwhile change is one step.',
-    testingNone: 'No alternative to test against in this situation yet.',
     coinFlip: 'This offer was a coin flip, so honest claims survive.',
     whyNotLine: 'Not {move}: {reason}.',
     whyNotReasons: {
@@ -786,6 +786,8 @@ export const copy = {
     /** Stage 3, item 5: a move drawn again after a Today, if different chip changed the day. */
     redrawn: 'Drawn again for the day as it is now.',
     none: 'Log a check-in and one small move follows.',
+    /** The owner's requirement of 2026-10-20: the engine's failure, where the move would be. */
+    engineFailed: 'No move this time: the learning engine could not read your record. Moves are never drawn any other way. It tries again the next time you open the app.',
     hidden: 'Moves stay hidden while Low-demand mode is on.',
     privateInline: {
       morning: 'Your record: mornings with {name} logged, the afternoon after read {with} against {without} after mornings that started the same ({n} and {m}). An alternative: {alternative}.',
@@ -798,14 +800,10 @@ export const copy = {
     knowsCorrected: 'research corrected by the {n} moves you’ve tried',
     weeksOne: '1 week',
     weeksMany: '{n} weeks',
-    knows: 'How much it knows: {weeks} of record, {tried} and {tests}. Each offer is drawn from research corrected by your record, recent days weighing more, low starting effort first, and one offer in five is a fair coin flip across what fits; nothing here is a claim until its card says so.',
     knowsTriedNone: 'no move tried yet',
     knowsTriedOne: 'one move tried',
     knowsTriedN: '{n} moves tried',
-    knowsTestsNone: 'no test set',
-    knowsTestsOne: 'one test set',
-    knowsTestsN: '{n} tests set',
-    /** While the learning repair is on (R6): how its draw picks, and its tests with fair draws on both sides. */
+    /** How the learning engine's draw picks (R6), and its tests with fair draws on both sides. */
     knowsRepair: 'How much it knows: {weeks} of record, {tried} and {tests}. Each offer is drawn by what each move that fits is expected to do for the moment’s reading: research corrected by your record, older evidence fading over months, weighed by how often you do the move, less its effort. Every move that fits keeps a chance of being drawn, and so does nothing extra, so each offer is a fair comparison; nothing here is a claim until its test says so.',
     knowsUnderWayNone: 'no test under way yet',
     knowsUnderWayOne: 'one test under way',
@@ -994,8 +992,7 @@ export const copy = {
     scorecard: 'Scorecard',
     hitRate: 'Forecast hit rate {rate} percent against a target of 60, over {n} day-ahead forecasts; average miss {miss} points.',
     hitRateNone: 'No day-ahead forecasts scored yet; they begin once fourteen days each have a complete check-in.',
-    declared: 'Experiments declared {declared}, replicated {replicated}.',
-    /** While the learning repair is on (stage R7): its own count, in place of today's engine's experiments. */
+    /** The learning engine's own count (stage R7). */
     declaredRepair: 'Tests under way {underWay}; calls resolved {resolved}, held {held}.',
     gaveBack: 'Check-ins that gave something back: {gaveBack} of {all}.',
     answering: 'Median answering time: morning {m}, afternoon {a}, evening {e}.',
@@ -1055,32 +1052,11 @@ export const copy = {
   },
   evidence: {
     title: 'Evidence',
-    observationsLine: '{n} effects on record · {weeks} weeks',
-    intro: 'Every active card with its tier, counts and interval. Confirmatory claims rest on the coin-flip slice, tightened across every card active today, replicated after a dated declaration.',
-    register: 'Facts are plain. Calculations carry a single rule on the left. Conclusions carry a double rule, and always their tier.',
+    weeksLine: '{weeks} weeks on record',
     months: 'Three check-ins a day is about ninety observations a month across everything. Some answers take months; some stay uncertain. That is the honest shape of it.',
-    cards: 'Cards',
-    none: 'No cards yet. A card is written the first time a move is offered against an alternative.',
     against: '{move} against {alternative}',
     forTarget: 'for {target} over the {window}',
     tiers: { little: 'Little evidence', unclear: 'Unclear', promising: 'Promising', holdsUp: 'Holds up', unhelpful: 'Unhelpful here' },
-    counts: 'done {done} of {doneAll}, the alternative {alternative} of {alternativeAll}, counting the coin-flip slice',
-    interval: 'difference {diff} steps, {lo} to {hi}, at {level} percent',
-    partly: 'partly, its own arm: {mean} steps ({n})',
-    research: 'Research says {mean}',
-    record: 'your record says {mean} ({n})',
-    noRecord: 'your record says nothing yet',
-    energy: 'Energy at the next block: {mean} steps ({n})',
-    spill: 'Also seen, unclaimed: {list}',
-    spillItem: '{reading} {mean} ({n})',
-    decay: 'After a run of days, held about {days} days ({runs} runs)',
-    declared: 'Declared {date}; since then {done} and {alternative}',
-    replicated: 'replicated',
-    notReplicated: 'not replicated yet',
-    estimators: { adaptive: 'Estimator: adaptive weights over all the data (Hadad, Wager and Athey).', coinFlip: 'Estimator: the coin-flip slice, resampled.' },
-    sliceLine: 'The coin-flip slice, kept running: {done} and {alternative} done; difference {diff}, {lo} to {hi}.',
-    scheduled: 'Scheduled: offered a little more often here until its eight opportunities are in.',
-    origins: { import: 'imported, to test', signFlip: 'a sign flip, tested on purpose', passive: 'a passive item', weight: 'a weight card', app: '' },
     passiveLine: '{n} days it rode alongside and was done: {target} the next morning read {with}, against {without} after evenings that started the same ({k} and {m}).',
     pathsTitle: 'Path reps',
     pathRepLine: '{rep} · drawn {drawn} · done {done} · partly {partly} · no {no}',
@@ -1090,7 +1066,6 @@ export const copy = {
     pathNote: 'Only reps the app drew between two or more, each chance kept, are compared, and only once each side has five. Your own picks, and reps a rule chose, are counts. One person’s small numbers: never more than Promising.',
     pathNone: 'No rep offered yet.',
     nothingTitle: 'Nothing today',
-    nothingLine: 'Offered {offered} times, done {done}, skipped {skipped}. Kept to, it is measured like any move over the next block.',
     card: 'Card {id} · written {date}',
     weights: 'Weight cards',
     equalWeights: 'equal weights',
@@ -1147,9 +1122,6 @@ export const copy = {
     bringsLine: '{move} · {n}',
     bringsNone: 'No return after three days away yet.',
     bringsNote: 'The moves done in the day before a Resume that followed three or more days away. A count, not a claim.',
-    tagsTitle: 'What the tags have learned',
-    tagLine: '{name}: research {research}, your record {record} ({n})',
-    tagNone: 'nothing yet',
   },
   /** Away from home (post-window, gated; agreed 2026-10-04): a trip's own screen, its row and its line. */
   away: {
@@ -1649,9 +1621,6 @@ export const copy = {
   },
   movesTab: {
     historyNote: 'Every offer, its card, and what happened, as three separate records.',
-    evidenceNote: 'Every active card with its tier, counts and interval; the tags; the weight card; the associations.',
-    tiersNote: 'Tiers are computed, never typed. Confirmatory claims rest on the coin-flip slice; a move is never retired.',
-    evidenceDoor: 'Every card with its tier, counts and interval',
     historyDoor: 'Every offer, its card, and what happened',
     catalogueDoor: 'Every move, with its source',
   },
@@ -1666,22 +1635,6 @@ export const copy = {
     lastExport: 'Last export {when}.',
     neverExported: 'Not exported yet.',
     exportFailed: 'The share sheet did not open. Try again from the installed app.',
-    importTitle: 'Import a hypothesis',
-    importNote: 'An outside hypothesis enters only as a card to test, never as something to believe. Paste one line of JSON: move, alternative, target, context, as in {"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}.',
-    /** While the learning repair is on (R6): a pasted hypothesis would make a card nothing reads. */
-    importRepair: 'While the learning repair is on, every move is tested against nothing extra from the first day, at the moments it fits, so a hypothesis needs no card of its own. What each move does shows on Evidence, by its rung.',
-    importPlaceholder: 'One line of JSON',
-    importButton: 'Add the card',
-    importDone: 'Card written. It shows under Moves → Evidence and nowhere else.',
-    importErrors: {
-      notJson: 'That is not JSON.',
-      fields: 'Four fields are needed: move, alternative, target, context.',
-      move: 'The move is not in the catalogue.',
-      alternative: 'The alternative is not in the catalogue (or "nothing").',
-      target: 'The target must be one of the six ingredients.',
-      context: 'The context must be morning, afternoon or evening.',
-      same: 'The move and the alternative are the same.',
-    },
     deleteTitle: 'Delete everything',
     deleteNote: 'Every check-in, win, private item and setting on this phone, and this app’s rows in your cloud copy when a token is set. Nothing comes back.',
     deleteCloudFirst: 'The cloud copy is deleted first. If it cannot be reached, nothing is deleted.',
@@ -1786,10 +1739,7 @@ export const copy = {
     noted: 'Noted. It shapes what is said next.',
     actionPlan: 'Plan it: {cue}, {time}',
     actionDepth: 'Switch to short depth',
-    actionTest: 'Set the test: {move}',
-    acted: { plan: 'Planned for today.', depth: 'Short depth is on; Settings changes it back.', test: 'The test is set; its card is under Evidence.' },
-    // The move's name quoted, so its own words (“A ten-minute walk, now”) never run into the sentence; the count in words, as the owner's example has it (2026-10-18).
-    actedTest: 'Testing “{move}” in the {block}, against your {reading} at the next check-in; it is offered more often until it has {n} days each way.',
+    acted: { plan: 'Planned for today.', depth: 'Short depth is on; Settings changes it back.' },
     when: { now: 'Now', laterToday: 'Later today', forToday: 'For today' },
     why: 'Why',
     whyLine: 'Why this line',
@@ -1864,8 +1814,6 @@ export const copy = {
       'say-when': '{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.',
       'afternoon-walk': 'The afternoon usually reads {point} here. ⟨A ten-minute walk at midday is an easy lift: it raises mood at once, whatever you expect of it.|A ten-minute walk at midday lifts mood at once, whatever you expect of it.|Walk ten minutes at midday: it lifts mood at once, whatever you expect of it.⟩',
       'partly-honest': 'Partly, {n} times this week⟨, and each one is a start. The|. Partly is a start; the|. The⟩ smaller version is the honest size, and it is the one that gets kept.',
-      'card-long-unclear': '{move} against {alt}: {n} observations and no clear difference. ⟨That is a result too: change|Change|Change⟩ the alternative or retire the card; the tries already made are no reason to keep it.',
-      'card-promising': '{move} against {alt}: {tier}, {n} observations⟨, a good sign so far||⟩. ⟨Worth one more week before believing it|Worth one more week before believing it|One more week before believing it⟩.',
       'caffeine-late': '{when}, {band} was reported at the {block} check-in, {time}. A meta-analysis of trials put the point where about {mg} mg stops shortening sleep at {hours} hours before bed; counted from {time}, that runs past midnight.',
       'church-morning': 'Mornings after church read {with} against {without} on other mornings, {n} times. The recovery gap is a fact of the day⟨, not of you|, not of you|⟩.',
       'steady-moving': 'Steady, {inside} of {of} blocks inside the usual, and {name} moved this week⟨: that is working||⟩. Progress that is recorded carries part of the effect by itself.',
@@ -1881,8 +1829,7 @@ export const copy = {
       'loop-planned': 'Yesterday’s line was about {name}: a plan was made, and its moment passed without a start. ⟨One plan says little about you and something about the moment; pin|One plan says little about you and something about the moment; pin|Pin⟩ the step, or a smaller one, to a moment that has held before.',
       'loop-open': 'Yesterday’s line was about {name}, and the record shows nothing on it since. ⟨If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.|If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.|Step too big? Pin its smaller version to a moment today. Suggestion wrong? Tap Not useful.⟩',
       'short-night-today': 'Sleep read “{word}” {when}. Short sleep lowers mood more than it lowers thinking⟨, so read today’s numbers kindly; a nap under half an hour before mid-afternoon is the supported repair|, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair|: read today’s numbers in that light. The supported repair is a nap under half an hour before mid-afternoon⟩.',
-      'short-sleep-afternoons': 'Afternoons after short nights read {diff} against the others, {n} mornings. In one large cohort, regular sleep times went with better health than long sleep did.',
-      'propose-test': 'The library holds {grade} for {move}, and your record has never tested it. ⟨One tap sets the test against nothing extra; its card will say what your record finds.|One tap sets the test against nothing extra; its card will say what your record finds.|Set it with one tap, against nothing extra; its card will say what your record finds.⟩',
+      'short-sleep-afternoons': 'Afternoons after short nights read {diff} against the others, {n} mornings⟨, worth knowing on a short night||⟩. ⟨In one large cohort, regular sleep times went with better health than long sleep did.|In one large cohort, regular sleep times went with better health than long sleep did.|One large cohort: regular sleep times went with better health than long sleep did.⟩',
     },
   },
   brainScreen: {
@@ -2124,7 +2071,6 @@ export const copy = {
     calcs: 'Calculations',
     calcsNote: 'Numbers the app derives from facts, always with their recipe. Set off by a thin rule on the left; every chart carries its caption.',
     conclusions: 'Conclusions',
-    conclusionsNote: 'What the app claims to have learned. Set off by a double rule on the left, and always with its evidence tier: Little evidence, Unclear, Promising, Holds up, Unhelpful here.',
     recipe: 'The reading out of 100',
     recipeNote:
       'Six readings have a clear better direction: mood, energy and focus up; stress, overwhelm and irritation down. Each phrase maps to 0, 25, 50, 75 or 100, reversed where lower is better. The reading is the equal-weight mean of the ones asked. At full depth every block asks all six, and a block missing any of them reads Incomplete, never a number. At Short depth a block asks three (mood, energy and stress), and its reading is the mean of those three, printed as 3 of 6; it compares only loosely with a full one. Weights stay equal until a weight card holds up on your record.',

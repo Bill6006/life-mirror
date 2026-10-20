@@ -31,7 +31,7 @@ describe('the journal is never evidence', () => {
   })
 
   it('reaches no engine module, by import either', () => {
-    for (const f of ['src/learning.ts', 'src/learningFlow.ts', 'src/tiers.ts', 'src/bandit.ts', 'src/offers.ts', 'src/offerFlow.ts', 'src/situations.ts', 'src/facts.ts', 'src/score.ts', 'src/claims.ts', 'src/provenance.ts', 'worker/src/brief.ts', 'worker/src/coach.ts', 'worker/src/skillCoach.ts', 'worker/src/qualify.ts']) {
+    for (const f of ['src/repair/engine.ts', 'src/repair/record.ts', 'src/repair/flow.ts', 'src/repair/evidence.ts', 'src/observe.ts', 'src/evidenceFlow.ts', 'src/offers.ts', 'src/offerFlow.ts', 'src/situations.ts', 'src/facts.ts', 'src/score.ts', 'src/provenance.ts', 'worker/src/brief.ts', 'worker/src/coach.ts', 'worker/src/skillCoach.ts', 'worker/src/qualify.ts']) {
       const text = readFileSync(f, 'utf8')
       expect(text, f).not.toMatch(READS)
       expect(text, f).not.toMatch(/from '\.\.?\/(?:\.\.\/src\/)?journal(?:Screen)?'/)

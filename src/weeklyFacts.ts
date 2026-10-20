@@ -56,9 +56,9 @@ function scorecardFact(s: Scorecard): Fact {
   return {
     id: 'weekly.scorecard',
     tags: [],
-    // While the learning repair is on, its own count in place of today's engine's experiments (stage R7).
-    text: `The scorecard, from the weekly view: ${hit}; ${s.repair ? `the learning repair's tests under way ${s.repair.underWay}, calls resolved ${s.repair.resolved}, held ${s.repair.held}` : `experiments declared ${s.declared}, replicated ${s.replicated}`}; check-ins that gave something back: ${s.gaveBack} of ${s.checkins}; median answering time: morning ${said(m)}, afternoon ${said(a)}, evening ${said(e)}.`,
-    values: { scored: s.scored, hitRate: pct, target: 60, averageMiss: miss, ...(s.repair ? { testsUnderWay: s.repair.underWay, callsResolved: s.repair.resolved, callsHeld: s.repair.held } : { declared: s.declared, replicated: s.replicated }), gaveBack: s.gaveBack, checkins: s.checkins, morningSeconds: m, afternoonSeconds: a, eveningSeconds: e },
+    // The learning engine's own count (stage R7), or that it could not read the record: never an older engine's count.
+    text: `The scorecard, from the weekly view: ${hit}; ${s.repair ? `the learning repair's tests under way ${s.repair.underWay}, calls resolved ${s.repair.resolved}, held ${s.repair.held}` : 'the learning engine could not read the record'}; check-ins that gave something back: ${s.gaveBack} of ${s.checkins}; median answering time: morning ${said(m)}, afternoon ${said(a)}, evening ${said(e)}.`,
+    values: { scored: s.scored, hitRate: pct, target: 60, averageMiss: miss, ...(s.repair ? { testsUnderWay: s.repair.underWay, callsResolved: s.repair.resolved, callsHeld: s.repair.held } : { engineFailed: 1 }), gaveBack: s.gaveBack, checkins: s.checkins, morningSeconds: m, afternoonSeconds: a, eveningSeconds: e },
   }
 }
 

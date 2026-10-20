@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
-import { applyLineAction, chooseAndLog, feedbackFor, hypothesisOf, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
-import type { LineAction } from './brainShared'
-import { hasMove, moveById, NOTHING } from './catalogue'
+import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
+import { NOTHING } from './catalogue'
 import { copy } from './copy'
-import { clockTimes12, countWords, fill, formatDayShort, formatHHMM } from './format'
+import { clockTimes12, fill, formatDayShort, formatHHMM } from './format'
 import { briefData, type Brief as BriefData, type LastNight, type YesterdayMove } from './forecastFlow'
 import { gradeWord } from './library'
 import { useLive } from './live'
 import { nameOf } from './offerFlow'
 import { readingById } from './readings'
 import { INGREDIENTS } from './score'
-import { MIN_PER_ARM } from './tiers'
 import { logUse } from './useLog'
 import { askOn } from './ask/gate'
 import type { AskAboutThis } from './ask/askScreen'
@@ -65,14 +63,8 @@ function actionLabel(line: BriefLine, state: ActionState): string {
   if (!a) return ''
   if (a.kind === 'plan') return fill(c.actionPlan, { cue: copy.aims.cues[state.cue ?? a.cue].toLowerCase(), time: state.time ? formatHHMM(state.time) : '' })
   if (a.kind === 'depth') return c.actionDepth
-  return fill(c.actionTest, { move: hasMove(a.moveId) ? moveById(a.moveId).name : a.moveId })
-}
-
-/** What a test tap set, said plainly (item 6): the move, the part of the day, the reading and how long. */
-export function testSetWords(a: Extract<LineAction, { kind: 'test' }>): string {
-  const h = hypothesisOf(a)
-  if (!h) return copy.brain.acted.test
-  return fill(copy.brain.actedTest, { move: hasMove(h.move) ? moveById(h.move).name : h.move, block: copy.blocks[h.context].toLowerCase(), reading: readingById(h.target).name.toLowerCase(), n: countWords(MIN_PER_ARM) })
+  // A test set by a tap was the retired engine's (2026-10-20): a past line that carried one offers no tap (its state is gone).
+  return ''
 }
 
 /** The early warning: a conclusion, in the double-rule register. */
@@ -214,9 +206,9 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
           </button>
         </div>
       )}
-      {line.action && act?.state === 'done' && (
+      {line.action && line.action.kind !== 'test' && act?.state === 'done' && (
         <p class="note faint no-gap" data-testid="brief-acted">
-          {line.action.kind === 'test' ? testSetWords(line.action) : c.acted[line.action.kind]}
+          {c.acted[line.action.kind]}
         </p>
       )}
       <div class="taps" role="group" aria-label={c.tapLabel}>

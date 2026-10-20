@@ -72,10 +72,6 @@ TABLE = [
          old="      gapDays: faith ? null : gap,\n",
          new="      gapDays: gap,\n",
          tests=['src/cadence.test.ts'], pattern='holds Rule 10 everywhere'),
-    dict(id='g-faith-untested', file='src/facts.ts',
-         old=" || OBSERVED_ONLY.has(m) || move.family === 'faith' || move.hiddenWith === 'faith') continue\n",
-         new=" || OBSERVED_ONLY.has(m)) continue\n",
-         tests=['src/cadence.test.ts'], pattern='never proposes a test of a faith move'),
     # h. numbers checked as whole numbers; dates, names and earlier words are no grounds; counts in words
     dict(id='h-names-set-aside', file='src/brainShared.ts',
          old="  for (const name of [...new Set(named)].sort((a, b) => b.length - a.length)) rest = rest.replace(",
@@ -131,10 +127,6 @@ TABLE = [
          new="  return MAX_REST_DAYS\n",
          tests=['src/rhythm.test.ts'], pattern='offers only a rhythm that fits a week'),
     # p. the knows line counted from the record
-    dict(id='p-knows-counts', file='src/learningFlow.ts',
-         old="(o.outcome === 'done' || o.outcome === 'partly') && o.moveId !== NOTHING",
-         new="(o.outcome === 'done' || o.outcome === 'partly' || o.outcome === 'no')",
-         tests=['src/learningRun.test.ts'], pattern='how much it knows'),
     # q. the wording defects: the counts under the direction, each in the singular at one (an instance stage 1 left, fixed 2026-10-17)
     dict(id='q-direction-line', file='src/situations.ts',
          old="const counted = (n: number | null, one: string, many: string) => (n === 1 ? one : fill(many, { n: s(n) }))\n",
@@ -159,10 +151,6 @@ TABLE = [
          new="    if (times.has(t.minutes) || true) continue\n",
          tests=['src/brainShared.test.ts'], pattern='checks a clock time as a minute of the day'),
     # item 6: the line's tap does what it says
-    dict(id='6-test-reading', file='src/brainShared.ts',
-         old="    if (!tests || typeof a.reading !== 'string' || !tests.readings.includes(a.reading)) return",
-         new="    if (false) return",
-         tests=['src/brainShared.test.ts'], pattern='allows an action only when the sheet makes it possible'),
     dict(id='6-plan-held-to-line', file='src/brainShared.ts',
          old="    if (named.length && cueTime && !named.includes(minutesOfCue(cueTime) as number)) return",
          new="    if (false) return",

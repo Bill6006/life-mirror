@@ -207,8 +207,8 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             <p class="calc-line" data-testid="hit-rate">
               {sc.scored ? fill(c.hitRate, { rate: pct(sc.hitRate), n: String(sc.scored), miss: num(sc.averageMiss, 1) }) : c.hitRateNone}
             </p>
-            {/* While the learning repair is on, its own count in place of today's engine's experiments (stage R7). */}
-            <p class="calc-line" data-testid="scorecard-tests">{sc.repair ? fill(c.declaredRepair, { underWay: String(sc.repair.underWay), resolved: String(sc.repair.resolved), held: String(sc.repair.held) }) : fill(c.declared, { declared: String(sc.declared), replicated: String(sc.replicated) })}</p>
+            {/* The learning engine's own count (stage R7), or that it could not read the record. */}
+            <p class="calc-line" data-testid="scorecard-tests">{sc.repair ? fill(c.declaredRepair, { underWay: String(sc.repair.underWay), resolved: String(sc.repair.resolved), held: String(sc.repair.held) }) : copy.repairEvidence.failedNow}</p>
             <p class="calc-line">{fill(c.gaveBack, { gaveBack: String(sc.gaveBack), all: String(sc.checkins) })}</p>
             <p class="calc-line">{fill(c.answering, { m: seconds(sc.medianAnswerMs.morning), a: seconds(sc.medianAnswerMs.afternoon), e: seconds(sc.medianAnswerMs.evening) })}</p>
           </div>

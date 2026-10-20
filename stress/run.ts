@@ -1,7 +1,6 @@
 import { BLOCKS, type Block } from '../src/blocks'
 import { hasMove, moveById, NOTHING, type Strength, type Window } from '../src/catalogue'
 import type { ReadingId } from '../src/readings'
-import { EngineA, type CallA } from './engineA'
 import { B_DEFAULT, clsOf, CONTEXTS, EngineB, type BConfig, type CallB, type Direction, type Level, type Test } from './engineB'
 import type { Scenario } from './scenarios'
 import { phi, stream } from './stats'
@@ -107,57 +106,15 @@ function truthAt(world: World, moveId: string, target: ReadingId, d: number, blo
   return (e * share) / outSlots.length
 }
 
-export function runPerson(s: Scenario, engine: 'A' | 'B', seed: number, cfg: BConfig = B_DEFAULT): PersonResult {
-  return withPriors(s, () => (engine === 'A' ? runA(s, seed) : runB(s, seed, cfg)))
-}
+/**
+ * Engine A, the app's old engine, was retired from the app and from here on 2026-10-20 (the owner's requirement): its
+ * results stay in the recorded files and the plan, and its comparison can be re-run only by checking out c0611b6.
+ */
+export const ENGINE_A_RETIRED = 'engine A was retired on 2026-10-20: its results are kept in the recorded files; check out c0611b6 to re-run it'
 
-function runA(s: Scenario, seed: number): PersonA {
-  const world = new World(seed, s.params, s.truth)
-  const awayDays = new Set(s.params.away.map((d) => world.dayString(d)))
-  const engine = new EngineA(stream(seed, 'engineA'), awayDays)
-  const tracked = new Map<string, TrackA>(s.tracked.map((t) => [`${t.moveId}|${t.target}`, { key: `${t.moveId}|${t.target}`, first: {} }]))
-  const holdsSeen = new Set<string>()
-  const holdsUp: PersonA['holdsUp'] = []
-  let offers = 0
-  let moveOffers = 0
-  let benefit = 0
-  let checkins = 0
-  const cardTruth = (c: CallA, d: number) => {
-    const own = world.truth.get(c.moveId)?.[c.target] ? world.trueEffect(c.moveId, c.target, d) : 0
-    const alt = c.alternativeId !== NOTHING && world.truth.get(c.alternativeId)?.[c.target] ? world.trueEffect(c.alternativeId, c.target, d) : 0
-    return own - alt
-  }
-  for (let d = 0; d < DAYS; d++) {
-    const calls = engine.learn(world.dayString(d))
-    for (const c of calls) {
-      const truth = cardTruth(c, d)
-      const tk = tracked.get(`${c.moveId}|${c.target}`)
-      if (tk && (c.tier === 'promising' || c.tier === 'holdsUp' || c.tier === 'unhelpful') && !tk.first[c.tier]) {
-        tk.first[c.tier] = { day: d, right: c.tier === 'unhelpful' ? truth < B_DEFAULT.delta : truth > 0 }
-      }
-      if (c.tier === 'holdsUp' && !holdsSeen.has(c.key)) {
-        holdsSeen.add(c.key)
-        holdsUp.push({ key: c.key, day: d, truth })
-      }
-    }
-    for (const b of BLOCKS) {
-      const a = world.checkin(d, b)
-      if (!a) continue
-      checkins++
-      const o = engine.checkIn(a, world.context(d))
-      if (!o) continue
-      offers++
-      const r = world.respond(o.moveId, d, b)
-      const fraction = r.did === 'done' ? 1 : r.did === 'partly' ? 0.5 : 0
-      world.apply(o.moveId, d, b, fraction)
-      if (o.moveId !== NOTHING) {
-        moveOffers++
-        benefit += world.trueEffect(o.moveId, o.target, d) * fraction
-      }
-      engine.respond(o.id, r)
-    }
-  }
-  return { engine: 'A', seed, tracked: [...tracked.values()], holdsUp, offers, moveOffers, benefit, checkins }
+export function runPerson(s: Scenario, engine: 'A' | 'B', seed: number, cfg: BConfig = B_DEFAULT): PersonResult {
+  if (engine === 'A') throw new Error(ENGINE_A_RETIRED)
+  return withPriors(s, () => runB(s, seed, cfg))
 }
 
 /** A mixture's two-sided 95 % interval, by bisection on its distribution function. */

@@ -1,7 +1,6 @@
 import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
-import { propensities } from './adaptive'
 import type { Rng } from './rng'
 import { hasMove, LADDERS, moveById, RECOVERY_GAP } from './catalogue'
 import {
@@ -19,30 +18,28 @@ import {
   type StudyNight,
   type WinOutcome,
 } from './db'
-import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotThat, windowFor, type TodayState } from './offers'
+import { candidatesFor, NOTHING, pickPassive, pickupCandidates, situationOf, standingSetups, whyNotOf, windowFor, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { parseRungId, RUNG_MINUTES } from './ladder'
-import { noTimeCeiling, observations, WINDOW_PENALTY, type Observation } from './observe'
+import { noTimeCeiling } from './observe'
 import { pathOn } from './pathFlow'
-import { beliefsFor, bigSocialToday } from './learningFlow'
+import { bigSocialToday } from './evidenceFlow'
 import { daylightFor, inDaylight, minutesOf, type Settings } from './settings'
 import { rainSoon } from './weather'
-import { hasItsEight } from './tiers'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
-import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
+import { drawContextOf, drawRecordOf, outcomeReasonOf, type DrawBelief } from './provenance'
 import { guardRepair } from './repair/breaker'
+import { asideFits, clsOf } from './repair/engine'
 import { repairEvidence } from './repair/evidence'
-import { repairDraw } from './repair/flow'
-import { repairOn } from './repair/gate'
+import { repairAside, repairDraw, type RepairAside, type RepairDraw } from './repair/flow'
 import { PASSIVE_COIN, passiveTestRuns, passiveTestSince, testablePassive } from './repair/passive'
 import { REPAIR_ENGINE } from './repair/record'
+import { windowOfMove } from './repair/world'
 
 // The offer flow on the phone. Three records, kept apart: the offer (what was offered), the
 // card (what is being tested, written first), and the outcome (what happened).
 
 const PICKUP_WINDOW_MIN = 90
-const SIGN_FLIP_BONUS = 0.3
-
 /**
  * Every open offer, oldest first: the next check-in asks about each in turn. An outcome logged
  * from the card answers the question before it is asked; only a passive item left unanswered
@@ -248,17 +245,14 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */
-async function withLearning(t: TodayState, block: Block, day: string): Promise<TodayState> {
+/** Today's screening at a block: the no-time ceiling, and (post-window, gated) "Not home" earlier in the block. */
+async function screenedToday(t: TodayState, block: Block, day: string): Promise<TodayState> {
   const offers = await db.offers.filter((o) => o.block === block).toArray()
   const ids = new Set(offers.map((o) => o.id as number))
   const outcomes = await db.outcomes.filter((x) => ids.has(x.offerId)).toArray()
   // Post-window, gated: Skip's "Not home" earlier in this block keeps the moves that need the house out of it.
   const notHome = homeOnlyOn() && offers.some((o) => o.day === day && o.skipReason === 'notHome')
   return { ...t, noTimeCeiling: noTimeCeiling(offers, outcomes, block, day), ...(notHome ? { homeOut: true } : {}) }
-}
-
-function withWindowPenalty(set: ReturnType<typeof candidatesFor>, target: ReadingId): ReturnType<typeof candidatesFor> {
-  return { ...set, candidates: set.candidates.map((c) => (c.id === NOTHING ? c : { ...c, bonus: (c.bonus ?? 0) - WINDOW_PENALTY[windowFor(c.id, target)] })) }
 }
 
 async function mostRecentlyDoneIn(situationKey: string): Promise<string | null> {
@@ -268,33 +262,26 @@ async function mostRecentlyDoneIn(situationKey: string): Promise<string | null> 
   return done[0]?.moveId ?? null
 }
 
-/** A card tested on purpose: a flagged sign flip, or one set by a tap or a pasted hypothesis; never one the draw wrote itself. */
-export function onPurpose(c: Card): boolean {
-  return c.origin === 'signFlip' || c.origin === 'import'
+/** A move the new engine drew, as an offer keeps it: the move, every chance, what it drew among and what it knew. */
+interface Made {
+  moveId: string
+  chances: Record<string, number>
+  candidates: string[]
+  belief: (id: string) => DrawBelief
+  fits: string[]
+  week: boolean
 }
 
-/**
- * The moves a situation's tests on purpose favour: each card's move and its alternative when the
- * alternative is a move, until the card has its eight; the null offer is never favoured. The draw
- * stays a draw with its chances recorded (Rule 16): this tilts which fitting move comes up, never
- * whether anything is asked.
- */
-export function scheduledMoves(cards: readonly Card[], obs: readonly Observation[]): Set<string> {
-  const out = new Set<string>()
-  for (const c of cards) {
-    if (!onPurpose(c) || hasItsEight(c, obs)) continue
-    out.add(c.moveId)
-    if (c.alternativeId !== NOTHING) out.add(c.alternativeId)
-  }
-  return out
-}
+const drawMade = (r: RepairDraw): Made => ({ moveId: r.offer.moveId, chances: r.offer.chances, candidates: r.offer.candidates, belief: r.belief, fits: r.offer.fits, week: r.offer.week })
+const asideMade = (r: RepairAside | null): Made | null => (r ? { moveId: r.moveId, chances: r.chances, candidates: r.candidates, belief: r.belief, fits: [], week: false } : null)
 
 /**
- * Makes sure a completed check-in in this slot has its offer. Writes the test card first,
- * then the offer. Returns the live offer, or null when nothing fits or moves are hidden.
+ * Makes sure a completed check-in in this slot has its offer. Returns the live offer, or null when nothing fits, moves
+ * are hidden, or the new engine failed: then no move is offered, and the failure shows (the owner's requirement of
+ * 2026-10-20). Nothing else ever draws.
  */
 export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims, db.askTurns], async () => {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.aims, db.askTurns], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const existing = await offerForSlot(day, block)
@@ -304,52 +291,19 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
     const situation = situationOf(checkin)
     if (!situation) return null
 
-    const t = await withLearning(await todayState(day, settings), block, day)
-    // A card tested on purpose (a flagged sign flip, Phase 12; a test set by one tap or a pasted hypothesis, Part 36) is offered a little more often here until it has its eight, and then no longer (Part 33).
-    const tested = await db.cards.where('situationKey').equals(situation.key).filter(onPurpose).toArray()
-    const obs = tested.length ? observations(await db.checkins.toArray(), await db.offers.toArray(), await db.outcomes.toArray()) : []
-    const scheduled = scheduledMoves(tested, obs)
+    const t = await screenedToday(await todayState(day, settings), block, day)
     // After a skip here, Skip promised another move: the replacement is drawn among real moves alone (D6). A move set aside
     // because the day changed was no skip of yours, so its new draw may still be Nothing extra (stage 3, item 5).
     const replacing = (await db.offers.where('day').equals(day).filter((o) => o.block === block && o.kind === 'block' && o.skippedAt !== null && !setAside(o)).count()) > 0
     const drawn = candidatesFor(situation, t)
-    const base = withWindowPenalty(replacing ? { ...drawn, candidates: drawn.candidates.filter((c) => c.id !== NOTHING) } : drawn, situation.target)
-    const set = { ...base, candidates: base.candidates.map((c) => (scheduled.has(c.id) ? { ...c, bonus: (c.bonus ?? 0) + SIGN_FLIP_BONUS } : c)) }
-    const beliefs = await beliefsFor(situation.key, set.candidates.map((c) => c.id))
+    const ids = drawn.candidates.map((c) => c.id)
     const draw = rng ?? Math.random
-    // The learning repair (stage R2; open since R6): its engine, rebuilt from the record, draws from the day's own
-    // candidates and keeps every chance. A replacement after a skip stays today's, drawn among real moves alone. If the
-    // rebuild throws, its breaker closes it for the session and today's engine draws, as before the switch (R6).
-    const made = repairOn() && !replacing ? await guardRepair(day, () => repairDraw(checkin, situation, t, drawn.candidates.map((c) => c.id), draw), null) : null
-    const choice = made ? { id: made.offer.moveId, coinFlip: false, samples: {}, runnerUp: null } : chooseFor(set, beliefs, draw)
-    if (!choice) return null
-    const odds = made ? made.offer.chances : propensities(set.candidates, beliefs, draw)
-    const drawnFrom = made ? made.offer.candidates : set.candidates.map((c) => c.id)
-    const history = await db.offers.where('situationKey').equals(situation.key).filter((o) => o.skippedAt === null).toArray()
-    const expected = await mostRecentlyDoneIn(situation.key)
+    // The new engine draws every move (the owner's requirement of 2026-10-20): a check-in's move among the day's own
+    // candidates, every chance kept; a replacement after a skip among real moves alone, outside the comparisons. If it
+    // fails, no move is offered and the failure shows: nothing else ever draws.
+    const made = await guardRepair(day, async () => (replacing ? asideMade(await repairAside(day, situation.target, ids.filter((id) => id !== NOTHING), draw)) : drawMade(await repairDraw(checkin, situation, t, ids, draw))), null)
+    if (!made) return null
     const now = new Date().toISOString()
-
-    let cardId: number | null = null
-    if (choice.id !== NOTHING) {
-      const existingCard = await db.cards.where('situationKey').equals(situation.key).filter((c) => c.moveId === choice.id).first()
-      if (existingCard) cardId = existingCard.id as number
-      else {
-        const alternativeId = alternativeFor(choice.id, set, history)
-        if (alternativeId) {
-          const card: Card = {
-            createdAt: now,
-            situationKey: situation.key,
-            block,
-            target: situation.target,
-            moveId: choice.id,
-            alternativeId,
-            window: windowFor(choice.id, situation.target),
-            worthwhile: 1,
-          }
-          cardId = await db.cards.add(card)
-        }
-      }
-    }
 
     const passiveHistory = await db.offers.filter((o) => o.passiveId !== null).toArray()
     // The recovery gap rides along only on the evening of a day marked a big social day (today's own chip); otherwise the least-offered passive item does.
@@ -364,10 +318,10 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       const has = await db.cards.where('situationKey').equals(pKey).filter((c) => c.moveId === passive.id).first()
       if (!has) await db.cards.add({ createdAt: now, situationKey: pKey, block, target: passive.targets[0].reading, moveId: passive.id, alternativeId: NOTHING, window: passive.targets[0].window, worthwhile: 1, origin: 'passive' })
     }
-    const whyNot = whyNotThat(expected, choice, set)
+    const whyNot = whyNotOf(await mostRecentlyDoneIn(situation.key), made.moveId, made.chances, drawn.excluded)
     // Requirement 2: what the draw knew, recorded now, since it cannot be rebuilt later.
     const [dayNow, checkinsNow] = await Promise.all([db.days.get(day), db.checkins.toArray()])
-    const drawRecord = drawRecordOf({ excluded: drawn.excluded, candidates: drawnFrom, belief: made ? made.belief : beliefs, target: situation.target, window: choice.id === NOTHING ? null : windowFor(choice.id, situation.target), context: drawContextOf(dayNow, checkinsNow, day), checkins: checkinsNow, day, block })
+    const drawRecord = drawRecordOf({ excluded: drawn.excluded, candidates: made.candidates, belief: made.belief, target: situation.target, window: made.moveId === NOTHING ? null : windowFor(made.moveId, situation.target), context: drawContextOf(dayNow, checkinsNow, day), checkins: checkinsNow, day, block, engine: REPAIR_ENGINE })
 
     const offer: Offer = {
       kind: 'block',
@@ -379,19 +333,19 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
       stance: '',
       band: situation.band,
       reading: situation.reading,
-      moveId: choice.id,
-      cardId,
-      candidates: drawnFrom,
-      coinFlip: choice.coinFlip,
+      moveId: made.moveId,
+      cardId: null,
+      candidates: made.candidates,
+      coinFlip: false,
       passiveId: passive?.id ?? null,
-      whyNot: whyNot ? { moveId: whyNot.moveId, reason: whyNot.reason } : null,
-      propensity: odds[choice.id],
-      propensities: odds,
+      whyNot,
+      propensity: made.chances[made.moveId],
+      propensities: made.chances,
       skippedAt: null,
       closedAt: null,
-      draw: made ? { ...drawRecord, engine: REPAIR_ENGINE } : drawRecord,
-      ...(made && made.offer.fits.length ? { fits: made.offer.fits } : {}),
-      ...(made?.offer.week ? { week: true as const } : {}),
+      draw: drawRecord,
+      ...(made.fits.length ? { fits: made.fits } : {}),
+      ...(made.week ? { week: true as const } : {}),
       ...(coin ? { passiveCoin: coin } : {}),
     }
     offer.id = await db.offers.add(offer)
@@ -400,11 +354,11 @@ export function ensureOffer(day: string, block: Block, rng?: Rng): Promise<Offer
 }
 
 /**
- * A passive item's fair coin (stage R4b), on a moment its own rule would have it ride alongside: only while the repair is on
- * and a test of the item runs (set, inside its time, not yet established). Null otherwise, and the item rides by its rule.
+ * A passive item's fair coin (stage R4b), on a moment its own rule would have it ride alongside: only while a test of the
+ * item runs (set, inside its time, not yet established). Null otherwise, and the item rides by its rule.
  */
 async function passiveCoinFor(moveId: string, day: string, settings: Settings, rng: Rng): Promise<{ moveId: string; rode: boolean; chance: number } | null> {
-  if (!repairOn() || !testablePassive(moveId) || passiveTestSince(settings, moveId, day) === null) return null
+  if (!testablePassive(moveId) || passiveTestSince(settings, moveId, day) === null) return null
   const ev = await guardRepair(day, () => repairEvidence(day), null)
   if (!ev || !passiveTestRuns(settings, moveId, day, ev.shown)) return null
   return { moveId, rode: rng() < PASSIVE_COIN, chance: PASSIVE_COIN }
@@ -455,7 +409,7 @@ export async function syncRecoveryGap(day: string, marked: boolean, rng: Rng = M
 
 /** Inside the ninety minutes before pickup, on a day she is with you: one short move whose job is arriving with something left. */
 export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims, db.checkins], async () => {
+  return db.transaction('rw', [db.settings, db.offers, db.cards, db.outcomes, db.days, db.aims, db.checkins, db.askTurns], async () => {
     const settings = await getSettings()
     if (settings.hideMoves) return null
     const day = dayKey(now)
@@ -469,28 +423,18 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
     const existing = await db.offers.where('day').equals(day).filter((o) => o.kind === 'pickup' && o.skippedAt === null).first()
     if (existing) return existing
 
-    const t = await withLearning(await todayState(day, settings), block, day)
+    const t = await screenedToday(await todayState(day, settings), block, day)
     const set = pickupCandidates(block, t)
     const key = 'pickup:energy'
-    const pickupBeliefs = await beliefsFor(key, set.candidates.map((c) => c.id))
     const draw = rng ?? Math.random
-    const choice = chooseFor(set, pickupBeliefs, draw)
-    if (!choice) return null
-    const odds = propensities(set.candidates, pickupBeliefs, draw)
-    const history = await db.offers.where('situationKey').equals(key).toArray()
+    // The new engine draws the pickup-time move too (the owner's requirement of 2026-10-20), outside the comparisons, every
+    // chance kept; no card is made for it. If it fails, no move is offered and the failure shows.
+    const made = asideMade(await guardRepair(day, () => repairAside(day, 'energy', set.candidates.map((c) => c.id), draw), null))
+    if (!made) return null
     const nowIso = now.toISOString()
     // Requirement 2: what the draw knew, recorded now.
     const checkinsNow = await db.checkins.toArray()
-    const drawRecord = drawRecordOf({ excluded: set.excluded, candidates: set.candidates.map((c) => c.id), belief: pickupBeliefs, target: 'energy', window: choice.id === NOTHING ? null : 'nextBlock', context: drawContextOf(ctx, checkinsNow, day), checkins: checkinsNow, day, block })
-    let cardId: number | null = null
-    const existingCard = await db.cards.where('situationKey').equals(key).filter((c) => c.moveId === choice.id).first()
-    if (existingCard) cardId = existingCard.id as number
-    else {
-      const alternativeId = alternativeFor(choice.id, set, history)
-      if (alternativeId) {
-        cardId = await db.cards.add({ createdAt: nowIso, situationKey: key, block, target: 'energy', moveId: choice.id, alternativeId, window: 'nextBlock', worthwhile: 1 })
-      }
-    }
+    const drawRecord = drawRecordOf({ excluded: set.excluded, candidates: made.candidates, belief: made.belief, target: 'energy', window: made.moveId === NOTHING ? null : 'nextBlock', context: drawContextOf(ctx, checkinsNow, day), checkins: checkinsNow, day, block, engine: REPAIR_ENGINE })
     const offer: Offer = {
       kind: 'pickup',
       draw: drawRecord,
@@ -502,14 +446,14 @@ export function ensurePickupOffer(now: Date, rng?: Rng): Promise<Offer | null> {
       stance: '',
       band: '',
       reading: 0,
-      moveId: choice.id,
-      cardId,
-      candidates: set.candidates.map((c) => c.id),
-      coinFlip: choice.coinFlip,
+      moveId: made.moveId,
+      cardId: null,
+      candidates: made.candidates,
+      coinFlip: false,
       passiveId: null,
       whyNot: null,
-      propensity: odds[choice.id],
-      propensities: odds,
+      propensity: made.chances[made.moveId],
+      propensities: made.chances,
       skippedAt: null,
       closedAt: null,
     }
@@ -544,7 +488,7 @@ export async function skipOffer(offer: Offer, reason: 'notHome' | null = null): 
  * the new move, or null when nothing was drawn again.
  */
 export function redrawForDay(day: string, block: Block, now: Date = new Date(), rng?: Rng): Promise<Offer | null> {
-  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.beliefs, db.aims, db.askTurns], async () => {
+  return db.transaction('rw', [db.checkins, db.settings, db.offers, db.cards, db.outcomes, db.days, db.aims, db.askTurns], async () => {
     const slot = blockAt(now)
     if (slot.day !== day || slot.block !== block) return null
     const offer = await offerForSlot(day, block)
@@ -570,13 +514,18 @@ export async function replacementsFor(offer: Offer, now: Date = new Date(), notH
   // Asked for "Not home" (post-window, gated): what a skip given that reason could show, the moves that need the house left out.
   const today = await todayState(offer.day, settings, now)
   const t = notHome && homeOnlyOn() ? { ...today, homeOut: true } : today
-  const left = (ids: readonly string[]) => ids.filter((id) => id !== NOTHING && id !== offer.moveId).length
+  // The new engine's own rule for a draw outside the comparisons (asideFits), over the classes offered today.
+  const today_ = await db.offers.where('day').equals(offer.day).filter((o) => (o.kind === 'block' || o.kind === 'pickup') && !setAside(o) && o.moveId !== NOTHING).toArray()
+  const left = (ids: readonly string[], target: ReadingId) => {
+    const offered = new Set(today_.map((o) => clsOf(windowOfMove(o.moveId, target))))
+    return ids.filter((id) => id !== NOTHING && id !== offer.moveId && asideFits(clsOf(windowOfMove(id, target)), offered)).length
+  }
   if (offer.kind === 'block') {
     const slot = blockAt(now)
     if (slot.day !== offer.day || slot.block !== offer.block) return 0
     const checkin = await getCheckIn(offer.day, offer.block)
     const situation = checkin && isComplete(checkin) ? situationOf(checkin) : null
-    return situation ? left(candidatesFor(situation, await withLearning(t, offer.block, offer.day)).candidates.map((c) => c.id)) : 0
+    return situation ? left(candidatesFor(situation, await screenedToday(t, offer.block, offer.day)).candidates.map((c) => c.id), situation.target) : 0
   }
   if (offer.kind === 'pickup') {
     if (!ctx.withHer || ctx.pickupTime === null || dayKey(now) !== offer.day) return 0
@@ -584,7 +533,7 @@ export async function replacementsFor(offer: Offer, now: Date = new Date(), notH
     const pickup = minutesOf(ctx.pickupTime)
     if (minutes < pickup - PICKUP_WINDOW_MIN || minutes >= pickup) return 0
     const block = blockAt(now).block
-    return left(pickupCandidates(block, await withLearning(t, block, offer.day)).candidates.map((c) => c.id))
+    return left(pickupCandidates(block, await screenedToday(t, block, offer.day)).candidates.map((c) => c.id), 'energy')
   }
   return 0
 }

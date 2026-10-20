@@ -13,6 +13,7 @@ import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
 import { handleAskBriefing, handleAskContext, handleAskLine, runAsks } from './ask'
+import { engineReport } from './engineReport'
 import { SKILL_COACH } from '../../src/coachShared'
 import { addDays, localTime } from './time'
 
@@ -282,6 +283,15 @@ const handler: ExportedHandler<Env> = {
       const question = url.searchParams.get('q') ?? ''
       if (!question.trim()) return json({ reason: 'q: a stand-in question' }, 400)
       return json(await runAsks(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), { dry: true, question, deep: url.searchParams.get('deep') === '1' }))
+    }
+    // With the run key: the learning engine's failures on the phone (the owner's requirement of 2026-10-20: no fallback, the
+    // failure shown), read from the newest facts row of the day and the day before, so the builder sees one without the
+    // owner having to say.
+    if (url.pathname === '/run/engine' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const asked = url.searchParams.get('day')
+      if (asked !== null && !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return json({ reason: 'day must be YYYY-MM-DD' }, 400)
+      return json(await engineReport(tursoStore(env.TURSO_URL, env.TURSO_TOKEN), asked ?? localTime(new Date(), env.TIMEZONE).day))
     }
     // With the run key: a day's planned pings, read-only (2026-10-19, to confirm a planned ping went out): whether reminders
     // are on, their times and the quiet hours, whether a push address is held, where it was read and when the phone set it

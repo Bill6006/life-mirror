@@ -151,23 +151,21 @@ describe('what the engine sees early, and the one tap it offers', () => {
     expect(chooseLine(sheetOf([aim(1, { plan: 'afterBedtime', gapDays: 2 }), missed], 21), [], [])).toBeNull()
   })
 
-  it('reads a short night in its own light, and proposes a test the record has never run', () => {
+  it('reads a short night in its own light, and never proposes a test: the old engine’s test proposals were retired', () => {
     const short: Fact = { id: 'today.shortSleep', tags: [], text: '', values: { position: 1, word: 'Under 5 hours' } }
     expect(chooseLine(sheetOf([short]), [], [])?.text).toContain('Sleep read “Under 5 hours” this morning.')
     const nights: Fact = { id: 'assoc.shortSleep', tags: [], text: '', values: { diff: -8, with: 48, without: 56, times: 6, bands: 2 }, n: 6, tier: 'unclear' }
     expect(chooseLine(sheetOf([nights]), [], [])?.text).toContain('Afternoons after short nights read -8 against the others, 6 mornings.')
+    // A sheet from before that still held the old engine's "untested" fact gets no line about it, and no test tap.
     const untested: Fact = { id: 'untested', tags: [], text: '', values: { moves: 'walk-ten,cyclic-sigh', count: 2 } }
-    const p = chooseLine(sheetOf([untested]), [], [])
-    expect(p?.situationId).toBe('propose-test')
-    expect(p?.action?.kind).toBe('test')
-    expect(p?.cardIds).toHaveLength(1)
-    expect(p?.text).toContain('your record has never tested it')
+    expect(chooseLine(sheetOf([untested]), [], [])).toBeNull()
+    expect(SITUATIONS.map((x) => x.id).filter((id) => ['propose-test', 'card-long-unclear', 'card-promising'].includes(id))).toEqual([])
   })
 
   it('takes the week’s one change only from a pattern over days, never from a fact of one day', () => {
     const dayScoped = ['loneliness-high', 'caffeine-late', 'short-night-today', 'say-when', 'stretch', 'necessities-missed', 'loop-closed', 'loop-open', 'loop-planned', 'church-morning']
     for (const id of dayScoped) expect(isWeekScoped(SITUATIONS.find((x) => x.id === id)!), id).toBe(false)
-    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'caffeine-sleep-even', 'caffeine-sleep-shorter', 'card-long-unclear', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'propose-test', 'step-stalled'])
+    expect(SITUATIONS.filter(isWeekScoped).map((x) => x.id).sort()).toEqual(['afternoon-walk', 'cadence-dropping', 'caffeine-sleep-even', 'caffeine-sleep-shorter', 'commitment-fading', 'commitment-thinning', 'cue-switch', 'first-skill', 'step-stalled'])
     // The smoke test's case: the only true thing is a reading at the last check-in; the week's change says nothing.
     const lonely: Fact = { id: 'context.loneliness', tags: [], text: '', values: { position: 5, word: 'Cut off', day: '2026-09-18', block: 'morning' } }
     expect(chooseLine(sheetOf([lonely]), [], [])?.situationId).toBe('loneliness-high')

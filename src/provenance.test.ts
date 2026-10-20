@@ -5,10 +5,9 @@ import { stepFor } from './aims'
 import { db, ensureDayContext, getSettings, saveAnswer, setDayContext, updateSettings, type Aim, type CheckIn, type Offer } from './db'
 import { ensureOffer, ensurePickupOffer, markOfferSeen, recordDoneNow, recordOutcome } from './offerFlow'
 import { NOTHING } from './offers'
-import { drawContextOf, drawRecordOf, ENGINE_VERSION, outcomeReasonOf } from './provenance'
+import { drawContextOf, drawRecordOf, outcomeReasonOf } from './provenance'
 import { blockReadings } from './readings'
 import { REPAIR_ENGINE } from './repair/record'
-import { closeRepair } from './repair/testGate'
 
 // Requirement 2 of the learning design agreed 2026-10-10, the foundations: each decision point
 // recorded at the time, since history recorded without them cannot be rebuilt. Recorded only:
@@ -33,8 +32,9 @@ describe('the record of a draw', () => {
       checkins: [],
       day: DAY,
       block: 'afternoon',
+      engine: REPAIR_ENGINE,
     })
-    expect(r.engine).toBe(ENGINE_VERSION)
+    expect(r.engine).toBe(REPAIR_ENGINE)
     expect(r.excluded).toEqual({ offeredToday: ['walk-ten'], block: ['nap-ten', 'green-walk'] })
     expect(r.beliefs).toEqual({ 'box-breathing': { mean: 0.123, sd: 0.457, n: 3 }, nothing: { mean: 0, sd: 0.5, n: 0 } })
     // Stress is better lower: the move was drawn to bring it down, read at the next check-in.
@@ -45,7 +45,7 @@ describe('the record of a draw', () => {
 
   it('saves the prediction before any outcome, from the slot’s own recent answers, and none for Nothing’s intent', () => {
     const past = ['2026-09-15', '2026-09-16', '2026-09-17'].map((d) => checkin(d, 'evening', { mood: 4 }))
-    const r = drawRecordOf({ excluded: new Map(), candidates: [NOTHING], belief: () => ({ mean: 0, sd: 1, n: 0 }), target: 'mood', window: null, context: drawContextOf(null, past, DAY), checkins: past, day: DAY, block: 'afternoon' })
+    const r = drawRecordOf({ excluded: new Map(), candidates: [NOTHING], belief: () => ({ mean: 0, sd: 1, n: 0 }), target: 'mood', window: null, context: drawContextOf(null, past, DAY), checkins: past, day: DAY, block: 'afternoon', engine: REPAIR_ENGINE })
     expect(r.intended).toBeNull()
     expect(r.prediction).toEqual({ day: DAY, block: 'evening', expected: 4, basis: 'slotMean' })
   })
@@ -71,16 +71,14 @@ describe('the foundations, as the phone records them', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  // Drawn by the learning repair, open since R6, and by today's engine, its fallback, with the repair closed as the browser
-  // tests set it: the same record of what the draw knew, each naming the engine that drew.
-  for (const mode of ['open', 'closed'] as const)
-  it(`keeps what each draw knew on the offer, the day marked unwell among it (the learning repair ${mode})`, async () => {
-    if (mode === 'closed') closeRepair()
+  // Drawn by the learning engine, the only one since the old engine was retired (2026-10-20): the record of what the draw
+  // knew, naming the engine that drew.
+  it('keeps what each draw knew on the offer, the day marked unwell among it', async () => {
     await setDayContext(DAY, { unwell: true })
     for (const id of asked) await saveAnswer({ day: DAY, block: 'afternoon' }, asked, id, 3, 500)
     const offer = (await ensureOffer(DAY, 'afternoon', () => 0.3)) as Offer
     const stored = (await db.offers.get(offer.id as number)) as Offer
-    expect(stored.draw?.engine).toBe(mode === 'open' ? REPAIR_ENGINE : ENGINE_VERSION)
+    expect(stored.draw?.engine).toBe(REPAIR_ENGINE)
     expect(Object.keys(stored.draw?.beliefs ?? {}).sort()).toEqual([...stored.candidates].sort())
     expect(Object.values(stored.draw?.excluded ?? {}).flat().length).toBeGreaterThan(0)
     for (const id of stored.candidates) expect(Object.values(stored.draw?.excluded ?? {}).flat()).not.toContain(id)
@@ -97,7 +95,7 @@ describe('the foundations, as the phone records them', () => {
     const offer = (await ensurePickupOffer(new Date(2026, 8, 18, 16, 0), () => 0.3)) as Offer
     const stored = (await db.offers.get(offer.id as number)) as Offer
     expect(stored.kind).toBe('pickup')
-    expect(stored.draw?.engine).toBe(ENGINE_VERSION)
+    expect(stored.draw?.engine).toBe(REPAIR_ENGINE)
     expect(Object.keys(stored.draw?.beliefs ?? {}).sort()).toEqual([...stored.candidates].sort())
     if (stored.moveId === NOTHING) expect(stored.draw?.intended).toBeNull()
     else expect(stored.draw?.intended).toEqual({ target: 'energy', direction: 'up', window: 'nextBlock' })

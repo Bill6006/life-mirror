@@ -15,15 +15,13 @@ import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayCont
 import { buildFactSheet, onTheSheet, type FactSheet } from './facts'
 import { wasShown } from './shown'
 import { briefData, usualFor, weeklyAnalyses } from './forecastFlow'
-import { cardFromHypothesis, testOf, type Hypothesis } from './hypothesis'
-import { evidence } from './learningFlow'
+import { evidence } from './evidenceFlow'
 import { cardById, type ClaimCard } from './library'
 import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
-import { guardRepairNow } from './repair/breaker'
+import { guardRepairNow, repairFaults } from './repair/breaker'
 import { repairEvidenceFrom, trackSummary } from './repair/evidence'
-import { repairOn } from './repair/gate'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
@@ -61,19 +59,22 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   const usual = Object.fromEntries(await Promise.all(BLOCKS.map(async (b) => [b, await usualFor(day, b)]))) as Record<Block, { point: number; lo: number; hi: number } | null>
   const tomorrow = addDays(day, 1)
   const tomorrowShape = contexts.find((c) => c.day === tomorrow) ?? contextFromWeek(tomorrow, settings)
-  // Stage R5: the learning repair's tests and track record, read from the same record, only while the repair is on; closed,
-  // the sheet is as it was. A rebuild that throws trips the repair's breaker, and the sheet is then as it was closed (R6).
-  const repair = repairOn() ? guardRepairNow(day, () => repairEvidenceFrom({ checkins, offers, outcomes, days: contexts, weekAnswers: new Map(contexts.filter((c) => c.weekAnswer).map((c) => [c.day, c.weekAnswer === 'yes'])) }, day), undefined) : undefined
+  // Stage R5: the learning engine's tests and track record, read from the same record. A rebuild that throws keeps the
+  // failure: the sheet then carries no test facts, and the failure for the Worker's report (no fallback, 2026-10-20).
+  const repair = guardRepairNow(day, () => repairEvidenceFrom({ checkins, offers, outcomes, days: contexts, weekAnswers: new Map(contexts.filter((c) => c.weekAnswer).map((c) => [c.day, c.weekAnswer === 'yes'])) }, day), undefined)
   // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27); with
-  // stage R7's honesty checks, and the scorecard's count following the learning repair while it is on.
+  // stage R7's honesty checks, and the scorecard's count the learning engine's own.
   const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers, repair: repair ? trackSummary(repair) : null }, day)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, cards, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
   const said = log.filter((l) => l.situationId !== null && wasShown(l, brainBriefs)).map((l) => ({ day: l.day, situationId: l.situationId }))
   sheet.shortlist = rankLines(sheet, said, receivedBefore(feedback, brainBriefs), undefined, firmPref)
     .slice(0, SHORTLIST)
     .map((c) => ({ situationId: c.situationId, mode: c.mode, text: c.text, factIds: c.factIds, cardIds: c.cardIds, score: Math.round(c.score * 100) / 100, ...(c.firmness ? { firmness: c.firmness } : {}) }))
+  // The engine's failures on this phone ride the sheet for the Worker's report alone (the owner's requirement of 2026-10-20).
+  const fault = repairFaults()
+  if (fault) sheet.engineFault = fault
   return sheet
 }
 
@@ -328,16 +329,6 @@ export async function recordFeedback(day: string, line: BriefLine, answer: 'usef
   await db.briefFeedback.add({ day, briefKey: line.key, situationId: line.situationId, answer, at: now.toISOString() })
 }
 
-/** The test a move would get: itself against nothing extra, on the first reading out of 100 it moves, in the first block it fits. */
-export function hypothesisFor(moveId: string): Hypothesis | null {
-  return testOf(moveId)
-}
-
-/** The test a line's tap sets (item 6): the reading and part of the day it carries, or, on a tap from before, the move's first. */
-export function hypothesisOf(action: Extract<LineAction, { kind: 'test' }>): Hypothesis | null {
-  return action.reading !== undefined || action.block !== undefined ? testOf(action.moveId, action.reading, action.block) : testOf(action.moveId)
-}
-
 export interface ActionState {
   /** Open: the tap is there. Done: it was taken, or the record already shows what it would do. Gone: no longer possible today. */
   state: 'open' | 'done' | 'gone'
@@ -367,10 +358,9 @@ export async function lineActionState(day: string, action: LineAction | null, no
     const s = await getSettings()
     return s.depth === 'short' ? { state: 'done' } : s.lowDemand ? { state: 'gone' } : { state: 'open' }
   }
-  // Under the learning repair every move with a declared test is tested by the draw from the first day, and the draw makes
-  // no coin flip, so a card set now would gather no fair evidence: the tap is no longer there (R6).
-  if (!hypothesisOf(action) || repairOn()) return { state: 'gone' }
-  return (await db.cards.filter((c) => c.moveId === action.moveId).count()) > 0 ? { state: 'done' } : { state: 'open' }
+  // A test set by a tap was the retired engine's (the owner's requirement of 2026-10-20): every move is tested by the
+  // draw from the first day, so a past line's test tap is no longer there.
+  return { state: 'gone' }
 }
 
 /** The one tap that does what the line says: a plan for today, a lighter check-in, or a test set. True when something was done. */
@@ -389,10 +379,7 @@ export async function applyLineAction(day: string, action: LineAction, now: Date
     await updateSettings((s) => ({ ...s, depth: 'short' }))
     return true
   }
-  const h = hypothesisOf(action)
-  if (!h) return false
-  await db.cards.add(cardFromHypothesis(h, now.toISOString()))
-  return true
+  return false
 }
 
 /** When a line is meant to be acted on (owner, 2026-09-23). */

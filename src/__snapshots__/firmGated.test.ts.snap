@@ -7,8 +7,6 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "caffeine-late": "{when}, {band} was reported at the {block} check-in, {time}. A meta-analysis of trials put the point where about {mg} mg stops shortening sleep at {hours} hours before bed; counted from {time}, that runs past midnight.",
   "caffeine-sleep-even": "Next nights show no difference yet between days with {low} and days with {high} of caffeine reported ({n} and {m} days). Self-reported sleep is known to miss caffeine’s effect.",
   "caffeine-sleep-shorter": "After days with {high} of caffeine reported, {what} the next night than after days with {low} ({m} and {n} days, like for like on the sleep the day began with). An association in your record, not a verdict.",
-  "card-long-unclear": "{move} against {alt}: {n} observations and no clear difference. Change the alternative or retire the card; the tries already made are no reason to keep it.",
-  "card-promising": "{move} against {alt}: {tier}, {n} observations. Worth one more week before believing it.",
   "church-morning": "Mornings after church read {with} against {without} on other mornings, {n} times. The recovery gap is a fact of the day, not of you.",
   "commitment-fading": "{name}: {before} sittings in the two weeks before, none in the last two. This is where a commitment is usually let go, and it is the cue that goes first, not the will. Pin the smallest sitting to a moment today.",
   "commitment-thinning": "{name}: none in the last seven days, after {before} the week before. One short sitting keeps the thread; pin it to a moment today.",
@@ -26,7 +24,6 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "necessities-missed": "{n} necessities missed in three days. That can be an early sign of a stretch; the smallest one first, before any move.",
   "nothing-holds": "Nothing extra was kept {done} of the {offered} times it was offered. Rest is a move; the mornings after say what it does.",
   "partly-honest": "Partly, {n} times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
-  "propose-test": "The library holds {grade} for {move}, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
   "say-when": "{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
   "short-night-today": "Sleep read “{word}” {when}. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
   "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
@@ -107,28 +104,6 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     "mode": "warning",
     "score": 0.68,
     "text": "After days with 200 mg or more of caffeine reported, sleep read about 40 minutes shorter the next night than after days with none (5 and 6 days, like for like on the sleep the day began with). An association in your record, not a verdict.",
-  },
-  "card-long-unclear": {
-    "action": null,
-    "cardIds": [
-      "sunk-cost",
-    ],
-    "factIds": [
-      "test.1",
-    ],
-    "mode": "challenge",
-    "score": 0.42,
-    "text": "A short walk against nothing extra: 12 observations and no clear difference. Change the alternative or retire the card; the tries already made are no reason to keep it.",
-  },
-  "card-promising": {
-    "action": null,
-    "cardIds": [],
-    "factIds": [
-      "test.2",
-    ],
-    "mode": "observation",
-    "score": 0.36,
-    "text": "A short walk against nothing extra: promising, 8 observations. Worth one more week before believing it.",
   },
   "church-morning": {
     "action": null,
@@ -365,23 +340,6 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     "mode": "perspective",
     "score": 0.6,
     "text": "Partly, 3 times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
-  },
-  "propose-test": {
-    "action": {
-      "block": "afternoon",
-      "kind": "test",
-      "moveId": "nap-ten",
-      "reading": "energy",
-    },
-    "cardIds": [
-      "naps-cognition",
-    ],
-    "factIds": [
-      "untested",
-    ],
-    "mode": "recommendation",
-    "score": 0.3825,
-    "text": "The library holds good evidence for A ten-minute nap, alarm set, and your record has never tested it. One tap sets the test against nothing extra; its card will say what your record finds.",
   },
   "say-when": {
     "action": {

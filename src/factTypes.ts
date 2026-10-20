@@ -82,4 +82,10 @@ export interface FactSheet {
   shortlist?: RankedLine[]
   /** When today's check-ins were completed, by block (Part 28): the Worker writes the day's line once the morning's is in. */
   checkedIn?: Partial<Record<'morning' | 'afternoon' | 'evening', string>>
+  /**
+   * When the learning engine could not read the record on the phone (the owner's requirement of 2026-10-20): how many
+   * times, the first and last day, and the error's name, never the record's content. No writer reads it; the Worker's
+   * report /run/engine shows it, so the builder sees a failure without the owner having to say.
+   */
+  engineFault?: { count: number; first: string; last: string; name: string }
 }

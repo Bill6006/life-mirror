@@ -190,21 +190,14 @@ export function readBrainPrefs(raw: unknown): BrainPrefsBody {
  * Nothing else; the phone checks again at the tap that it is still possible.
  */
 /**
- * The one tap a line may offer. A test carries what it tests (item 6): the reading and the part of
- * the day, as the untested fact says that move can be tested; absent only on taps from before.
+ * The one tap a line may offer: a plan for today, or a lighter check-in. A test set by a tap was the retired engine's (the
+ * owner's requirement of 2026-10-20): a past line's stays readable as it was written, and no line offers one again.
  */
 export type LineAction = { kind: 'plan'; aimId: number; cue: LineCue } | { kind: 'depth'; value: 'short' } | { kind: 'test'; moveId: string; reading?: string; block?: LineBlock }
 
 /** A part of the day, as a test names it. */
 export type LineBlock = 'morning' | 'afternoon' | 'evening'
 
-/** What the untested fact says a move can be tested on (item 6): the readings a test can measure among its targets, and the parts of the day it fits. */
-export function testsOf(sheet: FactSheet, moveId: string): { readings: string[]; blocks: string[] } | null {
-  const spec = sheet.facts.find((f) => f.id === 'untested')?.values[`tests_${moveId}`]
-  if (typeof spec !== 'string') return null
-  const [readings, blocks] = spec.split('@')
-  return { readings: (readings ?? '').split(',').filter(Boolean), blocks: (blocks ?? '').split(',').filter(Boolean) }
-}
 
 export interface BrainOutput {
   mode: Mode
@@ -273,7 +266,6 @@ export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:
  * its engine draws the moves and makes the calls. Gated while it was built, stage by stage (R1–R5 and R4b); stage R6 opened
  * it, the Worker first, once every stage was verified. Shared with the Worker, whose facts follow it.
  */
-export const LEARNING_REPAIR: 'gated' | 'open' = 'open'
 
 /**
  * Ask Life Mirror (agreed 2026-10-11; built from 2026-10-19 in four stages, A1 to A4): the owner's own questions about
@@ -321,7 +313,7 @@ export function evidenceWordingRefusal(text: string, factIds: readonly string[],
   return null
 }
 
-/** The learning repair's tests on the evidence ladder (stage R5): facts the phone sends only while the repair is on. */
+/** The learning engine's tests on the evidence ladder (stage R5): facts the phone sends while the engine reads the record. */
 export function isLadderFact(id: string): boolean {
   return id.startsWith('ladder.')
 }
@@ -588,17 +580,8 @@ export function validateAction(raw: unknown, sheet: FactSheet, forDay?: string, 
     if (a.value !== 'short' || cadence?.values.depth !== 'full') return { ok: false, reason: 'action depth: only to short, and only when the cadence fact says the depth is full' }
     return { ok: true, value: { kind: 'depth', value: 'short' } }
   }
-  if (a.kind === 'test') {
-    const untested = String(sheet.facts.find((f) => f.id === 'untested')?.values.moves ?? '').split(',')
-    if (typeof a.moveId !== 'string' || !untested.includes(a.moveId)) return { ok: false, reason: 'action test: moveId must be one the untested fact lists' }
-    // What it tests (item 6): a reading the untested fact says that move can be tested on, which the line itself speaks of and cites, in one of its parts of the day. A line whose subject cannot be tested offers no test.
-    const tests = testsOf(sheet, a.moveId)
-    if (!tests || typeof a.reading !== 'string' || !tests.readings.includes(a.reading)) return { ok: false, reason: `action test: reading must be one the untested fact says ${a.moveId} can test${tests ? ` (${tests.readings.join(', ')})` : ''}; if the line speaks of another, offer no test` }
-    if (typeof a.block !== 'string' || !tests.blocks.includes(a.block)) return { ok: false, reason: `action test: block must be a part of the day ${a.moveId} fits (${tests.blocks.join(', ')})` }
-    if (line && !line.factIds.some((id) => id.split('.').includes(a.reading as string))) return { ok: false, reason: `action test: the line does not cite a fact about ${a.reading}; a test measures what the line speaks of, so offer no test` }
-    return { ok: true, value: { kind: 'test', moveId: a.moveId, reading: a.reading, block: a.block as LineBlock } }
-  }
-  return { ok: false, reason: 'action kind must be plan, depth or test' }
+  // A test set by a tap was the retired engine's: every move is tested by the draw, so no line sets one.
+  return { ok: false, reason: 'action kind must be plan or depth' }
 }
 
 /** The shape of the day a line is written for, as the sheet knows it: its own day's, or tomorrow's when the sheet was built the day before. Null when the sheet does not know that day. */

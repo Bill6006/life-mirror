@@ -1,12 +1,11 @@
 import { BLOCKS, daysBetween, type Block } from './blocks'
 import { dayCaffeine, HABIT_DAYS, itemDays } from './caffeineRecord'
 import { families, hasMove, liveMoves, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
-import type { CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
+import type { CheckIn, DayContext, ForecastScore, Offer, Outcome } from './db'
 import { decayAfterStop, type Observation } from './observe'
 import { candidatesFor, reachableAnywhere, type Situation, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { INGREDIENT_IDS, INGREDIENTS, readingOf, type Band } from './score'
-import type { CardStats } from './tiers'
 import { necessitiesMissed } from './necessities'
 import { chipShownAt } from './chips'
 import { ownShownAt } from './ownChips'
@@ -38,16 +37,14 @@ export interface Scorecard {
   hitRate: number | null
   target: number
   averageMiss: number | null
-  declared: number
-  replicated: number
-  /** While the learning repair is on: its tests under way, and its calls resolved and held (requirement 15). */
+  /** The learning engine's tests under way, and its calls resolved and held (requirement 15); null when it failed. */
   repair: RepairTrack | null
   gaveBack: number
   checkins: number
   medianAnswerMs: Record<Block, number | null>
 }
 
-/** Forecast hit rate against the target, the average miss, experiments declared against replicated, check-ins that gave something back, answering time per block. */
+/** Forecast hit rate against the target, the average miss, the engine's tests and calls, check-ins that gave something back, answering time per block. */
 /** The learning repair's own count for the scorecard: its tests with fair draws on both sides, and its calls resolved and held. */
 export interface RepairTrack {
   underWay: number
@@ -55,11 +52,10 @@ export interface RepairTrack {
   held: number
 }
 
-export function scorecard(scores: readonly ForecastScore[], checkins: readonly CheckIn[], declarations: readonly Declaration[], stats: readonly CardStats[], repair: RepairTrack | null = null): Scorecard {
+export function scorecard(scores: readonly ForecastScore[], checkins: readonly CheckIn[], repair: RepairTrack | null): Scorecard {
   const dayAhead = scores.filter((s) => s.horizon === 1)
   const hits = dayAhead.filter((s) => s.hit).length
   const misses = dayAhead.filter((s) => !s.hit).map((s) => Math.abs(s.error))
-  const replicated = stats.filter((s) => s.declared && s.replication?.holds).length
   const complete = checkins.filter((c) => c.completedAt !== null)
   const medianAnswerMs = Object.fromEntries(BLOCKS.map((b) => [b, median(complete.filter((c) => c.block === b && c.activeMs > 0).map((c) => c.activeMs))])) as Record<Block, number | null>
   return {
@@ -67,8 +63,6 @@ export function scorecard(scores: readonly ForecastScore[], checkins: readonly C
     hitRate: dayAhead.length ? hits / dayAhead.length : null,
     target: TARGET_HIT_RATE,
     averageMiss: mean(misses),
-    declared: declarations.length,
-    replicated,
     repair,
     gaveBack: complete.length,
     checkins: checkins.length,
@@ -336,8 +330,8 @@ export interface PromptInputs {
   offers: readonly Offer[]
   outcomes: readonly Outcome[]
   health: readonly FamilyHealth[]
-  stats: readonly CardStats[]
-  cardMoves: ReadonlyMap<number, { moveId: string; situationKey: string }>
+  /** What the engine has settled helps: each move on its reading, at its rung; null while it cannot read the record. */
+  held: readonly { moveId: string; target: string; level: 'established' | 'likely' }[] | null
 }
 
 /** The extension prompt the app writes for itself: what runs short, what you never take, what the filters block, what held up. Private items are never named or implied. */
@@ -360,19 +354,13 @@ export function extensionPromptText(inputs: PromptInputs, template: string): str
     ...inputs.health.filter((h) => !h.reachable).map((h) => `${h.name}: ${h.blocker ?? 'no situation fits'}`),
     ...inputs.health.flatMap((h) => h.dead.map((d) => `${h.name}: ${d.name} (${d.blocker})`)),
   ]
-  const held = inputs.stats
-    .filter((s) => s.tier === 'holdsUp' || s.tier === 'promising')
-    .map((s) => {
-      const c = inputs.cardMoves.get(s.cardId)
-      return c && hasMove(c.moveId) ? `${moveById(c.moveId).name} in ${c.situationKey}: ${s.tier === 'holdsUp' ? 'holds up' : 'promising'}` : null
-    })
-    .filter((x): x is string => x !== null)
+  const held = (inputs.held ?? []).filter((h) => hasMove(h.moveId)).map((h) => `${moveById(h.moveId).name} on ${h.target}: ${h.level} helps`)
   const list = (xs: string[]) => (xs.length ? xs.join('; ') : 'none yet')
   return template
     .replace('{n}', String(Math.max(3, short.length + unreachable.length)))
     .replace('{situations: block, lowest reading, band, candidates left}', list(short))
     .replace('{moves: name, offered, done}', list(neverDone))
     .replace('{families: name, the filter that blocks them}', list(unreachable))
-    .replace('{moves: name, situation, tier}', list(held))
+    .replace('{moves: name, situation, tier}', inputs.held === null ? 'unknown: the learning engine could not read the record' : list(held))
 }
 

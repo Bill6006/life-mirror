@@ -4,11 +4,10 @@ import { CaffeineEvidenceCard } from './caffeineEvidence'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { fill, formatDayShort, formatWhen } from './format'
-import { evidence, type CardEvidence } from './learningFlow'
+import { evidence, type PassiveEvidence } from './evidenceFlow'
 import { useLive } from './live'
 import { NOTHING } from './offers'
 import { readingById } from './readings'
-import { MIN_PER_ARM } from './tiers'
 import { HARD_MEASURES } from './workouts'
 import { allCheckIns, db, getSettings } from './db'
 import { ownChipAnswer } from './ownChips'
@@ -18,22 +17,16 @@ import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
 import type { ComponentChildren } from 'preact'
 import { FAULT_SHOWN_DAYS, guardRepair, repairFaults } from './repair/breaker'
 import { repairEvidence } from './repair/evidence'
-import { useRepairOn } from './repair/gate'
+import { useEngineFailed } from './repair/gate'
 import { passiveTestReading, passiveTestRuns, passiveTestSince, startPassiveTest, testablePassive } from './repair/passive'
 import { RepairTests } from './repair/testsSection'
 import { missingNow } from './honesty/flow'
 import { leanOf, missingLine } from './honesty/words'
 import type { AskAboutThis } from './ask/askScreen'
 
-// Moves → Evidence: every active card with its tier, counts and interval; what the tags have
-// learned; the weight card; the observational associations; and the plain line about months
-// and uncertainty. Every number carries its register: facts plain, calculations behind a single
-// rule, conclusions behind a double rule with their tier.
-
-function steps(x: number): string {
-  const r = Math.round(x * 100) / 100
-  return `${r > 0 ? '+' : ''}${r.toFixed(2)}`
-}
+// Moves → Evidence: the learning engine's tests by rung, with its track record; the passive items' association words; the
+// weight card; the observational associations; and the plain line about months and uncertainty. Every number carries its
+// register: facts plain, calculations behind a single rule, conclusions behind a double rule with their rung or word.
 
 const pctOf = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
@@ -43,73 +36,35 @@ function nameOf(id: string): string {
   return hasMove(id) ? moveById(id).name : id
 }
 
-function CardBlock({ e, children }: { e: CardEvidence; children?: ComponentChildren }) {
+/** A passive item that rode alongside: its like-for-like association, in the word it allows, capped at Promising. */
+function PassiveBlock({ e, children }: { e: PassiveEvidence; children?: ComponentChildren }) {
   const c = copy.evidence
-  const { card, stats } = e
+  const { card, association } = e
   const target = readingById(card.target).name
   const window = copy.catalogue.windows[card.window as keyof typeof copy.catalogue.windows] ?? card.window
-  const origin = card.origin && card.origin !== 'app' ? c.origins[card.origin as keyof typeof c.origins] : null
   return (
-    <li class="move" data-testid="evidence-card" data-tier={stats.tier}>
+    <li class="move" data-testid="evidence-card" data-tier={e.tier}>
       <h3 class="move-name">{fill(c.against, { move: nameOf(card.moveId), alternative: nameOf(card.alternativeId) })}</h3>
-      <p class="move-meta">
-        {fill(c.forTarget, { target, window })}
-        {origin && ` · ${origin}`}
-      </p>
+      <p class="move-meta">{fill(c.forTarget, { target, window })}</p>
       <div class="conclusion" data-testid="tier">
-        <p class="calc-line ink">{c.tiers[stats.tier]}</p>
-        {e.association ? (
-          <>
-            <p class="calc-line" data-testid="passive-association">
-              {fill(c.passiveLine, { n: String(e.association.times), target, with: pctOf(e.association.withEvent.mean), without: pctOf(e.association.without.mean), k: String(e.association.withEvent.n), m: String(e.association.without.n) })}
-            </p>
-            <p class="calc-line">{c.associationNote}</p>
-          </>
-        ) : (
-          <>
-        <p class="calc-line">{fill(c.counts, { done: String(stats.n.done), doneAll: String(stats.n.doneAll), alternative: String(stats.n.alternative), alternativeAll: String(stats.n.alternativeAll) })}</p>
-        {stats.interval && (
-          <p class="calc-line">{fill(c.interval, { diff: steps(stats.interval.diff), lo: steps(stats.interval.lo), hi: steps(stats.interval.hi), level: String(Math.round(stats.interval.level * 100)) })}</p>
-        )}
-        {stats.estimator && (
-          <p class="calc-line" data-testid="estimator">
-            {c.estimators[stats.estimator]}
-          </p>
-        )}
-        {stats.estimator === 'adaptive' && stats.slice && <p class="calc-line">{fill(c.sliceLine, { done: String(stats.n.done), alternative: String(stats.n.alternative), diff: steps(stats.slice.diff), lo: steps(stats.slice.lo), hi: steps(stats.slice.hi) })}</p>}
-        {(card.origin === 'signFlip' || card.origin === 'import') && !(stats.n.done >= MIN_PER_ARM && stats.n.alternative >= MIN_PER_ARM) && <p class="calc-line">{c.scheduled}</p>}
-        {stats.declared && (
-          <p class="calc-line">
-            {fill(c.declared, { date: formatDayShort(stats.declared.at), done: String(stats.replication?.done ?? 0), alternative: String(stats.replication?.alternative ?? 0) })} · {stats.replication?.holds ? c.replicated : c.notReplicated}
-          </p>
-        )}
-          </>
-        )}
+        <p class="calc-line ink">{c.tiers[e.tier]}</p>
+        <p class="calc-line" data-testid="passive-association">
+          {fill(c.passiveLine, { n: String(association.times), target, with: pctOf(association.withEvent.mean), without: pctOf(association.without.mean), k: String(association.withEvent.n), m: String(association.without.n) })}
+        </p>
+        <p class="calc-line">{c.associationNote}</p>
       </div>
-      <div class="calc">
-        {stats.partlyMean !== null && <p class="calc-line">{fill(c.partly, { mean: steps(stats.partlyMean), n: String(stats.n.partly) })}</p>}
-        {e.belief && (
-          <p class="calc-line">
-            {fill(c.research, { mean: steps(e.belief.research.mean) })} · {e.belief.record ? fill(c.record, { mean: steps(e.belief.record.mean), n: String(Math.round(e.belief.record.n * 10) / 10) }) : c.noRecord}
-          </p>
-        )}
-        {e.energy && <p class="calc-line">{fill(c.energy, { mean: steps(e.energy.mean), n: String(e.energy.n) })}</p>}
-        {e.spill.length > 0 && <p class="calc-line">{fill(c.spill, { list: e.spill.map((s) => fill(c.spillItem, { reading: readingById(s.reading as never).name, mean: steps(s.mean), n: String(s.n) })).join(', ') })}</p>}
-        {e.decay && <p class="calc-line">{fill(c.decay, { days: String(e.decay.daysHeld), runs: String(e.decay.runs) })}</p>}
-      </div>
-      <p class="move-source">{fill(c.card, { id: String(card.id), date: formatWhen(card.createdAt) })}</p>
       {children}
+      <p class="move-source">{fill(c.card, { id: String(card.id), date: formatWhen(card.createdAt) })}</p>
     </li>
   )
 }
 
 /**
- * The learning repair (stage R4b): with it on, the passive items' cards keep their association words under "Rode alongside",
- * as R4's design said. Under one at Promising whose item the repair can test, with no test of it running, one line says what
+ * The passive items (stage R4b): their association words under "Rode alongside", as R4's design said. Under one at Promising whose item the repair can test, with no test of it running, one line says what
  * a test would do, with one tap to set it ("a one-tap test proposed when an association turns Promising", agreed
  * 2026-10-09); while one runs, the line says so.
  */
-function AlongsideCards({ cards, today }: { cards: readonly CardEvidence[]; today: string }) {
+function AlongsideCards({ cards, today }: { cards: readonly PassiveEvidence[]; today: string }) {
   const settings = useLive(getSettings, [])
   const ev = useLive(() => guardRepair(today, () => repairEvidence(today), null), [today])
   if (cards.length === 0 || !settings || !ev) return null
@@ -123,9 +78,9 @@ function AlongsideCards({ cards, today }: { cards: readonly CardEvidence[]; toda
             const since = passiveTestSince(settings, e.card.moveId, today)
             const runs = since !== null && passiveTestRuns(settings, e.card.moveId, today, ev.shown)
             const at = passiveTestReading(e.card.moveId)
-            const offer = !runs && e.stats.tier === 'promising' && testablePassive(e.card.moveId) && at !== null
+            const offer = !runs && e.tier === 'promising' && testablePassive(e.card.moveId) && at !== null
             return (
-              <CardBlock key={e.card.id} e={e}>
+              <PassiveBlock key={e.card.id} e={e}>
                 {runs && since && (
                   <p class="note no-gap passive-test" data-testid="passive-test-running">
                     {fill(r.testRunning, { date: formatDayShort(since) })}
@@ -141,7 +96,7 @@ function AlongsideCards({ cards, today }: { cards: readonly CardEvidence[]; toda
                     </div>
                   </div>
                 )}
-              </CardBlock>
+              </PassiveBlock>
             )
           })}
         </ul>
@@ -237,8 +192,8 @@ function WeatherEvidence({ today }: { today: string }) {
 }
 
 /**
- * The learning repair's breaker (stage R6): when a rebuild of the record threw on this phone in the last four weeks, one
- * quiet line says so, and that the suggestions after it were drawn the earlier way until the app was opened again.
+ * When the engine could not read the record on this phone in the last four weeks, one quiet line says so, and that no move
+ * was offered until the app was opened again: nothing draws in its place (the owner's requirement of 2026-10-20).
  */
 function RepairFaultLine({ today }: { today: string }) {
   const f = repairFaults()
@@ -255,9 +210,9 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
   const today = blockAt(new Date()).day
   const ev = useLive(() => evidence(today), [today])
   const c = copy.evidence
-  // The learning repair (stage R4): its tests by rung on the evidence ladder, with its track record, in place of the cards.
-  // Its breaker (R6) closes it for the session if a rebuild throws, and the screen then redraws as before the switch.
-  const repair = useRepairOn()
+  // The engine's tests by rung on the evidence ladder, with its track record. If it cannot read the record this session,
+  // the screen says so in their place; nothing older shows instead.
+  const failed = useEngineFailed()
   const r = copy.repairEvidence
   // Requirement 13 (stage R7): when what goes missing follows how you were or the day, the estimates here say so.
   const missing = useLive(() => missingNow(today), [today])
@@ -268,11 +223,11 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
     <section class="screen catalogue" data-testid="evidence">
       <header class="screen-head">
         <p class="eyebrow">{c.title}</p>
-        <p class="date">{fill(c.observationsLine, { n: String(ev.observations), weeks: String(ev.weeks) })}</p>
+        <p class="date">{fill(c.weeksLine, { weeks: String(ev.weeks) })}</p>
       </header>
-      <p class="note">{repair ? r.intro : c.intro}</p>
-      <p class="note faint">{repair ? r.register : c.register}</p>
-      <p class="note faint">{repair ? r.rungsNote : copy.movesTab.tiersNote}</p>
+      <p class="note">{r.intro}</p>
+      <p class="note faint">{r.register}</p>
+      <p class="note faint">{r.rungsNote}</p>
       <RepairFaultLine today={today} />
       {missing && missing.relations.length > 0 && (
         <p class="note" data-testid="missing-pattern">
@@ -280,27 +235,14 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
         </p>
       )}
 
-      {repair ? (
-        <>
-          <RepairTests today={today} onAsk={onAsk} />
-          <AlongsideCards cards={ev.cards.filter((e) => e.card.origin === 'passive')} today={today} />
-        </>
+      {failed ? (
+        <p class="note" data-testid="engine-failed">
+          {r.failedNow}
+        </p>
       ) : (
-        <>
-          <h2 class="section">{c.cards}</h2>
-          {ev.cards.length === 0 ? (
-            <p class="note">{c.none}</p>
-          ) : (
-            <div class="card">
-              <ul class="moves">
-                {ev.cards.map((e) => (
-                  <CardBlock key={e.card.id} e={e} />
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
+        <RepairTests today={today} onAsk={onAsk} />
       )}
+      <AlongsideCards cards={ev.passives} today={today} />
 
       <PathEvidence />
 
@@ -308,27 +250,10 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
       <div class="card pad">
         <div class="calc">
           <p class="calc-line" data-testid="nothing-line">
-            {fill(repair ? r.nothingLine : c.nothingLine, { offered: String(ev.nothing.offered), done: String(ev.nothing.done), skipped: String(ev.nothing.skipped) })}
+            {fill(r.nothingLine, { offered: String(ev.nothing.offered), done: String(ev.nothing.done), skipped: String(ev.nothing.skipped) })}
           </p>
         </div>
       </div>
-
-      {/* Today's tag lending, which requirement 7's one belief model replaces: while the repair is on, the tags' part sits
-          inside each test's pooled belief, and this section is not shown (R6). */}
-      {!repair && (
-        <>
-          <h2 class="section">{c.tagsTitle}</h2>
-          <div class="card pad" data-testid="tags-learned">
-            <div class="calc">
-              {ev.tags.map((t) => (
-                <p key={t.id} class="calc-line">
-                  {fill(c.tagLine, { name: copy.catalogue.tagNames[t.id as keyof typeof copy.catalogue.tagNames] ?? t.id, research: steps(t.research.mean), record: t.record ? steps(t.record.mean) : c.tagNone, n: String(Math.round((t.record?.n ?? 0) * 10) / 10) })}
-                </p>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
 
       <h2 class="section">{c.weights}</h2>
       <div class="card pad">

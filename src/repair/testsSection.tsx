@@ -9,9 +9,9 @@ import { rungWords } from './words'
 import { askOn } from '../ask/gate'
 import type { AskAboutThis } from '../ask/askScreen'
 
-// Moves → Evidence while the learning repair is on (stage R4): it opens with what helps you and the tests nearest
-// finishing (part 2), then the engine's own track record (requirement 15) and each test with its rung on the evidence
-// ladder in place of the tiers (requirement 8). Facts plain, calculations behind a single rule, conclusions behind a
+// Moves → Evidence, from the learning engine (stage R4): it opens with what helps you and the tests nearest finishing
+// (part 2), then the engine's own track record (requirement 15) and each test with its rung on the evidence ladder
+// (requirement 8). Facts plain, calculations behind a single rule, conclusions behind a
 // double rule with their rung, as the rest of Evidence.
 
 function steps(x: number): string {
@@ -135,7 +135,7 @@ function HelpsBlock({ ev }: { ev: RepairEvidence }) {
 
 /** What helps you, the track record and the tests, in place of the cards. */
 export function RepairTests({ today, onAsk }: { today: string; onAsk?: (about: AskAboutThis) => void }) {
-  // A rebuild that throws trips the repair's breaker (R6): nothing here, and Evidence redraws as before the switch.
+  // A rebuild that throws keeps the engine's failure: nothing here, and Evidence says it failed (no fallback, 2026-10-20).
   const ev = useLive(() => guardRepair(today, () => repairEvidence(today), null), [today])
   if (!ev) return null
   const c = copy.repairEvidence

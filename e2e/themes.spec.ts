@@ -1782,7 +1782,6 @@ for (const theme of THEMES) {
  * The invitation first, never answered; then Yes, and the running week with its Details open.
  */
 async function seedLearningWeek(page: Page, { days = 10, effect = false }: { days?: number; effect?: boolean } = {}): Promise<void> {
-  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '1'))
   await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
@@ -1949,7 +1948,6 @@ for (const theme of THEMES) {
  * the proposal, then, once tapped, the line that says the test runs.
  */
 async function seedGapRecord(page: Page): Promise<void> {
-  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '1'))
   await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')

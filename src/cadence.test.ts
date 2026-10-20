@@ -3,13 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { activeAims, addAim, addLearning, logSession, pauseAim, planAim, resumeAim, setRhythm, setSchedule, studyAims } from './aimFlow'
 import { stepFor } from './aims'
 import { factSheet } from './brainFlow'
-import { moveById } from './catalogue'
 import { db, ensureDayContext, getSettings, type Aim } from './db'
 import { recordDoneNow } from './offerFlow'
 import { mayNudge, validateAction } from './brainShared'
 import { factById, type Fact, type FactSheet } from './facts'
 import { rankLines } from './situations'
-import { closeRepair } from './repair/testGate'
 
 // Workstream 6, Part 39: the sheet says each commitment's rhythm or fixed days and what they make of
 // today; a paused one says nothing; the phone's own lines never nudge a rest day, a week whose
@@ -104,20 +102,15 @@ describe('rhythm on the sheet', () => {
     expect(rankLines(counted, [], []).filter((c) => c.factIds.includes(f.id)).map((c) => c.situationId)).toEqual([])
   })
 
-  it('never proposes a test of a faith move: a test offers it more often (stage 1, item g)', async () => {
+  it('never proposes a test of any move, a faith move among them: the draw tests every move from the first day', async () => {
     for (let d = 1; d <= 15; d++) {
       const day = `2026-09-${String(d).padStart(2, '0')}`
       await db.checkins.add({ day, block: 'evening', answers: { mood: 3 }, startedAt: `${day}T23:00:00.000Z`, completedAt: `${day}T23:01:00.000Z`, updatedAt: `${day}T23:01:00.000Z`, activeMs: 60_000 })
     }
-    // Under the learning repair no test is proposed at all: its draw tests every move from the first day (R6).
-    expect(factById(await factSheet(DAY, NOW), 'untested')).toBeUndefined()
-    // Today's engine, its fallback, proposes tests: the repair closed, as the browser tests set it.
-    closeRepair()
-    const untested = factById(await factSheet(DAY, NOW), 'untested')
-    const moves = String(untested?.values.moves ?? '').split(',').filter(Boolean)
-    expect(moves.length).toBeGreaterThan(0)
-    for (const m of moves) expect(moveById(m).family === 'faith' || moveById(m).hiddenWith === 'faith', m).toBe(false)
-    expect(untested?.text).not.toMatch(/prayer|verse|scripture|God/i)
+    // The old engine's test proposals were retired with it (the owner's requirement of 2026-10-20).
+    const sheet = await factSheet(DAY, NOW)
+    expect(sheet.facts.length).toBeGreaterThan(0)
+    expect(factById(sheet, 'untested')).toBeUndefined()
   })
 
   it('tags a practice that is not faith as a habit, never as faith (stage 1, item g)', async () => {

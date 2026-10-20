@@ -54,7 +54,7 @@ describe('the scorecard', () => {
     const score = (day: string, hit: boolean, error: number): ForecastScore => ({ day, block: 'evening', horizon: 1, model: 'sameBlock', point: 50, lo: 45, hi: 55, actual: 50 + error, error, hit, scoredOn: TODAY })
     const scores = [score('2026-09-20', true, 2), score('2026-09-21', false, 12), score('2026-09-22', true, -3), { ...score('2026-09-23', false, 30), horizon: 3 }]
     const checkins = [ci('2026-09-20', 'morning', 3, 10_000), ci('2026-09-20', 'evening', 3, 20_000), { ...ci('2026-09-21', 'morning', 3, 5_000), completedAt: null }]
-    const sc = scorecard(scores, checkins, [], [])
+    const sc = scorecard(scores, checkins, null)
     expect(sc.scored).toBe(3)
     expect(sc.hitRate).toBeCloseTo(2 / 3, 10)
     expect(sc.target).toBe(0.6)
@@ -156,7 +156,7 @@ describe('catalogue health and the extension prompt', () => {
   it('writes the extension prompt from the record and never names a private item', () => {
     const offers = [1, 2, 3].map((i) => offer(i, addDays(TODAY, -i), 'cyclic-sigh', 'evening:stress', 'evening', 'stress'))
     const health = catalogueHealth(offers, [], [situation])
-    const text = extensionPromptText({ situations: [situation], offers, outcomes: [], health, stats: [], cardMoves: new Map() }, extensionPrompt.template)
+    const text = extensionPromptText({ situations: [situation], offers, outcomes: [], health, held: [] }, extensionPrompt.template)
     expect(text).toContain('THE RULES')
     expect(text).toContain('Five minutes of cyclic sighing: offered 3, done 0')
     expect(text).toContain('Money: target')

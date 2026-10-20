@@ -1,7 +1,4 @@
-import { hasMove } from './catalogue'
 import type { Fact, FactSheet } from './facts'
-import { testOf } from './hypothesis'
-import { admitted } from './library'
 
 // Test fixtures, never imported by the app: for each of the judgment engine's situations, the
 // smallest fact sheet that makes it true. The firmness tests (Pass 2) render every situation this
@@ -16,12 +13,6 @@ export function sheetOf(facts: Fact[], hour = 8, day = DAY, days = 22): FactShee
 const today = (weekday = 'Friday'): Fact => ({ id: 'week.today', tags: [], text: `Today is ${weekday}.`, values: { weekday, bedtime: '20:00', hour: 8 } })
 const aim = (values: Record<string, number | string | null> = {}): Fact => ({ id: 'aim.1', tags: ['study'], text: '', values: { kind: 'certification', name: 'Orrish', step: 'Twenty words', skill: 'Twenty words', minutes: 10, gapDays: null, blocked: null, plan: null, planStarted: 0, open: 0, doneToday: 0, skills: 1, ...values } })
 const fact = (id: string, values: Record<string, number | string | null>, extra: Partial<Fact> = {}): Fact => ({ id, tags: [], text: '', values, ...extra })
-
-/** A move an admitted card names and the catalogue holds: the propose-test situation needs one. */
-function testableMove(): string {
-  for (const c of admitted()) for (const m of c.moves ?? []) if (hasMove(m) && testOf(m)) return m
-  throw new Error('no admitted card names a catalogue move')
-}
 
 /** Each situation's smallest true sheet. */
 export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
@@ -40,8 +31,6 @@ export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
   'say-when': () => sheetOf([today(), aim()]),
   'afternoon-walk': () => sheetOf([today(), fact('usual.afternoon', { point: 40 })]),
   'partly-honest': () => sheetOf([today(), fact('offers.7d', { partly: 3 })]),
-  'card-long-unclear': () => sheetOf([today(), fact('test.1', { n: 12, move: 'A short walk', alternative: 'nothing extra' }, { tier: 'unclear' })]),
-  'card-promising': () => sheetOf([today(), fact('test.2', { n: 8, move: 'A short walk', alternative: 'nothing extra' }, { tier: 'promising' })]),
   'caffeine-late': () => sheetOf([today(), fact('caffeine.late', { when: 'today', band: '200 mg or more', block: 'afternoon', time: '3:10 PM', mg: 400, hours: 6 })]),
   'church-morning': () => sheetOf([today(), fact('lastNight', { key: 'churchDay', with: 48, without: 60, n: 4 })]),
   'steady-moving': () => sheetOf([today(), fact('steady', { inside: 5, of: 6 }), aim({ gapDays: 2 })]),
@@ -58,5 +47,4 @@ export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
   'loop-open': () => sheetOf([today(), aim(), fact('followup', { aimId: 1, about: 'Orrish', planned: 0, started: 0, done: 0, changed: 0 })]),
   'short-night-today': () => sheetOf([today(), fact('today.shortSleep', { word: 'Short' })]),
   'short-sleep-afternoons': () => sheetOf([today(), fact('assoc.shortSleep', { times: 4, diff: -5 })]),
-  'propose-test': () => sheetOf([today(), fact('untested', { moves: testableMove() })]),
 }

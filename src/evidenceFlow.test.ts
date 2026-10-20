@@ -1,45 +1,30 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db, type CheckIn, type Offer } from './db'
-import { beliefsFor, bigSocialToday, evidence, knowsCounts, runLearning, tierOfCard } from './learningFlow'
+import { bigSocialToday, evidence, movesTried } from './evidenceFlow'
 import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
-// The daily run on the phone: the null offer earns a belief in its situation once it was kept
-// to, so the draw can learn to pick it; and a big social day is known only from that day's own
-// mark, so the recovery gap never states its premise on another day (the final checklist).
+// The record on the phone: Evidence counts the null offer, and a big social day is known only from that day's own mark,
+// so the recovery gap never states its premise on another day (the final checklist).
 
 const allAt = (ids: readonly ReadingId[], p: Position): Answers => Object.fromEntries(ids.map((id) => [id, p]))
 const ci = (day: string, block: CheckIn['block'], p: Position, over: Partial<Answers> = {}): CheckIn => ({ day, block, answers: { ...allAt(blockReadings(block), p), ...over }, startedAt: '', completedAt: 'x', updatedAt: '', activeMs: 30_000 })
 
-describe('the daily run and the null offer', () => {
+describe('the null offer and the big social day', () => {
   beforeEach(async () => {
     await db.delete()
     await db.open()
   })
 
-  it('gives the null offer a belief in its situation once it was kept to, and counts it on the Evidence screen', async () => {
+  it('counts the null offer kept to on the Evidence screen', async () => {
     // Three earlier mornings at the middle, so the morning forecast for mood is 3; kept to on the 10th, the morning after reads 4.
     await db.checkins.bulkAdd([ci('2026-09-07', 'morning', 3), ci('2026-09-08', 'morning', 3), ci('2026-09-09', 'morning', 3), ci('2026-09-11', 'morning', 3, { mood: 4 })])
     const offer: Offer = { kind: 'block', day: '2026-09-10', block: 'evening', at: '2026-09-10T20:00:00.000Z', situationKey: 'evening:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: NOTHING, cardId: null, candidates: [NOTHING], coinFlip: true, passiveId: null, whyNot: null, skippedAt: null, closedAt: null }
     const id = await db.offers.add(offer)
     await db.outcomes.add({ offerId: id, moveId: NOTHING, day: '2026-09-11', block: 'morning', at: '', outcome: 'done', why: null, passiveOutcome: null })
-    await runLearning('2026-09-11', true)
-    const row = await db.beliefs.get(['evening:mood', NOTHING])
-    expect(row?.recordN).toBeGreaterThan(0)
-    expect(row?.mean).toBeGreaterThan(0)
-    const beliefs = await beliefsFor('evening:mood', [NOTHING])
-    expect(beliefs(NOTHING).n).toBeGreaterThan(0)
     const ev = await evidence('2026-09-11')
     expect(ev.nothing).toEqual({ offered: 1, done: 1, skipped: 0 })
-  })
-
-  it('reads a card’s tier as Evidence shows it, never a fixed word, and nothing for a card that is gone (Part 33)', async () => {
-    const id = (await db.cards.add({ createdAt: '2026-09-10T20:00:00.000Z', situationKey: 'evening:mood', block: 'evening', target: 'mood', moveId: 'walk-ten', alternativeId: NOTHING, window: 'nextBlock', worthwhile: 1, origin: 'app' })) as number
-    const shown = (await evidence('2026-09-11')).cards.find((c) => c.card.id === id)?.stats.tier
-    expect(await tierOfCard(id, '2026-09-11')).toBe(shown)
-    expect(shown).toBe('little')
-    expect(await tierOfCard(id + 99, '2026-09-11')).toBeNull()
   })
 
   it('knows a big social day only from that day’s own mark: never the day after, and never a church day by itself (the final checklist)', async () => {
@@ -61,15 +46,14 @@ describe('Now’s “how much it knows” line, counted from the record (stage 1
     await db.open()
   })
 
-  it('counts the moves done or partly done at least once, never Nothing extra or a No, and the tests set', async () => {
-    expect(await knowsCounts()).toEqual({ tried: 0, tests: 0 })
+  it('counts the moves done or partly done at least once, never Nothing extra or a No', async () => {
+    expect(await movesTried()).toBe(0)
     const out = (offerId: number, moveId: string, outcome: 'done' | 'partly' | 'no') => db.outcomes.add({ offerId, moveId, day: '2026-09-10', block: 'afternoon', at: '2026-09-10T18:00:00.000Z', outcome, why: null, passiveOutcome: null })
     await out(1, 'walk-ten', 'done')
     await out(2, 'walk-ten', 'partly')
     await out(3, 'green-walk', 'partly')
     await out(4, 'dim-lights-hour', 'no')
     await out(5, NOTHING, 'done')
-    await db.cards.add({ createdAt: '2026-09-10T18:00:00.000Z', situationKey: 'afternoon:mood', block: 'afternoon', target: 'mood', moveId: 'walk-ten', alternativeId: NOTHING, window: 'nextBlock', worthwhile: 1 })
-    expect(await knowsCounts()).toEqual({ tried: 2, tests: 1 })
+    expect(await movesTried()).toBe(2)
   })
 })

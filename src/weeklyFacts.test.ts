@@ -10,7 +10,7 @@ import type { HonestyChecks } from './honesty/checks'
 // its own, filed by the Worker under that switch; the Partner path's reps never; no tags, so the
 // library's cards are drawn as before.
 
-const SCORE: Scorecard = { scored: 20, hitRate: 0.65, target: 0.6, averageMiss: 7.34, declared: 2, replicated: 1, repair: null, gaveBack: 40, checkins: 42, medianAnswerMs: { morning: 41_200, afternoon: 29_600, evening: null } }
+const SCORE: Scorecard = { scored: 20, hitRate: 0.65, target: 0.6, averageMiss: 7.34, repair: { underWay: 2, resolved: 1, held: 1 }, gaveBack: 40, checkins: 42, medianAnswerMs: { morning: 41_200, afternoon: 29_600, evening: null } }
 const health = (family: string, name: string, over: Partial<FamilyHealth> = {}): FamilyHealth => ({ family, name, live: 4, offered: 6, done: 2, reachable: true, blocker: null, dead: [], ...over })
 const BASE: WeeklyAnalyses = {
   scorecard: SCORE,
@@ -30,7 +30,7 @@ describe('the weekly facts', () => {
       gap: { days: 30, typical: 52, good: 61, best: 74, howOften: 0.3, lastGoodDaysAgo: 2 },
       moved: { reading: { thisWeek: 55.34, lastWeek: 52.01, delta: 3.33 }, ingredients: [{ reading: 'stress', thisWeek: 2.5, lastWeek: 3, delta: 0.5 }, { reading: 'mood', thisWeek: 3, lastWeek: 3.25, delta: -0.25 }, { reading: 'focus', thisWeek: 3, lastWeek: 3.002, delta: -0.002 }] },
     })
-    expect(f.get('weekly.scorecard')?.text).toBe('The scorecard, from the weekly view: forecast hit rate 65 percent against a target of 60, over 20 day-ahead forecasts; average miss 7.3 points; experiments declared 2, replicated 1; check-ins that gave something back: 40 of 42; median answering time: morning 41 s, afternoon 30 s, evening none yet.')
+    expect(f.get('weekly.scorecard')?.text).toBe("The scorecard, from the weekly view: forecast hit rate 65 percent against a target of 60, over 20 day-ahead forecasts; average miss 7.3 points; the learning repair's tests under way 2, calls resolved 1, held 1; check-ins that gave something back: 40 of 42; median answering time: morning 41 s, afternoon 30 s, evening none yet.")
     expect(f.get('weekly.gap')?.text).toBe('The gap, from the weekly view, over 30 days with two logged blocks: typical 52 (the median day), good 61 (the top quarter’s floor), best 74 (the top tenth’s average); good days 30 percent of them, the last one 2 days ago.')
     // Each reading in its own direction: Stress down is better, Mood down is worse.
     expect(f.get('weekly.moved')?.text).toBe('What moved this week, from the weekly view, the last seven days against the seven before: the reading 55.3 against 52 (+3.3 points); Stress down 0.5 steps, better; Mood down 0.25 steps, worse; Focus no change.')
@@ -38,7 +38,7 @@ describe('the weekly facts', () => {
 
   it('say what is not there yet, and what each rests on', () => {
     const f = byId({ ...BASE, scorecard: { ...SCORE, scored: 0, hitRate: null, averageMiss: null } })
-    expect(f.get('weekly.scorecard')?.text).toMatch(/^The scorecard, from the weekly view: no day-ahead forecast scored yet; experiments declared 2/)
+    expect(f.get('weekly.scorecard')?.text).toMatch(/^The scorecard, from the weekly view: no day-ahead forecast scored yet; the learning repair's tests under way 2/)
     expect(f.get('weekly.gap')?.text).toBe('The gap, from the weekly view, appears after seven days with two logged blocks: 5 so far.')
     expect(f.get('weekly.moved')?.text).toBe('What moved this week, from the weekly view, needs two weeks of record.')
     expect(f.get('weekly.best')?.text).toBe('Best-days, from the weekly view, stays silent until twenty days with two logged blocks: 12 so far.')
@@ -108,10 +108,13 @@ describe('the weekly facts', () => {
     }
   })
 
-  it('say the learning repair’s count on the scorecard while it is on, in place of the experiments declared (stage R7)', () => {
+  it('say the learning engine’s count on the scorecard, and when it could not read the record, never an older count', () => {
     const f = byId({ ...BASE, scorecard: { ...SCORE, repair: { underWay: 5, resolved: 3, held: 2 } } })
     expect(f.get('weekly.scorecard')?.text).toContain("the learning repair's tests under way 5, calls resolved 3, held 2;")
     expect(f.get('weekly.scorecard')?.text).not.toContain('experiments declared')
+    const failed = byId({ ...BASE, scorecard: { ...SCORE, repair: null } })
+    expect(failed.get('weekly.scorecard')?.text).toContain('the learning engine could not read the record;')
+    expect(failed.get('weekly.scorecard')?.values).toMatchObject({ engineFailed: 1 })
     expect(numbersRefusal(f.get('weekly.scorecard')?.text ?? '', { facts: [...f.values()] } as FactSheet, ['weekly.scorecard'])).toBeNull()
   })
 })

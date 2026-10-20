@@ -9,11 +9,11 @@ import { allCheckIns, answeredCount, answerWin, askedOf, ensureDayContext, getSe
 import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon } from './icons'
 import { useLive } from './live'
-import { knowsCounts } from './learningFlow'
+import { movesTried } from './evidenceFlow'
 import { MoveCard } from './moveCard'
 import { guardRepair } from './repair/breaker'
 import { repairEvidence } from './repair/evidence'
-import { useRepairOn } from './repair/gate'
+import { useEngineFailed } from './repair/gate'
 import { WeekLine } from './repair/weekLine'
 import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
@@ -98,16 +98,15 @@ function Status({ windows, today, onOpen, onCheckIn }: { windows: readonly Today
 }
 
 /**
- * How much the moves know: one line, and how they pick one tap behind it. While the learning repair is on (R6), the words
- * behind the tap describe its draw, and its tests are those with fair draws on both sides; the line itself holds for both.
+ * How much the moves know: one line, and how they pick one tap behind it: the words behind the tap describe the learning
+ * engine's draw (R6), and its tests are those with fair draws on both sides.
  */
-function Knows({ weeks, counts, day }: { weeks: number; counts: { tried: number; tests: number } | undefined; day: string }) {
+function Knows({ weeks, tried: triedIn, day }: { weeks: number; tried: number | undefined; day: string }) {
   const c = copy.move
-  const repair = useRepairOn()
-  const underWay = useLive(() => (repair ? guardRepair(day, () => repairEvidence(day).then((ev) => ev.shown.length + ev.quiet.length), null) : Promise.resolve(null)), [repair, day])
+  const underWay = useLive(() => guardRepair(day, () => repairEvidence(day).then((ev) => ev.shown.length + ev.quiet.length), null), [day])
   const w = weeks === 1 ? c.weeksOne : fill(c.weeksMany, { n: String(weeks) })
-  const tried = counts?.tried ?? 0
-  const tests = repair ? (underWay ?? 0) : (counts?.tests ?? 0)
+  const tried = triedIn ?? 0
+  const tests = underWay ?? 0
   const basis = tried === 0 ? c.knowsResearch : tried === 1 ? c.knowsCorrectedOne : fill(c.knowsCorrected, { n: String(tried) })
   const [lead, rest] = fill(c.knowsShort, { weeks: w, basis }).split(' · ')
   return (
@@ -115,17 +114,11 @@ function Knows({ weeks, counts, day }: { weeks: number; counts: { tried: number;
       <Facts items={[lead, rest]} />
       <Disclosure label={copy.disclose.knowsMore} testid="knows-more">
         <p class="note faint no-gap">
-          {repair
-            ? fill(c.knowsRepair, {
-                weeks: w,
-                tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
-                tests: tests === 0 ? c.knowsUnderWayNone : tests === 1 ? c.knowsUnderWayOne : fill(c.knowsUnderWayN, { n: String(tests) }),
-              })
-            : fill(c.knows, {
-                weeks: w,
-                tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
-                tests: tests === 0 ? c.knowsTestsNone : tests === 1 ? c.knowsTestsOne : fill(c.knowsTestsN, { n: String(tests) }),
-              })}
+          {fill(c.knowsRepair, {
+            weeks: w,
+            tried: tried === 0 ? c.knowsTriedNone : tried === 1 ? c.knowsTriedOne : fill(c.knowsTriedN, { n: String(tried) }),
+            tests: tests === 0 ? c.knowsUnderWayNone : tests === 1 ? c.knowsUnderWayOne : fill(c.knowsUnderWayN, { n: String(tests) }),
+          })}
         </p>
       </Disclosure>
     </div>
@@ -239,7 +232,9 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { o
     if (settings) void ensureDayContext(today.day, settings)
   }, [settings?.updatedAt, today.day])
   const win = useLive(() => winFor(today.day), [today.day])
-  const knows = useLive(knowsCounts, [])
+  const tried = useLive(movesTried, [])
+  // The owner's requirement of 2026-10-20: if the engine cannot read the record, no move is offered, and Now says so.
+  const failed = useEngineFailed()
   const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
   const pickup = useLive(() => pickupOfferNow(new Date()), [today.day, today.block, tick])
   const pending = useLive(pendingOffers, [])
@@ -315,8 +310,13 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { o
       {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6),
           and with nothing to tap it keeps to its name and when it was offered, the rest one tap away (final UI polish, 2026-09-26). */}
       {!settings.hideMoves && offer && <MoveCard offer={offer} onSkip={offer === here ? (reason) => void skipOffer(offer, reason ?? null) : undefined} waiting={offer !== here} />}
+      {!settings.hideMoves && failed && !offer && (
+        <p class="note" data-testid="engine-failed-now">
+          {copy.move.engineFailed}
+        </p>
+      )}
       {!settings.hideMoves && <WeekLine day={today.day} />}
-      {!settings.hideMoves && <Knows weeks={weeks ?? 0} counts={knows} day={today.day} />}
+      {!settings.hideMoves && <Knows weeks={weeks ?? 0} tried={tried} day={today.day} />}
 
       <ContextChips all={all} today={today.day} index={1} />
 

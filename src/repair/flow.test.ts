@@ -1,15 +1,13 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 // The repair's switch opened for these tests alone: in the app it stays gated until stage R6.
-vi.mock('../brainShared', async (importOriginal) => ({ ...(await importOriginal<typeof import('../brainShared')>()), LEARNING_REPAIR: 'open' }))
 
 import { addDays, type Block } from '../blocks'
 import { RECOVERY_GAP } from '../catalogue'
 import { db, ensureDayContext, getSettings, saveAnswer, updateSettings, type Offer } from '../db'
 import { ensureOffer, recordOutcome, skipOffer, syncRecoveryGap } from '../offerFlow'
 import { NOTHING } from '../offers'
-import { ENGINE_VERSION } from '../provenance'
 import { blockReadings, type Position } from '../readings'
 import { answerWeek, repairRecord } from './flow'
 import { buildEngine, isDraw, REPAIR_ENGINE } from './record'
@@ -84,7 +82,7 @@ describe('the repair draws at a check-in', () => {
     expect(b.propensities).toEqual(a.propensities)
   })
 
-  it('a replacement after a skip stays today’s, drawn among real moves alone, and is never read as a comparison', async () => {
+  it('a replacement after a skip is drawn by the new engine among real moves alone, every chance kept, and is never read as a comparison', async () => {
     const settings = await getSettings()
     await ensureDayContext(START, settings)
     await answer(START, 'morning', 2)
@@ -97,8 +95,9 @@ describe('the repair draws at a check-in', () => {
     expect(first.moveId).not.toBe(NOTHING)
     const replacement = (await skipOffer(first)) as Offer
     expect(replacement).not.toBeNull()
-    expect(replacement.draw?.engine).toBe(ENGINE_VERSION)
+    expect(replacement.draw?.engine).toBe(REPAIR_ENGINE)
     expect(replacement.candidates).not.toContain(NOTHING)
+    expect(Object.values(replacement.propensities ?? {}).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9)
     expect(isDraw(replacement)).toBe(false)
   })
 })

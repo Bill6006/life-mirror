@@ -12,7 +12,6 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     try {
       localStorage.setItem('lm.inStep', '1')
-      localStorage.setItem('life-mirror.preview.learningRepair', '1')
     } catch {
       // A page without local storage stays closed.
     }
@@ -89,7 +88,7 @@ async function seedRepairRecord(page: Page, days: number, effect = false): Promi
 }
 
 /** Today's offers as the phone holds them. */
-async function offersOf(page: Page, day: string): Promise<{ moveId: string; candidates: string[]; propensities: Record<string, number>; draw?: { engine: string } }[]> {
+async function offersOf(page: Page, day: string): Promise<{ id: number; kind: string; moveId: string; candidates: string[]; propensities: Record<string, number>; draw?: { engine: string } }[]> {
   return page.evaluate(async (d) => {
     const dbx = await new Promise<IDBDatabase>((res, rej) => {
       const r = indexedDB.open('life-mirror')
@@ -141,6 +140,62 @@ test('the repair draws a check-in’s move from the record, keeping every chance
   expect(Object.values(offer.propensities).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9)
 })
 
+test('a skip’s replacement is drawn by the new engine, among real moves alone, the skipped one left out (2026-10-20)', async ({ page }) => {
+  await start(page)
+  await seedRepairRecord(page, 10)
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  for (let i = 0; i < 40; i++) {
+    if (await page.getByTestId('give-back').isVisible()) break
+    if (await page.getByTestId('extras').isVisible()) break
+    if (await page.locator('#ci-title').isVisible()) await page.getByTestId('anchor').nth(1).click({ timeout: 3000 }).catch(() => {})
+    await page.waitForTimeout(150)
+  }
+  await page.getByRole('button', { name: 'Done', exact: true }).first().click()
+  const blocks = async () => (await offersOf(page, todayKey())).filter((o) => o.kind === 'block')
+  await expect.poll(async () => (await blocks()).length).toBe(1)
+  const [first] = await blocks()
+  // Skipped on Now, Skip's promise is kept by the new engine, among real moves alone, the skipped one left out.
+  await page.getByTestId('move-skip').first().click()
+  await expect.poll(async () => (await blocks()).length).toBe(2)
+  const next = (await blocks()).find((o) => o.id !== first.id)
+  expect(next?.draw?.engine).toBe('repair-1')
+  expect(next?.candidates).not.toContain('nothing')
+  expect(next?.candidates).not.toContain(first.moveId)
+  expect(Object.values(next?.propensities ?? {}).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 9)
+})
+
+test('the pickup-time move is drawn by the new engine, never nothing extra (2026-10-20)', async ({ page }) => {
+  // On a day with no move offered before it, so the day's rule leaves its candidates whole.
+  await start(page)
+  await seedRepairRecord(page, 10)
+  // The week given a pickup at five, today's shape made again from it, the clock inside the ninety minutes.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['settings', 'days'], 'readwrite')
+    const s = await new Promise<Record<string, unknown>>((res) => {
+      const q = tx.objectStore('settings').get(1)
+      q.onsuccess = () => res(q.result as Record<string, unknown>)
+    })
+    tx.objectStore('settings').put({ ...s, week: { ...(s.week as object), pickupTime: '17:00' } })
+    tx.objectStore('days').delete('2026-09-24')
+    await new Promise((res) => (tx.oncomplete = res))
+    dbx.close()
+  })
+  await page.clock.setFixedTime(new Date(2026, 8, 24, 16, 0))
+  await page.reload()
+  const pickups = async () => (await offersOf(page, todayKey())).filter((o) => o.kind === 'pickup')
+  await expect.poll(async () => (await pickups()).length).toBe(1)
+  const [pickup] = await pickups()
+  expect(pickup.draw?.engine).toBe('repair-1')
+  expect(pickup.candidates).not.toContain('nothing')
+  expect(pickup.candidates).toContain(pickup.moveId)
+})
+
 test('a learning week is offered on Now once a running test has fitted three recent days, and Yes starts it', async ({ page }) => {
   await start(page)
   await seedRepairRecord(page, 10)
@@ -153,26 +208,20 @@ test('a learning week is offered on Now once a running test has fitted three rec
   await expect(page.getByTestId('week-running')).toContainText('Learning week · day 1 of 7')
 })
 
-test('closed, the phone shows no week and draws as before', async ({ page }) => {
-  // Closed once the test says so, on every load from then on: this runs after the shared setup, which opens it.
+test('the old closed mode’s key closes nothing: the same record still offers its week (2026-10-20)', async ({ page }) => {
+  // The key that once closed the learning engine, set as an automated test browser could set it: the engine is the only one.
   await page.addInitScript(() => {
     try {
-      if (localStorage.getItem('repair-test-closed')) localStorage.setItem('life-mirror.preview.learningRepair', '0')
+      localStorage.setItem('life-mirror.preview.learningRepair', '0')
     } catch {
-      // A page without local storage stays as the switch ships.
+      // A page without local storage has no key to set.
     }
   })
   await start(page)
   await seedRepairRecord(page, 10)
   await page.reload()
-  // Open, the same record at the same hour offers a week, so none once closed is the switch's doing (2026-10-19: on a
-  // fixed afternoon, a record closed from the start offered none either way, and the test could not fail).
   await expect(page.getByTestId('week-invite')).toBeVisible()
-  await page.evaluate(() => localStorage.setItem('repair-test-closed', '1'))
-  await page.reload()
-  await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
-  await expect(page.getByTestId('week-invite')).toHaveCount(0)
-  await expect(page.getByTestId('week-running')).toHaveCount(0)
+  await expect(page.getByTestId('engine-failed-now')).toHaveCount(0)
 })
 
 /** The rung words a test can show, and the old tiers it must never show while the repair is on. */
@@ -211,33 +260,8 @@ test('Evidence shows the repair’s tests by rung, its track record at their hea
   await expect(page.getByText(/always with its evidence tier/)).toHaveCount(0)
 })
 
-test('closed, Evidence shows its cards and no track record, as before', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.setItem('life-mirror.preview.learningRepair', '0')
-    } catch {
-      // A page without local storage stays as the switch ships.
-    }
-  })
-  await start(page)
-  await seedRepairRecord(page, 14, true)
-  await page.reload()
-  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
-  await expect(page.getByRole('button', { name: /^Evidence/ })).toContainText('Every card with its tier, counts and interval')
-  await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toBeVisible()
-  await expect(page.getByTestId('track-record')).toHaveCount(0)
-  await expect(page.getByTestId('repair-test')).toHaveCount(0)
-})
 
-test('open as it ships, with no test key at all: Now and Evidence describe the repair, and today’s tag lending is not shown (R6)', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.removeItem('life-mirror.preview.learningRepair')
-    } catch {
-      // A page without local storage stays as the switch ships.
-    }
-  })
+test('Now and Evidence describe the learning engine, and no tag lending is shown (R6; the only engine since 2026-10-20)', async ({ page }) => {
   await start(page)
   await seedRepairRecord(page, 14, true)
   await page.reload()
@@ -257,46 +281,18 @@ test('open as it ships, with no test key at all: Now and Evidence describe the r
   await expect(page.getByTestId('repair-fault')).toHaveCount(0)
 })
 
-test('closed by the test key, Now and Evidence describe today’s engine, its tags among them, as before (R6)', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.setItem('life-mirror.preview.learningRepair', '0')
-    } catch {
-      // A page without local storage stays as the switch ships.
-    }
-  })
-  await start(page)
-  await seedRepairRecord(page, 14, true)
-  await page.reload()
-  const knows = page.getByTestId('knows')
-  await knows.getByTestId('knows-more').click()
-  await expect(knows).toContainText('one offer in five is a fair coin flip across what fits')
-  await expect(knows).not.toContainText('under way')
-  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
-  await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByTestId('nothing-line')).toHaveText(/Kept to, it is measured like any move over the next block\.$/)
-  await expect(page.getByRole('heading', { name: 'What the tags have learned' })).toBeVisible()
-  await expect(page.getByTestId('tags-learned')).toBeVisible()
-})
 
-test('Import a hypothesis says, while the repair is on, that every move is already tested, and makes no card that nothing would read (R6)', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.removeItem('life-mirror.preview.learningRepair')
-    } catch {
-      // A page without local storage stays as the switch ships.
-    }
-  })
+test('Settings → Data has no Import a hypothesis: the retired engine’s cards are never made (2026-10-20)', async ({ page }) => {
   await start(page)
   await page.locator('nav.tabs').getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByTestId('settings-data').click()
-  await expect(page.getByRole('heading', { name: 'Import a hypothesis' })).toBeVisible()
-  await expect(page.getByTestId('hypothesis-repair')).toHaveText('While the learning repair is on, every move is tested against nothing extra from the first day, at the moments it fits, so a hypothesis needs no card of its own. What each move does shows on Evidence, by its rung.')
+  await expect(page.getByRole('button', { name: 'Export JSON and CSV' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Import a hypothesis' })).toHaveCount(0)
   await expect(page.getByTestId('hypothesis-input')).toHaveCount(0)
-  await expect(page.getByTestId('hypothesis-add')).toHaveCount(0)
+  await expect(page.getByTestId('hypothesis-repair')).toHaveCount(0)
 })
 
-test('the breaker, end to end: a rebuild that throws still leaves a move drawn, by today’s engine, and Evidence as before, saying so (R6)', async ({ page }) => {
+test('the engine failing, end to end: no move is offered, Now and Evidence say so, and nothing else draws (2026-10-20)', async ({ page }) => {
   // The test browsers' stand-in for a record no test foresaw: every rebuild throws.
   await page.addInitScript(() => {
     try {
@@ -308,10 +304,7 @@ test('the breaker, end to end: a rebuild that throws still leaves a move drawn, 
   await start(page)
   await seedRepairRecord(page, 10)
   await page.reload()
-  // Now's first read throws and trips the breaker: what Now had drawn with the repair open redraws as before the switch.
-  const knows = page.getByTestId('knows')
-  await knows.getByTestId('knows-more').click()
-  await expect(knows).toContainText('one offer in five is a fair coin flip across what fits')
+  // Now's first read throws: the engine has failed for the session, and nothing offers a week.
   await expect(page.getByTestId('week-invite')).toHaveCount(0)
   await page.getByRole('button', { name: /Check in/ }).click()
   for (let i = 0; i < 40; i++) {
@@ -321,10 +314,6 @@ test('the breaker, end to end: a rebuild that throws still leaves a move drawn, 
     await page.waitForTimeout(150)
   }
   await page.getByRole('button', { name: 'Done', exact: true }).first().click()
-  await expect.poll(async () => (await offersOf(page, todayKey())).length).toBeGreaterThan(0)
-  const [offer] = await offersOf(page, todayKey())
-  expect(offer.draw?.engine).toMatch(/^engine-/)
-  expect(offer.candidates).toContain(offer.moveId)
   // Back to Now, whichever block the runner's clock is in: an evening's check-in ends on its summary, with a Done of its own.
   await expect
     .poll(async () => {
@@ -333,14 +322,21 @@ test('the breaker, end to end: a rebuild that throws still leaves a move drawn, 
       return page.locator('nav.tabs').isVisible()
     })
     .toBe(true)
-  // Evidence, in the same session: as before the switch, and the line saying what happened.
+  // The check-in done, no move was drawn, by this engine or any other, and Now says so where the move would be.
+  await expect(page.getByTestId('engine-failed-now')).toHaveText('No move this time: the learning engine could not read your record. Moves are never drawn any other way. It tries again the next time you open the app.')
+  expect(await offersOf(page, todayKey())).toEqual([])
+  // Evidence, in the same session: the failure said in place of the tests, and nothing of an older engine.
   await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
-  await expect(page.getByRole('button', { name: /^Evidence/ })).toContainText('Every card with its tier, counts and interval')
   await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toBeVisible()
+  await expect(page.getByTestId('engine-failed')).toHaveText('The learning engine could not read your record just now, so its tests are not shown and no move is offered. Moves are never drawn any other way. It tries again the next time you open the app.')
   await expect(page.getByTestId('repair-test')).toHaveCount(0)
-  // The start and the reload after the stand-in record are two starts of the app, each tripping the breaker once, on one day.
-  await expect(page.getByTestId('repair-fault')).toHaveText(/^The learning repair could not read your record 2 times on \w{3}, \w{3} \d{1,2}\. Each time, the suggestions after it were drawn the earlier way until the app was opened again\.$/)
+  await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toHaveCount(0)
+  // The start and the reload after the stand-in record are two starts of the app, each failing once, on one day.
+  await expect(page.getByTestId('repair-fault')).toHaveText(/^The learning engine could not read your record 2 times on \w{3}, \w{3} \d{1,2}\. Each time, no move was offered until the app was opened again\. Moves are never drawn any other way\.$/)
+
+  // Opened again, Now is drawn before the engine's first read fails; it says so the moment it does, without being left.
+  await page.reload()
+  await expect(page.getByTestId('engine-failed-now')).toBeVisible()
 })
 
 test('the breaker: a trip kept on this phone shows one quiet line at the head of Evidence, for four weeks after the last (R6)', async ({ page }) => {
@@ -361,7 +357,7 @@ test('the breaker: a trip kept on this phone shows one quiet line at the head of
   await start(page)
   await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByTestId('repair-fault')).toHaveText(/^The learning repair could not read your record 2 times since \w{3}, \w{3} \d{1,2}, the last on \w{3}, \w{3} \d{1,2}\. Each time, the suggestions after it were drawn the earlier way until the app was opened again\.$/)
+  await expect(page.getByTestId('repair-fault')).toHaveText(/^The learning engine could not read your record 2 times since \w{3}, \w{3} \d{1,2}, the last on \w{3}, \w{3} \d{1,2}\. Each time, no move was offered until the app was opened again\. Moves are never drawn any other way\.$/)
   await expect(page.getByTestId('repair-fault')).not.toContainText('TypeError')
   // Four weeks after the last trip, the line is gone; the trips stay kept.
   await keep({ count: 1, first: dayAgo(29), last: dayAgo(29), name: 'TypeError' })
@@ -479,23 +475,4 @@ test('a passive item’s association at Promising proposes a one-tap test, and t
   await offer.getByTestId('passive-test-start').click()
   await expect(gap.getByTestId('passive-test-running')).toContainText('Being tested since Thu, Sep 24')
   await expect(gap.getByTestId('passive-test-offer')).toHaveCount(0)
-})
-
-test('closed, the passive item’s card stays among the cards, with no test proposed', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.setItem('life-mirror.preview.learningRepair', '0')
-    } catch {
-      // A page without local storage stays as the switch ships.
-    }
-  })
-  await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
-  await start(page)
-  await seedGapRecord(page, 14)
-  await page.reload()
-  await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
-  await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByTestId('evidence-card').filter({ hasText: 'Keep the evening after a big social day empty' })).toBeVisible()
-  await expect(page.getByTestId('passive-test-offer')).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'Rode alongside', exact: true })).toHaveCount(0)
 })

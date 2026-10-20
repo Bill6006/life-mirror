@@ -1,12 +1,10 @@
 import { mayNudge, shapeFor, type LineAction, type Mode } from './brainShared'
 import { blockStart, daysBetween } from './blocks'
-import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { factById, factsWhere, num, str, type Fact, type FactSheet } from './facts'
 import { fill } from './format'
 import { deliver, deliverySignals, firmnessFor, type Firmness, type FirmnessPref } from './firmness'
-import { admitted, bestGrade, cardById, gradeWeight, gradeWord } from './library'
-import { testOf } from './hypothesis'
+import { bestGrade, cardById, gradeWeight } from './library'
 import { minutesOf } from './reminderRules'
 import { stallAfter } from './rhythm'
 
@@ -360,27 +358,6 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    id: 'card-long-unclear',
-    weekly: true,
-    mode: 'challenge',
-    cards: ['sunk-cost'],
-    cooldownDays: 21,
-    test: (sheet) => {
-      const c = factsWhere(sheet, 'test.').find((f) => (num(f, 'n') ?? 0) >= 12 && (f.tier === 'little' || f.tier === 'unclear'))
-      return c ? { factIds: [c.id], strength: 0.6, vars: { move: s(str(c, 'move')), alt: s(str(c, 'alternative')), n: s(num(c, 'n')) } } : null
-    },
-  },
-  {
-    id: 'card-promising',
-    mode: 'observation',
-    cards: [],
-    cooldownDays: 14,
-    test: (sheet) => {
-      const c = factsWhere(sheet, 'test.').find((f) => f.tier === 'promising' || f.tier === 'holdsUp')
-      return c ? { factIds: [c.id], strength: 0.6, vars: { move: s(str(c, 'move')), alt: s(str(c, 'alternative')), tier: c.tier === 'holdsUp' ? 'holds up' : 'promising', n: s(num(c, 'n')) } } : null
-    },
-  },
-  {
     // Fired only by a reported band of 100 mg or more, never by silence; no bedtime is assumed.
     id: 'caffeine-late',
     mode: 'warning',
@@ -597,27 +574,6 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const f = assoc(sheet, 'assoc.shortSleep', 4)
       return f ? { factIds: [f.id], strength: f.tier === 'promising' ? 0.8 : 0.55, vars: { diff: signed(num(f, 'diff') as number), n: s(num(f, 'times')) } } : null
-    },
-  },
-  {
-    // A quiet day's line: something the library backs and the record has never tested, one tap to set.
-    id: 'propose-test',
-    weekly: true,
-    mode: 'recommendation',
-    cards: [],
-    cooldownDays: 10,
-    test: (sheet) => {
-      const f = factById(sheet, 'untested')
-      const open = String(f?.values.moves ?? '').split(',').filter(Boolean)
-      if (!f || !open.length) return null
-      const order = { A: 0, B: 1, C: 2, D: 3 }
-      for (const card of admitted().sort((a, b) => order[a.grade] - order[b.grade])) {
-        // Only a move a test can measure, and the tap carries the test it sets (item 6), so what it says it set is what was set.
-        const moveId = (card.moves ?? []).find((m) => open.includes(m) && hasMove(m) && testOf(m) !== null)
-        const t = moveId ? testOf(moveId) : null
-        if (moveId && t) return { factIds: [f.id], strength: 0.45, vars: { grade: gradeWord(card.grade), move: moveById(moveId).name }, action: { kind: 'test', moveId, reading: t.target, block: t.context }, cardIds: [card.id] }
-      }
-      return null
     },
   },
 ]

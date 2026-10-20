@@ -6,7 +6,6 @@ import { db, getSettings } from '../db'
 import { fill } from '../format'
 import { guardRepair } from '../repair/breaker'
 import { repairEvidence, type RepairEvidence, type TestShown } from '../repair/evidence'
-import { repairOn } from '../repair/gate'
 import { citeOf, evidenceVersion, testsOf } from './evidence'
 import { testsNamed } from './match'
 import { allowanceUsed, answerIdOf, ASK_ANSWERS_A_DAY, askTaskIds, askWaitOf, deepTaskId, roomFor, type AskAnswer, type AskRun, type AskWait } from './shared'
@@ -20,9 +19,8 @@ import type { AboutSource, AskStarter, AskThread, AskTurn, KeptNote } from './ty
 /** The longest question kept: a question, not an essay. */
 export const QUESTION_MAX = 500
 
-/** The repair's read for today, through its breaker: null when the repair is off, or when it could not read the record. */
+/** The engine's read for today, through its breaker: null when it could not read the record. */
 export async function askEvidence(now: Date = new Date()): Promise<RepairEvidence | null> {
-  if (!repairOn()) return null
   const today = blockAt(now).day
   return guardRepair(today, () => repairEvidence(today), null)
 }

@@ -1,16 +1,13 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-// The repair's switch opened for these tests alone: in the app it stays gated until stage R6.
-vi.mock('../brainShared', async (importOriginal) => ({ ...(await importOriginal<typeof import('../brainShared')>()), LEARNING_REPAIR: 'open' }))
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { addDays } from '../blocks'
 import { factSheet } from '../brainFlow'
 import { db } from '../db'
 import { START, walkRecord } from './fixtures'
 
-// The learning repair on the phone's fact sheet (stage R5): while the repair is on, the sheet the Worker reads carries its
-// tests on the evidence ladder and its track record, beside the cards, findings the owner can act on first.
+// The learning engine on the phone's fact sheet (stage R5; the only engine since 2026-10-20): the sheet the Worker reads
+// carries its tests on the evidence ladder and its track record, findings the owner can act on first.
 
 const DAY = addDays(START, 14)
 
@@ -22,13 +19,13 @@ async function seed(): Promise<void> {
   await db.days.bulkAdd(r.days.map((d) => ({ ...d })))
 }
 
-describe('the sheet, with the repair on', () => {
+describe('the sheet, with the learning engine', () => {
   beforeEach(async () => {
     await db.delete()
     await db.open()
   })
 
-  it('gives the weekly scorecard the learning repair’s count while it is on (stage R7)', async () => {
+  it('gives the weekly scorecard the learning engine’s count (stage R7)', async () => {
     const r = walkRecord(14, true)
     await db.checkins.bulkAdd(r.checkins.map((c) => ({ ...c })))
     await db.offers.bulkAdd(r.offers.map((o) => ({ ...o })))

@@ -892,9 +892,7 @@ test('aims: something to learn in its own words, held above the move, Start aske
   await expect(page.locator('#main')).not.toContainText('%')
 })
 
-test('learning: Evidence shows a card with its tier, the two new chips answer from the record, and an imported hypothesis is a card and nothing else', async ({ page }) => {
-  // Today's engine, the learning repair's fallback since R6: its cards, tiers and imported hypotheses, the repair closed by the test key.
-  await page.addInitScript(() => localStorage.setItem('life-mirror.preview.learningRepair', '0'))
+test('learning: the two new chips answer from the record, and Evidence holds no card, tier or hypothesis of the retired engine (2026-10-20)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
@@ -914,27 +912,20 @@ test('learning: Evidence shows a card with its tier, the two new chips answer fr
   await expect(page.getByTestId('give-back')).toBeVisible()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
-  // Evidence: the evening's card with its tier in the conclusion register, and the honest line.
+  // Evidence: the honest line, and nothing of the retired engine: no Cards, no imported card.
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Evidence/ }).click()
   await expect(page.getByTestId('evidence')).toBeVisible()
-  await expect(page.getByTestId('evidence-card').first()).toBeVisible()
-  await expect(page.getByTestId('tier').first()).toContainText('Little evidence')
   await expect(page.getByText(/Some answers take months/)).toBeVisible()
-  await expect(page.getByText('Private items enter selection only when you turn that on', { exact: false })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toHaveCount(0)
+  await expect(page.getByText('imported, to test')).toHaveCount(0)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
 
-  // An imported hypothesis: a card, marked imported, and nowhere else.
+  // No hypothesis to import: the retired engine's cards are never made.
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByTestId('settings-data').click()
-  await page.getByTestId('hypothesis-input').fill('{"move": "walk-ten", "alternative": "nap-ten", "target": "energy", "context": "afternoon"}')
-  await page.getByTestId('hypothesis-add').click()
-  await expect(page.getByTestId('hypothesis-result')).toContainText('Card written')
-  await page.getByRole('button', { name: 'Done', exact: true }).click()
-  await page.getByRole('button', { name: 'Moves', exact: true }).click()
-  await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByTestId('evidence-card').filter({ hasText: 'imported, to test' })).toHaveCount(1)
-  await expect(page.getByTestId('evidence-card').filter({ hasText: 'A ten-minute walk, now against' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Import a hypothesis' })).toHaveCount(0)
+  await expect(page.getByTestId('hypothesis-input')).toHaveCount(0)
 })
 
 test('the brief and the weekly view: silent until the record is long enough, and the necessities are one tap', async ({ page }) => {

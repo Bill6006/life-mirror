@@ -27,9 +27,9 @@ import { blockReadings, type Answers, type Position } from './readings'
 // Closed here by standing in for the shared gate (open as it ships since stage 1, 2026-10-16), so each
 // test below reads the feature closed, then opened through the preview, exactly as it always did.
 vi.mock('./postWindow', async (original) => ({ ...(await original<typeof import('./postWindow')>()), HOME_ONLY: 'gated', AWAY_FROM_HOME: 'gated' }))
-// The learning repair, open since stage R6 (2026-10-19), draws by its own engine and adds its facts to the sheet on purpose;
-// this file holds what the post-window gates guard, so it reads today's engine, the repair's fallback, with the repair closed.
-vi.mock('./brainShared', async (original) => ({ ...(await original<typeof import('./brainShared')>()), LEARNING_REPAIR: 'gated' }))
+// The learning engine draws every move since the old engine was retired (2026-10-20), so this record's draws, its facts
+// and the moves screened around them were held fixed again then: the screening checked equal to the old code's on the
+// same record, situation by situation, before these snapshots were written.
 
 const DAY = '2026-10-07'
 const NOW = new Date(2026, 9, 7, 7, 45)
@@ -149,7 +149,7 @@ describe('the record the monitored prompts are built from, held fixed with the p
     const out: Record<string, { candidates: number; digest: string }> = {}
     for (const day of [addDays(DAY, -3), addDays(DAY, -2), addDays(DAY, -1), DAY, addDays(DAY, -12)]) {
       const t = await todayState(day, await getSettings(), NOW)
-      const lines = everySituation().map((s) => `${s.key}:${s.band} ${candidatesFor(s, t).candidates.map((c) => `${c.id}${c.bonus ? `+${c.bonus}` : ''}`).join(',')}`)
+      const lines = everySituation().map((s) => `${s.key}:${s.band} ${candidatesFor(s, t).candidates.map((c) => c.id).join(',')}`)
       out[day] = { candidates: lines.reduce((n, l) => n + l.split(',').length, 0), digest: digest(lines) }
     }
     expect(out).toMatchSnapshot()

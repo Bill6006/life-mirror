@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, BLOCKS, type Block } from '../blocks'
-import { LEARNING_REPAIR } from '../brainShared'
 import { NOTHING } from '../catalogue'
 import type { CheckIn, DayContext, Offer, Outcome } from '../db'
 import { SHORT_SLEEP } from '../facts'
@@ -36,12 +35,6 @@ const offer = (over: Partial<Offer> = {}): Offer => ({
 })
 
 const outcome = (over: Partial<Outcome> = {}): Outcome => ({ offerId: 1, moveId: 'walk-ten', day: '2026-09-01', block: 'morning', at: 'x', outcome: 'done', why: null, passiveOutcome: null, ...over })
-
-describe('the switch', () => {
-  it('ships open: stage R6 opened the learning repair, once every stage was verified', () => {
-    expect(LEARNING_REPAIR).toBe('open')
-  })
-})
 
 describe('what the repair reads as a randomized decision', () => {
   it('a check-in draw with every chance recorded and nothing extra among its candidates', () => {

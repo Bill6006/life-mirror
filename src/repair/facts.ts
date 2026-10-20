@@ -7,8 +7,8 @@ import { rungWords } from './words'
 
 // The learning repair for the Brain (stage R5). Requirement 16, word for word: "The Brain receives the graded beliefs and
 // the track record, beside the test tiers and associations it reads today. The evidence-wording check holds its words to
-// the ladder, and findings the owner can act on come before descriptive ones." Built only while the repair is on, from the
-// same read Evidence shows.
+// the ladder, and findings the owner can act on come before descriptive ones." Built from the same read Evidence shows; the
+// test tiers it once sat beside were the retired engine's (2026-10-20).
 
 const signed = (x: number) => `${x > 0 ? '+' : ''}${(Math.round(x * 100) / 100).toFixed(2)}`
 const RANK: Record<string, number> = { none: 0, early: 1, likely: 2, established: 3 }

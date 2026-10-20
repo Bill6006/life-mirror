@@ -1,10 +1,11 @@
-// The learning repair's safety net (stage R6). The rebuild has only met stand-in records, so a record of a shape no test
-// foresaw must never stop the owner's suggestions. If a rebuild throws, the repair closes on this phone for the rest of
-// the session: the draw and every screen run exactly as before the switch, and the next start of the app tries again.
-// Each trip is kept on this phone, a count, its first and last day and the error's name, never anything of the record,
-// and Evidence says it happened. It stays out of the use log, which records the owner's use, never the app's faults.
+// The learning engine's failure, kept (stage R6; since 2026-10-20 the engine is the only one, with no fallback). If a
+// rebuild or a draw throws on a record no test foresaw, the engine stays failed on this phone for the rest of the session:
+// no move is offered and each screen that reads it says so, nothing else draws or shows in its place, and the next start
+// of the app tries again. Each failure is kept on this phone, a count, its first and last day and the error's name, never
+// anything of the record; Evidence says it happened, and the fact sheet carries it to the Worker's report. It stays out
+// of the use log, which records the owner's use, never the app's faults.
 
-/** Where the trips are kept: this phone's own storage, never synced. */
+/** Where the failures are kept: this phone's own storage, never synced. */
 export const FAULT_KEY = 'life-mirror.repair.faults'
 
 /** How long Evidence keeps saying it: four weeks after the last trip. */
@@ -18,7 +19,7 @@ function page(): { navigator?: { webdriver?: boolean }; localStorage?: { getItem
   return globalThis as never
 }
 
-/** Whether an automated test browser asked every rebuild to throw, so the breaker can be checked in the built app. */
+/** Whether an automated test browser asked every rebuild to throw, so a failure can be checked in the built app. */
 export function faultForTests(): boolean {
   try {
     const g = page()
@@ -39,12 +40,12 @@ export interface RepairFaults {
 let tripped = false
 const listeners = new Set<() => void>()
 
-/** Whether a rebuild has thrown since the app started. */
+/** Whether the engine has failed since the app started. */
 export function repairTripped(): boolean {
   return tripped
 }
 
-/** The trips kept on this phone, or null when there are none or the storage cannot be read. */
+/** The failures kept on this phone, or null when there are none or the storage cannot be read. */
 export function repairFaults(): RepairFaults | null {
   try {
     const raw = page().localStorage?.getItem(FAULT_KEY) ?? null
@@ -57,8 +58,8 @@ export function repairFaults(): RepairFaults | null {
 }
 
 /**
- * Closes the repair for the rest of the session and keeps the trip, once a session: reads already under way when it trips
- * may throw too, and they are the same trip. Never throws.
+ * Marks the engine failed for the rest of the session and keeps the failure, once a session: reads already under way when
+ * it fails may throw too, and they are the same failure. Never throws.
  */
 export function tripRepair(e: unknown, day: string): void {
   if (tripped) return
@@ -68,12 +69,12 @@ export function tripRepair(e: unknown, day: string): void {
     const name = e instanceof Error ? e.name : typeof e
     page().localStorage?.setItem(FAULT_KEY, JSON.stringify({ count: (prev?.count ?? 0) + 1, first: prev?.first ?? day, last: day, name }))
   } catch {
-    // The record of a trip is an instrument; the app never fails for it.
+    // The record of a failure is an instrument; the app never fails for it.
   }
   for (const l of [...listeners]) l()
 }
 
-/** Called once when the repair trips, so a screen drawn with it open can redraw closed. Returns the unsubscribe. */
+/** Called once when the engine fails, so a screen drawn before can say so. Returns the unsubscribe. */
 export function onRepairTrip(l: () => void): () => void {
   listeners.add(l)
   return () => {
@@ -81,7 +82,7 @@ export function onRepairTrip(l: () => void): () => void {
   }
 }
 
-/** Runs one read of the repair; if it throws, trips the breaker and gives the fallback. */
+/** Runs one read of the engine; if it throws, keeps the failure and gives the empty value (no move, nothing shown), never another engine's. */
 export async function guardRepair<T>(day: string, read: () => T | Promise<T>, fallback: T): Promise<T> {
   try {
     return await read()

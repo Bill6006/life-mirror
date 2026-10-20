@@ -1,13 +1,13 @@
 // The learning repair on the live site, in fresh throwaway contexts with stand-in records only: nothing touches the owner's
-// data, and nothing is sent anywhere but the site itself (no cloud token is ever set). Since stage R6 it is open as it
-// ships, so a context with no test key sees it as the owner's phone does; only an automated browser holding the test key
-// at 0 sees it closed, and one holding the stand-in fault key sees every rebuild throw, so the breaker can be checked.
+// data, and nothing is sent anywhere but the site itself (no cloud token is ever set). Since 2026-10-20 it is the only
+// engine: the old test key that closed it closes nothing, and a context holding the stand-in fault key sees every rebuild
+// throw, so the failure can be checked: no move offered, the failure said, nothing else drawing.
 // Stage R2: a check-in's move drawn by the repair's engine, every chance kept with its version. Stage R3: the learning
 // week's invitation on Now, and Yes starting a week. Stage R4: Evidence's tests by rung with the track record at their
 // head, the move card's rung and its test's words, the Moves door and the Legend. Stage R5: the sheet the phone keeps for
 // the Brain carries the repair's tests and its track record. Stage R4b: a passive item's association at Promising proposes
 // a one-tap test, and the tap sets it. Closed: no week, Evidence's cards, and none of the repair's facts on the sheet.
-// Stage R6: Now's and Evidence's words follow the switch, and the breaker keeps a check-in's move drawn when a rebuild throws.
+// Stage R6: Now's and Evidence's words are the learning engine's; since 2026-10-20 a rebuild that throws offers no move and says so.
 // node live-repair.mjs <expected short commit> [screenshot folder]
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium } from './common.mjs'
@@ -44,7 +44,8 @@ async function fresh(mode, { days = 10, effect = false, seed = null } = {}) {
   await ctx.addInitScript(
     ({ mode, seed }) => {
       localStorage.setItem('lm.inStep', '1')
-      // 'owner': no test key, as the owner's phone runs it; 'closed': the test key at 0; 'fault': every rebuild throws.
+      // 'owner': no test key, as the owner's phone runs it; 'closed': the old closed key at 0, which closes nothing now;
+      // 'fault': every rebuild throws.
       if (mode === 'closed') localStorage.setItem('life-mirror.preview.learningRepair', '0')
       if (mode === 'fault') localStorage.setItem('life-mirror.test.repairFault', '1')
       if (seed !== null) {
@@ -280,40 +281,108 @@ try {
     await ctx.close()
   }
   {
+    // The old closed key, set: it closes nothing since the old engine was retired (2026-10-20).
     const { ctx, page } = await fresh('closed', { days: 14, effect: true })
-    check('closed, Now shows no learning week', (await page.getByTestId('week-invite').count()) === 0 && (await page.getByTestId('week-running').count()) === 0)
-    const closedKnows = page.getByTestId('knows')
-    await closedKnows.getByTestId('knows-more').click().catch(() => {})
-    check('closed by the test key, Now says how today’s engine picks', ((await closedKnows.textContent().catch(() => '')) ?? '').includes('one offer in five is a fair coin flip'))
-    const closedIds = (await sheetIds(page)) ?? []
-    check('closed, the sheet for the Brain carries none of the repair’s facts', closedIds.length > 5 && !closedIds.some((x) => x.startsWith('ladder.') || x === 'track'), `${closedIds.length} facts`)
+    const keptKnows = page.getByTestId('knows')
+    await keptKnows.getByTestId('knows-more').click().catch(() => {})
+    check('with the old closed key set, Now still says how the learning engine picks', ((await keptKnows.textContent().catch(() => '')) ?? '').includes('Every move that fits keeps a chance of being drawn') && !((await keptKnows.textContent().catch(() => '')) ?? '').includes('one offer in five'))
+    const keptIds = (await sheetIds(page)) ?? []
+    check('and the sheet for the Brain still carries the engine’s track record', keptIds.includes('track'), `${keptIds.length} facts`)
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click()
-    check('closed, Evidence shows its cards and no track record, as before', (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && (await page.getByTestId('track-record').count()) === 0)
-    check('closed, Evidence shows what the tags have learned, and Nothing today as before', (await seen(page.getByRole('heading', { name: 'What the tags have learned' }))) && /Kept to, it is measured like any move over the next block\.$/.test(((await page.getByTestId('nothing-line').textContent().catch(() => '')) ?? '').trim()))
+    check('and Evidence shows its tests and track record, no Cards and no tags', (await seen(page.getByTestId('track-record'))) && (await page.getByRole('heading', { name: 'Cards', exact: true }).count()) === 0 && (await page.getByRole('heading', { name: 'What the tags have learned' }).count()) === 0)
     await ctx.close()
   }
   {
-    // Stage R6, the breaker: the test browsers' stand-in for a record no test foresaw, every rebuild throwing.
-    const { ctx, page } = await fresh('fault', { days: 10 })
-    const knows = page.getByTestId('knows')
-    // Now redraws once the breaker trips, a moment after the first read throws, and the redraw can fold the panel opened
-    // before it (2026-10-20: one run in three read it folded): open it again until its words show, three tries at most.
-    let redrawn = false
-    for (let i = 0; i < 3 && !redrawn; i++) {
-      await knows.getByTestId('knows-more').click().catch(() => {})
-      redrawn = await seen(knows.filter({ hasText: 'one offer in five is a fair coin flip' }), 5000)
+    // A skip's replacement and the pickup-time move, drawn by the new engine (2026-10-20).
+    const { ctx, page } = await fresh('owner', { days: 10 })
+    await checkIn(page)
+    const offersToday = () =>
+      page.evaluate(async () => {
+        const n = new Date()
+        const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+        const dbx = await new Promise((res, rej) => {
+          const r = indexedDB.open('life-mirror')
+          r.onsuccess = () => res(r.result)
+          r.onerror = () => rej(r.error)
+        })
+        const rows = await new Promise((res) => {
+          const q = dbx.transaction(['offers'], 'readonly').objectStore('offers').getAll()
+          q.onsuccess = () => res(q.result)
+        })
+        dbx.close()
+        return rows.filter((o) => o.day === today)
+      })
+    const first = (await offersToday()).find((o) => o.kind === 'block')
+    await page.getByTestId('move-skip').first().click().catch(() => {})
+    let next = null
+    for (let i = 0; i < 20 && !next; i++) {
+      next = (await offersToday()).find((o) => o.kind === 'block' && o.id !== first?.id) ?? null
+      if (!next) await page.waitForTimeout(250)
     }
-    check('with every rebuild throwing, Now redraws as before the switch', redrawn && (await page.getByTestId('week-invite').count()) === 0)
+    check('a skip’s replacement is drawn by the new engine, among real moves alone, the skipped one left out', next?.draw?.engine === 'repair-1' && !next.candidates.includes('nothing') && !next.candidates.includes(first?.moveId), `${next?.draw?.engine} · ${next?.candidates?.length} candidates`)
+    await ctx.close()
+  }
+  {
+    // The pickup-time move, on a day with no move offered before it, so the day's rule leaves its candidates whole.
+    const { ctx, page } = await fresh('owner', { days: 10 })
+    const offersToday = () =>
+      page.evaluate(async () => {
+        const n = new Date()
+        const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+        const dbx = await new Promise((res, rej) => {
+          const r = indexedDB.open('life-mirror')
+          r.onsuccess = () => res(r.result)
+          r.onerror = () => rej(r.error)
+        })
+        const rows = await new Promise((res) => {
+          const q = dbx.transaction(['offers'], 'readonly').objectStore('offers').getAll()
+          q.onsuccess = () => res(q.result)
+        })
+        dbx.close()
+        return rows.filter((o) => o.day === today)
+      })
+    await page.evaluate(async () => {
+      const dbx = await new Promise((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const tx = dbx.transaction(['settings', 'days'], 'readwrite')
+      const s = await new Promise((res) => {
+        const q = tx.objectStore('settings').get(1)
+        q.onsuccess = () => res(q.result)
+      })
+      tx.objectStore('settings').put({ ...s, week: { ...s.week, pickupTime: '17:00' } })
+      tx.objectStore('days').delete('2026-09-24')
+      await new Promise((res) => (tx.oncomplete = res))
+      dbx.close()
+    })
+    await page.clock.setFixedTime(new Date(2026, 8, 24, 16, 0))
+    await page.reload()
+    let pickup = null
+    for (let i = 0; i < 20 && !pickup; i++) {
+      pickup = (await offersToday()).find((o) => o.kind === 'pickup') ?? null
+      if (!pickup) await page.waitForTimeout(250)
+    }
+    check('the pickup-time move is drawn by the new engine, never nothing extra', pickup?.draw?.engine === 'repair-1' && !pickup.candidates.includes('nothing') && pickup.candidates.includes(pickup.moveId), `${pickup?.draw?.engine} · ${pickup?.moveId}`)
+    await ctx.close()
+  }
+  {
+    // The engine failing (2026-10-20: no fallback): the test browsers' stand-in for a record no test foresaw, every rebuild throwing.
+    const { ctx, page } = await fresh('fault', { days: 10 })
+    check('with every rebuild throwing, Now offers no learning week', (await page.getByTestId('week-invite').count()) === 0)
     await checkIn(page)
     const offer = await todaysOffer(page)
-    check('and a check-in still draws a move, by today’s engine', /^engine-/.test(offer?.draw?.engine ?? ''), String(offer?.draw?.engine))
+    const nowLine = page.getByTestId('engine-failed-now')
+    check('a check-in draws no move, by this engine or any other, and Now says so where the move would be', offer === null && (await seen(nowLine)) && ((await nowLine.textContent().catch(() => '')) ?? '').startsWith('No move this time: the learning engine could not read your record.'), String(offer?.draw?.engine ?? 'no offer'))
+    if (await nowLine.isVisible()) await shot(nowLine, 'retire-now-failed')
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click()
     const fault = page.getByTestId('repair-fault')
     const said = await seen(fault)
-    check('Evidence shows its cards as before, with one line saying the repair could not read the record', said && (await seen(page.getByRole('heading', { name: 'Cards', exact: true }))) && /^The learning repair could not read your record 2 times on \w{3}, \w{3} \d{1,2}\./.test(((await fault.textContent().catch(() => '')) ?? '').trim()))
-    if (said) await shot(fault, 'r6-fault-line')
+    check('Evidence says the engine failed in place of its tests, with no Cards, and the day’s count kept', said && (await seen(page.getByTestId('engine-failed'))) && (await page.getByRole('heading', { name: 'Cards', exact: true }).count()) === 0 && /^The learning engine could not read your record 2 times on \w{3}, \w{3} \d{1,2}\. Each time, no move was offered/.test(((await fault.textContent().catch(() => '')) ?? '').trim()))
+    if (said) await shot(fault, 'retire-fault-line')
     await ctx.close()
   }
   {

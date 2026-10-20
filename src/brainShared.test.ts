@@ -147,14 +147,9 @@ describe('the one tap a line may offer, and the week in three parts', () => {
     expect(validateAction({ kind: 'plan', aimId: 1, cue: 'nextCheckIn' }, away).ok).toBe(true)
     expect(validateAction({ kind: 'depth', value: 'short' }, withMore).ok).toBe(true)
     expect(validateAction({ kind: 'depth', value: 'short' }, sheet).ok).toBe(false)
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore)).toEqual({ ok: true, value: { kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' } })
-    expect(validateAction({ kind: 'test', moveId: 'nap-ten', reading: 'energy', block: 'afternoon' }, withMore).ok).toBe(false)
-    // A test carries what it tests (item 6): a reading the move can be tested on, in a part of the day it fits, which the line cites.
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('offer no test') })
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'sleepQuality', block: 'evening' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('energy, mood') })
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'evening' }, withMore)).toMatchObject({ ok: false, reason: expect.stringContaining('afternoon, morning') })
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore, undefined, { text: 'Walk.', factIds: ['trend.sleepQuality'] })).toMatchObject({ ok: false, reason: expect.stringContaining('does not cite a fact about energy') })
-    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore, undefined, { text: 'Walk.', factIds: ['trend.energy'] }).ok).toBe(true)
+    // A test set by a tap was the retired engine's (the owner's requirement of 2026-10-20): no line sets one, whatever the sheet holds.
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore)).toEqual({ ok: false, reason: 'action kind must be plan or depth' })
+    expect(validateAction({ kind: 'test', moveId: 'walk-ten', reading: 'energy', block: 'afternoon' }, withMore, undefined, { text: 'Walk.', factIds: ['trend.energy'] }).ok).toBe(false)
     // A plan is held to its line (item 6): the moment the line names is the moment the tap pins.
     const plan = { kind: 'plan', aimId: 1, cue: 'afterBedtime' }
     expect(validateAction(plan, withMore, undefined, { text: 'Pin it to 20:00.', factIds: ['aim.1'] }).ok).toBe(true)

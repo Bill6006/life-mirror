@@ -474,10 +474,10 @@ describe('a "Not home" skip and the record around a trip, held to their gates', 
     const away = { ...contextFromWeek(D, await getSettings(), 'c', 'gated'), awayFromHome: { held: { atOffice: false, pickupTime: null, churchDay: false, studyNight: false } } }
     await db.days.put(away)
     await db.checkins.bulkAdd([checkin(D, 'morning'), checkin(addDays(D, -1), 'morning')])
-    const { learningRecords } = await import('./learningFlow')
-    expect((await learningRecords()).checkins.map((c) => c.day).sort()).toEqual([addDays(D, -1), D])
+    const { evidenceRecords } = await import('./evidenceFlow')
+    expect((await evidenceRecords()).checkins.map((c) => c.day).sort()).toEqual([addDays(D, -1), D])
     preview([AWAY_KEY])
-    expect((await learningRecords()).checkins.map((c) => c.day)).toEqual([addDays(D, -1)])
+    expect((await evidenceRecords()).checkins.map((c) => c.day)).toEqual([addDays(D, -1)])
   })
 
   it('leaves a trip’s days out of what is usual only once open', async () => {

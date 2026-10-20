@@ -145,7 +145,7 @@ test('when evenings go missing after low mornings, Evidence and the weekly view 
   await expect(page.getByTestId('honesty-missing')).toContainText('How the estimates treat it is to be revisited.')
 })
 
-test('the scorecard gives the learning repair’s tests and calls while it is on, and today’s experiments with it closed', async ({ page }) => {
+test('the scorecard gives the learning engine’s tests and calls, the old closed key changing nothing (2026-10-20)', async ({ page }) => {
   await start(page)
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
@@ -156,5 +156,6 @@ test('the scorecard gives the learning repair’s tests and calls while it is on
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   await page.getByTestId('weekly-scorecard').click()
-  await expect(page.getByTestId('scorecard-tests')).toHaveText(/^Experiments declared \d+, replicated \d+\.$/)
+  await expect(page.getByTestId('scorecard-tests')).toHaveText(/^Tests under way \d+; calls resolved \d+, held \d+\.$/)
+  await expect(page.getByText(/Experiments declared/)).toHaveCount(0)
 })

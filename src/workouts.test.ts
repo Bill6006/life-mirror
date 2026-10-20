@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { contextFromWeek, db, getSettings, type CheckIn, type OutsideDay } from './db'
-import { evidence } from './learningFlow'
+import { evidence } from './evidenceFlow'
 import { daylightFor, withDefaults } from './settings'
 import { eveningWorkoutDays, hardDays, isHard, lastWorkout, sessionSlot } from './workouts'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'

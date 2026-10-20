@@ -57,12 +57,21 @@ def main(runners):
         rows = table_of(runner)
         problems = []
         for kw in rows:
+            # A file gone (the old engine's modules, retired 2026-10-20) is reported, never a crash.
+            if not os.path.exists(ROOT + kw['file']):
+                problems.append(f"{kw['id']}: its file {kw['file']} is gone")
+                continue
             n = io.open(ROOT + kw['file'], encoding='utf-8', newline='').read().count(kw['old'])
             if n != 1:
                 problems.append(f"{kw['id']}: its text appears {n} times in {kw['file']}")
             pat = kw.get('pattern')
             assert kw.get('tests'), f"{kw['id']}: an empty test list would run everything"
-            if pat and not any(re.search(pat, t) for f in kw['tests'] for t in titles(f)):
+            files = [f for i, f in enumerate(kw['tests']) if not f.startswith('-') and (i == 0 or kw['tests'][i - 1] not in ('-g', '-t'))]
+            # A path names a file; a bare word (the equivalence 'harness') is the runner's own.
+            gone = [f for f in files if '/' in f and not os.path.exists(ROOT + f)]
+            if gone:
+                problems.append(f"{kw['id']}: its test file {', '.join(gone)} is gone")
+            elif pat and not any(re.search(pat, t) for f in kw['tests'] for t in titles(f)):
                 problems.append(f"{kw['id']}: /{pat}/ names no test in {', '.join(kw['tests'])}")
         bad += len(problems)
         print(f"{os.path.basename(runner)}: {len(rows)} entries, {len(problems)} to restate")

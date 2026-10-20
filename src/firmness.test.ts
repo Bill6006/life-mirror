@@ -46,8 +46,6 @@ const KEEP: Record<string, string[]> = {
   'say-when': ['say when, one tap', 'a plan tied to a moment is kept more often than a wish is'],
   'afternoon-walk': ['the afternoon usually reads 40', 'ten', 'midday', 'mood at once, whatever you expect of it'],
   'partly-honest': ['partly, 3 times this week', 'smaller version is the honest size', 'the one that gets kept'],
-  'card-long-unclear': ['12 observations and no clear difference', 'the alternative or retire the card', 'no reason to keep it'],
-  'card-promising': ['promising, 8 observations', 'one more week before believing it'],
   'caffeine-late': ['a meta-analysis of trials', 'that runs past midnight'],
   'church-morning': ['mornings after church read 48 against 60', 'the recovery gap is a fact of the day'],
   'steady-moving': ['steady, 5 of 6 blocks inside the usual', 'progress that is recorded carries part of the effect by itself'],
@@ -64,7 +62,6 @@ const KEEP: Record<string, string[]> = {
   'loop-open': ['nothing on it since', 'not useful', 'smaller version to a moment today'],
   'short-night-today': ['lowers mood more than it lowers thinking', 'a nap under half an hour before mid-afternoon', 'supported repair'],
   'short-sleep-afternoons': ['afternoons after short nights', 'regular sleep times went with better health than long sleep did'],
-  'propose-test': ['never tested it', 'one tap', 'against nothing extra', 'its card will say what your record finds'],
 }
 
 /** Words that keep a tentative finding tentative, or a claim within its evidence. */
@@ -114,7 +111,7 @@ describe('the gate', () => {
   })
 })
 
-describe('the phone’s lines, said at each firmness (all 34 situations, all seven modes)', () => {
+describe('the phone’s lines, said at each firmness (all 31 situations, all seven modes)', () => {
   it('writes every choice as supportive, balanced and hard coach, and leaves none unresolved', () => {
     for (const [id, t] of Object.entries(copy.brain.lines as Record<string, string>)) {
       expect(t.split('⟨').length - 1, id).toBe((t.match(CHOICE) ?? []).length)
@@ -210,12 +207,12 @@ describe('Adaptive', () => {
     const chosen = Object.fromEntries(SITUATIONS.map((s) => [s.id, adaptiveFirmness(signalsOf(s.id))]))
     const by = (f: Firmness) => Object.keys(chosen).filter((id) => chosen[id] === f).sort()
     // Firm about a real pattern that matters, or a serious warning on strong evidence.
-    expect(by('hardCoach')).toEqual(['cadence-dropping', 'caffeine-late', 'card-long-unclear', 'commitment-fading', 'necessities-missed', 'step-stalled', 'stretch'])
+    expect(by('hardCoach')).toEqual(['cadence-dropping', 'caffeine-late', 'commitment-fading', 'necessities-missed', 'step-stalled', 'stretch'])
     // Warm about good news.
     expect(by('supportive')).toEqual(['cue-holds', 'fresh-start', 'loop-closed', 'steady-moving', 'workout-evenings'])
     // Even-handed about the rest, the associations, guesses and one-day readings among them.
-    expect(by('balanced')).toHaveLength(22)
-    for (const id of ['caffeine-sleep-shorter', 'nap-read', 'workout-flat', 'social-recovery', 'short-sleep-afternoons', 'caffeine-sleep-even', 'forecast-wide', 'church-morning', 'card-promising', 'commitment-thinning']) expect(chosen[id], id).toBe('balanced')
+    expect(by('balanced')).toHaveLength(20)
+    for (const id of ['caffeine-sleep-shorter', 'nap-read', 'workout-flat', 'social-recovery', 'short-sleep-afternoons', 'caffeine-sleep-even', 'forecast-wide', 'church-morning', 'commitment-thinning']) expect(chosen[id], id).toBe('balanced')
   })
 
   it('never says anything tentative with Hard Coach certainty, and never softens a real pattern that matters', () => {

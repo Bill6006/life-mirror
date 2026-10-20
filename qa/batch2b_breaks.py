@@ -117,10 +117,9 @@ TABLE = [
          old="    const how = text(ch.how, COACH_LIMITS.how, 'how', false)\n",
          new="    const how = text(ch.how, 250, 'how', false)\n",
          tests=['worker/src/skillCoach.test.ts'], pattern='says every length it checks'),
-    dict(id='never-evidence', file='src/learning.ts',
+    dict(id='never-evidence', file='src/observe.ts', tests=['src/journalNeverEvidence.test.ts'],
          old="import { addDays, blockIndex, BLOCKS, daysBetween, type Block } from './blocks'\n",
-         new="import { addDays, blockIndex, BLOCKS, daysBetween, type Block } from './blocks'\n// reads db.journal\n",
-         tests=['src/journalNeverEvidence.test.ts']),
+         new="import { addDays, blockIndex, BLOCKS, daysBetween, type Block } from './blocks'\n// reads db.journal\n"),
 ]
 
 

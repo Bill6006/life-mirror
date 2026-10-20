@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { moveById } from './catalogue'
 import type { CheckIn, Offer, Outcome } from './db'
-import { combine, moveBelief, OBSERVATION_SD, priorOf, recordOf, shrink, signFlips, tagBeliefs, nothingBelief, type Belief, type MoveBelief } from './learning'
-import { DECLINED_EFFECT, DECLINED_WEIGHT, forecast, indexCheckIns, isThin, noTimeCeiling, observations, PRIOR_SD, signedEffect, THIN_WEIGHT, windowSlots } from './observe'
+import { DECLINED_EFFECT, DECLINED_WEIGHT, forecast, indexCheckIns, isThin, noTimeCeiling, observations, signedEffect, THIN_WEIGHT, windowSlots } from './observe'
 import { NOTHING } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -99,9 +97,6 @@ describe('effects from the record', () => {
     const before = observations([...priorEvenings, evening], [afternoonOffer], [outcome(1, 'walk-ten', 'done')])
     const withEmpty = observations([...priorEvenings, evening, ci('2026-09-11', 'morning', {})], [afternoonOffer], [outcome(1, 'walk-ten', 'done')])
     expect(withEmpty).toEqual(before)
-    const tagsBefore = tagBeliefs(before, '2026-09-11')
-    const tagsAfter = tagBeliefs(withEmpty, '2026-09-11')
-    expect(tagsAfter).toEqual(tagsBefore)
   })
 
   it('weighs a thin check-in by its stated weight and nothing else changes', () => {
@@ -111,63 +106,10 @@ describe('effects from the record', () => {
     expect(full[0].weight).toBe(1)
     expect(thin[0].weight).toBe(THIN_WEIGHT)
     expect(thin[0].effect).toBeCloseTo(full[0].effect, 10)
-    const move = moveById('walk-ten')
-    const prior = priorOf(move)
-    const fullRecord = recordOf(full, D) as Belief
-    const thinRecord = recordOf(thin, D) as Belief
-    expect(fullRecord.n).toBe(1)
-    expect(thinRecord.n).toBe(THIN_WEIGHT)
-    const p0 = 1 / prior.sd ** 2
-    expect(combine(prior, fullRecord).mean).toBeCloseTo((p0 * prior.mean + 1 * 1) / (p0 + 1 / OBSERVATION_SD ** 2), 10)
-    expect(combine(prior, thinRecord).mean).toBeCloseTo((p0 * prior.mean + THIN_WEIGHT * 1) / (p0 + THIN_WEIGHT / OBSERVATION_SD ** 2), 10)
   })
 })
 
-describe('beliefs: research says, your record says', () => {
-  it('starts from the Phase 9 prior with a spread set by the source’s strength, and moves by precision', () => {
-    const walk = moveById('walk-ten')
-    const prior = priorOf(walk)
-    expect(prior).toEqual({ mean: walk.prior.effect, sd: PRIOR_SD[walk.source.strength], n: 0 })
-    expect(combine(prior, null)).toEqual(prior)
-    const moved = combine(prior, { mean: 2, sd: 0.5, n: 4 })
-    expect(moved.mean).toBeGreaterThan(prior.mean)
-    expect(moved.mean).toBeLessThan(2)
-    expect(moved.sd).toBeLessThan(prior.sd)
-  })
-
-  it('shrinks a thin tag toward its prior and lets a long record win', () => {
-    const prior = { mean: 0.3, sd: 0.5, n: 0 }
-    expect(shrink(prior, null)).toEqual(prior)
-    const thin = shrink(prior, { mean: 1, sd: 0.5, n: 1 })
-    expect(thin.mean).toBeCloseTo(0.3 + (1 / 6) * 0.7, 10)
-    const long = shrink(prior, { mean: 1, sd: 0.2, n: 50 })
-    expect(long.mean).toBeGreaterThan(0.9)
-  })
-
-  it('lends the tags’ record to a move whose own record is thin, and never flips on one day', () => {
-    const today = '2026-09-11'
-    const obs = [
-      { offerId: 1, moveId: 'green-walk', situationKey: 'afternoon:mood', target: 'mood' as const, window: 'nextBlock' as const, day: '2026-09-09', block: 'afternoon' as const, arm: 'done' as const, effect: 2, weight: 1, coinFlip: true, spill: {}, energy: null, propensity: null, propensities: null },
-      { offerId: 2, moveId: 'green-walk', situationKey: 'afternoon:mood', target: 'mood' as const, window: 'nextBlock' as const, day: '2026-09-10', block: 'afternoon' as const, arm: 'done' as const, effect: 2, weight: 1, coinFlip: true, spill: {}, energy: null, propensity: null, propensities: null },
-    ]
-    const tags = tagBeliefs(obs, today)
-    const outdoors = tags.find((t) => t.id === 'outdoors')
-    expect(outdoors?.record?.n).toBeGreaterThan(1.5)
-    const walk = moveBelief(moveById('walk-ten'), 'afternoon:mood', obs, tags, today)
-    expect(walk.record).toBeNull()
-    expect(walk.belief.mean).toBeGreaterThan(walk.research.mean)
-    const oneBadDay = [...obs, { ...obs[0], offerId: 3, moveId: 'walk-ten', day: today, effect: -3 }]
-    const after = moveBelief(moveById('walk-ten'), 'afternoon:mood', oneBadDay, tagBeliefs(oneBadDay, today), today)
-    expect(after.belief.mean).toBeGreaterThan(-1)
-  })
-
-  it('flags a sign flip only with enough record on both sides', () => {
-    const b = (situationKey: string, mean: number, n: number): MoveBelief => ({ moveId: 'walk-ten', situationKey, research: { mean: 0.4, sd: 0.3, n: 0 }, record: { mean, sd: 0.3, n }, belief: { mean, sd: 0.3, n } })
-    expect(signFlips([b('morning:mood', 0.8, 5), b('evening:mood', -0.8, 5)])).toEqual([{ moveId: 'walk-ten', helps: 'morning:mood', hurts: 'evening:mood' }])
-    expect(signFlips([b('morning:mood', 0.8, 5), b('evening:mood', -0.8, 2)])).toEqual([])
-    expect(signFlips([b('morning:mood', 0.8, 5), b('evening:mood', 0.1, 9)])).toEqual([])
-  })
-
+describe('the no-time ceiling', () => {
   it('narrows the block for a week after a "no time", by the shortest move refused', () => {
     const offers = [offer(1, '2026-09-08', 'evening', 'focused-block', 'focus'), offer(2, '2026-09-09', 'evening', 'walk-ten', 'mood'), offer(3, '2026-08-01', 'evening', 'cyclic-sigh', 'stress')]
     const outcomes = [outcome(1, 'focused-block', 'no', 'noTime'), outcome(2, 'walk-ten', 'no', 'noTime'), outcome(3, 'cyclic-sigh', 'no', 'noTime')]
@@ -194,12 +136,4 @@ describe('the null offer', () => {
     expect(observations([...priorEvenings, evening], [nullOffer], [outcome(3, NOTHING, null)])).toHaveLength(0)
   })
 
-  it('has a belief per situation that starts flat and moves with the record', () => {
-    expect(nothingBelief('afternoon:mood', [], D).belief).toEqual({ mean: 0, sd: 1, n: 0 })
-    const obs = observations([...priorEvenings, evening], [nullOffer], [outcome(3, NOTHING, 'done')])
-    const b = nothingBelief('afternoon:mood', obs, D)
-    expect(b.record?.n).toBeGreaterThan(0)
-    expect(b.belief.mean).toBeGreaterThan(0)
-    expect(b.belief.sd).toBeLessThan(1)
-  })
 })

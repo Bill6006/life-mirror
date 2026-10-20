@@ -1,4 +1,3 @@
-import type { Belief } from './bandit'
 import { parseDay, type Block } from './blocks'
 import type { Window } from './catalogue'
 import type { CheckIn, DayContext } from './db'
@@ -9,12 +8,15 @@ import type { ReadingId } from './readings'
 import { INGREDIENTS } from './score'
 
 // Requirement 2 of the learning design agreed 2026-10-10, the foundations: each decision point is
-// recorded at the time, since history recorded without them cannot be rebuilt later. Recorded, never
-// read by today's engine: the learning repair (stage 2) and the stress test read them. Nothing here
-// changes what is drawn, offered or said.
+// recorded at the time, since history recorded without them cannot be rebuilt later: the learning
+// engine (stage 2) and the stress test read them. Nothing here changes what is drawn, offered or said.
 
-/** The rules every value a decision point records was made by: a value is read later by the rules that made it. */
-export const ENGINE_VERSION = 'engine-2026-10-16'
+/** A candidate's belief at a draw, as the draw record keeps it: the effect when done, its spread, and the record behind it. */
+export interface DrawBelief {
+  mean: number
+  sd: number
+  n: number
+}
 
 /** The day's context at a draw: the learning's pre-declared contexts, as they stood then. */
 export interface DrawContext {
@@ -67,7 +69,7 @@ export function drawContextOf(ctx: DayContext | null | undefined, checkins: read
 export function drawRecordOf(i: {
   excluded: ReadonlyMap<string, Exclusion>
   candidates: readonly string[]
-  belief: (id: string) => Belief
+  belief: (id: string) => DrawBelief
   target: ReadingId
   /** The drawn move's window; null for Nothing extra. */
   window: Window | null
@@ -75,6 +77,8 @@ export function drawRecordOf(i: {
   checkins: readonly CheckIn[]
   day: string
   block: Block
+  /** The engine that drew. */
+  engine: string
 }): DrawRecord {
   const excluded: Partial<Record<Exclusion, string[]>> = {}
   for (const [id, why] of i.excluded) (excluded[why] ??= []).push(id)
@@ -88,7 +92,7 @@ export function drawRecordOf(i: {
   const slot = windowSlots(i.day, i.block, i.window ?? 'nextBlock')[0]
   const expected = slot ? forecast(indexCheckIns(i.checkins), slot.day, slot.block, i.target) : null
   return {
-    engine: ENGINE_VERSION,
+    engine: i.engine,
     excluded,
     beliefs,
     intended: i.window ? { target: i.target, direction: INGREDIENTS[i.target] === 'down' ? 'down' : 'up', window: i.window } : null,

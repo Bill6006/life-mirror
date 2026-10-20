@@ -1,12 +1,10 @@
 import { BLOCKS, blockStart, type Block } from './blocks'
-import { hasMove, isParked, isPathOnly, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, RECOVERY_GAP, rungOf, type Move, type Window } from './catalogue'
+import { hasMove, isParked, isPathOnly, isProposed, liveMoves, moveById, NOTHING, OBSERVED_ONLY, PASSIVE, RECOVERY_GAP, rungOf, type Effort, type Move, type Window } from './catalogue'
 import { askedOf, type CheckIn } from './db'
 import { needsHome } from './homeOnly'
 import { inPerson } from './people'
 import type { Position, ReadingId } from './readings'
 import { bandOf, INGREDIENT_IDS, INGREDIENTS, pointsFor, readingOf, type Band } from './score'
-import { choose, type Belief, type Candidate, type Choice } from './bandit'
-import { type Rng } from './rng'
 import { minutesOf } from './settings'
 
 // The situation and the candidate set, as the plan's bar states them. A situation is a block
@@ -14,8 +12,14 @@ import { minutesOf } from './settings'
 // filters what is feasible but does not split the comparison. Every filter here is a filter
 // tag; none of them is ever learned.
 
-/** "Nothing today" is a candidate the bandit can learn to pick. Its id lives with the catalogue so the learning engine can name it too. */
+/** "Nothing today", every test's comparison. Its id lives with the catalogue so the learning engine can name it too. */
 export { NOTHING }
+
+/** A move that fits the moment, as the engine draws among them. */
+export interface Candidate {
+  id: string
+  effort: Effort
+}
 
 export interface Situation {
   block: Block
@@ -221,37 +225,15 @@ export function candidatesFor(s: Situation, t: TodayState): CandidateSet {
       excluded.set(m.id, why)
       continue
     }
-    const rung = rungOf(m.id)
-    const top = rung ? (t.doneRungs.get(rung.ladder[0]) ?? -1) : -1
-    const bonus = rung && harderRungAllowed(s.band) && rung.index === top + 1 ? 0.5 : 0
-    candidates.push({ id: m.id, effort: m.effort, bonus })
+    candidates.push({ id: m.id, effort: m.effort })
   }
   if (!t.offeredToday.includes(NOTHING)) candidates.push({ id: NOTHING, effort: 'low' })
   return { candidates, excluded }
 }
 
-export function chooseFor(set: CandidateSet, beliefs: (id: string) => Belief, rng?: Rng): Choice | null {
-  return choose(set.candidates, beliefs, rng)
-}
-
 export interface OfferLike {
   moveId: string
   at: string
-}
-
-/** The alternative a card compares against: the least-offered other real candidate. */
-export function alternativeFor(chosenId: string, set: CandidateSet, history: readonly OfferLike[]): string | null {
-  const others = set.candidates.filter((c) => c.id !== chosenId && c.id !== NOTHING)
-  let best: string | null = null
-  let bestCount = Infinity
-  for (const c of others) {
-    const count = history.filter((o) => o.moveId === c.id).length
-    if (count < bestCount) {
-      best = c.id
-      bestCount = count
-    }
-  }
-  return best
 }
 
 export function windowFor(moveId: string, target: ReadingId): Window {
@@ -267,15 +249,16 @@ export interface WhyNot {
 }
 
 /**
- * Why not that: the move you might have expected, the one done most recently in this situation
- * if any, else the runner-up of the draw, and the first reason it was not offered.
+ * Why not that: the move you might have expected, the one done most recently in this situation if any, else the real move
+ * the draw gave the most chance after the one drawn, and the first reason it was not offered. ('coinFlip' is a past
+ * record's reason, from the retired engine.)
  */
-export function whyNotThat(expected: string | null, choice: Choice, set: CandidateSet): WhyNot | null {
-  const moveId = expected && expected !== choice.id ? expected : choice.runnerUp
-  if (!moveId || moveId === choice.id || moveId === NOTHING) return null
-  const excluded = set.excluded.get(moveId)
-  if (excluded) return { moveId, reason: excluded }
-  return { moveId, reason: choice.coinFlip ? 'coinFlip' : 'draw' }
+export function whyNotOf(expected: string | null, chosen: string, chances: Readonly<Record<string, number>>, excluded: ReadonlyMap<string, Exclusion>): WhyNot | null {
+  const runnerUp = Object.entries(chances).filter(([id]) => id !== chosen && id !== NOTHING).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null
+  const moveId = expected && expected !== chosen ? expected : runnerUp
+  if (!moveId || moveId === chosen || moveId === NOTHING) return null
+  const why = excluded.get(moveId)
+  return { moveId, reason: why ?? 'draw' }
 }
 
 /** A passive item to ride alongside: fits the block, not offered or done today, least offered so far. Never the recovery gap, which only its rule assigns. */

@@ -10,7 +10,6 @@ import { dayGuard } from './brainShared'
 import { db, ensureDayContext, getDayContext, getSettings, setDayContext, updateSettings } from './db'
 import { factById } from './facts'
 import { clockTimesIn } from './format'
-import { closeRepair } from './repair/testGate'
 
 // The brain on the phone, end to end on a seeded record: the sheet built from the record, the
 // day's line chosen once and logged, the tap filed under it, the facts row written only when
@@ -405,9 +404,7 @@ describe('the line, acted on', () => {
     expect(await applyLineAction(DAY, line!.action!, NOW)).toBe(false)
   })
 
-  it('does what it says in one tap, says why it said it, sets a test once, and makes the check-in lighter', async () => {
-    // Today's engine, the learning repair's fallback, sets a test with one tap; the repair closed, as the browser tests set it (R6).
-    closeRepair()
+  it('does what it says in one tap, says why it said it, and makes the check-in lighter', async () => {
     await addAim('certification', null, 'Veltish', 'language')
     await addSkill('Ten words', 'Veltish')
     await chooseAndLog(DAY, NOW)
@@ -427,26 +424,20 @@ describe('the line, acted on', () => {
     expect(why.facts[0].text).toContain('Veltish (learning)')
     expect(why.cards.map((c) => c.id)).toEqual(['implementation-intentions'])
 
-    expect((await lineActionState(DAY, { kind: 'test', moveId: 'walk-ten' }, NOW))?.state).toBe('open')
-    expect(await applyLineAction(DAY, { kind: 'test', moveId: 'walk-ten' }, NOW)).toBe(true)
-    expect(await db.cards.toArray()).toMatchObject([{ moveId: 'walk-ten', alternativeId: 'nothing', origin: 'import' }])
-    expect((await lineActionState(DAY, { kind: 'test', moveId: 'walk-ten' }, NOW))?.state).toBe('done')
-    expect((await lineActionState(DAY, { kind: 'test', moveId: 'no-such-move' }, NOW))?.state).toBe('gone')
-
     expect(await applyLineAction(DAY, { kind: 'depth', value: 'short' }, NOW)).toBe(true)
     expect((await getSettings()).depth).toBe('short')
     expect((await lineActionState(DAY, { kind: 'depth', value: 'short' }, NOW))?.state).toBe('done')
   })
 
-  it('under the learning repair, sets no test: the draw already tests every move, so a test tap is gone and nothing is written (R6)', async () => {
+  it('sets no test: a past line’s test tap is gone and writes nothing, whatever was set before (the old engine retired)', async () => {
     const test: LineAction = { kind: 'test', moveId: 'walk-ten' }
     expect(await lineActionState(DAY, test, NOW)).toEqual({ state: 'gone' })
     expect(await applyLineAction(DAY, test, NOW)).toBe(false)
     expect(await db.cards.count()).toBe(0)
     expect(lineTiming(test, await lineActionState(DAY, test, NOW), NOW)).toBe('forToday')
-    // The same tap with the repair closed is there to take.
-    closeRepair()
-    expect((await lineActionState(DAY, test, NOW))?.state).toBe('open')
+    // A card set by a tap before stays a record, and the tap stays gone.
+    await db.cards.add({ createdAt: `${DAY}T08:00:00.000Z`, situationKey: 'morning:mood', block: 'morning', target: 'mood', moveId: 'walk-ten', alternativeId: 'nothing', window: 'nextBlock', worthwhile: 1, origin: 'import' })
+    expect(await lineActionState(DAY, test, NOW)).toEqual({ state: 'gone' })
   })
 
   it('shows under Why the facts as they stood when the line was said, never the day’s sheet rewritten since (stage 1, item l)', async () => {
@@ -480,8 +471,6 @@ describe('the line, acted on', () => {
   })
 
   it('titles the line by when it is meant to be acted on, from its action alone (owner, 2026-09-23)', async () => {
-    // A test tap is today's engine's (R6): the repair closed, as the browser tests set it.
-    closeRepair()
     await addAim('certification', null, 'Veltish', 'language')
     const at = (h: number, m = 0) => new Date(2026, 8, 18, h, m)
     const timing = async (action: LineAction | null, now: Date) => lineTiming(action, await lineActionState(DAY, action, now), now)
@@ -502,11 +491,8 @@ describe('the line, acted on', () => {
     await db.intentions.clear()
     expect(await timing(plan, at(21))).toBe('forToday')
     expect(await timing({ kind: 'plan', aimId: 9, cue: 'afterBedtime' }, NOW)).toBe('forToday')
-    // A tap that does it on the spot is now while it is open, and for today once taken or gone.
-    expect(await timing(test, NOW)).toBe('now')
-    expect(await applyLineAction(DAY, test, NOW)).toBe(true)
+    // A tap that does it on the spot is now while it is open, and for today once taken or gone; a past line's test tap is gone.
     expect(await timing(test, NOW)).toBe('forToday')
-    expect(await timing({ kind: 'test', moveId: 'no-such-move' }, NOW)).toBe('forToday')
     expect(await timing(depth, NOW)).toBe('now')
     expect(await applyLineAction(DAY, depth, NOW)).toBe(true)
     expect(await timing(depth, NOW)).toBe('forToday')

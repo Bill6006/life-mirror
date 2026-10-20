@@ -3,10 +3,10 @@ import { addDays, blockAt, type Block } from './blocks'
 import { moveById } from './catalogue'
 import { copy } from './copy'
 import { updateSettings, type Offer, type Outcome } from './db'
-import { fill, formatDayShort, formatTime, formatWhen } from './format'
+import { fill, formatDayShort, formatTime } from './format'
 import { useLive } from './live'
-import { privateAssociationsToday, tierOfCard } from './learningFlow'
-import { answerPassive, cardById, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow, replacementsFor } from './offerFlow'
+import { privateAssociationsToday } from './evidenceFlow'
+import { answerPassive, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow, replacementsFor } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
 import { INGREDIENTS } from './score'
@@ -15,7 +15,6 @@ import { needsHome } from './homeOnly'
 import { homeOnlyOn } from './postWindowFlow'
 import { repairEvidence, testOf } from './repair/evidence'
 import { guardRepair } from './repair/breaker'
-import { useRepairOn } from './repair/gate'
 import { rungWords } from './repair/words'
 import { windowOfMove } from './repair/world'
 
@@ -53,15 +52,12 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   const c = copy.move
   const nothing = offer.moveId === NOTHING
   const move = nothing ? null : moveById(offer.moveId)
-  const card = useLive(() => cardById(offer.cardId), [offer.cardId])
   const counts = useLive(() => offerCounts(offer.situationKey, offer.moveId), [offer.situationKey, offer.moveId, outcome?.id])
-  // The card's own tier, as Evidence shows it; never a fixed word (Part 33). While the learning repair is on (stage R4), the
-  // drawn move's own test for the moment's reading and window, by its rung on the evidence ladder; nothing extra has none.
-  const repair = useRepairOn()
-  const tier = useLive(() => (repair || offer.cardId === null ? Promise.resolve(null) : tierOfCard(offer.cardId, offer.day)), [repair, offer.cardId, offer.day, outcome?.id])
+  // The drawn move's own test for the moment's reading and window, by its rung on the evidence ladder (stage R4); nothing
+  // extra has none. Never a fixed word (Part 33), and nothing from the retired engine.
   const rung = useLive(
-    () => (repair && !nothing ? guardRepair(offer.day, () => repairEvidence(offer.day).then((ev) => testOf(ev, offer.moveId, offer.target, windowOfMove(offer.moveId, offer.target))), null) : Promise.resolve(null)),
-    [repair, nothing, offer.moveId, offer.target, offer.day, outcome?.id],
+    () => (!nothing ? guardRepair(offer.day, () => repairEvidence(offer.day).then((ev) => testOf(ev, offer.moveId, offer.target, windowOfMove(offer.moveId, offer.target))), null) : Promise.resolve(null)),
+    [nothing, offer.moveId, offer.target, offer.day, outcome?.id],
   )
   const target = readingById(offer.target)
   const arrow = INGREDIENTS[offer.target] === 'up' ? '↑' : '↓'
@@ -133,13 +129,13 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       ? c.whyPickup
       : nothing
         ? fill(INGREDIENTS[offer.target] === 'down' ? c.whyNothingDown : c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
-        : fill(INGREDIENTS[offer.target] === 'down' ? c.whyLineDown : c.whyLine, { target: target.name, arrow, window: windowOf(repair ? windowOfMove(offer.moveId, offer.target) : (card?.window ?? 'nextBlock')) })
+        : fill(INGREDIENTS[offer.target] === 'down' ? c.whyLineDown : c.whyLine, { target: target.name, arrow, window: windowOf(windowOfMove(offer.moveId, offer.target)) })
   const shownPrivates = (privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
 
   const head = (
     <div class="move-head">
       <p class="eyebrow small">{offer.kind === 'pickup' ? c.pickupTitle : c.title}</p>
-      {(repair ? rung?.running : card) && <Tag>{c.testing}</Tag>}
+      {rung?.running && <Tag>{c.testing}</Tag>}
     </div>
   )
   const title = (
@@ -176,17 +172,11 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       <div class="ev">
         <span class="calc-key">{c.evidence}</span>
         <span class="calc-line">
-          {repair ? (
-            !nothing && (
-              <>
-                <span class="tier" data-testid="move-tier">
-                  {rungWords(rung?.level ?? 'none', rung?.direction ?? null)}
-                </span>{' '}
-              </>
-            )
-          ) : (
+          {!nothing && (
             <>
-              <span class="tier" data-testid="move-tier">{copy.evidence.tiers[tier ?? 'little']}</span>{' '}
+              <span class="tier" data-testid="move-tier">
+                {rungWords(rung?.level ?? 'none', rung?.direction ?? null)}
+              </span>{' '}
             </>
           )}
           {counts ? fill(c.evidenceLine, { n: times(counts.offered), done: String(counts.done), partly: String(counts.partly) }) : '…'}
@@ -208,24 +198,11 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       <div class="ev test">
         <span class="calc-key">{c.testing}</span>
         <span class="calc-line testing">
-          {repair
-            ? offer.kind === 'pickup'
-              ? copy.repairEvidence.testingPickup
-              : nothing
+          {offer.kind === 'pickup'
+            ? copy.repairEvidence.testingPickup
+            : nothing
               ? copy.repairEvidence.testingNothing
-              : `${fill(copy.repairEvidence.testingLine, { move: move?.name ?? '', target: target.name.toLowerCase(), window: windowOf(windowOfMove(offer.moveId, offer.target)) })}${rung?.running ? ` ${copy.repairEvidence.testingNow}` : ''}`
-            : card === undefined
-              ? '…'
-              : card === null
-                ? c.testingNone
-                : fill(c.testingLine, {
-                    move: move?.name ?? c.nothing,
-                    alternative: moveById(card.alternativeId).name,
-                    target: target.name.toLowerCase(),
-                    window: windowOf(card.window),
-                    id: String(card.id),
-                    date: formatWhen(card.createdAt),
-                  })}
+              : `${fill(copy.repairEvidence.testingLine, { move: move?.name ?? '', target: target.name.toLowerCase(), window: windowOf(windowOfMove(offer.moveId, offer.target)) })}${rung?.running ? ` ${copy.repairEvidence.testingNow}` : ''}`}
           {offer.coinFlip && ` ${c.coinFlip}`}
         </span>
       </div>

@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { choose, COIN_FLIP_RATE, FLAT, type Candidate } from './bandit'
-import { seeded } from './rng'
 import { CHARISMA_LADDER, isParked, moveById, moves, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn } from './db'
-import { alternativeFor, candidatesFor, chooseFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, standingSetups, whyNotThat, type TodayState } from './offers'
+import { candidatesFor, NOTHING, pickPassive, pickupCandidates, screen, situationOf, standingSetups, whyNotOf, type TodayState } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { INGREDIENTS } from './score'
 
@@ -18,7 +16,6 @@ const mk = (block: CheckIn['block'], answers: Answers): CheckIn => ({
   activeMs: 0,
 })
 const quiet: TodayState = { doneToday: [], offeredToday: [], hiddenFamilies: new Set(), doneRungs: new Map(), studyNight: false, withHer: true, churchDay: false, noTimeCeiling: null }
-const flat = () => FLAT
 
 describe('the situation', () => {
   it('is the block plus the lowest ingredient with a clear direction, with its band', () => {
@@ -124,79 +121,23 @@ describe('the candidate set', () => {
   })
 })
 
-describe('the draw', () => {
-  const cands: Candidate[] = [
-    { id: 'a', effort: 'low' },
-    { id: 'b', effort: 'medium' },
-    { id: 'c', effort: 'high' },
-  ]
-
-  it('is a coin flip about one time in five, and says so', () => {
-    const rng = seeded(7)
-    let flips = 0
-    const n = 4000
-    for (let i = 0; i < n; i++) if (choose(cands, flat, rng)!.coinFlip) flips++
-    expect(flips / n).toBeGreaterThan(COIN_FLIP_RATE - 0.03)
-    expect(flips / n).toBeLessThan(COIN_FLIP_RATE + 0.03)
-  })
-
-  it('with flat beliefs favours the lower starting effort but keeps trying the others', () => {
-    const rng = seeded(11)
-    const counts: Record<string, number> = { a: 0, b: 0, c: 0 }
-    for (let i = 0; i < 4000; i++) {
-      const ch = choose(cands, flat, rng)!
-      if (!ch.coinFlip) counts[ch.id]++
-    }
-    expect(counts.a).toBeGreaterThan(counts.b)
-    expect(counts.b).toBeGreaterThan(counts.c)
-    expect(counts.c).toBeGreaterThan(0)
-  })
-
-  it('follows a stronger belief when one exists, and names a runner-up', () => {
-    const beliefs = (id: string) => (id === 'c' ? { mean: 4, sd: 0.2, n: 30 } : FLAT)
-    const rng = seeded(3)
-    let c = 0
-    for (let i = 0; i < 500; i++) {
-      const ch = choose(cands, beliefs, rng)!
-      if (!ch.coinFlip && ch.id === 'c') c++
-    }
-    expect(c).toBeGreaterThan(380)
-    expect(choose(cands, flat, seeded(5))!.runnerUp).not.toBeNull()
-    expect(choose([], flat)).toBeNull()
-  })
-
-  it('gives two comparable opportunities different candidates over a few draws', () => {
-    const s = situationOf(mk('afternoon', allAt(blockReadings('afternoon'), 3)))!
-    const set = candidatesFor(s, quiet)
-    const rng = seeded(21)
-    const seen = new Set<string>()
-    for (let i = 0; i < 12; i++) seen.add(chooseFor(set, flat, rng)!.id)
-    expect(seen.size).toBeGreaterThan(1)
-  })
-})
-
 describe('cards, why not that, passive items and the pickup slot', () => {
   const s = situationOf(mk('afternoon', allAt(blockReadings('afternoon'), 3)))!
   const set = candidatesFor(s, quiet)
 
-  it('names the least-offered other real candidate as the alternative', () => {
-    const chosen = set.candidates.find((c) => c.id !== NOTHING)!.id
-    const alt = alternativeFor(chosen, set, [])!
-    expect(alt).not.toBe(chosen)
-    expect(alt).not.toBe(NOTHING)
-    expect(alternativeFor(chosen, { candidates: [{ id: chosen, effort: 'low' }, { id: NOTHING, effort: 'low' }], excluded: new Map() }, [])).toBeNull()
-  })
-
-  it('explains why the expected move was not offered', () => {
+  it('explains why the expected move was not offered: the one done before, else the next most likely, and why not', () => {
     const chosen = set.candidates[0].id
-    const other = set.candidates.find((c) => c.id !== chosen && c.id !== NOTHING)!.id
-    const choice = { id: chosen, coinFlip: false, samples: {}, runnerUp: other }
-    expect(whyNotThat(other, choice, set)).toEqual({ moveId: other, reason: 'draw' })
-    expect(whyNotThat(null, { ...choice, coinFlip: true }, set)).toEqual({ moveId: other, reason: 'coinFlip' })
+    const reals = set.candidates.filter((c) => c.id !== chosen && c.id !== NOTHING).map((c) => c.id)
+    const [other, third] = reals
+    const chances = { [chosen]: 0.5, [other]: 0.1, [third]: 0.3, [NOTHING]: 0.1 }
+    // The move done before, when another was drawn: the draw chose otherwise.
+    expect(whyNotOf(other, chosen, chances, set.excluded)).toEqual({ moveId: other, reason: 'draw' })
+    // None done before: the real move the draw gave the most chance after the one drawn, never nothing extra.
+    expect(whyNotOf(null, chosen, chances, set.excluded)).toEqual({ moveId: third, reason: 'draw' })
+    // Out today: its own reason.
     const outToday = candidatesFor(s, { ...quiet, offeredToday: [other] })
-    const choice2 = { id: chosen, coinFlip: false, samples: {}, runnerUp: null }
-    expect(whyNotThat(other, choice2, outToday)).toEqual({ moveId: other, reason: 'offeredToday' })
-    expect(whyNotThat(chosen, choice2, set)).toBeNull()
+    expect(whyNotOf(other, chosen, chances, outToday.excluded)).toEqual({ moveId: other, reason: 'offeredToday' })
+    expect(whyNotOf(chosen, chosen, { [chosen]: 1 }, set.excluded)).toBeNull()
   })
 
   it('picks a passive item that fits the block and was not offered or done today', () => {

@@ -162,14 +162,6 @@ TABLE = [
          new="{false && (",
          tests=[S], pattern=NOT_ASKED),
     # 5. The test tap's sentence.
-    dict(id='move-name-quoted', file='src/copy.ts',
-         old="    actedTest: 'Testing “{move}” in the {block},",
-         new="    actedTest: 'Testing {move} in the {block},",
-         tests=['src/brief.test.ts'], pattern='names the move'),
-    dict(id='count-in-words', file='src/brief.tsx',
-         old="n: countWords(MIN_PER_ARM)",
-         new="n: String(MIN_PER_ARM)",
-         tests=['src/brief.test.ts'], pattern='names the move'),
     # 6. The note field's hint fits; 7. "check-in?" kept whole: the layout audit's two new rules.
     dict(id='note-hint-fits', file='src/copy.ts',
          old="    notePlaceholder: 'A line Claude may read',",

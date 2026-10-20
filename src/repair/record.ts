@@ -114,6 +114,9 @@ export function buildEngine(r: RepairRecord, through: string, stopBefore: Block 
   // Every mark as it is: the engine counts one only from its own day on (askedLift).
   const asked = (r.asked ?? []).map((m) => ({ key: m.key, d: index(m.day) }))
   const engine = new EngineB(rng, cfg, away, declared, null, (d) => r.weekAnswers.get(addDays(epoch, d)) ?? null, (d) => addDays(epoch, d), asked)
+  // Moves offered outside the comparisons (a replacement after a skip, the pickup-time move): noted for their day's rule
+  // alone, never read as a decision.
+  for (const o of r.offers) if ((o.kind === 'block' || o.kind === 'pickup') && !isDraw(o) && !setAside(o) && o.moveId !== NOTHING && o.day >= epoch && o.day <= through) engine.noteAside(index(o.day), o.moveId)
   const checkinAt = new Map(complete.map((c) => [slotKey(c.day, c.block), c]))
   const drawAt = new Map<string, Offer>()
   for (const o of [...r.offers].sort((a, b) => (a.id ?? 0) - (b.id ?? 0))) if (isDraw(o) && !drawAt.has(slotKey(o.day, o.block))) drawAt.set(slotKey(o.day, o.block), o)

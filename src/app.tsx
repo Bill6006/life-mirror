@@ -14,7 +14,7 @@ import { WeeklyScreen } from './weeklyScreen'
 import { adoptCurrentSkills, adoptOrphanSubjects, alignLadders } from './aimFlow'
 import { writeFactsRow } from './brainFlow'
 import { reconcilePush } from './push'
-import { loadAudits, runLearning } from './learningFlow'
+import { loadAudits, runAudits } from './evidenceFlow'
 import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
 import { copy } from './copy'
@@ -133,7 +133,7 @@ export function App() {
   // Stage 3, item 6: the weather, at most once a day, only while the app is open and only once you turned it on; the day's sheet is written again when it comes.
   const weatherOn = settings?.weather.on === true
   useEffect(() => (weatherOn ? watchWeather(() => void writeFactsRow(blockAt(new Date()).day)) : undefined), [weatherOn])
-  // Phase 10: beliefs update once a day, on open.
+  // Once a day, on open: the record's audits (the readings' anchor swaps and weights), then the forecasts and the facts row.
   useEffect(() => {
     const day = blockAt(new Date()).day
     // Follow-up F1: the use log syncs with the record; rows kept before it did are queued once.
@@ -143,7 +143,7 @@ export function App() {
       .then(alignLadders)
       // Workstream 6: each older learning commitment takes, once, the skill its step named as its current skill.
       .then(adoptCurrentSkills)
-      .then(() => runLearning(day))
+      .then(() => runAudits(day))
       .then(() => runForecasting(day))
       .then(() => writeFactsRow(day))
   }, [])

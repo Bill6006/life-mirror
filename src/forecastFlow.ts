@@ -9,12 +9,10 @@ import type { AnchorSwap, Card, CheckIn, DayContext, Declaration, ForecastScore,
 import { checksAsShown, honestyChecks, type HonestyChecks } from './honesty/checks'
 import { guardRepair } from './repair/breaker'
 import { repairEvidence, trackSummary } from './repair/evidence'
-import { repairOn } from './repair/gate'
 import type { Frequency, Settings } from './settings'
 import { eveningWorkoutDays } from './workouts'
 import { observations, slotKey } from './observe'
 import type { ReadingId } from './readings'
-import { evaluateCards } from './tiers'
 import { baselineShift, type Shift } from './shift'
 import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type RepairTrack, type Scorecard } from './weekly'
 import { necessitiesMissed } from './necessities'
@@ -247,7 +245,7 @@ export interface WeeklyRecords {
   swaps: readonly AnchorSwap[]
   frequency: Frequency
   togetherAnswers: Settings['togetherAnswers']
-  /** While the learning repair is on, its own count for the scorecard; null otherwise. */
+  /** The learning engine's own count for the scorecard; null when it could not read the record. */
   repair: RepairTrack | null
 }
 
@@ -257,9 +255,8 @@ export interface WeeklyRecords {
  */
 export function weeklyAnalyses(r: WeeklyRecords, today: string): WeeklyAnalyses {
   const obs = observations(r.checkins, r.offers, r.outcomes)
-  const stats = evaluateCards(r.cards.filter((c) => c.origin !== 'weight'), obs, r.declarations)
   return {
-    scorecard: scorecard(r.scores, r.checkins, r.declarations, stats, r.repair),
+    scorecard: scorecard(r.scores, r.checkins, r.repair),
     best: bestDays(r.checkins, r.offers, r.outcomes, r.contexts, today, new Set(r.outside.map((o) => o.day))),
     gap: gap(r.checkins, today),
     moved: movedThisWeek(r.checkins, today),
@@ -271,12 +268,10 @@ export function weeklyAnalyses(r: WeeklyRecords, today: string): WeeklyAnalyses 
 
 /** Everything the weekly view shows, from the records at the moment of asking. */
 export async function weeklyData(today: string): Promise<Weekly> {
-  const [checkins, offers, outcomes, cards, declarations, contexts, forecasts, scores, settings, outside, aims, swaps] = await Promise.all([
+  const [checkins, offers, outcomes, contexts, forecasts, scores, settings, outside, aims, swaps] = await Promise.all([
     allCheckIns(),
     db.offers.toArray(),
     db.outcomes.toArray(),
-    db.cards.toArray(),
-    db.declarations.toArray(),
     db.days.toArray(),
     db.forecasts.toArray(),
     db.forecastScores.toArray(),
@@ -285,22 +280,21 @@ export async function weeklyData(today: string): Promise<Weekly> {
     db.aims.toArray(),
     db.anchorSwaps.toArray(),
   ])
-  // The scorecard's count follows the learning repair while it is on (stage R7); its breaker closes it if a rebuild throws.
-  const repair = repairOn() ? await guardRepair(today, () => repairEvidence(today).then(trackSummary), null) : null
+  // The scorecard's count and what has held are the engine's own (stage R7); null while it cannot read the record.
+  const ev = await guardRepair(today, () => repairEvidence(today), null)
+  const repair = ev ? trackSummary(ev) : null
+  const held = ev ? ev.shown.filter((t) => t.direction === 'helps' && (t.level === 'established' || t.level === 'likely')).map((t) => ({ moveId: t.moveId, target: t.target, level: t.level as 'established' | 'likely' })) : null
   const obs = observations(checkins, offers, outcomes)
-  const effectCards = cards.filter((c) => c.origin !== 'weight')
-  const stats = evaluateCards(effectCards, obs, declarations)
   const situations = recentSituations(offers, today)
   const health = catalogueHealth(offers, outcomes, situations, new Set(settings.hideFaith ? ['faith'] : []))
   const week = Array.from({ length: 7 }, (_, k) => addDays(today, k)).map((day) => contexts.find((c) => c.day === day) ?? contextFromWeek(day, settings))
   const people = uncoveredContexts(carriedByContext(offers, outcomes, contexts, today), week)
-  const cardMoves = new Map(effectCards.map((c) => [c.id as number, { moveId: c.moveId, situationKey: c.situationKey }]))
   const weekAhead = weekAheadRows(forecasts, today)
   const latest = forecasts.reduce<Forecast | null>((m, f) => (m === null || f.madeOn > m.madeOn ? f : m), null)
   const model = (latest?.model as ModelId | undefined) ?? null
   return {
     model,
-    scorecard: scorecard(scores, checkins, declarations, stats, repair),
+    scorecard: scorecard(scores, checkins, repair),
     // Your own chips (stage 3, item 5) on the view alone: the sheet's analyses above never take them.
     best: bestDays(checkins, offers, outcomes, contexts, today, new Set(outside.map((o) => o.day)), ownChipsOf(settings)),
     gap: gap(checkins, today),
@@ -309,7 +303,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     health,
     people,
     pathOn: aims.some((a) => a.kind === 'path' && a.archivedAt === null && !a.pausedAt),
-    prompt: extensionPromptText({ situations, offers, outcomes, health, stats, cardMoves }, extensionPrompt.template),
+    prompt: extensionPromptText({ situations, offers, outcomes, health, held }, extensionPrompt.template),
     weekAhead,
     weekAheadReady: weekAhead.some((w) => w.expected !== null),
     weekAheadLow: lowestAhead(weekAhead, model),
