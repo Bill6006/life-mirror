@@ -266,7 +266,9 @@ try {
     check('the walk’s test on stress, run by the queue, calls that it helps', /^(Early sign|Likely|Established): helps/.test(rung) && ((await walk.textContent().catch(() => '')) ?? '').includes('being tested now'), rung)
     // The cards' section and their tiers are gone; only a passive item's card stays, under Rode alongside (stage R4b).
     const cardTexts = await page.getByTestId('evidence-card').allTextContents()
-    check('no test card and no tier on Evidence while the repair is on; only passive items’ cards, under Rode alongside', hasTrack && (await page.getByRole('heading', { name: 'Cards', exact: true }).count()) === 0 && cardTexts.every((t) => t.includes('a passive item')), `${cardTexts.length} passive cards`)
+    // Since 2026-10-20 a passive card is named by the heading it sits under, no longer by an origin label of the old engine's.
+    const alongside = cardTexts.length === 0 || (await page.getByRole('heading', { name: 'Rode alongside', exact: true }).count()) === 1
+    check('no test card and no tier on Evidence; only passive items’ cards, under Rode alongside', hasTrack && (await page.getByRole('heading', { name: 'Cards', exact: true }).count()) === 0 && alongside && cardTexts.every((t) => !t.includes('imported, to test') && !t.includes('a sign flip')), `${cardTexts.length} passive cards`)
     if (hasTrack) await shot(walk, 'r4-evidence-walk')
     // Stage R6: Nothing today keeps its counts and says what nothing extra is now; today's tag lending is not shown.
     const nothingLine = ((await page.getByTestId('nothing-line').textContent().catch(() => '')) ?? '').trim()
