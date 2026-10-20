@@ -1,6 +1,6 @@
 import { aiRunner, textOf } from './ai'
 import { runBrief, runReview } from './brief'
-import { runCues, runPings, type Sender } from './cues'
+import { pushSettingsOf, runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
 import { sendPush, type Subscription } from './push'
 import { APP, BRAIN_APP, tursoStore, type BriefRow } from './turso'
@@ -260,6 +260,19 @@ const handler: ExportedHandler<Env> = {
       } catch (e) {
         return json({ sent: false, kind, reason: e instanceof Error ? e.message : String(e) })
       }
+    }
+    // With the run key: a day's planned pings, read-only (2026-10-19, to confirm a planned ping went out): whether reminders
+    // are on, their times and the quiet hours, whether a push address is held, and which of the day's pings were sent.
+    if (url.pathname === '/run/pings' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const asked = url.searchParams.get('day')
+      if (asked !== null && !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return json({ reason: 'day must be YYYY-MM-DD' }, 400)
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      const day = asked ?? localTime(new Date(), env.TIMEZONE).day
+      const s = pushSettingsOf(await store.readRecord('settings', '1'))
+      const times = []
+      for (const time of s.times) times.push({ time, sent: await store.isPushed(`ping:${day}:${time}`) })
+      return json({ day, enabled: s.enabled, quiet: { start: s.quietStart, end: s.quietEnd }, address: Boolean(env.PUSH_SUBSCRIPTION), times })
     }
     // With the run key: one model, one tiny prompt, its raw answer and what the extractor reads from it. For diagnosing a model's shape.
     if (url.pathname === '/run/probe' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {

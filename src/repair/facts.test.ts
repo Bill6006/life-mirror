@@ -7,7 +7,7 @@ import { START, walkRecord } from './fixtures'
 // The learning repair for the Brain (stage R5): each test Evidence shows whole becomes a ladder fact, findings the owner
 // can act on first (requirement 16), and the track record follows them in requirement 15's words.
 
-const t = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|stress|nextBlock', moveId: 'walk-ten', target: 'stress', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.3, theta: null, lo: null, hi: null, offered: 4, heldBack: 5, days: 9, ctx: [], running: false, ...over })
+const t = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|stress|nextBlock', moveId: 'walk-ten', target: 'stress', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.3, theta: null, lo: null, hi: null, offered: 4, heldBack: 5, days: 9, ctx: [], running: false, began: null, ...over })
 const line = (over: Partial<TrackLine>): TrackLine => ({ rung: 'early', resolved: 0, held: 0, open: 0, enough: false, tightened: false, tested: 2 / 3, ...over })
 
 describe('the ladder facts', () => {

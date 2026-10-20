@@ -1875,6 +1875,49 @@ a.chip {
   margin: 0 0 4px;
 }
 
+/* Ask Life Mirror (stage A1, 2026-10-19): its button in Mirror's header; the starters; each question and its answer; and
+   the marker on an answer whose evidence has changed, set off as a conclusion is. */
+.screen-head .ask-open {
+  flex: none;
+  align-self: center;
+}
+
+/* The question box: its button closes the card, with no space left under it. */
+.ask-box .actions {
+  margin-bottom: 0;
+}
+
+.ask-box .pill-ink {
+  margin-bottom: 0;
+}
+
+.ask-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.ask-starters .pill-quiet {
+  text-align: left;
+}
+
+.ask-question {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ask-section + .ask-section {
+  margin-top: 10px;
+}
+
+.ask-changed {
+  margin: 12px 0 0;
+  padding-left: 12px;
+  border-left: 3px double var(--muted);
+}
+
 .setting {
   padding: 14px 0;
   border-bottom: 1px solid var(--hair);

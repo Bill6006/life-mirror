@@ -142,8 +142,8 @@ export function buildEngine(r: RepairRecord, through: string, stopBefore: Block 
   return { engine, epoch, index, ids }
 }
 
-/** Two 32-bit FNV-1a hashes of a string, joined: a record's fingerprint. */
-function fingerprint(text: string): string {
+/** Two 32-bit FNV-1a hashes of a string and its length, joined: a record's fingerprint, and Ask's evidence version. The same text, the same digest. */
+export function fingerprint(text: string): string {
   let a = 0x811c9dc5
   let b = 0x01000193
   for (let i = 0; i < text.length; i++) {

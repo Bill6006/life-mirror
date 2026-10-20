@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { seedRecord as seedAskRecord, seedThread } from './askSeed'
 
 // The three themes (Rule 15, revised 2026-09-24): each one checked on every major screen and the
 // states its taps open, at the phone's width, a narrower phone, and a width that stands for text
@@ -318,7 +319,9 @@ function audit(opts: { zoom: number }) {
     if (!s) continue
     const el = t.parentElement as Element
     const cs = getComputedStyle(el)
-    if (cs.visibility === 'hidden') continue
+    // Only what is shown is read. Chrome lays out the lines of a closed fold-out without drawing them, and answers for their
+    // boxes, which then sit over whatever follows the fold-out (2026-10-19).
+    if (cs.visibility === 'hidden' || !el.checkVisibility()) continue
     const range = document.createRange()
     range.selectNodeContents(t)
     const raw = [...range.getClientRects()]
@@ -378,7 +381,7 @@ function audit(opts: { zoom: number }) {
     const r = el.getBoundingClientRect()
     if (r.width === 0 || r.height === 0) continue
     const cs = getComputedStyle(el)
-    if (cs.visibility === 'hidden') continue
+    if (cs.visibility === 'hidden' || !el.checkVisibility()) continue
     let { left, top, right, bottom } = r
     const after = getComputedStyle(el, '::after')
     if (after.content !== 'none' && after.display !== 'none' && after.position === 'absolute' && cs.position !== 'static') {
@@ -681,6 +684,25 @@ async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typ
     for (const i of issues) found.push(`${width.label} · ${s.name} · ${i}`)
   }
 }
+
+test('the audit reads only what is shown: the lines of a closed fold-out are not set against what follows it (2026-10-19)', async ({ page }) => {
+  await page.setViewportSize({ width: 300, height: 844 })
+  await page.setContent('<main style="font: 16px/1.4 sans-serif; padding: 20px; background: #fff; color: #111"><details><summary>Tests named only</summary><p>A ten-minute walk, now, for Energy over the next block</p><p>A ten-minute nap, alarm set, for Focus over the next block</p><button type="button" style="width: 20px; height: 20px; padding: 0">x</button></details><h2 style="margin: 0">Nothing today</h2></main>')
+  // Closed, its lines and its small control are laid out but not drawn, the lines over the heading below: nothing is read of them.
+  const hidden = await page.evaluate(() => {
+    const r = document.createRange()
+    r.selectNodeContents(document.querySelector('details p') as Element)
+    const h = (document.querySelector('h2') as Element).getBoundingClientRect()
+    return [...r.getClientRects()].some((x) => x.bottom > h.top && x.top < h.bottom)
+  })
+  expect(hidden).toBe(true)
+  expect(await page.evaluate(audit, { zoom: 1 })).toEqual([])
+  // Opened, its lines are drawn above the heading, and still nothing meets; its control, shown, is read as too small.
+  await page.locator('summary').click()
+  const shown = await page.evaluate(audit, { zoom: 1 })
+  expect(shown.filter((i) => i.startsWith('collision'))).toEqual([])
+  expect(shown.length).toBeGreaterThan(0)
+})
 
 for (const theme of THEMES) {
   test(`${theme}: every screen and opened state reads, fits and can be tapped, at three widths`, async ({ page }, info) => {
@@ -2075,6 +2097,103 @@ for (const theme of THEMES) {
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
       await walk(page, theme, TOGETHER_ANSWERED, width, found)
+    }
+    writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+/**
+ * Ask Life Mirror (stage A1, 2026-10-19, in its preview): the main screen with its starters and Recent, an answer whose
+ * evidence changed, a question waiting with the findings its words name, Past conversations, and "Ask about this" on
+ * Evidence and in the Brain card's Why.
+ */
+const ASK_STATES: typeof STATES = [
+  {
+    name: 'Ask, its question box, starters and Recent',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await expect(p.getByTestId('ask-starter-know')).toBeVisible()
+    },
+  },
+  {
+    name: 'Ask, an answer whose evidence changed',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'evidence changed' }).first().click()
+      await expect(p.getByTestId('ask-changed')).toBeVisible()
+    },
+  },
+  {
+    name: 'Ask, a question waiting, with the findings its words name',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'waiting' }).first().click()
+      await expect(p.getByTestId('ask-matches')).toBeVisible()
+    },
+  },
+  {
+    name: 'Ask, Past conversations',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await expect(p.getByTestId('ask-past')).toBeVisible()
+    },
+  },
+  {
+    name: 'Evidence, Ask about this',
+    tab: 'Moves',
+    open: async (p) => {
+      await p.getByRole('button', { name: /^Evidence/ }).click()
+      const ask = p.getByTestId('repair-ask').first()
+      await expect(ask).toBeVisible()
+      await ask.scrollIntoViewIfNeeded()
+    },
+  },
+  {
+    name: 'Now, the Brain card’s Why with Ask about this',
+    tab: 'Now',
+    open: async (p) => {
+      await p.getByTestId('brief-why').click()
+      const ask = p.getByTestId('brief-ask')
+      await expect(ask).toBeVisible()
+      await ask.scrollIntoViewIfNeeded()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: Ask Life Mirror’s screens read, fit and can be tapped, at three widths (stage A1, in its preview)`, async ({ page }, info) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => {
+      localStorage.setItem('life-mirror.theme', t)
+      localStorage.setItem('life-mirror.preview.ask', '1')
+      localStorage.setItem('lm.inStep', '1')
+    }, theme)
+    // A fixed afternoon, so the block and the stand-in days are the same whatever hour the runner keeps.
+    const when = new Date(2026, 8, 24, 13, 30)
+    await page.clock.setFixedTime(when)
+    await page.goto('./')
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedAskRecord(page, 30)
+    await seedThread(page, 'What do you know about me so far?', 'know', [{ key: 'walk-ten|stress|nextBlock', level: 'established', direction: 'hurts', revised: false, lo: null, hi: null }], new Date(when.getTime() - 3 * 86_400_000).toISOString())
+    await page.reload()
+    // A question waiting, as one typed while Claude's answers wait for their stage.
+    await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+    await page.getByTestId('ask-open').click()
+    await page.getByTestId('ask-box').fill('Does a walk help my stress?')
+    await page.getByTestId('ask-send').click()
+    await expect(page.getByTestId('ask-waiting')).toBeVisible()
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, ASK_STATES, width, found)
     }
     writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
     expect(found, found.join('\n')).toEqual([])

@@ -11,9 +11,11 @@ const banned = ['failed', 'bad', 'lazy', 'behind', 'weak', 'slipped again']
 /**
  * The owner's own words, kept exactly as they gave them, that use a banned word without judging anyone. Only the
  * whole phrase is allowed: "Anything behind it?" asks what lies behind a drop (stage 3, group 3, the owner's
- * word of 2026-10-09, restored at their word of 2026-10-18); "behind" anywhere else still fails.
+ * word of 2026-10-09, restored at their word of 2026-10-18); "The evidence behind this has changed" is Ask Life Mirror's
+ * marker on an older answer, word for word as the owner agreed it (point 8, 2026-10-11), and names what an answer rests
+ * on; "behind" anywhere else still fails.
  */
-const ownersWords = ['Anything behind it?']
+const ownersWords = ['Anything behind it?', 'The evidence behind this has changed']
 
 function* strings(value: unknown): Generator<string> {
   if (typeof value === 'string') yield value

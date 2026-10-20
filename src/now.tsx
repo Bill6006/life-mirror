@@ -21,6 +21,7 @@ import { activeBlocks } from './settings'
 import { Disclosure, Facts, LinkRow, ScreenHead, SectionLabel } from './ui'
 import { awayStatus } from './awayFlow'
 import { awayLine } from './awayScreen'
+import type { AskAboutThis } from './ask/askScreen'
 
 type WindowState = 'logged' | 'partial' | 'now' | 'missed' | 'later'
 
@@ -192,7 +193,7 @@ export function Earlier({ checkins, blocks, onOpen }: { checkins: readonly Check
   )
 }
 
-export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onAway?: () => void }) {
+export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onAway?: () => void; onAsk?: (about: AskAboutThis) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
   const [tick, setTick] = useState(0)
@@ -272,7 +273,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway }: { onCheckI
       {settings.directionAskedAt === null && <DirectionAsk />}
 
       <ReadingHero all={all} today={today} />
-      <Brief day={today.day} version={all.length} tick={tick} primary={briefPrimary} />
+      <Brief day={today.day} version={all.length} tick={tick} primary={briefPrimary} onAsk={onAsk} />
       <PlaceQuestion />
 
       <Status windows={windows} today={today} onOpen={onOpen} onCheckIn={onCheckIn} />

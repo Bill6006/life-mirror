@@ -1225,6 +1225,18 @@ export class EngineB {
     const capped = () => !this.cfg.declareAll && this.queuedEver >= this.cfg.queueCap
     if (this.queue.length >= size || capped()) return
     const busy = new Set(this.queue.map((t) => t.moveId))
+    for (const t of this.waitingRanked(d)) {
+      if (this.queue.length >= size || capped() || busy.has(t.moveId)) continue
+      if (!this.mayEnter(t, d)) continue
+      this.enter(t, d)
+      this.queue.push(t)
+      busy.add(t.moveId)
+    }
+  }
+
+  /** The tests waiting for a place, best first by the queue's own score (requirement 11). Read alone, it changes nothing. */
+  private waitingRanked(d: number): Test[] {
+    const busy = new Set(this.queue.map((t) => t.moveId))
     const declaredWaiting = new Set([...this.tests.values()].filter((t) => t.queuedAt === null && this.isDeclared(t)).map((t) => t.moveId))
     const options = [...this.tests.values()].filter((t) => t.queuedAt === null && !busy.has(t.moveId) && t.cls !== 'multi' && (!declaredWaiting.has(t.moveId) || this.isDeclared(t)))
     const score = (t: Test) => {
@@ -1233,14 +1245,29 @@ export class EngineB {
       const sd = Math.sqrt(Math.max(0, t.post.w.reduce((a, w, k) => a + w * (t.post.s[k] ** 2 + t.post.m[k] ** 2), 0) - pMean(t.post) ** 2))
       return recent * Math.max(0, pMean(t.post) * t.compliance + 0.5 * sd)
     }
-    options.sort((a, b) => score(b) - score(a))
-    for (const t of options) {
-      if (this.queue.length >= size || capped() || busy.has(t.moveId)) continue
-      if (t.eligibleDays.filter((x) => x > d - 28).length < 4) continue
-      this.enter(t, d)
-      this.queue.push(t)
+    return options.sort((a, b) => score(b) - score(a))
+  }
+
+  /** A waiting test may take a place once its move fitted on at least four of the last 28 days. */
+  private mayEnter(t: Test, d: number): boolean {
+    return t.eligibleDays.filter((x) => x > d - 28).length >= 4
+  }
+
+  /**
+   * The next tests the queue would take as places free, best first, by its own score and rule, one per move, on the day
+   * the engine has learned through (Ask Life Mirror, 2026-10-19: "What should we test next?"). Read alone: nothing
+   * changes, and nothing a draw or a belief reads.
+   */
+  queueNext(n = 2): Test[] {
+    const out: Test[] = []
+    const busy = new Set(this.queue.map((t) => t.moveId))
+    for (const t of this.waitingRanked(this.today)) {
+      if (out.length >= n) break
+      if (busy.has(t.moveId) || !this.mayEnter(t, this.today)) continue
+      out.push(t)
       busy.add(t.moveId)
     }
+    return out
   }
 
   /** A test enters the queue: its reading is declared now, and its confidence sequence starts from today (from day one when every test was declared then). */

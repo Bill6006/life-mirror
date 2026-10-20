@@ -6,6 +6,8 @@ import { readingById } from '../readings'
 import { guardRepair } from './breaker'
 import { repairEvidence, type RepairEvidence, type TestShown, type TrackLine } from './evidence'
 import { rungWords } from './words'
+import { askOn } from '../ask/gate'
+import type { AskAboutThis } from '../ask/askScreen'
 
 // Moves → Evidence while the learning repair is on (stage R4): it opens with what helps you and the tests nearest
 // finishing (part 2), then the engine's own track record (requirement 15) and each test with its rung on the evidence
@@ -21,7 +23,7 @@ function steps(x: number): string {
 const nameOf = (moveId: string) => (hasMove(moveId) ? moveById(moveId).name : moveId)
 const windowOf = (w: string) => copy.catalogue.windows[w as keyof typeof copy.catalogue.windows] ?? w
 
-function TestBlock({ t }: { t: TestShown }) {
+function TestBlock({ t, onAsk }: { t: TestShown; onAsk?: (about: AskAboutThis) => void }) {
   const c = copy.repairEvidence
   return (
     <li class="move" data-testid="repair-test" data-level={t.level} data-direction={t.direction ?? ''}>
@@ -45,6 +47,19 @@ function TestBlock({ t }: { t: TestShown }) {
         <p class="calc-line">{fill(c.counts, { offered: String(t.offered), heldBack: String(t.heldBack), days: String(t.days) })}</p>
         {t.theta !== null && t.lo !== null && t.hi !== null && <p class="calc-line">{fill(c.estimate, { theta: steps(t.theta), lo: steps(t.lo), hi: steps(t.hi) })}</p>}
       </div>
+      {/* Ask Life Mirror (stage A1, gated): a new thread with this test attached, answered at once. */}
+      {askOn() && onAsk && (
+        <div class="actions">
+          <button
+            type="button"
+            class="textbtn"
+            data-testid="repair-ask"
+            onClick={() => onAsk({ keys: [t.key], source: 'evidence', question: fill(copy.askMirror.aboutTitle, { what: `${nameOf(t.moveId)}, ${fill(copy.evidence.forTarget, { target: readingById(t.target).name, window: windowOf(t.window) })}` }) })}
+          >
+            {copy.askMirror.about}
+          </button>
+        </div>
+      )}
     </li>
   )
 }
@@ -58,7 +73,7 @@ function TrackBlock({ lines }: { lines: TrackLine[] }) {
       <div class="calc">
         {shown.map((l) => (
           <p key={l.rung} class="calc-line" data-testid={`track-${l.rung}`}>
-            {l.resolved > 0 ? fill(c.held[l.rung], { n: String(l.resolved), m: String(l.held) }) : c.noneResolved[l.rung]}
+            {l.resolved > 0 ? fill((l.resolved === 1 ? c.heldOne : c.held)[l.rung], { n: String(l.resolved), m: String(l.held) }) : c.noneResolved[l.rung]}
             {l.open > 0 && ` ${fill(l.open === 1 ? c.openOne : c.open, { n: String(l.open) })}`}
           </p>
         ))}
@@ -119,7 +134,7 @@ function HelpsBlock({ ev }: { ev: RepairEvidence }) {
 }
 
 /** What helps you, the track record and the tests, in place of the cards. */
-export function RepairTests({ today }: { today: string }) {
+export function RepairTests({ today, onAsk }: { today: string; onAsk?: (about: AskAboutThis) => void }) {
   // A rebuild that throws trips the repair's breaker (R6): nothing here, and Evidence redraws as before the switch.
   const ev = useLive(() => guardRepair(today, () => repairEvidence(today), null), [today])
   if (!ev) return null
@@ -139,7 +154,7 @@ export function RepairTests({ today }: { today: string }) {
           {ev.shown.length > 0 && (
             <ul class="moves">
               {ev.shown.map((t) => (
-                <TestBlock key={t.key} t={t} />
+                <TestBlock key={t.key} t={t} onAsk={onAsk} />
               ))}
             </ul>
           )}

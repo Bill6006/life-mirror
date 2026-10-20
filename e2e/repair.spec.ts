@@ -154,15 +154,21 @@ test('a learning week is offered on Now once a running test has fitted three rec
 })
 
 test('closed, the phone shows no week and draws as before', async ({ page }) => {
+  // Closed once the test says so, on every load from then on: this runs after the shared setup, which opens it.
   await page.addInitScript(() => {
     try {
-      localStorage.setItem('life-mirror.preview.learningRepair', '0')
+      if (localStorage.getItem('repair-test-closed')) localStorage.setItem('life-mirror.preview.learningRepair', '0')
     } catch {
       // A page without local storage stays as the switch ships.
     }
   })
   await start(page)
   await seedRepairRecord(page, 10)
+  await page.reload()
+  // Open, the same record at the same hour offers a week, so none once closed is the switch's doing (2026-10-19: on a
+  // fixed afternoon, a record closed from the start offered none either way, and the test could not fail).
+  await expect(page.getByTestId('week-invite')).toBeVisible()
+  await page.evaluate(() => localStorage.setItem('repair-test-closed', '1'))
   await page.reload()
   await expect(page.getByRole('button', { name: /Check in/ })).toBeVisible()
   await expect(page.getByTestId('week-invite')).toHaveCount(0)

@@ -43,6 +43,7 @@ import { AwayScreen } from './awayScreen'
 import { JournalScreen } from './journalScreen'
 import { WordsScreen } from './wordsScreen'
 import { MonthScreen } from './monthScreen'
+import { AskScreen, type AskOpen } from './ask/askScreen'
 
 type Tab = keyof typeof copy.tabs
 const order: Tab[] = ['now', 'mirror', 'moves', 'aims', 'settings']
@@ -78,6 +79,8 @@ type View =
   | { kind: 'readings' }
   /** Away from home (post-window, gated): reached only while its gate is open; back goes where it was opened from. */
   | { kind: 'away'; back?: View }
+  /** Ask Life Mirror (stage A1, gated): from Mirror's header, or "Ask about this"; back goes where it was opened from. */
+  | { kind: 'ask'; open: AskOpen; back?: View }
 
 /** The screen a view is, for the use log: a tab, a sub-screen or a Settings section; the check-in's own steps are counted apart. */
 function screenOf(view: View, tab: Tab): string | null {
@@ -273,7 +276,7 @@ export function App() {
       case 'brain':
         return <BrainScreen onClose={closeAll} />
       case 'evidence':
-        return <EvidenceScreen onClose={closeAll} />
+        return <EvidenceScreen onClose={closeAll} onAsk={(about) => setView({ kind: 'ask', open: { about }, back: { kind: 'evidence' } })} />
       case 'weekly':
         return <WeeklyScreen onClose={closeAll} />
       case 'journal':
@@ -286,6 +289,8 @@ export function App() {
         return <ReadingsScreen onClose={closeAll} />
       case 'away':
         return <AwayScreen onClose={() => (view.back ? setView(view.back) : closeAll())} />
+      case 'ask':
+        return <AskScreen open={view.open} onClose={() => (view.back ? setView(view.back) : closeAll())} />
       case 'tabs':
         return screen(tab)
     }
@@ -300,10 +305,11 @@ export function App() {
             onOpen={(day, block) => open({ kind: 'summary', day, block, fresh: false })}
             onChangeRep={(aimId) => open({ kind: 'pathChange', aimId })}
             onAway={() => open({ kind: 'away' })}
+            onAsk={(about) => open({ kind: 'ask', open: { about } })}
           />
         )
       case 'mirror':
-        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} onMonth={() => open({ kind: 'month' })} onWords={() => open({ kind: 'words' })} onJournal={() => open({ kind: 'journal' })} />
+        return <MirrorScreen onWeekly={() => open({ kind: 'weekly' })} onMonth={() => open({ kind: 'month' })} onWords={() => open({ kind: 'words' })} onJournal={() => open({ kind: 'journal' })} onAsk={() => open({ kind: 'ask', open: null })} />
       case 'moves':
         return <MovesScreen onHistory={() => open({ kind: 'history' })} onCatalogue={() => open({ kind: 'catalogue' })} onEvidence={() => open({ kind: 'evidence' })} />
       case 'aims':

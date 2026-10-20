@@ -259,7 +259,7 @@ try {
     check('Evidence opens with what helps you: the walk under Stress, its record pooled with research, research beside it', firstSection === 'What helps you' && /your record pooled with research \(\+0\.40\)/.test(((await walkHelps.textContent().catch(() => '')) ?? '')), firstSection)
     check('then the tests nearest finishing, each with the day it began', / · since \w{3}, \w{3} \d{1,2} · /.test(((await page.getByTestId('nearest-test').filter({ hasText: 'A ten-minute walk, now, for Stress' }).textContent().catch(() => '')) ?? '')))
     if (hasTrack) await shot(page.getByTestId('what-helps'), 'r4-what-helps')
-    check('the track record, in requirement 15’s words', hasTrack && /^(No early sign has resolved yet\.|Of \d+ early signs, \d+ held\.)/.test(((await page.getByTestId('track-early').textContent().catch(() => '')) ?? '').trim()))
+    check('the track record, in requirement 15’s words', hasTrack && /^(No early sign has resolved yet\.|Of \d+ early signs?, \d+ held\.)/.test(((await page.getByTestId('track-early').textContent().catch(() => '')) ?? '').trim()))
     const walk = page.getByTestId('repair-test').filter({ hasText: 'A ten-minute walk, now' }).filter({ hasText: 'for Stress over the next block' })
     const rung = hasTrack ? ((await walk.getByTestId('repair-rung').textContent().catch(() => '')) ?? '').trim() : ''
     check('the walk’s test on stress, run by the queue, calls that it helps', /^(Early sign|Likely|Established): helps/.test(rung) && ((await walk.textContent().catch(() => '')) ?? '').includes('being tested now'), rung)

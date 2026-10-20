@@ -35,6 +35,8 @@ export interface TestShown {
   ctx: { context: string; value: 0 | 1; level: Level; direction: Direction }[]
   /** The queue runs it now. */
   running: boolean
+  /** The day of its first randomized decision: when the test began. */
+  began: string | null
 }
 
 /** One rung's track record: its calls resolved, how many held, how many stay open. */
@@ -64,6 +66,14 @@ export interface HelpsShown {
   direction: Direction
 }
 
+/** A test the queue would take next, as a place frees (Ask Life Mirror, 2026-10-19). */
+export interface WaitingShown {
+  key: string
+  moveId: string
+  target: ReadingId
+  window: Window
+}
+
 /** A test near a call, with the day it began. */
 export interface NearShown {
   key: string
@@ -90,6 +100,8 @@ export interface RepairEvidence {
    */
   helps: { target: ReadingId; moves: HelpsShown[] }[]
   nearest: NearShown[]
+  /** The next tests the queue would take as places free, best first, by its own score: read without changing it. */
+  waiting: WaitingShown[]
 }
 
 /** Per reading, the moves whose pooled belief says they help, best first, three at most. */
@@ -176,11 +188,13 @@ export function evidenceOf(engine: EngineB, dayOf: (d: number) => string = Strin
       days: c.nDays,
       ctx: c.ctx.filter((x) => x.level !== 'none').map((x) => ({ context: x.context, value: x.value, level: x.level, direction: x.direction })),
       running: running.has(t.key),
+      began: t.decisions.length ? dayOf(t.decisions[0].d) : null,
     })
   }
   const shown = all.filter((t) => t.running || t.level !== 'none').sort(orderTests)
   const quiet = all.filter((t) => !t.running && t.level === 'none').sort(orderTests)
-  return { shown, quiet, track: trackLines(track, engine.tightened()), helps: helpsOf(helping), nearest: nearestOf(near) }
+  const waiting = engine.queueNext(2).map((t) => ({ key: t.key, moveId: t.moveId, target: t.target, window: t.window }))
+  return { shown, quiet, track: trackLines(track, engine.tightened()), helps: helpsOf(helping), nearest: nearestOf(near), waiting }
 }
 
 /** The repair's evidence from the record as it stands. */

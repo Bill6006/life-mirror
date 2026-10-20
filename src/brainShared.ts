@@ -276,6 +276,13 @@ export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:
 export const LEARNING_REPAIR: 'gated' | 'open' = 'open'
 
 /**
+ * Ask Life Mirror (agreed 2026-10-11; built from 2026-10-19 in four stages, A1 to A4): the owner's own questions about
+ * their record, answered from the same evidence the Brain reads. Gated while it is built; stage A4 opens it, the Worker
+ * first, once every stage is verified. Shared with the Worker, which answers no ask while it is closed.
+ */
+export const ASK: 'gated' | 'open' = 'gated'
+
+/**
  * Pass 4: how big a line says an effect is may not outrun its cards, and the record's own
  * comparisons are never said to have caused what happened. Gated, since it changes what the
  * monitored lines are refused for: it opens with the owner's word after the 2026-10-04 report.

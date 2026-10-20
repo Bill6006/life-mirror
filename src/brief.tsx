@@ -12,6 +12,8 @@ import { readingById } from './readings'
 import { INGREDIENTS } from './score'
 import { MIN_PER_ARM } from './tiers'
 import { logUse } from './useLog'
+import { askOn } from './ask/gate'
+import type { AskAboutThis } from './ask/askScreen'
 
 // The brief on Now. The brain's line for the day comes first: the Worker's when it wrote one,
 // else the phone's own, chosen by the situation engine from the fact sheet and the library.
@@ -126,7 +128,7 @@ function Readings({ b, withWarning }: { b: BriefData; withWarning: boolean }) {
 }
 
 /** Why, opened: the grounds of the line, the brief's other readings, and who wrote it. Nothing here is lost; it is one tap away. */
-function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData }) {
+function WhyPanel({ day, line, b, onAsk }: { day: string; line: BriefLine; b: BriefData; onAsk?: (about: AskAboutThis) => void }) {
   const why = useLive(() => whyFor(line, day), [line.key, day, line.factIds.join('|')])
   const c = copy.brain
   return (
@@ -184,6 +186,14 @@ function WhyPanel({ day, line, b }: { day: string; line: BriefLine; b: BriefData
           {fill(line.adaptive ? c.whyFirmAdaptive : c.whyFirm, { firm: copy.brainScreen.firmOptions[line.firmness] })}
         </p>
       )}
+      {/* Ask Life Mirror (stage A1, gated): a new thread with the findings the line cites attached, answered at once. */}
+      {askOn() && onAsk && (
+        <div class="actions">
+          <button type="button" class="textbtn" data-testid="brief-ask" onClick={() => onAsk({ factIds: line.factIds, source: 'brain', question: fill(copy.askMirror.aboutTitle, { what: copy.askMirror.aboutLine }) })}>
+            {copy.askMirror.about}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -237,7 +247,7 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
 }
 
 /** The brief on Now. Its action carries the screen's one accent only when Now says it is the thing to do (primary). */
-export function Brief({ day, version = 0, tick = 0, primary = false }: { day: string; version?: number; tick?: number; primary?: boolean }) {
+export function Brief({ day, version = 0, tick = 0, primary = false, onAsk }: { day: string; version?: number; tick?: number; primary?: boolean; onAsk?: (about: AskAboutThis) => void }) {
   const b = useLive(() => briefData(day), [day])
   // Read again each minute: a line whose moment is gone is not the day's line (truth audit, 2026-09-24).
   const line = useLive(() => todaysLine(day), [day, tick])
@@ -284,7 +294,7 @@ export function Brief({ day, version = 0, tick = 0, primary = false }: { day: st
             primary={primary}
           />
           {b.ready && !isStretchLine(line) && <Warning b={b} />}
-          {open && <WhyPanel day={day} line={line} b={b} />}
+          {open && <WhyPanel day={day} line={line} b={b} onAsk={onAsk} />}
         </>
       ) : (
         <Readings b={b} withWarning />

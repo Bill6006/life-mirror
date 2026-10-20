@@ -2,6 +2,7 @@ import type { BrainPrefsBody, CitedFact, Lacked, LineAction } from './brainShare
 import type { DrawRecord, OutcomeReason } from './provenance'
 import type { OutsideSession } from './outsideRow'
 import type { CoachAsk, CoachProposal, CoachRun } from './coachShared'
+import type { AskThread, AskTurn } from './ask/types'
 import type { Firmness } from './firmness'
 import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
@@ -904,6 +905,8 @@ class LifeMirrorDB extends Dexie {
   coachRuns!: Table<CoachRun, string>
   claims!: Table<Claim, number>
   journal!: Table<JournalEntry, number>
+  askThreads!: Table<AskThread, number>
+  askTurns!: Table<AskTurn, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1110,6 +1113,11 @@ class LifeMirrorDB extends Dexie {
     // D7 as the owner amended it on 2026-10-18 ("suggestions on tap, two a day"): the Worker's suggestion runs, read from the brain's rows, so a waiting card can say where its ask stands. Never synced up.
     this.version(20).stores({
       coachRuns: 'id, day',
+    })
+    // Ask Life Mirror (stage A1, 2026-10-19): the owner's questions and the quick tier's answers, synced; Claude's answers come back from stage A2 as the brain's own rows.
+    this.version(21).stores({
+      askThreads: '++id, day, at',
+      askTurns: '++id, threadId, day, at',
     })
     installOutbox(this)
     installPendingCopy(this)

@@ -5,6 +5,7 @@ import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
 import { allCheckIns, askedLate, notAskedInTurn } from './db'
+import { askOn } from './ask/gate'
 import { fill, weekdayInitial } from './format'
 import { MonthAgoCard, monthAgoData } from './monthScreen'
 import { useLive } from './live'
@@ -42,7 +43,7 @@ export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
 }
 
 /** Your own record, drawn. Every chart here is a calculation from the check-ins; each carries its caption. */
-export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal }: { onWeekly: () => void; onMonth: () => void; onWords: () => void; onJournal: () => void }) {
+export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: { onWeekly: () => void; onMonth: () => void; onWords: () => void; onJournal: () => void; onAsk?: () => void }) {
   const today = blockAt(new Date())
   const all = useLive(allCheckIns, [])
   // Stage 3, group 4: the day a month back, shown only when the record holds something of it.
@@ -66,7 +67,18 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal }: { onWeek
 
   return (
     <section class="screen">
-      <ScreenHead title={copy.tabs.mirror} day={today.day} />
+      <ScreenHead
+        title={copy.tabs.mirror}
+        day={today.day}
+        side={
+          // Ask Life Mirror (stage A1, gated): its own screen, from Mirror's header, since Mirror is the owner's record.
+          askOn() && onAsk ? (
+            <button type="button" class="pill-quiet ask-open" data-testid="ask-open" onClick={onAsk}>
+              {copy.askMirror.open}
+            </button>
+          ) : undefined
+        }
+      />
 
       {all.length === 0 && <p class="note">{copy.mirror.empty}</p>}
 

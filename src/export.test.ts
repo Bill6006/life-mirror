@@ -96,6 +96,17 @@ describe('how the app is used, in your own file (Follow-up F1)', () => {
     expect(out.key.useLog).toMatch(/Never content, never anything outside the app/)
   })
 
+  it('carries Ask Life Mirror’s conversations: each thread, and each question with the answer laid out then and the findings it cited', () => {
+    const ask = {
+      threads: [{ id: 7, day: '2026-10-19', at: '2026-10-19T13:00:00.000Z', title: 'What do you know about me so far?', from: { kind: 'starter' as const, starter: 'know' as const } }],
+      turns: [{ id: 9, threadId: 7, day: '2026-10-19', at: '2026-10-19T13:00:00.000Z', question: 'What do you know about me so far?', tier: 'quick' as const, state: 'answered' as const, kind: 'know' as const, version: 'v', quick: { sections: [{ title: 'What helps you', lines: ['A ten-minute walk, now, for Stress over the next block: Likely: helps'] }] }, cited: [{ key: 'walk-ten|stress|nextBlock', level: 'likely' as const, direction: 'helps' as const, revised: false, lo: 0.1, hi: 0.7 }], updatedAt: '2026-10-19T13:00:00.000Z' }],
+    }
+    const out = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, { ...records, ask }).json)
+    expect(out.ask.threads).toEqual([{ id: 7, day: '2026-10-19', at: '2026-10-19T13:00:00.000Z', title: 'What do you know about me so far?', from: { kind: 'starter', starter: 'know' } }])
+    expect(out.ask.turns[0]).toMatchObject({ id: 9, thread: 7, question: 'What do you know about me so far?', state: 'answered', answer: [{ title: 'What helps you', lines: ['A ten-minute walk, now, for Stress over the next block: Likely: helps'] }], cited: [{ key: 'walk-ten|stress|nextBlock', level: 'likely' }] })
+    expect(out.key.ask).toMatch(/Nothing here is evidence/)
+  })
+
   it('leaves the Partner path’s own screens out unless the Partner path is included (Part 27)', () => {
     const out = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, records).json)
     expect(out.useLog.map((r: { what: string }) => r.what)).toEqual(['launch', 'evidence'])

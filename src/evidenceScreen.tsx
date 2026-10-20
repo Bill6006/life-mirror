@@ -23,6 +23,7 @@ import { passiveTestReading, passiveTestRuns, passiveTestSince, startPassiveTest
 import { RepairTests } from './repair/testsSection'
 import { missingNow } from './honesty/flow'
 import { leanOf, missingLine } from './honesty/words'
+import type { AskAboutThis } from './ask/askScreen'
 
 // Moves → Evidence: every active card with its tier, counts and interval; what the tags have
 // learned; the weight card; the observational associations; and the plain line about months
@@ -250,7 +251,7 @@ function RepairFaultLine({ today }: { today: string }) {
   )
 }
 
-export function EvidenceScreen({ onClose }: { onClose: () => void }) {
+export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?: (about: AskAboutThis) => void }) {
   const today = blockAt(new Date()).day
   const ev = useLive(() => evidence(today), [today])
   const c = copy.evidence
@@ -281,7 +282,7 @@ export function EvidenceScreen({ onClose }: { onClose: () => void }) {
 
       {repair ? (
         <>
-          <RepairTests today={today} />
+          <RepairTests today={today} onAsk={onAsk} />
           <AlongsideCards cards={ev.cards.filter((e) => e.card.origin === 'passive')} today={today} />
         </>
       ) : (

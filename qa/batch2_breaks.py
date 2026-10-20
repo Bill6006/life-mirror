@@ -37,7 +37,7 @@ TABLE = [
     dict(id='wipe-every-table', file='src/db.ts', old="    await Promise.all(db.tables.map((t) => t.clear()))\n",
          new="    await Promise.all(db.tables.filter((t) => t.name !== 'coachAsks' && t.name !== 'claims' && t.name !== 'journal').map((t) => t.clear()))\n",
          tests=['src/claims.test.ts'], pattern='leaves every table empty'),
-    dict(id='journal-synced', file='src/cloudOutbox.ts', old="'coachAsks', 'claims', 'journal']", new="'coachAsks', 'claims']",
+    dict(id='journal-synced', file='src/cloudOutbox.ts', old="'coachAsks', 'claims', 'journal', 'askThreads'", new="'coachAsks', 'claims', 'askThreads'",
          tests=['src/journal.test.ts'], pattern='syncs as its own store'),
     dict(id='journal-limit', file='src/journal.ts', old="export function saveJournal(day: string, text: string, now: Date = new Date()): Promise<JournalEntry | null> {\n  const words = text.slice(0, JOURNAL_MAX)\n",
          new="export function saveJournal(day: string, text: string, now: Date = new Date()): Promise<JournalEntry | null> {\n  const words = text\n",
