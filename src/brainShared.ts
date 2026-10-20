@@ -735,11 +735,27 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
   return { ok: true, value }
 }
 
-/** Ask Life Mirror's answer from Claude (stage A2): its words and what it cites. */
+/** Ask Life Mirror's answer from Claude (stage A2): its words and what it cites; from stage A3, the test it names and whether it offers the question as a note. */
 export interface AskOutput {
   text: string
   factIds: string[]
   cardIds: string[]
+  /** The one test the question asks about (point 13): a move and one of its readings, on the sheet and short of established. */
+  test?: { moveId: string; reading: string }
+  /** The question states something of the person's life worth keeping in their own words (point 12). */
+  note?: boolean
+}
+
+/** Words that cite the asking as support (point 14): that the person asked is never evidence. */
+export const ASKED_SUPPORT = /\b(as you (?:suspected|thought|guessed|expected|asked|hoped|feared)|you were right|just as you|confirms what you|proves? (?:you|your hunch))\b/i
+
+/** The test an answer names, when it names one rightly: a ladder fact on the sheet for that move and reading, short of established. */
+export function askTestOf(raw: unknown, sheet: Pick<FactSheet, 'facts'>): { moveId: string; reading: string } | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const { moveId, reading } = raw as Record<string, unknown>
+  if (typeof moveId !== 'string' || typeof reading !== 'string') return undefined
+  const f = sheet.facts.find((x) => x.id === `ladder.${moveId}.${reading}`)
+  return f && f.values.level !== 'established' ? { moveId, reading } : undefined
 }
 
 /**
@@ -760,8 +776,12 @@ export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly Clai
   const long = words(text) > maxWords ? `${words(text)} words; at most ${maxWords}` : null
   // The person's own words, quoted back from the question ("I've read “helps most” as…"), are theirs, never a claim of the answer's.
   const own = withoutQuoted(text, question)
-  const why = refusal(own, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(own)
-  if (!long && !why) return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds } }
+  const support = ASKED_SUPPORT.exec(own)
+  const why = refusal(own, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(own) ?? (support ? `says "${support[0]}": that the person asked is never support` : null)
+  if (!long && !why) {
+    const test = askTestOf(o.test, sheet)
+    return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds, ...(test ? { test } : {}), ...(o.note === true ? { note: true } : {}) } }
+  }
   // Too long, and anything else as well: both said at once, so the one retry can mend both.
   return { ok: false, reason: long && why ? `${long}; and ${why}` : ((long ?? why) as string) }
 }

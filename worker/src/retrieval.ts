@@ -258,6 +258,14 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
           return note ? { day: r.day, text: `at the ${str(b.block)} check-in you wrote: “${note}”` } : null
         })
         .filter((i): i is Item => i !== null && (faith || !FAITH_WORDS.test(i.text)))
+      // Ask Life Mirror (stage A3): a note you kept from a question, in your own words, read as a check-in's note is.
+      const kept = (await x.store.readRecords('notes', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))
+        .map((r) => {
+          const text = str(obj(r.body).text).trim()
+          return text ? { day: r.day, text: `you kept a note: “${text}”` } : null
+        })
+        .filter((i): i is Item => i !== null && (faith || !FAITH_WORDS.test(i.text)))
+      items = [...items, ...kept].sort((a, b) => ((a.day ?? '') < (b.day ?? '') ? 1 : (a.day ?? '') > (b.day ?? '') ? -1 : 0)).slice(0, q.limit)
       break
     }
     case 'dayRecord': {

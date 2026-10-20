@@ -153,6 +153,18 @@ describe('the readers', () => {
     expect(await texts(shown, 'notes')).toContain('church ran long')
   })
 
+  it('read a note kept from Ask as a check-in’s note is read, faith’s words only while faith may be read (stage A3)', async () => {
+    const store = record()
+    put(store, 'notes', '40', DAY, { id: 40, day: DAY, text: 'We prayed before the long drive.', from: 'ask', createdAt: 'x', updatedAt: 'x' })
+    put(store, 'notes', '41', DAY, { id: 41, day: DAY, text: 'The neighbours had a party until two.', from: 'ask', createdAt: 'x', updatedAt: 'x' })
+    const shown = accessFor('line', OPEN, readBrainPrefs({}))
+    const hidden = accessFor('line', gatesFrom({ hideFaith: true }), readBrainPrefs({}))
+    const texts = async (a: typeof shown) => ((await readCategory({ store, catalogue, a }, 'notes', week)) ?? []).map((i) => i.text).join(' | ')
+    expect(await texts(shown)).toContain('you kept a note: “We prayed before the long drive.”')
+    expect(await texts(hidden)).not.toContain('prayed')
+    expect(await texts(hidden)).toContain('you kept a note: “The neighbours had a party until two.”')
+  })
+
   it('say no pickup on a day she was away, whatever the week wrote (Part 33)', async () => {
     const store = record()
     put(store, 'days', '2026-09-16', '2026-09-16', { day: '2026-09-16', withHer: false, pickupTime: '17:00', atOffice: false, churchDay: false, studyNight: false })

@@ -58,6 +58,10 @@ export interface AskAnswer {
   askedModel?: string
   /** Why no checked answer came: the checks' last reason, or that no run could answer it. */
   reason?: string
+  /** Stage A3: the one test the answer names (move|reading|window), short of established, for "Test it". */
+  test?: string
+  /** Stage A3: the question states something of the owner's life; "Add this as a note" is offered. */
+  noteOffer?: boolean
 }
 
 /** How much of the day's allowance its runs have used: each run that reached Claude counts one, the deep tier DEEP_COUNTS. */

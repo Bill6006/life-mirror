@@ -324,7 +324,7 @@ export async function handleAskBriefing(deps: AskDeps, url: URL): Promise<Reply>
     askedModel: run.t.askedModel,
     instructions: askInstructions(run.t.task === 'deep' ? 'deep' : 'ask', run.words, run.firm),
     briefing: text,
-    answer: { text: `the answer, at most ${run.words} words`, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], ...(run.access.allowed('journal') ? { journal: ['the night (YYYY-MM-DD) of each journal entry you drew on, or none'] } : {}) },
+    answer: { text: `the answer, at most ${run.words} words`, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], test: { moveId: 'the move of the one test the question asks about, from a fact ladder.<moveId>.<reading>, or null for none', reading: 'its reading' }, note: 'true when the question states something of the person’s life worth keeping in their own words, else false', ...(run.access.allowed('journal') ? { journal: ['the night (YYYY-MM-DD) of each journal entry you drew on, or none'] } : {}) },
     post: { path: '/claude/line', body: { task: run.t.task, day: run.t.day, answer: '<your JSON answer>', askedModel: run.t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
     context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, tag, q, limit', categories: READABLE.filter((c) => run.access.allowed(c) && c !== 'usageEvents'), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: run.t.contextCalls, bytes: run.t.contextBytes } },
     attemptsLeft: MAX_POSTS - run.t.posts,
@@ -366,7 +366,7 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   if (!built.ok) return built.reply
   const { t, turn, sheet, cards, access, words, question } = built.run
   const answer = typeof o.answer === 'string' ? safeJson(o.answer) : o.answer
-  let verdict: { ok: true; value: { text: string; factIds: string[]; cardIds: string[] } } | { ok: false; reason: string } = validateAsk(answer, sheet, cards, words, undefined, question)
+  let verdict: ReturnType<typeof validateAsk> = validateAsk(answer, sheet, cards, words, undefined, question)
   if (verdict.ok) {
     const names = sheet.showPrivate === true ? [] : await privateNames(deps.store)
     // The Partner path bears on an answer only when the question or a cited fact is about it.
@@ -389,7 +389,9 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'
   const runnerModel = clip(o.runnerModel, 100)
   if (turn && !t.dry) {
-    const row: AskAnswer = { id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'answered', text: verdict.value.text, factIds: verdict.value.factIds, cardIds: verdict.value.cardIds, facts: citedFacts(sheet, verdict.value.factIds, (f) => relabel(f, sheet, t.day)), model: writtenModel, askedModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus' }
+    const named = verdict.value.test
+    const window = named ? String(sheet.facts.find((f) => f.id === `ladder.${named.moveId}.${named.reading}`)?.values.window ?? '') : ''
+    const row: AskAnswer = { id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'answered', text: verdict.value.text, factIds: verdict.value.factIds, cardIds: verdict.value.cardIds, facts: citedFacts(sheet, verdict.value.factIds, (f) => relabel(f, sheet, t.day)), model: writtenModel, askedModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', ...(named && window ? { test: `${named.moveId}|${named.reading}|${window}` } : {}), ...(verdict.value.note && turn.kind === 'typed' ? { noteOffer: true } : {}) }
     await deps.store.writeAnswer(row, at)
   }
   await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at), served: built.run.served })

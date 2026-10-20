@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateAsk, validateOutput } from '../../src/brainShared'
+import { askTestOf, validateAsk, validateOutput } from '../../src/brainShared'
 import { answerIdOf, askTaskIds, deepTaskId, roomFor } from '../../src/ask/shared'
 import type { AskTurn } from '../../src/ask/types'
 import type { FactSheet } from '../../src/factTypes'
@@ -291,6 +291,48 @@ describe('the briefing and the answer (open, in these tests only)', () => {
     expect((await post(s2, at('12:02'), { ...GOOD, text: 'A walk likely helps your stress, and so might dating.' })).body).toMatchObject({ reason: expect.stringMatching(/dating/) })
   })
 
+  it('keeps the one test the answer names, rightly, and offers a note only for a typed question that states something (stage A3)', async () => {
+    const { store, turn } = await opened()
+    expect(await post(store, at('12:02'), { ...GOOD, test: { moveId: 'walk-ten', reading: 'stress' }, note: true })).toEqual({ status: 200, body: { ok: true } })
+    expect(answerOf(store, turn.id)).toMatchObject({ test: 'walk-ten|stress|nextBlock', noteOffer: true })
+    // A test not on the sheet is never kept, and the answer stands without it.
+    const s2 = await opened()
+    expect(await post(s2.store, at('12:02'), { ...GOOD, test: { moveId: 'walk-ten', reading: 'focus' }, note: false })).toEqual({ status: 200, body: { ok: true } })
+    expect(answerOf(s2.store, s2.turn.id)).not.toHaveProperty('test')
+    expect(answerOf(s2.store, s2.turn.id)).not.toHaveProperty('noteOffer')
+    // Only a test short of established is named, and only a note marked true is offered.
+    expect(askTestOf({ moveId: 'walk-ten', reading: 'stress' }, { facts: [{ ...WALK, values: { ...WALK.values, level: 'established' } }] })).toBeUndefined()
+    expect(askTestOf({ moveId: 'walk-ten', reading: 'stress' }, { facts: [WALK] })).toEqual({ moveId: 'walk-ten', reading: 'stress' })
+    const s4 = await opened()
+    expect(await post(s4.store, at('12:02'), { ...GOOD, note: 'yes' })).toEqual({ status: 200, body: { ok: true } })
+    expect(answerOf(s4.store, s4.turn.id)).not.toHaveProperty('noteOffer')
+    // The deep tier states nothing of the owner's own: no note is offered under it, whatever the answer marks.
+    const s3 = record()
+    const deep = asked(s3, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
+    await runAsks(env, s3, at('12:00'), { ...OPEN, fireFetcher: routine().f })
+    expect(await post(s3, at('12:02'), { ...GOOD, note: true }, 'open', 'deep')).toEqual({ status: 200, body: { ok: true } })
+    expect(answerOf(s3, deep.id)).toMatchObject({ status: 'answered' })
+    expect(answerOf(s3, deep.id)).not.toHaveProperty('noteOffer')
+  })
+
+  it('reads a note kept from Ask among the notes, as a check-in’s note is read (stage A3)', async () => {
+    const { store } = await opened()
+    put(store, 'notes', '901', DAY, { id: 901, day: DAY, text: 'The neighbours had a party until two.', from: 'ask', createdAt: at('09:00').toISOString(), updatedAt: at('09:00').toISOString() })
+    const r = await handleAskContext(deps(store, at('12:02')), new URL(`https://w.test/claude/context?task=ask&day=${DAY}&category=notes`))
+    expect(r.status).toBe(200)
+    expect((r.body as { items: { text: string }[] }).items.map((i) => i.text)).toContain('you kept a note: “The neighbours had a party until two.”')
+  })
+
+  it('tells Claude stage A3’s rules: never the asking as support, the test it names or why none is testable, and when a question is a note', async () => {
+    const { store } = await opened()
+    const body = (await briefing(store, at('12:01'))).body as { instructions: string }
+    expect(body.instructions).toContain('Never cite the asking as support')
+    expect(body.instructions).toContain('name it in "test"')
+    expect(body.instructions).toContain('never offer a different test in its place')
+    expect(body.instructions).toContain('"note" is true when the question itself states something')
+    expect(body.instructions).toContain('"cardIds": ["..."], "test": null, "note": false}')
+  })
+
   it('serves on-demand reads under the ask profile: the Brain’s earlier lines are refused', async () => {
     const { store } = await opened()
     const r = await handleAskContext(deps(store, at('12:02')), new URL(`https://w.test/claude/context?task=ask&day=${DAY}&category=brainHistory`))
@@ -325,6 +367,11 @@ describe('the answer’s checks', () => {
     expect(validateAsk({ text: quoted, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220, undefined, 'How are my tests?')).toEqual({ ok: false, reason: 'says "helps" of a test with no call yet' })
     // A single quoted word is no quote of the person: it still counts.
     expect(validateAsk({ text: 'The nap “helps”, I think.', factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220, undefined, 'What helps me?')).toEqual({ ok: false, reason: 'says "helps" of a test with no call yet' })
+  })
+
+  it('never let the asking stand as support (stage A3)', () => {
+    for (const text of ['As you suspected, a ten-minute walk likely helps your stress.', 'You were right: a ten-minute walk likely helps your stress.', 'Just as you said, a walk likely helps your stress.', 'This confirms what you noticed: a walk likely helps your stress.', 'It proves your hunch: a walk likely helps your stress.']) expect(validateAsk({ text, factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sheet(DAY), [], 220), text).toMatchObject({ ok: false, reason: expect.stringMatching(/never support/) })
+    expect(validateAsk({ text: 'You asked about walks: a ten-minute walk likely helps your stress.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sheet(DAY), [], 220)).toMatchObject({ ok: true })
   })
 
   it('hold an answer to its words and its citations', () => {
