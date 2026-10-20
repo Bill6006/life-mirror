@@ -311,6 +311,14 @@ describe('the answer’s checks', () => {
     expect(validateAsk({ text: long, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: '245 words; at most 220; and says "eased" of a test with no call yet' })
   })
 
+  it('ground a number in a test’s own words, its size range among them, and no other fact’s', () => {
+    const ranged = { ...WALK, text: WALK.text.replace('over 14 days;', 'over 14 days; the record alone, when done, +0.50 steps (-2.36 to +3.80);') }
+    const sh = { ...sheet(DAY), facts: [...sheet(DAY).facts.filter((f) => f.id !== WALK.id), ranged, { id: 'note.x', tags: [], text: 'A note with 7 in it.', values: {} }] }
+    expect(validateAsk({ text: 'The walk’s test likely helps your stress: your record alone puts it at -2.36 to +3.80 steps.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sh, [], 220)).toMatchObject({ ok: true })
+    expect(validateAsk({ text: 'The walk’s test likely helps your stress: 4.10 steps.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sh, [], 220)).toEqual({ ok: false, reason: 'the number 4.10 is not in the cited facts' })
+    expect(validateAsk({ text: 'Your note says 7.', factIds: ['note.x'], cardIds: [] }, sh, [], 220)).toEqual({ ok: false, reason: 'the number 7 is not in the cited facts' })
+  })
+
   it('hold an answer to its words and its citations', () => {
     expect(validateAsk({ text: 'a '.repeat(230), factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sheet(DAY), [], 220)).toMatchObject({ ok: false, reason: expect.stringMatching(/words; at most 220/) })
     expect(validateAsk({ text: 'A walk likely helps your stress.', factIds: ['ladder.unknown.mood'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: 'fact "ladder.unknown.mood" is not on the sheet' })

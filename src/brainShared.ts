@@ -420,6 +420,9 @@ export function numberGrounded(token: string, sheet: FactSheet, factIds: readonl
       }
     }
     if (f.n !== undefined && String(f.n) === plain) return true
+    // A test's own words (ladder.*, written by the app from the engine's numbers) carry its size range, which its values do
+    // not: a number in them is in the fact (2026-10-20, Ask's second measured run quoted "-2.36 to +3.80" and was refused).
+    if (isLadderFact(f.id) && numbersIn(f.text).some((t) => t.replace(/,/g, '') === plain)) return true
   }
   return false
 }

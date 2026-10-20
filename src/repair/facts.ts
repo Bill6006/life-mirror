@@ -32,7 +32,7 @@ export function ladderFact(t: TestShown): Fact {
     id: `ladder.${t.moveId}.${t.target}`,
     tags: ['monitoring'],
     text,
-    values: { move, moveId: t.moveId, reading, window: t.window, level: t.level, direction: t.direction, revised: t.revised ? 1 : 0, running: t.running ? 1 : 0, offered: t.offered, heldBack: t.heldBack, days: t.days, theta: t.theta === null ? null : Math.round(t.theta * 100) / 100, belief: Math.round(t.belief * 100) / 100, research },
+    values: { move, moveId: t.moveId, reading, window: t.window, level: t.level, direction: t.direction, revised: t.revised ? 1 : 0, running: t.running ? 1 : 0, offered: t.offered, heldBack: t.heldBack, days: t.days, theta: t.theta === null ? null : Math.round(t.theta * 100) / 100, belief: Math.round(t.belief * 100) / 100, research, ...(t.began ? { began: t.began } : {}) },
     n: t.offered + t.heldBack,
     tier: rung,
   }
