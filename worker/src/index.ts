@@ -11,6 +11,7 @@ import { qualifyReport, runQualify, windowOf } from './qualify'
 import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
+import { handleAskBriefing, handleAskContext, handleAskLine, runAsks } from './ask'
 import { SKILL_COACH } from '../../src/coachShared'
 import { addDays, localTime } from './time'
 
@@ -43,7 +44,7 @@ function sender(env: Env): Sender | null {
   }
 }
 
-type Job = 'brief' | 'review' | 'cues' | 'coach' | 'commitments' | 'suggestions'
+type Job = 'brief' | 'review' | 'cues' | 'coach' | 'commitments' | 'suggestions' | 'asks'
 
 /** The ticks that run every job as before: each fifteen minutes. The minutes between answer suggestions alone. */
 export const onQuarter = (now: Date): boolean => now.getUTCMinutes() % 15 === 0
@@ -70,6 +71,12 @@ async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: '
     if (result.reason !== 'nothing asked') console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
   }
+  if (job === 'asks') {
+    // Ask Life Mirror (stage A2): each minute, the oldest question waiting for Claude, once the day's line and the coach are settled. Quiet while nothing is asked or the gate is closed.
+    const result = await runAsks(env, store, now, { force, ...(coach ? { coach } : {}) })
+    if (result.reason !== 'nothing asked' && result.reason !== 'gated') console.log(JSON.stringify({ job, ...result }))
+    return { job, ...result }
+  }
   if (job === 'commitments') {
     // On a schedule, the fifteen-minute tick's part: the day's reviews. By hand, both kinds.
     const result = await runCommitments(env, store, now, { kind, force, dry, ...(coach ? { coach } : {}) })
@@ -93,6 +100,12 @@ const handler: ExportedHandler<Env> = {
           await dispatch('suggestions', env, now)
         } catch (e) {
           console.log(JSON.stringify({ job: 'suggestions', error: e instanceof Error ? e.message : String(e) }))
+        }
+        // Ask Life Mirror (stage A2): a question waiting for Claude, each minute after the suggestions.
+        try {
+          await dispatch('asks', env, now)
+        } catch (e) {
+          console.log(JSON.stringify({ job: 'asks', error: e instanceof Error ? e.message : String(e) }))
         }
         // Every other job keeps its fifteen-minute tick, as before.
         if (!onQuarter(now)) return
@@ -124,7 +137,7 @@ const handler: ExportedHandler<Env> = {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/health') return json({ ok: true, app: BRAIN_APP })
-    const m = /^\/run\/(brief|review|cues|coach|commitments|suggestions)$/.exec(url.pathname)
+    const m = /^\/run\/(brief|review|cues|coach|commitments|suggestions|asks)$/.exec(url.pathname)
     if (m && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       const w = url.searchParams.get('writer')
       if (w !== null && w !== 'claude' && w !== 'free') return json({ reason: 'writer must be claude or free' }, 400)
@@ -166,11 +179,12 @@ const handler: ExportedHandler<Env> = {
         if (url.pathname === '/claude/briefing' && request.method === 'GET') {
           // Parts 40 and 41: a skill coach run's briefing, refused while their gate is closed.
           const task = url.searchParams.get('task')
-          const r = task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : await handleBriefing(deps, url)
+          const r = task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : task === 'ask' || task === 'deep' ? await handleAskBriefing(deps, url) : await handleBriefing(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/context' && request.method === 'GET') {
-          const r = await handleContext(deps, url)
+          const task = url.searchParams.get('task')
+          const r = task === 'ask' || task === 'deep' ? await handleAskContext(deps, url) : await handleContext(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/line' && request.method === 'POST') {
@@ -183,7 +197,7 @@ const handler: ExportedHandler<Env> = {
             return json({ error: 'the body is not JSON' }, 400)
           }
           const task = body && typeof body === 'object' ? (body as { task?: unknown }).task : undefined
-          const r = task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : await handleLine(deps, body)
+          const r = task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : task === 'ask' || task === 'deep' ? await handleAskLine(deps, body) : await handleLine(deps, body)
           return json(r.body, r.status)
         }
         return json({ error: 'not found' }, 404)
@@ -260,6 +274,14 @@ const handler: ExportedHandler<Env> = {
       } catch (e) {
         return json({ sent: false, kind, reason: e instanceof Error ? e.message : String(e) })
       }
+    }
+    // With the run key: one stand-in question answered by a run by hand (Ask Life Mirror, stage A2), past the closed gate, for the
+    // measured runs and the live check: read, fired and checked as an ask is, its answer never stored where the phone reads it.
+    if (url.pathname === '/run/ask' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const question = url.searchParams.get('q') ?? ''
+      if (!question.trim()) return json({ reason: 'q: a stand-in question' }, 400)
+      return json(await runAsks(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), { dry: true, question, deep: url.searchParams.get('deep') === '1' }))
     }
     // With the run key: a day's planned pings, read-only (2026-10-19, to confirm a planned ping went out): whether reminders
     // are on, their times and the quiet hours, whether a push address is held, and which of the day's pings were sent.

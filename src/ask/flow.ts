@@ -75,7 +75,7 @@ export async function askAbout(ref: AboutRef, source: AboutSource, question: str
   const ev = await askEvidence(now)
   if (!ev) return null
   const keys = 'keys' in ref ? [...ref.keys] : keysOfLine(ref.factIds, ev)
-  const turn = answeredTurn(question, 'about', aboutAnswer(keys, ev), ev, now, [...keys])
+  const turn = answeredTurn(question, 'about', aboutAnswer(keys, ev, question), ev, now, [...keys])
   return startThread({ day: turn.day, at: turn.at, title: question, from: { kind: 'about', source, keys: [...keys] } }, turn)
 }
 
@@ -98,7 +98,7 @@ export async function askAgain(turnId: number, now: Date = new Date()): Promise<
   if (old.kind === 'typed') return (await askTyped(old.question, old.threadId, now)) !== null
   const ev = await askEvidence(now)
   if (!ev) return false
-  const laid = old.kind === 'about' ? aboutAnswer(old.keys ?? [], ev) : starterLaid(old.kind === 'deep' ? 'know' : old.kind, ev, await lastRead())
+  const laid = old.kind === 'about' ? aboutAnswer(old.keys ?? [], ev, old.question) : starterLaid(old.kind === 'deep' ? 'know' : old.kind, ev, await lastRead())
   await db.askTurns.add({ ...answeredTurn(old.question, old.kind, laid, ev, now, old.kind === 'about' ? old.keys ?? [] : undefined), threadId: old.threadId })
   return true
 }

@@ -3,6 +3,7 @@ import { createClient } from '@libsql/client/web'
 import { OUTSIDE_APP, OUTSIDE_STORE } from '../../src/outsideRow'
 import type { CitedFact, LineAction } from '../../src/brainShared'
 import type { CoachProposal } from '../../src/coachShared'
+import type { AskAnswer } from '../../src/ask/shared'
 import type { Firmness } from '../../src/firmness'
 import type { CoachBlock, FactSheet } from '../../src/factTypes'
 
@@ -85,7 +86,7 @@ export interface BriefRow {
 export interface TaskRow {
   id: string
   kind: 'task'
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
   day: string
   at: string
   status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
@@ -136,6 +137,10 @@ export interface TaskRow {
   withdrawn?: { at: string; reason: string }
   /** A skill coach's run (Parts 40 and 41): the phone's asks it answers. */
   asks?: number[]
+  /** Ask Life Mirror's run (stage A2): the turn it answers. */
+  turns?: number[]
+  /** An ask run by hand with the run key (stage A2): the stand-in question it answers, in place of a turn. Never the owner's words. */
+  question?: string
 }
 
 /** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
@@ -176,7 +181,7 @@ export interface ReadRow {
   id: string
   day: string
   at: string
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
   category: string
   count: number
   bytes: number
@@ -293,6 +298,10 @@ export interface Store {
   proposalIds(): Promise<Set<string>>
   readProposals(): Promise<CoachProposal[]>
   writeProposal(row: CoachProposal, now: string): Promise<void>
+  /** Ask Life Mirror's answers (stage A2): one per turn, the ids of those stored, some read back by id, and one written. */
+  answerIds(): Promise<Set<string>>
+  readAnswers(ids: readonly string[]): Promise<AskAnswer[]>
+  writeAnswer(row: AskAnswer, now: string): Promise<void>
 }
 
 function parse<T>(body: unknown): T | null {
@@ -472,6 +481,18 @@ export function tursoStore(url: string, token: string): Store {
     async writeProposal(row, now) {
       await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'proposals', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
     },
+    async answerIds() {
+      const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'askAnswers' AND deleted = 0`, [BRAIN_APP])
+      return new Set(r.map((x) => String(x.id)))
+    },
+    async readAnswers(ids) {
+      if (!ids.length) return []
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'askAnswers' AND deleted = 0 AND id IN (${ids.map(() => '?').join(', ')})`, [BRAIN_APP, ...ids])
+      return r.map((x) => parse<AskAnswer>(x.body)).filter((a): a is AskAnswer => a !== null)
+    },
+    async writeAnswer(row, now) {
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'askAnswers', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+    },
   }
 }
 
@@ -643,6 +664,18 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async writeProposal(row, now) {
       rows.set(key(BRAIN_APP, 'proposals', row.id), { app: BRAIN_APP, store: 'proposals', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async answerIds() {
+      return new Set(live(BRAIN_APP, 'askAnswers').map((r) => r.id))
+    },
+    async readAnswers(ids) {
+      return live(BRAIN_APP, 'askAnswers')
+        .filter((r) => ids.includes(r.id))
+        .map((r) => parse<AskAnswer>(r.body))
+        .filter((a): a is AskAnswer => a !== null)
+    },
+    async writeAnswer(row, now) {
+      rows.set(key(BRAIN_APP, 'askAnswers', row.id), { app: BRAIN_APP, store: 'askAnswers', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
     },
   }
 }

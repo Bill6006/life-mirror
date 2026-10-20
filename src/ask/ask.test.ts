@@ -141,6 +141,20 @@ describe('"Ask about this"', () => {
     expect(aboutAnswer([], ev).answer.sections[0].lines[0]).toMatch(/^This line rests on no tested finding yet/)
   })
 
+  it('names a finding the question already names only once, and says what would settle it only while it is not settled', () => {
+    const question = 'About A ten-minute walk, now, for Mood over the next block'
+    const one = aboutAnswer(['walk-ten|mood|nextBlock'], read({ shown: [walkMood] }), question)
+    expect(one.answer.sections[0].title).toBeNull()
+    expect(one.answer.sections[0].lines[0]).toBe('Likely: helps')
+    expect(one.answer.sections[one.answer.sections.length - 1].lines[0]).toMatch(/^What would settle it: /)
+    // Asked from the Brain card, the question names no finding: each keeps its own name.
+    expect(aboutAnswer(['walk-ten|mood|nextBlock'], read({ shown: [walkMood] }), 'About the day’s line').answer.sections[0].title).toBe('A ten-minute walk, now, for Mood over the next block')
+    // Established, it is settled: nothing to say of what would settle it, here or among the tests being run.
+    const settled = { ...walkMood, level: 'established' as const }
+    expect(lines(aboutAnswer(['walk-ten|mood|nextBlock'], read({ shown: [settled] }), question).answer).join(' ')).not.toMatch(/What would settle it/)
+    expect(lines(nextAnswer(read({ shown: [settled] })).answer).join(' ')).not.toMatch(/What would settle it/)
+  })
+
   it('finds the tests a line on the Brain card cites from its ladder facts', () => {
     const ev = read({ shown: [walkMood], quiet: [friendMood] })
     expect(keysOfLine(['week.today', 'ladder.walk-ten.mood', 'ladder.message-a-friend.mood', 'ladder.walk-ten.mood', 'ladder.nap-ten.energy'], ev)).toEqual(['walk-ten|mood|nextBlock', 'message-a-friend|mood|nextBlock'])

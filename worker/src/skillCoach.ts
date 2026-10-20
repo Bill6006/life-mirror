@@ -49,8 +49,8 @@ export interface CommitmentsResult {
 /** What the coach's job says when it will not run today, so the skill coach need not wait for it. */
 const COACH_STANDS_DOWN = ['done for today', 'the coach is off', 'Claude is off', 'the watch has the coach off', 'nothing for the coach to choose', 'no coach block for today yet', 'the monthly check’s help is showing']
 
-/** Why the skill coach must wait for the day's line or the coach, or null once both are settled for the day. */
-async function waitFor(store: Store, day: string, coach: CommitmentsOptions['coach']): Promise<string | null> {
+/** Why the skill coach must wait for the day's line or the coach, or null once both are settled for the day. Ask Life Mirror's runs wait the same way (stage A2). */
+export async function waitFor(store: Store, day: string, coach: CommitmentsOptions['coach']): Promise<string | null> {
   if (!(await store.hasBrief(`${day}:brief`))) return 'waiting for the day’s line'
   const [line, c] = await Promise.all([store.readTask(`task:${day}:line`), store.readTask(`task:${day}:coach`)])
   if (line && (line.status === 'firing' || line.status === 'fired')) return 'waiting for the day’s line'

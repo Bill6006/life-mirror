@@ -5,6 +5,7 @@ import { noTimeCeiling, PRIOR_SD } from '../learning'
 import { candidatesFor, NOTHING, screen, situationOf, standingSetups, type Situation, type TodayState } from '../offers'
 import { blockReadings, type ReadingId } from '../readings'
 import { INGREDIENT_IDS, INGREDIENTS } from '../score'
+import type { Direction, Level } from './ladder'
 import { gauss, invertSpd, phi, type Rng } from './stats'
 import { DAYS, reach, windowOfMove, type Answered, type DayContext, type Response } from './world'
 
@@ -220,8 +221,7 @@ const committed = (moveId: string): boolean => !hasMove(moveId) || moveId === 't
 
 export type Cls = 'next' | 'day' | 'multi'
 export const clsOf = (w: Window): Cls => (w === 'nextBlock' ? 'next' : w === 'sevenDays' ? 'multi' : 'day')
-export type Level = 'none' | 'early' | 'likely' | 'established'
-export type Direction = 'helps' | 'little' | 'hurts' | null
+export type { Direction, Level }
 
 /** The pre-declared contexts (requirement 7), each centred at a fixed share so the general effect is the effect at the usual mix. */
 export const CONTEXTS = ['withHer', 'office', 'weekend', 'shortSleep'] as const

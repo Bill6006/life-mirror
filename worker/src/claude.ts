@@ -26,7 +26,7 @@ import type { BriefRow, Store, TaskRow } from './turso'
 // the record.
 
 export const FIRE_BETA = 'experimental-cc-routine-2026-04-01'
-export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress'
+export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
 /** A line may be posted twice: the first, and one corrected retry after a refusal. */
 export const MAX_POSTS = 2
 /** No valid line within this many minutes, and the free chain writes (the plan's twenty). */

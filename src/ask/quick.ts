@@ -139,24 +139,31 @@ function testLines(t: TestShown): string[] {
 
 const titleOf = (t: { moveId: string; target: string; window: string }) => `${nameOf(t.moveId)}, ${fill(copy.evidence.forTarget, { target: readingName(t.target), window: windowOf(t.window) })}`
 
+/** A finding still to be settled: any short of an established call. What would settle it is said only for one. */
+const open = (t: TestShown) => t.level !== 'established'
+
 /** "What should we test next?": the tests being run now, each whole, then the next the queue would take; what would settle a test, once. */
 export function nextAnswer(ev: RepairEvidence): Laid {
   const w = words()
   const running = ev.shown.filter((t) => t.running)
   const sections: QuickAnswer['sections'] = running.map((t) => ({ title: titleOf(t), lines: testLines(t) }))
-  // What would settle a test, right after the tests being run, before the queue.
-  if (running.length) sections.push({ title: null, lines: [w.settle] })
+  // What would settle a test, right after the tests being run, before the queue: once, and only while one is not settled.
+  if (running.some(open)) sections.push({ title: null, lines: [w.settle] })
   sections.push({ title: w.queueTitle, lines: ev.waiting.length ? ev.waiting.map((t) => fill(w.queueLine, { move: nameOf(t.moveId), reading: readingName(t.target), window: windowOf(t.window) })) : [w.queueNone] })
   return { answer: { sections }, cited: running.map(citeOf) }
 }
 
-/** "Ask about this": each attached finding whole, with what would settle it; a finding no longer among the tests said so; a line resting on none said so. */
-export function aboutAnswer(keys: readonly string[], ev: RepairEvidence): Laid {
+/**
+ * "Ask about this": each attached finding whole, with what would settle it while one is not settled; a finding no longer
+ * among the tests said so; a line resting on none said so. A finding the question already names is not named again above it.
+ */
+export function aboutAnswer(keys: readonly string[], ev: RepairEvidence, question = ''): Laid {
   const w = words()
   const tests = testsOf(ev)
   if (!keys.length) return { answer: { sections: [{ title: null, lines: [w.aboutNone] }] }, cited: [] }
   const sections: QuickAnswer['sections'] = []
   const cited: AskCitation[] = []
+  const found: TestShown[] = []
   for (const key of keys) {
     const t = tests.get(key)
     if (!t) {
@@ -164,10 +171,12 @@ export function aboutAnswer(keys: readonly string[], ev: RepairEvidence): Laid {
       sections.push({ title: null, lines: [fill(w.aboutGone, { key: titleOf({ moveId, target, window }) })] })
       continue
     }
-    sections.push({ title: titleOf(t), lines: testLines(t) })
+    const title = titleOf(t)
+    sections.push({ title: keys.length === 1 && question.includes(title) ? null : title, lines: testLines(t) })
     cited.push(citeOf(t))
+    found.push(t)
   }
-  if (cited.length) sections.push({ title: null, lines: [w.settle] })
+  if (found.some(open)) sections.push({ title: null, lines: [w.settle] })
   return { answer: { sections }, cited }
 }
 

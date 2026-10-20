@@ -1,4 +1,4 @@
-import type { Direction, Level } from '../repair/engine'
+import type { Direction, Level } from '../repair/ladder'
 
 // Ask Life Mirror's record (stage A1, 2026-10-19). The owner's questions and, for the quick tier, the answers the app laid
 // out from the same evidence the Brain reads. Both stores are the phone's own: synced to the owner's database, in the

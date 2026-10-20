@@ -471,7 +471,7 @@ function strings(v: unknown): string[] {
 }
 
 /** The reason a text is refused, or null when it may be said. */
-function refusal(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number, evidence = false): string | null {
+function refusal(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number, evidence = false, ownTests = false): string | null {
   if (!text) return 'no text'
   if (words(text) > maxWords) return `${words(text)} words; at most ${maxWords}`
   for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return `uses the word "${w}"`
@@ -507,7 +507,8 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
   }
   // Follow-up F1: a line citing how the app was used may name the Evidence screen; that name is not a claim.
   const claims = factIds.some(isUsageFact) ? text.replace(/\b[Tt]he Evidence screen\b/g, '') : text
-  if (cardIds.length === 0 && EVIDENCE_WORDS.test(claims)) return 'speaks of evidence without citing a card'
+  // Ask Life Mirror (stage A2) alone: an answer citing the owner's own tests may speak of their evidence, and of the research their facts carry beside them.
+  if (cardIds.length === 0 && EVIDENCE_WORDS.test(claims) && !(ownTests && factIds.some(isLadderFact))) return 'speaks of evidence without citing a card'
   // Pass 4, once its gate is open: size words within the cards' sizes, and no cause read into the record's own comparisons.
   if (evidence) return evidenceWordingRefusal(text, factIds, cardIds.map((id) => admitted.get(id) as ClaimCard))
   return null
@@ -729,6 +730,33 @@ export function validateOutput(raw: unknown, sheet: FactSheet, cards: readonly C
     value.firmness = f.firmness
   }
   return { ok: true, value }
+}
+
+/** Ask Life Mirror's answer from Claude (stage A2): its words and what it cites. */
+export interface AskOutput {
+  text: string
+  factIds: string[]
+  cardIds: string[]
+}
+
+/**
+ * Ask Life Mirror's answer from Claude (stage A2; the agreed design's point 15), checked as a line is, against the sheet
+ * the run read: every number in a cited fact; each of the owner's tests at its rung and in its direction; causal words
+ * only where the evidence wording allows them; every citation on that sheet; the Brain's refused words; and the floor
+ * under every firmness (nothing aimed at the person, no false comfort, no therapy-speak, no exclamation mark). One
+ * allowance a line does not have: an answer citing the owner's own tests (ladder.*) may speak of their evidence, and of
+ * the research their facts carry beside them, without a library card.
+ */
+export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords: number, evidence = EVIDENCE_WORDING === 'open'): { ok: true; value: AskOutput } | { ok: false; reason: string } {
+  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
+  const o = raw as Record<string, unknown>
+  const text = typeof o.text === 'string' ? o.text.trim() : ''
+  if (!text) return { ok: false, reason: 'no text' }
+  const cited = citations(o, sheet, cards)
+  if (typeof cited === 'string') return { ok: false, reason: cited }
+  const why = refusal(text, cited.factIds, cited.cardIds, sheet, cited.admitted, maxWords, evidence, true) ?? firmnessRefusal(text)
+  if (why) return { ok: false, reason: why }
+  return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds } }
 }
 
 /** The review's follow-up question (the journal, agreed 2026-10-15): at most this many words. */

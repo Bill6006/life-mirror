@@ -121,13 +121,13 @@ try {
   {
     // Closed as it ships: no Ask button, even in an automated browser, without the key; and the build is the one pushed.
     const { ctx, page } = await fresh(false)
+    await tab(page, 'Mirror')
+    await page.getByRole('heading', { name: 'Mirror' }).waitFor()
+    check('closed as it ships: Mirror has no Ask button without the test key', (await page.getByTestId('ask-open').count()) === 0)
     await tab(page, 'Settings')
     await page.getByTestId('settings-about').click()
     const commit = (await page.getByTestId('build-commit').textContent())?.trim()
     check('the build stamp is the pushed commit', commit === want, `shows ${commit}`)
-    await tab(page, 'Mirror')
-    await page.getByRole('heading', { name: 'Mirror' }).waitFor()
-    check('closed as it ships: Mirror has no Ask button without the test key', (await page.getByTestId('ask-open').count()) === 0)
     await ctx.close()
   }
   {
@@ -170,7 +170,8 @@ try {
     await page.getByRole('button', { name: /^Evidence/ }).click()
     await page.getByTestId('repair-test').filter({ hasText: 'Stress' }).first().getByTestId('repair-ask').click()
     check('"Ask about this" on Evidence asks about that test', (await text(page.getByTestId('ask-question'))) === 'About A ten-minute walk, now, for Stress over the next block', await text(page.getByTestId('ask-question')))
-    check('and gives it whole, with what would settle it', (await text(page.getByTestId('ask-answer'))).includes('What would settle it'))
+    const about = await text(page.getByTestId('ask-answer'))
+    check('and gives it whole: an established call, its counts, and nothing of what would settle it', about.includes('Established: helps') && about.includes('Offered') && !about.includes('What would settle it'), about.slice(0, 80))
     await shot(page.getByTestId('ask-thread'), 'ask-about')
     await page.locator('.sub-head .back').click()
     await page.locator('.sub-head .back').click()

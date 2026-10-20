@@ -104,7 +104,9 @@ test('"Ask about this" on Evidence opens a thread with the test attached, and ba
   await expect(page.getByTestId('ask-thread')).toBeVisible()
   await expect(page.getByTestId('ask-question')).toHaveText('About A ten-minute walk, now, for Stress over the next block')
   await expect(page.getByTestId('ask-answer')).toContainText('Offered')
-  await expect(page.getByTestId('ask-answer')).toContainText('What would settle it')
+  // The walk's stress test is established in this record: settled, so nothing is said of what would settle it.
+  await expect(page.getByTestId('ask-answer')).toContainText('Established: helps')
+  await expect(page.getByTestId('ask-answer')).not.toContainText('What would settle it')
   await page.locator('.sub-head .back').click()
   await expect(page.getByTestId('ask')).toBeVisible()
   await page.locator('.sub-head .back').click()

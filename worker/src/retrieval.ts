@@ -14,7 +14,7 @@ import type { ReadRow, RecordRow, Store } from './turso'
 // count and size, never content. There is no person to query by, so no request can gather
 // several people.
 
-export type ReadTask = 'line' | 'review' | 'coach' | 'skill' | 'progress'
+export type ReadTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
 
 /** A line of the record as Claude reads it: its day, and the words. */
 export interface Item {
@@ -472,7 +472,7 @@ export async function logUsageOnSheet(store: Store, run: string, task: ReadTask,
 }
 
 /** How much private context each task's briefing may carry (engineering judgment). */
-export const CONTEXT_BUDGET: Record<ReadTask, number> = { line: 12 * 1024, review: 24 * 1024, coach: 12 * 1024, skill: 12 * 1024, progress: 16 * 1024 }
+export const CONTEXT_BUDGET: Record<ReadTask, number> = { line: 12 * 1024, review: 24 * 1024, coach: 12 * 1024, skill: 12 * 1024, progress: 16 * 1024, ask: 16 * 1024, deep: 24 * 1024 }
 
 interface Section {
   category: Category
