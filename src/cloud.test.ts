@@ -15,6 +15,9 @@ import { markInStep } from './freshIds'
 
 const TOKEN = 'test-token-never-real'
 const DAY = '2026-09-11'
+/** A ping address, made up: the push service's form, never a real one. */
+const SUB: PushSubscriptionJSON = { endpoint: 'https://push.example.test/send/one', expirationTime: null, keys: { p256dh: 'made-up-p256dh', auth: 'made-up-auth' } }
+const SET_UP = '2026-10-20T15:30:00.000Z'
 
 async function fresh(): Promise<void> {
   await db.delete()
@@ -77,19 +80,33 @@ describe('the outbox', () => {
     expect(wins[1].body).toBeNull()
   })
 
-  it('never carries the token, the push address or the reminders shown', async () => {
-    await updateSettings((s) => ({ ...s, cloud: { token: TOKEN, deviceId: 'dev', tokenSavedAt: null }, direction: 'One line' }))
+  it('carries the ping’s address with the settings (2026-10-20), and never the token, the reminders shown or the rest of the push state', async () => {
+    await updateSettings((s) => ({ ...s, cloud: { token: TOKEN, deviceId: 'dev', tokenSavedAt: null }, direction: 'One line', push: { subscription: SUB, subscribedAt: SET_UP, changed: true, needsTap: false, syncedEndpoint: SUB.endpoint ?? null } }))
     const rows = (await db.outbox.toArray()).filter((r) => r.store === 'settings')
     expect(rows.length).toBeGreaterThan(0)
+    const last = JSON.parse(rows[rows.length - 1].body as string)
+    expect(last.push).toEqual({ subscription: SUB, subscribedAt: SET_UP })
     for (const r of rows) {
       const body = JSON.parse(r.body as string)
       expect(body.cloud).toBeUndefined()
-      expect(body.push).toBeUndefined()
       expect(body.reminded).toBeUndefined()
+      expect(body.cloudPush).toBeUndefined()
       expect(r.body).not.toContain(TOKEN)
     }
-    expect(bodyForCloud('settings', { a: 1, cloud: { token: 'x' }, push: {}, reminded: {} })).toEqual({ a: 1 })
-    expect(bodyForCloud('wins', { a: 1, cloud: 2 })).toEqual({ a: 1, cloud: 2 })
+    expect(bodyForCloud('settings', { a: 1, cloud: { token: 'x' }, reminded: {} })).toEqual({ a: 1 })
+    expect(bodyForCloud('wins', { a: 1, cloud: 2, push: 3 })).toEqual({ a: 1, cloud: 2, push: 3 })
+  })
+
+  it('sends this phone’s own address, none once turned off here, else the one it pulled, passed on unchanged', () => {
+    const PULLED = { subscription: { endpoint: 'https://push.example.test/pulled' }, subscribedAt: '2026-10-18T09:00:00.000Z' }
+    const own = { subscription: SUB, subscribedAt: SET_UP, changed: false }
+    const lost = { subscription: null, subscribedAt: SET_UP, changed: false, needsTap: true }
+    expect(bodyForCloud('settings', { a: 1, push: own, cloudPush: PULLED })).toEqual({ a: 1, push: { subscription: SUB, subscribedAt: SET_UP } })
+    expect(bodyForCloud('settings', { a: 1, push: { ...lost, droppedAt: '2026-10-20T15:00:00.000Z' }, cloudPush: PULLED })).toEqual({ a: 1, push: { subscription: null, subscribedAt: null } })
+    expect(bodyForCloud('settings', { a: 1, push: lost, cloudPush: PULLED })).toEqual({ a: 1, push: PULLED })
+    expect(bodyForCloud('settings', { a: 1, push: lost, cloudPush: null })).toEqual({ a: 1, push: { subscription: null, subscribedAt: null } })
+    // A phone with no address of its own that never pulled one sends no field, and the Worker's older rule stands.
+    expect(bodyForCloud('settings', { a: 1, push: { subscription: null, subscribedAt: null, changed: false } })).toEqual({ a: 1 })
   })
 })
 
@@ -236,6 +253,31 @@ describe('the sync worker', () => {
     // Restored rows are known to the cloud and never queued again.
     expect(await db.outbox.count()).toBe(0)
     expect([...store.rows.values()].filter((r) => r.app === APP).length).toBe(before)
+  })
+
+  it('keeps the ping’s address in the cloud through a phone with none of its own, and empties it only when turned off by hand (2026-10-20)', async () => {
+    const store = memoryStore()
+    await withToken(store)
+    await updateSettings((s) => ({ ...s, push: { subscription: SUB, subscribedAt: SET_UP, changed: false, syncedEndpoint: SUB.endpoint ?? null } }))
+    await syncNow()
+    const inCloud = () => JSON.parse([...store.rows.values()].find((r) => r.store === 'settings')?.body ?? '{}').push
+    expect(inCloud()).toEqual({ subscription: SUB, subscribedAt: SET_UP })
+
+    // A database the browser cleared, or another phone: its own push state comes back empty, the cloud's address kept aside.
+    await fresh()
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    const restored = await getSettings()
+    expect(restored.push.subscription).toBeNull()
+    expect(restored.cloudPush).toEqual({ subscription: SUB, subscribedAt: SET_UP })
+    // A change made there sends the settings again, and the address goes with them unchanged.
+    await updateSettings((s) => ({ ...s, direction: 'Changed on the other phone' }))
+    await syncNow()
+    expect(inCloud()).toEqual({ subscription: SUB, subscribedAt: SET_UP })
+    // Turned off by hand, the cloud copy carries no address.
+    await updateSettings((s) => ({ ...s, push: { ...s.push, droppedAt: '2026-10-20T16:00:00.000Z' } }))
+    await syncNow()
+    expect(inCloud()).toEqual({ subscription: null, subscribedAt: null })
   })
 
   it('never restores the weather’s switch onto another phone: it is turned on where its words were shown (stage 3, item 6)', async () => {

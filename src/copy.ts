@@ -294,6 +294,9 @@ export const copy = {
     incomplete: '{n} of {total} answered',
     from: 'From {time}',
     earlier: 'Earlier',
+    /** The ping lost its address and only a tap can make another (2026-10-20). */
+    pingLost: 'Reminders can’t reach you with the app closed until the ping is set up again.',
+    pingRestore: 'Set up the ping',
   },
   /** Stage 3, group 4: the record shown back by the month. Counts and averages only: nothing here is a grade. */
   month: {
@@ -1717,16 +1720,11 @@ export const copy = {
     installButton: 'Install the app',
     pushTitle: 'The ping',
     pushSetup: 'Set up the ping',
-    pushCopy: 'Copy address',
-    pushCopied: 'Copied',
-    pushShow: 'Show address',
-    pushHide: 'Hide address',
     pushUnsubscribe: 'Unsubscribe',
     pushSubscribedAt: 'Set up {when}.',
-    pushChanged: 'The address changed. Copy it again and paste it into the brain’s secret named PUSH_SUBSCRIPTION.',
     pushUnsupported: 'This browser has no push here. Open the installed app on the phone.',
     pushNote:
-      'A content-free ping arrives at 7:30 AM, 1:00 PM and 7:30 PM (America/New_York), at the moment of a cue you planned, and once more forty-five minutes on if that step is still not started, sent by the Worker under your own account. The worker on this phone decides whether to show anything. This address carries no content, and Unsubscribe kills it. Paste it once into the brain’s secret named PUSH_SUBSCRIPTION.',
+      'A content-free ping arrives at your reminder times, at the moment of a cue you planned, and once more forty-five minutes on if that step is still not started, sent by the Worker under your own account. The worker on this phone decides whether to show anything. The address travels with your cloud copy, so the brain always has the current one, and this phone makes a new one by itself if the browser drops it. It carries no content, and Unsubscribe kills it.',
     movesSection: 'Moves',
     offerFaith: 'Offer faith moves',
     offerFaithNote: 'Off hides the whole family with one tap. Nothing is counted either way.',

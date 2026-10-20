@@ -13,11 +13,26 @@ export type Depth = 'full' | 'short'
 export { activeBlocks, inQuietHours, minutesOf, type Frequency }
 
 export interface PushState {
-  /** The browser's push address, the one thing that ever leaves the phone. */
+  /**
+   * The browser's push address. Since 2026-10-20 (the owner's decision) it travels with the settings record in the cloud
+   * copy, so the Worker always reads the current one; nothing else of this state leaves the phone.
+   */
   subscription: PushSubscriptionJSON | null
   subscribedAt: string | null
-  /** The browser rotated the address; it must be copied and pasted again. */
+  /** The browser rotated the address (from before the address synced; nothing reads it now). */
   changed: boolean
+  /** When the ping was turned off here by hand: the cloud copy then carries no address. */
+  droppedAt?: string | null
+  /** No live address, and none could be made without a tap: Now offers the one tap that asks for the permission and makes one. */
+  needsTap?: boolean
+  /** The address this phone last queued for the cloud copy, so a live one the cloud has not had is sent once. */
+  syncedEndpoint?: string | null
+}
+
+/** The ping's address as the settings record carries it in the cloud copy (2026-10-20): the subscription and when it was set up. */
+export interface SyncedPush {
+  subscription: PushSubscriptionJSON | null
+  subscribedAt: string | null
 }
 
 /** 0 is Sunday, as Date.getDay() counts. */
@@ -77,6 +92,11 @@ export interface Settings {
   /** Reminders already shown, keyed day:block, so each block gets at most one. */
   reminded: Record<string, true>
   push: PushState
+  /**
+   * The address the cloud copy's settings carried when this phone last pulled them (2026-10-20): passed on unchanged while
+   * this phone has none of its own, so a second phone or a restored database never empties the one set up elsewhere.
+   */
+  cloudPush?: SyncedPush | null
   lastExportAt: string | null
   week: WeekShape
   /** Your direction sentence: one line, yours, on this phone only. Null until written. */

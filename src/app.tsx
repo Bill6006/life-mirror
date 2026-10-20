@@ -13,7 +13,7 @@ import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
 import { adoptCurrentSkills, adoptOrphanSubjects, alignLadders } from './aimFlow'
 import { writeFactsRow } from './brainFlow'
-import { refreshPushIfKeyChanged } from './push'
+import { reconcilePush } from './push'
 import { loadAudits, runLearning } from './learningFlow'
 import { ReadingsScreen } from './readingsScreen'
 import { startCloud } from './cloudSync'
@@ -146,10 +146,28 @@ export function App() {
       .then(() => runLearning(day))
       .then(() => runForecasting(day))
       .then(() => writeFactsRow(day))
-    // A push address made under an older signing key is replaced; Settings then says to copy it again.
-    void refreshPushIfKeyChanged()
-      .then((subscription) => (subscription ? updateSettings((s) => ({ ...s, push: { subscription, subscribedAt: new Date().toISOString(), changed: true } })) : undefined))
-      .catch(() => undefined)
+  }, [])
+  // The ping's address kept alive (the owner's report of 2026-10-20): checked against the browser's own at start and each
+  // time the app comes back to the front, made again when the browser lost it, and synced with the settings.
+  useEffect(() => {
+    let running = false
+    const check = () => {
+      if (running || document.visibilityState !== 'visible') return
+      running = true
+      void getSettings()
+        .then(async (read) => {
+          const push = await reconcilePush(read)
+          // Kept only while the push state is still the one read: a tap made meanwhile wins.
+          if (push) await updateSettings((s) => (JSON.stringify(s.push) === JSON.stringify(read.push) ? { ...s, push } : s))
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          running = false
+        })
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    return () => document.removeEventListener('visibilitychange', check)
   }, [])
   // Phase 11: a forecast for a block is written before that block is logged; after each completed check-in the next slots may be due.
   // Part 28: the facts row is written again once a check-in completes, so the Worker sees the morning's before it writes the day's line.

@@ -1,4 +1,5 @@
 import Dexie, { type DbSchema, type DBCore, type DBCoreMutateRequest, type DBCoreMutateResponse, type DBCoreTable, type DBCoreTransaction, type Transaction } from 'dexie'
+import type { PushState, SyncedPush } from './settings'
 
 // Rule 21: the phone is the source of truth and a copy syncs to a database you control. Every
 // create, update and delete in every synced table is queued here, inside the same transaction,
@@ -63,11 +64,28 @@ function isSilent(): boolean {
   return t !== null && silent.has(t)
 }
 
-/** The settings record travels without what belongs to this phone alone: the cloud token, the push address, the reminders already shown, Location Context with its area (Part 43), and the weather's switch (stage 3, item 6). */
+/**
+ * The settings record travels without what belongs to this phone alone: the cloud token, the reminders already shown,
+ * Location Context with its area (Part 43), and the weather's switch (stage 3, item 6). The ping's address goes with it
+ * since 2026-10-20 (the owner's decision), so the Worker always reads the current one.
+ */
 export function bodyForCloud(store: string, body: Record<string, unknown>): Record<string, unknown> {
   if (store !== 'settings') return body
-  const { cloud: _cloud, push: _push, reminded: _reminded, location: _location, weather: _weather, ...rest } = body
-  return rest
+  const { cloud: _cloud, push, cloudPush, reminded: _reminded, location: _location, weather: _weather, ...rest } = body
+  const synced = syncedPushOf(push as PushState | undefined, cloudPush as SyncedPush | null | undefined)
+  return synced === undefined ? rest : { ...rest, push: synced }
+}
+
+/**
+ * The address the settings record carries to the cloud copy: this phone's own when it set one up, none when the ping was
+ * turned off here by hand, else the one it last pulled, passed on unchanged, so a phone with no ping of its own never
+ * empties it. Undefined, and no field at all, when this phone has none to give and has pulled none.
+ */
+export function syncedPushOf(own: PushState | undefined, pulled: SyncedPush | null | undefined): SyncedPush | undefined {
+  if (own?.subscription) return { subscription: own.subscription, subscribedAt: own.subscribedAt ?? null }
+  if (own?.droppedAt) return { subscription: null, subscribedAt: null }
+  if (pulled === undefined) return undefined
+  return pulled ?? { subscription: null, subscribedAt: null }
 }
 
 /** The day a record belongs to, when it has one. */

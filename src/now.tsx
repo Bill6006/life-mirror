@@ -17,7 +17,8 @@ import { useRepairOn } from './repair/gate'
 import { WeekLine } from './repair/weekLine'
 import { ensurePickupOffer, offerForSlot, pendingOffers, pickupOfferNow, skipOffer, weeksOfRecord } from './offerFlow'
 import { ContextChips, ReadingHero } from './reading'
-import { activeBlocks } from './settings'
+import { setUpPing } from './push'
+import { activeBlocks, type PushState } from './settings'
 import { Disclosure, Facts, LinkRow, ScreenHead, SectionLabel } from './ui'
 import { awayStatus } from './awayFlow'
 import { awayLine } from './awayScreen'
@@ -193,6 +194,31 @@ export function Earlier({ checkins, blocks, onOpen }: { checkins: readonly Check
   )
 }
 
+/**
+ * The ping lost its address and only a tap can make another (the owner's report of 2026-10-20: a browser that withdraws
+ * its notification permission cancels the address): one line and one button, which asks for the permission and makes it.
+ */
+function PingLost({ push }: { push: PushState }) {
+  const [busy, setBusy] = useState(false)
+  const restore = () => {
+    setBusy(true)
+    void setUpPing(push)
+      .then((next) => (next ? updateSettings((s) => ({ ...s, push: next })) : undefined))
+      .catch(() => undefined)
+      .finally(() => setBusy(false))
+  }
+  return (
+    <div class="card pad" data-testid="ping-lost">
+      <p class="note">{copy.now.pingLost}</p>
+      <div class="actions">
+        <button type="button" class="pill-quiet" disabled={busy} data-testid="ping-restore" onClick={restore}>
+          {copy.now.pingRestore}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onAway?: () => void; onAsk?: (about: AskAboutThis) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
@@ -262,6 +288,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { o
   return (
     <section class="screen now">
       <ScreenHead title={copy.tabs.now} day={today.day} />
+      {settings.reminders.enabled && settings.push.needsTap && <PingLost push={settings.push} />}
       {trip && onAway && (
         <div class="card" data-testid="away-line">
           <ul class="rows">

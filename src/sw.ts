@@ -98,12 +98,12 @@ async function onPing(): Promise<void> {
   await quiet()
 }
 
-// The push service may rotate the address. Keep a fresh one and flag it for copying again.
+// The push service may rotate the address. Keep a fresh one: it syncs with the settings, so the Worker has it (2026-10-20).
 self.addEventListener('pushsubscriptionchange', (event) => {
   ;(event as ExtendableEvent).waitUntil(
     (async () => {
-      const sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY })
-      await updateSettings((s) => ({ ...s, push: { subscription: sub.toJSON(), subscribedAt: new Date().toISOString(), changed: true } }))
+      const sub = (await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY })).toJSON()
+      await updateSettings((s) => ({ ...s, push: { subscription: sub, subscribedAt: new Date().toISOString(), changed: false, droppedAt: null, needsTap: false, syncedEndpoint: sub.endpoint ?? null } }))
     })(),
   )
 })

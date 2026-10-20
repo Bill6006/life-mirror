@@ -17,7 +17,7 @@ import { copy } from './copy'
 import { fill } from './format'
 import { dayByHand, db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
-import { withDefaults, type Settings } from './settings'
+import { withDefaults, type Settings, type SyncedPush } from './settings'
 import { appendLog, clearMark, clearMirror, latestNotice, raiseFloors, readDeviceMirror, readMark, readMirror, tokenStorage, writeDeviceMirror, writeMark, writeMirror, type TokenEvent, type TokenMark } from './tokenVault'
 
 // The sync worker. Pull first (rows newer than the watermark, applied only where the remote is
@@ -447,9 +447,12 @@ async function applyChange(row: CloudRow, local: Record<string, unknown> | undef
   } else if (row.body) {
     const body = JSON.parse(row.body) as Record<string, unknown>
     if (row.store === 'settings') {
-      // The settings record comes back without what belongs to this phone alone; this phone keeps its own.
+      // The settings record comes back without what belongs to this phone alone; this phone keeps its own. The ping's
+      // address it carries (2026-10-20) is kept aside, to pass on unchanged while this phone has none of its own.
       const mine = local as Settings | undefined
-      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, reminded: mine?.reminded ?? {}, location: mine?.location ?? withDefaults(undefined).location, weather: mine?.weather ?? withDefaults(undefined).weather }
+      const pulledPush = Object.prototype.hasOwnProperty.call(body, 'push') ? ((body.push as SyncedPush | null | undefined) ?? null) : undefined
+      const cloudPush = pulledPush !== undefined ? pulledPush : mine?.cloudPush
+      const merged: Settings = { ...withDefaults(body as Partial<Settings>), id: 1, cloud: mine?.cloud ?? withDefaults(undefined).cloud, push: mine?.push ?? withDefaults(undefined).push, ...(cloudPush !== undefined ? { cloudPush } : {}), reminded: mine?.reminded ?? {}, location: mine?.location ?? withDefaults(undefined).location, weather: mine?.weather ?? withDefaults(undefined).weather }
       await db.settings.put(merged)
     } else {
       const spec = LOGICAL[row.store]

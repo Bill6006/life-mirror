@@ -685,6 +685,57 @@ async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typ
   }
 }
 
+// The ping (2026-10-20): Now's one line when the browser lost the address, and Settings' section asking for the set-up, read,
+// fit and can be tapped. The browser's permission and push manager are stand-ins: undecided, and no address held.
+const PING_STATES: typeof STATES = [
+  { name: 'Now, the ping lost', tab: 'Now' },
+  { name: 'Settings, check-ins, the ping', tab: 'Settings', open: async (p) => {
+    await p.getByTestId('settings-checkins').click()
+    await p.getByTestId('ping').scrollIntoViewIfNeeded()
+  } },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the ping's line on Now and its section in Settings read, fit and can be tapped, at three widths (2026-10-20)`, async ({ page }) => {
+    await page.addInitScript((t) => {
+      localStorage.setItem('life-mirror.theme', t)
+      Object.defineProperty(Notification, 'permission', { configurable: true, get: () => 'default' })
+      PushManager.prototype.getSubscription = async function () {
+        return null
+      }
+      PushManager.prototype.permissionState = async function () {
+        return 'prompt'
+      }
+    }, theme)
+    await page.goto('./')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await page.evaluate(async () => {
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const store = dbx.transaction(['settings'], 'readwrite').objectStore('settings')
+      const now = await new Promise<Record<string, unknown> | undefined>((res) => {
+        const q = store.get(1)
+        q.onsuccess = () => res(q.result as Record<string, unknown> | undefined)
+      })
+      const endpoint = 'https://push.example.test/kept'
+      store.put({ ...(now ?? {}), id: 1, reminders: { enabled: true, times: { morning: '09:30', afternoon: '13:00', evening: '19:30' } }, push: { subscription: { endpoint, expirationTime: null, keys: { p256dh: 'made-up-p256dh', auth: 'made-up-auth' } }, subscribedAt: '2026-10-19T20:30:00.000Z', changed: false, syncedEndpoint: endpoint } })
+      await new Promise((res) => setTimeout(res, 50))
+      dbx.close()
+    })
+    await page.reload()
+    await expect(page.getByTestId('ping-lost')).toBeVisible()
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, PING_STATES, width, found)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
 test('the audit reads only what is shown: the lines of a closed fold-out are not set against what follows it (2026-10-19)', async ({ page }) => {
   await page.setViewportSize({ width: 300, height: 844 })
   await page.setContent('<main style="font: 16px/1.4 sans-serif; padding: 20px; background: #fff; color: #111"><details><summary>Tests named only</summary><p>A ten-minute walk, now, for Energy over the next block</p><p>A ten-minute nap, alarm set, for Focus over the next block</p><button type="button" style="width: 20px; height: 20px; padding: 0">x</button></details><h2 style="margin: 0">Nothing today</h2></main>')

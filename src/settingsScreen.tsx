@@ -1,6 +1,6 @@
 import { LocationSection } from './locationScreen'
 import { namedPlaces } from './locationFlow'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { build } from './build'
 import { Seg, SwitchRow, TimeRow, useSyncedText } from './controls'
@@ -9,7 +9,7 @@ import { db, getSettings, updateSettings } from './db'
 import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
 import { installApp, useInstallOffer } from './installOffer'
-import { pushSupported, shortAddress, subscribePush, unsubscribePush } from './push'
+import { notifyPermission, pushSupported, setUpPing, shortAddress, unsubscribePush } from './push'
 import { activeBlocks, applyLowDemand, daylightFor, OWN_CHIP_LABEL_MAX, OWN_CHIPS_MAX, ownChipsOf, type OwnChip, type Settings, type Weekday, sunPlace, withOwnChipAdded, withOwnChipRemoved } from './settings'
 import { parsePlace, placeText, sunLocal, type Place } from './sun'
 import { setTheme, THEMES, useTheme, type ThemeId } from './theme'
@@ -401,8 +401,16 @@ function ThemePicker() {
 export function SettingsSectionScreen({ section, onClose, onPrivate }: { section: SettingsSection; onClose: () => void; onPrivate: () => void }) {
   const settings = useLive(getSettings, [])
   const [perm, setPerm] = useState<Permission>(currentPermission)
-  const [copied, setCopied] = useState(false)
-  const [showAddress, setShowAddress] = useState(false)
+  // Read afresh when the screen opens and each time the app comes back, never kept from one read: a phone whose page
+  // permission reads undecided until something asks hid the ping until the reminders were switched off and on (2026-10-20).
+  useEffect(() => {
+    const read = () => {
+      if (document.visibilityState === 'visible') void notifyPermission().then(setPerm)
+    }
+    read()
+    document.addEventListener('visibilitychange', read)
+    return () => document.removeEventListener('visibilitychange', read)
+  }, [])
   if (!settings) return <section class="screen" />
 
   const n = copy.settingsNav
@@ -419,30 +427,21 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
     if (p === 'granted') set((s) => ({ ...s, reminders: { ...s.reminders, enabled: true } }))
   }
 
+  // Asks for the permission while it is undecided, then makes or reuses the address; it syncs with the settings (2026-10-20).
   async function setUpPush() {
     try {
-      const subscription = await subscribePush()
-      set((s) => ({ ...s, push: { subscription, subscribedAt: new Date().toISOString(), changed: false } }))
+      const next = await setUpPing((await getSettings()).push)
+      setPerm(await notifyPermission())
+      if (next) set((s) => ({ ...s, push: next }))
     } catch (e) {
       console.error(e)
     }
   }
 
-  async function copyAddress() {
-    const sub = settings?.push.subscription
-    if (!sub) return
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(sub))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setShowAddress(true)
-    }
-  }
-
+  // Turned off by hand: the cloud copy then carries no address, and nothing makes one again unasked.
   async function dropPush() {
     await unsubscribePush()
-    set((s) => ({ ...s, push: { subscription: null, subscribedAt: null, changed: false } }))
+    set((s) => ({ ...s, push: { subscription: null, subscribedAt: null, changed: false, droppedAt: new Date().toISOString(), needsTap: false, syncedEndpoint: null } }))
   }
 
   const titles: Record<SettingsSection, string> = { week: n.week, location: n.location, checkins: n.checkins, extras: n.extras, moves: n.moves, direction: n.direction, theme: copy.appearance.theme, about: n.about }
@@ -549,7 +548,8 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
             {/* Until the ping is set up, the in-app reminder note says how to be rung with the app closed; after, it has done its job. */}
             {cur.reminders.enabled && !sub && <p class="note faint">{copy.settings.inAppNote}</p>}
 
-            {cur.reminders.enabled && perm === 'granted' && (
+            {/* Shown whenever reminders are on and notifications are not blocked, whatever the permission read at opening said. */}
+            {cur.reminders.enabled && perm !== 'denied' && perm !== 'unsupported' && (
               <div class="card pad ping" data-testid="ping">
                 <h3 class="title-sm">{copy.settings.pushTitle}</h3>
                 {!pushSupported() ? (
@@ -565,23 +565,15 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
                   </>
                 ) : (
                   <>
-                    {cur.push.changed && <p class="note">{copy.settings.pushChanged}</p>}
-                    <Disclosure label={copy.settingsNav.pingDetails} sub={cur.push.subscribedAt ? fill(n.pingSet, { when: formatWhen(cur.push.subscribedAt) }) : undefined} testid="ping-details" defaultOpen={cur.push.changed}>
+                    <Disclosure label={copy.settingsNav.pingDetails} sub={cur.push.subscribedAt ? fill(n.pingSet, { when: formatWhen(cur.push.subscribedAt) }) : undefined} testid="ping-details">
                       <p class="note">
-                        <code>{shortAddress(sub.endpoint ?? '')}</code>
+                        <code data-testid="ping-address">{shortAddress(sub.endpoint ?? '')}</code>
                       </p>
                       <div class="actions">
-                        <button type="button" class="pill-quiet" onClick={() => void copyAddress()}>
-                          {copied ? copy.settings.pushCopied : copy.settings.pushCopy}
-                        </button>
-                        <button type="button" class="textbtn" onClick={() => setShowAddress((v) => !v)}>
-                          {showAddress ? copy.settings.pushHide : copy.settings.pushShow}
-                        </button>
                         <button type="button" class="textbtn" onClick={() => void dropPush()}>
                           {copy.settings.pushUnsubscribe}
                         </button>
                       </div>
-                      {showAddress && <textarea class="input address" readOnly rows={6} value={JSON.stringify(sub)} />}
                       <p class="note faint no-gap">{copy.settings.pushNote}</p>
                     </Disclosure>
                   </>

@@ -1,8 +1,9 @@
+import { pushAddressOf } from './address'
 import { aiRunner, textOf } from './ai'
 import { runBrief, runReview } from './brief'
 import { pushSettingsOf, runCues, runPings, type Sender } from './cues'
 import type { Env } from './env'
-import { sendPush, type Subscription } from './push'
+import { sendPush } from './push'
 import { APP, BRAIN_APP, tursoStore, type BriefRow } from './turso'
 import { clockTimesIn } from '../../src/format'
 import { workoutReport } from './workoutReport'
@@ -27,19 +28,15 @@ function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 }
 
-function sender(env: Env): Sender | null {
-  if (!env.PUSH_SUBSCRIPTION || !env.VAPID_PRIVATE_KEY) return null
-  let sub: Subscription
-  try {
-    sub = JSON.parse(env.PUSH_SUBSCRIPTION) as Subscription
-  } catch {
-    return null
-  }
-  if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) return null
+/** The push, to the phone's address as its settings record carries it (2026-10-20), else the secret copied by hand. */
+function sender(env: Env, settings: unknown): Sender | null {
+  if (!env.VAPID_PRIVATE_KEY) return null
+  const sub = pushAddressOf(settings, env.PUSH_SUBSCRIPTION).sub
+  if (!sub) return null
   const vapid = { publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT }
   return async (payload) => {
     const r = await sendPush(sub, payload, vapid)
-    if (r.status === 404 || r.status === 410) console.log('push: the stored address is dead; copy it again from Settings')
+    if (r.status === 404 || r.status === 410) console.log('push: the address is dead; the phone makes a new one when it next opens, and syncs it')
     return r.status >= 200 && r.status < 300
   }
 }
@@ -55,7 +52,7 @@ async function dispatch(job: Job, env: Env, now: Date, force = false, writer?: '
   if (!env.TURSO_TOKEN) return { job, reason: 'no database token' }
   const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
   if (job === 'cues') {
-    const send = sender(env)
+    const send = sender(env, await store.readRecord('settings', '1'))
     const result = { ping: await runPings(env, store, now, send), cues: await runCues(env, store, now, send) }
     console.log(JSON.stringify({ job, ...result }))
     return { job, ...result }
@@ -126,7 +123,10 @@ const handler: ExportedHandler<Env> = {
         }
         // The clean window's report (2026-10-02), after everything else and apart from it: it only reads the day's rows, and writes its own.
         try {
-          if (env.TURSO_TOKEN) await runQualify(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), now, sender(env))
+          if (env.TURSO_TOKEN) {
+            const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+            await runQualify(env, store, now, sender(env, await store.readRecord('settings', '1')))
+          }
         } catch (e) {
           console.log(JSON.stringify({ job: 'qualify', error: e instanceof Error ? e.message : String(e) }))
         }
@@ -267,7 +267,7 @@ const handler: ExportedHandler<Env> = {
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       const kind = url.searchParams.get('kind') ?? 'test'
-      const send = sender(env)
+      const send = sender(env, env.TURSO_TOKEN ? await tursoStore(env.TURSO_URL, env.TURSO_TOKEN).readRecord('settings', '1') : null)
       if (!send) return json({ sent: false, reason: 'no push address or key' })
       try {
         return json({ sent: await send(JSON.stringify({ kind })), kind })
@@ -284,17 +284,20 @@ const handler: ExportedHandler<Env> = {
       return json(await runAsks(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), { dry: true, question, deep: url.searchParams.get('deep') === '1' }))
     }
     // With the run key: a day's planned pings, read-only (2026-10-19, to confirm a planned ping went out): whether reminders
-    // are on, their times and the quiet hours, whether a push address is held, and which of the day's pings were sent.
+    // are on, their times and the quiet hours, whether a push address is held, where it was read and when the phone set it
+    // up (never the address itself), and which of the day's pings were sent.
     if (url.pathname === '/run/pings' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
       const asked = url.searchParams.get('day')
       if (asked !== null && !/^\d{4}-\d{2}-\d{2}$/.test(asked)) return json({ reason: 'day must be YYYY-MM-DD' }, 400)
       const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
       const day = asked ?? localTime(new Date(), env.TIMEZONE).day
-      const s = pushSettingsOf(await store.readRecord('settings', '1'))
+      const raw = await store.readRecord('settings', '1')
+      const s = pushSettingsOf(raw)
+      const a = pushAddressOf(raw, env.PUSH_SUBSCRIPTION)
       const times = []
       for (const time of s.times) times.push({ time, sent: await store.isPushed(`ping:${day}:${time}`) })
-      return json({ day, enabled: s.enabled, quiet: { start: s.quietStart, end: s.quietEnd }, address: Boolean(env.PUSH_SUBSCRIPTION), times })
+      return json({ day, enabled: s.enabled, quiet: { start: s.quietStart, end: s.quietEnd }, address: a.sub !== null, addressFrom: a.from, addressSetUpAt: a.setUpAt, times })
     }
     // With the run key: one model, one tiny prompt, its raw answer and what the extractor reads from it. For diagnosing a model's shape.
     if (url.pathname === '/run/probe' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
