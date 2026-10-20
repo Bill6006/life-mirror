@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { seedRecord, seedThread } from './askSeed'
+import { seedRecord, seedThread, seedTurns } from './askSeed'
 
 // Ask Life Mirror in the browser (stage A1, 2026-10-19), in its preview: only an automated browser holding the test key at 1
 // opens it while it is built. The question box and the starters that have something to say; a starter's answer laid out by
@@ -88,7 +88,8 @@ test('a typed question waits for Claude, with the findings its words name shown 
   await page.getByTestId('ask-box').fill('Does a walk help my stress?')
   await page.getByTestId('ask-send').click()
   await expect(page.getByTestId('ask-thread')).toBeVisible()
-  await expect(page.getByTestId('ask-waiting')).toHaveText('Waiting for Claude’s answer.')
+  // This phone keeps no cloud copy: said plainly, and the findings answer from the record meanwhile.
+  await expect(page.getByTestId('ask-waiting')).toContainText('Claude’s answers come through your cloud copy')
   await expect(page.getByTestId('ask-matches')).toContainText('A ten-minute walk, now, for Stress over the next block')
   await page.getByTestId('ask-cancel').click()
   await expect(page.getByTestId('ask-cancelled')).toBeVisible()
@@ -157,6 +158,75 @@ test('the export carries every conversation under its own key, each answer as la
   expect(out.ask.turns).toHaveLength(1)
   expect(out.ask.turns[0]).toMatchObject({ question: 'What do you know about me so far?', state: 'answered', answer: [{ title: null, lines: ['As it stood then.'] }] })
   expect(out.key.ask).toMatch(/Nothing here is evidence/)
+})
+
+test('Claude’s answer, when it comes, shows with the findings it cited, and its thread then reads answered (stage A2)', async ({ page }) => {
+  await start(page)
+  await seedTurns(page, 'Does a walk help my stress?', [{ question: 'Does a walk help my stress?', claude: { status: 'answered', text: 'Your own record says a ten-minute walk likely helps your stress.\nMore fair draws are what would settle it.', facts: [{ id: 'ladder.walk-ten.stress', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5' } }], daysBefore(0))
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-thread-row').click()
+  const claude = page.getByTestId('ask-claude')
+  await expect(claude).toContainText('Your own record says a ten-minute walk likely helps your stress.')
+  await expect(claude.locator('.ask-claude-text')).toHaveCount(2)
+  await expect(page.getByTestId('ask-claude-cited')).toContainText('Test: a stand-in fact, as the run read it.')
+  await expect(claude).toContainText('Written by Claude (claude-opus-5-5).')
+  await expect(page.getByTestId('ask-waiting')).toHaveCount(0)
+  // The phone marks its own question answered.
+  await page.locator('.sub-head .back').click()
+  await expect(page.getByTestId('ask-thread-row')).toContainText('answered')
+  // Deleting a thread a run has read says a copy stays in the routine's history.
+  await page.getByTestId('ask-thread-row').click()
+  await page.getByTestId('ask-delete').click()
+  await expect(page.getByTestId('ask-delete-copy')).toContainText('stays in the routine’s history on claude.ai')
+})
+
+test('no checked answer is said plainly, with the findings its words name, never an unchecked one (stage A2)', async ({ page }) => {
+  await start(page)
+  await seedTurns(page, 'Does a walk help my stress?', [{ question: 'Does a walk help my stress?', claude: { status: 'failed' } }], daysBefore(0))
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-thread-row').click()
+  await expect(page.getByTestId('ask-no-checked')).toContainText('Couldn’t produce a checked answer.')
+  await expect(page.getByTestId('ask-matches')).toContainText('A ten-minute walk, now, for Stress over the next block')
+  await expect(page.getByTestId('ask-claude')).toHaveCount(0)
+  // No run that reached Claude is on this phone for it: the plain confirmation.
+  await page.getByTestId('ask-delete').click()
+  await expect(page.getByTestId('ask-delete-confirm')).toBeVisible()
+  await expect(page.getByTestId('ask-delete-copy')).toHaveCount(0)
+})
+
+test('with a cloud copy: the day’s allowance, the deep tier with its cost, and "Explain this to me" under a quick answer (stage A2)', async ({ page }) => {
+  // The database is never reached: every request to its host is refused at the browser.
+  await page.route(/turso\.io/, (route) => route.abort())
+  await start(page)
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: /^Cloud copy/ }).click()
+  await page.getByTestId('token-input').fill('e2e-token-never-real')
+  await page.getByTestId('token-keep').click()
+  await expect(page.getByTestId('token-set')).toBeVisible()
+  await page.reload()
+  await openAsk(page)
+  await expect(page.getByTestId('ask-allowance')).toHaveText('Claude: 3 of 3 answers left today.')
+  await expect(page.getByTestId('ask-starter-deep')).toHaveText('Coach me on everything')
+  await expect(page.getByTestId('ask-deep-cost')).toHaveText('Counts as 3 of today’s answers, once a day.')
+  await page.getByTestId('ask-starter-know').click()
+  await page.getByTestId('ask-explain').click()
+  await expect(page.getByTestId('ask-turn')).toHaveCount(2)
+  await expect(page.getByTestId('ask-turn').nth(1).getByTestId('ask-question')).toHaveText('Explain this to me.')
+  // The database cannot be reached here, so the question has not gone yet, and says so.
+  await expect(page.getByTestId('ask-turn').nth(1).getByTestId('ask-waiting')).toHaveText('Not sent yet: it goes when the phone is online.')
+})
+
+test('a thread at its size limit suggests a new one, and sums nothing up (stage A2)', async ({ page }) => {
+  await start(page)
+  await seedTurns(page, 'Does a walk help my stress?', Array.from({ length: 8 }, (_, i) => ({ question: `Question ${i + 1}?`, state: 'cancelled' as const })), daysBefore(0))
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-thread-row').click()
+  await expect(page.getByTestId('ask-turn')).toHaveCount(8)
+  await expect(page.getByTestId('ask-too-long')).toContainText('ask in a new one from Ask')
+  await expect(page.getByTestId('ask-thread').getByTestId('ask-box')).toHaveCount(0)
 })
 
 test('Recent keeps two rows whatever the count; Past conversations lists every one, searchable, and deletes after a confirmation', async ({ page }) => {

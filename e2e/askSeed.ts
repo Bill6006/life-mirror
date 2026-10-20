@@ -93,3 +93,45 @@ export async function seedThread(page: Page, title: string, kind: string, cited:
   )
 }
 
+
+/** A turn as a stand-in thread holds it: a question, and, for one Claude answered, what came back. */
+export interface SeedTurn {
+  question: string
+  tier?: 'quick' | 'standard' | 'deep'
+  kind?: string
+  state?: 'answered' | 'waiting' | 'cancelled'
+  claude?: { status: 'answered' | 'failed'; text?: string; facts?: { id: string; text: string }[]; model?: string }
+}
+
+/** A thread with its turns written straight into the phone's store, and Claude's answers into the brain's rows the phone keeps (stage A2). */
+export async function seedTurns(page: Page, title: string, turns: SeedTurn[], at: string): Promise<void> {
+  await page.evaluate(
+    async ({ title, turns, at }) => {
+      const dbx = await new Promise<IDBDatabase>((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const tx = dbx.transaction(['askThreads', 'askTurns', 'askAnswers'], 'readwrite')
+      const day = at.slice(0, 10)
+      const threadId = await new Promise<number>((res) => {
+        const q = tx.objectStore('askThreads').add({ day, at, title, from: { kind: 'typed' } })
+        q.onsuccess = () => res(q.result as number)
+      })
+      for (const [i, t] of turns.entries()) {
+        const when = new Date(Date.parse(at) + i * 60_000).toISOString()
+        const turnId = await new Promise<number>((res) => {
+          const q = tx.objectStore('askTurns').add({ threadId, day, at: when, question: t.question, tier: t.tier ?? 'standard', state: t.state ?? 'waiting', kind: t.kind ?? 'typed', version: 'earlier', cited: [], updatedAt: when })
+          q.onsuccess = () => res(q.result as number)
+        })
+        if (t.claude) tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at: when, status: t.claude.status, ...(t.claude.text ? { text: t.claude.text, factIds: (t.claude.facts ?? []).map((f) => f.id), cardIds: [], facts: t.claude.facts ?? [] } : {}), ...(t.claude.model ? { model: t.claude.model } : {}) })
+      }
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res()
+        tx.onerror = () => rej(tx.error)
+      })
+      dbx.close()
+    },
+    { title, turns, at },
+  )
+}

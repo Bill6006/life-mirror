@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { APP, bodyForCloud } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { BRAIN_APP, brainBriefOf, coachRunOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, peekBrain, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
+import { askAnswerOf, askRunOf, BRAIN_APP, brainBriefOf, brainReadOf, coachRunOf, deleteCloudCopy, ensureDeviceId, getBrainMeta, getMeta, getOutsideMeta, latestPerRow, OUTSIDE_APP, outsideDayOf, PAGE, removeToken, peekBrain, resetCloudForTests, resolveToken, saveToken, setOnlineCheck, setStoreFactory, syncNow, wholeRuns } from './cloudSync'
 import { addPrivateItem, archivePrivateItem, db, ensureDayContext, getSettings, saveAnswer, setDayContext, setWin, updateSettings, wipeEverything } from './db'
 import { markSilent } from './cloudOutbox'
 import { setBrainSwitch, setWriterModel } from './brainPrefs'
@@ -578,6 +578,44 @@ describe('the skill coach’s suggestion runs, read from the bridge (D7 as amend
     const offline = store.calls
     expect(await peekBrain(keys)).toBe(false)
     expect(store.calls).toBe(offline)
+  })
+})
+
+describe('Ask Life Mirror’s runs and Claude’s answers, read from the brain (stage A2)', () => {
+  const brainRow = (store: string, id: string, body: Record<string, unknown>, synced_at: string, deleted: 0 | 1 = 0): CloudRow => ({ app: BRAIN_APP, store, id, day: '2026-10-20', body: JSON.stringify(body), updated_at: synced_at, deleted, device_id: 'worker', synced_at })
+  const task = (extra: Record<string, unknown> = {}) => ({ id: 'task:2026-10-20:ask', kind: 'task', task: 'ask', day: '2026-10-20', at: '2026-10-20T15:00:00.000Z', status: 'fired', trigger: 'ask', factsDay: '2026-10-20', askedModel: 'opus', firedAt: '2026-10-20T15:00:00.000Z', contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], turns: [41], ...extra })
+
+  it('keeps each run with its turn, never a run by hand on a stand-in question, and each checked answer; and writes none of them', async () => {
+    const store = memoryStore()
+    await store.upsert([
+      brainRow('bridge', 'task:2026-10-20:ask', task(), '2026-10-20T15:00:01.000Z'),
+      brainRow('bridge', 'task:2026-10-20:ask.2', task({ id: 'task:2026-10-20:ask.2', dry: true, question: 'A stand-in', turns: undefined }), '2026-10-20T15:00:02.000Z'),
+      brainRow('askAnswers', 'turn:41', { id: 'turn:41', turnId: 41, threadId: 40, day: '2026-10-20', at: '2026-10-20T15:01:00.000Z', status: 'answered', text: 'A walk likely helps your stress.', factIds: ['ladder.walk-ten.stress'], cardIds: [], facts: [{ id: 'ladder.walk-ten.stress', text: 'Test: as read.' }], model: 'claude-opus-5-5', askedModel: 'opus' }, '2026-10-20T15:01:01.000Z'),
+    ])
+    await withToken(store)
+    await syncNow()
+    expect(await db.askRuns.toArray()).toEqual([{ id: 'task:2026-10-20:ask', task: 'ask', day: '2026-10-20', at: '2026-10-20T15:00:00.000Z', status: 'fired', firedAt: '2026-10-20T15:00:00.000Z', turns: [41] }])
+    expect(await db.askAnswers.get('turn:41')).toMatchObject({ turnId: 41, threadId: 40, status: 'answered', text: 'A walk likely helps your stress.', facts: [{ id: 'ladder.walk-ten.stress', text: 'Test: as read.' }], model: 'claude-opus-5-5' })
+    expect([...store.rows.values()].filter((r) => r.app === BRAIN_APP)).toHaveLength(3)
+    // A row taken back goes from the phone too.
+    await store.upsert([brainRow('askAnswers', 'turn:41', { turnId: 41 }, '2026-10-20T15:02:00.000Z', 1)])
+    await syncNow()
+    expect(await db.askAnswers.count()).toBe(0)
+  })
+
+  it('reads a run or an answer only whole: a skill run, a run with no turn, an answer with no words, and not JSON are none', () => {
+    expect(askRunOf('x', JSON.stringify(task({ task: 'skill' })))).toBeNull()
+    expect(askRunOf('x', JSON.stringify(task({ turns: [] })))).toBeNull()
+    expect(askRunOf('x', 'not json')).toBeNull()
+    expect(askRunOf('x', JSON.stringify(task({ turns: [41, 'x', 4.5] })))?.turns).toEqual([41])
+    // A run by hand is never kept, whatever it carries.
+    expect(askRunOf('x', JSON.stringify(task({ dry: true })))).toBeNull()
+    expect(askAnswerOf('x', JSON.stringify({ turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'answered' }))).toBeNull()
+    expect(askAnswerOf('x', JSON.stringify({ turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'failed', reason: 'no run could answer it' }))).toEqual({ id: 'x', turnId: 41, threadId: 40, day: '2026-10-20', at: 'a', status: 'failed', reason: 'no run could answer it' })
+    expect(askAnswerOf('x', 'not json')).toBeNull()
+    // What Claude read for a question is shown with the rest.
+    expect(brainReadOf('r', JSON.stringify({ day: '2026-10-20', at: 'a', task: 'ask', category: 'notes', count: 2, bytes: 90, via: 'context' }))).toMatchObject({ task: 'ask', count: 2 })
+    expect(brainReadOf('r', JSON.stringify({ day: '2026-10-20', at: 'a', task: 'deep', category: 'notes', count: 2, bytes: 90, via: 'context' }))).toMatchObject({ task: 'deep' })
   })
 })
 

@@ -9,6 +9,7 @@ import { allOwnChips, type Settings } from './settings'
 import { necessitiesMissed } from './necessities'
 import { awayOn, homeOnlyOn } from './postWindowFlow'
 import type { AskThread, AskTurn } from './ask/types'
+import type { AskAnswer } from './ask/shared'
 
 /** The record's own key: which end of each reading is good, and the phrases as they stood, dated where reworded. */
 export const REWORDED: readonly { reading: string; position: number; on: string; from: string; to: string }[] = [
@@ -51,7 +52,7 @@ export interface RecordsData {
   /** The engine's calls about its tests, kept to be resolved (requirement 15). */
   claims?: readonly Claim[]
   /** Ask Life Mirror (stage A1): your conversations, each question with the app's answer as laid out then. */
-  ask?: { threads: readonly AskThread[]; turns: readonly AskTurn[] }
+  ask?: { threads: readonly AskThread[]; turns: readonly AskTurn[]; answers?: readonly AskAnswer[] }
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -180,7 +181,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ownChips: 'ownChips lists your own chips by the label you typed, each asked as one tap at the evening check-in; removedAt is when you stopped one, and its taps stay. A check-in’s ownChips names those tapped there.',
         events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday', 'outsideToday', 'sweetSinceLastCheckIn'],
         weather: 'weatherDays lists each day whose record holds weather from Open-Meteo for your area, read while its switch was on (Weather data by Open-Meteo.com, CC BY 4.0): rainMm is rain and showers over the day in millimetres, sunHours the hours of sunshine, highC the day’s high in °C, and readAt when it was read. Read on the day itself it is that day’s forecast; read the day after, the day as it was. A day not listed is unknown, never dry. The area is never kept. The check-in rows carry the same as day_rain_mm, day_sun_hours and day_high_c.',
-        ask: 'Ask Life Mirror: each conversation (threads) and each question in it (turns). A quick answer is the app’s own layout of the tested findings at the time, with the findings it cited (each test’s key, its rung, direction, revised mark and size range); a typed question waits for Claude. Nothing here is evidence: the learning engine and the Brain never read it.',
+        ask: 'Ask Life Mirror: each conversation (threads) and each question in it (turns). A quick answer is the app’s own layout of the tested findings at the time, with the findings it cited (each test’s key, its rung, direction, revised mark and size range); a typed question waits for Claude, and its checked answer (claude) is Claude’s words with the facts it cited, or that no checked answer came. Nothing here is evidence: the learning engine and the Brain never read it.',
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
         useLog: 'How Life Mirror was used, in its own words: appOpened (launch, or return after five minutes away), screen (which one), checkinOpened and checkinLeft (the block), lineAction, lineWhy, notification (its kind) and changePicked, each with its day and time. Never content, never anything outside the app. The Partner path’s own screens are left out unless the Partner path is included. usage is what Claude may be given of it: counts over windows ending the day before, what was observed and never why.',
       },
@@ -192,7 +193,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       journal: (records?.journal ?? []).map((e) => ({ day: e.day, text: e.text, writtenAt: e.writtenAt, editedAt: e.editedAt })),
       ask: {
         threads: (records?.ask?.threads ?? []).map((t) => ({ id: t.id, day: t.day, at: t.at, title: t.title, from: t.from })),
-        turns: (records?.ask?.turns ?? []).map((t) => ({ id: t.id, thread: t.threadId, day: t.day, at: t.at, question: t.question, tier: t.tier, state: t.state, kind: t.kind, ...(t.keys ? { keys: t.keys } : {}), answer: t.quick?.sections ?? null, cited: t.cited })),
+        turns: (records?.ask?.turns ?? []).map((t) => {
+          const a = (records?.ask?.answers ?? []).find((x) => x.turnId === t.id)
+          return { id: t.id, thread: t.threadId, day: t.day, at: t.at, question: t.question, tier: t.tier, state: t.state, kind: t.kind, ...(t.keys ? { keys: t.keys } : {}), answer: t.quick?.sections ?? null, cited: t.cited, ...(a ? { claude: { status: a.status, at: a.at, ...(a.text ? { text: a.text, factIds: a.factIds ?? [], cardIds: a.cardIds ?? [] } : {}), ...(a.model ? { model: a.model } : {}), ...(a.reason ? { reason: a.reason } : {}) } } : {}) }
+        }),
       },
       claims: (records?.claims ?? []).map((c) => ({ card: c.cardId, move: c.moveId, situation: c.situationKey, target: c.target, day: c.day, at: c.at, level: c.level, interval: c.interval, estimator: c.estimator, n: c.n, engine: c.engine })),
       useLog: (records?.useLog ?? []).filter((r) => partner || !PARTNER_SCREENS.includes(r.what ?? '')).map((r) => ({ day: r.day, at: r.at, kind: r.kind, what: r.what ?? null })),

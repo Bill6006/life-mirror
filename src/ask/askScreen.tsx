@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'preact/hooks'
+import { blockAt } from '../blocks'
+import { peekBrain } from '../cloudSync'
 import { NavRow } from '../controls'
 import { copy } from '../copy'
-import { fill, formatDayShort } from '../format'
+import { db } from '../db'
+import { fill, formatDayShort, formatTime } from '../format'
 import { useLive } from '../live'
 import type { RepairEvidence } from '../repair/evidence'
 import { rungWords } from '../repair/words'
@@ -9,15 +12,18 @@ import { readingById, type ReadingId } from '../readings'
 import { hasMove, moveById } from '../catalogue'
 import { SubHead } from '../ui'
 import { changesOf, threadState } from './evidence'
-import { allThreads, askAbout, askAgain, askEvidence, askStarter, askTyped, cancelTurn, deleteThread, lastRead, QUESTION_MAX, searchThreads, type AboutRef, type ThreadWhole } from './flow'
+import { allThreads, askAbout, askAgain, askAllowance, askDeep, askEvidence, askExplain, askStarter, askTyped, askWaitingKeys, askWaits, cancelTurn, deleteThread, lastRead, QUESTION_MAX, reachedAny, searchThreads, settleAskTurns, type AboutRef, type ThreadWhole } from './flow'
 import { matchFindings } from './match'
 import { changeLines, startersShown } from './quick'
+import { DEEP_COUNTS, THREAD_TURNS_MAX, type AskAnswer, type AskWait } from './shared'
 import type { AboutSource, AskStarter, AskTurn } from './types'
 
 // Ask Life Mirror's screen (stage A1, 2026-10-19; the agreed design's points 3 to 8): the question box first, the starters
 // that have something real to say, Recent's two newest threads and one link to the rest. It never grows with history. A
 // thread shows each question with its answer, a waiting question with the findings its words name, and a marker on an
 // answer whose evidence has changed since. Past conversations lists every thread by month, searchable on the phone.
+// Stage A2 (2026-10-20): a question for Claude says where it stands until its checked answer comes, and the answer shows
+// with the findings it cited; the day's allowance, "Explain this to me", the deep tier and a thread's size limit.
 
 /** What "Ask about this" hands the screen: what it attaches, where it was tapped, and the question in words. */
 export type AskAboutThis = AboutRef & { source: AboutSource; question: string }
@@ -29,6 +35,8 @@ type View = { kind: 'main' } | { kind: 'thread'; id: number } | { kind: 'past' }
 
 const w = () => copy.askMirror
 const nameOf = (moveId: string) => (hasMove(moveId) ? moveById(moveId).name : moveId)
+/** How often a waiting question looks for its answer while Ask is in view: the skill coach's own pace. */
+const LOOK_MS = 20_000
 
 function ThreadRow({ whole, ev, onOpen, withTurns = false }: { whole: ThreadWhole; ev: RepairEvidence | null | undefined; onOpen: () => void; withTurns?: boolean }) {
   const s = threadState(whole.turns, ev)
@@ -37,11 +45,66 @@ function ThreadRow({ whole, ev, onOpen, withTurns = false }: { whole: ThreadWhol
   return <NavRow label={whole.thread.title} note={note} onClick={onOpen} testid="ask-thread-row" />
 }
 
-/** A turn: its question, then its answer as laid out, or the waiting state with the findings its words name; and the marker. */
-function Turn({ t, ev, onAgain, onCancel }: { t: AskTurn; ev: RepairEvidence | null | undefined; onAgain: () => void; onCancel: () => void }) {
+/** Where a question for Claude stands, in words. */
+function waitWords(wait: AskWait | undefined): string {
+  const c = w()
+  if (!wait) return c.waiting
+  return wait.kind === 'refused' ? fill(c.waits.refused, { time: formatTime(wait.retryAt) }) : c.waits[wait.kind]
+}
+
+/** The findings a question's words name, as the quick tier writes them. */
+function Matches({ t, ev, title }: { t: AskTurn; ev: RepairEvidence | null | undefined; title: string }) {
+  const c = w()
+  const matches = ev ? matchFindings(t.question, ev) : []
+  return (
+    <div class="calc" data-testid="ask-matches">
+      <p class="calc-line ink">{title}</p>
+      {matches.length ? (
+        matches.map((m) => (
+          <p key={m.key} class="calc-line">
+            {fill(c.finding, { move: nameOf(m.moveId), reading: readingById(m.target as ReadingId).name, window: copy.catalogue.windows[m.window as keyof typeof copy.catalogue.windows] ?? m.window, call: rungWords(m.level, m.direction) })}
+          </p>
+        ))
+      ) : (
+        <p class="calc-line">{c.matchesNone}</p>
+      )}
+    </div>
+  )
+}
+
+/** Claude's checked answer: its words, then the findings it cited as the run read them, and who wrote it. */
+function ClaudeAnswer({ a }: { a: AskAnswer }) {
+  const c = w()
+  return (
+    <div class="ask-claude" data-testid="ask-claude">
+      {(a.text ?? '')
+        .split(/\n+/)
+        .filter((p) => p.trim())
+        .map((p, i) => (
+          <p key={i} class="ask-claude-text">
+            {p}
+          </p>
+        ))}
+      {(a.facts ?? []).length > 0 && (
+        <div class="calc" data-testid="ask-claude-cited">
+          <p class="calc-line ink">{c.claudeCited}</p>
+          {(a.facts ?? []).map((f) => (
+            <p key={f.id} class="calc-line">
+              {f.text}
+            </p>
+          ))}
+        </div>
+      )}
+      {a.model && <p class="note faint no-gap">{fill(c.writtenBy, { model: a.model })}</p>}
+    </div>
+  )
+}
+
+/** A turn: its question, then its answer as laid out or Claude's, or where it stands while it waits; and the marker. */
+function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain }: { t: AskTurn; ev: RepairEvidence | null | undefined; answer?: AskAnswer; wait?: AskWait; onAgain: () => void; onCancel: () => void; onExplain?: () => void }) {
   const c = w()
   const changes = ev && t.state === 'answered' ? changesOf(t.cited, ev) : []
-  const matches = ev && t.state === 'waiting' ? matchFindings(t.question, ev) : []
+  const claude = t.tier !== 'quick'
   return (
     <div class="card pad ask-turn" data-testid="ask-turn" data-state={t.state}>
       <p class="ask-question" data-testid="ask-question">
@@ -61,23 +124,28 @@ function Turn({ t, ev, onAgain, onCancel }: { t: AskTurn; ev: RepairEvidence | n
           ))}
         </div>
       )}
-      {t.state === 'waiting' && (
+      {onExplain && (
+        <div class="actions">
+          <button type="button" class="pill-quiet" data-testid="ask-explain" onClick={onExplain}>
+            {c.explain}
+          </button>
+        </div>
+      )}
+      {claude && answer?.status === 'answered' && <ClaudeAnswer a={answer} />}
+      {claude && answer?.status === 'failed' && (
         <>
-          <p class="note no-gap" data-testid="ask-waiting">
-            {c.waiting}
+          <p class="note no-gap" data-testid="ask-no-checked">
+            {c.noChecked}
           </p>
-          <div class="calc" data-testid="ask-matches">
-            <p class="calc-line ink">{c.matchesTitle}</p>
-            {matches.length ? (
-              matches.map((m) => (
-                <p key={m.key} class="calc-line">
-                  {fill(c.finding, { move: nameOf(m.moveId), reading: readingById(m.target as ReadingId).name, window: copy.catalogue.windows[m.window as keyof typeof copy.catalogue.windows] ?? m.window, call: rungWords(m.level, m.direction) })}
-                </p>
-              ))
-            ) : (
-              <p class="calc-line">{c.matchesNone}</p>
-            )}
-          </div>
+          <Matches t={t} ev={ev} title={c.matchesTitle} />
+        </>
+      )}
+      {t.state === 'waiting' && !answer && (
+        <>
+          <p class="note no-gap" data-testid="ask-waiting" data-wait={wait?.kind ?? ''}>
+            {waitWords(wait)}
+          </p>
+          <Matches t={t} ev={ev} title={c.matchesTitle} />
           <div class="actions">
             <button type="button" class="textbtn" data-testid="ask-cancel" onClick={onCancel}>
               {c.cancel}
@@ -144,6 +212,34 @@ function monthOf(at: string): string {
   return new Date(at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 }
 
+/**
+ * While a question for Claude waits and Ask is in view: every 20 seconds, a look at the few brain rows that would bring its
+ * answer or its run's state, by key, and a whole sync only when one changed; and a look at once whenever the app comes back
+ * into view. Nothing while nothing waits.
+ */
+function useWaitingAsk(waiting: readonly number[]): void {
+  const day = blockAt(new Date()).day
+  const keys = askWaitingKeys(waiting, day)
+  const key = keys.map((k) => `${k.store}|${k.id}`).join(',')
+  useEffect(() => {
+    if (!keys.length) return
+    const look = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void peekBrain(keys)
+    }
+    const timer = setInterval(look, LOOK_MS)
+    const onShow = () => {
+      if (document.visibilityState === 'visible') look()
+    }
+    document.addEventListener('visibilitychange', onShow)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onShow)
+    }
+    // The keys stand for themselves: a new waiting question, or a new day, starts the look over.
+  }, [key])
+}
+
 export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => void }) {
   const c = w()
   const [view, setView] = useState<View>(open && 'thread' in open ? { kind: 'thread', id: open.thread } : { kind: 'main' })
@@ -154,6 +250,10 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
   const [query, setQuery] = useState('')
   const all = useLive(allThreads, [])
   const last = useLive(lastRead, [])
+  const answers = useLive(() => db.askAnswers.toArray(), [])
+  const runs = useLive(() => db.askRuns.toArray(), [])
+  const waits = useLive(() => askWaits(), [tick])
+  const allowance = useLive(() => askAllowance(), [tick])
   // The repair's read: once on opening, and again after each question, so the starters and markers follow it.
   useEffect(() => {
     void askEvidence().then(setEv)
@@ -167,6 +267,12 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
       else setView({ kind: 'thread', id })
     })
   }, [])
+  // An answer that came for a question still waiting: the turn is marked answered, with the findings it cited.
+  const answered = (answers ?? []).map((a) => a.id).join(',')
+  useEffect(() => {
+    if (answered) void settleAskTurns()
+  }, [answered])
+  useWaitingAsk([...(waits?.keys() ?? [])])
   const done = (id: number | null) => {
     setTick((n) => n + 1)
     if (id === null) setFailed(true)
@@ -176,9 +282,12 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
     }
   }
   const starter = async (s: Exclude<AskStarter, 'deep'>) => done(await askStarter(s))
+  const answerOf = (t: AskTurn) => (answers ?? []).find((a) => a.turnId === t.id)
 
   if (view.kind === 'thread') {
     const whole = all?.find((x) => x.thread.id === view.id)
+    const full = (whole?.turns.length ?? 0) >= THREAD_TURNS_MAX
+    const reached = whole ? reachedAny(whole.turns.map((t) => t.id as number), answers ?? [], runs ?? []) : false
     return (
       <section class="screen ask" data-testid="ask-thread">
         <SubHead title={c.title} back={c.back} onBack={() => setView({ kind: 'main' })} />
@@ -189,14 +298,28 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
                 key={t.id}
                 t={t}
                 ev={ev}
+                answer={answerOf(t)}
+                wait={waits?.get(t.id as number)}
                 onAgain={() => void askAgain(t.id as number).then((ok) => (ok ? setTick((n) => n + 1) : setFailed(true)))}
                 onCancel={() => void cancelTurn(t.id as number)}
+                onExplain={allowance && t.kind === 'know' && t.state === 'answered' && !full ? () => void askExplain(view.id).then(() => setTick((n) => n + 1)) : undefined}
               />
             ))}
-            <Box label={c.followUp} onAsk={async (text) => void (await askTyped(text, view.id), setTick((n) => n + 1))} />
+            {full ? (
+              <p class="note" data-testid="ask-too-long">
+                {c.tooLong}
+              </p>
+            ) : (
+              <Box label={c.followUp} onAsk={async (text) => void (await askTyped(text, view.id), setTick((n) => n + 1))} />
+            )}
             {confirming ? (
               <div class="card pad" data-testid="ask-delete-confirm">
                 <p class="note no-gap">{c.removeConfirm}</p>
+                {reached && (
+                  <p class="note no-gap" data-testid="ask-delete-copy">
+                    {c.removeCopy}
+                  </p>
+                )}
                 <div class="actions">
                   <button
                     type="button"
@@ -262,19 +385,36 @@ export function AskScreen({ open, onClose }: { open: AskOpen; onClose: () => voi
   }
 
   const starters = ev ? startersShown(ev, last ?? null).filter((s): s is Exclude<AskStarter, 'deep'> => s !== 'deep') : []
+  // "Coach me on everything" (the deep tier): once the record has findings and today's allowance holds it, with its cost.
+  const deep = Boolean(allowance?.deep && starters.includes('know'))
   const recent = (all ?? []).slice(0, 2)
   return (
     <section class="screen ask" data-testid="ask">
       <SubHead title={c.title} back={c.back} onBack={onClose} />
       <p class="note">{c.intro}</p>
+      {allowance && (
+        <p class="note faint" data-testid="ask-allowance">
+          {allowance.left > 0 ? fill(c.allowance, { n: String(allowance.left), m: String(allowance.of) }) : c.allowanceNone}
+        </p>
+      )}
       <Box label={c.box} onAsk={async (text) => done(await askTyped(text, null))} />
-      {starters.length > 0 && (
+      {(starters.length > 0 || deep) && (
         <div class="ask-starters" role="group" aria-label={c.title}>
           {starters.map((s) => (
             <button key={s} type="button" class="pill-quiet" data-testid={`ask-starter-${s}`} onClick={() => void starter(s)}>
               {c.starters[s]}
             </button>
           ))}
+          {deep && (
+            <div class="ask-deep">
+              <button type="button" class="pill-quiet" data-testid="ask-starter-deep" onClick={() => void askDeep().then((id) => done(id))}>
+                {c.starters.deep}
+              </button>
+              <p class="note faint no-gap" data-testid="ask-deep-cost">
+                {fill(c.deepCost, { n: String(DEEP_COUNTS) })}
+              </p>
+            </div>
+          )}
         </div>
       )}
       {failed && <p class="note" data-testid="ask-failed">{c.readFailed}</p>}

@@ -9,8 +9,9 @@ import type { RepairEvidence, TestShown } from '../repair/evidence'
 let ev: RepairEvidence
 vi.mock('../repair/evidence', async (original) => ({ ...(await original<typeof import('../repair/evidence')>()), repairEvidence: async () => ev }))
 
-const { db } = await import('../db')
-const { allThreads, askAbout, askAgain, askStarter, askTyped, cancelTurn, deleteThread, lastRead, searchThreads } = await import('./flow')
+const { db, updateSettings } = await import('../db')
+const { allThreads, askAbout, askAgain, askAllowance, askDeep, askExplain, askStarter, askTyped, askWaits, cancelTurn, deleteThread, lastRead, reachedAny, searchThreads, settleAskTurns } = await import('./flow')
+const { answerIdOf, askTaskIds } = await import('./shared')
 
 const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'likely', direction: 'helps', revised: false, belief: 0.3, theta: 0.4, lo: 0.1, hi: 0.7, offered: 6, heldBack: 5, days: 11, ctx: [], running: true, began: '2026-10-01', ...over })
 const at = (h: number, m = 0) => new Date(2026, 9, 19, h, m)
@@ -102,6 +103,49 @@ describe('Ask Life Mirror on the phone', () => {
     const tombs = (await db.outbox.toArray()).filter((r) => r.op === 'delete')
     expect(tombs.filter((r) => r.store === 'askThreads').map((r) => r.key)).toEqual([String(a)])
     expect(tombs.filter((r) => r.store === 'askTurns').map((r) => r.key)).toEqual(turnKeys)
+  })
+
+  it('asks the deep tier in a thread of its own, and "Explain this to me" in the thread of the answer it explains (stage A2)', async () => {
+    const deep = await askDeep(at(9), { sheet: false })
+    const [whole] = await allThreads()
+    expect(whole.thread).toMatchObject({ id: deep, title: 'Coach me on everything', from: { kind: 'starter', starter: 'deep' } })
+    expect(whole.turns[0]).toMatchObject({ tier: 'deep', kind: 'deep', state: 'waiting' })
+    const know = (await askStarter('know', at(10))) as number
+    await askExplain(know, at(10, 5), { sheet: false })
+    const thread = (await allThreads()).find((w) => w.thread.id === know) as Awaited<ReturnType<typeof allThreads>>[number]
+    expect(thread.turns.map((t) => [t.kind, t.tier, t.state, t.question])).toEqual([
+      ['know', 'quick', 'answered', 'What do you know about me so far?'],
+      ['typed', 'standard', 'waiting', 'Explain this to me.'],
+    ])
+  })
+
+  it('writes the day’s sheet again as a question for Claude is asked, so its run reads the evidence as it stood', async () => {
+    await askTyped('Does walking help my mood?', null, at(9))
+    expect(await db.facts.get('2026-10-19')).toBeDefined()
+  })
+
+  it('marks a waiting question answered once Claude’s answer comes, with the findings it cited as the read holds them', async () => {
+    const thread = (await askTyped('Does walking help my mood?', null, at(9), { sheet: false })) as number
+    const [turn] = await db.askTurns.where('threadId').equals(thread).toArray()
+    expect(await settleAskTurns(at(9, 30))).toBe(0)
+    await db.askAnswers.put({ id: answerIdOf(turn.id as number), turnId: turn.id as number, threadId: thread, day: '2026-10-19', at: at(9, 20).toISOString(), status: 'answered', text: 'A walk likely helps your mood.', factIds: ['ladder.walk-ten.mood', 'week.today'] })
+    expect(await settleAskTurns(at(9, 30))).toBe(1)
+    expect(await db.askTurns.get(turn.id as number)).toMatchObject({ state: 'answered', cited: [{ key: 'walk-ten|mood|nextBlock', level: 'likely', direction: 'helps' }] })
+    // Once marked, nothing more to do.
+    expect(await settleAskTurns(at(9, 40))).toBe(0)
+  })
+
+  it('says where each waiting question stands, and the day’s allowance only with a cloud copy', async () => {
+    const thread = (await askTyped('Does walking help my mood?', null, at(9), { sheet: false })) as number
+    const [turn] = await db.askTurns.where('threadId').equals(thread).toArray()
+    expect((await askWaits(at(9, 1))).get(turn.id as number)).toEqual({ kind: 'cloud' })
+    expect(await askAllowance(at(9, 1))).toBeNull()
+    await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, token: 'a stand-in token' } }))
+    await db.askRuns.put({ id: askTaskIds('2026-10-19')[0], task: 'ask', day: '2026-10-19', at: at(9, 2).toISOString(), status: 'fired', firedAt: at(9, 2).toISOString(), turns: [turn.id as number] })
+    expect(await askAllowance(at(9, 3))).toEqual({ left: 2, of: 3, deep: false })
+    expect((await askWaits(at(9, 3))).get(turn.id as number)?.kind).not.toBe('cloud')
+    expect(reachedAny([turn.id as number], [], await db.askRuns.toArray())).toBe(true)
+    expect(reachedAny([turn.id as number + 1], [], await db.askRuns.toArray())).toBe(false)
   })
 
   it('answers nothing when the record cannot be read, and writes nothing', async () => {

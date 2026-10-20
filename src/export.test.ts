@@ -105,6 +105,10 @@ describe('how the app is used, in your own file (Follow-up F1)', () => {
     expect(out.ask.threads).toEqual([{ id: 7, day: '2026-10-19', at: '2026-10-19T13:00:00.000Z', title: 'What do you know about me so far?', from: { kind: 'starter', starter: 'know' } }])
     expect(out.ask.turns[0]).toMatchObject({ id: 9, thread: 7, question: 'What do you know about me so far?', state: 'answered', answer: [{ title: 'What helps you', lines: ['A ten-minute walk, now, for Stress over the next block: Likely: helps'] }], cited: [{ key: 'walk-ten|stress|nextBlock', level: 'likely' }] })
     expect(out.key.ask).toMatch(/Nothing here is evidence/)
+    // Claude's checked answer, with its turn (stage A2); and that no checked answer came.
+    const withClaude = JSON.parse(buildExport(checkins, wins, items, settings, { includePrivate: false }, undefined, { ...records, ask: { ...ask, answers: [{ id: 'turn:9', turnId: 9, threadId: 7, day: '2026-10-19', at: '2026-10-19T15:00:00.000Z', status: 'answered' as const, text: 'A walk likely helps your stress.', factIds: ['ladder.walk-ten.stress'], cardIds: [], model: 'claude-opus-5-5' }] } }).json)
+    expect(withClaude.ask.turns[0].claude).toEqual({ status: 'answered', at: '2026-10-19T15:00:00.000Z', text: 'A walk likely helps your stress.', factIds: ['ladder.walk-ten.stress'], cardIds: [], model: 'claude-opus-5-5' })
+    expect(out.ask.turns[0]).not.toHaveProperty('claude')
   })
 
   it('leaves the Partner path’s own screens out unless the Partner path is included (Part 27)', () => {

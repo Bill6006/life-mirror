@@ -117,6 +117,38 @@ async function seedRecord(page, n) {
   }, n)
 }
 
+/** A thread Claude answered and one it could not, written straight into the phone's store, as the brain's rows would leave them (stage A2). */
+async function seedClaude(page) {
+  await page.evaluate(async () => {
+    const dbx = await new Promise((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['askThreads', 'askTurns', 'askAnswers'], 'readwrite')
+    const at = new Date(Date.now() - 86_400_000).toISOString()
+    const day = at.slice(0, 10)
+    const one = async (question, answer) => {
+      const threadId = await new Promise((res) => {
+        const q = tx.objectStore('askThreads').add({ day, at, title: question, from: { kind: 'typed' } })
+        q.onsuccess = () => res(q.result)
+      })
+      const turnId = await new Promise((res) => {
+        const q = tx.objectStore('askTurns').add({ threadId, day, at, question, tier: 'standard', state: 'waiting', kind: 'typed', version: 'earlier', cited: [], updatedAt: at })
+        q.onsuccess = () => res(q.result)
+      })
+      tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at, ...answer })
+    }
+    await one('Does a nap help my energy?', { status: 'answered', text: 'A stand-in answer, as Claude would write one.', factIds: ['ladder.nap-ten.energy'], cardIds: [], facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5' })
+    await one('Why are my mornings flat?', { status: 'failed', reason: 'a stand-in' })
+    await new Promise((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
 try {
   {
     // Closed as it ships: no Ask button, even in an automated browser, without the key; and the build is the one pushed.
@@ -158,7 +190,7 @@ try {
     // A typed question: written at once, waiting, the findings its words name shown; cancelled.
     await page.getByTestId('ask-box').fill('Does a walk help my stress?')
     await page.getByTestId('ask-send').click()
-    check('a typed question waits for Claude', (await text(page.getByTestId('ask-waiting'))) === 'Waiting for Claude’s answer.')
+    check('a typed question waits for Claude, saying plainly that this phone keeps no cloud copy', (await text(page.getByTestId('ask-waiting'))).startsWith('Claude’s answers come through your cloud copy'), await text(page.getByTestId('ask-waiting')))
     check('with the findings its words name', (await text(page.getByTestId('ask-matches'))).includes('A ten-minute walk, now, for Stress over the next block'))
     await shot(page.getByTestId('ask-thread'), 'ask-waiting')
     await page.getByTestId('ask-cancel').click()
@@ -176,6 +208,23 @@ try {
     await page.locator('.sub-head .back').click()
     await page.locator('.sub-head .back').click()
     check('back returns to Evidence', await seen(page.getByTestId('repair-test')))
+    // Stage A2: Claude's answer, when it comes, with the findings it cited; and no checked answer, said plainly.
+    await seedClaude(page)
+    await page.reload()
+    await tab(page, 'Mirror')
+    await page.getByTestId('ask-open').click()
+    await page.getByTestId('ask-past-open').click()
+    await page.getByTestId('ask-thread-row').filter({ hasText: 'Does a nap help my energy?' }).click()
+    check('Claude’s answer shows in its words', (await text(page.getByTestId('ask-claude'))).includes('A stand-in answer, as Claude would write one.'))
+    check('with the findings it cited', (await text(page.getByTestId('ask-claude-cited'))).includes('Test: a stand-in fact, as the run read it.'))
+    await shot(page.getByTestId('ask-thread'), 'ask-claude')
+    await page.getByTestId('ask-delete').click()
+    check('deleting a thread a run read says a copy stays on claude.ai', (await text(page.getByTestId('ask-delete-copy'))).includes('claude.ai'))
+    await page.getByTestId('ask-delete-no').click()
+    await page.locator('.sub-head .back').click()
+    await page.getByTestId('ask-past-open').click()
+    await page.getByTestId('ask-thread-row').filter({ hasText: 'Why are my mornings flat?' }).click()
+    check('no checked answer is said plainly, never an unchecked one', (await text(page.getByTestId('ask-no-checked'))).startsWith('Couldn’t produce a checked answer.') && (await page.getByTestId('ask-claude').count()) === 0)
     await ctx.close()
   }
 

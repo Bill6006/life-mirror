@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { seedRecord as seedAskRecord, seedThread } from './askSeed'
+import { seedRecord as seedAskRecord, seedThread, seedTurns } from './askSeed'
 
 // The three themes (Rule 15, revised 2026-09-24): each one checked on every major screen and the
 // states its taps open, at the phone's width, a narrower phone, and a width that stands for text
@@ -2137,6 +2137,26 @@ const ASK_STATES: typeof STATES = [
     },
   },
   {
+    name: 'Ask, Claude’s answer with the findings it cited (stage A2)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'Does a nap help my energy?' }).click()
+      await expect(p.getByTestId('ask-claude')).toBeVisible()
+    },
+  },
+  {
+    name: 'Ask, no checked answer (stage A2)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'Why are my mornings flat?' }).click()
+      await expect(p.getByTestId('ask-no-checked')).toBeVisible()
+    },
+  },
+  {
     name: 'Ask, Past conversations',
     tab: 'Mirror',
     open: async (p) => {
@@ -2168,8 +2188,10 @@ const ASK_STATES: typeof STATES = [
 ]
 
 for (const theme of THEMES) {
-  test(`${theme}: Ask Life Mirror’s screens read, fit and can be tapped, at three widths (stage A1, in its preview)`, async ({ page }, info) => {
+  test(`${theme}: Ask Life Mirror’s screens read, fit and can be tapped, at three widths (stages A1 and A2, in its preview)`, async ({ page }, info) => {
     test.setTimeout(300_000)
+    // A cloud copy the database never answers, so the day's allowance and the deep tier show (stage A2).
+    await page.route(/turso\.io/, (route) => route.abort())
     await page.addInitScript((t) => {
       localStorage.setItem('life-mirror.theme', t)
       localStorage.setItem('life-mirror.preview.ask', '1')
@@ -2181,8 +2203,15 @@ for (const theme of THEMES) {
     await page.goto('./')
     await page.getByTestId('direction-input').fill('One line, mine')
     await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByRole('button', { name: /^Cloud copy/ }).click()
+    await page.getByTestId('token-input').fill('e2e-token-never-real')
+    await page.getByTestId('token-keep').click()
+    await expect(page.getByTestId('token-set')).toBeVisible()
     await seedAskRecord(page, 30)
     await seedThread(page, 'What do you know about me so far?', 'know', [{ key: 'walk-ten|stress|nextBlock', level: 'established', direction: 'hurts', revised: false, lo: null, hi: null }], new Date(when.getTime() - 3 * 86_400_000).toISOString())
+    await seedTurns(page, 'Does a nap help my energy?', [{ question: 'Does a nap help my energy?', claude: { status: 'answered', text: 'A stand-in answer of a few sentences, long enough to wrap at the narrowest width, as Claude would write one from the record.\nAnd a second paragraph, shorter.', facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact as the run read it, long enough to wrap across the narrowest width of the audit.' }], model: 'claude-opus-5-5' } }], new Date(when.getTime() - 2 * 86_400_000).toISOString())
+    await seedTurns(page, 'Why are my mornings flat?', [{ question: 'Why are my mornings flat?', claude: { status: 'failed' } }], new Date(when.getTime() - 86_400_000).toISOString())
     await page.reload()
     // A question waiting, as one typed while Claude's answers wait for their stage.
     await page.getByRole('button', { name: 'Mirror', exact: true }).click()

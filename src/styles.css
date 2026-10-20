@@ -1918,6 +1918,22 @@ a.chip {
   border-left: 3px double var(--muted);
 }
 
+/* Stage A2: Claude's checked answer in plain paragraphs, then the findings it cited; and the deep tier's starter with its cost under it. */
+.ask-claude {
+  margin: 4px 0 0;
+}
+
+.ask-claude-text {
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.ask-deep {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .setting {
   padding: 14px 0;
   border-bottom: 1px solid var(--hair);
