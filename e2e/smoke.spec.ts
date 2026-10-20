@@ -2266,6 +2266,24 @@ test('the owner’s fix of 2026-10-19: naming a place says at once that it is re
   await expect(page.getByTestId('location-name-church')).toBeEnabled()
 })
 
+test.describe('a place named in the evening where the phone is', () => {
+  // The page in New York, whatever zone runs the test: half past nine in the evening there is already the next day in UTC.
+  test.use({ timezoneId: 'America/New_York' })
+
+  test('says the day it was named there, not the next (2026-10-19)', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation'])
+    await context.setGeolocation({ latitude: 40.7128, longitude: -74.006, accuracy: 25 })
+    await page.clock.setFixedTime(new Date(Date.UTC(2026, 9, 21, 1, 30)))
+    await page.goto('./')
+    await settingsSection(page, 'location')
+    await page.getByTestId('location-switch').click()
+    await expect(page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+    await page.getByTestId('location-name-home').click()
+    await expect(page.getByTestId('location-name-status')).toHaveText('Named. It is known from now on.')
+    await expect(page.getByTestId('location-place')).toContainText('named Tue, Oct 20')
+  })
+})
+
 test('Location Context refused by the phone: said plainly, nothing read, the sun at the place you typed (Part 43)', async ({ page, context }) => {
   // The phone's own refusal: a location read fails at once, as after "Don't allow".
   await context.grantPermissions(['geolocation'])
@@ -2889,6 +2907,40 @@ async function expectCueClear(page: Page): Promise<void> {
   expect({ brainWords: c.brainWords, controls: c.controls, offScreen: c.offScreen }).toEqual({ brainWords: [], controls: [], offScreen: false })
   expect(c.tapTall).toBeGreaterThanOrEqual(c.pillTall - 0.5)
 }
+
+test('the cue reads Now again when a slide on it ends, so it keeps clear of a control where the control came to rest (2026-10-19)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 })
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  const cue = page.getByTestId('move-cue')
+  await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
+  await expectCueClear(page)
+  const place = await cue.boundingBox()
+  expect(place).not.toBeNull()
+  // A control on Now that slides from far up into the cue's place, inside a block that holds still, as a panel's opening slide
+  // sits inside its card: the cue reads Now as it appears, mid-slide, and nothing in the layout changes when the slide ends.
+  await page.evaluate((b) => {
+    const style = document.createElement('style')
+    style.textContent = '@keyframes cue-test-slide { from { transform: translateY(-320px) } to { transform: none } } .cue-test { animation: cue-test-slide 500ms linear }'
+    document.head.append(style)
+    const control = document.createElement('button')
+    control.type = 'button'
+    control.className = 'cue-test'
+    control.textContent = 'A control'
+    Object.assign(control.style, { position: 'fixed', left: `${b.x}px`, top: `${b.y}px`, width: `${b.width}px`, height: `${b.height}px`, margin: '0' })
+    const block = document.createElement('div')
+    block.append(control)
+    document.querySelector('section.screen.now')?.append(block)
+  }, place as { x: number; y: number; width: number; height: number })
+  // Once the slide has ended and the cue has held still a moment, it keeps clear of the control where the control now is.
+  await page.waitForFunction(() => (document.querySelector('.cue-test') as HTMLElement).getAnimations().length === 0)
+  await expect.poll(async () => (await cueCovers(page)).controls, { timeout: 4000 }).toEqual([])
+  await expect(cue).not.toHaveClass(/is-held/)
+  await expectCueClear(page)
+})
 
 test('a move lower on Now is cued once: a tap goes to it and marks it seen, it is not cued again after a reload, and a new move later is (final UI polish, 2026-09-26)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 600 })

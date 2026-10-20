@@ -1,5 +1,5 @@
 import { latestPlans } from './aims'
-import { addDays, daysBetween } from './blocks'
+import { addDays, dayKey, daysBetween } from './blocks'
 import { hasMove, moveById } from './catalogue'
 import type { Aim, BrainBrief, BriefLog, CoachPick, DayContext, Intention, Offer, Outcome, UseKind, UseRow } from './db'
 import { setAside } from './db'
@@ -188,7 +188,8 @@ export function usageFacts(i: UseInput, today: string): Fact[] {
     }
     const addOpened = s.screens.find((x) => x.what === 'addAim')?.n ?? 0
     if (addOpened) {
-      const added = i.aims.filter((a) => a.createdAt.slice(0, 10) >= w28.from && a.createdAt.slice(0, 10) <= w28.to).length
+      // The day it was added where the phone is, not the UTC date of its stamp (2026-10-19).
+      const added = i.aims.map((a) => dayKey(new Date(a.createdAt))).filter((d) => d >= w28.from && d <= w28.to).length
       facts.push(usageFact('usage.setup', `Add a commitment in ${windowWords(w28)}: ${openedWords(addOpened)}, ${added} ${added === 1 ? 'commitment' : 'commitments'} added.`, { days: w28.days, opened: addOpened, added }))
     }
   }

@@ -10,7 +10,9 @@ changed by hand is stamped and never given to a copy only made from the week, in
 a writer of the day reads it inside its own write; this phone's own choices keep a second copy in local storage, written
 as each action is done and at every start, and put back in one write after a cleared database. Item 5: naming a place says
 at once that it is reading, its buttons wait, a rough reading is followed until it is good enough, and every outcome is
-said. Item 6: "Out of town / traveling" wherever the trip is shown, its meaning kept, the stored names unchanged.
+said. Item 6: "Out of town / traveling" wherever the trip is shown, its meaning kept, the stored names unchanged. And the two found
+at their live check and agreed the same evening: a day read where the phone is, never as the UTC date of a stamp; and the
+cue reading Now again when a slide or a fade on it ends.
 
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, and an empty test list refused. A break guarded by a browser test runs Playwright against the
@@ -253,6 +255,20 @@ TABLE = [
          old="b.awayFromHome ? 'out of town, traveling' :",
          new="b.awayFromHome ? 'away from home on a trip' :",
          tests=['worker/src/postWindowOpen.test.ts'], pattern=None),
+    # Found at the six fixes' live check and agreed the same evening (2026-10-19): a day read where the phone is, and the cue
+    # reading Now again when a slide or a fade on it ends.
+    dict(id='named-day-where-the-phone-is', file='src/locationScreen.tsx',
+         old="formatDayShort(dayKey(new Date(p.learnedAt)))",
+         new="formatDayShort(p.learnedAt.slice(0, 10))",
+         tests=[S], pattern='says the day it was named there'),
+    dict(id='aims-added-where-the-phone-is', file='src/usageFacts.ts',
+         old="i.aims.map((a) => dayKey(new Date(a.createdAt))).filter(",
+         new="i.aims.map((a) => a.createdAt.slice(0, 10)).filter(",
+         tests=['src/usageFacts.test.ts'], pattern='counts a commitment by the day it was added where the phone is'),
+    dict(id='cue-reads-after-a-slide', file='src/moveCue.tsx',
+         old="    for (const e of SETTLED) main?.addEventListener(e, moved)\n",
+         new="",
+         tests=[S], pattern='the cue reads Now again when a slide on it ends'),
 ]
 
 def build():

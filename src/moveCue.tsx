@@ -197,6 +197,11 @@ export function MoveCue() {
     })
     const main = document.getElementById('main')
     if (main) mo.observe(main, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'data-move-key', 'data-waiting'] })
+    // A slide or a fade moves what it carries with nothing in the layout changed, so neither observer hears its end (2026-10-19:
+    // a panel's opening slide left a control two pixels from where the cue had read it, and the cue's tap area kept clear of a
+    // place the control had left). Its end is read like any other move.
+    const SETTLED = ['animationend', 'animationcancel', 'transitionend', 'transitioncancel'] as const
+    for (const e of SETTLED) main?.addEventListener(e, moved)
     watch()
     document.fonts?.addEventListener?.('loadingdone', moved)
     run()
@@ -206,6 +211,7 @@ export function MoveCue() {
       window.removeEventListener('resize', moved)
       mo.disconnect()
       ro?.disconnect()
+      for (const e of SETTLED) main?.removeEventListener(e, moved)
       document.fonts?.removeEventListener?.('loadingdone', moved)
       if (frame) cancelAnimationFrame(frame)
       document.getElementById('main')?.classList.remove('has-move-cue')

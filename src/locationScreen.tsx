@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { BLOCKS, blockAt } from './blocks'
+import { BLOCKS, blockAt, dayKey } from './blocks'
 import { LOCATION_TO_CLAUDE } from './brainShared'
 import { SwitchRow } from './controls'
 import { copy } from './copy'
@@ -125,7 +125,7 @@ export function LocationSection() {
           ) : (
             <div key={p.id} class="place-row" data-testid="location-place">
               <p class="calc-line no-gap">
-                <span class="ink">{p.kind === 'regular' && p.label ? p.label : c.kinds[p.kind as PlaceKind]}</span> · {fill(c.namedOn, { day: formatDayShort(p.learnedAt.slice(0, 10)) })}
+                <span class="ink">{p.kind === 'regular' && p.label ? p.label : c.kinds[p.kind as PlaceKind]}</span> · {fill(c.namedOn, { day: formatDayShort(dayKey(new Date(p.learnedAt))) })}
               </p>
               <div class="actions">
                 <button type="button" class="link" data-testid="location-rename" onClick={() => setEditing({ id: p.id, kind: p.kind as PlaceKind, label: p.label ?? '' })}>

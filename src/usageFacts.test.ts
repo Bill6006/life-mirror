@@ -115,6 +115,15 @@ describe('the line, Change, the coach, plans, skips and setup', () => {
     const aims = [aim(1, { createdAt: '2026-10-05T12:00:00.000Z' }), aim(2, { createdAt: '2026-09-01T12:00:00.000Z' })]
     expect(byId(usageFacts(input({ rows, aims }), TODAY), 'usage.setup')?.text).toBe('Add a commitment in the 28 days to yesterday: opened 3 times, 1 commitment added.')
   })
+
+  it('counts a commitment by the day it was added where the phone is, never the UTC date of its stamp (2026-10-19)', () => {
+    const rows = [began, ...times(3, '2026-10-05', 'screen', 'addAim')]
+    const at = (m: number, d: number, h: number, min: number) => new Date(2026, m - 1, d, h, min).toISOString()
+    // Just after midnight on the window's first day and just before it on its last: east or west of UTC, one of them
+    // carries the other date in its stamp. At noon the days either side stay out.
+    const aims = [aim(1, { createdAt: at(9, 22, 0, 30) }), aim(2, { createdAt: at(10, 19, 23, 30) }), aim(3, { createdAt: at(9, 21, 12, 0) }), aim(4, { createdAt: at(10, 20, 12, 0) })]
+    expect(byId(usageFacts(input({ rows, aims }), TODAY), 'usage.setup')?.values).toMatchObject({ added: 2 })
+  })
 })
 
 /** Everything at once: a record rich enough that every usage fact is written. */
