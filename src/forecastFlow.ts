@@ -3,7 +3,7 @@ import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
-import { associationFor } from './associations'
+import { associationFor, likeForLikeMatched } from './associations'
 import { chipShownAt } from './chips'
 import { natureEvening, natureKnown, natureMoveDays } from './nature'
 import type { AnchorSwap, Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
@@ -122,6 +122,8 @@ export interface LastNight {
   with: number | null
   without: number | null
   n: number
+  /** Whether evenings like it and evenings without it shared a band (2026-10-21): only then is it said like for like. */
+  matched: boolean
 }
 
 export interface YesterdayMove {
@@ -182,7 +184,7 @@ export async function briefData(today: string): Promise<Brief> {
   const known = (key: LastNightKey) => (key === 'caffeine' ? caffeineKnown : key === 'nature' ? (c: CheckIn) => natureKnown(c, natureMoves) : key === 'sweet' ? (c: CheckIn) => chipShownAt(key, c) : undefined)
   const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday), natureMoves.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside, natureMoves), known(key)) }))
   const best = carried.filter((c) => c.assoc.diff !== null).sort((a, b) => b.assoc.times - a.assoc.times)[0] ?? carried[0] ?? null
-  const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times } : null
+  const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times, matched: likeForLikeMatched(best.assoc) } : null
   // Steady is a conclusion: it needs the same six logged blocks the warning does, or it says nothing.
   const steady = ready && !w.warning && w.of >= WARNING_WINDOW ? { inside: w.of - w.under, of: w.of } : null
   const read = observations(checkins, offers, outcomes)

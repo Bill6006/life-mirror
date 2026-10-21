@@ -1,3 +1,4 @@
+import { caffeineLineWords, coolingLineWords, eveningWorkoutWords, hardWorkoutWords, ownChipLine, passiveLineWords, privateLineWords, socialLineWords, workoutLineWords } from './associationWords'
 import { addDays, blockAt } from './blocks'
 import { PathEvidence } from './pathEvidence'
 import { CaffeineEvidenceCard } from './caffeineEvidence'
@@ -28,7 +29,6 @@ import type { AskAboutThis } from './ask/askScreen'
 // weight card; the observational associations; and the plain line about months and uncertainty. Every number carries its
 // register: facts plain, calculations behind a single rule, conclusions behind a double rule with their rung or word.
 
-const pctOf = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
 function nameOf(id: string): string {
   if (id === NOTHING) return copy.move.nothing
@@ -49,7 +49,7 @@ function PassiveBlock({ e, children }: { e: PassiveEvidence; children?: Componen
       <div class="conclusion" data-testid="tier">
         <p class="calc-line ink">{c.tiers[e.tier]}</p>
         <p class="calc-line" data-testid="passive-association">
-          {fill(c.passiveLine, { n: String(association.times), target, with: pctOf(association.withEvent.mean), without: pctOf(association.without.mean), k: String(association.withEvent.n), m: String(association.without.n) })}
+          {passiveLineWords(association, target)}
         </p>
         <p class="calc-line">{c.associationNote}</p>
       </div>
@@ -124,15 +124,7 @@ function OwnChipsEvidence({ today }: { today: string }) {
         <div class="calc">
           {own.map((ch) => {
             const a = ownChipAnswer(all, ch.id, today)
-            const n = a.times === 1 ? c.oneEvening : fill(c.nEvenings, { n: String(a.times) })
-            const line =
-              a.times === 0
-                ? fill(c.ownNone, { label: ch.label })
-                : a.withEvent.mean === null
-                  ? fill(c.ownNoNext, { label: ch.label, n })
-                  : a.without.mean === null
-                    ? fill(c.ownUnmatched, { label: ch.label, n, with: pctOf(a.withEvent.mean), k: String(a.withEvent.n) })
-                    : fill(c.ownLine, { label: ch.label, n, with: pctOf(a.withEvent.mean), without: pctOf(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+            const line = ownChipLine(ch.label, a)
             return (
               <p key={ch.id} class="calc-line" data-testid="own-chip-evidence">
                 {line}
@@ -217,7 +209,6 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
   // Requirement 13 (stage R7): when what goes missing follows how you were or the day, the estimates here say so.
   const missing = useLive(() => missingNow(today), [today])
   if (!ev) return <section class="screen" />
-  const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
 
   return (
     <section class="screen catalogue" data-testid="evidence">
@@ -281,40 +272,34 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
               {ev.coolingOff && (
                 <p class="calc-line" data-testid="cooling-off-line">
                   <span class="calc-key">{c.coolingTitle}</span> ·{' '}
-                  {fill(c.coolingLine, { n: String(ev.coolingOff.association.times), with: pct(ev.coolingOff.association.withEvent.mean), without: pct(ev.coolingOff.association.without.mean), blocks: ev.coolingOff.duration ? String(ev.coolingOff.duration.blocks) : '—', events: String(ev.coolingOff.duration?.events ?? 0) })}
+                  {coolingLineWords(ev.coolingOff.association, ev.coolingOff.duration)}
                 </p>
               )}
               {ev.bigSocial && (
                 <p class="calc-line" data-testid="big-social-line">
-                  <span class="calc-key">{c.socialTitle}</span> · {fill(c.socialLine, { n: String(ev.bigSocial.times), with: pct(ev.bigSocial.withEvent.mean), without: pct(ev.bigSocial.without.mean) })}
+                  <span class="calc-key">{c.socialTitle}</span> · {socialLineWords(ev.bigSocial)}
                 </p>
               )}
               {ev.heavyCaffeine && (
                 <p class="calc-line" data-testid="caffeine-line">
-                  <span class="calc-key">{c.caffeineTitle}</span> · {fill(c.caffeineLine, { n: String(ev.heavyCaffeine.times), with: pct(ev.heavyCaffeine.withEvent.mean), without: pct(ev.heavyCaffeine.without.mean) })}
+                  <span class="calc-key">{c.caffeineTitle}</span> · {caffeineLineWords(ev.heavyCaffeine)}
                 </p>
               )}
               {ev.workouts && (
                 <p class="calc-line" data-testid="workout-line">
-                  <span class="calc-key">{c.workoutTitle}</span> · {fill(c.workoutLine, { n: String(ev.workouts.times), with: pct(ev.workouts.withEvent.mean), without: pct(ev.workouts.without.mean) })}
+                  <span class="calc-key">{c.workoutTitle}</span> · {workoutLineWords(ev.workouts)}
                 </p>
               )}
               {ev.eveningWorkout && (
                 <p class="calc-line" data-testid="evening-workout-line">
                   <span class="calc-key">{c.eveningWorkoutTitle}</span> ·{' '}
-                  {fill(c.eveningWorkoutLine, { n: ev.eveningWorkout.morning.times === 1 ? c.oneEvening : fill(c.nEvenings, { n: String(ev.eveningWorkout.morning.times) }), with: pct(ev.eveningWorkout.morning.withEvent.mean), without: pct(ev.eveningWorkout.morning.without.mean), sleepWith: pct(ev.eveningWorkout.sleep.withEvent.mean), sleepWithout: pct(ev.eveningWorkout.sleep.without.mean) })}
+                  {eveningWorkoutWords(ev.eveningWorkout.morning, ev.eveningWorkout.sleep)}
                 </p>
               )}
               {ev.hardWorkout && (
                 <p class="calc-line" data-testid="hard-workout-line">
                   <span class="calc-key">{c.hardWorkoutTitle}</span> ·{' '}
-                  {fill(c.hardWorkoutLine, {
-                    n: ev.hardWorkout.times === 1 ? c.oneDay : fill(c.nDays, { n: String(ev.hardWorkout.times) }),
-                    list: HARD_MEASURES.map((id) => {
-                      const d = ev.hardWorkout?.measures[id].diff ?? null
-                      return fill(c.hardWorkoutItem, { reading: readingById(id).name.toLowerCase(), diff: d === null ? c.notComparable : `${d > 0 ? '+' : ''}${Math.round(d * 10) / 10}` })
-                    }).join(', '),
-                  })}
+                  {hardWorkoutWords(ev.hardWorkout.times, HARD_MEASURES.map((id) => ({ reading: readingById(id).name.toLowerCase(), diff: ev.hardWorkout?.measures[id].diff ?? null })))}
                 </p>
               )}
             </div>
@@ -337,7 +322,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
           <div class="calc">
             {ev.privates.map((p) => (
               <p key={`${p.itemId}|${p.block}`} class="calc-line" data-testid="private-association">
-                {fill(c.privateLine[p.block], { name: p.name, with: pct(p.association.withEvent.mean), without: pct(p.association.without.mean), n: String(p.association.withEvent.n), m: String(p.association.without.n), alternative: nameOf(p.alternativeId) })}
+                {privateLineWords(p, nameOf(p.alternativeId))}
               </p>
             ))}
             <p class="calc-line">{c.associationNote}</p>

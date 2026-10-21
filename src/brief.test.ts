@@ -13,8 +13,8 @@ describe('the brief', () => {
   })
 
   it('sets last night against the mornings after evenings like it, or falls back to yesterday beside what happened', () => {
-    expect(lastNightLine({ lastNight: { key: 'dinner', with: 55, without: 62, n: 9 }, yesterday: null })).toBe('Last night carried a late or heavy dinner. Mornings after evenings like it have read 55, against 62 after evenings that started the same (9).')
-    expect(lastNightLine({ lastNight: { key: 'workout', with: null, without: null, n: 1 }, yesterday: null })).toContain('the first time recorded')
+    expect(lastNightLine({ lastNight: { key: 'dinner', with: 55, without: 62, n: 9, matched: true }, yesterday: null })).toBe('Last night carried a late or heavy dinner. Mornings after evenings like it have read 55, against 62 after evenings that started the same (9).')
+    expect(lastNightLine({ lastNight: { key: 'workout', with: null, without: null, n: 1, matched: false }, yesterday: null })).toContain('the first time recorded')
     expect(lastNightLine({ lastNight: null, yesterday: { expected: 60, actual: 64, hit: true } })).toBe('Yesterday: expected 60, read 64; within the range.')
     expect(lastNightLine({ lastNight: null, yesterday: null })).toBe('Last night carried nothing the record can set this morning against.')
   })

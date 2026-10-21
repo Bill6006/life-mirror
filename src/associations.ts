@@ -57,6 +57,14 @@ export function likeForLike(points: readonly DayPoint[]): Association {
   return { times: withEvent.length, withEvent: { mean: meanOf(withValues), n: withValues.length }, without: { mean: meanOf(withoutValues), n: withoutValues.length }, diff, bands }
 }
 
+/**
+ * Whether a like-for-like comparison exists (2026-10-21): a band both sides share holds an outcome on each, so the difference
+ * within matched bands is real. Only then may the record's words say "started the same", "ended the same" or "like for like".
+ */
+export function likeForLikeMatched(a: Association): boolean {
+  return a.bands > 0 && a.diff !== null
+}
+
 /** The evening's band on a day, from its reading out of 100; null when the evening was not logged in full. */
 export function eveningBand(byKey: ReadonlyMap<string, CheckIn>, day: string): Band | null {
   const c = byKey.get(slotKey(day, 'evening'))

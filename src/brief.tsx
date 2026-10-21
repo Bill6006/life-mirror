@@ -1,3 +1,4 @@
+import { lastNightWords } from './associationWords'
 import { useEffect, useState } from 'preact/hooks'
 import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
 import { NOTHING } from './catalogue'
@@ -23,16 +24,10 @@ import type { AskAboutThis } from './ask/askScreen'
 // when the line is meant to be acted on, from its action alone, never its words: now, later today
 // or for today; with no line it names the window the readings cover (owner, 2026-09-23).
 
-const pct = (v: number | null) => (v === null ? '—' : String(Math.round(v)))
-
 /** Line one: last night against the mornings after evenings like it; else yesterday beside what happened. */
 export function lastNightLine(b: { lastNight: LastNight | null; yesterday: { expected: number; actual: number; hit: boolean } | null }): string {
   const c = copy.brief
-  if (b.lastNight) {
-    const event = c.lastNightEvents[b.lastNight.key]
-    if (b.lastNight.with === null || b.lastNight.without === null) return fill(c.lastNightFirst, { event, n: String(b.lastNight.n) })
-    return fill(c.lastNight, { event, with: pct(b.lastNight.with), without: pct(b.lastNight.without), n: String(b.lastNight.n) })
-  }
+  if (b.lastNight) return lastNightWords(b.lastNight)
   if (b.yesterday) return fill(c.yesterday, { expected: String(b.yesterday.expected), actual: String(b.yesterday.actual), result: b.yesterday.hit ? c.hit : c.miss })
   return c.yesterdayNone
 }

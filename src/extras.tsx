@@ -45,11 +45,11 @@ import { teethOf, TEETH_COUNTS, type TeethBrushed } from './necessities'
 import type { ReadingId } from './readings'
 import { askedReadings, ownChipsOf, type Weekday } from './settings'
 import { ownChipAnswer, ownChipRetired, ownChipStates, ownShownKey } from './ownChips'
-import type { Association } from './associations'
 import { journalFor, saveJournal } from './journal'
 import { Disclosure } from './ui'
 import { officeDayAtOffice } from './people'
 import { natureAnswerWords, natureAssociations, natureMoveToday } from './nature'
+import { chipAnswerWords, sweetAnswerWords } from './associationWords'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
 const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'nature', 'sweet']
@@ -59,18 +59,6 @@ const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOf
  * tap on Done. "Felt close to God today?" carries its own permanent off switch. The two chips
  * about how today landed are answered at once from your own record.
  */
-/** How many times a chip was marked before, said as a sentence starts it: Once, or 3 times (stage 1, item q). */
-const timesBefore = (n: number) => (n === 1 ? copy.extras.timesOnce : fill(copy.extras.timesN, { n: String(n) }))
-
-/** A chip's answer from your own record, in words: first time, the times with no morning after, unmatched, or like for like. */
-function chipAnswerWords(a: Association): string {
-  const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
-  if (a.times === 0) return copy.extras.chipFirst
-  if (a.withEvent.mean === null) return fill(copy.extras.chipTimesNoNext, { times: timesBefore(a.times) })
-  if (a.without.mean === null) return fill(copy.extras.chipUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
-  return fill(copy.extras.chipTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
-}
-
 /** A phrase kept on one line inside a label, so a narrow phone never breaks it at its hyphen ("check-" / "in?"), as it did until 2026-10-18. */
 function keepTogether(label: string, phrase: string) {
   const at = label.indexOf(phrase)
@@ -398,15 +386,7 @@ export function SweetChip({ record }: { record: CheckIn }) {
   if (!shown || !all) return null
   const on = Boolean(record.extras?.sweet)
   const a = afternoonAssociation(all, record.day, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c))
-  const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
-  const answer =
-    a.times === 0
-      ? copy.extras.chipFirst
-      : a.withEvent.mean === null
-        ? fill(copy.extras.sweetNoNext, { times: timesBefore(a.times) })
-        : a.without.mean === null
-          ? fill(copy.extras.sweetUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
-          : fill(copy.extras.sweetTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+  const answer = sweetAnswerWords(a)
   return (
     <>
       <div class="card" ref={cardRef}>
