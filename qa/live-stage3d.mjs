@@ -3,7 +3,7 @@
 // cloud token is ever set). Both Motivation and Confidence each morning (one in turn until the owner's fix of
 // 2026-10-19, this check restated with it); the optional taps above the move, and an
 // untouched move drawn again when a chip changes the day; Out among people today; When was the last?; the two sleep
-// readings asked late after a morning without them; Outside a while today and Something sweet; your own chips; and
+// readings asked late after a morning without them; time in nature and Something sweet; your own chips; and
 // the expectancy tap after a People rep.
 // node live-stage3d.mjs <expected short commit>
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
@@ -141,7 +141,7 @@ try {
     await tab(page, 'Now')
     const extras = await checkIn(page, 'extras')
     const box = page.getByTestId('extras')
-    check('the evening asks Outside a while today and Something sweet among the chips', extras && (await seen(box.getByTestId('chip-outside'))) && (await seen(box.getByTestId('chip-sweet'))))
+    check('the evening asks time in nature and Something sweet among the chips', extras && (await seen(box.getByTestId('chip-nature'))) && (await seen(box.getByTestId('chip-sweet'))))
     check('…and your own chip by its label', await seen(box.getByRole('button', { name: 'Stand-in chip' })))
     await ctx.close()
   }

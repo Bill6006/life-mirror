@@ -49,9 +49,10 @@ import type { Association } from './associations'
 import { journalFor, saveJournal } from './journal'
 import { Disclosure } from './ui'
 import { officeDayAtOffice } from './people'
+import { natureAnswerWords, natureAssociations, natureMoveToday } from './nature'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
-const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'outside', 'sweet']
+const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'nature', 'sweet']
 
 /**
  * The evening's optional extras, one tap each, every tap saved at once. Skipping costs one
@@ -69,7 +70,6 @@ function chipAnswerWords(a: Association): string {
   if (a.without.mean === null) return fill(copy.extras.chipUnmatched, { times: timesBefore(a.times), mean: round(a.withEvent.mean), k: String(a.withEvent.n) })
   return fill(copy.extras.chipTimes, { times: timesBefore(a.times), mean: round(a.withEvent.mean), without: round(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
 }
-
 
 /** A phrase kept on one line inside a label, so a narrow phone never breaks it at its hyphen ("check-" / "in?"), as it did until 2026-10-18. */
 function keepTogether(label: string, phrase: string) {
@@ -94,6 +94,9 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
     if (settings) void ensureDayContext(day, settings)
   }, [settings?.updatedAt, day])
   const contexts = useLive(() => db.days.toArray(), [])
+  // Time in nature (item 2 of 4): a move in nature done counts its day, and the chip's answer reads every day's.
+  const outcomes = useLive(() => db.outcomes.toArray(), [])
+  const [natureWhat, setNatureWhat] = useState(false)
   // The final checklist: whether this evening's move carries the recovery gap, and whether today is a church day to ask about.
   const gapTonight = useLive(() => db.offers.where('day').equals(day).filter((o) => o.kind === 'block' && o.block === 'evening' && o.skippedAt === null && o.passiveId === RECOVERY_GAP).count(), [day])
   const churchToday = contexts?.some((c) => c.day === day && c.churchDay === true) ?? false
@@ -107,7 +110,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
   const chipsRef = useRef<HTMLDivElement>(null)
   useChipsSeen(chipsRef, { day, block }, record && settings && all && contexts ? [...CHIPS.filter((k) => SHOWN_CHIPS.includes(k) && showing(k)), ...own.map((ch) => ownShownKey(ch.id))].filter((k) => !record.extras?.chipsShown?.[k]) : [])
 
-  if (record === undefined || !settings || !items || !all || !contexts || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
+  if (record === undefined || !settings || !items || !all || !contexts || !outcomes || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
 
   const slot = { day, block }
   const asked = record ? askedOf(record) : askedReadings(block, settings.depth, settings.retiredReadings, { day, morning: all.find((c) => c.day === day && c.block === 'morning') ?? null })
@@ -168,15 +171,22 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
       <div class="card" ref={chipsRef}>
         <ul class="rows">
           {CHIPS.filter(showing).map((key) => {
-            const on = Boolean(ex[key])
-            const answer = chipAnswerWords(chipAnswer(all, key, day))
+            // Time in nature: a move in nature done today that reaches the line counts the day by itself (item 2 of 4).
+            const fromMove = key === 'nature' && !ex.nature ? natureMoveToday(outcomes, day) : null
+            const on = Boolean(ex[key]) || fromMove !== null
+            const answer = key === 'nature' ? natureAnswerWords(natureAssociations(all, outcomes, day)) : chipAnswerWords(chipAnswer(all, key, day))
             const cooling = key === 'coolingOff' && on ? coolingOffDuration(all, day) : null
             return (
               <li key={key} data-chip={key}>
-                <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`chip-${key}`} onClick={() => toggle(key)}>
+                <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`chip-${key}`} disabled={fromMove !== null} onClick={() => toggle(key)}>
                   <span class="anchor-mark" aria-hidden="true" />
-                  <span class="row-main">{keepTogether(copy.extras[key], 'check-in?')}</span>
+                  <span class="row-main">{keepTogether(copy.extras[key], key === 'nature' ? '20+ min' : 'check-in?')}</span>
                 </button>
+                {fromMove && (
+                  <p class="note faint no-gap" data-testid="nature-from-move">
+                    {fill(copy.extras.natureFromMove, { move: fromMove })}
+                  </p>
+                )}
                 {key === 'bigSocial' && !on && churchToday && (
                   <p class="note faint no-gap church-ask" data-testid="church-ask">
                     {copy.extras.churchAsk}
@@ -193,6 +203,16 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
                     )}
                     {(key === 'nothingLanded' || key === 'hardToSeePoint') && settings.direction && <p class="calc-line ink">{fill(copy.extras.chipDirection, { line: settings.direction })}</p>}
                   </div>
+                )}
+                {key === 'nature' && (
+                  <button type="button" class="textbtn faint nature-what" aria-expanded={natureWhat} data-testid="nature-what" onClick={() => setNatureWhat((v) => !v)}>
+                    {copy.extras.natureWhat}
+                  </button>
+                )}
+                {key === 'nature' && natureWhat && (
+                  <p class="note faint no-gap" data-testid="nature-what-text">
+                    {copy.extras.natureWhatText}
+                  </p>
                 )}
               </li>
             )

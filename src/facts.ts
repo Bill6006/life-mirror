@@ -12,6 +12,7 @@ import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, Chec
 import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
 import { chipShownAt } from './chips'
+import { NATURE_EVENT, NATURE_MINUTES, natureAssociations } from './nature'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { sittingOf } from './ladder'
@@ -477,7 +478,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const ln = i.brief.lastNight
     const event = copy.brief.lastNightEvents[ln.key]
     facts.push(
-      fact('lastNight', ['evening', 'recovery', ln.key === 'churchDay' ? 'church' : ln.key === 'bigSocial' ? 'social-event' : ln.key === 'napped' ? 'nap' : ln.key === 'outside' ? 'nature' : ln.key === 'workout' ? 'workout' : ln.key === 'caffeine' ? 'caffeine' : 'evening'], ln.with === null || ln.without === null ? `Last night carried ${event}; ${ln.n} evenings like it so far, nothing to compare yet.` : `Last night carried ${event}; the mornings after evenings like it read ${round(ln.with)} against ${round(ln.without)} without, ${ln.n} evenings.`, { key: ln.key, with: round(ln.with), without: round(ln.without), n: ln.n }, { n: ln.n }),
+      fact('lastNight', ['evening', 'recovery', ln.key === 'churchDay' ? 'church' : ln.key === 'bigSocial' ? 'social-event' : ln.key === 'napped' ? 'nap' : ln.key === 'nature' ? 'nature' : ln.key === 'workout' ? 'workout' : ln.key === 'caffeine' ? 'caffeine' : 'evening'], ln.with === null || ln.without === null ? `Last night carried ${event}; ${ln.n} evenings like it so far, nothing to compare yet.` : `Last night carried ${event}; the mornings after evenings like it read ${round(ln.with)} against ${round(ln.without)} without, ${ln.n} evenings.`, { key: ln.key, with: round(ln.with), without: round(ln.without), n: ln.n }, { n: ln.n }),
     )
   }
   if (i.brief.warning?.warning) {
@@ -527,9 +528,12 @@ export function buildFactSheet(i: FactInput): FactSheet {
   chip('assoc.eveningWorkout.sleep', ['workout', 'sleep'], 'an evening workout', i.evidence.eveningWorkout?.sleep ?? null, 'Sleep quality the mornings after')
   if (i.evidence.hardWorkout) facts.push(hardFact(i.evidence.hardWorkout))
   chip('assoc.napped', ['nap', 'sleep'], 'a nap', associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped)), 'Mornings after')
-  // Outside a while today (stage 3, item 5): tagged nature, the tag the library's daylight, nature-walk, nature-attention and green-exercise cards carry.
-  // Each chip from stage 3, item 5, is compared only at the check-ins that showed it (Rule 2).
-  chip('assoc.outside', ['nature'], 'time outside', associationFor(i.checkins, today, (c) => Boolean(c.extras?.outside), (c) => chipShownAt('outside', c)), 'Mornings after')
+  // Time in nature (item 2 of 4, 2026-10-21): 20+ minutes in the day, in total, the tap or a move in nature done that reaches it. The
+  // evening of (the evidence's same-day outcomes) and the morning after, from the definition's start and only where the record
+  // knows the day (Rule 2), so the older Outside a while today is never read as time in nature. Tagged nature, the tag of the
+  // library's nature-walk, nature-attention and green-exercise cards; the minutes ride in the values, so a writer may say them.
+  const nature = natureAssociations(i.checkins, i.outcomes, today)
+  for (const f of [assocFact('assoc.nature', ['nature'], NATURE_EVENT, nature.evening, 'Evenings of'), assocFact('assoc.nature.morning', ['nature'], NATURE_EVENT, nature.morning, 'Mornings after')]) if (f) facts.push({ ...f, values: { ...f.values, minutes: NATURE_MINUTES } })
   // Something sweet (stage 3, item 5), each against the next check-in. No tags: the library holds no card on it.
   chip('assoc.sweet', [], 'something sweet in the afternoon', afternoonAssociation(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c)), 'Evenings after')
   chip('assoc.sweet.evening', [], 'something sweet in the evening', associationFor(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c)), 'Mornings after')

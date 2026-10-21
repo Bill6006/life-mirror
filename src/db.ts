@@ -30,7 +30,7 @@ import { awayMode, awayOn, type GateMode } from './postWindowFlow'
 // Everything lives in IndexedDB on the phone. Nothing here talks to a network.
 
 export type WinOutcome = 'done' | 'partly' | 'no'
-export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine' | 'napped' | 'outside' | 'sweet'
+export type ExtraKey = 'caffeine' | 'dinner' | 'closeToGod' | 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'heavyCaffeine' | 'napped' | 'outside' | 'nature' | 'sweet'
 export type NecessityKey = 'shower' | 'teeth' | 'food'
 export type Necessities = Partial<Record<NecessityKey, true>>
 
@@ -64,8 +64,13 @@ export interface Extras {
   heavyCaffeine?: true
   /** Napped today: the one daytime sleep the record cannot otherwise see, on the evening check-in. */
   napped?: true
-  /** Outside a while today (stage 3, item 5): outdoor time on the record, a yes with no minutes. */
+  /**
+   * Until 2026-10-21: "Outside a while today" (stage 3, item 5), time outside of no stated length or place. Kept exactly as
+   * recorded and exported with that meaning; never read as time in nature, and no longer asked.
+   */
   outside?: true
+  /** From 2026-10-21: "20+ min in nature today, in total" (item 2 of 4), 20 minutes or more in nature in the day, separate periods adding up. */
+  nature?: true
   /** Something sweet since the last check-in (stage 3, item 5): asked at the afternoon and the evening, one tap. */
   sweet?: true
   /**

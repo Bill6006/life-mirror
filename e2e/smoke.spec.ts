@@ -1425,7 +1425,7 @@ test('stage 3, item 5: a morning from before the owner’s fix of 2026-10-19 tha
   await expect(page.getByTestId('overlay-not-asked')).toHaveCount(0)
 })
 
-test('stage 3, item 5: Outside a while today and Something sweet, each marked shown once seen; sweet on the afternoon summary; When was the last? once caffeine is reported', async ({ page }) => {
+test('stage 3, item 5: time in nature and Something sweet, each marked shown once seen; sweet on the afternoon summary; When was the last? once caffeine is reported', async ({ page }) => {
   // The morning: a band reported brings When was the last?, one optional tap.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
   await page.goto('./')
@@ -1452,7 +1452,8 @@ test('stage 3, item 5: Outside a while today and Something sweet, each marked sh
   await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'afternoon'))?.chipsShown as Record<string, true> | undefined)?.sweet).toBe(true)
   expect((await extrasOf(page, '2026-09-07', 'afternoon'))?.sweet).toBeUndefined()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
-  // The evening: Outside a while today among the chips, tapped, and answered from the record at once. The afternoon's
+  // The evening: time in nature among the chips (item 2 of 4, 2026-10-21, in place of Outside a while today), tapped, and
+  // answered from the record at once. The afternoon's
   // moves are asked about first, and left for now or unanswered.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
   await page.reload()
@@ -1471,13 +1472,56 @@ test('stage 3, item 5: Outside a while today and Something sweet, each marked sh
   const eveningSweet = page.getByTestId('extras').getByTestId('chip-sweet')
   await eveningSweet.scrollIntoViewIfNeeded()
   expect(await eveningSweet.locator('.keep-together').evaluate((el) => el.getClientRects().length)).toBe(1)
-  const outside = page.getByTestId('chip-outside')
-  await outside.scrollIntoViewIfNeeded()
-  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'evening'))?.chipsShown as Record<string, true> | undefined)?.outside).toBe(true)
-  await outside.click()
-  await expect(outside).toHaveAttribute('aria-pressed', 'true')
+  // The old chip is asked no longer.
+  await expect(page.getByTestId('chip-outside')).toHaveCount(0)
+  const nature = page.getByTestId('extras').getByTestId('chip-nature')
+  await nature.scrollIntoViewIfNeeded()
+  await expect(nature).toContainText('20+ min in nature today, in total')
+  // "20+ min" whole on one line at the phone's width.
+  expect(await nature.locator('.keep-together').evaluate((el) => el.getClientRects().length)).toBe(1)
+  await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'evening'))?.chipsShown as Record<string, true> | undefined)?.nature).toBe(true)
+  await nature.click()
+  await expect(nature).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('extras').getByTestId('chip-answer').first()).toContainText('First time recorded')
-  expect((await extrasOf(page, '2026-09-07', 'evening'))?.outside).toBe(true)
+  await expect.poll(async () => (await extrasOf(page, '2026-09-07', 'evening'))?.nature).toBe(true)
+  expect((await extrasOf(page, '2026-09-07', 'evening'))?.outside).toBeUndefined()
+})
+
+test('time in nature (item 2 of 4): the rule in a short label, what counts one tap away, Walk somewhere green done counting the day by itself, and the tap kept through a reload', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 23, 19, 5))
+  await page.goto('./')
+  // Walk somewhere green, done this afternoon: thirty minutes somewhere green make the day by themselves.
+  await seedRows(page, 'outcomes', [{ offerId: 9001, moveId: 'green-walk', day: '2026-10-23', block: 'afternoon', at: new Date(2026, 9, 23, 15, 0).toISOString(), outcome: 'done', why: null, passiveOutcome: null }])
+  await page.reload()
+  await toEveningExtras(page)
+  const nature = page.getByTestId('extras').getByTestId('chip-nature')
+  await nature.scrollIntoViewIfNeeded()
+  await expect(nature).toContainText('20+ min in nature today, in total')
+  await expect(nature).toHaveAttribute('aria-pressed', 'true')
+  await expect(nature).toBeDisabled()
+  await expect(page.getByTestId('nature-from-move')).toHaveText('Counted from Walk somewhere green.')
+  // What counts: closed until tapped, one line once open.
+  await expect(page.getByTestId('nature-what-text')).toHaveCount(0)
+  await page.getByTestId('nature-what').click()
+  await expect(page.getByTestId('nature-what-text')).toHaveText('Time spent in green or natural places, such as a park, garden, woods or by water, walking or sitting. Separate times add up.')
+  // The next evening, with no move in nature: the chip waits for the person's own tap, which a reload keeps.
+  await page.clock.setFixedTime(new Date(2026, 9, 24, 19, 5))
+  await page.reload()
+  await toEveningExtras(page)
+  const next = page.getByTestId('extras').getByTestId('chip-nature')
+  await next.scrollIntoViewIfNeeded()
+  await expect(next).toHaveAttribute('aria-pressed', 'false')
+  await expect(next).toBeEnabled()
+  await expect(page.getByTestId('nature-from-move')).toHaveCount(0)
+  await next.click()
+  await expect(next).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => (await extrasOf(page, '2026-10-24', 'evening'))?.nature).toBe(true)
+  // Kept across a relaunch, and shown again as tapped.
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.reload()
+  expect((await extrasOf(page, '2026-10-24', 'evening'))?.nature).toBe(true)
+  await backToEveningExtras(page)
+  await expect(page.getByTestId('extras').getByTestId('chip-nature')).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('stage 3, item 5: after a People rep is done, one optional tap against what you expected, counted under the path’s Details', async ({ page }) => {

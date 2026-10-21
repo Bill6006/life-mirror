@@ -91,16 +91,17 @@ describe('best-days', () => {
   })
 
   it('counts a chip added in stage 3, item 5, only over the days that showed it (Rule 2)', () => {
-    // Thirty days, every third high and the last nine's three highest; Outside a while today shown on the last nine
+    // Thirty days, every third high and the last nine's three highest; Something sweet shown on the last nine evenings
     // only, and tapped on their three high days. Counted over every day, the days without it would be twenty-seven.
+    // (Outside a while today was the example until 2026-10-21; time in nature's own count is in nature.test.ts.)
     const checkins = daysOf(30, (i) => (i % 3 === 0 ? (i <= 9 ? 5 : 4) : 3)).map((c) => {
       const i = Math.round((Date.parse(TODAY) - Date.parse(c.day)) / 86_400_000)
       if (c.block !== 'evening' || i > 9) return c
-      return { ...c, extras: { chipsShown: { outside: true as const }, ...(i % 3 === 0 ? { outside: true as const } : {}) } }
+      return { ...c, extras: { chipsShown: { sweet: true as const }, ...(i % 3 === 0 ? { sweet: true as const } : {}) } }
     })
     const b = bestDays(checkins, [], [], [], TODAY)
-    const outside = b.controlled.find((d) => d.label === 'time outside')
-    expect(outside).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 0, ofOthers: 6 })
+    const sweet = b.controlled.find((d) => d.label === 'something sweet')
+    expect(sweet).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 0, ofOthers: 6 })
   })
 })
 

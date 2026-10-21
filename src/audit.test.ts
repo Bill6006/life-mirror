@@ -66,8 +66,8 @@ describe('chips that stop appearing', () => {
 })
 
 describe('the chips added in stage 3, item 5, counted only where shown', () => {
-  const NEWER = ['outside', 'sweet', 'caffeineLast', 'amongPeople'] as const
-  const shownAll = { chipsShown: { outside: true, sweet: true, caffeineLast: true, amongPeople: true } } as const
+  const NEWER = ['nature', 'sweet', 'caffeineLast', 'amongPeople'] as const
+  const shownAll = { chipsShown: { nature: true, sweet: true, caffeineLast: true, amongPeople: true } } as const
   const evenings = (extras?: CheckIn['extras']) => Array.from({ length: CHIP_STRETCH }, (_, i) => ci(addDays(TODAY, -(i + 1)), 'evening', allAt(blockReadings('evening'), 3), extras))
   const withCaffeine = (extras?: CheckIn['extras']) => evenings({ ...extras, caffeineIntake: { band: 1, at: '', since: null } })
 
@@ -93,8 +93,8 @@ describe('the chips added in stage 3, item 5, counted only where shown', () => {
   })
 
   it('reads a tap as shown, so a tapped check-in is never left out', () => {
-    const states = chipStates([ci(addDays(TODAY, -1), 'evening', {}, { outside: true })], [], {}, TODAY)
-    expect(states.find((s) => s.id === 'outside')).toMatchObject({ evenings: 1, lastTap: addDays(TODAY, -1) })
+    const states = chipStates([ci(addDays(TODAY, -1), 'evening', {}, { nature: true })], [], {}, TODAY)
+    expect(states.find((s) => s.id === 'nature')).toMatchObject({ evenings: 1, lastTap: addDays(TODAY, -1) })
   })
 })
 

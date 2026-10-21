@@ -178,16 +178,31 @@ describe('stage 3, item 5, in your own file', () => {
   const redrawn = { ...base, id: 2, moveId: 'nap-ten', candidates: ['nap-ten'], skippedAt: null, redrawn: true } as const
   const records = { offers: [asideOffer, redrawn], outcomes: [], cards: [], declarations: [], days: [{ day, weekday: 6, withHer: true, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '20:00', changed: true, createdAt: '', amongPeople: true }] } as unknown as RecordsData
 
+  it('carries time in nature as its own mark beside the older Outside a while today (item 2 of 4)', () => {
+    const later: CheckIn = { ...evening, day: '2026-10-22', completedAt: '2026-10-22T22:00:00.000Z', extras: { nature: true, chipsShown: { nature: true } } }
+    const bundle = buildExport([evening, later], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records)
+    const out = JSON.parse(bundle.json)
+    const byDay = (d: string) => out.checkins.find((c: { day: string }) => c.day === d).extras
+    expect(byDay('2026-10-22')).toMatchObject({ natureToday: true, outsideToday: false, chipsShown: ['nature'] })
+    expect(byDay(day)).toMatchObject({ natureToday: false, outsideToday: true })
+    expect(out.key.events).toEqual(expect.arrayContaining(['outsideToday', 'natureToday']))
+    expect(out.key.nature).toContain('never read as time in nature')
+    const [head, ...rows] = bundle.csv.split('\n')
+    const at = head.split(',').indexOf('nature_today')
+    expect(rows.map((r) => r.split(',')[at])).toEqual(expect.arrayContaining(['yes', '']))
+  })
+
   it('carries the new chips, when the last caffeine was, which chips were shown, and the days among people', () => {
     const bundle = buildExport([evening], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records)
     const out = JSON.parse(bundle.json)
-    expect(out.checkins[0].extras).toMatchObject({ outsideToday: true, sweetSinceLastCheckIn: true, caffeineLast: 'oneToThree', chipsShown: ['outside', 'sweet', 'caffeineLast'] })
+    // An evening from before time in nature (2026-10-21) keeps its Outside a while today as recorded, and is no nature day.
+    expect(out.checkins[0].extras).toMatchObject({ outsideToday: true, natureToday: false, sweetSinceLastCheckIn: true, caffeineLast: 'oneToThree', chipsShown: ['outside', 'sweet', 'caffeineLast'] })
     expect(out.key.events).toEqual(expect.arrayContaining(['outsideToday', 'sweetSinceLastCheckIn']))
     expect(out.key.chipsShown).toContain('not shown says nothing')
     expect(out.amongPeopleDays).toEqual([day])
     const [head, row] = bundle.csv.split('\n')
     const cell = (name: string) => row.split(',')[head.split(',').indexOf(name)]
-    expect([cell('outside_today'), cell('sweet_since_last_check_in'), cell('caffeine_last'), cell('chips_shown')]).toEqual(['yes', 'yes', 'oneToThree', 'outside; sweet; caffeineLast'])
+    expect([cell('outside_today'), cell('nature_today'), cell('sweet_since_last_check_in'), cell('caffeine_last'), cell('chips_shown')]).toEqual(['yes', '', 'yes', 'oneToThree', 'outside; sweet; caffeineLast'])
   })
 
   it('carries your own chips by their labels, a removed one with its taps, and names them where they were shown', () => {

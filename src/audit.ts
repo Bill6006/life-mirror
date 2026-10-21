@@ -48,8 +48,8 @@ export function anchorSwapDue(reading: Reading, checkins: readonly CheckIn[], ex
   return null
 }
 
-export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'outside' | 'sweet' | 'shower' | 'teeth' | 'food' | 'away' | 'caffeine' | 'caffeineLast' | 'amongPeople'
-export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'outside', 'sweet', 'shower', 'teeth', 'food', 'away', 'caffeine', 'caffeineLast', 'amongPeople']
+export type ChipId = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'nature' | 'sweet' | 'shower' | 'teeth' | 'food' | 'away' | 'caffeine' | 'caffeineLast' | 'amongPeople'
+export const CHIP_IDS: readonly ChipId[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'nature', 'sweet', 'shower', 'teeth', 'food', 'away', 'caffeine', 'caffeineLast', 'amongPeople']
 
 export interface ChipState {
   id: ChipId
@@ -67,7 +67,7 @@ function tapped(id: ChipId, c: CheckIn, ctx: DayContext | undefined): boolean {
     case 'coolingOff':
     case 'bigSocial':
     case 'napped':
-    case 'outside':
+    case 'nature':
     case 'sweet':
       return Boolean(c.extras?.[id])
     case 'shower':
@@ -99,7 +99,7 @@ export function chipStates(checkins: readonly CheckIn[], contexts: readonly DayC
   const perDay = (list: CheckIn[]) => [...new Map(list.map((c) => [c.day, c])).values()]
   const sweetDays = new Set(checkins.filter((c) => c.extras?.sweet).map((c) => c.day))
   const newer: Partial<Record<ChipId, CheckIn[]>> = {
-    outside: showed('outside'),
+    nature: showed('nature'),
     sweet: perDay(showed('sweet')),
     caffeineLast: showed('caffeineLast'),
     amongPeople: perDay(showed('amongPeople', (c) => Boolean(ctx.get(c.day)?.amongPeople))),

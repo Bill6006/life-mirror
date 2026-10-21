@@ -168,13 +168,13 @@ TABLE = [
          new="    notePlaceholder: 'One line. Claude may read it, as Settings → Brain allows.',",
          tests=[TH], pattern=AUDIT),
     dict(id='check-in-kept-whole-evening', file='src/extras.tsx',
-         old="<span class=\"row-main\">{keepTogether(copy.extras[key], 'check-in?')}</span>",
+         old="<span class=\"row-main\">{keepTogether(copy.extras[key], key === 'nature' ? '20+ min' : 'check-in?')}</span>",
          new="<span class=\"row-main\">{copy.extras[key]}</span>",
-         tests=[S], pattern='Outside a while today and Something sweet'),
+         tests=[S], pattern='time in nature and Something sweet'),
     dict(id='check-in-kept-whole', file='src/styles.css',
          old=".keep-together {\n  white-space: nowrap;\n}",
          new=".keep-together {\n}",
-         tests=[S], pattern='Outside a while today and Something sweet'),
+         tests=[S], pattern='time in nature and Something sweet'),
 ]
 
 

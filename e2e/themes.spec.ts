@@ -1517,16 +1517,16 @@ async function seedPutToUse(page: Page): Promise<void> {
       const done = new Date(at.getTime() + 95_000).toISOString()
       tx.objectStore('checkins').add({ day: key(date), block, asked, startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000, ...(extras ? { extras } : {}) })
     }
-    const shown = { outside: true, sweet: true, 'own:c1': true, 'own:c2': true, 'own:c3': true }
+    const shown = { nature: true, sweet: true, 'own:c1': true, 'own:c2': true, 'own:c3': true }
     for (let d = 1; d <= 18; d++) {
       const date = new Date(2026, 9, d)
       put(date, 'morning', 2 + (d % 3), blocks.morning)
-      put(date, 'evening', 2 + ((d + 1) % 3), blocks.evening, { chipsShown: shown, ...(d % 2 ? { outside: true } : {}), ...(d % 3 === 0 ? { sweet: true } : {}), own: d % 2 ? { c1: true } : { c2: true } })
+      put(date, 'evening', 2 + ((d + 1) % 3), blocks.evening, { chipsShown: shown, ...(d % 2 ? { nature: true } : {}), ...(d % 3 === 0 ? { sweet: true } : {}), own: d % 2 ? { c1: true } : { c2: true } })
     }
     const today = new Date(2026, 9, 19)
     put(today, 'morning', 3, ['mood', 'energy', 'stress'], { caffeineIntake: { band: 2, at: new Date(2026, 9, 19, 7, 12).toISOString(), since: null, last: 'oneToThree' }, chipsShown: { caffeineLast: true, amongPeople: true }, caffeineShown: true })
     put(today, 'afternoon', 3, blocks.afternoon, { sweet: true, chipsShown: { sweet: true } })
-    put(today, 'evening', 4, blocks.evening, { outside: true, own: { c1: true }, chipsShown: shown })
+    put(today, 'evening', 4, blocks.evening, { nature: true, own: { c1: true }, chipsShown: shown })
     const move = (id: number, extra: Record<string, unknown>) => ({ id, kind: 'block', day: key(today), block: 'morning', at: new Date(2026, 9, 19, 7, 13).toISOString(), situationKey: 'morning:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: 'walk-ten', cardId: null, candidates: ['walk-ten', 'glass-of-water'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: null, ...extra })
     tx.objectStore('offers').add(move(901, { skippedAt: new Date(2026, 9, 19, 7, 14).toISOString(), skipReason: 'dayChanged' }))
     tx.objectStore('offers').add(move(902, { moveId: 'glass-of-water', redrawn: true }))
@@ -1587,7 +1587,10 @@ const PUT_TO_USE: typeof STATES = [
     open: async (p) => {
       await blockSummary('Evening')(p)
       await p.getByRole('button', { name: 'Change the extras' }).click()
-      await expect(p.getByTestId('chip-outside')).toHaveAttribute('aria-pressed', 'true')
+      await expect(p.getByTestId('chip-nature')).toHaveAttribute('aria-pressed', 'true')
+      // Time in nature's What counts, open, laid out with the rest (item 2 of 4).
+      await p.getByTestId('nature-what').click()
+      await expect(p.getByTestId('nature-what-text')).toBeVisible()
       await expect(p.getByTestId('extras').getByRole('button', { name: 'A stand-in label of forty characters ok' })).toBeVisible()
     },
   },

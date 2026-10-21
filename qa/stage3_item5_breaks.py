@@ -31,7 +31,7 @@ A = 'src/askedDay.test.ts'
 AU = 'src/audit.test.ts'
 CH = 'src/chips.test.ts'
 WK = 'src/weekly.test.ts'
-OUT = 'src/outside.test.ts'
+NAT = 'src/nature.test.ts'
 ST = 'src/steer.test.ts'
 EX = 'src/expectancy.test.ts'
 OW = 'src/ownChips.test.ts'
@@ -40,7 +40,7 @@ EXP = 'src/export.test.ts'
 REDRAW = 'a chip that changes the day draws an untouched move again'
 AMONG = 'Out among people today, the fourth chip'
 LATE = 'the afternoon asks the two sleep readings first'
-CHIPS = 'Outside a while today and Something sweet'
+CHIPS = 'time in nature and Something sweet'
 EXPECT = 'after a People rep is done, one optional tap'
 OWN = 'your own chips, added in Settings'
 
@@ -161,20 +161,20 @@ TABLE = [
          new="  return true\n",
          tests=[CH], pattern='compared only where shown'),
     dict(id='shown-retire', file='src/audit.ts',
-         old="    outside: showed('outside'),\n",
-         new="    outside: evenings,\n",
+         old="    nature: showed('nature'),\n",
+         new="    nature: evenings,\n",
          tests=[AU], pattern='never stops one over the record from before it existed'),
     dict(id='sweet-by-the-day', file='src/audit.ts',
          old="    sweet: perDay(showed('sweet')),\n",
          new="    sweet: showed('sweet'),\n",
          tests=[AU], pattern='by the day'),
     dict(id='shown-best-days', file='src/weekly.ts',
-         old="controlled.push(countShown('outside', (d) => Boolean(evening(d)?.extras?.outside), 'time outside'))",
-         new="controlled.push(count('time outside', (d) => Boolean(evening(d)?.extras?.outside)))",
+         old="controlled.push(countShown('sweet', (d) => Boolean(byDay.get(d)?.some((c) => c.extras?.sweet)), 'something sweet'))",
+         new="controlled.push(count('something sweet', (d) => Boolean(byDay.get(d)?.some((c) => c.extras?.sweet))))",
          tests=[WK], pattern='only over the days that showed it'),
     dict(id='shown-last-night', file='src/forecastFlow.ts',
-         old="eventTest(key, ctxByDay, outside), known(key)) }))",
-         new="eventTest(key, ctxByDay, outside), key === 'caffeine' ? caffeineKnown : undefined) }))",
+         old="eventTest(key, ctxByDay, outside, natureMoves), known(key)) }))",
+         new="eventTest(key, ctxByDay, outside, natureMoves), key === 'caffeine' ? caffeineKnown : undefined) }))",
          tests=[CH], pattern='sets it only against the evenings that showed it'),
     dict(id='shown-marked', file='src/chipsSeen.ts',
          old="        void markChipsShown(slot, seen.map((e) => (e.target as HTMLElement).dataset.chip as string))\n",
@@ -185,9 +185,9 @@ TABLE = [
          new="      chipsShown: [],\n",
          tests=[EXP], pattern='carries the new chips'),
     dict(id='outside-nature', file='src/facts.ts',
-         old="chip('assoc.outside', ['nature'],",
-         new="chip('assoc.outside', [],",
-         tests=[OUT], pattern='files its comparison under nature'),
+         old="assocFact('assoc.nature', ['nature'],",
+         new="assocFact('assoc.nature', [],",
+         tests=[NAT], pattern='compares the evening of and the morning after'),
     dict(id='sweet-afternoon', file='src/checkin.tsx',
          old="      {block === 'afternoon' && complete && <SweetChip record={record} />}\n",
          new="",

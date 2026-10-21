@@ -6,12 +6,12 @@ import type { CheckIn } from './db'
 // evenings that started the same. A calculation, shown in its register; "first time recorded"
 // until there is one. Association, never cause.
 
-export type ChipKey = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'outside' | 'sweet'
+export type ChipKey = 'nothingLanded' | 'hardToSeePoint' | 'coolingOff' | 'bigSocial' | 'napped' | 'nature' | 'sweet'
 
 export type ChipAnswer = Association
 
-/** The chips added from stage 3, item 5: each counted and compared only at the check-ins that showed it. */
-export const SHOWN_CHIPS: readonly string[] = ['outside', 'sweet', 'caffeineLast', 'amongPeople']
+/** The chips added from stage 3, item 5: each counted and compared only at the check-ins that showed it. Outside a while today, no longer asked, stays for its record. */
+export const SHOWN_CHIPS: readonly string[] = ['outside', 'nature', 'sweet', 'caffeineLast', 'amongPeople']
 
 /**
  * Whether a chip was on screen at a check-in (Rule 2): tapped means shown, and the shown mark says the rest. A chip
@@ -20,7 +20,7 @@ export const SHOWN_CHIPS: readonly string[] = ['outside', 'sweet', 'caffeineLast
 export function chipShownAt(key: string, c: CheckIn): boolean {
   if (!SHOWN_CHIPS.includes(key)) return true
   const ex = c.extras
-  return Boolean(ex?.chipsShown?.[key] || (key === 'outside' && ex?.outside) || (key === 'sweet' && ex?.sweet) || (key === 'caffeineLast' && ex?.caffeineIntake?.last))
+  return Boolean(ex?.chipsShown?.[key] || (key === 'outside' && ex?.outside) || (key === 'nature' && ex?.nature) || (key === 'sweet' && ex?.sweet) || (key === 'caffeineLast' && ex?.caffeineIntake?.last))
 }
 
 export function chipAnswer(all: readonly CheckIn[], key: ChipKey, today: string): ChipAnswer {

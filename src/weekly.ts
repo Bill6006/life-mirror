@@ -8,6 +8,7 @@ import type { ReadingId } from './readings'
 import { INGREDIENT_IDS, INGREDIENTS, readingOf, type Band } from './score'
 import { necessitiesMissed } from './necessities'
 import { chipShownAt } from './chips'
+import { NATURE_SINCE, natureMoveDays } from './nature'
 import { ownShownAt } from './ownChips'
 import type { OwnChip } from './settings'
 
@@ -158,7 +159,9 @@ export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[],
   controlled.push(count('nothing landed', (d) => Boolean(evening(d)?.extras?.nothingLanded)))
   controlled.push(count('hard to see the point', (d) => Boolean(evening(d)?.extras?.hardToSeePoint)))
   controlled.push(count('a nap', (d) => Boolean(evening(d)?.extras?.napped)))
-  controlled.push(countShown('outside', (d) => Boolean(evening(d)?.extras?.outside), 'time outside'))
+  // Time in nature (item 2 of 4): the evening's tap or a move in nature done, counted only on days from its start that showed the chip or carried the move.
+  const natureMoves = natureMoveDays(outcomes)
+  controlled.push(countOver((d) => d >= NATURE_SINCE && ((byDay.get(d) ?? []).some((c) => chipShownAt('nature', c)) || natureMoves.has(d)))('20+ minutes in nature', (d) => Boolean(evening(d)?.extras?.nature) || natureMoves.has(d)))
   controlled.push(countShown('sweet', (d) => Boolean(byDay.get(d)?.some((c) => c.extras?.sweet)), 'something sweet'))
   controlled.push(count('a necessity missed', (d) => necessitiesMissed(evening(d)?.extras).length > 0))
 

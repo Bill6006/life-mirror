@@ -66,18 +66,19 @@ describe('the Caffeine item retires by the check-ins it was shown in', () => {
 })
 
 describe('the chips added in stage 3, item 5, compared only where shown (Rule 2)', () => {
-  // Twelve evenings from before Outside a while today existed, then six that showed it: three tapped, three left.
+  // Twelve evenings from before Something sweet existed, then six that showed it: three tapped, three left. (Outside a while
+  // today was the example until it gave way to time in nature on 2026-10-21; the rule is the same.)
   const before = Array.from({ length: 12 }, (_, i) => [mk(`2026-08-${String(i + 1).padStart(2, '0')}`, 'evening', 3), mk(`2026-08-${String(i + 2).padStart(2, '0')}`, 'morning', 3)]).flat()
-  const shown = (day: string, outside: boolean): CheckIn[] => [mk(`2026-09-${day}`, 'evening', 3, { chipsShown: { outside: true }, ...(outside ? { outside: true as const } : {}) }), mk(`2026-09-${String(Number(day) + 1).padStart(2, '0')}`, 'morning', outside ? 4 : 2)]
+  const shown = (day: string, sweet: boolean): CheckIn[] => [mk(`2026-09-${day}`, 'evening', 3, { chipsShown: { sweet: true }, ...(sweet ? { sweet: true as const } : {}) }), mk(`2026-09-${String(Number(day) + 1).padStart(2, '0')}`, 'morning', sweet ? 4 : 2)]
   const after = [...shown('01', true), ...shown('03', false), ...shown('05', true), ...shown('07', false), ...shown('09', true), ...shown('11', false)]
 
   it('sets the evenings that showed it against each other alone, never the evenings before it existed', () => {
-    const a = chipAnswer([...before, ...after], 'outside', '2026-09-20')
+    const a = chipAnswer([...before, ...after], 'sweet', '2026-09-20')
     expect(a.times).toBe(3)
     expect(a.without.n).toBe(3)
     // The probe that could have said yes: read as shown, the twelve earlier evenings join the side without.
-    const asShown = before.map((c) => (c.block === 'evening' ? { ...c, extras: { chipsShown: { outside: true as const } } } : c))
-    expect(chipAnswer([...asShown, ...after], 'outside', '2026-09-20').without.n).toBe(15)
+    const asShown = before.map((c) => (c.block === 'evening' ? { ...c, extras: { chipsShown: { sweet: true as const } } } : c))
+    expect(chipAnswer([...asShown, ...after], 'sweet', '2026-09-20').without.n).toBe(15)
   })
 
   it('leaves the chips from before item 5 as they always were, every evening on one side or the other', () => {
@@ -100,14 +101,14 @@ describe('last night, in the morning’s brief, for a chip added in stage 3, ite
       for (const id of Object.keys(answers) as ReadingId[]) if (['stress', 'overwhelm', 'irritation'].includes(id)) answers[id] = high ? 1 : 5
       return { ...c, answers }
     }
-    // Ten evenings from before Outside a while today existed, every morning after them high; then six that showed it,
+    // Ten evenings from before Something sweet existed, every morning after them high; then six that showed it,
     // three tapped and followed by a high morning, three left and followed by a low one; last night tapped.
     const before = Array.from({ length: 10 }, (_, i) => [mk(`2026-08-${String(i + 1).padStart(2, '0')}`, 'evening', 3), at(`2026-08-${String(i + 2).padStart(2, '0')}`, 'morning', true)]).flat()
-    const shown = [1, 3, 5, 7, 9, 11].flatMap((d) => [mk(`2026-09-${String(d).padStart(2, '0')}`, 'evening', 3, { chipsShown: { outside: true }, ...(d % 4 === 1 ? { outside: true as const } : {}) }), at(`2026-09-${String(d + 1).padStart(2, '0')}`, 'morning', d % 4 === 1)])
-    const lastNight = [mk('2026-09-14', 'evening', 3, { chipsShown: { outside: true }, outside: true })]
+    const shown = [1, 3, 5, 7, 9, 11].flatMap((d) => [mk(`2026-09-${String(d).padStart(2, '0')}`, 'evening', 3, { chipsShown: { sweet: true }, ...(d % 4 === 1 ? { sweet: true as const } : {}) }), at(`2026-09-${String(d + 1).padStart(2, '0')}`, 'morning', d % 4 === 1)])
+    const lastNight = [mk('2026-09-14', 'evening', 3, { chipsShown: { sweet: true }, sweet: true })]
     await db.checkins.bulkAdd([...before, ...shown, ...lastNight])
     const brief = await briefData('2026-09-15')
-    expect(brief.lastNight?.key).toBe('outside')
+    expect(brief.lastNight?.key).toBe('sweet')
     // Four evenings carried it, last night among them; three have a morning after.
     expect(brief.lastNight?.n).toBe(4)
     // Without it: the three evenings that showed it and were left, every morning after them low; never the ten high
