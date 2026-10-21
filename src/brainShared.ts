@@ -423,12 +423,22 @@ const NUMBER_WORDS: Readonly<Record<string, number>> = { two: 2, three: 3, four:
 const UNIT_WORDS: Readonly<Record<string, number>> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 }
 /**
  * A count written as a word (stage 1, item h): a number word before a thing the record counts, or
- * before "of"; never "one", and never a window ("the last seven days", "per week").
+ * before "of" or "out of" (2026-10-21: a coaching voice says "nine out of ten mornings"); never "one",
+ * and never a window ("the last seven days", "per week").
  */
 const COUNT_WORD = new RegExp(
-  `(?<!\\b(?:last|past|next|over|per|every|each|within|first)\\s)\\b(${Object.keys(NUMBER_WORDS).join('|')})(?:-(${Object.keys(UNIT_WORDS).join('|')}))?(?=\\s+(?:of\\b|(?:more\\s+)?(?:times?|sessions?|plans?|steps?|check-ins?|moves?|naps?|workouts?|days?|nights?|weeks?|reps?|sittings?|conversations?|evenings?|mornings?|afternoons?)\\b))`,
+  `(?<!\\b(?:last|past|next|over|per|every|each|within|first)\\s)\\b(${Object.keys(NUMBER_WORDS).join('|')})(?:-(${Object.keys(UNIT_WORDS).join('|')}))?(?=\\s+(?:of\\b|out\\s+of\\b|(?:more\\s+)?(?:times?|sessions?|plans?|steps?|check-ins?|moves?|naps?|workouts?|days?|nights?|weeks?|reps?|sittings?|conversations?|evenings?|mornings?|afternoons?)\\b))`,
   'gi',
 )
+
+/** A text less the cited facts' names (a move, a reading, an aim), each said as written: a name names, it does not count (stage 1, item h). */
+function withoutCitedNames(text: string, sheet: FactSheet, factIds: readonly string[]): string {
+  const cited = sheet.facts.filter((f) => factIds.includes(f.id))
+  const named = cited.flatMap((f) => Object.entries(f.values).filter((e): e is [string, string] => typeof e[1] === 'string' && !EARLIER_WORDS.has(e[0]) && e[1].trim().length >= 2 && !/^[\d.,:]+$/.test(e[1].trim())).map((e) => e[1].trim()))
+  let rest = text
+  for (const name of [...new Set(named)].sort((a, b) => b.length - a.length)) rest = rest.replace(new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(name)}(?=$|[^\\p{L}\\p{N}])`, 'giu'), '$1 ')
+  return rest
+}
 
 /**
  * The reason a line's numbers are refused, or null (stage 1, item h). A cited name, step or time said
@@ -438,9 +448,7 @@ const COUNT_WORD = new RegExp(
  */
 export function numbersRefusal(text: string, sheet: FactSheet, factIds: readonly string[]): string | null {
   const cited = sheet.facts.filter((f) => factIds.includes(f.id))
-  const named = cited.flatMap((f) => Object.entries(f.values).filter((e): e is [string, string] => typeof e[1] === 'string' && !EARLIER_WORDS.has(e[0]) && e[1].trim().length >= 2 && !/^[\d.,:]+$/.test(e[1].trim())).map((e) => e[1].trim()))
-  let rest = text
-  for (const name of [...new Set(named)].sort((a, b) => b.length - a.length)) rest = rest.replace(new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(name)}(?=$|[^\\p{L}\\p{N}])`, 'giu'), '$1 ')
+  let rest = withoutCitedNames(text, sheet, factIds)
   // Clock times (item 5): each names a minute of the day, 24-hour unless am or pm says so, and must be one the cited facts name; a
   // bare 9:30 in your own words may be either half. The wrong half is refused with the record's own 24-hour time.
   const times = new Set(cited.flatMap((f) => Object.entries(f.values).flatMap(([k, v]) => (typeof v === 'string' && !EARLIER_WORDS.has(k) ? clockTimesWritten(v).flatMap((t) => (t.bare ? [t.minutes, t.minutes + 720] : [t.minutes])) : []))))
@@ -749,7 +757,75 @@ export function askTestOf(raw: unknown, sheet: Pick<FactSheet, 'facts'>): { move
  * allowance a line does not have: an answer citing the owner's own tests (ladder.*) may speak of their evidence, and of
  * the research their facts carry beside them, without a library card.
  */
-export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords: number, evidence = EVIDENCE_WORDING === 'open', question = ''): { ok: true; value: AskOutput } | { ok: false; reason: string } {
+/**
+ * Ask's coaching voice (the owner's request of 2026-10-21): what matters first, numbers as support, short paragraphs. Checked
+ * beside the evidence rules, which it never loosens, and said with them, so the one retry can mend both.
+ */
+export const ASK_SHAPE = { ask: 6, deep: 10, firstSentence: 1, paragraphNumbers: 3, paragraphWords: 90 } as const
+
+/**
+ * How many numbers a text gives, for Ask's voice, read as the grounding reads them: a number in digits once (a date, a clock
+ * time, a decimal, either end of a range) and a count written as a word once, so spelling a number out neither hides it nor
+ * dodges the cap. A cited fact's name (One 25-minute block) names and counts nothing.
+ */
+export function numberCount(text: string, sheet: FactSheet, factIds: readonly string[]): number {
+  const named = withoutCitedNames(text, sheet, factIds)
+  const rest = withoutClockTimes(named)
+  const plain = rest.replace(ISO_DATE, ' ')
+  return clockTimesWritten(named).length + (rest.match(ISO_DATE) ?? []).length + numbersIn(plain).length + [...plain.matchAll(COUNT_WORD)].length
+}
+
+/** An answer's paragraphs as the Ask screen shows them, each line its own: the screen and the voice check read them alike. */
+export function askParagraphs(text: string): string[] {
+  return text
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+}
+
+/** The first sentence of an answer: its first paragraph up to the first full stop, question mark or exclamation mark before a space or the end. */
+function firstSentence(text: string): string {
+  const first = askParagraphs(text)[0] ?? ''
+  const m = /^[\s\S]*?[.!?](?=\s|$)/.exec(first)
+  return m ? m[0] : first
+}
+
+/**
+ * The record's own size, a number counting it, which opens no answer: "41 days of record and 98 check-ins" is an inventory,
+ * not what the record shows. A number of something else beside the word record ("your record says, over 14 days") is no size.
+ */
+const RECORD_SIZE = new RegExp(
+  `\\b(?:\\d[\\d,]*|${Object.keys(NUMBER_WORDS).join('|')})(?:-(?:${Object.keys(UNIT_WORDS).join('|')}))?\\s+(?:(?:days?|weeks?|months?)\\s+of\\s+(?:record|records|data|tracking|history|use|logging|check-ins?)|(?:completed\\s+)?check-ins?|entries|data points?|records?)\\b`,
+  'i',
+)
+
+/** Hype, which no answer carries, whatever the news: warmth stays specific and true to the record. */
+const HYPE = /\b(amazing|incredible|fantastic|awesome|phenomenal|superb|brilliant|spectacular|extraordinary|proud of you|so proud|great job|great work|keep up the great work|way to go|killing it|crushing it|on fire|rock ?star|superstar|unstoppable|game[- ]changer|life[- ]changing)\b/i
+
+/**
+ * Why an answer reads as a report or as hype rather than coaching, or null: hype; numbers before the point, or the record's
+ * size; more numbers than its tier carries; a paragraph that lists numbers or runs on. Every reason at once.
+ */
+export function askVoiceRefusal(text: string, deep: boolean, sheet: FactSheet, factIds: readonly string[]): string | null {
+  const reasons: string[] = []
+  const hype = HYPE.exec(text)
+  if (hype) reasons.push(`says "${hype[0]}": warmth stays specific and true to the record, never hype`)
+  const first = firstSentence(text)
+  const opening = numberCount(first, sheet, factIds)
+  if (opening > ASK_SHAPE.firstSentence) reasons.push(`the first sentence gives ${opening} numbers; at most ${ASK_SHAPE.firstSentence}: open with what matters, in words, and let the numbers support it`)
+  else if (opening > 0 && RECORD_SIZE.test(first)) reasons.push('the first sentence counts the record itself: open with what it shows of them')
+  const all = numberCount(text, sheet, factIds)
+  const cap = deep ? ASK_SHAPE.deep : ASK_SHAPE.ask
+  if (all > cap) reasons.push(`${all} numbers in the answer; at most ${cap}: the cited findings are shown below it, so say the point they make`)
+  const paragraphs = askParagraphs(text)
+  const listing = paragraphs.map((p) => numberCount(p, sheet, factIds)).find((n) => n > ASK_SHAPE.paragraphNumbers)
+  if (listing) reasons.push(`a paragraph gives ${listing} numbers; at most ${ASK_SHAPE.paragraphNumbers}: interpret the evidence rather than list it`)
+  const wall = paragraphs.map((p) => words(p)).find((n) => n > ASK_SHAPE.paragraphWords)
+  if (wall) reasons.push(`a paragraph of ${wall} words; at most ${ASK_SHAPE.paragraphWords}: short paragraphs`)
+  return reasons.length ? reasons.join('; and ') : null
+}
+
+export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly ClaimCard[], maxWords: number, evidence = EVIDENCE_WORDING === 'open', question = '', deep = false): { ok: true; value: AskOutput } | { ok: false; reason: string } {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
   const o = raw as Record<string, unknown>
   const text = typeof o.text === 'string' ? o.text.trim() : ''
@@ -761,12 +837,13 @@ export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly Clai
   const own = withoutQuoted(text, question)
   const support = ASKED_SUPPORT.exec(own)
   const why = refusal(own, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(own) ?? (support ? `says "${support[0]}": that the person asked is never support` : null)
-  if (!long && !why) {
+  const voice = askVoiceRefusal(own, deep, sheet, cited.factIds)
+  if (!long && !why && !voice) {
     const test = askTestOf(o.test, sheet)
     return { ok: true, value: { text, factIds: cited.factIds, cardIds: cited.cardIds, ...(test ? { test } : {}), ...(o.note === true ? { note: true } : {}) } }
   }
-  // Too long, and anything else as well: both said at once, so the one retry can mend both.
-  return { ok: false, reason: long && why ? `${long}; and ${why}` : ((long ?? why) as string) }
+  // Too long, wrong, or shaped as a report: every reason at once, so the one retry can mend them all.
+  return { ok: false, reason: [long, why, voice].filter(Boolean).join('; and ') }
 }
 
 /** A text less each quoted phrase (two words or more) that is the question's own, so a quote of the person is never read as a claim; a single quoted word still is. */

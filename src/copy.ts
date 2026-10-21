@@ -239,7 +239,7 @@ export const copy = {
       failed: 'Claude could not answer it.',
     },
     noChecked: 'Couldn’t produce a checked answer. Meanwhile, the findings that match its words:',
-    claudeCited: 'The findings it cited',
+    claudeCited: 'What this rests on',
     writtenBy: 'Written by Claude ({model}).',
     allowance: 'Claude: {n} of {m} answers left today.',
     allowanceNone: 'Claude: today’s answers are used. Questions wait for tomorrow.',

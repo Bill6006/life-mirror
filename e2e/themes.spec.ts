@@ -2196,6 +2196,17 @@ const ASK_STATES: typeof STATES = [
     },
   },
   {
+    name: 'Ask, Claude’s answer with what it rests on unfolded (2026-10-21)',
+    tab: 'Mirror',
+    open: async (p) => {
+      await p.getByTestId('ask-open').click()
+      await p.getByTestId('ask-past-open').click()
+      await p.getByTestId('ask-thread-row').filter({ hasText: 'Does a nap help my energy?' }).click()
+      await p.getByTestId('ask-claude-cited-open').click()
+      await expect(p.getByTestId('ask-claude-cited')).toBeVisible()
+    },
+  },
+  {
     name: 'Ask, no checked answer (stage A2)',
     tab: 'Mirror',
     open: async (p) => {

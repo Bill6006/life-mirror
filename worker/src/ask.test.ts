@@ -103,7 +103,8 @@ function untouchable(): { store: Store; touched: string[] } {
   return { store, touched }
 }
 
-const GOOD = { text: 'Your own record says a ten-minute walk likely helps your stress over the next block: offered 12 times and held back 11, over 14 days. It is still being tested, and more fair draws are what would settle it.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }
+// Coach-shaped since the voice of 2026-10-21: the point in words first, the counts after it.
+const GOOD = { text: 'A ten-minute walk likely helps your stress over the next block. Your own record has offered it 12 times and held it back 11, over 14 days. It is still being tested, and more fair draws are what would settle it.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }
 
 describe('closed by its gate (open as the build ships since stage A4, 2026-10-21)', () => {
   it('runs nothing and reads nothing by schedule, and the bridge refuses a run that is not one made by hand', async () => {
@@ -381,6 +382,42 @@ describe('the briefing and the answer (open, in these tests only)', () => {
     expect(body.instructions).toContain('"cardIds": ["..."], "test": null, "note": false}')
   })
 
+  it('tells Claude one coaching voice for both tiers, before the rules, with the voice’s own limits (2026-10-21)', async () => {
+    const { store } = await opened()
+    const standard = ((await briefing(store, at('12:01'))).body as { instructions: string }).instructions
+    const s = record()
+    asked(s, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
+    await runAsks(env, s, at('12:00'), { ...OPEN, fireFetcher: routine().f })
+    const deep = ((await briefing(s, at('12:01'), 'deep')).body as { instructions: string }).instructions
+    for (const text of [standard, deep]) {
+      expect(text).toContain("HOW TO ANSWER: write as a coach who knows this person's record, not an analyst reading it out.")
+      expect(text).toContain('the first sentence carries no count, average or date unless that number is itself the point')
+      expect(text).toContain('the facts you cite are shown below the answer, folded, so you never recite them')
+      expect(text).toContain('a tentative finding can sound human without sounding settled')
+      expect(text).toContain('no hype (amazing, incredible, fantastic, proud of you, great job)')
+      // How to coach comes before the rules it never loosens.
+      expect(text.indexOf('HOW TO ANSWER')).toBeLessThan(text.indexOf('Rules, all checked by a validator'))
+    }
+    expect(standard).toContain('Stay on the question: about 120 words, two or three short paragraphs.')
+    expect(standard).toContain("never an inventory of the record's size")
+    expect(standard).toContain('at most 3 numbers in a paragraph and 6 in the whole answer')
+    expect(standard).not.toContain('Coach me on everything')
+    expect(deep).toContain('"Coach me on everything" is a coaching read of the whole record, about 250 words in four or five short paragraphs, each opening with its point')
+    expect(deep).toContain('at most 3 numbers in a paragraph and 10 in the whole answer')
+    expect(deep).not.toContain('Stay on the question')
+  })
+
+  it('checks an answer’s voice by its tier: the deep tier carries more numbers than a standard answer (2026-10-21)', async () => {
+    const eight = { text: ['A ten-minute walk likely helps your stress over the next block. It has been offered 12 times and held back 11.', 'Its test has run over 14 days, and when done the walk reads +0.40 steps.', 'The nap has no call yet on your energy. It has been offered 5 times and held back 6.', 'Its test has run over 9 days, and when taken the nap reads +0.30 steps.'].join('\n\n'), factIds: ['ladder.walk-ten.stress', 'ladder.nap-ten.energy'], cardIds: [] }
+    const s = record()
+    const deep = asked(s, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
+    await runAsks(env, s, at('12:00'), { ...OPEN, fireFetcher: routine().f })
+    expect(await post(s, at('12:02'), eight, 'open', 'deep')).toEqual({ status: 200, body: { ok: true } })
+    expect(answerOf(s, deep.id)).toMatchObject({ status: 'answered', text: eight.text })
+    const { store } = await opened()
+    expect((await post(store, at('12:02'), eight)).body).toMatchObject({ ok: false, retry: true, reason: '8 numbers in the answer; at most 6: the cited findings are shown below it, so say the point they make' })
+  })
+
   it('serves on-demand reads under the ask profile: the Brain’s earlier lines are refused', async () => {
     const { store } = await opened()
     const r = await handleAskContext(deps(store, at('12:02')), new URL(`https://w.test/claude/context?task=ask&day=${DAY}&category=brainHistory`))
@@ -390,7 +427,7 @@ describe('the briefing and the answer (open, in these tests only)', () => {
 
 describe('the answer’s checks', () => {
   it('let an answer citing the person’s own tests speak of their evidence, which a line without a card may not', () => {
-    const text = 'The evidence from your own tests says a ten-minute walk likely helps your stress: offered 12 times and held back 11.'
+    const text = 'The evidence from your own tests says a ten-minute walk likely helps your stress. It was offered 12 times and held back 11.'
     expect(validateAsk({ text, factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sheet(DAY), [], 220)).toMatchObject({ ok: true })
     expect(validateAsk({ text: 'The evidence says your days are calm.', factIds: ['week.today'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: 'speaks of evidence without citing a card' })
     expect(validateOutput({ mode: 'strategy', text, factIds: ['ladder.walk-ten.stress'], cardIds: [], action: null }, sheet(DAY), [], 60)).toMatchObject({ ok: false, reason: 'speaks of evidence without citing a card' })
@@ -398,13 +435,13 @@ describe('the answer’s checks', () => {
 
   it('say every reason at once when an answer is too long and wrong besides, so the one retry can mend both', () => {
     const long = `${'Your record so far. '.repeat(60)}The nap eased your energy.`
-    expect(validateAsk({ text: long, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: '245 words; at most 220; and says "eased" of a test with no call yet' })
+    expect(validateAsk({ text: long, factIds: ['ladder.nap-ten.energy'], cardIds: [] }, sheet(DAY), [], 220)).toEqual({ ok: false, reason: '245 words; at most 220; and says "eased" of a test with no call yet; and a paragraph of 245 words; at most 90: short paragraphs' })
   })
 
   it('ground a number in a test’s own words, its size range among them, and no other fact’s', () => {
     const ranged = { ...WALK, text: WALK.text.replace('over 14 days;', 'over 14 days; the record alone, when done, +0.50 steps (-2.36 to +3.80);') }
     const sh = { ...sheet(DAY), facts: [...sheet(DAY).facts.filter((f) => f.id !== WALK.id), ranged, { id: 'note.x', tags: [], text: 'A note with 7 in it.', values: {} }] }
-    expect(validateAsk({ text: 'The walk’s test likely helps your stress: your record alone puts it at -2.36 to +3.80 steps.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sh, [], 220)).toMatchObject({ ok: true })
+    expect(validateAsk({ text: 'The walk’s test likely helps your stress. Your record alone puts it at -2.36 to +3.80 steps.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sh, [], 220)).toMatchObject({ ok: true })
     expect(validateAsk({ text: 'The walk’s test likely helps your stress: 4.10 steps.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }, sh, [], 220)).toEqual({ ok: false, reason: 'the number 4.10 is not in the cited facts' })
     expect(validateAsk({ text: 'Your note says 7.', factIds: ['note.x'], cardIds: [] }, sh, [], 220)).toEqual({ ok: false, reason: 'the number 7 is not in the cited facts' })
   })

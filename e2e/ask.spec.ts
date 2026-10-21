@@ -163,7 +163,7 @@ test('the export carries every conversation under its own key, each answer as la
   expect(out.notes).toEqual([{ day: '2026-09-23', text: 'A stand-in note, kept from Ask.', from: 'ask', question: 1, createdAt: '2026-09-23T13:05:00.000Z' }])
 })
 
-test('Claude’s answer, when it comes, shows with the findings it cited, and its thread then reads answered (stage A2)', async ({ page }) => {
+test('Claude’s answer, when it comes, shows with the findings it cited folded under it until tapped, and its thread then reads answered (stage A2; folded 2026-10-21)', async ({ page }) => {
   await start(page)
   await seedTurns(page, 'Does a walk help my stress?', [{ question: 'Does a walk help my stress?', claude: { status: 'answered', text: 'Your own record says a ten-minute walk likely helps your stress.\nMore fair draws are what would settle it.', facts: [{ id: 'ladder.walk-ten.stress', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5' } }], daysBefore(0))
   await page.reload()
@@ -172,6 +172,13 @@ test('Claude’s answer, when it comes, shows with the findings it cited, and it
   const claude = page.getByTestId('ask-claude')
   await expect(claude).toContainText('Your own record says a ten-minute walk likely helps your stress.')
   await expect(claude.locator('.ask-claude-text')).toHaveCount(2)
+  // What the answer rests on starts folded (2026-10-21): the coaching leads, and every finding it cited is one tap away.
+  const fold = page.getByTestId('ask-claude-cited-open')
+  await expect(fold).toHaveText('What this rests on')
+  await expect(fold).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByTestId('ask-claude-cited')).toHaveCount(0)
+  await fold.click()
+  await expect(fold).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByTestId('ask-claude-cited')).toContainText('Test: a stand-in fact, as the run read it.')
   await expect(claude).toContainText('Written by Claude (claude-opus-5-5).')
   await expect(page.getByTestId('ask-waiting')).toHaveCount(0)

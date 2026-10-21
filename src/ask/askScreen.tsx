@@ -11,7 +11,8 @@ import type { RepairEvidence, TestShown } from '../repair/evidence'
 import { rungWords } from '../repair/words'
 import { readingById, type ReadingId } from '../readings'
 import { hasMove, moveById } from '../catalogue'
-import { SubHead } from '../ui'
+import { askParagraphs } from '../brainShared'
+import { Disclosure, SubHead } from '../ui'
 import { changesOf, threadState } from './evidence'
 import { allThreads, askAbout, askAgain, askAllowance, askDeep, askEvidence, askExplain, askSooner, askStarter, askTyped, askWaitingKeys, askWaits, cancelTurn, deleteThread, keepNote, lastRead, QUESTION_MAX, reachedAny, searchThreads, settleAskTurns, testOfTurn, type AboutRef, type ThreadWhole } from './flow'
 import { matchFindings } from './match'
@@ -78,23 +79,22 @@ function ClaudeAnswer({ a }: { a: AskAnswer }) {
   const c = w()
   return (
     <div class="ask-claude" data-testid="ask-claude">
-      {(a.text ?? '')
-        .split(/\n+/)
-        .filter((p) => p.trim())
-        .map((p, i) => (
-          <p key={i} class="ask-claude-text">
-            {p}
-          </p>
-        ))}
+      {askParagraphs(a.text ?? '').map((p, i) => (
+        <p key={i} class="ask-claude-text">
+          {p}
+        </p>
+      ))}
+      {/* The findings an answer rests on: support, folded until tapped, so the coaching leads (2026-10-21). */}
       {(a.facts ?? []).length > 0 && (
-        <div class="calc" data-testid="ask-claude-cited">
-          <p class="calc-line ink">{c.claudeCited}</p>
-          {(a.facts ?? []).map((f) => (
-            <p key={f.id} class="calc-line">
-              {f.text}
-            </p>
-          ))}
-        </div>
+        <Disclosure label={c.claudeCited} testid="ask-claude-cited-open">
+          <div class="calc" data-testid="ask-claude-cited">
+            {(a.facts ?? []).map((f) => (
+              <p key={f.id} class="calc-line">
+                {f.text}
+              </p>
+            ))}
+          </div>
+        </Disclosure>
       )}
       {a.model && <p class="note faint no-gap">{fill(c.writtenBy, { model: a.model })}</p>}
     </div>

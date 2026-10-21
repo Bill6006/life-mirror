@@ -3,9 +3,9 @@
 // ships since stage A4 (2026-10-21): every context runs with no test key, as the owner's phone does. The question box and only
 // the starters with something to say; "What do you know" answered at once from the repair's read; its thread in Recent; a
 // typed question waiting with the findings its words name, and cancelled; "Ask about this" from Evidence, and back.
-// Stage A2: Claude's answer with the findings it cited, and no checked answer said plainly. Stage A3: "Test it" for a
-// question naming one test, with the context it names and the asking kept; "Add this as a note", kept, listed under Your
-// words and removed there.
+// Stage A2: Claude's answer with the findings it cited (folded under "What this rests on" until tapped, 2026-10-21), and no
+// checked answer said plainly. Stage A3: "Test it" for a question naming one test, with the context it names and the asking
+// kept; "Add this as a note", kept, listed under Your words and removed there.
 // node live-ask.mjs <expected short commit> [screenshot folder]
 // LIVE_URL=<url> points it at another copy of the site, such as a local preview, to prove the script itself.
 import { chromium, tab } from './common.mjs'
@@ -144,7 +144,7 @@ async function seedClaude(page) {
       })
       tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at, ...answer })
     }
-    await one('Does a nap help my energy?', { status: 'answered', text: 'A stand-in answer, as Claude would write one.', factIds: ['ladder.nap-ten.energy'], cardIds: [], facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5' })
+    await one('Does a nap help my energy?', { status: 'answered', text: 'A stand-in answer, as Claude would write one.\n\nAnd a second paragraph, shorter.', factIds: ['ladder.nap-ten.energy'], cardIds: [], facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact, as the run read it.' }], model: 'claude-opus-5-5' })
     await one('Why are my mornings flat?', { status: 'failed', reason: 'a stand-in' })
     // Stage A3: an answer that names a test and marks the question as a note.
     await one('The neighbours had a party until two.', { status: 'answered', text: 'A stand-in answer: that is a note of the night, not a reading.', factIds: [], cardIds: [], facts: [], model: 'claude-opus-5-5', test: 'walk-ten|mood|nextBlock', noteOffer: true })
@@ -223,7 +223,13 @@ try {
     await page.getByTestId('ask-past-open').click()
     await page.getByTestId('ask-thread-row').filter({ hasText: 'Does a nap help my energy?' }).click()
     check('Claude’s answer shows in its words', (await text(page.getByTestId('ask-claude'))).includes('A stand-in answer, as Claude would write one.'))
-    check('with the findings it cited', (await text(page.getByTestId('ask-claude-cited'))).includes('Test: a stand-in fact, as the run read it.'))
+    check('in its own paragraphs', (await page.getByTestId('ask-claude').locator('.ask-claude-text').count()) === 2)
+    // What it rests on starts folded (2026-10-21): the coaching leads, and the findings it cited are one tap away.
+    const fold = page.getByTestId('ask-claude-cited-open')
+    check('what it rests on starts folded', (await text(fold)) === 'What this rests on' && (await fold.getAttribute('aria-expanded')) === 'false' && (await page.getByTestId('ask-claude-cited').count()) === 0, await text(fold))
+    await shot(page.getByTestId('ask-thread'), 'ask-claude-folded')
+    await fold.click()
+    check('and unfolds to the findings it cited', (await text(page.getByTestId('ask-claude-cited'))).includes('Test: a stand-in fact, as the run read it.'))
     await shot(page.getByTestId('ask-thread'), 'ask-claude')
     await page.getByTestId('ask-delete').click()
     check('deleting a thread a run read says a copy stays on claude.ai', (await text(page.getByTestId('ask-delete-copy'))).includes('claude.ai'))
