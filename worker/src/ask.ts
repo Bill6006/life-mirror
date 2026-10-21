@@ -1,5 +1,5 @@
 import { ASK, citedFacts, isWriterModel, readBrainPrefs, validateAsk } from '../../src/brainShared'
-import { answerIdOf, askTaskIds, ASK_TRIES, ASK_WAITS_DAYS, ASK_WORDS, deepTaskId, roomFor, triesOf, type AskAnswer, type AskRun, type AskTask } from '../../src/ask/shared'
+import { answerIdOf, askQueue, askTaskIds, ASK_TRIES, ASK_WAITS_DAYS, ASK_WORDS, deepTaskId, handTaskIds, roomFor, triesOf, type AskAnswer, type AskRun, type AskTask } from '../../src/ask/shared'
 import { namesIn } from '../../src/ask/names'
 import type { AskCitation, AskTurn } from '../../src/ask/types'
 import { reachedClaude, retryAtOf } from '../../src/coachShared'
@@ -12,7 +12,6 @@ import { claudeOn, fallbackReason, fire, fireFailure, fireText, journalVerdict, 
 import { cardLines, loadLibrary, retrieve } from './library'
 import { askInstructions, journalRules } from './prompt'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, gatesFrom, loadCatalogue, parseContextQuery, privateNames, READABLE, readOnDemand, sheetForClaude, type Access } from './retrieval'
-import { waitFor } from './skillCoach'
 import { DATING_WORDS, surfaceGuard } from './surface'
 import { addDays, localTime } from './time'
 import type { Store, TaskRow } from './turso'
@@ -45,7 +44,7 @@ export interface AsksOptions {
   fireFetcher?: typeof fetch
   /** For the tests; the deployed Worker reads the shared gate. */
   gate?: Gate
-  /** What the coach's job said on this same tick, when it ran first. */
+  /** What the coach's job said on this same tick; Ask no longer waits for the coach (item 1 of 2026-10-21), so nothing reads it. */
   coach?: { reason: string }
 }
 
@@ -71,11 +70,22 @@ export function turnOf(id: string, body: unknown): (AskTurn & { id: number }) | 
 
 /** A day's task rows for Ask, as the allowance and the tries read them. */
 export function asRun(t: TaskRow): AskRun {
-  return { id: t.id, task: t.task === 'deep' ? 'deep' : 'ask', day: t.day, at: t.at, status: t.status, ...(t.firedAt ? { firedAt: t.firedAt } : {}), ...(t.retryAfter !== undefined ? { retryAfter: t.retryAfter } : {}), turns: t.turns ?? [] }
+  return { id: t.id, task: t.task === 'deep' ? 'deep' : 'ask', day: t.day, at: t.at, status: t.status, ...(t.firedAt ? { firedAt: t.firedAt } : {}), ...(t.retryAfter !== undefined ? { retryAfter: t.retryAfter } : {}), turns: t.turns ?? [], ...(t.dry === true ? { dry: true } : {}) }
 }
 
+/** The day's runs: the owner's slots and the builder's runs by hand, which count for nothing (item 1 of 2026-10-21). */
 async function todaysTasks(store: Store, day: string): Promise<TaskRow[]> {
-  return (await Promise.all([...askTaskIds(day), deepTaskId(day)].map((id) => store.readTask(id)))).filter((t): t is TaskRow => t !== null)
+  return (await Promise.all([...askTaskIds(day), deepTaskId(day), ...handTaskIds(day)].map((id) => store.readTask(id)))).filter((t): t is TaskRow => t !== null)
+}
+
+/**
+ * The Brain's own run of the day under way, the line, the coach, the Sunday review or the skill coach's review, fired
+ * and inside its time: Ask waits for it alone, so the two never run at once (item 1 of 2026-10-21). Never held for a line
+ * not yet written.
+ */
+async function brainBusy(store: Store, day: string, now: Date, timeout: number): Promise<string | null> {
+  const rows = await Promise.all(['line', 'coach', 'review', 'progress'].map((k) => store.readTask(`task:${day}:${k}`)))
+  return rows.some((t) => t !== null && (t.status === 'firing' || t.status === 'fired') && !fallbackReason(t, now, timeout)) ? 'waiting for the Brain’s run under way' : null
 }
 
 /** The questions waiting for Claude within the days a question waits, oldest first: never cancelled, never answered. */
@@ -114,12 +124,15 @@ async function startAskTask(env: AsksEnv, store: Store, now: Date, task: AskTask
   return { ran: false, reason: why, day, task: id, ...(turn !== undefined ? { turn } : {}) }
 }
 
-/** The slot a run of this tier takes now, or why none is free: a refused fire's slot once its wait is over, else the next unused one. */
+/**
+ * The slot a run of this tier takes now, or why none is free: a refused fire's slot once its wait is over, else the next
+ * unused one. A row a run by hand left in one of the owner's slots counts for nothing and leaves its slot free.
+ */
 function slotFor(task: AskTask, tasks: readonly TaskRow[], day: string, now: Date): { id: string } | { reason: string } {
   const runs = tasks.map(asRun)
   if (!roomFor(task, runs)) return { reason: 'today’s answers are used; the rest wait for tomorrow' }
   const ids = task === 'deep' ? [deepTaskId(day)] : askTaskIds(day)
-  const mine = tasks.filter((t) => ids.includes(t.id))
+  const mine = tasks.filter((t) => ids.includes(t.id) && t.dry !== true)
   const refused = mine.find((t) => !reachedClaude(t) && t.status === 'fallback')
   if (refused) {
     const at = retryAtOf(refused)
@@ -131,9 +144,10 @@ function slotFor(task: AskTask, tasks: readonly TaskRow[], day: string, now: Dat
 
 /**
  * Ask Life Mirror's job, each minute. Closed, it returns before reading anything, unless run by hand on a stand-in
- * question. Open: a run under way is waited for, or let go past its time (its question waits for the next run). Then the
- * oldest waiting question starts at once, once the day's line and the coach are settled, within the day's allowance; a
- * question its runs could not answer, or older than the days a question waits, is said as no checked answer.
+ * question. Open: a run under way is waited for, or let go past its time (its question waits for the next run). Then, on
+ * demand (item 1 of 2026-10-21), the first question the day's queue takes starts at once, waiting only while the Brain's
+ * own run is under way, never for a line not yet written; a question its runs could not answer, or older than the days a
+ * question waits, is said as no checked answer. A run by hand takes an id of its own and counts against nothing.
  */
 export async function runAsks(env: AsksEnv, store: Store, now: Date, opts: AsksOptions = {}): Promise<AsksResult> {
   const byHand = opts.dry === true && typeof opts.question === 'string' && opts.question.trim().length > 0
@@ -149,14 +163,16 @@ export async function runAsks(env: AsksEnv, store: Store, now: Date, opts: AsksO
     return { ran: false, reason: why, day, task: t.id }
   }
   if (byHand) {
+    // The builder's run: an id of its own, never one of the owner's, counting against nothing (item 1 of 2026-10-21).
     const task: AskTask = opts.deep ? 'deep' : 'ask'
-    const slot = slotFor(task, tasks, day, now)
-    if (!('id' in slot)) return { ran: false, reason: slot.reason, day }
-    return startAskTask(env, store, now, task, slot.id, day, { question: (opts.question as string).trim().slice(0, STAND_IN_MAX) }, { ...opts, force: true })
+    const free = handTaskIds(day).find((id) => !tasks.some((t) => t.id === id))
+    if (!free) return { ran: false, reason: 'no run by hand is left today', day }
+    return startAskTask(env, store, now, task, free, day, { question: (opts.question as string).trim().slice(0, STAND_IN_MAX) }, { ...opts, force: true })
   }
   const waiting = await waitingTurns(store, day)
   if (!waiting.length) return { ran: false, reason: 'nothing asked', day }
   const runs = tasks.map(asRun)
+  const live: (AskTurn & { id: number })[] = []
   for (const turn of waiting) {
     // A question waits three days at most, and two runs a day that reached Claude without a checked answer.
     if (turn.day < addDays(day, -(ASK_WAITS_DAYS - 1))) {
@@ -167,16 +183,21 @@ export async function runAsks(env: AsksEnv, store: Store, now: Date, opts: AsksO
       await noAnswer(store, turn, `${ASK_TRIES} runs reached Claude with no checked answer`, now)
       continue
     }
-    if (!opts.force) {
-      const wait = await waitFor(store, day, opts.coach)
-      if (wait) return { ran: false, reason: wait, day, turn: turn.id }
-    }
-    const task: AskTask = turn.tier === 'deep' ? 'deep' : 'ask'
-    const slot = slotFor(task, tasks, day, now)
-    if (!('id' in slot)) return { ran: false, reason: slot.reason, day, turn: turn.id }
-    return startAskTask(env, store, now, task, slot.id, day, { turns: [turn.id] }, opts)
+    live.push(turn)
   }
-  return { ran: false, reason: 'nothing asked', day }
+  if (!live.length) return { ran: false, reason: 'nothing asked', day }
+  // The day's queue, the phone's own rule: a question that does not fit today never holds one behind it.
+  const queue = askQueue(live, runs, day)
+  const turn = live.find((t) => t.id === queue.taken[0])
+  if (!turn) return { ran: false, reason: 'today’s answers are used; the rest wait for tomorrow', day, turn: live[0].id }
+  if (!opts.force) {
+    const busy = await brainBusy(store, day, now, timeoutMinutes(env))
+    if (busy) return { ran: false, reason: busy, day, turn: turn.id }
+  }
+  const task: AskTask = turn.tier === 'deep' ? 'deep' : 'ask'
+  const slot = slotFor(task, tasks, day, now)
+  if (!('id' in slot)) return { ran: false, reason: slot.reason, day, turn: turn.id }
+  return startAskTask(env, store, now, task, slot.id, day, { turns: [turn.id] }, opts)
 }
 
 // ─── The briefing and the answer ────────────────────────────────────────────────────────────────
@@ -187,8 +208,9 @@ export type AskDeps = Deps & { gate?: Gate }
 async function openAskTask(deps: AskDeps, task: unknown, day: unknown): Promise<{ ok: true; t: TaskRow } | { ok: false; reply: Reply }> {
   if (task !== 'ask' && task !== 'deep') return { ok: false, reply: reply(400, { error: 'task must be ask or deep' }) }
   if (typeof day !== 'string' || !DAY_RE.test(day)) return { ok: false, reply: reply(400, { error: 'day must be YYYY-MM-DD' }) }
-  const ids = task === 'deep' ? [deepTaskId(day)] : askTaskIds(day)
-  const open = (await Promise.all(ids.map((id) => deps.store.readTask(id)))).filter((t): t is TaskRow => t !== null && (t.status === 'firing' || t.status === 'fired'))
+  // The owner's slots and the builder's runs by hand, which keep ids of their own (item 1 of 2026-10-21).
+  const ids = [...(task === 'deep' ? [deepTaskId(day)] : askTaskIds(day)), ...handTaskIds(day)]
+  const open = (await Promise.all(ids.map((id) => deps.store.readTask(id)))).filter((t): t is TaskRow => t !== null && (t.task ?? 'ask') === task && (t.status === 'firing' || t.status === 'fired'))
   const t = open.sort((a, b) => (a.at < b.at ? 1 : -1))[0]
   if (!t) return { ok: false, reply: reply(409, { error: `no ${task} run is open for ${day}` }) }
   if ((deps.gate ?? ASK) !== 'open' && !(t.dry === true && typeof t.question === 'string')) return { ok: false, reply: reply(403, { error: 'Ask Life Mirror is not switched on' }) }

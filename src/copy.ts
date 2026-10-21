@@ -233,10 +233,9 @@ export const copy = {
     waits: {
       cloud: 'Claude’s answers come through your cloud copy, and this phone keeps none: Settings → Cloud sets it up. The findings below answer from the record meanwhile.',
       unsent: 'Not sent yet: it goes when the phone is online.',
-      soon: 'Waiting for Claude’s answer.',
-      line: 'Waiting for the day’s line, which comes first.',
+      soon: 'Claude is on it, or it is next.',
       refused: 'Claude could not be reached just now; it is tried again at {time}.',
-      tomorrow: 'Today’s answers from Claude are used; it is answered tomorrow.',
+      tomorrow: 'Today’s answers from Claude do not reach it; it is answered tomorrow.',
       failed: 'Claude could not answer it.',
     },
     noChecked: 'Couldn’t produce a checked answer. Meanwhile, the findings that match its words:',

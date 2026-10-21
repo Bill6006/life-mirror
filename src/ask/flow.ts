@@ -8,7 +8,7 @@ import { guardRepair } from '../repair/breaker'
 import { repairEvidence, type RepairEvidence, type TestShown } from '../repair/evidence'
 import { citeOf, evidenceVersion, testsOf } from './evidence'
 import { testsNamed } from './match'
-import { allowanceUsed, answerIdOf, ASK_ANSWERS_A_DAY, askTaskIds, askWaitOf, deepTaskId, roomFor, type AskAnswer, type AskRun, type AskWait } from './shared'
+import { answerIdOf, ASK_ANSWERS_A_DAY, askQueue, askTaskIds, askWaitOf, deepTaskId, type AskAnswer, type AskRun, type AskWait } from './shared'
 import { aboutAnswer, changedAnswer, keysOfLine, knowAnswer, liftable, nextAnswer, type Laid, type LastRead } from './quick'
 import type { AboutSource, AskStarter, AskThread, AskTurn, KeptNote } from './types'
 
@@ -207,22 +207,38 @@ export async function settleAskTurns(now: Date = new Date()): Promise<number> {
 }
 
 /** Where each question waiting for Claude stands now (point 17), by turn. */
+/** The questions waiting for Claude, oldest first, as the Worker orders them: the queue reads them in this order. */
+function waitingInOrder(turns: readonly AskTurn[]): (AskTurn & { id: number })[] {
+  return turns
+    .filter((t): t is AskTurn & { id: number } => t.state === 'waiting' && t.tier !== 'quick' && typeof t.id === 'number')
+    .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id - b.id))
+}
+
+/** Where each waiting question stands (point 17), from the day's queue, the Worker's own rule (item 1 of 2026-10-21). */
 export async function askWaits(now: Date = new Date()): Promise<Map<number, AskWait>> {
   const day = blockAt(now).day
-  const [turns, runs, settings, queuedRows, sync, line] = await Promise.all([db.askTurns.toArray(), db.askRuns.where('day').equals(day).toArray(), getSettings(), db.outbox.filter((r) => r.store === 'askTurns').toArray(), db.cloudMeta.get('state'), db.brainBriefs.get(`${day}:brief`)])
+  const [turns, runs, settings, queuedRows, sync] = await Promise.all([db.askTurns.toArray(), db.askRuns.where('day').equals(day).toArray(), getSettings(), db.outbox.filter((r) => r.store === 'askTurns').toArray(), db.cloudMeta.get('state')])
   const queued = new Set(queuedRows.map((r) => r.key))
   const online = typeof navigator === 'undefined' || navigator.onLine !== false
-  const o = { cloud: Boolean(settings.cloud.token), reachable: online && !sync?.lastError, lineIn: Boolean(line) }
+  const o = { cloud: Boolean(settings.cloud.token), reachable: online && !sync?.lastError }
+  const waiting = waitingInOrder(turns)
+  const queue = askQueue(waiting, runs, day)
   const out = new Map<number, AskWait>()
-  for (const t of turns) if (t.state === 'waiting' && t.tier !== 'quick' && typeof t.id === 'number') out.set(t.id, askWaitOf(t, runs, { ...o, queued: queued.has(String(t.id)) }))
+  for (const t of waiting) out.set(t.id, askWaitOf(t, runs, { ...o, queued: queued.has(String(t.id)) }, queue))
   return out
 }
 
-/** The day's allowance as the main screen shows it: answers left, and whether the deep tier fits today. Null without a cloud copy, when Claude cannot be asked. */
+/**
+ * The day's allowance as the main screen shows it: the units left once the day's runs and the questions already waiting
+ * are counted, the same count the Worker answers by, so a question asked takes its units at once; and whether "Coach me on
+ * everything" fits today. Null without a cloud copy, when Claude cannot be asked.
+ */
 export async function askAllowance(now: Date = new Date()): Promise<{ left: number; of: number; deep: boolean } | null> {
-  const [runs, settings] = await Promise.all([db.askRuns.where('day').equals(blockAt(now).day).toArray(), getSettings()])
+  const day = blockAt(now).day
+  const [turns, runs, settings] = await Promise.all([db.askTurns.toArray(), db.askRuns.where('day').equals(day).toArray(), getSettings()])
   if (!settings.cloud.token) return null
-  return { left: Math.max(0, ASK_ANSWERS_A_DAY - allowanceUsed(runs)), of: ASK_ANSWERS_A_DAY, deep: roomFor('deep', runs) }
+  const queue = askQueue(waitingInOrder(turns), runs, day)
+  return { left: queue.left, of: ASK_ANSWERS_A_DAY, deep: queue.deep }
 }
 
 /** The brain's rows a waiting question looks at, by key: each waiting turn's answer, and the day's runs. */

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { askTestOf, validateAsk, validateOutput } from '../../src/brainShared'
-import { answerIdOf, askTaskIds, deepTaskId, roomFor } from '../../src/ask/shared'
+import { answerIdOf, askQueue, askTaskIds, deepTaskId, handTaskIds, roomFor } from '../../src/ask/shared'
 import type { AskTurn } from '../../src/ask/types'
 import type { FactSheet } from '../../src/factTypes'
-import { askBriefingText, handleAskBriefing, handleAskContext, handleAskLine, namedFirst, runAsks } from './ask'
+import { askBriefingText, asRun, handleAskBriefing, handleAskContext, handleAskLine, namedFirst, runAsks } from './ask'
 import { taskIdOf } from './claude'
 import { addDays } from './time'
 import { APP, BRAIN_APP, memoryStore, type Store, type TaskRow } from './turso'
@@ -125,9 +125,11 @@ describe('closed by its gate (open as the build ships since stage A4, 2026-10-21
     const store = record()
     const r = routine()
     const res = await runAsks(env, store, at('12:00'), { dry: true, question: 'How is my walking test going?', fireFetcher: r.f })
-    expect(res).toMatchObject({ ran: true, task: askTaskIds(DAY)[0] })
+    // An id of its own, never one of the owner's slots (item 1 of 2026-10-21).
+    expect(res).toMatchObject({ ran: true, task: handTaskIds(DAY)[0] })
     expect(r.calls).toEqual([`Life Mirror bridge: task=ask day=${DAY} model=opus. Read CLAUDE.md in this repository and do exactly what it says, then stop.`])
-    expect(await taskOf(store, askTaskIds(DAY)[0])).toMatchObject({ dry: true, question: 'How is my walking test going?', status: 'fired' })
+    expect(await taskOf(store, handTaskIds(DAY)[0])).toMatchObject({ dry: true, question: 'How is my walking test going?', status: 'fired' })
+    expect(await taskOf(store, askTaskIds(DAY)[0])).toBeNull()
     const b = await briefing(store, at('12:01'), 'ask', 'gated')
     expect(b.status).toBe(200)
     expect((b.body as { briefing: string }).briefing).toContain('How is my walking test going?')
@@ -137,7 +139,7 @@ describe('closed by its gate (open as the build ships since stage A4, 2026-10-21
 })
 
 describe('the runs (open, in these tests only)', () => {
-  it('starts the oldest waiting question once the day’s line and the coach are settled, with no personal words in the fire', async () => {
+  it('starts the oldest waiting question at once, with no personal words in the fire', async () => {
     const store = record()
     const first = asked(store, 'Does a walk help my stress?', { at: at('08:00').toISOString() })
     asked(store, 'And naps?', { at: at('08:30').toISOString() })
@@ -150,13 +152,55 @@ describe('the runs (open, in these tests only)', () => {
     expect(await runAsks(env, store, at('12:01'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'waiting for Claude' })
   })
 
-  it('waits for the day’s line before any question runs (D7), unless run by hand', async () => {
+  it('answers on demand before the day’s line exists, at any hour (item 1 of 2026-10-21)', async () => {
+    const store = record({ line: false })
+    const turn = asked(store, 'Does a walk help my stress?')
+    const r = routine()
+    expect(await runAsks(env, store, at('05:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: turn.id, task: askTaskIds(DAY)[0] })
+    expect(r.calls).toHaveLength(1)
+  })
+
+  it('waits only while the Brain’s own run is under way, the line, the coach, the review or the skill coach’s, then starts', async () => {
+    for (const k of ['line', 'coach', 'review', 'progress']) {
+      const store = record({ line: false })
+      const turn = asked(store, 'Does a walk help my stress?')
+      const r = routine()
+      const brain = { id: `task:${DAY}:${k}`, kind: 'task' as const, task: k, day: DAY, at: at('08:59').toISOString(), status: 'fired' as const, trigger: 'scheduled', factsDay: DAY, askedModel: 'opus', firedAt: at('08:59').toISOString(), contextCalls: 0, contextBytes: 0, posts: 0, refusals: [] }
+      await store.writeTask(brain as never)
+      expect(await runAsks(env, store, at('09:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'waiting for the Brain’s run under way', turn: turn.id })
+      expect(r.calls).toEqual([])
+      await store.writeTask({ ...brain, status: 'written' } as never)
+      expect(await runAsks(env, store, at('09:01'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: turn.id })
+    }
+    // A run past its time holds nothing back.
     const store = record({ line: false })
     asked(store, 'Does a walk help my stress?')
+    await store.writeTask({ id: `task:${DAY}:line`, kind: 'task', task: 'line', day: DAY, at: at('06:00').toISOString(), status: 'fired', trigger: 'scheduled', factsDay: DAY, askedModel: 'opus', firedAt: at('06:00').toISOString(), contextCalls: 0, contextBytes: 0, posts: 0, refusals: [] } as never)
+    expect(await runAsks(env, store, at('09:00'), { ...OPEN, fireFetcher: routine().f })).toMatchObject({ ran: true })
+  })
+
+  it('counts nothing a run by hand did: today’s deep measurement left in the owner’s deep slot neither counts nor holds it', async () => {
+    const store = record({ line: false })
+    await store.writeTask({ id: deepTaskId(DAY), kind: 'task', task: 'deep', day: DAY, at: at('00:23').toISOString(), status: 'written', trigger: 'forced', forced: true, dry: true, question: 'Coach me on everything', factsDay: DAY, askedModel: 'opus', firedAt: at('00:23').toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [] } as never)
+    const first = asked(store, 'So far, what do you know about me?')
+    const deep = asked(store, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
     const r = routine()
-    expect(await runAsks(env, store, at('08:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'waiting for the day’s line' })
-    expect(r.calls).toEqual([])
-    expect(await runAsks(env, store, at('08:00'), { ...OPEN, force: true, fireFetcher: r.f })).toMatchObject({ ran: true })
+    expect(await runAsks(env, store, at('05:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: first.id, task: askTaskIds(DAY)[0] })
+    await post(store, at('05:02'), GOOD)
+    expect(await runAsks(env, store, at('05:03'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: deep.id, task: deepTaskId(DAY) })
+    expect(await taskOf(store, deepTaskId(DAY))).toMatchObject({ turns: [deep.id] })
+    expect((await taskOf(store, deepTaskId(DAY)) as { dry?: boolean }).dry).toBeUndefined()
+  })
+
+  it('starts exactly the question the shared queue takes first, the phone’s own rule: a deep one that no longer fits holds nothing back', async () => {
+    const store = record({ line: false })
+    await store.writeTask({ id: deepTaskId(DAY), kind: 'task', task: 'deep', day: DAY, at: at('07:00').toISOString(), status: 'written', trigger: 'ask', factsDay: DAY, askedModel: 'opus', firedAt: at('07:00').toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [], turns: [90] } as never)
+    const deep = asked(store, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
+    const plain = asked(store, 'Does a walk help my stress?')
+    const runs = [asRun((await taskOf(store, deepTaskId(DAY))) as never)]
+    const queue = askQueue([{ id: deep.id, tier: 'deep', day: DAY }, { id: plain.id, tier: 'standard', day: DAY }], runs, DAY)
+    expect(queue).toMatchObject({ taken: [plain.id], tomorrow: [deep.id], left: 0 })
+    expect(await runAsks(env, store, at('08:00'), { ...OPEN, fireFetcher: routine().f })).toMatchObject({ ran: true, turn: queue.taken[0] })
   })
 
   it('stays within the day’s allowance: three answers that reached Claude, the deep tier counting two and once a day', async () => {
@@ -218,7 +262,7 @@ describe('the runs (open, in these tests only)', () => {
     const next = addDays(DAY, 1)
     const r = routine()
     expect(await runAsks(env, store, at('01:00', next), { dry: true, question: 'How is my walking test going?', fireFetcher: r.f })).toMatchObject({ ran: true })
-    expect(await taskOf(store, askTaskIds(next)[0])).toMatchObject({ day: next, factsDay: DAY })
+    expect(await taskOf(store, handTaskIds(next)[0])).toMatchObject({ day: next, factsDay: DAY })
     const b = await handleAskBriefing(deps(store, at('01:01', next), 'gated'), new URL(`https://w.test/claude/briefing?task=ask&day=${next}`))
     expect(b.status).toBe(200)
     expect((b.body as { briefing: string }).briefing).toContain(`These facts were built on ${DAY}`)

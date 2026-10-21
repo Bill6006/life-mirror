@@ -26,6 +26,11 @@ export type AskTask = 'ask' | 'deep'
 export const askTaskIds = (day: string): string[] => Array.from({ length: ASK_ANSWERS_A_DAY }, (_, i) => `task:${day}:ask${i ? `.${i + 1}` : ''}`)
 /** The day's one deep run. */
 export const deepTaskId = (day: string): string => `task:${day}:deep`
+/**
+ * Runs by hand on a stand-in question, the builder's measurements and checks (item 1 of 2026-10-21): ids of their own,
+ * never one of the owner's, counting against nothing and never the day's deep.
+ */
+export const handTaskIds = (day: string): string[] => Array.from({ length: 9 }, (_, i) => `task:${day}:hand.${i + 1}`)
 /** Claude's answer to a turn, by the turn. */
 export const answerIdOf = (turnId: number): string => `turn:${turnId}`
 
@@ -41,6 +46,8 @@ export interface AskRun {
   retryAfter?: string | null
   /** The turns it carried: one. */
   turns: number[]
+  /** A run by hand on a stand-in question, left in one of the owner's slots before 2026-10-21: it counts for nothing. */
+  dry?: boolean
 }
 
 /** Claude's answer to one turn, checked by the Worker; or that no checked answer could be made. */
@@ -67,16 +74,65 @@ export interface AskAnswer {
   noteOffer?: boolean
 }
 
-/** How much of the day's allowance its runs have used: each run that reached Claude counts one, the deep tier DEEP_COUNTS. */
-export function allowanceUsed(runs: readonly Pick<AskRun, 'task' | 'firedAt'>[]): number {
-  return runs.filter(reachedClaude).reduce((n, r) => n + (r.task === 'deep' ? DEEP_COUNTS : 1), 0)
+/** A run of the owner's that reached Claude: a run by hand never counts (item 1 of 2026-10-21). */
+const counts = (r: Pick<AskRun, 'firedAt'> & { dry?: boolean }): boolean => r.dry !== true && reachedClaude(r)
+
+/** How much of the day's allowance its runs have used: each run of the owner's that reached Claude counts one, the deep tier DEEP_COUNTS. */
+export function allowanceUsed(runs: readonly (Pick<AskRun, 'task' | 'firedAt'> & { dry?: boolean })[]): number {
+  return runs.filter(counts).reduce((n, r) => n + (r.task === 'deep' ? DEEP_COUNTS : 1), 0)
 }
 
 /** Whether a turn of this tier may still run today, by the allowance alone: the deep tier also once a day. */
-export function roomFor(task: AskTask, runs: readonly Pick<AskRun, 'task' | 'firedAt'>[], allowance: number = ASK_ANSWERS_A_DAY): boolean {
+export function roomFor(task: AskTask, runs: readonly (Pick<AskRun, 'task' | 'firedAt'> & { dry?: boolean })[], allowance: number = ASK_ANSWERS_A_DAY): boolean {
   const used = allowanceUsed(runs)
-  if (task === 'deep') return used + DEEP_COUNTS <= allowance && !runs.some((r) => r.task === 'deep' && reachedClaude(r))
+  if (task === 'deep') return used + DEEP_COUNTS <= allowance && !runs.some((r) => r.task === 'deep' && counts(r))
   return used + 1 <= allowance
+}
+
+/** The day's queue as the Worker runs it and the phone says it, one function for both (item 1 of 2026-10-21). */
+export interface AskQueue {
+  /** The waiting questions today's units will answer, in the order they start. */
+  taken: number[]
+  /** The waiting questions that wait for tomorrow: their units are not left today. */
+  tomorrow: number[]
+  /** Units left once the day's runs and the questions taken are counted. */
+  left: number
+  /** Whether a "Coach me on everything" asked now would fit today. */
+  deep: boolean
+}
+
+/**
+ * The waiting questions, oldest first: each that fits the units left (the deep tier DEEP_COUNTS, once a day) is taken in
+ * turn; one that does not waits for tomorrow, and the next is looked at, so a deep question that no longer fits never
+ * holds a standard one behind it. A question a run is at already holds its units, counted the moment it is fired. A
+ * question past the days a question waits, or out of tries, is let go and takes nothing.
+ */
+export function askQueue(turns: readonly { id: number; tier: string; day?: string }[], runs: readonly AskRun[], today?: string, allowance: number = ASK_ANSWERS_A_DAY): AskQueue {
+  const owner = runs.filter((r) => r.dry !== true)
+  const underWay = owner.filter((r) => r.status === 'firing' || r.status === 'fired')
+  let used = allowanceUsed(owner) + underWay.filter((r) => !reachedClaude(r)).reduce((n, r) => n + (r.task === 'deep' ? DEEP_COUNTS : 1), 0)
+  let deepDone = owner.some((r) => r.task === 'deep' && (reachedClaude(r) || r.status === 'firing'))
+  const busy = new Set(underWay.flatMap((r) => r.turns))
+  const oldest = today ? addDaysTo(today, -(ASK_WAITS_DAYS - 1)) : null
+  const taken: number[] = []
+  const tomorrow: number[] = []
+  for (const t of turns) {
+    if (busy.has(t.id) || triesOf(t.id, owner) >= ASK_TRIES || (oldest !== null && t.day !== undefined && t.day < oldest)) continue
+    const deep = t.tier === 'deep'
+    const cost = deep ? DEEP_COUNTS : 1
+    if (used + cost <= allowance && !(deep && deepDone)) {
+      taken.push(t.id)
+      used += cost
+      if (deep) deepDone = true
+    } else tomorrow.push(t.id)
+  }
+  return { taken, tomorrow, left: Math.max(0, allowance - used), deep: used + DEEP_COUNTS <= allowance && !deepDone }
+}
+
+/** A day moved by whole days (the shared calendar's own rule, kept here so the phone and the Worker read the same). */
+function addDaysTo(day: string, n: number): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
 }
 
 /** The runs of the day that carried a turn and reached Claude with no checked answer: its tries. */
@@ -88,15 +144,15 @@ export function triesOf(turnId: number, runs: readonly AskRun[]): number {
  * Where a question waiting for Claude stands (point 17), in the order the phone says it:
  * - `cloud`: the phone keeps no cloud copy, so Claude cannot be reached; the quick tier still answers;
  * - `unsent`: the question has not reached the cloud copy yet (offline, or the last sync not through);
- * - `soon`: a run is at it, or it is next;
- * - `line`: it waits for the day's line, which comes first (D7's rule);
+ * - `soon`: a run is at it, or the day's queue takes it: it starts within about a minute, or once the Brain's own run under
+ *   way ends (item 1 of 2026-10-21: never held for the day's line);
  * - `refused`: the routine refused the last fire, and it is tried again at a time;
- * - `tomorrow`: the day's answers are used;
+ * - `tomorrow`: the day's units will not reach it: the queue's own rule, the Worker's;
  * - `failed`: its runs reached Claude and brought no checked answer.
  */
-export type AskWait = { kind: 'cloud' } | { kind: 'unsent' } | { kind: 'soon' } | { kind: 'line' } | { kind: 'refused'; retryAt: string } | { kind: 'tomorrow' } | { kind: 'failed' }
+export type AskWait = { kind: 'cloud' } | { kind: 'unsent' } | { kind: 'soon' } | { kind: 'refused'; retryAt: string } | { kind: 'tomorrow' } | { kind: 'failed' }
 
-export function askWaitOf(turn: { id?: number; tier: string }, runs: readonly AskRun[], o: { cloud: boolean; queued: boolean; reachable: boolean; lineIn: boolean }): AskWait {
+export function askWaitOf(turn: { id?: number; tier: string }, runs: readonly AskRun[], o: { cloud: boolean; queued: boolean; reachable: boolean }, queue?: AskQueue): AskWait {
   if (!o.cloud) return { kind: 'cloud' }
   if (o.queued && !o.reachable) return { kind: 'unsent' }
   const id = turn.id
@@ -106,8 +162,7 @@ export function askWaitOf(turn: { id?: number; tier: string }, runs: readonly As
   if (last && (last.status === 'firing' || last.status === 'fired')) return { kind: 'soon' }
   if (last && !reachedClaude(last) && last.status === 'fallback') return { kind: 'refused', retryAt: new Date(retryAtOf(last)).toISOString() }
   if (typeof id === 'number' && triesOf(id, runs) >= ASK_TRIES) return { kind: 'failed' }
-  if (!roomFor(task, runs)) return { kind: 'tomorrow' }
-  if (!o.lineIn) return { kind: 'line' }
+  if (queue ? typeof id === 'number' && queue.tomorrow.includes(id) : !roomFor(task, runs)) return { kind: 'tomorrow' }
   // Another turn's fire was refused: the next try waits for its time, and this turn after it.
   const refused = runs.find((r) => !reachedClaude(r) && r.status === 'fallback')
   return refused ? { kind: 'refused', retryAt: new Date(retryAtOf(refused)).toISOString() } : { kind: 'soon' }

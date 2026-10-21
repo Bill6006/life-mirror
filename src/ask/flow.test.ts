@@ -12,7 +12,7 @@ vi.mock('../repair/evidence', async (original) => ({ ...(await original<typeof i
 const { db, updateSettings } = await import('../db')
 const { allThreads, askAbout, askAgain, askAllowance, askDeep, askExplain, askSooner, askStarter, askTyped, askWaits, cancelTurn, deleteThread, keepNote, lastRead, reachedAny, removeNote, searchThreads, settleAskTurns, testOfTurn } = await import('./flow')
 const { repairRecord } = await import('../repair/flow')
-const { answerIdOf, askTaskIds } = await import('./shared')
+const { answerIdOf, askQueue, askTaskIds, deepTaskId } = await import('./shared')
 
 const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'likely', direction: 'helps', revised: false, belief: 0.3, theta: 0.4, lo: 0.1, hi: 0.7, offered: 6, heldBack: 5, days: 11, ctx: [], running: true, began: '2026-10-01', ...over })
 const at = (h: number, m = 0) => new Date(2026, 9, 19, h, m)
@@ -148,6 +148,32 @@ describe('Ask Life Mirror on the phone', () => {
     expect((await askWaits(at(9, 3))).get(turn.id as number)?.kind).not.toBe('cloud')
     expect(reachedAny([turn.id as number], [], await db.askRuns.toArray())).toBe(true)
     expect(reachedAny([turn.id as number + 1], [], await db.askRuns.toArray())).toBe(false)
+  })
+
+  it('says the units left and each question’s state from the Worker’s own queue, a question asked taking its units at once (item 1 of 2026-10-21)', async () => {
+    await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, token: 'a stand-in token' } }))
+    expect(await askAllowance(at(5))).toEqual({ left: 3, of: 3, deep: true })
+    const first = (await askTyped('So far, what do you know about me?', null, at(5, 1), { sheet: false })) as number
+    // Asked, not yet run: its unit is taken at once.
+    expect(await askAllowance(at(5, 2))).toEqual({ left: 2, of: 3, deep: true })
+    await askDeep(at(5, 3), { sheet: false })
+    expect(await askAllowance(at(5, 4))).toEqual({ left: 0, of: 3, deep: false })
+    const turns = (await db.askTurns.toArray()).sort((a, b) => (a.at < b.at ? -1 : 1))
+    const waits = await askWaits(at(5, 4))
+    expect([...waits.values()].map((w) => w.kind)).toEqual(['soon', 'soon'])
+    // The Worker's queue on the same questions and runs: the same count, the same states.
+    const queue = askQueue(turns.map((t) => ({ id: t.id as number, tier: t.tier, day: t.day })), await db.askRuns.toArray(), '2026-10-19')
+    expect(queue).toEqual({ taken: turns.map((t) => t.id as number), tomorrow: [], left: 0, deep: false })
+    // A fourth question finds no unit left today: tomorrow, as the Worker's queue says, though no run has used any yet.
+    const fourth = (await askTyped('Does a nap help my afternoons?', null, at(5, 4), { sheet: false })) as number
+    const [fourthTurn] = await db.askTurns.where('threadId').equals(fourth).toArray()
+    expect((await askWaits(at(5, 4))).get(fourthTurn.id as number)).toEqual({ kind: 'tomorrow' })
+    // The deep tier already ran today: a deep question waits for tomorrow, and the standard one is still next.
+    await db.askRuns.put({ id: deepTaskId('2026-10-19'), task: 'deep', day: '2026-10-19', at: at(4).toISOString(), status: 'written', firedAt: at(4).toISOString(), turns: [999] })
+    const after = await askWaits(at(5, 5))
+    expect(after.get(turns.find((t) => t.tier === 'deep')?.id as number)).toEqual({ kind: 'tomorrow' })
+    expect(after.get(first === null ? -1 : (turns.find((t) => t.tier !== 'deep')?.id as number))).toEqual({ kind: 'soon' })
+    expect(await askAllowance(at(5, 5))).toEqual({ left: 0, of: 3, deep: false })
   })
 
   it('marks the one test a question names by both its move and its reading, and only that, for the queue (stage A3)', async () => {
