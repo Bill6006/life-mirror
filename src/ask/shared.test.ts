@@ -2,19 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { allowanceUsed, askTaskIds, askWaitOf, deepTaskId, roomFor, triesOf, type AskRun } from './shared'
 
 // Where a question for Claude stands, as the phone says it (Ask Life Mirror, stage A2; the agreed design's point 17), and the
-// day's allowance as the phone and the Worker both count it: each run that reached Claude counts one, the deep tier three.
+// day's allowance as the phone and the Worker both count it: each run that reached Claude counts one, the deep tier two
+// (its measured cost over a standard answer's, rounded up, 2026-10-21).
 
 const DAY = '2026-10-20'
 const run = (over: Partial<AskRun>): AskRun => ({ id: askTaskIds(DAY)[0], task: 'ask', day: DAY, at: `${DAY}T15:00:00.000Z`, status: 'fired', firedAt: `${DAY}T15:00:00.000Z`, turns: [1], ...over })
 const ready = { cloud: true, queued: false, reachable: true, lineIn: true }
 
 describe('the day’s allowance', () => {
-  it('counts each run that reached Claude once and the deep tier three times; a refused fire counts nothing', () => {
-    expect(allowanceUsed([run({}), run({ id: askTaskIds(DAY)[1], firedAt: undefined, status: 'fallback' }), run({ id: deepTaskId(DAY), task: 'deep' })])).toBe(4)
+  it('counts each run that reached Claude once and the deep tier twice; a refused fire counts nothing', () => {
+    expect(allowanceUsed([run({}), run({ id: askTaskIds(DAY)[1], firedAt: undefined, status: 'fallback' }), run({ id: deepTaskId(DAY), task: 'deep' })])).toBe(3)
     expect(roomFor('ask', [run({}), run({ id: askTaskIds(DAY)[1] })])).toBe(true)
     expect(roomFor('ask', [run({}), run({ id: askTaskIds(DAY)[1] }), run({ id: askTaskIds(DAY)[2] })])).toBe(false)
     expect(roomFor('deep', [])).toBe(true)
-    expect(roomFor('deep', [run({})])).toBe(false)
+    expect(roomFor('deep', [run({})])).toBe(true)
+    expect(roomFor('deep', [run({}), run({ id: askTaskIds(DAY)[1] })])).toBe(false)
   })
 
   it('counts a turn’s tries: the runs that carried it and reached Claude with no checked answer', () => {
@@ -43,8 +45,9 @@ describe('where a question for Claude stands', () => {
     const used = [run({ turns: [7] }), run({ id: askTaskIds(DAY)[1], turns: [8], status: 'written' }), run({ id: askTaskIds(DAY)[2], turns: [9], status: 'written' })]
     expect(askWaitOf(turn, used, ready)).toEqual({ kind: 'tomorrow' })
     expect(askWaitOf(turn, [], { ...ready, lineIn: false })).toEqual({ kind: 'line' })
-    // The deep tier needs three answers free.
-    expect(askWaitOf({ id: 1, tier: 'deep' }, [run({ turns: [7], status: 'written' })], ready)).toEqual({ kind: 'tomorrow' })
+    // The deep tier needs two answers free.
+    expect(askWaitOf({ id: 1, tier: 'deep' }, [run({ turns: [7], status: 'written' }), run({ id: askTaskIds(DAY)[1], turns: [8], status: 'written' })], ready)).toEqual({ kind: 'tomorrow' })
+    expect(askWaitOf({ id: 1, tier: 'deep' }, [run({ turns: [7], status: 'written' })], ready)).not.toEqual({ kind: 'tomorrow' })
     expect(askWaitOf(turn, [], ready)).toEqual({ kind: 'soon' })
   })
 })

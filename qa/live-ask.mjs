@@ -1,6 +1,6 @@
 // Ask Life Mirror, stage A1 (2026-10-19), on the live site in fresh throwaway contexts with stand-in records only: nothing
-// touches the owner's data, and nothing is sent anywhere but the site itself (no cloud token is ever set). Closed as it
-// ships: no Ask button, even in an automated browser, without the test key. In its preview: the question box and only
+// touches the owner's data, and nothing is sent anywhere but the site itself (no cloud token is ever set). Open as it
+// ships since stage A4 (2026-10-21): every context runs with no test key, as the owner's phone does. The question box and only
 // the starters with something to say; "What do you know" answered at once from the repair's read; its thread in Recent; a
 // typed question waiting with the findings its words name, and cancelled; "Ask about this" from Evidence, and back.
 // Stage A2: Claude's answer with the findings it cited, and no checked answer said plainly. Stage A3: "Test it" for a
@@ -43,7 +43,9 @@ async function fresh(preview) {
     ([key, on]) => {
       try {
         localStorage.setItem('lm.inStep', '1')
-        if (on) localStorage.setItem(key, '1')
+        // No test key: Ask runs as the owner's phone runs it (stage A4).
+        void key
+        void on
       } catch {
         // A page without local storage stays closed.
       }
@@ -156,11 +158,11 @@ async function seedClaude(page) {
 
 try {
   {
-    // Closed as it ships: no Ask button, even in an automated browser, without the key; and the build is the one pushed.
+    // Open as it ships (stage A4): the Ask button with no test key, as on the owner's phone; and the build is the one pushed.
     const { ctx, page } = await fresh(false)
     await tab(page, 'Mirror')
     await page.getByRole('heading', { name: 'Mirror' }).waitFor()
-    check('closed as it ships: Mirror has no Ask button without the test key', (await page.getByTestId('ask-open').count()) === 0)
+    check('open as it ships: Mirror has the Ask button with no test key', (await page.getByTestId('ask-open').count()) === 1)
     await tab(page, 'Settings')
     await page.getByTestId('settings-about').click()
     const commit = (await page.getByTestId('build-commit').textContent())?.trim()

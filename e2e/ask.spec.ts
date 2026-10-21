@@ -15,7 +15,8 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     try {
       localStorage.setItem('lm.inStep', '1')
-      if (!localStorage.getItem('ask-test-closed')) localStorage.setItem('life-mirror.preview.ask', '1')
+      // Open as it ships (stage A4, 2026-10-21); a test that says so closes it with the key at 0, as only an automated browser can.
+      if (localStorage.getItem('ask-test-closed')) localStorage.setItem('life-mirror.preview.ask', '0')
     } catch {
       // A page without local storage stays closed.
     }
@@ -44,7 +45,7 @@ async function openAsk(page: Page): Promise<void> {
   await expect(page.getByTestId('ask')).toBeVisible()
 }
 
-test('opens from Mirror’s header only in its preview, its question box first and the starters that have something to say', async ({ page }) => {
+test('opens from Mirror’s header as it ships, its question box first and the starters that have something to say', async ({ page }) => {
   await start(page, 0)
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await expect(page.getByTestId('ask-open')).toHaveText('Ask')
@@ -52,9 +53,8 @@ test('opens from Mirror’s header only in its preview, its question box first a
   await expect(page.getByTestId('ask-box')).toBeVisible()
   // An empty record: no test yet, so no starter has anything to say.
   await expect(page.locator('[data-testid^="ask-starter-"]')).toHaveCount(0)
-  // Closed, as it ships: no button.
+  // Closed by the test key at 0: no button.
   await page.evaluate(() => localStorage.setItem('ask-test-closed', '1'))
-  await page.evaluate(() => localStorage.removeItem('life-mirror.preview.ask'))
   await page.reload()
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Mirror' })).toBeVisible()
@@ -215,7 +215,7 @@ test('with a cloud copy: the day’s allowance, the deep tier with its cost, and
   await openAsk(page)
   await expect(page.getByTestId('ask-allowance')).toHaveText('Claude: 3 of 3 answers left today.')
   await expect(page.getByTestId('ask-starter-deep')).toHaveText('Coach me on everything')
-  await expect(page.getByTestId('ask-deep-cost')).toHaveText('Counts as 3 of today’s answers, once a day.')
+  await expect(page.getByTestId('ask-deep-cost')).toHaveText('Counts as 2 of today’s answers, once a day.')
   await page.getByTestId('ask-starter-know').click()
   await page.getByTestId('ask-explain').click()
   await expect(page.getByTestId('ask-turn')).toHaveCount(2)

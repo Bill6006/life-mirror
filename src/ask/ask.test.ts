@@ -228,26 +228,28 @@ describe('a typed question, while it waits', () => {
 })
 
 describe('Ask’s gate', () => {
-  it('is closed while it is built: no Ask on the phone, and only an automated test browser with the key previews it', () => {
-    expect(ASK).toBe('gated')
-    expect(askMode()).toBe('gated')
-    expect(askOn()).toBe(false)
-    expect(askOn(askMode('open'))).toBe(true)
+  it('is open as it ships since stage A4 (2026-10-21): Ask shows on the phone', () => {
+    expect(ASK).toBe('open')
+    expect(askMode()).toBe('open')
+    expect(askOn()).toBe(true)
+    expect(askOn(askMode('gated'))).toBe(false)
   })
 
   describe('its preview key', () => {
     afterEach(() => {
       vi.unstubAllGlobals()
     })
-    it('is read only in an automated test browser: the owner’s phone, holding the key or not, stays closed', () => {
-      const store = new Map([['life-mirror.preview.ask', '1']])
+    it('is read only in an automated test browser: there the key at 0 closes Ask, and the owner’s phone, holding a key or not, stays open', () => {
+      const store = new Map([['life-mirror.preview.ask', '0']])
       vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null })
       vi.stubGlobal('navigator', { webdriver: false })
-      expect(askMode()).toBe('gated')
+      expect(askMode()).toBe('open')
       vi.stubGlobal('navigator', { webdriver: true })
-      expect(askMode()).toBe('preview')
-      store.set('life-mirror.preview.ask', '0')
       expect(askMode()).toBe('gated')
+      store.set('life-mirror.preview.ask', '1')
+      expect(askMode()).toBe('open')
+      // Built behind it, the key at 1 previewed a closed gate; that path stays the gate's own.
+      expect(askMode('gated')).toBe('preview')
     })
   })
 })

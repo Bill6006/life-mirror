@@ -6,8 +6,11 @@ import { reachedClaude, retryAtOf } from '../coachShared'
 
 /** Answers a day that reach Claude (the agreed design's point 16). Set from measured runs before the gate opens. */
 export const ASK_ANSWERS_A_DAY = 3
-/** The deep tier counts as this many answers against the day's allowance, and runs at most once a day. */
-export const DEEP_COUNTS = 3
+/**
+ * The deep tier counts as this many answers against the day's allowance, and runs at most once a day: its measured cost over a
+ * standard answer's, rounded up (2026-10-21: about 85 s against 57 s).
+ */
+export const DEEP_COUNTS = 2
 /** Runs a turn may take in a day that reach Claude without a checked answer before it says no checked answer came. */
 export const ASK_TRIES = 2
 /** Days a question waits for Claude before it is let go, said as one no run could answer. */

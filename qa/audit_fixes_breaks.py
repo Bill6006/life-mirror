@@ -47,11 +47,11 @@ TABLE = [
     dict(id='minute-alone', file='worker/src/index.ts',
          old="        if (!onQuarter(now)) return\n",
          new="",
-         tests=[TICK], pattern='answers a suggestion alone'),
+         tests=[TICK], pattern='answers a suggestion, then a waiting question'),
     dict(id='minute-answers-suggestions', file='worker/src/index.ts',
          old="          await dispatch('suggestions', env, now)\n",
          new="          await Promise.resolve()\n",
-         tests=[TICK], pattern='answers a suggestion alone'),
+         tests=[TICK], pattern='answers a suggestion, then a waiting question'),
     # The skill coach's job.
     dict(id='suggestion-never-waits', file='worker/src/skillCoach.ts',
          old="  if (kind !== 'review' && pending.setup.length) {",

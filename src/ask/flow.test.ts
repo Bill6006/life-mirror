@@ -143,7 +143,8 @@ describe('Ask Life Mirror on the phone', () => {
     expect(await askAllowance(at(9, 1))).toBeNull()
     await updateSettings((s) => ({ ...s, cloud: { ...s.cloud, token: 'a stand-in token' } }))
     await db.askRuns.put({ id: askTaskIds('2026-10-19')[0], task: 'ask', day: '2026-10-19', at: at(9, 2).toISOString(), status: 'fired', firedAt: at(9, 2).toISOString(), turns: [turn.id as number] })
-    expect(await askAllowance(at(9, 3))).toEqual({ left: 2, of: 3, deep: false })
+    // Two answers left: room for the deep tier, which counts two (2026-10-21).
+    expect(await askAllowance(at(9, 3))).toEqual({ left: 2, of: 3, deep: true })
     expect((await askWaits(at(9, 3))).get(turn.id as number)?.kind).not.toBe('cloud')
     expect(reachedAny([turn.id as number], [], await db.askRuns.toArray())).toBe(true)
     expect(reachedAny([turn.id as number + 1], [], await db.askRuns.toArray())).toBe(false)

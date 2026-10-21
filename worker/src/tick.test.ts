@@ -32,10 +32,11 @@ describe('the tick, each minute (D7 as amended 2026-10-18)', () => {
     expect(['01', '07', '14', '16', '59'].map((m) => onQuarter(new Date(`2026-10-18T14:${m}:00Z`)))).toEqual([false, false, false, false, false])
   })
 
-  it('answers a suggestion alone in the minutes between, and runs every job as before on the fifteenth minute, the suggestion first', async () => {
-    expect(await jobsAt('2026-10-18T14:07:00Z')).toEqual(['suggestions'])
+  it('answers a suggestion, then a waiting question, in the minutes between, and runs every job as before on the fifteenth minute, the suggestion first', async () => {
+    // Ask Life Mirror's minute job runs after the suggestions since its gate opened (stage A4, 2026-10-21).
+    expect(await jobsAt('2026-10-18T14:07:00Z')).toEqual(['suggestions', 'asks'])
     const quarter = await jobsAt('2026-10-18T14:15:00Z')
     expect(quarter[0]).toBe('suggestions')
-    expect(quarter).toEqual(expect.arrayContaining(['suggestions', 'cues', 'brief', 'review', 'coach', 'commitments']))
+    expect(quarter).toEqual(expect.arrayContaining(['suggestions', 'asks', 'cues', 'brief', 'review', 'coach', 'commitments']))
   })
 })

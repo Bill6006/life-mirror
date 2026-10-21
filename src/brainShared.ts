@@ -269,10 +269,10 @@ export const PLACE_CAUSE = /\b(because (?:of )?(?:you (?:were|are) )?(?:at )?(?:
 
 /**
  * Ask Life Mirror (agreed 2026-10-11; built from 2026-10-19 in four stages, A1 to A4): the owner's own questions about
- * their record, answered from the same evidence the Brain reads. Gated while it is built; stage A4 opens it, the Worker
- * first, once every stage is verified. Shared with the Worker, which answers no ask while it is closed.
+ * their record, answered from the same evidence the Brain reads. Open since stage A4 (2026-10-21), the Worker first, every
+ * stage verified on the live site. Shared with the Worker, which answers no ask while it is closed.
  */
-export const ASK: 'gated' | 'open' = 'gated'
+export const ASK: 'gated' | 'open' = 'open'
 
 /**
  * Pass 4: how big a line says an effect is may not outrun its cards, and the record's own

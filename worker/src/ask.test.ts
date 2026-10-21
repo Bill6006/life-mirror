@@ -105,12 +105,12 @@ function untouchable(): { store: Store; touched: string[] } {
 
 const GOOD = { text: 'Your own record says a ten-minute walk likely helps your stress over the next block: offered 12 times and held back 11, over 14 days. It is still being tested, and more fair draws are what would settle it.', factIds: ['ladder.walk-ten.stress'], cardIds: [] }
 
-describe('closed, as the build ships', () => {
+describe('closed by its gate (open as the build ships since stage A4, 2026-10-21)', () => {
   it('runs nothing and reads nothing by schedule, and the bridge refuses a run that is not one made by hand', async () => {
     const { store, touched } = untouchable()
     const r = routine()
-    expect(await runAsks(env, store, at('12:00'), { fireFetcher: r.f })).toEqual({ ran: false, reason: 'gated' })
-    expect(await runAsks(env, store, at('12:00'), { force: true, fireFetcher: r.f })).toEqual({ ran: false, reason: 'gated' })
+    expect(await runAsks(env, store, at('12:00'), { fireFetcher: r.f, gate: 'gated' })).toEqual({ ran: false, reason: 'gated' })
+    expect(await runAsks(env, store, at('12:00'), { force: true, fireFetcher: r.f, gate: 'gated' })).toEqual({ ran: false, reason: 'gated' })
     expect(touched).toEqual([])
     expect(r.calls).toEqual([])
     const s = record()
@@ -159,17 +159,21 @@ describe('the runs (open, in these tests only)', () => {
     expect(await runAsks(env, store, at('08:00'), { ...OPEN, force: true, fireFetcher: r.f })).toMatchObject({ ran: true })
   })
 
-  it('stays within the day’s allowance: three answers that reached Claude, the deep tier counting three and once a day', async () => {
+  it('stays within the day’s allowance: three answers that reached Claude, the deep tier counting two and once a day', async () => {
     const store = record()
     for (const [i, id] of askTaskIds(DAY).entries()) await store.writeTask({ id, kind: 'task', task: 'ask', day: DAY, at: at(`1${i}:00`).toISOString(), status: 'written', trigger: 'ask', factsDay: DAY, askedModel: 'opus', firedAt: at(`1${i}:00`).toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [], turns: [i + 1] })
     asked(store, 'Does a walk help my stress?')
     const r = routine()
     expect(await runAsks(env, store, at('14:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'today’s answers are used; the rest wait for tomorrow' })
-    // The deep tier needs three answers free.
+    // The deep tier needs two answers free (2026-10-21: measured at about 85 s against a standard answer's 57).
     const fresh = record()
-    await fresh.writeTask({ id: askTaskIds(DAY)[0], kind: 'task', task: 'ask', day: DAY, at: at('10:00').toISOString(), status: 'written', trigger: 'ask', factsDay: DAY, askedModel: 'opus', firedAt: at('10:00').toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [], turns: [1] })
+    for (const [i, id] of askTaskIds(DAY).slice(0, 2).entries()) await fresh.writeTask({ id, kind: 'task', task: 'ask', day: DAY, at: at(`1${i}:00`).toISOString(), status: 'written', trigger: 'ask', factsDay: DAY, askedModel: 'opus', firedAt: at(`1${i}:00`).toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [], turns: [i + 1] })
     asked(fresh, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
     expect(await runAsks(env, fresh, at('14:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: false, reason: 'today’s answers are used; the rest wait for tomorrow' })
+    const oneUsed = record()
+    await oneUsed.writeTask({ id: askTaskIds(DAY)[0], kind: 'task', task: 'ask', day: DAY, at: at('10:00').toISOString(), status: 'written', trigger: 'ask', factsDay: DAY, askedModel: 'opus', firedAt: at('10:00').toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [], turns: [1] })
+    const deepAfterOne = asked(oneUsed, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
+    expect(await runAsks(env, oneUsed, at('14:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: deepAfterOne.id, task: deepTaskId(DAY) })
     const empty = record()
     const deep = asked(empty, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
     expect(await runAsks(env, empty, at('14:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: deep.id, task: deepTaskId(DAY) })

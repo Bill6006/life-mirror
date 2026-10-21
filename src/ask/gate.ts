@@ -1,8 +1,9 @@
 import { ASK } from '../brainShared'
 
-// Ask Life Mirror's gate on the phone (stage A1, 2026-10-19). Closed while it is built: no Ask button, no "Ask about this",
-// no thread written. Only an automated test browser opens a preview, through its test key, so each stage can be tested and
-// seen on the live site as it is built; the owner's phone never runs under `navigator.webdriver`, so no key reaches it.
+// Ask Life Mirror's gate on the phone (stage A1, 2026-10-19; open since stage A4, 2026-10-21). Closed, nothing of Ask shows:
+// no Ask button, no "Ask about this", no thread written. Only an automated test browser reads the test key: at 1 it
+// previewed Ask while it was built, and at 0 it sees Ask closed now it is open; the owner's phone never runs under
+// `navigator.webdriver`, so no key reaches it.
 
 /** The test key: set only by the browser tests and the live checks, in throwaway contexts. */
 const PREVIEW_KEY = 'life-mirror.preview.ask'
