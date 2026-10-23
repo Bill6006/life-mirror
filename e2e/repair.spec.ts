@@ -239,7 +239,7 @@ test('Evidence shows the repair’s tests by rung, its track record at their hea
   // finishing, the walk's among them with the day it began.
   await expect(page.locator('h2.section').first()).toHaveText('What helps you')
   const stressHelps = page.getByTestId('helps-reading').filter({ hasText: 'Stress' })
-  await expect(stressHelps.getByTestId('helps-move').filter({ hasText: 'A ten-minute walk, now:' })).toContainText(/steps when done, your record pooled with research \(\+0\.40\) · (Early sign|Likely|Established): helps/)
+  await expect(stressHelps.getByTestId('helps-move').filter({ hasText: 'A ten-minute walk, now:' })).toContainText(/^A ten-minute walk, now: (Early sign|Likely|Established): helps when suggested, against nothing extra; about [+-]\d+\.\d+ steps when done, your record pooled with research \(\+0\.40\)$/)
   await expect(page.getByTestId('nearest-test').filter({ hasText: 'A ten-minute walk, now, for Stress over the next block' })).toContainText(/· since \w{3}, \w{3} \d{1,2} ·/)
   await expect(page.getByTestId('track-record')).toBeVisible()
   await expect(page.getByTestId('track-early')).toHaveText(/^(No early sign has resolved yet\.|Of \d+ early signs?, \d+ held\.)/)

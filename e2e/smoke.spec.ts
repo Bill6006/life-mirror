@@ -3420,7 +3420,12 @@ test('stage 1, item i: “Not now” on a move’s question asks once more at th
   await tapThrough(page)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await expect(page.getByTestId('move-card').first()).toBeVisible()
-  const morning = (await rowsOf<{ id: number; block: string; kind: string }>(page, 'offers')).find((o) => o.block === 'morning' && o.kind === 'block')
+  // A move's question: when the draw gave Nothing extra, which asks nothing (Item 4), Skip shows a move in its place.
+  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing extra') {
+    await page.getByRole('button', { name: /^Skip/ }).click()
+    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing extra')
+  }
+  const morning = (await rowsOf<{ id: number; block: string; kind: string; moveId: string; skippedAt: string | null }>(page, 'offers')).find((o) => o.block === 'morning' && o.kind === 'block' && o.moveId !== 'nothing' && o.skippedAt === null)
   expect(morning).toBeDefined()
   // The afternoon asks about it; Not now records nothing and leaves it open.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 13, 5))
