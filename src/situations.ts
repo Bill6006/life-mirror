@@ -409,18 +409,6 @@ export const SITUATIONS: readonly Situation[] = [
     },
   },
   {
-    id: 'nothing-holds',
-    mode: 'perspective',
-    cards: ['micro-breaks'],
-    cooldownDays: 21,
-    test: (sheet) => {
-      const f = factById(sheet, 'nothing')
-      const done = num(f, 'done') ?? 0
-      const offered = num(f, 'offered') ?? 0
-      return f && done >= 3 && done / offered >= 0.5 ? { factIds: [f.id], strength: 0.5, vars: { done: s(done), offered: s(offered) } } : null
-    },
-  },
-  {
     id: 'direction-counts',
     mode: 'perspective',
     cards: ['monitoring-progress'],

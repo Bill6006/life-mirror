@@ -2226,6 +2226,9 @@ const ASK_STATES: typeof STATES = [
       await p.getByTestId('ask-past-open').click()
       await p.getByTestId('ask-thread-row').filter({ hasText: 'Why are my mornings flat?' }).click()
       await expect(p.getByTestId('ask-no-checked')).toBeVisible()
+      // Item 4: what the checks held back, each draft's reasons, opened.
+      await p.getByTestId('ask-failed-why-open').click()
+      await expect(p.getByTestId('ask-failed-why')).toBeVisible()
     },
   },
   {
@@ -2322,7 +2325,7 @@ for (const theme of THEMES) {
     await seedAskRecord(page, 30)
     await seedThread(page, 'What do you know about me so far?', 'know', [{ key: 'walk-ten|stress|nextBlock', level: 'established', direction: 'hurts', revised: false, lo: null, hi: null }], new Date(when.getTime() - 3 * 86_400_000).toISOString())
     await seedTurns(page, 'Does a nap help my energy?', [{ question: 'Does a nap help my energy?', claude: { status: 'answered', text: 'A stand-in answer of a few sentences, long enough to wrap at the narrowest width, as Claude would write one from the record.\nAnd a second paragraph, shorter.', facts: [{ id: 'ladder.nap-ten.energy', text: 'Test: a stand-in fact as the run read it, long enough to wrap across the narrowest width of the audit.' }], model: 'claude-opus-5-5' } }], new Date(when.getTime() - 2 * 86_400_000).toISOString())
-    await seedTurns(page, 'Why are my mornings flat?', [{ question: 'Why are my mornings flat?', claude: { status: 'failed' } }], new Date(when.getTime() - 86_400_000).toISOString())
+    await seedTurns(page, 'Why are my mornings flat?', [{ question: 'Why are my mornings flat?', claude: { status: 'failed', kind: 'checks', reason: 'says "gave you" of an association in the record: it went with what followed, and is never said to have caused it', reasons: ['says "eased", "helped" of a test with no call yet; and a paragraph of 91 words; at most 90: short paragraphs', 'says "gave you" of an association in the record: it went with what followed, and is never said to have caused it'] } }], new Date(when.getTime() - 86_400_000).toISOString())
     // Stage A3: a question naming one test and a context, an answer offering a note, and a note kept before.
     await seedNote(page, 'A stand-in note kept from Ask, long enough to wrap at the narrowest width of the audit, in the owner’s own words.', '2026-09-20')
     await seedTurns(page, 'Does a walk help my mood on office days?', [{ question: 'Does a walk help my mood on office days?' }], new Date(when.getTime() - 4 * 86_400_000).toISOString())
@@ -2340,6 +2343,53 @@ for (const theme of THEMES) {
       await walk(page, theme, ASK_STATES, width, found)
     }
     writeFileSync(info.outputPath('audit.txt'), found.join('\n'))
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+// Item 4 (2026-10-23): a phone that gives only an approximate location (2 km) has Location Context say so, with the steps to
+// allow a precise one folded beneath. The phone's position is stood in for at launch; the launch's reading watches a quarter
+// of a minute for a better one, run on the page's clock.
+const APPROXIMATE_STATES: typeof STATES = [
+  {
+    name: 'Settings, Location Context, an approximate location and the steps to allow a precise one, open (Item 4)',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-location').click()
+      // The launch's reading watches a quarter of a minute for a better one; the screen shows it when it ends.
+      await expect(p.getByTestId('location-approximate')).toBeVisible({ timeout: 25_000 })
+      await p.getByTestId('location-precise-open').click()
+      await expect(p.getByTestId('location-precise-steps')).toBeVisible()
+    },
+  },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: an approximate location's note and steps in Location Context read, fit and can be tapped, at three widths (Item 4)`, async ({ page }) => {
+    await page.addInitScript((t) => {
+      localStorage.setItem('life-mirror.theme', t)
+      const at = () => ({ coords: { latitude: 40.7, longitude: -74, accuracy: 2000 }, timestamp: Date.now() })
+      const g = navigator.geolocation as unknown as Record<string, unknown>
+      g.getCurrentPosition = (ok: (x: unknown) => void) => setTimeout(() => ok(at()), 0)
+      g.watchPosition = (ok: (x: unknown) => void) => {
+        setTimeout(() => ok(at()), 10)
+        return 1
+      }
+      g.clearWatch = () => undefined
+      const query = navigator.permissions.query.bind(navigator.permissions)
+      navigator.permissions.query = ((d: PermissionDescriptor) => (d.name === 'geolocation' ? Promise.resolve({ state: 'granted' } as PermissionStatus) : query(d))) as typeof navigator.permissions.query
+    }, theme)
+    test.setTimeout(240_000)
+    await page.goto('./')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedLocation(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, APPROXIMATE_STATES, width, found)
+    }
     expect(found, found.join('\n')).toEqual([])
   })
 }

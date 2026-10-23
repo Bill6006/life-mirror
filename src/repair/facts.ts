@@ -26,13 +26,17 @@ export function ladderFact(t: TestShown): Fact {
   const window = copy.catalogue.windows[t.window as keyof typeof copy.catalogue.windows] ?? t.window
   const research = hasMove(t.moveId) ? moveById(t.moveId).prior.effect : 0
   const rung = rungWords(t.level, t.direction)
-  const estimate = t.theta !== null && t.lo !== null && t.hi !== null ? `; the record alone, when done, ${signed(t.theta)} steps (${signed(t.lo)} to ${signed(t.hi)})` : ''
-  const text = `Test: ${move}, for ${reading} over the ${window}: ${rung}${t.revised ? ', revised' : ''}; offered ${t.offered} times and held back ${t.heldBack}, each with the reading after it, over ${t.days} days${estimate}; pooled with research, ${signed(t.belief)} steps when done; research alone ${signed(research)}${t.running ? '; being tested now' : ''}.`
+  // Item 4 (2026-10-23): the call is on suggesting the move against suggesting nothing extra, the one effect the fair draws
+  // identify; the size when done is that effect over the share done, which assumes it works only through doing it.
+  const share = Math.round(t.share * 10)
+  const suggested = t.itt !== null ? `; when suggested, ${signed(t.itt)} steps against nothing extra` : ''
+  const estimate = t.theta !== null && t.lo !== null && t.hi !== null ? `; when done, an estimate of ${signed(t.theta)} steps (${signed(t.lo)} to ${signed(t.hi)}), the suggestion's effect over the share of times it was done (${share} in 10), assuming it works only through doing it` : ''
+  const text = `Test: ${move}, for ${reading} over the ${window}: ${rung}${t.revised ? ', revised' : ''}, a call on suggesting it against suggesting nothing extra, whatever was then done; offered ${t.offered} times and held back ${t.heldBack}, each with the reading after it, over ${t.days} days${suggested}${estimate}; pooled with research, ${signed(t.belief)} steps when done; research alone ${signed(research)}${t.running ? '; being tested now' : ''}.`
   return {
     id: `ladder.${t.moveId}.${t.target}`,
     tags: ['monitoring'],
     text,
-    values: { move, moveId: t.moveId, reading, window: t.window, level: t.level, direction: t.direction, revised: t.revised ? 1 : 0, running: t.running ? 1 : 0, offered: t.offered, heldBack: t.heldBack, days: t.days, theta: t.theta === null ? null : Math.round(t.theta * 100) / 100, belief: Math.round(t.belief * 100) / 100, research, ...(t.began ? { began: t.began } : {}) },
+    values: { move, moveId: t.moveId, reading, window: t.window, level: t.level, direction: t.direction, revised: t.revised ? 1 : 0, running: t.running ? 1 : 0, offered: t.offered, heldBack: t.heldBack, days: t.days, theta: t.theta === null ? null : Math.round(t.theta * 100) / 100, itt: t.itt === null ? null : Math.round(t.itt * 100) / 100, share, belief: Math.round(t.belief * 100) / 100, research, ...(t.began ? { began: t.began } : {}) },
     n: t.offered + t.heldBack,
     tier: rung,
   }

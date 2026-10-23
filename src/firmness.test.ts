@@ -50,7 +50,6 @@ const KEEP: Record<string, string[]> = {
   'church-morning': ['mornings after church read 48 against 60', 'the recovery gap is a fact of the day'],
   'steady-moving': ['steady, 5 of 6 blocks inside the usual', 'progress that is recorded carries part of the effect by itself'],
   'fresh-start': ['people begin goals more often right after a fresh start', 'is the one to restart'],
-  'nothing-holds': ['rest is a move'],
   'direction-counts': ['your direction', 'counts, not a verdict'],
   'forecast-wide': ['a guess', 'your own reading at the check-in is the better guide today'],
   'caffeine-sleep-even': ['no difference yet', 'self-reported sleep is known to miss caffeine’s effect'],
@@ -210,8 +209,8 @@ describe('Adaptive', () => {
     expect(by('hardCoach')).toEqual(['cadence-dropping', 'caffeine-late', 'commitment-fading', 'necessities-missed', 'step-stalled', 'stretch'])
     // Warm about good news.
     expect(by('supportive')).toEqual(['cue-holds', 'fresh-start', 'loop-closed', 'steady-moving', 'workout-evenings'])
-    // Even-handed about the rest, the associations, guesses and one-day readings among them.
-    expect(by('balanced')).toHaveLength(20)
+    // Even-handed about the rest, the associations, guesses and one-day readings among them (19 since Item 4 retired the line that read Nothing extra as rest).
+    expect(by('balanced')).toHaveLength(19)
     for (const id of ['caffeine-sleep-shorter', 'nap-read', 'workout-flat', 'social-recovery', 'short-sleep-afternoons', 'caffeine-sleep-even', 'forecast-wide', 'church-morning', 'commitment-thinning']) expect(chosen[id], id).toBe('balanced')
   })
 

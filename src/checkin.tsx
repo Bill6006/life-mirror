@@ -29,7 +29,7 @@ import { useLive } from './live'
 import { CaffeineCard, caffeineWords } from './caffeine'
 import { LineInput, PrivateLog, SweetChip, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
-import { deferOutcome, isSession, offerForSlot, recordOutcome } from './offerFlow'
+import { closeNothingExtra, deferOutcome, isSession, offerForSlot, recordOutcome } from './offerFlow'
 import { usualFor } from './forecastFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
@@ -75,6 +75,10 @@ export function CheckInScreen({
   onClose: () => void
 }) {
   const record = useLive(() => getCheckIn(day, block), [day, block])
+  // Item 4: Nothing extra from an earlier block closes as it stands; nothing is asked of it.
+  useEffect(() => {
+    void closeNothingExtra({ day, block })
+  }, [day, block])
   // Stage 3, item 5: what the day asks depends on its morning (sleep asked late) and the day (Motivation or Confidence in turn).
   const morning = useLive(() => (block === 'morning' ? Promise.resolve(null) : getCheckIn(day, 'morning')), [day, block])
   const ids = record ? askedOf(record) : askedReadings(block, depth, retired, { day, morning: morning ?? null })

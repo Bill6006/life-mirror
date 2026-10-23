@@ -55,8 +55,11 @@ export interface AskTurn {
   at: string
   question: string
   tier: AskTier
-  /** Answered; waiting for Claude (stage A2); or cancelled by the owner while it waited. */
-  state: 'answered' | 'waiting' | 'cancelled'
+  /**
+   * Answered; waiting for Claude (stage A2); cancelled by the owner while it waited; or settled with no checked answer
+   * (Item 4, 2026-10-23: it had been settled as answered).
+   */
+  state: 'answered' | 'waiting' | 'cancelled' | 'failed'
   /** What it asked: a starter, "Ask about this", or a typed question. */
   kind: AskStarter | 'about' | 'typed'
   /** The findings "Ask about this" attached. */

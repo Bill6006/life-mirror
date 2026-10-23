@@ -123,11 +123,11 @@ TABLE = [
          new=" || isMemoryFact(id) || isWeatherFact(id))",
          tests=['worker/src/memory.test.ts'], pattern='keep the free chain on the approved fact sheet'),
     dict(id='memory-rules-given', file='worker/src/prompt.ts',
-         old="(b.sheet.facts.some((f) => isMemoryFact(f.id)) ? `\\n\\n${MEMORY_RULES}` : '')",
+         old="(sheet.facts.some((f) => isMemoryFact(f.id)) ? `\\n\\n${MEMORY_RULES}` : '')",
          new="''",
          tests=['worker/src/memory.test.ts'], pattern='give Claude the memory’s rule'),
     dict(id='weekly-rules-given', file='worker/src/prompt.ts',
-         old="(b.sheet.facts.some((f) => isWeeklyFact(f.id)) ? `\\n\\n${WEEKLY_RULES}` : '')",
+         old="(sheet.facts.some((f) => isWeeklyFact(f.id)) ? `\\n\\n${WEEKLY_RULES}` : '')",
          new="''",
          tests=['worker/src/memory.test.ts'], pattern='give Claude the memory’s rule'),
     # Group 2, timing, in the Worker.

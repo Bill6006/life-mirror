@@ -17,14 +17,15 @@ describe('the null offer and the big social day', () => {
     await db.open()
   })
 
-  it('counts the null offer kept to on the Evidence screen', async () => {
-    // Three earlier mornings at the middle, so the morning forecast for mood is 3; kept to on the 10th, the morning after reads 4.
+  it('counts Nothing extra drawn on the Evidence screen, never as kept: an answer from before Item 4 stands in the record and counts nothing', async () => {
+    // Three earlier mornings at the middle, so the morning forecast for mood is 3; answered Done on the 10th, as the check-in once asked.
     await db.checkins.bulkAdd([ci('2026-09-07', 'morning', 3), ci('2026-09-08', 'morning', 3), ci('2026-09-09', 'morning', 3), ci('2026-09-11', 'morning', 3, { mood: 4 })])
     const offer: Offer = { kind: 'block', day: '2026-09-10', block: 'evening', at: '2026-09-10T20:00:00.000Z', situationKey: 'evening:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: NOTHING, cardId: null, candidates: [NOTHING], coinFlip: true, passiveId: null, whyNot: null, skippedAt: null, closedAt: null }
     const id = await db.offers.add(offer)
     await db.outcomes.add({ offerId: id, moveId: NOTHING, day: '2026-09-11', block: 'morning', at: '', outcome: 'done', why: null, passiveOutcome: null })
     const ev = await evidence('2026-09-11')
-    expect(ev.nothing).toEqual({ offered: 1, done: 1, skipped: 0 })
+    expect(ev.nothing).toEqual({ offered: 1, skipped: 0 })
+    expect(await db.outcomes.count()).toBe(1)
   })
 
   it('knows a big social day only from that day’s own mark: never the day after, and never a church day by itself (the final checklist)', async () => {

@@ -241,7 +241,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
       <div class="card pad">
         <div class="calc">
           <p class="calc-line" data-testid="nothing-line">
-            {fill(r.nothingLine, { offered: String(ev.nothing.offered), done: String(ev.nothing.done), skipped: String(ev.nothing.skipped) })}
+            {fill(r.nothingLine, { offered: String(ev.nothing.offered) })}
           </p>
         </div>
       </div>

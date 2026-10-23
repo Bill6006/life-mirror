@@ -1,4 +1,4 @@
-import { addDays, blockAt, dayKey, type Block } from './blocks'
+import { addDays, blockAt, compareSlots, dayKey, type Block, type Slot } from './blocks'
 import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
 import { churchBlocks, sabbathOf } from './church'
@@ -52,9 +52,24 @@ export async function pendingOffers(): Promise<Offer[]> {
   return open
     .filter((o) => {
       const x = outcomes.get(o.id as number)
+      // Nothing extra asks nothing of itself (Item 4): only a passive item that rode alongside brings it to a check-in.
+      if (o.moveId === NOTHING) return o.passiveId !== null && (!x || x.passiveOutcome === null)
       return !x || (o.passiveId !== null && x.passiveOutcome === null)
     })
     .sort((a, b) => (a.at < b.at ? -1 : 1))
+}
+
+/**
+ * Nothing extra closes at the next check-in as it stands (Item 4, 2026-10-23): no move was suggested, the block was lived as
+ * usual, and nothing is asked of it, so no outcome is written; its test reads it as drawn and seen, as before. One with a
+ * passive item alongside closes when that item is answered. Returns how many closed.
+ */
+export async function closeNothingExtra(before: Slot, now: Date = new Date()): Promise<number> {
+  return db.transaction('rw', db.offers, async () => {
+    const open = await db.offers.filter((o) => o.moveId === NOTHING && o.passiveId === null && o.closedAt === null && o.skippedAt === null && compareSlots(o, before) < 0).toArray()
+    for (const o of open) await db.offers.update(o.id as number, { closedAt: now.toISOString() })
+    return open.length
+  })
 }
 
 /**

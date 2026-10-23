@@ -194,13 +194,23 @@ test('Claude’s answer, when it comes, shows with the findings it cited folded 
   await expect(page.getByTestId('ask-delete-copy')).toContainText('stays in the routine’s history on claude.ai')
 })
 
-test('no checked answer is said plainly, with the findings its words name, never an unchecked one (stage A2)', async ({ page }) => {
+test('no checked answer is said plainly by its kind, what the checks held back folded beneath, the findings its words name, never an unchecked one (stage A2; Item 4)', async ({ page }) => {
   await start(page)
-  await seedTurns(page, 'Does a walk help my stress?', [{ question: 'Does a walk help my stress?', claude: { status: 'failed' } }], daysBefore(0))
+  const reasons = ['says "eased" of a test with no call yet', 'says "gave you" of an association in the record: it went with what followed, and is never said to have caused it']
+  await seedTurns(page, 'Does a walk help my stress?', [{ question: 'Does a walk help my stress?', claude: { status: 'failed', reason: reasons[1], kind: 'checks', reasons } }], daysBefore(0))
   await page.reload()
   await openAsk(page)
+  // The thread says no checked answer, never answered.
+  await expect(page.getByTestId('ask-thread-row')).toContainText('no checked answer')
+  await expect(page.getByTestId('ask-thread-row')).not.toContainText('answered ')
   await page.getByTestId('ask-thread-row').click()
-  await expect(page.getByTestId('ask-no-checked')).toContainText('Couldn’t produce a checked answer.')
+  await expect(page.getByTestId('ask-no-checked')).toHaveText('No checked answer: Claude wrote one, and the evidence checks held back that draft and its rewrite, so neither is shown.')
+  await expect(page.getByTestId('ask-failed-why')).toHaveCount(0)
+  await page.getByTestId('ask-failed-why-open').click()
+  await expect(page.getByTestId('ask-failed-why')).toContainText('Draft 1: says "eased" of a test with no call yet')
+  await expect(page.getByTestId('ask-failed-why')).toContainText('Draft 2: says "gave you" of an association in the record')
+  await expect(page.getByTestId('ask-matches')).toHaveAttribute('data-kind', 'named')
+  await expect(page.getByTestId('ask-matches')).toContainText('The findings its words name')
   await expect(page.getByTestId('ask-matches')).toContainText('A ten-minute walk, now, for Stress over the next block')
   await expect(page.getByTestId('ask-claude')).toHaveCount(0)
   // No run that reached Claude is on this phone for it: the plain confirmation.
@@ -348,4 +358,33 @@ test('Recent keeps two rows whatever the count; Past conversations lists every o
   await page.getByTestId('ask-delete-yes').click()
   await expect(page.getByTestId('ask')).toBeVisible()
   await expect(page.getByTestId('ask-past-open')).toContainText('2')
+})
+
+test('a broad question with no checked answer (Item 4): an older turn settled as answered is set right, the run-level kinds are said, and a question naming no finding is told so, never that the record holds nothing', async ({ page }) => {
+  await start(page)
+  // As the owner's real turn stood: settled as answered while its answer said failed.
+  await seedTurns(page, 'Anything I might not have noticed?', [{ question: 'Is there anything you can tell me that I might not have noticed?', state: 'answered', claude: { status: 'failed', reason: 'says "marked", which needs a cited card whose effect is at least medium' } }], daysBefore(1))
+  await seedTurns(page, 'What should I pay attention to?', [{ question: 'What should I pay attention to right now?', claude: { status: 'failed', reason: 'no run could answer it within 3 days', kind: 'waited' } }], daysBefore(0))
+  await page.reload()
+  await openAsk(page)
+  await page.getByTestId('ask-past-open').click()
+  const rows = page.getByTestId('ask-thread-row')
+  await expect(rows.filter({ hasText: 'Anything I might not have noticed?' })).toContainText('no checked answer')
+  await expect(rows.filter({ hasText: 'What should I pay attention to?' })).toContainText('no checked answer')
+  expect((await storeRows<{ question: string; state: string }>(page, 'askTurns')).map((t) => t.state)).toEqual(['failed', 'failed'])
+  await rows.filter({ hasText: 'Anything I might not have noticed?' }).click()
+  // An answer from before the kinds were kept: the checks, with the one reason it kept.
+  await expect(page.getByTestId('ask-no-checked')).toHaveAttribute('data-kind', 'checks')
+  await page.getByTestId('ask-failed-why-open').click()
+  await expect(page.getByTestId('ask-failed-why')).toHaveText('says "marked", which needs a cited card whose effect is at least medium')
+  // Its words name no finding: said so, with the record's calls, or that no test has a call; never "no finding matches".
+  const beside = page.getByTestId('ask-matches')
+  await expect(beside).not.toHaveAttribute('data-kind', 'named')
+  await expect(beside).toContainText('Its words name no finding')
+  await expect(beside).not.toContainText('No finding matches')
+  await page.locator('.sub-head .back').click()
+  await page.getByTestId('ask-past-open').click()
+  await rows.filter({ hasText: 'What should I pay attention to?' }).click()
+  await expect(page.getByTestId('ask-no-checked')).toHaveText('No checked answer: no run could answer it within 3 days.')
+  await expect(page.getByTestId('ask-failed-why-open')).toHaveCount(0)
 })

@@ -248,11 +248,17 @@ export const USAGE_REASON = /\b(because|since you|as you|due to|so you|why you|a
 /** Words that keep a reason a possibility to test. */
 export const USAGE_HEDGE = /\b(may|might|could|perhaps|possibly|maybe|one possibility|a possibility|worth testing|to test|a guess|if so|whether)\b/i
 
+/** Every reason a text about how the app was used may not be said, in the order they are checked. */
+export function usageRefusals(text: string): string[] {
+  const out: string[] = []
+  if (USAGE_VERDICT.test(text)) out.push('passes a verdict on the person from how the app was used; say what was observed')
+  if (USAGE_REASON.test(text) && !USAGE_HEDGE.test(text)) out.push('gives a reason for how the app was used as a fact; say what was observed, or offer a reason as a possibility to test')
+  return out
+}
+
 /** Why a text about how the app was used may not be said, or null. */
 export function usageRefusal(text: string): string | null {
-  if (USAGE_VERDICT.test(text)) return 'passes a verdict on the person from how the app was used; say what was observed'
-  if (USAGE_REASON.test(text) && !USAGE_HEDGE.test(text)) return 'gives a reason for how the app was used as a fact; say what was observed, or offer a reason as a possibility to test'
-  return null
+  return usageRefusals(text)[0] ?? null
 }
 
 /**
@@ -283,8 +289,12 @@ export const EVIDENCE_WORDING: 'gated' | 'open' = 'open'
 
 /** Words that say an effect is large: a cited card whose effect is large must stand under them. */
 export const LARGE_WORDS = /\b(greatly|dramatic(?:ally)?|huge(?:ly)?|massive(?:ly)?|vast(?:ly)?|enormous(?:ly)?|far (?:more|less|better|worse|fewer|higher|lower|greater)|much (?:more|less|better|worse|fewer|higher|lower|greater)|a lot (?:more|less|better|worse)|doubl(?:e|es|ed|ing)|tripl(?:e|es|ed|ing)|halv(?:e|es|ed|ing)|twice as|several times|(?<!(?:more|less|most|as) )strongly|a (?:large|big|huge|major|dramatic|powerful|strong) (?:effect|difference|change|gain|drop|boost|improvement|lift|benefit))\b/i
-/** Words that say an effect is at least medium: a cited card whose effect is medium or large must stand under them. */
-export const MEDIUM_WORDS = /\b(considerabl[ey]|marked(?:ly)?|substantial(?:ly)?|significantly|sizeable|a (?:moderate|medium|sizeable|marked|clear) (?:effect|difference|change|gain|drop|improvement|lift|benefit))\b/i
+/**
+ * Words that say an effect is at least medium: a cited card whose effect is medium or large must stand under them. "Marked"
+ * is a size only as "markedly" or "a marked difference" (and the like): the record's own word for a tap ("days marked
+ * Unwell today", "marked as a possibility") is no size, and was refused as one (Item 4, 2026-10-23).
+ */
+export const MEDIUM_WORDS = /\b(considerabl[ey]|markedly|substantial(?:ly)?|significantly|sizeable|a (?:moderate|medium|sizeable|marked|clear) (?:effect|difference|change|gain|drop|improvement|lift|benefit))\b/i
 /**
  * A claim that something in the record caused what happened: a past cause aimed at you, a because about
  * you, a why, or a thing said to be what does it ("is what gets it done", "made the difference", "does the
@@ -299,18 +309,34 @@ export function isAssociationFact(id: string): boolean {
 
 const SIZE_RANK: Record<NonNullable<ClaimCard['size']>, number> = { medium: 1, large: 2 }
 
+/** The words a pattern finds in a text, each quoted: the first alone, or with `all` every distinct one ("eased", "helped"); null when none. */
+function found(re: RegExp, text: string, all = false): string | null {
+  if (!all) {
+    const m = re.exec(text)
+    return m ? `"${m[0]}"` : null
+  }
+  const each = [...new Set([...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`))].map((m) => m[0]))]
+  return each.length ? each.map((w) => `"${w}"`).join(', ') : null
+}
+
+/** Every reason a text's size or cause words outrun its evidence (Pass 4), in order; `all` names every such word, not the first. */
+export function evidenceWordingRefusals(text: string, factIds: readonly string[], cards: readonly Pick<ClaimCard, 'size'>[], all = false): string[] {
+  const out: string[] = []
+  const best = cards.reduce((m, c) => Math.max(m, c.size ? SIZE_RANK[c.size] : 0), 0)
+  const large = found(LARGE_WORDS, text, all)
+  if (large && best < SIZE_RANK.large) out.push(`says ${large}, which needs a cited card whose effect is large`)
+  const medium = found(MEDIUM_WORDS, text, all)
+  if (medium && best < SIZE_RANK.medium) out.push(`says ${medium}, which needs a cited card whose effect is at least medium`)
+  if (factIds.some(isAssociationFact)) {
+    const cause = found(RECORD_CAUSE, text, all)
+    if (cause) out.push(`says ${cause} of an association in the record: it went with what followed, and is never said to have caused it`)
+  }
+  return out
+}
+
 /** Why a text's size or cause words outrun its evidence, or null (Pass 4). */
 export function evidenceWordingRefusal(text: string, factIds: readonly string[], cards: readonly Pick<ClaimCard, 'size'>[]): string | null {
-  const best = cards.reduce((m, c) => Math.max(m, c.size ? SIZE_RANK[c.size] : 0), 0)
-  const large = LARGE_WORDS.exec(text)
-  if (large && best < SIZE_RANK.large) return `says "${large[0]}", which needs a cited card whose effect is large`
-  const medium = MEDIUM_WORDS.exec(text)
-  if (medium && best < SIZE_RANK.medium) return `says "${medium[0]}", which needs a cited card whose effect is at least medium`
-  if (factIds.some(isAssociationFact)) {
-    const cause = RECORD_CAUSE.exec(text)
-    if (cause) return `says "${cause[0]}" of an association in the record: it went with what followed, and is never said to have caused it`
-  }
-  return null
+  return evidenceWordingRefusals(text, factIds, cards)[0] ?? null
 }
 
 /** The learning engine's tests on the evidence ladder (stage R5): facts the phone sends while the engine reads the record. */
@@ -324,8 +350,10 @@ const LADDER_RANK: Record<string, number> = { none: 0, early: 1, likely: 2, esta
 export const RELIABLE_WORDS = /\b(reliabl[ey]|proven|proved|consistent(?:ly)?|dependabl[ey]|without fail|every time|for sure|definitely|certainly|guaranteed?|always (?:helps|works|lifts|eases|calms))\b/i
 /** Words that keep an effect a possibility, as an early sign or a likely call is said. */
 export const LADDER_HEDGE = /\b(early sign|signs? (?:of|that)|may|might|could|seems?|looks? like|appears? to|likely|probably|tends? to|so far|for now|leans? toward)\b/i
+/** Every form of the words that say a move helps: the check reads them, and the prompts list them from here, so the two never part (Item 4). */
+export const HELP_FORMS: readonly string[] = ['help', 'helps', 'helped', 'helping', 'lifts', 'lifted', 'eases', 'eased', 'calms', 'calmed', 'improve', 'improves', 'improved', 'boost', 'boosts', 'boosted', 'works', 'worked']
 /** Words that say a move helps the reading it is tested on. Verbs only, so "work" or "a calm evening" never count. */
-export const HELP_WORDS = /\b(help(?:s|ed|ing)?|lifts|lifted|eases|eased|calms|calmed|improv(?:e|es|ed)|boost(?:s|ed)?|works|worked)\b/i
+export const HELP_WORDS = new RegExp(`\\b(${HELP_FORMS.join('|')})\\b`, 'i')
 /** A help word under a negation within three words: "not yet shown to help", "doesn't seem to work". */
 const NEGATED_HELP = /\b(?:not|n['’]t|never|no longer|nor|without)\b(?:\W+\w+){0,3}?\W+(?:help|lift|ease|calm|improve|boost|work)\w*/gi
 
@@ -336,20 +364,26 @@ const NEGATED_HELP = /\b(?:not|n['’]t|never|no longer|nor|without)\b(?:\W+\w+)
  * called reliable; and a call that hurts or makes little difference is never said to help. Saying it does not help is honest.
  */
 export function ladderWordingRefusal(text: string, factIds: readonly string[], sheet: Pick<FactSheet, 'facts'>): string | null {
+  return ladderWordingRefusals(text, factIds, sheet)[0] ?? null
+}
+
+/** Every such reason, in order; `all` names every offending word, not the first (Ask, Item 4: one retry mends them all). */
+export function ladderWordingRefusals(text: string, factIds: readonly string[], sheet: Pick<FactSheet, 'facts'>, all = false): string[] {
   const cited = sheet.facts.filter((f) => isLadderFact(f.id) && factIds.includes(f.id))
-  if (!cited.length) return null
+  if (!cited.length) return []
+  const out: string[] = []
   const rank = (f: Fact) => LADDER_RANK[String(f.values.level ?? 'none')] ?? 0
-  const reliable = RELIABLE_WORDS.exec(text)
-  if (reliable && !cited.some((f) => f.values.level === 'established')) return `says "${reliable[0]}" of a test below established: only an established call may be called reliable`
-  const help = HELP_WORDS.exec(text.replace(NEGATED_HELP, ' '))
-  if (!help) return null
+  const reliable = found(RELIABLE_WORDS, text, all)
+  if (reliable && !cited.some((f) => f.values.level === 'established')) out.push(`says ${reliable} of a test below established: only an established call may be called reliable`)
+  const help = found(HELP_WORDS, text.replace(NEGATED_HELP, ' '), all)
+  if (!help) return out
   const called = cited.filter((f) => f.values.level !== 'none' && f.values.direction)
-  if (!called.length) return `says "${help[0]}" of a test with no call yet`
+  if (!called.length) return [...out, `says ${help} of a test with no call yet`]
   const helping = called.filter((f) => f.values.direction === 'helps')
-  if (!helping.length) return `says "${help[0]}" of a test whose call does not say it helps`
+  if (!helping.length) return [...out, `says ${help} of a test whose call does not say it helps`]
   const best = Math.max(...helping.map(rank))
-  if (best < LADDER_RANK.established && !LADDER_HEDGE.test(text)) return `says "${help[0]}" as settled of a test at ${best === 1 ? 'an early sign' : 'likely'}: say it as an early sign, or likely`
-  return null
+  if (best < LADDER_RANK.established && !LADDER_HEDGE.test(text)) out.push(`says ${help} as settled of a test at ${best === 1 ? 'an early sign' : 'likely'}: say it as an early sign, or likely`)
+  return out
 }
 
 export function placeRefusal(text: string): string | null {
@@ -447,6 +481,12 @@ function withoutCitedNames(text: string, sheet: FactSheet, factIds: readonly str
  * fact itself says it in words. The Brain's own earlier words ground nothing.
  */
 export function numbersRefusal(text: string, sheet: FactSheet, factIds: readonly string[]): string | null {
+  return numbersRefusals(text, sheet, factIds)[0] ?? null
+}
+
+/** Every such reason, in order, each once: a retry learns of every number at once (Ask, Item 4). */
+export function numbersRefusals(text: string, sheet: FactSheet, factIds: readonly string[]): string[] {
+  const out: string[] = []
   const cited = sheet.facts.filter((f) => factIds.includes(f.id))
   let rest = withoutCitedNames(text, sheet, factIds)
   // Clock times (item 5): each names a minute of the day, 24-hour unless am or pm says so, and must be one the cited facts name; a
@@ -455,66 +495,69 @@ export function numbersRefusal(text: string, sheet: FactSheet, factIds: readonly
   for (const t of clockTimesWritten(rest)) {
     if (times.has(t.minutes)) continue
     const same = [...times].find((m) => m % 720 === t.minutes % 720)
-    return same !== undefined ? `the time ${t.written} is not the cited facts' ${hhmmOf(same)}; write clock times as the record does, 24-hour: ${hhmmOf(same)}` : `the time ${t.written} is not in the cited facts`
+    out.push(same !== undefined ? `the time ${t.written} is not the cited facts' ${hhmmOf(same)}; write clock times as the record does, 24-hour: ${hhmmOf(same)}` : `the time ${t.written} is not in the cited facts`)
   }
   rest = withoutClockTimes(rest)
-  for (const n of numbersIn(rest)) if (!numberGrounded(n, sheet, factIds)) return `the number ${n} is not in the cited facts`
+  for (const n of numbersIn(rest)) if (!numberGrounded(n, sheet, factIds)) out.push(`the number ${n} is not in the cited facts`)
   // The cited facts' own words, less the Brain's earlier words they quote.
   const own = cited.map((f) => Object.entries(f.values).reduce((t, [k, v]) => (EARLIER_WORDS.has(k) && typeof v === 'string' && v ? t.split(v).join(' ') : t), f.text)).join(' ')
   for (const m of rest.matchAll(COUNT_WORD)) {
     const word = m[0].toLowerCase()
     const value = NUMBER_WORDS[(m[1] ?? '').toLowerCase()] + (m[2] ? UNIT_WORDS[m[2].toLowerCase()] : 0)
-    if (!numberGrounded(String(value), sheet, factIds) && !new RegExp(`\\b${escapeRe(word)}\\b`, 'i').test(own)) return `the count “${m[0]}” is not in the cited facts`
+    if (!numberGrounded(String(value), sheet, factIds) && !new RegExp(`\\b${escapeRe(word)}\\b`, 'i').test(own)) out.push(`the count “${m[0]}” is not in the cited facts`)
   }
-  return null
+  return [...new Set(out)]
 }
 
 function strings(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
 }
 
-/** The reason a text is refused, or null when it may be said. */
+/** The reason a text is refused, or null when it may be said: the first of its reasons, as a line and a review are told. */
 function refusal(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number, evidence = false, ownTests = false): string | null {
-  if (!text) return 'no text'
-  if (words(text) > maxWords) return `${words(text)} words; at most ${maxWords}`
-  for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) return `uses the word "${w}"`
+  return refusals(text, factIds, cardIds, sheet, admitted, maxWords, evidence, ownTests)[0] ?? null
+}
+
+/**
+ * Every reason a text is refused, in the order they are checked, each rule's own words: the first is what `refusal` gives.
+ * `all` names every offending word of a rule rather than its first (Ask, Item 4, 2026-10-23: a retry told one reason mended
+ * it and met the next, so a real question ended with no checked answer).
+ */
+function refusals(text: string, factIds: readonly string[], cardIds: readonly string[], sheet: FactSheet, admitted: ReadonlyMap<string, ClaimCard>, maxWords: number, evidence = false, ownTests = false, all = false): string[] {
+  if (!text) return ['no text']
+  const out: string[] = []
+  if (words(text) > maxWords) out.push(`${words(text)} words; at most ${maxWords}`)
+  for (const w of BANNED_WORDS) if (new RegExp(`\\b${w}\\b`, 'i').test(text)) out.push(`uses the word "${w}"`)
   // Caffeine (Part 22): an untapped window is none reported, never caffeine-free; and caffeine is an association, never a cause.
-  if (CAFFEINE_FREE.test(text)) return 'calls a window caffeine-free; none reported is not none'
-  if (CAFFEINE_WORDS.test(text) && CAUSAL_WORDS.test(text)) return 'speaks of caffeine as a cause'
-  if (factIds.some(isPathFact) && speaksOfOutcomes(text)) return 'rates a person or counts an outcome, in a line about a path'
+  if (CAFFEINE_FREE.test(text)) out.push('calls a window caffeine-free; none reported is not none')
+  if (CAFFEINE_WORDS.test(text) && CAUSAL_WORDS.test(text)) out.push('speaks of caffeine as a cause')
+  if (factIds.some(isPathFact) && speaksOfOutcomes(text)) out.push('rates a person or counts an outcome, in a line about a path')
   // Follow-up F1: a line citing how the app was used says what was observed; a reason stays a possibility.
-  if (factIds.some(isUsageFact)) {
-    const why = usageRefusal(text)
-    if (why) return why
-  }
+  if (factIds.some(isUsageFact)) out.push(...usageRefusals(text))
   // Part 43: a line citing where the day was spent keeps the place as context, never the cause.
   if (factIds.some(isLocationFact)) {
     const why = placeRefusal(text)
-    if (why) return why
+    if (why) out.push(why)
   }
   // Stage 3, item 6: a line citing the weather keeps it as context, never the cause.
   if (factIds.some(isWeatherFact)) {
     const why = weatherRefusal(text)
-    if (why) return why
+    if (why) out.push(why)
   }
   // Stage R5: a line citing the learning repair's tests speaks of their effect no more firmly than their rungs allow.
-  if (factIds.some(isLadderFact)) {
-    const why = ladderWordingRefusal(text, factIds, sheet)
-    if (why) return why
-  }
-  const numbers = numbersRefusal(text, sheet, factIds)
-  if (numbers) return numbers
+  if (factIds.some(isLadderFact)) out.push(...ladderWordingRefusals(text, factIds, sheet, all))
+  out.push(...numbersRefusals(text, sheet, factIds))
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
-    if (text.toLowerCase().includes(phrase) && GRADE_ORDER[grade] < best) return `says "${phrase}" beyond the cited cards' grade`
+    if (text.toLowerCase().includes(phrase) && GRADE_ORDER[grade] < best) out.push(`says "${phrase}" beyond the cited cards' grade`)
   }
   // Follow-up F1: a line citing how the app was used may name the Evidence screen; that name is not a claim.
   const claims = factIds.some(isUsageFact) ? text.replace(/\b[Tt]he Evidence screen\b/g, '') : text
   // Ask Life Mirror (stage A2) alone: an answer citing the owner's own tests may speak of their evidence, and of the research their facts carry beside them.
-  if (cardIds.length === 0 && EVIDENCE_WORDS.test(claims) && !(ownTests && factIds.some(isLadderFact))) return 'speaks of evidence without citing a card'
+  if (cardIds.length === 0 && EVIDENCE_WORDS.test(claims) && !(ownTests && factIds.some(isLadderFact))) out.push('speaks of evidence without citing a card')
   // Pass 4, once its gate is open: size words within the cards' sizes, and no cause read into the record's own comparisons.
-  if (evidence) return evidenceWordingRefusal(text, factIds, cardIds.map((id) => admitted.get(id) as ClaimCard))
-  return null
+  if (evidence) out.push(...evidenceWordingRefusals(text, factIds, cardIds.map((id) => admitted.get(id) as ClaimCard), all))
+  return out
 }
 
 /** The citations, checked: at least one fact, every fact on the sheet, every card admitted. */
@@ -836,7 +879,9 @@ export function validateAsk(raw: unknown, sheet: FactSheet, cards: readonly Clai
   // The person's own words, quoted back from the question ("I've read “helps most” as…"), are theirs, never a claim of the answer's.
   const own = withoutQuoted(text, question)
   const support = ASKED_SUPPORT.exec(own)
-  const why = refusal(own, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true) ?? firmnessRefusal(own) ?? (support ? `says "${support[0]}": that the person asked is never support` : null)
+  // Every reason at once, each offending word named (Item 4): the one retry is told all it must mend.
+  const whys = [...refusals(own, cited.factIds, cited.cardIds, sheet, cited.admitted, Number.POSITIVE_INFINITY, evidence, true, true), firmnessRefusal(own), support ? `says "${support[0]}": that the person asked is never support` : null].filter((x): x is string => Boolean(x))
+  const why = whys.length ? whys.join('; and ') : null
   const voice = askVoiceRefusal(own, deep, sheet, cited.factIds)
   if (!long && !why && !voice) {
     const test = askTestOf(o.test, sheet)

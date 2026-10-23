@@ -15,9 +15,9 @@ import { askParagraphs } from '../brainShared'
 import { Disclosure, SubHead } from '../ui'
 import { changesOf, threadState } from './evidence'
 import { allThreads, askAbout, askAgain, askAllowance, askDeep, askEvidence, askExplain, askSooner, askStarter, askTyped, askWaitingKeys, askWaits, cancelTurn, deleteThread, keepNote, lastRead, QUESTION_MAX, reachedAny, searchThreads, settleAskTurns, testOfTurn, type AboutRef, type ThreadWhole } from './flow'
-import { matchFindings } from './match'
+import { findingsBeside } from './match'
 import { changeLines, soonerOf, startersShown, testContextLine } from './quick'
-import { DEEP_COUNTS, THREAD_TURNS_MAX, type AskAnswer, type AskWait } from './shared'
+import { ASK_TRIES, ASK_WAITS_DAYS, DEEP_COUNTS, THREAD_TURNS_MAX, type AskAnswer, type AskWait } from './shared'
 import type { AboutSource, AskStarter, AskTurn, KeptNote } from './types'
 
 // Ask Life Mirror's screen (stage A1, 2026-10-19; the agreed design's points 3 to 8): the question box first, the starters
@@ -54,23 +54,54 @@ function waitWords(wait: AskWait | undefined): string {
   return wait.kind === 'refused' ? fill(c.waits.refused, { time: formatTime(wait.retryAt) }) : c.waits[wait.kind]
 }
 
-/** The findings a question's words name, as the quick tier writes them. */
-function Matches({ t, ev, title }: { t: AskTurn; ev: RepairEvidence | null | undefined; title: string }) {
+/** A finding in one line, as the quick tier writes it. */
+function findingLine(m: TestShown): string {
+  return fill(w().finding, { move: nameOf(m.moveId), reading: readingById(m.target as ReadingId).name, window: copy.catalogue.windows[m.window as keyof typeof copy.catalogue.windows] ?? m.window, call: rungWords(m.level, m.direction) })
+}
+
+/**
+ * The findings a question's words name, as the quick tier writes them. A question that names none (a broad one) is told so,
+ * with the record's calls now, findings to act on first; or, when no test has a call, that too (Item 4: "No finding matches
+ * its words yet" had read as no evidence).
+ */
+function Matches({ t, ev }: { t: AskTurn; ev: RepairEvidence | null | undefined }) {
   const c = w()
-  const matches = ev ? matchFindings(t.question, ev) : []
+  if (!ev) return null
+  const beside = findingsBeside(t.question, ev)
   return (
-    <div class="calc" data-testid="ask-matches">
-      <p class="calc-line ink">{title}</p>
-      {matches.length ? (
-        matches.map((m) => (
-          <p key={m.key} class="calc-line">
-            {fill(c.finding, { move: nameOf(m.moveId), reading: readingById(m.target as ReadingId).name, window: copy.catalogue.windows[m.window as keyof typeof copy.catalogue.windows] ?? m.window, call: rungWords(m.level, m.direction) })}
-          </p>
-        ))
-      ) : (
-        <p class="calc-line">{c.matchesNone}</p>
-      )}
+    <div class="calc" data-testid="ask-matches" data-kind={beside.kind}>
+      <p class="calc-line ink">{beside.kind === 'named' ? c.matchesTitle : beside.kind === 'calls' ? c.matchesUnnamed : c.matchesNoCalls}</p>
+      {beside.tests.map((m) => (
+        <p key={m.key} class="calc-line">
+          {findingLine(m)}
+        </p>
+      ))}
     </div>
+  )
+}
+
+/** No checked answer, said by its kind, with what the checks held back folded beneath: never the drafts themselves. */
+function NoChecked({ a }: { a: AskAnswer }) {
+  const c = w()
+  const kind = a.kind ?? 'checks'
+  const reasons = a.reasons ?? (a.reason && kind === 'checks' ? [a.reason] : [])
+  return (
+    <>
+      <p class="note no-gap" data-testid="ask-no-checked" data-kind={kind}>
+        {kind === 'waited' ? fill(c.failedWaited, { n: String(ASK_WAITS_DAYS) }) : kind === 'runs' ? fill(c.failedRuns, { n: String(ASK_TRIES) }) : c.failedChecks}
+      </p>
+      {reasons.length > 0 && (
+        <Disclosure label={c.failedWhy} testid="ask-failed-why-open">
+          <div class="calc" data-testid="ask-failed-why">
+            {reasons.map((r, i) => (
+              <p key={i} class="calc-line">
+                {reasons.length > 1 ? fill(c.failedDraft, { n: String(i + 1), reason: r }) : r}
+              </p>
+            ))}
+          </div>
+        </Disclosure>
+      )}
+    </>
   )
 }
 
@@ -230,10 +261,8 @@ function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain, kept, onKeep 
       {claude && answer?.status === 'answered' && (answer.noteOffer || kept) && <KeepNote question={t.question} kept={kept} onKeep={onKeep} />}
       {claude && answer?.status === 'failed' && (
         <>
-          <p class="note no-gap" data-testid="ask-no-checked">
-            {c.noChecked}
-          </p>
-          <Matches t={t} ev={ev} title={c.matchesTitle} />
+          <NoChecked a={answer} />
+          <Matches t={t} ev={ev} />
         </>
       )}
       {!(t.state === 'waiting' && !answer) && testIt}
@@ -242,7 +271,7 @@ function Turn({ t, ev, answer, wait, onAgain, onCancel, onExplain, kept, onKeep 
           <p class="note no-gap" data-testid="ask-waiting" data-wait={wait?.kind ?? ''}>
             {waitWords(wait)}
           </p>
-          <Matches t={t} ev={ev} title={c.matchesTitle} />
+          <Matches t={t} ev={ev} />
           {testIt}
           <div class="actions">
             <button type="button" class="textbtn" data-testid="ask-cancel" onClick={onCancel}>

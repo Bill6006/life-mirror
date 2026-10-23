@@ -7,9 +7,10 @@ import { getDayContext, getSettings } from './db'
 import { fill, formatDayShort, formatHHMM } from './format'
 import { useLive } from './live'
 import { PLACE_ACCURACY, PLACE_KINDS, type PlaceKind, type Where } from './location'
-import { answerQuestion, forgetAll, forgetPlace, nameHere, namedPlaces, pendingQuestion, permissionState, renamePlace, turnOff, turnOn, type LocationStatus } from './locationFlow'
+import { answerQuestion, forgetAll, forgetPlace, lastReading, nameHere, namedPlaces, onReading, pendingQuestion, permissionState, renamePlace, roughnessOf, turnOff, turnOn, type LocationStatus } from './locationFlow'
 import { daylightFor, sunPlace } from './settings'
 import { sunLocal } from './sun'
+import { Disclosure } from './ui'
 
 // Part 43: Settings → Location Context, and the one question on Now. The smallest set of controls:
 // on or off, name where you are, rename or forget a place, forget everything; the daylight it sets.
@@ -38,6 +39,9 @@ export function LocationSection() {
   useEffect(() => {
     void permissionState().then((p) => setStatus((cur) => (cur === 'denied' && p === 'prompt' ? cur : p)))
   }, [on])
+  // Item 4: a reading that ends while the screen is open (the launch's, a quarter of a minute) is shown when it comes.
+  const [, setHeard] = useState(0)
+  useEffect(() => onReading(() => setHeard((n) => n + 1)), [])
   if (!settings || !places || today === undefined) return <section class="screen" />
   const c = copy.location
   const day = blockAt(new Date()).day
@@ -47,6 +51,9 @@ export function LocationSection() {
   const noted = lastNoted(today?.where)
   const statusLine = !on ? c.status.off : status === 'granted' || status === null ? (noted ? fill(c.status.granted, { where: noted }) : c.status.grantedNone) : c.status[status]
   const named = places.filter((p) => p.kind !== 'none')
+  // Item 4: the last reading, approximate (2 km or more): said with what to change, while the app is open.
+  const last = lastReading()
+  const approximate = last && last.roughness === 'approximate' ? last : null
 
   async function toggle(next: boolean) {
     setMsg(null)
@@ -60,7 +67,7 @@ export function LocationSection() {
     setMsg(c.reading)
     try {
       const r = await nameHere(kind, null, new Date(), (accuracy) => {
-        if (accuracy > PLACE_ACCURACY) setMsg(fill(c.readingRough, { n: String(Math.round(accuracy)), within: String(PLACE_ACCURACY) }))
+        if (accuracy > PLACE_ACCURACY) setMsg(fill(roughnessOf(accuracy) === 'approximate' ? c.readingApproximate : c.readingRough, { n: String(Math.round(accuracy)), within: String(PLACE_ACCURACY) }))
       })
       setMsg(c.named[r])
     } catch (e) {
@@ -80,6 +87,7 @@ export function LocationSection() {
       <p class="note faint" data-testid="location-status">
         {statusLine}
       </p>
+      {on && approximate && <PreciseHelp accuracy={approximate.accuracy} />}
 
       {on && status === 'granted' && (
         <div class="card pad" data-testid="location-name-here">
@@ -190,6 +198,27 @@ export function PlaceQuestion() {
           {c.question.later}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * An approximate location, said plainly with what to change (Item 4, 2026-10-23): the phone, not the signal, holds Life
+ * Mirror to about 2 km, and no wait or window betters it. The steps are the owner's to take; nothing is cleared.
+ */
+function PreciseHelp({ accuracy }: { accuracy: number }) {
+  const c = copy.location
+  const site = typeof location !== 'undefined' ? location.host : ''
+  return (
+    <div class="card pad" data-testid="location-approximate">
+      <p class="note no-gap">{fill(c.approximate, { km: String(Math.max(2, Math.round(accuracy / 1000))) })}</p>
+      <Disclosure label={c.preciseOpen} testid="location-precise-open">
+        <ol class="steps" data-testid="location-precise-steps">
+          {c.preciseSteps.map((step, i) => (
+            <li key={i}>{fill(step, { site })}</li>
+          ))}
+        </ol>
+      </Disclosure>
     </div>
   )
 }

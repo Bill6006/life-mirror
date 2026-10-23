@@ -237,7 +237,7 @@ try {
     await page.locator('.sub-head .back').click()
     await page.getByTestId('ask-past-open').click()
     await page.getByTestId('ask-thread-row').filter({ hasText: 'Why are my mornings flat?' }).click()
-    check('no checked answer is said plainly, never an unchecked one', (await text(page.getByTestId('ask-no-checked'))).startsWith('Couldn’t produce a checked answer.') && (await page.getByTestId('ask-claude').count()) === 0)
+    check('no checked answer is said plainly, never an unchecked one', (await text(page.getByTestId('ask-no-checked'))).startsWith('No checked answer:') && (await page.getByTestId('ask-claude').count()) === 0)
     // Stage A3: a question naming one test and a context; "Test it" opens its card.
     await page.locator('.sub-head .back').click()
     await page.getByTestId('ask-box').fill('Does a walk help my mood on office days?')

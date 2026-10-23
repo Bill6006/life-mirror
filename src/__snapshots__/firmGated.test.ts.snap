@@ -22,7 +22,6 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "loop-planned": "Yesterday’s line was about {name}: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
   "nap-read": "Mornings after a nap read {diff} against the mornings without, {n} naps. Short naps help the afternoon; long ones bring more grogginess after.",
   "necessities-missed": "{n} necessities missed in three days. That can be an early sign of a stretch; the smallest one first, before any move.",
-  "nothing-holds": "Nothing extra was kept {done} of the {offered} times it was offered. Rest is a move; the mornings after say what it does.",
   "partly-honest": "Partly, {n} times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
   "say-when": "{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
   "short-night-today": "Sleep read “{word}” {when}. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
@@ -315,18 +314,6 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     "mode": "warning",
     "score": 0.8,
     "text": "2 necessities missed in three days. That can be an early sign of a stretch; the smallest one first, before any move.",
-  },
-  "nothing-holds": {
-    "action": null,
-    "cardIds": [
-      "micro-breaks",
-    ],
-    "factIds": [
-      "nothing",
-    ],
-    "mode": "perspective",
-    "score": 0.425,
-    "text": "Nothing extra was kept 3 of the 5 times it was offered. Rest is a move; the mornings after say what it does.",
   },
   "partly-honest": {
     "action": null,

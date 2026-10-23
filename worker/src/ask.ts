@@ -10,7 +10,7 @@ import type { ClaimCard } from '../../src/libraryTypes'
 import { relabel, sheetLines } from './briefing'
 import { claudeOn, fallbackReason, fire, fireFailure, fireText, journalVerdict, MAX_POSTS, nightsOf, timeoutMinutes, type ClaudeEnv, type Deps, type Reply } from './claude'
 import { cardLines, loadLibrary, retrieve } from './library'
-import { askInstructions, journalRules } from './prompt'
+import { askInstructions, journalRules, sheetRules } from './prompt'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, gatesFrom, loadCatalogue, parseContextQuery, privateNames, READABLE, readOnDemand, sheetForClaude, type Access } from './retrieval'
 import { DATING_WORDS, surfaceGuard } from './surface'
 import { addDays, localTime } from './time'
@@ -98,11 +98,18 @@ async function waitingTurns(store: Store, day: string): Promise<(AskTurn & { id:
     .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id - b.id))
 }
 
-/** No checked answer for a turn: said on the phone with the quick tier's findings, never an unchecked answer. */
-async function noAnswer(store: Store, turn: AskTurn & { id: number }, reason: string, now: Date): Promise<void> {
+/**
+ * No checked answer for a turn: said on the phone with what kind of failure it was, never an unchecked answer. `checks`: the
+ * checks held back each draft (their reasons kept, the drafts never); `runs`: runs reached Claude with no checked answer;
+ * `waited`: no run could answer it within the days a question waits (Item 4, 2026-10-23).
+ */
+async function noAnswer(store: Store, turn: AskTurn & { id: number }, reason: string, now: Date, kind: 'checks' | 'runs' | 'waited', reasons: readonly string[] = []): Promise<void> {
   const at = now.toISOString()
-  await store.writeAnswer({ id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'failed', reason: reason.slice(0, 300) }, at)
+  await store.writeAnswer({ id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'failed', reason: reason.slice(0, 300), kind, ...(reasons.length ? { reasons: reasons.slice(-4).map((r) => r.slice(0, 300)) } : {}) }, at)
 }
+
+/** What a refused draft's retry is asked: every reason mended at once (Item 4). */
+export const ASK_MEND = 'Mend every reason above at once: rewrite the whole answer so that none of them remains, keep what was right, and check it against every rule before posting it again.'
 
 /** Marks the run, then fires the routine with no personal text: the task, the day and the model alias. The mark comes first, since a fire has no idempotency key. */
 async function startAskTask(env: AsksEnv, store: Store, now: Date, task: AskTask, id: string, day: string, extra: Pick<TaskRow, 'turns' | 'question'>, opts: AsksOptions): Promise<AsksResult> {
@@ -176,11 +183,11 @@ export async function runAsks(env: AsksEnv, store: Store, now: Date, opts: AsksO
   for (const turn of waiting) {
     // A question waits three days at most, and two runs a day that reached Claude without a checked answer.
     if (turn.day < addDays(day, -(ASK_WAITS_DAYS - 1))) {
-      await noAnswer(store, turn, `no run could answer it within ${ASK_WAITS_DAYS} days`, now)
+      await noAnswer(store, turn, `no run could answer it within ${ASK_WAITS_DAYS} days`, now, 'waited')
       continue
     }
     if (triesOf(turn.id, runs) >= ASK_TRIES) {
-      await noAnswer(store, turn, `${ASK_TRIES} runs reached Claude with no checked answer`, now)
+      await noAnswer(store, turn, `${ASK_TRIES} runs reached Claude with no checked answer`, now, 'runs')
       continue
     }
     live.push(turn)
@@ -328,7 +335,7 @@ export function askBriefingText(run: Pick<AskRunBuilt, 'question' | 'earlier' | 
     `WHAT WOULD SETTLE A TEST short of an established call: ${copy.askMirror.settle.replace(/^What would settle it: /, '')} An association (assoc.*) is what went with what: only a randomised test can say whether one causes the other.`,
     `CARDS (the ids in brackets are what cardIds may hold)\n${cardLines(run.cards)}`,
     `PRIVATE NAMES: private items' names ${run.sheet.showPrivate === true ? 'may be shown' : 'may not be shown'}.`,
-  ].join('\n\n')
+  ].join('\n\n') + sheetRules(run.sheet)
 }
 
 /** GET /claude/briefing?task=ask|deep&day= : the run's question, packet and rules, served only to the keyed run. */
@@ -389,12 +396,16 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   const { t, turn, sheet, cards, access, words, question } = built.run
   const answer = typeof o.answer === 'string' ? safeJson(o.answer) : o.answer
   let verdict: ReturnType<typeof validateAsk> = validateAsk(answer, sheet, cards, words, undefined, question, t.task === 'deep')
-  if (verdict.ok) {
+  // The surface's rules too, on a draft the checks already refused: every reason at once, so the one retry mends them all (Item 4).
+  const draft = answer && typeof answer === 'object' && typeof (answer as Record<string, unknown>).text === 'string' ? ((answer as Record<string, unknown>).text as string).trim() : ''
+  if (verdict.ok || draft) {
+    const text = verdict.ok ? verdict.value.text : draft
+    const ids = verdict.ok ? verdict.value.factIds : Array.isArray((answer as Record<string, unknown>).factIds) ? ((answer as Record<string, unknown>).factIds as unknown[]).filter((x): x is string => typeof x === 'string') : []
     const names = sheet.showPrivate === true ? [] : await privateNames(deps.store)
     // The Partner path bears on an answer only when the question or a cited fact is about it.
-    const bears = access.allowed('partnerPath') && (DATING_WORDS.test(question) || verdict.value.factIds.some((id) => id.startsWith('partner.') || (id.startsWith('path.') && sheet.facts.find((f) => f.id === id)?.values.path === 'partner')))
-    const g = surfaceGuard(verdict.value.text, { names, bears, usage: sheet.facts.some((f) => f.id.startsWith('usage.')) })
-    if (g) verdict = { ok: false, reason: g }
+    const bears = access.allowed('partnerPath') && (DATING_WORDS.test(question) || ids.some((id) => id.startsWith('partner.') || (id.startsWith('path.') && sheet.facts.find((f) => f.id === id)?.values.path === 'partner')))
+    const g = surfaceGuard(text, { names, bears, usage: sheet.facts.some((f) => f.id.startsWith('usage.')) })
+    if (g) verdict = verdict.ok ? { ok: false, reason: g } : { ok: false, reason: `${verdict.reason}; and ${g}` }
   }
   if (verdict.ok) {
     const j = await journalVerdict(deps.store, t, answer, [verdict.value.text], false)
@@ -404,8 +415,8 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   if (!verdict.ok) {
     const spent = posts >= MAX_POSTS
     await deps.store.writeTask({ ...t, posts, refusals: [...t.refusals, verdict.reason].slice(-10), ...(spent ? { status: 'refused' as const } : {}), served: built.run.served })
-    if (spent && turn && !t.dry) await noAnswer(deps.store, turn, verdict.reason, deps.now)
-    return reply(422, { ok: false, reason: verdict.reason, retry: !spent })
+    if (spent && turn && !t.dry) await noAnswer(deps.store, turn, verdict.reason, deps.now, 'checks', [...t.refusals, verdict.reason])
+    return reply(422, { ok: false, reason: verdict.reason, retry: !spent, ...(spent ? {} : { mend: ASK_MEND }) })
   }
   const at = deps.now.toISOString()
   const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'

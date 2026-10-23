@@ -1,6 +1,6 @@
 import { addDays, blockAt, parseDay, type Block } from './blocks'
 import { db, ensureDayContext, getSettings, updateSettings, type KnownPlace, type PlaceCandidate } from './db'
-import { areaOf, AREA_ACCURACY, ASK_AFTER_DAYS, CANDIDATE_KEEP_DAYS, cellBlock, farApart, fingerprints, guessKind, MAX_CANDIDATES, newSecret, PLACE_ACCURACY, SNOOZE_DAYS, type Area, type PlaceKind, type Where } from './location'
+import { APPROXIMATE_ACCURACY, areaOf, AREA_ACCURACY, ASK_AFTER_DAYS, CANDIDATE_KEEP_DAYS, cellBlock, farApart, fingerprints, FRESH_MS, guessKind, MAX_CANDIDATES, newSecret, PLACE_ACCURACY, SNOOZE_DAYS, type Area, type PlaceKind, type Where } from './location'
 import { keepChoices } from './phoneChoices'
 import type { Settings, Weekday } from './settings'
 import { sunLocal } from './sun'
@@ -17,6 +17,44 @@ export interface Fix {
   lon: number
   /** How far off it may be, in metres. */
   accuracy: number
+  /** Older than a minute when the phone gave it (Item 4): where the phone was, not where it is. It may set the area, never know a place. */
+  stale?: true
+}
+
+/**
+ * How rough a reading is (Item 4, 2026-10-23): within 500 metres, enough to know a place by; approximate, the 2 km or more
+ * Android gives an app allowed only an approximate location; or rough, as the signal left it.
+ */
+export type Roughness = 'place' | 'approximate' | 'rough'
+
+export function roughnessOf(accuracy: number): Roughness {
+  return accuracy <= PLACE_ACCURACY ? 'place' : accuracy >= APPROXIMATE_ACCURACY ? 'approximate' : 'rough'
+}
+
+/** A position as the phone gave it, marked stale when its own timestamp is more than a minute old. */
+function fixOf(p: GeolocationPosition): Fix {
+  const fix: Fix = { lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }
+  return typeof p.timestamp === 'number' && Date.now() - p.timestamp > FRESH_MS ? { ...fix, stale: true } : fix
+}
+
+/** How rough the last reading was, held in memory while the app is open, never stored: its accuracy alone, no position. */
+let lastHeard: { accuracy: number; roughness: Roughness } | null = null
+const listeners = new Set<() => void>()
+
+function heard(accuracy: number): void {
+  lastHeard = { accuracy, roughness: roughnessOf(accuracy) }
+  for (const l of listeners) l()
+}
+
+/** Told of each new reading's roughness while the app is open, so a screen already showing follows it; returns the way to stop. */
+export function onReading(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => void listeners.delete(listener)
+}
+
+/** How rough the last reading was, for the Location screen: an approximate location is said there with what to change. */
+export function lastReading(): { accuracy: number; roughness: Roughness } | null {
+  return lastHeard
 }
 
 export type LocationStatus = 'granted' | 'prompt' | 'denied' | 'unavailable'
@@ -32,51 +70,62 @@ export async function permissionState(): Promise<LocationStatus> {
   }
 }
 
-/** One reading of where the phone is: its quick network position unless `precise`; the phone asks you the first time. */
-export function readFix(timeoutMs = 20_000, precise = false): Promise<Fix | { error: 'denied' | 'unavailable' | 'timeout' }> {
+/** One reading of where the phone is, the quick one: a position at most a minute old; the phone asks you the first time. */
+export function readFix(timeoutMs = 20_000): Promise<Fix | { error: 'denied' | 'unavailable' | 'timeout' }> {
   return new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return resolve({ error: 'unavailable' })
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }),
+      (p) => resolve(fixOf(p)),
       (e) => resolve({ error: e.code === 1 ? 'denied' : e.code === 3 ? 'timeout' : 'unavailable' }),
-      { enableHighAccuracy: precise, maximumAge: precise ? 0 : 5 * 60_000, timeout: timeoutMs },
+      { enableHighAccuracy: false, maximumAge: FRESH_MS, timeout: timeoutMs },
     )
   })
 }
 
+/** What a watch of the phone's positions saw: the best fresh one; the best accuracy of any it gave, stale ones included; and why it ended with no fresh one. */
+export interface Watched {
+  fix: Fix | null
+  best: number | null
+  error: 'denied' | 'unavailable' | 'timeout' | null
+}
+
 /**
- * A precise reading for naming a place (2026-10-19): the phone's positions watched until one is good enough to know a
- * place by, or the time is up, keeping the best seen. Each position is passed on as it comes, so the screen can say how
- * rough it still is. Ended at once: no position is followed after it.
+ * The phone's positions watched until one is good enough to know a place by, or the time is up, keeping the best fresh one
+ * (2026-10-19): a better later position replaces an earlier coarse one. A position older than a minute, as Chrome gives
+ * first, is no part of the best (Item 4). Each fresh one is passed on as it comes, so the screen can say how rough it still
+ * is. Ended at once: no position is followed after it.
  */
-export function watchForFix(timeoutMs: number, onFix: (accuracy: number) => void = () => {}): Promise<Fix | { error: 'denied' | 'unavailable' | 'timeout' }> {
+export function watchForFix(timeoutMs: number, onFix: (accuracy: number) => void = () => {}): Promise<Watched> {
   return new Promise((resolve) => {
-    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return resolve({ error: 'unavailable' })
-    let best: Fix | null = null
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) return resolve({ fix: null, best: null, error: 'unavailable' })
+    let fix: Fix | null = null
+    let best: number | null = null
     let done = false
     let id: number | null = null
-    const finish = (r: Fix | { error: 'denied' | 'unavailable' | 'timeout' }) => {
+    const finish = (error: Watched['error']) => {
       if (done) return
       done = true
       clearTimeout(timer)
       if (id !== null) navigator.geolocation.clearWatch(id)
-      resolve(r)
+      resolve(error === 'denied' ? { fix: null, best, error } : { fix, best, error: fix ? null : error })
     }
     // The time is kept here, not by the phone: a phone that never answers still ends the wait.
-    const timer = setTimeout(() => finish(best ?? { error: 'timeout' }), timeoutMs)
+    const timer = setTimeout(() => finish('timeout'), timeoutMs)
     id = navigator.geolocation.watchPosition(
       (p) => {
         // A position that comes after the wait has ended is no part of it.
         if (done) return
-        const fix = { lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }
-        if (!best || fix.accuracy < best.accuracy) best = fix
-        onFix(fix.accuracy)
-        if (fix.accuracy <= PLACE_ACCURACY) finish(fix)
+        const f = fixOf(p)
+        best = best === null ? f.accuracy : Math.min(best, f.accuracy)
+        if (f.stale) return
+        if (!fix || f.accuracy < fix.accuracy) fix = f
+        onFix(f.accuracy)
+        if (f.accuracy <= PLACE_ACCURACY) finish(null)
       },
       (e) => {
         if (done) return
-        if (e.code === 1) finish({ error: 'denied' })
-        else if (e.code === 2 && !best) finish({ error: 'unavailable' })
+        if (e.code === 1) finish('denied')
+        else if (e.code === 2 && !fix) finish('unavailable')
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
     )
@@ -85,13 +134,20 @@ export function watchForFix(timeoutMs: number, onFix: (accuracy: number) => void
 
 /** How long naming a place waits for a precise position: half a minute. */
 export const NAMING_WAIT_MS = 30_000
+/** How long a reading for the day's record watches for a better position: a quarter of a minute, only while the app is open (Item 4). */
+export const PASSIVE_WAIT_MS = 15_000
 
-/** The quick reading, and when it is too rough to know a place by, one precise try: used and let go the same way. */
+/**
+ * A reading for the day's record: the quick one; when it is too rough to know a place by, or older than a minute, the
+ * phone's positions watched for a quarter of a minute, the best fresh one kept (Item 4: one precise read took the phone's
+ * first answer, often its coarse one, so a better later position never replaced it). Used and let go the same way.
+ */
 export async function bestFix(): Promise<Fix | { error: 'denied' | 'unavailable' | 'timeout' }> {
   const quick = await readFix()
-  if ('error' in quick || quick.accuracy <= PLACE_ACCURACY) return quick
-  const precise = await readFix(15_000, true)
-  return 'error' in precise || precise.accuracy >= quick.accuracy ? quick : precise
+  if ('error' in quick || (quick.accuracy <= PLACE_ACCURACY && !quick.stale)) return quick
+  const watched = await watchForFix(PASSIVE_WAIT_MS)
+  if (watched.error === 'denied') return { error: 'denied' }
+  return watched.fix && (quick.stale || watched.fix.accuracy < quick.accuracy) ? watched.fix : quick
 }
 
 /** This phone's key for fingerprints, made once; never synced, exported or sent. */
@@ -189,7 +245,8 @@ export async function sense(fix: Fix, now: Date = new Date()): Promise<Where | n
       await relight(day, area)
     }
   }
-  if (fix.accuracy > PLACE_ACCURACY) return null
+  // Item 4: a position older than a minute may set the area; it never knows a place.
+  if (fix.accuracy > PLACE_ACCURACY || fix.stale) return null
   const cells = await fingerprints(await secret(), cellBlock(fix.lat, fix.lon))
   const places = await db.places.toArray()
   const known = places.find((p) => p.cells.includes(cells[0]))
@@ -216,7 +273,9 @@ export async function sample(now: Date = new Date(), gapMinutes = 10): Promise<W
   if (!settings.location.on || (await permissionState()) !== 'granted') return null
   lastRead = now.getTime()
   const fix = await bestFix()
-  return 'error' in fix ? null : sense(fix, now)
+  if ('error' in fix) return null
+  heard(fix.accuracy)
+  return sense(fix, now)
 }
 
 /** The page's own visibility, and nothing else of it. */
@@ -247,6 +306,7 @@ export async function turnOn(now: Date = new Date()): Promise<LocationStatus> {
   const fix = await bestFix()
   if ('error' in fix) return fix.error === 'denied' ? 'denied' : fix.error === 'unavailable' ? 'unavailable' : 'prompt'
   lastRead = now.getTime()
+  heard(fix.accuracy)
   await sense(fix, now)
   await keepChoices()
   return 'granted'
@@ -288,17 +348,26 @@ export async function answerQuestion(candidateId: number, answer: PlaceKind | 'n
 /**
  * One-time setup: names where you are now. A place you had already named here is renamed instead; nothing is asked about it
  * again. A quick reading first; when it is too rough, the phone's positions are watched for up to half a minute, each
- * passed on to `onFix` (2026-10-19: the tap had waited with nothing on screen).
+ * passed on to `onFix` (2026-10-19: the tap had waited with nothing on screen). Only a position fresh within the minute
+ * names a place; when none is good enough, 'approximate' says the phone gives only an approximate location (2 km or more),
+ * and 'coarse' that the signal left it too rough (Item 4, 2026-10-23).
  */
-export async function nameHere(kind: PlaceKind, label: string | null = null, now: Date = new Date(), onFix: (accuracy: number) => void = () => {}): Promise<'named' | LocationStatus | 'coarse'> {
+export async function nameHere(kind: PlaceKind, label: string | null = null, now: Date = new Date(), onFix: (accuracy: number) => void = () => {}): Promise<'named' | LocationStatus | 'coarse' | 'approximate'> {
   const quick = await readFix(10_000)
   if ('error' in quick && quick.error === 'denied') return 'denied'
-  if (!('error' in quick)) onFix(quick.accuracy)
-  const watched = !('error' in quick) && quick.accuracy <= PLACE_ACCURACY ? quick : await watchForFix(NAMING_WAIT_MS, onFix)
-  // The better of the two: a watch that brought nothing better leaves the quick reading, if there was one.
-  const fix = 'error' in watched ? ('error' in quick || watched.error === 'denied' ? watched : quick) : !('error' in quick) && quick.accuracy < watched.accuracy ? quick : watched
-  if ('error' in fix) return fix.error === 'denied' ? 'denied' : fix.error === 'unavailable' ? 'unavailable' : 'prompt'
-  if (fix.accuracy > PLACE_ACCURACY) return 'coarse'
+  const fresh = !('error' in quick) && !quick.stale ? quick : null
+  if (fresh) onFix(fresh.accuracy)
+  const watched: Watched = fresh && fresh.accuracy <= PLACE_ACCURACY ? { fix: fresh, best: fresh.accuracy, error: null } : await watchForFix(NAMING_WAIT_MS, onFix)
+  if (watched.error === 'denied') return 'denied'
+  // The better of the two fresh readings: a watch that brought nothing better leaves the quick one.
+  const fix = [fresh, watched.fix].filter((f): f is Fix => f !== null).sort((a, b) => a.accuracy - b.accuracy)[0] ?? null
+  const seen = [...('error' in quick ? [] : [quick.accuracy]), ...(watched.best === null ? [] : [watched.best])]
+  if (seen.length) heard(Math.min(...seen))
+  if (!fix || fix.accuracy > PLACE_ACCURACY) {
+    if (seen.length && Math.min(...seen) >= APPROXIMATE_ACCURACY) return 'approximate'
+    if (fix) return 'coarse'
+    return watched.error === 'unavailable' ? 'unavailable' : 'prompt'
+  }
   const cells = await fingerprints(await secret(), cellBlock(fix.lat, fix.lon))
   const area = areaOf(fix.lat, fix.lon)
   await db.transaction('rw', [db.places, db.placeCandidates], async () => {

@@ -161,7 +161,8 @@ function testLines(t: TestShown): string[] {
   const lines = [callOf(t)]
   for (const x of t.ctx) lines.push(fill(w.context, { context: r.contexts[x.context as keyof typeof r.contexts][x.value], call: rungWords(x.level, x.direction) }))
   lines.push(fill(w.counts, { offered: String(t.offered), heldBack: String(t.heldBack), days: String(t.days) }))
-  if (t.theta !== null && t.lo !== null && t.hi !== null) lines.push(fill(w.estimate, { theta: steps(t.theta), lo: steps(t.lo), hi: steps(t.hi) }))
+  if (t.itt !== null) lines.push(fill(w.suggested, { itt: steps(t.itt) }))
+  if (t.theta !== null && t.lo !== null && t.hi !== null) lines.push(fill(w.estimate, { theta: steps(t.theta), lo: steps(t.lo), hi: steps(t.hi), share: String(Math.round(t.share * 10)) }))
   if (hasMove(t.moveId)) lines.push(fill(w.research, { research: steps(moveById(t.moveId).prior.effect), belief: steps(t.belief) }))
   if (t.began) lines.push(fill(w.began, { date: formatDayShort(t.began) }))
   lines.push(t.running ? w.runningNow : w.notRunning)

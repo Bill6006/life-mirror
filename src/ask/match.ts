@@ -1,6 +1,7 @@
 import { hasMove, moveById } from '../catalogue'
 import { readings } from '../readings'
 import type { RepairEvidence, TestShown } from '../repair/evidence'
+import { actionableFirst } from '../repair/facts'
 import { named, words } from './names'
 
 // A typed question while it waits (Ask Life Mirror, stage A1, 2026-10-19; the agreed design's point 4): the findings whose
@@ -50,4 +51,17 @@ export function matchFindings(question: string, ev: Pick<RepairEvidence, 'shown'
     if (move || reading) scored.push({ t, score: (move ? 2 : 0) + (reading ? 1 : 0) })
   }
   return scored.sort((a, b) => b.score - a.score || a.t.key.localeCompare(b.t.key)).slice(0, most).map((x) => x.t)
+}
+
+/**
+ * The findings beside a question, while it waits or when no checked answer came (Item 4, 2026-10-23): the ones its words
+ * name; or, when it names none (a broad question), the record's calls now, findings to act on first, three at most; or that
+ * no test has a call. A question that names no finding is never told the record has nothing ("No finding matches its words
+ * yet" had read as no evidence).
+ */
+export function findingsBeside(question: string, ev: Pick<RepairEvidence, 'shown' | 'quiet'>): { kind: 'named' | 'calls' | 'none'; tests: TestShown[] } {
+  const named = matchFindings(question, ev)
+  if (named.length) return { kind: 'named', tests: named }
+  const calls = [...ev.shown].filter((t) => t.level !== 'none' && t.direction !== null).sort(actionableFirst).slice(0, 3)
+  return calls.length ? { kind: 'calls', tests: calls } : { kind: 'none', tests: [] }
 }

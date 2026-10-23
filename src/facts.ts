@@ -515,7 +515,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
   }
   if (recent.length) facts.push(fact('offers.7d', ['small-step', 'lapse'], `Moves offered in the last seven days: ${tally.offered}; done ${tally.done}, partly ${tally.partly}, no ${tally.no}, skipped ${tally.skipped}, unanswered ${tally.unanswered}.`, tally, { n: tally.offered }))
   const nothing = i.evidence.nothing
-  if (nothing.offered) facts.push(fact('nothing', ['nothing', 'break'], `Nothing extra was offered ${nothing.offered} times, kept to ${nothing.done} times, skipped ${nothing.skipped}.`, nothing, { n: nothing.offered }))
+  // Item 4: no move suggested, the block lived as usual; nothing is asked of it, so nothing of it is kept or missed.
+  if (nothing.offered) facts.push(fact('nothing', ['nothing'], `Nothing extra (no move suggested; the block lived as usual) was drawn ${nothing.offered} times, ${nothing.skipped} of them skipped for a move; every move's test compares the blocks where it was suggested with these.`, nothing, { n: nothing.offered }))
 
   // Like-for-like associations: the chips, the other app's workouts, and the private items.
   const chip = (id: string, tags: string[], event: string, a: Association | null, after: string) => {

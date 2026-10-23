@@ -587,7 +587,7 @@ test('one move follows a check-in, can be skipped, is asked about next time, and
   await expect(page.getByTestId('move-skip')).toHaveText('Skip · show another')
   await page.getByTestId('move-skip').click()
   await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText(first)
-  await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText('Nothing today')
+  await expect(page.getByTestId('move-card').getByTestId('move-name')).not.toHaveText('Nothing extra')
   const kept = await page.getByTestId('move-card').getByTestId('move-name').innerText()
   // Later, before the next check-in, the card waits for that check-in's question: no Skip promises what it cannot give.
   await page.clock.setFixedTime(new Date(2026, 8, 7, 17, 40))
@@ -1135,9 +1135,9 @@ test('a Done tap on the card, once the move’s minutes have passed, writes the 
   await expect(page.getByTestId('move-card')).toBeVisible()
   // The draw may offer Nothing today, which by design has no Done tap: Skip shows the next, and
   // the null offer is never offered twice in a day, so one skip reaches a move.
-  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing today') {
+  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing extra') {
     await page.getByRole('button', { name: /^Skip/ }).click()
-    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing today')
+    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing extra')
   }
   // The minutes have not passed: no tap, no box, nothing sits there unticked.
   await expect(page.getByTestId('move-done')).toHaveCount(0)
@@ -4368,4 +4368,105 @@ test('the Sabbath does not ask Out among people today, and writes no answer for 
   await checkInTo('extras')
   await expect(page.getByTestId('chip-bigSocial')).toHaveAttribute('aria-pressed', 'false')
   await expect(page.getByTestId('church-ask')).toHaveCount(0)
+})
+
+// ─── Item 4 (2026-10-23): Location Context's approximate location, and Nothing extra ─────────────────────────────
+
+test('naming a place on a phone that gives only an approximate location says so as it reads, then says it plainly with the steps to allow a precise one; daylight still uses it (Item 4)', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation'])
+  await page.clock.install({ time: new Date(2026, 9, 20, 14, 0) })
+  await page.goto('./')
+  await settingsSection(page, 'location')
+  // Every reading 2 km across, fresh each time: the size Android gives an app allowed only an approximate location.
+  await phoneLocation(page, { quick: 2000, watched: [2000, 2000], stepMs: 200 })
+  await page.getByTestId('location-switch').click()
+  await expect(page.getByTestId('location-switch')).toHaveAttribute('aria-pressed', 'true')
+  await page.clock.runFor(16_000)
+  await phoneLocation(page, { quick: 2000, watched: [2000, 2000], stepMs: 200 })
+  await page.getByTestId('location-name-home').click()
+  const status = page.getByTestId('location-name-status')
+  await expect(status).toHaveText('Still reading: the phone is giving an approximate location, 2000 metres across, and a place needs one within 500.')
+  await page.clock.runFor(31_000)
+  await expect(status).toHaveText('Not named: the phone gave only an approximate location, about 2 km across, and a place needs one within 500 metres. Daylight still uses it.')
+  await expect(page.getByTestId('location-places')).not.toContainText('Home')
+  // The note stands with what to change, folded until tapped; the site named is this one.
+  const help = page.getByTestId('location-approximate')
+  await expect(help).toContainText('Your phone gives Life Mirror only an approximate location, about 2 km across. Daylight uses it as it is; naming and noticing places need a precise one.')
+  await expect(page.getByTestId('location-precise-steps')).toHaveCount(0)
+  await page.getByTestId('location-precise-open').click()
+  const steps = page.getByTestId('location-precise-steps')
+  await expect(steps.locator('li')).toHaveCount(3)
+  await expect(steps.locator('li').nth(0)).toHaveText(`In Chrome: ⋮ › Settings › Site settings › Location › ${new URL(page.url()).host}, and choose Precise if it shows Approximate.`)
+  await expect(steps).toContainText('Settings › Apps › Chrome › Permissions › Location, and turn on Use precise location.')
+  await expect(steps).toContainText('Nothing in Life Mirror needs clearing or reinstalling.')
+  // A rough reading that is not approximate is said as the signal, without the steps.
+  await phoneLocation(page, { quick: 900, watched: [800], stepMs: 200 })
+  await page.getByTestId('location-name-work').click()
+  await expect(status).toHaveText('Still reading: the phone’s position is 900 metres across so far, and a place needs one within 500.')
+  await page.clock.runFor(31_000)
+  await expect(status).toHaveText('The reading was too rough to know a place by. Try again in a moment, near a window or with Wi-Fi on.')
+})
+
+test('Nothing extra asks nothing: its card says so, the next check-in goes straight to the readings, and its block closes with no answer written (Item 4)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 22, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  // The morning's draw, stood in by Nothing extra: as the fair draw gives it on its own share of check-ins.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const store = dbx.transaction(['offers'], 'readwrite').objectStore('offers')
+    const all = await new Promise<Record<string, unknown>[]>((res) => {
+      const q = store.getAll()
+      q.onsuccess = () => res(q.result as Record<string, unknown>[])
+    })
+    for (const o of all.filter((x) => x.day === '2026-10-22' && x.block === 'morning' && x.kind === 'block')) store.put({ ...o, moveId: 'nothing', passiveId: null })
+    await new Promise((res) => setTimeout(res, 50))
+    dbx.close()
+  })
+  await page.reload()
+  const card = page.getByTestId('move-card')
+  await expect(card.getByTestId('move-name')).toHaveText('Nothing extra')
+  await expect(card).toContainText('No extra move this block: live it as you normally would. Your plans, work, parenting, church, errands and anything spontaneous all go ahead as usual.')
+  await expect(card).toContainText('Nothing is asked about it at your next check-in.')
+  await expect(card).not.toContainText('Asked at your next check-in.')
+  // The afternoon: no Done, Partly or No about it; the readings come first.
+  await page.clock.setFixedTime(new Date(2026, 9, 22, 13, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await expect(page.locator('#ci-title')).toBeVisible()
+  await expect(page.getByTestId('outcome-ask')).toHaveCount(0)
+  await tapThrough(page)
+  const morning = (await rowsOf<{ id: number; day: string; block: string; moveId: string; closedAt: string | null }>(page, 'offers')).find((o) => o.day === '2026-10-22' && o.block === 'morning' && o.moveId === 'nothing')
+  expect(morning?.closedAt).not.toBeNull()
+  expect((await rowsOf<{ offerId: number }>(page, 'outcomes')).some((x) => x.offerId === morning?.id)).toBe(false)
+  // A passive item that rode alongside Nothing extra is still asked about, alone: no Done, Partly or No for the block itself.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const store = dbx.transaction(['offers'], 'readwrite').objectStore('offers')
+    const all = await new Promise<Record<string, unknown>[]>((res) => {
+      const q = store.getAll()
+      q.onsuccess = () => res(q.result as Record<string, unknown>[])
+    })
+    for (const o of all.filter((x) => x.day === '2026-10-22' && x.block === 'afternoon' && x.kind === 'block')) store.put({ ...o, moveId: 'nothing', passiveId: 'recovery-gap' })
+    await new Promise((res) => setTimeout(res, 50))
+    dbx.close()
+  })
+  await page.clock.setFixedTime(new Date(2026, 9, 22, 19, 5))
+  await page.reload()
+  await page.getByRole('button', { name: /Check in/ }).click()
+  const ask = page.getByTestId('outcome-ask')
+  await expect(ask).toBeVisible()
+  await expect(ask.getByTestId('outcome')).toHaveCount(0)
+  await expect(ask).toContainText('Keep the evening after a big social day empty')
+  await page.getByTestId('passive-done').click()
+  await expect(page.locator('#ci-title')).toBeVisible()
 })

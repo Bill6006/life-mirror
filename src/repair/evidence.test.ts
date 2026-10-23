@@ -9,7 +9,7 @@ import { builtThrough, type RepairRecord } from './record'
 // not hold marked revised; the track record counted by rung; and one rebuild shared by every screen while the record
 // stands still.
 
-const shown = (over: Partial<TestShown>): TestShown => ({ key: 'a|stress|nextBlock', moveId: 'a', target: 'stress', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0, theta: null, lo: null, hi: null, offered: 5, heldBack: 5, days: 10, ctx: [], running: false, began: null, ...over })
+const shown = (over: Partial<TestShown>): TestShown => ({ key: 'a|stress|nextBlock', moveId: 'a', target: 'stress', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0, theta: null, lo: null, hi: null, offered: 5, heldBack: 5, days: 10, ctx: [], running: false, began: null, itt: null, share: 0.6, ...over })
 const tc = (over: Partial<TrackCall>): TrackCall => ({ key: 'k', ctx: null, rung: 'early', direction: 'helps', day: 1, p: 0.85, held: null, resolved: null, ...over })
 
 describe('the tests as the screens show them', () => {
@@ -62,6 +62,10 @@ describe('read from the record', () => {
     expect(stress?.direction).toBe('helps')
     expect(['early', 'likely', 'established']).toContain(stress?.level)
     expect(stress?.theta).toBeGreaterThan(0)
+    // Item 4: the effect of the suggestion, what the call rests on, beside the share done the estimate when done divides by.
+    expect(stress?.itt).toBeGreaterThan(0)
+    expect(stress?.share).toBeGreaterThan(0.8)
+    expect(stress?.share).toBeLessThan(1)
   })
 })
 

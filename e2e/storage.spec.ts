@@ -459,9 +459,9 @@ async function moveDoneOnTheCard(page: Page): Promise<void> {
   await checkIn(page)
   await expect(page.getByTestId('move-card').first()).toBeVisible()
   // Nothing today has no Done tap by design: Skip shows the next move.
-  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing today') {
+  if ((await page.getByTestId('move-name').first().textContent())?.trim() === 'Nothing extra') {
     await page.getByRole('button', { name: /^Skip/ }).click()
-    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing today')
+    await expect(page.getByTestId('move-name').first()).not.toHaveText('Nothing extra')
   }
   await page.clock.setFixedTime(new Date(2026, 2, 8, 16, 30))
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()

@@ -40,8 +40,9 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
   const c = copy.ask
   if (existing === undefined || easeOff === undefined) return <section class="screen" />
 
-  // Recorded from the card already: the move's answer stands, only the passive item is asked.
-  const passiveOnly = existing !== null && passive !== null && existing.passiveOutcome === null
+  // Recorded from the card already: the move's answer stands, only the passive item is asked. Nothing extra asks nothing of
+  // itself (Item 4): only a passive item that rode alongside it is asked about.
+  const passiveOnly = passive !== null && (nothing || (existing !== null && existing.passiveOutcome === null))
   const askWhy = !passiveOnly && outcome === 'no' && why === undefined
   const askPassive = passive !== null && (passiveOnly || (outcome !== undefined && !askWhy))
   const askEase = learning && !easeOff && (outcome === 'done' || outcome === 'partly')
@@ -80,7 +81,7 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
 
       {outcome === undefined && !passiveOnly && (
         <>
-          <p class="note">{nothing ? c.questionNothing : c.question}</p>
+          <p class="note">{c.question}</p>
           <div class="card">
             <ul class="rows">
               {ANSWERS.map((a) => (

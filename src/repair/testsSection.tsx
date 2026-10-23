@@ -45,7 +45,8 @@ function TestBlock({ t, onAsk }: { t: TestShown; onAsk?: (about: AskAboutThis) =
       </div>
       <div class="calc">
         <p class="calc-line">{fill(c.counts, { offered: String(t.offered), heldBack: String(t.heldBack), days: String(t.days) })}</p>
-        {t.theta !== null && t.lo !== null && t.hi !== null && <p class="calc-line">{fill(c.estimate, { theta: steps(t.theta), lo: steps(t.lo), hi: steps(t.hi) })}</p>}
+        {t.itt !== null && <p class="calc-line" data-testid="repair-suggested">{fill(c.suggested, { itt: steps(t.itt) })}</p>}
+        {t.theta !== null && t.lo !== null && t.hi !== null && <p class="calc-line" data-testid="repair-estimate">{fill(c.estimate, { theta: steps(t.theta), lo: steps(t.lo), hi: steps(t.hi), share: String(Math.round(t.share * 10)) })}</p>}
       </div>
       {/* Ask Life Mirror (stage A1, gated): a new thread with this test attached, answered at once. */}
       {askOn() && onAsk && (

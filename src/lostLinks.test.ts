@@ -14,8 +14,8 @@ import { memoryKeyValue, setTokenStorageForTests } from './tokenVault'
 // that was never asked, and outcome 36, given on the morning of 2026-03-08, named the old 16. Plan 2,
 // of 2026-03-07, was started by the old 14. Every value here is made up.
 
-const offer = (id: number, day: string, block: Offer['block'], at: string, extra: Partial<Offer> = {}): Offer => ({ id, kind: 'block', day, block, at, situationKey: 's', target: 'mood', stance: '', band: '', reading: 50, moveId: 'nothing', cardId: null, candidates: [], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: at, ...extra })
-const outcome = (id: number, offerId: number, day: string, block: Outcome['block'], at: string): Outcome => ({ id, offerId, moveId: 'nothing', day, block, at, outcome: 'done', why: null, passiveOutcome: null })
+const offer = (id: number, day: string, block: Offer['block'], at: string, extra: Partial<Offer> = {}): Offer => ({ id, kind: 'block', day, block, at, situationKey: 's', target: 'mood', stance: '', band: '', reading: 50, moveId: 'walk-ten', cardId: null, candidates: [], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: at, ...extra })
+const outcome = (id: number, offerId: number, day: string, block: Outcome['block'], at: string): Outcome => ({ id, offerId, moveId: 'walk-ten', day, block, at, outcome: 'done', why: null, passiveOutcome: null })
 const plan = (id: number, day: string, offerId: number | null): Intention => ({ id, aimId: 1, day, cue: 'afterBreakfast' as Intention['cue'], time: '08:00', setAt: `${day}T08:00:00.000Z`, offerId })
 
 const OFFERS = [

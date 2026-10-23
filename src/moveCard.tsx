@@ -256,7 +256,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
         </p>
       )}
       {known && !known.outcome && <p class="move-state muted">{c.passedOver}</p>}
-      {!known && offer.closedAt === null && !compact && <p class="move-state muted">{c.pending}</p>}
+      {!known && offer.closedAt === null && !compact && <p class="move-state muted">{nothing ? c.nothingAfter : c.pending}</p>}
 
       {(canDone || onSkip || hideFaith) && offer.closedAt === null && !known && (
         <div class="actions">

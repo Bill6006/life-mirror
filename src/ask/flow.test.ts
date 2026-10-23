@@ -13,8 +13,9 @@ const { db, updateSettings } = await import('../db')
 const { allThreads, askAbout, askAgain, askAllowance, askDeep, askExplain, askSooner, askStarter, askTyped, askWaits, cancelTurn, deleteThread, keepNote, lastRead, reachedAny, removeNote, searchThreads, settleAskTurns, testOfTurn } = await import('./flow')
 const { repairRecord } = await import('../repair/flow')
 const { answerIdOf, askQueue, askTaskIds, deepTaskId } = await import('./shared')
+const { askAnswerOf } = await import('../cloudSync')
 
-const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'likely', direction: 'helps', revised: false, belief: 0.3, theta: 0.4, lo: 0.1, hi: 0.7, offered: 6, heldBack: 5, days: 11, ctx: [], running: true, began: '2026-10-01', ...over })
+const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'likely', direction: 'helps', revised: false, belief: 0.3, theta: 0.4, lo: 0.1, hi: 0.7, offered: 6, heldBack: 5, days: 11, ctx: [], running: true, began: '2026-10-01', itt: null, share: 0.6, ...over })
 const at = (h: number, m = 0) => new Date(2026, 9, 19, h, m)
 
 describe('Ask Life Mirror on the phone', () => {
@@ -252,5 +253,38 @@ describe('Ask Life Mirror on the phone', () => {
     vi.spyOn(await import('../repair/evidence'), 'repairEvidence').mockRejectedValueOnce(new TypeError('a stand-in for a record no test foresaw'))
     expect(await askStarter('know', at(9))).toBeNull()
     expect(await db.askThreads.count()).toBe(0)
+  })
+})
+
+// Item 4 (2026-10-23): a failed answer settled its turn as answered, so the thread said "answered" with no checked answer.
+describe('no checked answer on the phone (Item 4)', () => {
+  beforeEach(async () => {
+    await db.delete()
+    await db.open()
+    ev = { shown: [test_({})], quiet: [], track: [], helps: [], nearest: [], waiting: [] }
+  })
+
+  it('settles a turn whose answer says failed as no checked answer, and sets right one settled as answered before', async () => {
+    const thread = (await askTyped('Is there anything I might not have noticed?', null, at(9), { sheet: false })) as number
+    const [turn] = await db.askTurns.where('threadId').equals(thread).toArray()
+    await db.askAnswers.put({ id: answerIdOf(turn.id as number), turnId: turn.id as number, threadId: thread, day: '2026-10-19', at: at(9, 20).toISOString(), status: 'failed', reason: 'says "marked", which needs a cited card whose effect is at least medium', kind: 'checks' })
+    expect(await settleAskTurns(at(9, 30))).toBe(1)
+    expect(await db.askTurns.get(turn.id as number)).toMatchObject({ state: 'failed', cited: [] })
+    expect(await settleAskTurns(at(9, 40))).toBe(0)
+    // As the owner's turns of 2026-10-22 stood: answered, while the answer said failed.
+    await db.askTurns.update(turn.id as number, { state: 'answered' })
+    expect(await settleAskTurns(at(9, 50))).toBe(1)
+    expect((await db.askTurns.get(turn.id as number))?.state).toBe('failed')
+    // A failed read is never the last read a "What's changed" compares against.
+    expect(await lastRead()).toBeNull()
+  })
+
+  it('keeps a failure’s kind and each draft’s reasons as the Worker stored them, and nothing it does not know', () => {
+    const body = (extra: Record<string, unknown>) => JSON.stringify({ turnId: 4, threadId: 3, day: '2026-10-22', at: '2026-10-22T13:10:00.000Z', status: 'failed', reason: 'the last', ...extra })
+    expect(askAnswerOf('turn:4', body({ kind: 'checks', reasons: ['the first', 'the last'] }))).toMatchObject({ status: 'failed', kind: 'checks', reasons: ['the first', 'the last'] })
+    expect(askAnswerOf('turn:4', body({ kind: 'waited' }))).toMatchObject({ kind: 'waited' })
+    const odd = askAnswerOf('turn:4', body({ kind: 'later', reasons: 'one' }))
+    expect(odd).not.toHaveProperty('kind')
+    expect(odd).not.toHaveProperty('reasons')
   })
 })

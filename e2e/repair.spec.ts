@@ -275,7 +275,7 @@ test('Now and Evidence describe the learning engine, and no tag lending is shown
   await page.getByRole('button', { name: /^Evidence/ }).click()
   await expect(page.getByTestId('repair-test').first()).toBeVisible()
   // Nothing today says what nothing extra is now; today's tag lending, which the one belief model replaces, is not shown.
-  await expect(page.getByTestId('nothing-line')).toHaveText(/^Offered \d+ times, done \d+, skipped \d+\. Every move’s test compares the move with nothing extra\.$/)
+  await expect(page.getByTestId('nothing-line')).toHaveText(/^Drawn \d+ times: blocks with no extra move, lived as usual\. Every move’s test compares the blocks where the move was suggested with these, whatever was done in either\.$/)
   await expect(page.getByRole('heading', { name: 'What the tags have learned' })).toHaveCount(0)
   await expect(page.getByTestId('tags-learned')).toHaveCount(0)
   await expect(page.getByTestId('repair-fault')).toHaveCount(0)

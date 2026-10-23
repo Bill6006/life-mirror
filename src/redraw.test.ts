@@ -92,7 +92,7 @@ describe('a move drawn again when the day changes under it (stage 3, item 5)', (
 
   it('is not among Nothing extra’s counts', async () => {
     await db.offers.add(row({ moveId: NOTHING, candidates: [NOTHING], skippedAt: `${DAY}T15:05:00.000Z`, skipReason: 'dayChanged' }))
-    expect((await evidence(DAY)).nothing).toEqual({ offered: 0, done: 0, skipped: 0 })
+    expect((await evidence(DAY)).nothing).toEqual({ offered: 0, skipped: 0 })
   })
 
   it('is no suggestion you skipped again and again', () => {

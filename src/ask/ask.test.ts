@@ -4,6 +4,7 @@ import { copy } from '../copy'
 import { formatDayShort } from '../format'
 import type { RepairEvidence, TestShown, TrackLine } from '../repair/evidence'
 import { changesOf, citeOf, evidenceVersion, threadState } from './evidence'
+import { findingsBeside } from './match'
 import { askMode, askOn } from './gate'
 import { contextNamed, matchFindings } from './match'
 import { aboutAnswer, changedAnswer, keysOfLine, knowAnswer, nextAnswer, soonerOf, startersShown, testContextLine } from './quick'
@@ -12,11 +13,11 @@ import type { AskTurn } from './types'
 // Ask Life Mirror's quick tier (stage A1, 2026-10-19), on stand-in reads of the repair: the evidence version and what
 // changed (point 8), each starter's layout and when it shows (point 3), "Ask about this", and a typed question's matches.
 
-const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.2, theta: null, lo: null, hi: null, offered: 6, heldBack: 5, days: 11, ctx: [], running: false, began: '2026-10-01', ...over })
+const test_ = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.2, theta: null, lo: null, hi: null, offered: 6, heldBack: 5, days: 11, ctx: [], running: false, began: '2026-10-01', itt: null, share: 0.6, ...over })
 const track = (over: Partial<TrackLine> = {}): TrackLine => ({ rung: 'early', resolved: 0, held: 0, open: 0, enough: false, tightened: false, tested: 2 / 3, ...over })
 const read = (over: Partial<RepairEvidence> = {}): RepairEvidence => ({ shown: [], quiet: [], track: [track(), track({ rung: 'likely', tested: 0.8 }), track({ rung: 'established', tested: 0.95 })], helps: [], nearest: [], waiting: [], ...over })
 
-const walkMood = test_({ level: 'likely', direction: 'helps', theta: 0.42, lo: 0.1, hi: 0.74, running: true })
+const walkMood = test_({ level: 'likely', direction: 'helps', theta: 0.42, lo: 0.1, hi: 0.74, itt: 0.25, running: true })
 const napEnergy = test_({ key: 'nap-ten|energy|nextBlock', moveId: 'nap-ten', target: 'energy', level: 'early', direction: 'little', running: false })
 const friendMood = test_({ key: 'message-a-friend|mood|nextBlock', moveId: 'message-a-friend', target: 'mood', level: 'none', direction: null })
 const lines = (a: { sections: { title: string | null; lines: string[] }[] }) => a.sections.flatMap((s) => [s.title ?? '', ...s.lines])
@@ -109,7 +110,9 @@ describe('the starters, laid out by the app', () => {
     const a = nextAnswer(read({ shown: [walkMood, napEnergy], waiting: [{ key: 'message-a-friend|mood|nextBlock', moveId: 'message-a-friend', target: 'mood', window: 'nextBlock' }] }))
     expect(a.answer.sections.map((s) => s.title)).toEqual(['A ten-minute walk, now, for Mood over the next block', null, 'Next in the queue'])
     expect(a.answer.sections[0].lines).toContain('Offered 6 times and held back 5, each with the reading after it, over 11 days.')
-    expect(a.answer.sections[0].lines).toContain('Your record alone, when done: +0.42 steps, +0.10 to +0.74, at 95 percent.')
+    // Item 4: the effect every call rests on first, the suggestion's; then the size when done, said as resting on an assumption.
+    expect(a.answer.sections[0].lines).toContain('When suggested, against nothing extra: +0.25 steps, the comparison every call rests on.')
+    expect(a.answer.sections[0].lines).toContain('When done, about +0.42 steps, +0.10 to +0.74 at 95 percent: the suggestion’s effect over the share of times it was done (6 in 10), assuming it works only through doing it.')
     expect(a.answer.sections[0].lines).toContain(`Began ${formatDayShort('2026-10-01')}.`)
     expect(a.answer.sections[1].lines[0]).toMatch(/^What would settle it: /)
     expect(a.answer.sections[2].lines).toEqual(['Message one friend now, for Mood over the next block: waiting for a place.'])
@@ -251,5 +254,18 @@ describe('Ask’s gate', () => {
       // Built behind it, the key at 1 previewed a closed gate; that path stays the gate's own.
       expect(askMode('gated')).toBe('preview')
     })
+  })
+})
+
+// Item 4 (2026-10-23): what stands beside a question while it waits or when no checked answer came.
+describe('the findings beside a question (Item 4)', () => {
+  const t = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|mood|nextBlock', moveId: 'walk-ten', target: 'mood', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.3, theta: null, lo: null, hi: null, offered: 6, heldBack: 5, days: 11, ctx: [], running: true, began: '2026-10-01', itt: null, share: 0.6, ...over })
+  it('names the findings its words name; a question naming none gets the record’s calls, helps first; a record with no call says so', () => {
+    const walk = t({ level: 'likely', direction: 'helps' })
+    const nap = t({ key: 'nap-ten|energy|nextBlock', moveId: 'nap-ten', target: 'energy', level: 'early', direction: 'little' })
+    const quiet = t({ key: 'breath-two|stress|nextBlock', moveId: 'breath-two', target: 'stress' })
+    expect(findingsBeside('Does a walk help my mood?', { shown: [nap, walk], quiet: [] })).toMatchObject({ kind: 'named', tests: [walk] })
+    expect(findingsBeside('Is there anything you can tell me that I might not have noticed?', { shown: [nap, walk, quiet], quiet: [] })).toEqual({ kind: 'calls', tests: [walk, nap] })
+    expect(findingsBeside('What should I pay attention to right now?', { shown: [quiet], quiet: [] })).toEqual({ kind: 'none', tests: [] })
   })
 })

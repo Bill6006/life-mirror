@@ -1,3 +1,4 @@
+import { NOTHING } from './offers'
 import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
@@ -189,8 +190,9 @@ export async function briefData(today: string): Promise<Brief> {
   const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times, matched: likeForLikeMatched(best.assoc) } : null
   // Steady is a conclusion: it needs the same six logged blocks the warning does, or it says nothing.
   const steady = ready && !w.warning && w.of >= WARNING_WINDOW ? { inside: w.of - w.under, of: w.of } : null
+  // Item 4: Nothing extra is no move, and nothing is done for it: it is never yesterday's move.
   const read = observations(checkins, offers, outcomes)
-    .filter((o) => o.day === yesterday && o.arm !== 'declined')
+    .filter((o) => o.day === yesterday && o.arm !== 'declined' && o.moveId !== NOTHING)
     .sort((a, b) => b.offerId - a.offerId)
   const move: YesterdayMove | null = read.length ? { moveId: read[0].moveId, target: read[0].target, effect: read[0].effect, arm: read[0].arm as 'done' | 'partly' } : null
   return {

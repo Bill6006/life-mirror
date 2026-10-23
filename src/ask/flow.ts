@@ -192,7 +192,8 @@ export async function settleAskTurns(now: Date = new Date()): Promise<number> {
   const answers = await db.askAnswers.toArray()
   if (!answers.length) return 0
   const by = new Map(answers.map((a) => [a.turnId, a]))
-  const due = (await db.askTurns.toArray()).filter((t) => t.state === 'waiting' && by.has(t.id as number))
+  // A turn whose answer says failed was once settled as answered: it is set right, its answer standing as it came (Item 4).
+  const due = (await db.askTurns.toArray()).filter((t) => by.has(t.id as number) && (t.state === 'waiting' || (t.state === 'answered' && by.get(t.id as number)?.status === 'failed')))
   if (!due.length) return 0
   const ev = await askEvidence(now)
   for (const t of due) {
@@ -200,7 +201,9 @@ export async function settleAskTurns(now: Date = new Date()): Promise<number> {
     const cited = ev && a.status === 'answered' ? citationsOf(a.factIds ?? [], ev) : []
     await db.transaction('rw', db.askTurns, async () => {
       const cur = await db.askTurns.get(t.id as number)
-      if (cur && cur.state === 'waiting') await db.askTurns.put({ ...cur, state: 'answered', cited, ...(ev ? { version: evidenceVersion(ev) } : {}), updatedAt: now.toISOString() })
+      if (!cur) return
+      if (a.status === 'failed' && (cur.state === 'waiting' || cur.state === 'answered')) await db.askTurns.put({ ...cur, state: 'failed', cited: [], updatedAt: now.toISOString() })
+      else if (cur.state === 'waiting') await db.askTurns.put({ ...cur, state: 'answered', cited, ...(ev ? { version: evidenceVersion(ev) } : {}), updatedAt: now.toISOString() })
     })
   }
   return due.length

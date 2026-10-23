@@ -36,7 +36,6 @@ exports[`the record the monitored prompts are built from, held fixed with the po
   "forecast.evening",
   "whatIf",
   "lastNight",
-  "move.yesterday",
   "offers.7d",
   "nothing",
   "assoc.shortSleep",
@@ -576,22 +575,6 @@ exports[`the record the monitored prompts are built from, held fixed with the po
       },
     },
     {
-      "id": "move.yesterday",
-      "n": 1,
-      "tags": [
-        "mood",
-      ],
-      "text": "Yesterday's move, Nothing today (done), read 2.1 anchor steps above usual on Energy, the better way: one reading, not a finding.",
-      "values": {
-        "arm": "done",
-        "direction": "above",
-        "move": "Nothing today",
-        "steps": 2.1,
-        "target": "Energy",
-        "way": "better",
-      },
-    },
-    {
       "id": "offers.7d",
       "n": 20,
       "tags": [
@@ -613,11 +596,9 @@ exports[`the record the monitored prompts are built from, held fixed with the po
       "n": 14,
       "tags": [
         "nothing",
-        "break",
       ],
-      "text": "Nothing extra was offered 14 times, kept to 6 times, skipped 0.",
+      "text": "Nothing extra (no move suggested; the block lived as usual) was drawn 14 times, 0 of them skipped for a move; every move's test compares the blocks where it was suggested with these.",
       "values": {
-        "done": 6,
         "offered": 14,
         "skipped": 0,
       },

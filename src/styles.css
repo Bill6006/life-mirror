@@ -4277,3 +4277,13 @@ main.has-move-cue {
   border: 1px solid var(--hair);
   border-radius: var(--radius-ctl);
 }
+
+/* Item 4: what to change for a precise location, numbered, in the note's own colour; each step its own line. */
+.steps {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  list-style: decimal;
+}

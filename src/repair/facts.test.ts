@@ -7,7 +7,7 @@ import { START, walkRecord } from './fixtures'
 // The learning repair for the Brain (stage R5): each test Evidence shows whole becomes a ladder fact, findings the owner
 // can act on first (requirement 16), and the track record follows them in requirement 15's words.
 
-const t = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|stress|nextBlock', moveId: 'walk-ten', target: 'stress', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.3, theta: null, lo: null, hi: null, offered: 4, heldBack: 5, days: 9, ctx: [], running: false, began: null, ...over })
+const t = (over: Partial<TestShown>): TestShown => ({ key: 'walk-ten|stress|nextBlock', moveId: 'walk-ten', target: 'stress', window: 'nextBlock', level: 'none', direction: null, revised: false, belief: 0.3, theta: null, lo: null, hi: null, offered: 4, heldBack: 5, days: 9, ctx: [], running: false, began: null, itt: null, share: 0.6, ...over })
 const line = (over: Partial<TrackLine>): TrackLine => ({ rung: 'early', resolved: 0, held: 0, open: 0, enough: false, tightened: false, tested: 2 / 3, ...over })
 
 describe('the ladder facts', () => {
@@ -17,18 +17,20 @@ describe('the ladder facts', () => {
   })
 
   it('one test: its id, rung, counts, estimate and research, in plain words with the values beside', () => {
-    const f = ladderFact(t({ level: 'likely', direction: 'helps', theta: 0.42, lo: 0.1, hi: 0.74, offered: 21, heldBack: 20, days: 14, running: true }))
+    const f = ladderFact(t({ level: 'likely', direction: 'helps', theta: 0.42, lo: 0.1, hi: 0.74, itt: 0.25, share: 0.6, offered: 21, heldBack: 20, days: 14, running: true }))
     expect(f.id).toBe('ladder.walk-ten.stress')
-    expect(f.text).toBe('Test: A ten-minute walk, now, for Stress over the next block: Likely: helps; offered 21 times and held back 20, each with the reading after it, over 14 days; the record alone, when done, +0.42 steps (+0.10 to +0.74); pooled with research, +0.30 steps when done; research alone +0.40; being tested now.')
-    expect(f.values).toMatchObject({ moveId: 'walk-ten', level: 'likely', direction: 'helps', revised: 0, running: 1, offered: 21, heldBack: 20, belief: 0.3, research: 0.4 })
+    // Item 4: the call is on the suggestion against nothing extra; the size when done is said as resting on an assumption.
+    expect(f.text).toBe("Test: A ten-minute walk, now, for Stress over the next block: Likely: helps, a call on suggesting it against suggesting nothing extra, whatever was then done; offered 21 times and held back 20, each with the reading after it, over 14 days; when suggested, +0.25 steps against nothing extra; when done, an estimate of +0.42 steps (+0.10 to +0.74), the suggestion's effect over the share of times it was done (6 in 10), assuming it works only through doing it; pooled with research, +0.30 steps when done; research alone +0.40; being tested now.")
+    expect(f.values).toMatchObject({ moveId: 'walk-ten', level: 'likely', direction: 'helps', revised: 0, running: 1, offered: 21, heldBack: 20, itt: 0.25, share: 6, belief: 0.3, research: 0.4 })
     expect(f.n).toBe(41)
     expect(f.tier).toBe('Likely: helps')
   })
 
   it('a revised test says so; a test with no estimate yet says none', () => {
     const f = ladderFact(t({ level: 'early', direction: 'little', revised: true }))
-    expect(f.text).toContain('Early sign: little difference, revised;')
-    expect(f.text).not.toContain('the record alone')
+    expect(f.text).toContain('Early sign: little difference, revised, a call on suggesting it against suggesting nothing extra')
+    expect(f.text).not.toContain('when done, an estimate')
+    expect(f.text).not.toContain('when suggested,')
   })
 
   it('the track record in requirement 15’s words, the simulation’s rates standing until ten of a kind resolve', () => {

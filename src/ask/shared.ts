@@ -68,6 +68,12 @@ export interface AskAnswer {
   askedModel?: string
   /** Why no checked answer came: the checks' last reason, or that no run could answer it. */
   reason?: string
+  /**
+   * Item 4: the kind of failure, when no checked answer came: the checks held back each draft, runs reached Claude without
+   * one, or no run could answer it in time; and the checks' reasons, a draft's at a time, never the drafts. Absent before.
+   */
+  kind?: 'checks' | 'runs' | 'waited'
+  reasons?: string[]
   /** Stage A3: the one test the answer names (move|reading|window), short of established, for "Test it". */
   test?: string
   /** Stage A3: the question states something of the owner's life; "Add this as a note" is offered. */

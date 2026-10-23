@@ -59,8 +59,8 @@ export function changesOf(cited: readonly AskCitation[], ev: Pick<RepairEvidence
   return out
 }
 
-/** Where a thread stands (points 3 and 7), from its newest turn: waiting, cancelled, answered, or answered on evidence that has changed since. */
-export function threadState(turns: readonly AskTurn[], ev: Pick<RepairEvidence, 'shown' | 'quiet'> | null | undefined): 'answered' | 'waiting' | 'cancelled' | 'changed' {
+/** Where a thread stands (points 3 and 7), from its newest turn: waiting, cancelled, with no checked answer, answered, or answered on evidence that has changed since. */
+export function threadState(turns: readonly AskTurn[], ev: Pick<RepairEvidence, 'shown' | 'quiet'> | null | undefined): 'answered' | 'waiting' | 'cancelled' | 'failed' | 'changed' {
   const last = turns[turns.length - 1]
   if (!last) return 'answered'
   if (last.state !== 'answered') return last.state

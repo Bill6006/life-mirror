@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bodyForCloud } from './cloudOutbox'
 import { db, ensureDayContext, getSettings, setDayContext, updateSettings } from './db'
 import { cellBlock, geohash } from './location'
-import { answerQuestion, bestFix, forgetAll, nameHere, pendingQuestion, recordWhere, sense, turnOff, turnOn } from './locationFlow'
+import { answerQuestion, bestFix, forgetAll, lastReading, nameHere, pendingQuestion, recordWhere, roughnessOf, sample, sense, turnOff, turnOn } from './locationFlow'
 import { daylightFor } from './settings'
 import { sunLocal } from './sun'
 
@@ -184,24 +184,83 @@ describe('Location Context on the phone', () => {
     expect(await sense(FAR, at(21, 15))).toBe('away')
   })
 
-  it('tries once more, precisely, when the quick reading is too rough to know a place by; never twice for a good one', async () => {
-    const asked: boolean[] = []
+  it('watches when the quick reading is too rough to know a place by, a better later position replacing the coarse one; never for a good one (Item 4)', async () => {
+    const asked: string[] = []
+    let cleared = 0
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
         geolocation: {
-          getCurrentPosition: (ok: (p: unknown) => void, _fail: unknown, o: { enableHighAccuracy?: boolean }) => {
-            asked.push(o.enableHighAccuracy === true)
-            ok({ coords: { latitude: HOME.lat, longitude: HOME.lon, accuracy: o.enableHighAccuracy ? 30 : 1_800 } })
+          getCurrentPosition: (ok: (p: unknown) => void, _fail: unknown, o: { maximumAge?: number }) => {
+            asked.push(`quick ${o.maximumAge}`)
+            ok({ coords: { latitude: HOME.lat, longitude: HOME.lon, accuracy: 1_800 }, timestamp: Date.now() })
           },
+          // The phone's first answer is its coarse one; better ones follow.
+          watchPosition: (ok: (p: unknown) => void) => {
+            asked.push('watch')
+            for (const [i, accuracy] of [1_500, 30, 10].entries()) setTimeout(() => ok({ coords: { latitude: HOME.lat, longitude: HOME.lon, accuracy }, timestamp: Date.now() }), 5 * (i + 1))
+            return 3
+          },
+          clearWatch: () => void cleared++,
         },
         permissions: { query: async () => ({ state: 'granted' }) },
       },
     })
     expect(await bestFix()).toMatchObject({ accuracy: 30 })
-    expect(asked).toEqual([false, true])
+    // The quick reading may be a minute old at most, never five; the watch ends at the first good position.
+    expect(asked).toEqual(['quick 60000', 'watch'])
+    expect(cleared).toBe(1)
     stubLocation(HOME)
     expect(await bestFix()).toMatchObject({ accuracy: 25 })
+  })
+
+  it('takes a position older than a minute as where the phone was: it may set the area, never knows a place (Item 4)', async () => {
+    const old = (accuracy: number) => ({ coords: { latitude: HOME.lat, longitude: HOME.lon, accuracy }, timestamp: Date.now() - 5 * 60_000 })
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        geolocation: {
+          // Chrome answers a new request with its last position first, however old (Item 4's research), and nothing newer comes.
+          getCurrentPosition: (ok: (p: unknown) => void) => ok(old(20)),
+          watchPosition: (ok: (p: unknown) => void) => {
+            setTimeout(() => ok(old(20)), 5)
+            return 4
+          },
+          clearWatch: () => undefined,
+        },
+        permissions: { query: async () => ({ state: 'granted' }) },
+      },
+    })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const fix = bestFix()
+      await vi.advanceTimersByTimeAsync(16_000)
+      expect(await fix).toMatchObject({ accuracy: 20, stale: true })
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(await sense({ ...HOME, accuracy: 20, stale: true }, at(20, 9))).toBeNull()
+    expect(await db.placeCandidates.count()).toBe(0)
+    expect((await getSettings()).location.area).toMatchObject({ lat: 51.5, lon: -0.1 })
+  })
+
+  it('reads 2 km or more as the approximate location the phone allows, and less as the signal (Item 4)', () => {
+    expect([roughnessOf(25), roughnessOf(500), roughnessOf(501), roughnessOf(1_999), roughnessOf(2_000), roughnessOf(3_500)]).toEqual(['place', 'place', 'rough', 'rough', 'approximate', 'approximate'])
+  })
+
+  it('keeps how rough the last reading was in memory alone, its accuracy and never a position (Item 4)', async () => {
+    stubLocation({ ...HOME, accuracy: 2_000 })
+    Object.assign((globalThis.navigator as unknown as { geolocation: Record<string, unknown> }).geolocation, { watchPosition: () => 5, clearWatch: () => undefined })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const read = sample(at(20, 9), 0)
+      await vi.advanceTimersByTimeAsync(16_000)
+      await read
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(lastReading()).toEqual({ accuracy: 2_000, roughness: 'approximate' })
+    expect(await everything()).not.toContain(String(HOME.lat))
   })
 
   it('recognises no place from a rough reading, while its area still sets the sun', async () => {
@@ -298,7 +357,7 @@ describe('naming a place when the quick reading is too rough (the owner’s fix 
 
   it('ends the wait itself when the phone never answers, after half a minute, keeping the quick reading: too rough', async () => {
     vi.useFakeTimers()
-    stubWatch({ ...HOME, accuracy: 2000 }, [])
+    stubWatch({ ...HOME, accuracy: 1_800 }, [])
     const named = nameHere('home', null, at(20, 20))
     await vi.advanceTimersByTimeAsync(29_000)
     let settled = false
@@ -309,6 +368,43 @@ describe('naming a place when the quick reading is too rough (the owner’s fix 
     expect(await named).toBe('coarse')
     expect(cleared).toBe(1)
     // The stand-in database runs on timers of its own: real ones again before it is read.
+    vi.useRealTimers()
+    expect(await db.places.count()).toBe(0)
+  })
+
+  it('says an approximate location as such when every reading is 2 km or more: the phone’s setting, not the signal (Item 4)', async () => {
+    vi.useFakeTimers()
+    stubWatch({ ...HOME, accuracy: 2_000 }, [{ ...HOME, accuracy: 2_000 }])
+    const seen: number[] = []
+    const named = nameHere('home', null, at(20, 20), (a) => seen.push(a))
+    await vi.advanceTimersByTimeAsync(31_000)
+    expect(await named).toBe('approximate')
+    expect(seen).toEqual([2_000, 2_000])
+    expect(lastReading()).toEqual({ accuracy: 2_000, roughness: 'approximate' })
+    vi.useRealTimers()
+    expect(await db.places.count()).toBe(0)
+  })
+
+  it('names nothing from a position older than a minute, however precise, and says the phone gave no location now (Item 4)', async () => {
+    vi.useFakeTimers()
+    const old = { coords: { latitude: HOME.lat, longitude: HOME.lon, accuracy: 15 }, timestamp: Date.now() - 3 * 60_000 }
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        geolocation: {
+          getCurrentPosition: (ok: (p: unknown) => void) => ok(old),
+          watchPosition: (ok: (p: unknown) => void) => {
+            setTimeout(() => ok(old), 10)
+            return 6
+          },
+          clearWatch: () => undefined,
+        },
+        permissions: { query: async () => ({ state: 'granted' }) },
+      },
+    })
+    const named = nameHere('home', null, at(20, 20))
+    await vi.advanceTimersByTimeAsync(31_000)
+    expect(await named).toBe('prompt')
     vi.useRealTimers()
     expect(await db.places.count()).toBe(0)
   })

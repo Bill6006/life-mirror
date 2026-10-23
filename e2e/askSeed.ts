@@ -99,8 +99,8 @@ export interface SeedTurn {
   question: string
   tier?: 'quick' | 'standard' | 'deep'
   kind?: string
-  state?: 'answered' | 'waiting' | 'cancelled'
-  claude?: { status: 'answered' | 'failed'; text?: string; facts?: { id: string; text: string }[]; model?: string; test?: string; noteOffer?: boolean }
+  state?: 'answered' | 'waiting' | 'cancelled' | 'failed'
+  claude?: { status: 'answered' | 'failed'; text?: string; facts?: { id: string; text: string }[]; model?: string; test?: string; noteOffer?: boolean; reason?: string; kind?: 'checks' | 'runs' | 'waited'; reasons?: string[] }
 }
 
 /** A note kept from Ask, written straight into the phone's store (stage A3). */
@@ -164,7 +164,7 @@ export async function seedTurns(page: Page, title: string, turns: SeedTurn[], at
           const q = tx.objectStore('askTurns').add({ threadId, day, at: when, question: t.question, tier: t.tier ?? 'standard', state: t.state ?? 'waiting', kind: t.kind ?? 'typed', version: 'earlier', cited: [], updatedAt: when })
           q.onsuccess = () => res(q.result as number)
         })
-        if (t.claude) tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at: when, status: t.claude.status, ...(t.claude.text ? { text: t.claude.text, factIds: (t.claude.facts ?? []).map((f) => f.id), cardIds: [], facts: t.claude.facts ?? [] } : {}), ...(t.claude.model ? { model: t.claude.model } : {}), ...(t.claude.test ? { test: t.claude.test } : {}), ...(t.claude.noteOffer ? { noteOffer: true } : {}) })
+        if (t.claude) tx.objectStore('askAnswers').put({ id: `turn:${turnId}`, turnId, threadId, day, at: when, status: t.claude.status, ...(t.claude.text ? { text: t.claude.text, factIds: (t.claude.facts ?? []).map((f) => f.id), cardIds: [], facts: t.claude.facts ?? [] } : {}), ...(t.claude.model ? { model: t.claude.model } : {}), ...(t.claude.test ? { test: t.claude.test } : {}), ...(t.claude.noteOffer ? { noteOffer: true } : {}), ...(t.claude.reason ? { reason: t.claude.reason } : {}), ...(t.claude.kind ? { kind: t.claude.kind } : {}), ...(t.claude.reasons ? { reasons: t.claude.reasons } : {}) })
       }
       await new Promise<void>((res, rej) => {
         tx.oncomplete = () => res()

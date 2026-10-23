@@ -26,6 +26,13 @@ export interface TestShown {
   theta: number | null
   lo: number | null
   hi: number | null
+  /**
+   * Item 4 (2026-10-23): the effect of suggesting the move against suggesting nothing extra, at moments it fitted, among the
+   * cards seen, in steps: what every call rests on, the one effect the fair draws identify; null before the record gives one.
+   */
+  itt: number | null
+  /** The share of times it was done when offered (Partly as half), the record's with a small prior: the estimate when done divides by it. */
+  share: number
   /** Randomized decisions read so far: offered, and held back, at moments the move fitted. */
   offered: number
   heldBack: number
@@ -183,6 +190,8 @@ export function evidenceOf(engine: EngineB, dayOf: (d: number) => string = Strin
       theta: c.theta,
       lo: c.theta !== null && c.thetaSe !== null ? c.theta - 1.96 * c.thetaSe : null,
       hi: c.theta !== null && c.thetaSe !== null ? c.theta + 1.96 * c.thetaSe : null,
+      itt: c.itt,
+      share: c.compliance,
       offered: c.n1,
       heldBack: c.n0,
       days: c.nDays,

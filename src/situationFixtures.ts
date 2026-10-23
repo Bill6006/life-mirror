@@ -35,7 +35,6 @@ export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
   'church-morning': () => sheetOf([today(), fact('lastNight', { key: 'churchDay', with: 48, without: 60, n: 4 })]),
   'steady-moving': () => sheetOf([today(), fact('steady', { inside: 5, of: 6 }), aim({ gapDays: 2 })]),
   'fresh-start': () => sheetOf([today('Monday'), aim({ gapDays: 6 })]),
-  'nothing-holds': () => sheetOf([today(), fact('nothing', { done: 3, offered: 5 })]),
   'direction-counts': () => sheetOf([today(), fact('direction', { direction: 'One line, mine' }), fact('becoming', { study: 4, conversations: 2, faith: 1, her: 5 })]),
   'forecast-wide': () => sheetOf([today(), fact('forecast.afternoon', { width: 32, actual: null, block: 'afternoon', lo: 30, hi: 62 })]),
   'caffeine-sleep-even': () => sheetOf([today(), fact('assoc.caffeine.bands', { groups: 2, none: 1, low: 'none', high: '200 mg or more', n: 6, m: 5 })]),

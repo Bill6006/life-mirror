@@ -22,6 +22,14 @@ export const AWAY_DEGREES = 0.3
 /** A position less certain than this (metres) recognises no place; one less certain than the second sets no area. */
 export const PLACE_ACCURACY = 500
 export const AREA_ACCURACY = 20_000
+/**
+ * Android coarsens every position given to an app allowed only an approximate location to 2,000 metres across, never less
+ * (AOSP's coarse-location default; Chrome itself reads 2,000 metres or more as approximate). A reading this rough is that
+ * permission, not the signal: waiting or a window cannot better it (Item 4, 2026-10-23).
+ */
+export const APPROXIMATE_ACCURACY = 2_000
+/** A position older than this when given (by its own timestamp) is where the phone was, not where it is: Chrome answers a new request with its last position first, however old (Item 4). */
+export const FRESH_MS = 60_000
 /** A place seen on this many different days is asked about, once. */
 export const ASK_AFTER_DAYS = 3
 /** A place not seen for this many days is forgotten before it is ever asked about. */

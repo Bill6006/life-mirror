@@ -94,7 +94,8 @@ export interface Evidence {
   hardWorkout: { times: number; measures: Record<HardMeasure, Association> } | null
   bringsYouBack: { moveId: string; n: number }[]
   /** The null offer: how often it was offered, kept to, and skipped. */
-  nothing: { offered: number; done: number; skipped: number }
+  /** Nothing extra drawn, and skipped for a move: nothing is asked of it, so nothing of it is kept or done (Item 4). */
+  nothing: { offered: number; skipped: number }
   weeks: number
 }
 
@@ -130,8 +131,7 @@ export async function evidence(today: string): Promise<Evidence> {
   const weeks = first ? Math.floor((Math.max(0, (Date.parse(today) - Date.parse(first)) / 86_400_000) + 1) / 7) : 0
   // A Nothing extra the app set aside when the day changed was never offered to you (stage 3, item 5).
   const nulls = offers.filter((o) => o.moveId === NOTHING && !setAside(o))
-  const outcomeOf = new Map(outcomes.map((x) => [x.offerId, x]))
-  const nothing = { offered: nulls.length, done: nulls.filter((o) => o.id !== undefined && outcomeOf.get(o.id)?.outcome === 'done').length, skipped: nulls.filter((o) => o.skippedAt !== null).length }
+  const nothing = { offered: nulls.length, skipped: nulls.filter((o) => o.skippedAt !== null).length }
   return {
     passives,
     weightCards,
