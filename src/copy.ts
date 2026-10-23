@@ -308,6 +308,10 @@ export const copy = {
     /** The ping lost its address and only a tap can make another (2026-10-20). */
     pingLost: 'Reminders can’t reach you with the app closed until the ping is set up again.',
     pingRestore: 'Set up the ping',
+    /** While Now reads its record (2026-10-23, the blank Now): never an empty screen. */
+    reading: 'Reading the record on this phone.',
+    readingLate: 'The record on this phone is taking longer than usual to read.',
+    readAgain: 'Try again',
   },
   /** Stage 3, group 4: the record shown back by the month. Counts and averages only: nothing here is a grade. */
   month: {

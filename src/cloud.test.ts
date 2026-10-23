@@ -149,6 +149,24 @@ describe('the sync worker', () => {
     expect(rows.some((r) => r.body?.includes(TOKEN))).toBe(false)
   })
 
+  it('opens the database again when the storage left it shut, and the sync goes through (2026-10-23)', async () => {
+    const store = memoryStore()
+    await withToken(store)
+    await oneCheckIn()
+    // The storage closes the connection while the database opens: Dexie is left shut, refusing every read, owning no failure.
+    db.close({ disableAutoOpen: false })
+    let once = true
+    db.on('ready', () => {
+      if (!once) return
+      once = false
+      db.close({ disableAutoOpen: false })
+    })
+    expect(await db.outbox.count().then(() => 'answered', (e: unknown) => String((e as { name?: unknown } | null)?.name))).toBe('DatabaseClosedError')
+    expect(await syncNow()).toBe('done')
+    expect(await db.outbox.count()).toBe(0)
+    expect([...store.rows.values()].filter((r) => r.store === 'checkins').length).toBe(1)
+  })
+
   it('keeps one row per record when many changes queue', () => {
     const at = '2026-09-11T10:00:00.000Z'
     const rows = [

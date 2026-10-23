@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { AimsOnNow } from './aimsScreen'
 import { BLOCKS, blockAt, blockIndex, blockStart, type Block } from './blocks'
 import { Brief } from './brief'
 import { PlaceQuestion } from './locationScreen'
 import { lineActionState, todaysLine } from './brainFlow'
 import { copy } from './copy'
-import { allCheckIns, answeredCount, answerWin, askedOf, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
+import { allCheckIns, answeredCount, answerWin, askedOf, db, ensureDayContext, getSettings, isComplete, updateSettings, winFor, type CheckIn } from './db'
 import { fill, formatDayShort, formatHHMM, formatTime } from './format'
 import { Icon } from './icons'
 import { useLive } from './live'
@@ -23,6 +23,7 @@ import { Disclosure, Facts, LinkRow, ScreenHead, SectionLabel } from './ui'
 import { awayStatus } from './awayFlow'
 import { awayLine } from './awayScreen'
 import type { AskAboutThis } from './ask/askScreen'
+import { nowWaited, reopenIfClosed } from './storageWatch'
 
 type WindowState = 'logged' | 'partial' | 'now' | 'missed' | 'later'
 
@@ -212,6 +213,42 @@ function PingLost({ push }: { push: PushState }) {
   )
 }
 
+/** How long Now reads its record before it says it is still reading (2026-10-23): a phone's start reads it within a second or two. */
+export const NOW_LATE_MS = 4000
+
+/**
+ * Now while its record is read (2026-10-23, the blank Now): its head and one quiet line, never an empty screen. Still
+ * reading after NOW_LATE_MS, it says so, with Try again, which asks its reads again; the wait is kept on this phone for
+ * the Worker's report, with the reads that had not answered.
+ */
+function NowReading({ day, missing, onAgain }: { day: string; missing: readonly string[]; onAgain: () => void }) {
+  const [late, setLate] = useState(false)
+  const waiting = useRef(missing)
+  waiting.current = missing
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLate(true)
+      nowWaited(waiting.current)
+    }, NOW_LATE_MS)
+    return () => clearTimeout(t)
+  }, [])
+  return (
+    <section class="screen now-reading" data-testid="now-reading">
+      <ScreenHead title={copy.tabs.now} day={day} />
+      <p class="note faint" aria-live="polite">
+        {late ? copy.now.readingLate : copy.now.reading}
+      </p>
+      {late && (
+        <div class="actions">
+          <button type="button" class="pill-quiet" data-testid="now-read-again" onClick={onAgain}>
+            {copy.now.readAgain}
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onAway?: () => void; onAsk?: (about: AskAboutThis) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
@@ -225,24 +262,29 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { o
   }, [tick])
 
   const today = blockAt(new Date())
-  const all = useLive(allCheckIns, [])
-  const settings = useLive(getSettings, [])
+  // Try again, while Now still reads its record: its reads asked afresh (2026-10-23).
+  const [again, setAgain] = useState(0)
+  const all = useLive(allCheckIns, [again])
+  const settings = useLive(getSettings, [again])
   // Today's context record is written from the week's shape the first time the day is seen; Settings can change today alone.
   useEffect(() => {
     if (settings) void ensureDayContext(today.day, settings)
   }, [settings?.updatedAt, today.day])
-  const win = useLive(() => winFor(today.day), [today.day])
+  const win = useLive(() => winFor(today.day), [today.day, again])
   const tried = useLive(movesTried, [])
   // The owner's requirement of 2026-10-20: if the engine cannot read the record, no move is offered, and Now says so.
   const failed = useEngineFailed()
-  const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick])
-  const pickup = useLive(() => pickupOfferNow(new Date()), [today.day, today.block, tick])
-  const pending = useLive(pendingOffers, [])
+  const here = useLive(() => offerForSlot(today.day, today.block), [today.day, today.block, tick, again])
+  const pickup = useLive(() => pickupOfferNow(new Date()), [today.day, today.block, tick, again])
+  const pending = useLive(pendingOffers, [again])
   const weeks = useLive(() => weeksOfRecord(today.day), [today.day])
   // The Brain's line and its action, read here too, to decide which one thing carries the accent. Read again each minute: a line whose moment is gone leaves.
   const line = useLive(() => todaysLine(today.day), [today.day, tick])
   const act = useLive(() => (line ? lineActionState(today.day, line.action ?? null) : Promise.resolve(null)), [today.day, line?.key, JSON.stringify(line?.action ?? null), all?.length])
-  if (!all || !settings || win === undefined || here === undefined || pickup === undefined || pending === undefined) return <section class="screen" />
+  if (!all || !settings || win === undefined || here === undefined || pickup === undefined || pending === undefined) {
+    const missing = Object.entries({ checkins: all, settings, win, move: here, pickup, pending }).flatMap(([read, v]) => (v === undefined ? [read] : []))
+    return <NowReading key={again} day={today.day} missing={missing} onAgain={() => void reopenIfClosed(db).then(() => setAgain((n) => n + 1))} />
+  }
 
   const active = activeBlocks(settings.frequency)
   const todays = new Map<Block, CheckIn>()

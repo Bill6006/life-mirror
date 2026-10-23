@@ -21,6 +21,7 @@ import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
 import { guardRepairNow, repairFaults } from './repair/breaker'
+import { storageFaults } from './storageWatch'
 import { repairEvidenceFrom, trackSummary } from './repair/evidence'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
@@ -75,6 +76,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // The engine's failures on this phone ride the sheet for the Worker's report alone (the owner's requirement of 2026-10-20).
   const fault = repairFaults()
   if (fault) sheet.engineFault = fault
+  // The storage interrupted under the app, the same way (2026-10-23, the blank Now).
+  const storage = storageFaults()
+  if (storage) sheet.storageFault = storage
   return sheet
 }
 

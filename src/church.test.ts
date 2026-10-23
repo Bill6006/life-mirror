@@ -75,8 +75,9 @@ describe('home, office and church, three things apart', () => {
   })
 
   it('invents no home or office for a Tuesday that is neither: church is the evening, and nothing else changes', () => {
-    const plain = contextFromWeek(TUE, week({ thirdDay: null }))
-    const third = contextFromWeek(TUE, week())
+    // One moment for both, so the two days differ only as the schedule makes them (a millisecond apart, they failed under load).
+    const plain = contextFromWeek(TUE, week({ thirdDay: null }), '2026-10-27T12:00:00.000Z')
+    const third = contextFromWeek(TUE, week(), '2026-10-27T12:00:00.000Z')
     const { church: _c, services: _s, ...rest } = third
     expect(rest).toEqual(plain)
     expect(peopleAround(third, 'morning')).toBe(peopleAround(plain, 'morning'))

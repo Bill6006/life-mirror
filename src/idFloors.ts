@@ -55,7 +55,30 @@ export async function captureFloors(db: Dexie): Promise<void> {
   raiseFloors(found)
 }
 
-/** On every open of the database (sticky), before any other read or write is let through. A failure here (a full disk) never keeps the database from opening. */
+/**
+ * How long an open waits for the counters before it goes on (2026-10-23, the blank Now). Raising them is a few reads and at
+ * most a write a store, done in milliseconds, and a write made after the open still waits for their transaction once it
+ * stands (the database keeps such transactions in order); the limit only ever ends a wait that would otherwise never end.
+ */
+export const FLOORS_WAIT_MS = 2000
+
+/**
+ * On every open of the database (sticky), before any other read or write is let through. A failure here (a full disk) never
+ * keeps the database from opening, and neither does the storage closing the connection while it opens (2026-10-23): the
+ * counters' transaction would then wait for the open to finish, and the open for it, for good, every read and write of the
+ * app waiting with them. A connection already gone is left for the next open, and the wait is never longer than FLOORS_WAIT_MS.
+ */
 export function installIdFloors(db: Dexie): void {
-  db.on('ready', () => raiseCounters(db).then(() => undefined, () => undefined), true)
+  db.on(
+    'ready',
+    () => {
+      if (!db.isOpen()) return
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const limit = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, FLOORS_WAIT_MS)
+      })
+      return Promise.race([raiseCounters(db).then(() => undefined, () => undefined), limit]).finally(() => clearTimeout(timer))
+    },
+    true,
+  )
 }

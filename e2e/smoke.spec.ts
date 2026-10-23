@@ -3016,7 +3016,9 @@ test('a move lower on Now is cued once: a tap goes to it and marks it seen, it i
   await page.reload()
   await page.getByRole('button', { name: /Check in/ }).click()
   await expect(page.getByTestId('outcome-ask')).toBeVisible()
-  await page.getByTestId('outcome').first().click()
+  // A move is asked Done, Partly or No; a Nothing extra draw asks nothing of itself, only a passive item beside it (Item 4).
+  const outcome = page.getByTestId('outcome')
+  if (await outcome.count()) await outcome.first().click()
   const passive = page.getByTestId('passive-done')
   if (await passive.isVisible()) await passive.click()
   await tapThrough(page)

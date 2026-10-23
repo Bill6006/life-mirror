@@ -17,6 +17,7 @@ import { copy } from './copy'
 import { fill } from './format'
 import { dayByHand, db, getSettings, updateSettings } from './db'
 import { useLive } from './live'
+import { reopenIfClosed } from './storageWatch'
 import { withDefaults, type Settings, type SyncedPush } from './settings'
 import { appendLog, clearMark, clearMirror, latestNotice, raiseFloors, readDeviceMirror, readMark, readMirror, tokenStorage, writeDeviceMirror, writeMark, writeMirror, type TokenEvent, type TokenMark } from './tokenVault'
 
@@ -834,6 +835,8 @@ function scheduleRetry(): void {
 export const REPAIR = '2026-10-02'
 
 async function run(): Promise<SyncOutcome> {
+  // An open the storage cut short leaves the database refusing every read and write until it is opened again (2026-10-23).
+  await reopenIfClosed(db)
   const { token } = await resolveToken()
   if (!token) {
     setLive('off')

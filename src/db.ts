@@ -19,6 +19,7 @@ import { installIdFloors } from './idFloors'
 import { clearPending, installPendingCopy } from './pendingCopy'
 import { clearChoicesCopy, installChoicesWatch } from './choicesWatch'
 import { installFreshIds } from './freshIds'
+import { installStorageWatch } from './storageWatch'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { remindedKey, SLEEP_READINGS, sunPlace, withDefaults, type Settings, type Weekday } from './settings'
 import { sunLocal } from './sun'
@@ -1151,6 +1152,8 @@ class LifeMirrorDB extends Dexie {
     installIdFloors(this)
     // This phone's own choices keep a second copy in local storage (2026-10-19): phoneChoices.ts.
     installChoicesWatch(this)
+    // The storage interrupted under the app is heard, and every live read asks again (2026-10-23): storageWatch.ts.
+    installStorageWatch(this)
   }
 }
 

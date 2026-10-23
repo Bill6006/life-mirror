@@ -88,4 +88,10 @@ export interface FactSheet {
    * report /run/engine shows it, so the builder sees a failure without the owner having to say.
    */
   engineFault?: { count: number; first: string; last: string; name: string }
+  /**
+   * When the phone's storage was interrupted under the app (2026-10-23, the blank Now): how many times, the first and last
+   * minute, the error's name, never content; and how often Now waited past its limit, with the reads that had not
+   * answered. No writer reads it; the Worker's report /run/engine shows it, as it does the engine's failures.
+   */
+  storageFault?: { count: number; first: string; last: string; name: string; waits?: number; waited?: string[] }
 }
