@@ -265,6 +265,21 @@ const handler: ExportedHandler<Env> = {
       }
       return json(recordsAudit(await store.readAudit(stores), from, since))
     }
+    // With the run key: one day's use of the app as the use log holds it, read-only (2026-10-23, to inspect a screen the owner
+    // saw blank): each event's time, kind and screen, never content; and when the settings record was last written.
+    if (url.pathname === '/run/use-day' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const day = url.searchParams.get('day') ?? localTime(new Date(), env.TIMEZONE).day
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ reason: 'day must be YYYY-MM-DD' }, 400)
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      const rows = (await store.readRecords('useLog', { from: day, to: day }, 1000))
+        .map((r) => r.body as { at?: unknown; kind?: unknown; what?: unknown } | null)
+        .filter((b): b is { at: string; kind: string; what?: unknown } => Boolean(b) && typeof b?.at === 'string' && typeof b?.kind === 'string')
+        .map((b) => ({ at: b.at, kind: b.kind, ...(typeof b.what === 'string' ? { what: b.what.slice(0, 40) } : {}) }))
+        .sort((a, b) => (a.at < b.at ? -1 : 1))
+      const settings = (await store.readRecord('settings', '1')) as { updatedAt?: unknown } | null
+      return json({ day, settingsUpdatedAt: typeof settings?.updatedAt === 'string' ? settings.updatedAt : null, rows })
+    }
     // With the run key: one push by hand. kind=test shows itself on the phone; ping and cue behave as the scheduled ones do.
     if (url.pathname === '/run/push' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
       const kind = url.searchParams.get('kind') ?? 'test'
