@@ -12,7 +12,8 @@ import type { PickRule } from './pathStage'
 import type { Tier } from './weights'
 import Dexie, { type Table } from 'dexie'
 import type { HelpLevel, HerRung } from './her'
-import { BLOCKS, blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
+import { BLOCKS, blockAt, blockIndex, compareSlots, parseDay, type Block, type Slot } from './blocks'
+import { churchOf } from './church'
 import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type OutboxRow } from './cloudOutbox'
 import { installIdFloors } from './idFloors'
 import { clearPending, installPendingCopy } from './pendingCopy'
@@ -118,7 +119,14 @@ export interface DayContext {
   weekday: Weekday
   withHer: boolean
   studyNight: boolean
+  /** The Sabbath, or before Item 3 the church day (read then as its morning). */
   churchDay: boolean
+  /** The church schedule the day was made under (Item 3, 2026-10-23): the Sabbath (every block) or the Third Day (its services' blocks). Context, never attendance. Absent before. */
+  church?: 'sabbath' | 'third'
+  /** That day's service times, HH:MM, as the schedule held them when the day was made: a later edit never rewrites them. */
+  services?: string[]
+  /** Set once a day has been made under the church schedule (Item 3); a day from before keeps what it was. */
+  schedule?: 1
   /** At the office rather than at home, from the week's office days; the exception is one chip inside the check-in. Older days lack it and read as home. */
   atOffice?: boolean
   /**
@@ -1434,6 +1442,9 @@ export function contextFromWeek(day: string, settings: Settings, createdAt: stri
     withHer: w.livesWithMe,
     studyNight: w.studyNights[weekday],
     churchDay: w.churchDay === weekday,
+    // Item 3: the schedule the day is made under, kept with it; home and office stay the week's office days alone.
+    ...churchOf(w, weekday),
+    schedule: 1,
     atOffice: w.officeDays[weekday],
     officeDay: w.officeDays[weekday],
     // The pickup, and the daycare day it implies, hold on the daycare days you set.
@@ -1449,8 +1460,9 @@ export function contextFromWeek(day: string, settings: Settings, createdAt: stri
 /** A day inside a trip: the week's places give way, and what they gave is kept aside to give back. Her days stay as the week and the chip say. */
 export function awayShaped(ctx: DayContext): DayContext {
   if (ctx.awayFromHome) return ctx
-  const held: AwayHeld = { atOffice: Boolean(ctx.atOffice), pickupTime: ctx.pickupTime, churchDay: ctx.churchDay, studyNight: ctx.studyNight }
-  return { ...ctx, atOffice: false, pickupTime: null, churchDay: false, studyNight: false, awayFromHome: { held } }
+  const held: AwayHeld = { atOffice: Boolean(ctx.atOffice), pickupTime: ctx.pickupTime, churchDay: ctx.churchDay, studyNight: ctx.studyNight, ...(ctx.church ? { church: ctx.church, services: ctx.services } : {}) }
+  const { church: _church, services: _services, ...rest } = ctx
+  return { ...rest, atOffice: false, pickupTime: null, churchDay: false, studyNight: false, awayFromHome: { held } }
 }
 
 /** A trip's day given back: what the week's places gave before the trip shaped it. */
@@ -1468,14 +1480,36 @@ export function ensureDayContext(day: string, settings: Settings): Promise<DayCo
   return db.transaction('rw', db.days, async () => {
     const existing = await db.days.get(day)
     if (existing) {
-      if (existing.officeDay !== undefined) return existing
-      const officeDay = settings.week.officeDays[parseDay(day).getDay() as Weekday]
-      await db.days.update(day, { officeDay })
-      return { ...existing, officeDay }
+      const weekday = parseDay(day).getDay() as Weekday
+      const patch: Partial<DayContext> = {}
+      if (existing.officeDay === undefined) patch.officeDay = settings.week.officeDays[weekday]
+      // Item 3: a day from today on, made before the church schedule existed, takes it once; an earlier day never, and a trip's day keeps giving way.
+      if (existing.schedule === undefined && day >= blockAt(new Date()).day && !existing.awayFromHome) Object.assign(patch, churchOf(settings.week, weekday), { schedule: 1 })
+      if (!Object.keys(patch).length) return existing
+      await db.days.update(day, patch)
+      return { ...existing, ...patch }
     }
     const ctx = contextFromWeek(day, settings)
     await db.days.put(ctx)
     return ctx
+  })
+}
+
+/**
+ * An edit to the church schedule (Item 3) re-shapes today alone: its Sabbath, its church and its times, from the week as it
+ * now stands. An earlier day is never touched, and a trip's day keeps giving way. Like a day made from the week it takes no
+ * stamp of its own: a day changed by hand keeps its own, and one made from the week stays so, so the cloud copy never
+ * reads the schedule as the owner's choice for the day, nor lets it outrank one.
+ */
+export async function refreshChurchToday(now: Date = new Date()): Promise<void> {
+  const settings = await getSettings()
+  const day = blockAt(now).day
+  await db.transaction('rw', db.days, async () => {
+    const existing = await db.days.get(day)
+    if (!existing || existing.awayFromHome) return
+    const weekday = parseDay(day).getDay() as Weekday
+    const { church: _church, services: _services, ...rest } = existing
+    await db.days.put({ ...rest, churchDay: settings.week.churchDay === weekday, ...churchOf(settings.week, weekday), schedule: 1 })
   })
 }
 

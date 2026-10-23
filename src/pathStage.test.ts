@@ -117,9 +117,13 @@ describe('what fits now: each rep’s own prerequisites, with today’s shape as
     const at = (block: 'morning' | 'afternoon' | 'evening', churchDay: boolean, around = false) => ids(eligibility({ path: social, state: second, around, block, ctx: { churchDay }, yesterday: null, doneToday: new Set() }))
     expect(at('morning', true, true)).toContain('church-early')
     expect(at('morning', false)).not.toContain('church-early')
-    // A church day's afternoon: the church morning has passed.
+    // An older church day's afternoon (read as its morning): no church on the schedule is left today (Item 3).
     expect(at('afternoon', true, true)).not.toContain('church-early')
-    expect(repPrerequisite(moveById('church-early'), 'afternoon', { churchDay: true })).toBe('past')
+    expect(repPrerequisite(moveById('church-early'), 'afternoon', { churchDay: true })).toBe('church')
+    // Item 3: the Third Day's evening service fits from the morning (a plan can put it later) to the evening; the Sabbath every block.
+    expect(repPrerequisite(moveById('church-early'), 'morning', { churchDay: false, church: 'third', services: ['19:30'] })).toBeNull()
+    expect(repPrerequisite(moveById('church-early'), 'evening', { churchDay: false, church: 'third', services: ['19:30'] })).toBeNull()
+    expect(repPrerequisite(moveById('church-early'), 'afternoon', { churchDay: true, church: 'sabbath', services: ['07:30', '14:30', '19:30'] })).toBeNull()
     expect(repPrerequisite(moveById('church-early'), 'morning', { churchDay: false })).toBe('church')
     // A rep written for the afternoon and evening is the day's rep in the morning too: a plan can put it later today.
     expect(repPrerequisite(moveById('call-not-text'), 'morning', null)).toBeNull()

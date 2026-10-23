@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { Icon } from './icons'
 
@@ -20,6 +21,7 @@ export function useSyncedText(value: string): [string, (text: string) => void] {
 
 export function Seg<T extends string>({
   label,
+  head,
   note,
   value,
   options,
@@ -27,6 +29,8 @@ export function Seg<T extends string>({
   class: cls,
 }: {
   label: string
+  /** In place of the label line, the same height of row: Settings' Sabbath Day and Third Day tabs (Item 3). The label still names the group. */
+  head?: ComponentChildren
   note?: string
   class?: string
   value: T
@@ -35,7 +39,7 @@ export function Seg<T extends string>({
 }) {
   return (
     <div class="setting">
-      <p class="setting-label">{label}</p>
+      {head ?? <p class="setting-label">{label}</p>}
       <div class={cls ? `seg ${cls}` : 'seg'} role="group" aria-label={label}>
         {options.map((o) => (
           <button key={o.v} type="button" class={o.v === value ? 'seg-opt is-on' : 'seg-opt'} aria-pressed={o.v === value} onClick={() => onChange(o.v)}>

@@ -181,7 +181,9 @@ describe('a trip’s day, shaped', () => {
     expect(home).not.toHaveProperty('awayFromHome')
     const away = contextFromWeek(W, s, 'c', 'open')
     expect(away).toMatchObject({ atOffice: false, pickupTime: null, churchDay: false, studyNight: false, withHer: home.withHer, soloUntil: home.soloUntil })
-    expect(away.awayFromHome?.held).toEqual({ atOffice: true, pickupTime: '17:30', churchDay: false, studyNight: true })
+    // Item 3: the day's church schedule gives way too, kept aside and given back with the rest.
+    expect(away.awayFromHome?.held).toEqual({ atOffice: true, pickupTime: '17:30', churchDay: false, studyNight: true, church: 'third', services: ['19:30'] })
+    expect(away).not.toHaveProperty('church')
     expect(awayUnshaped(away)).toEqual(home)
     expect(awayShaped(away)).toBe(away)
     expect(awayUnshaped(home)).toBe(home)

@@ -28,6 +28,9 @@ export interface AwayHeld {
   atOffice: boolean
   pickupTime: string | null
   churchDay: boolean
+  /** The church schedule the day was made under (Item 3), given back with the rest. */
+  church?: 'sabbath' | 'third'
+  services?: string[]
   studyNight: boolean
 }
 

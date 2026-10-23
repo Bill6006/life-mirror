@@ -148,17 +148,19 @@ describe('tier 1 in today’s state, and history that never touches it', () => {
   })
 
   it('offers the same candidates with and without eight weeks of in-person reps done in that context', async () => {
+    // A plain weekend day: Saturday is the Sabbath since Item 3, when church puts people around; Sunday has no one by its shape.
+    const SUN = '2026-09-20'
     const settings = await getSettings()
-    await ensureDayContext(SAT, settings)
-    const at = new Date(2026, 8, 19, 14, 0)
-    const before = candidatesFor(afternoon, await todayState(SAT, settings, at)).candidates.map((c) => c.id)
+    await ensureDayContext(SUN, settings)
+    const at = new Date(2026, 8, 20, 14, 0)
+    const before = candidatesFor(afternoon, await todayState(SUN, settings, at)).candidates.map((c) => c.id)
     // Three Saturday afternoons with an in-person rep marked done.
     for (const day of ['2026-08-29', '2026-09-05', '2026-09-12']) {
       const offer: Offer = { kind: 'block', day, block: 'afternoon', at: `${day}T18:00:00.000Z`, situationKey: 'afternoon|mood|gettingBy', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId: 'eye-contact-stranger', label: 'Eye contact with a stranger', minutes: 1, cardId: null, candidates: ['eye-contact-stranger'], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: null }
       const id = await db.offers.add(offer)
       await db.outcomes.add({ offerId: id, day, block: 'afternoon', moveId: 'eye-contact-stranger', outcome: 'done', at: `${day}T19:00:00.000Z`, why: null, passiveOutcome: null } satisfies Outcome)
     }
-    const after = candidatesFor(afternoon, await todayState(SAT, settings, at)).candidates.map((c) => c.id)
+    const after = candidatesFor(afternoon, await todayState(SUN, settings, at)).candidates.map((c) => c.id)
     expect(after).toEqual(before)
     expect(after.filter((id) => hasMove(id) && inPerson(moveById(id)))).toEqual([])
     // What the history does produce: a count, the order of a picker, one counted line, and a note to correct the shape.

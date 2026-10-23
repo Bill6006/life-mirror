@@ -477,6 +477,15 @@ const STATES: { name: string; tab: string; open?: (page: Page) => Promise<void> 
   },
   { name: 'Settings', tab: 'Settings' },
   { name: 'Settings, the week', tab: 'Settings', open: async (p) => p.getByTestId('settings-week').click() },
+  {
+    name: 'Settings, the week, the Sabbath’s service times open (Item 3)',
+    tab: 'Settings',
+    open: async (p) => {
+      await p.getByTestId('settings-week').click()
+      await p.getByTestId('church-times-open').click()
+      await expect(p.getByTestId('church-times')).toBeVisible()
+    },
+  },
   { name: 'Settings, check-ins', tab: 'Settings', open: async (p) => p.getByTestId('settings-checkins').click() },
   { name: 'Settings, theme', tab: 'Settings', open: async (p) => p.getByTestId('settings-theme').click() },
   // Two that change the record, written so they can run again at every width: a session begun, then done with its one optional tap.

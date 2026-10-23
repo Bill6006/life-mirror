@@ -40,7 +40,14 @@ export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
 /** The shape of the week, set once and known from day one, no learning needed. Nothing here leaves the phone. */
 export interface WeekShape {
+  /** The Sabbath Day: church context the whole of this weekday (Item 3, 2026-10-23; the church day before it). */
   churchDay: Weekday | null
+  /** The Third Day: church context in the blocks its service times fall in (Tuesday's 19:30 is the evening). Absent on a week from before Item 3, read as Tuesday; null is none. */
+  thirdDay?: Weekday | null
+  /** The Sabbath's service times, HH:MM; absent before Item 3, read as 07:30, 14:30 and 19:30. The Sabbath is the whole day whatever they say. */
+  sabbathServices?: string[]
+  /** The Third Day's service times, HH:MM; absent before Item 3, read as 19:30. */
+  thirdDayServices?: string[]
   /** The constant: she lives with you. The exception is one chip inside the check-in. */
   livesWithMe: boolean
   /**
@@ -156,7 +163,7 @@ export type TogetherChoice = 'keep' | 'reword' | 'merge'
 const NO_DAY: Record<Weekday, boolean> = { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }
 const WEEKDAYS_ONLY: Record<Weekday, boolean> = { 0: false, 1: true, 2: true, 3: true, 4: true, 5: true, 6: false }
 
-export const DEFAULT_WEEK: WeekShape = { churchDay: 6, livesWithMe: true, studyNights: NO_DAY, officeDays: NO_DAY, daycareDays: WEEKDAYS_ONLY, pickupTime: null, soloUntil: '20:00' }
+export const DEFAULT_WEEK: WeekShape = { churchDay: 6, thirdDay: 2, sabbathServices: ['07:30', '14:30', '19:30'], thirdDayServices: ['19:30'], livesWithMe: true, studyNights: NO_DAY, officeDays: NO_DAY, daycareDays: WEEKDAYS_ONLY, pickupTime: null, soloUntil: '20:00' }
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 1,

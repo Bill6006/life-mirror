@@ -1,6 +1,7 @@
 import { addDays, blockStart, parseDay, type Block } from './blocks'
 import { hasMove, moveById, type Move } from './catalogue'
 import { copy } from './copy'
+import { churchIn } from './church'
 import { heldPickup } from './dayShape'
 import type { DayContext, Offer, Outcome } from './db'
 import { fill } from './format'
@@ -20,7 +21,7 @@ import { minutesOf } from './settings'
 // which still gates the draw and shapes a path's context. The draw never reads it, so history can
 // neither widen nor narrow what is offered.
 
-type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'>
+type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay' | 'church' | 'services'>
 
 /**
  * Out among people today, as the day stands (the owner's fix of 2026-10-19): marked so, or a day the week scheduled at the
@@ -50,7 +51,8 @@ export function peopleAround(ctx: Shape | null | undefined, block: Block): boole
   // Out among people today (stage 3, item 5): around in every block, for today alone; on an office day, without asking.
   if (outAmongPeople(ctx)) return true
   if (ctx.atOffice && (block === 'morning' || block === 'afternoon')) return true
-  if (ctx.churchDay && block === 'morning') return true
+  // Item 3: church on the schedule in this block, the Sabbath every block, the Third Day its services': context for what fits, never attendance.
+  if (churchIn(ctx, block)) return true
   const pickup = heldPickup(ctx)
   if (pickup) {
     // A daycare day she is with you: the drop-off in the morning, and the block that holds the pickup.

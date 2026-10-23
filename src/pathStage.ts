@@ -1,3 +1,5 @@
+import { BLOCKS } from './blocks'
+import { churchIn } from './church'
 import { addDays, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE, pathReps, paths, type Effort, type Move, type Path, type PathId, type PathPlace, type SettingKind } from './catalogue'
 import { copy } from './copy'
@@ -148,7 +150,7 @@ export interface EligibilityInput {
   around: boolean
   /** Pass 3: the block, and as much of the day's shape as a rep's own prerequisites read. */
   block: Block
-  ctx?: Pick<DayContext, 'churchDay'> | null
+  ctx?: Pick<DayContext, 'churchDay' | 'church' | 'services'> | null
   /** The path's rep yesterday, if any. */
   yesterday: string | null
   /** Reps done or partly done today, from any offer. */
@@ -190,9 +192,10 @@ export interface Eligibility {
  * is still ahead today; the church morning needs a church day. The day's shape keeps nothing else
  * out: working from home, or an evening at home, leaves going out possible.
  */
-export function repPrerequisite(m: Move, block: Block, ctx: Pick<DayContext, 'churchDay'> | null | undefined): 'past' | 'church' | null {
+export function repPrerequisite(m: Move, block: Block, ctx: Pick<DayContext, 'churchDay' | 'church' | 'services'> | null | undefined): 'past' | 'church' | null {
   if (!m.when.some((b) => blockIndex(b) >= blockIndex(block))) return 'past'
-  if (m.id === 'church-early' && ctx?.churchDay !== true) return 'church'
+  // Item 3: church on the schedule in this block or one still ahead today.
+  if (m.id === 'church-early' && !BLOCKS.some((b) => blockIndex(b) >= blockIndex(block) && churchIn(ctx, b))) return 'church'
   return null
 }
 
@@ -564,7 +567,7 @@ export interface PathTodayInput {
   aim: Aim
   offers: readonly Offer[]
   outcomes: readonly Outcome[]
-  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'> | null
+  ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay' | 'church' | 'services'> | null
   day: string
   block: Block
   /** Stage 3, item 5: this morning's Social energy, 1 Empty to 5 Drawn out, or null when it was not answered. */
@@ -690,10 +693,10 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
 }
 
 /** Today's shape for a block, in words, from the day record alone (tier 1). */
-export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'> | null, block: Block): string {
+export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay' | 'church' | 'services'> | null, block: Block): string {
   const c = copy.path.shape
   if (!ctx) return c.unknown
-  const why = ctx.atOffice && block !== 'evening' ? c.office : ctx.churchDay && block === 'morning' ? c.church : heldPickup(ctx) && peopleAround(ctx, block) ? c.daycare : outAmongPeople(ctx) ? c.amongPeople : null
+  const why = ctx.atOffice && block !== 'evening' ? c.office : churchIn(ctx, block) ? c.church : heldPickup(ctx) && peopleAround(ctx, block) ? c.daycare : outAmongPeople(ctx) ? c.amongPeople : null
   return why ? fill(c.around, { why }) : c.nobody
 }
 

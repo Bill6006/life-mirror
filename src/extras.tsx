@@ -50,6 +50,7 @@ import { Disclosure } from './ui'
 import { officeDayAtOffice } from './people'
 import { natureAnswerWords, natureAssociations, natureMoveToday } from './nature'
 import { chipAnswerWords, sweetAnswerWords } from './associationWords'
+import { sabbathOf } from './church'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
 const CHIPS: readonly ChipKey[] = ['nothingLanded', 'hardToSeePoint', 'coolingOff', 'bigSocial', 'napped', 'nature', 'sweet']
@@ -283,7 +284,9 @@ export function TodayChips({ day, block, onAway }: { day: string; block: Block; 
   // from home it reads Yes without asking (the owner's fix of 2026-10-19), so it is not shown, and not counted as seen.
   const cardRef = useRef<HTMLDivElement>(null)
   const atOfficeToday = Boolean(ctx) && officeDayAtOffice(ctx)
-  useChipsSeen(cardRef, { day, block }, record && ctx && !atOfficeToday && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])
+  // Item 3: on the Sabbath church already puts people around in every block, so Out among people is not asked; nothing is written for it.
+  const sabbathToday = sabbathOf(ctx)
+  useChipsSeen(cardRef, { day, block }, record && ctx && !atOfficeToday && !sabbathToday && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])
   if (!settings || !all || !contexts || !ctx) return null
   const weekday = parseDay(day).getDay() as Weekday
   // Scheduled at the office as the day was made (2026-10-19), so the row and the inference read the same day; an older day, from the week.
@@ -312,7 +315,7 @@ export function TodayChips({ day, block, onAway }: { day: string; block: Block; 
           {/* Unwell today (the owner's decision, 2026-10-10): optional, today alone, and never retired, since a rare mark is still the one that matters. */}
           <ExtraRow label={copy.today.unwellToday} on={Boolean(ctx.unwell)} onLabel={copy.extras.yes} testid="chip-unwell" onClick={() => change({ unwell: !ctx.unwell })} />
           {/* Out among people today (stage 3, item 5): people around in every block, for today alone; it stops appearing like the others. */}
-          {!atOfficeToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople} on={Boolean(ctx.amongPeople)} onLabel={copy.extras.yes} testid="chip-among-people" chip="amongPeople" onClick={() => change({ amongPeople: !ctx.amongPeople })} />}
+          {!atOfficeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople} on={Boolean(ctx.amongPeople)} onLabel={copy.extras.yes} testid="chip-among-people" chip="amongPeople" onClick={() => change({ amongPeople: !ctx.amongPeople })} />}
           {away && <ExtraRow label={copy.away.row} on={onTripToday} onLabel={trip?.state === 'away' ? fill(copy.away.untilShort, { to: formatDayShort(trip.range.to) }) : ''} testid="chip-away-from-home" onClick={() => onAway?.()} />}
         </ul>
       </div>

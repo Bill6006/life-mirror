@@ -12,6 +12,7 @@ import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, Chec
 import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
 import { chipShownAt } from './chips'
+import { churchWords, timesWords } from './church'
 import { NATURE_EVENT, NATURE_MINUTES, natureAssociations } from './nature'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
@@ -379,7 +380,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const bedtime = heldBedtime(ctx)
     // Away from home (post-window): a trip's day says so, and only while its gate is open.
     const trip = i.away !== undefined && Boolean(ctx.awayFromHome)
-    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', trip ? 'out of town, traveling' : ctx.atOffice ? 'at the office' : 'at home', ctx.churchDay ? 'a church day' : null, ctx.studyNight ? 'a preferred study day' : null, bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
+    const parts = [`Today is ${weekday}`, ctx.withHer ? null : 'she is away today', pickup ? `a daycare day with pickup at ${pickup}` : 'not a daycare day', trip ? 'out of town, traveling' : ctx.atOffice ? 'at the office' : 'at home', churchWords(ctx), ctx.studyNight ? 'a preferred study day' : null, bedtime ? `her bedtime ${bedtime}` : null, `the hour is ${hour}`]
     facts.push(
       fact('week.today', ['cue', 'evening'], parts.filter(Boolean).join('; ') + '.', {
         weekday,
@@ -387,7 +388,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
         daycare: pickup ? 1 : 0,
         pickup,
         office: ctx.atOffice ? 1 : 0,
-        church: ctx.churchDay ? 1 : 0,
+        church: churchWords(ctx) ? 1 : 0,
+        ...(ctx.church && ctx.services?.length ? { services: timesWords(ctx.services) } : {}),
         studyNight: ctx.studyNight ? 1 : 0,
         bedtime,
         hour,
@@ -403,7 +405,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const tpickup = heldPickup(tctx)
     const tbedtime = heldBedtime(tctx)
     const ttrip = i.away !== undefined && Boolean(tctx.awayFromHome)
-    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', ttrip ? 'out of town, traveling' : tctx.atOffice ? 'at the office' : 'at home', tctx.churchDay ? 'a church day' : null, tctx.studyNight ? 'a preferred study day' : null, tbedtime ? `her bedtime ${tbedtime}` : null]
+    const tparts = [`Tomorrow is ${tweekday}`, tctx.withHer ? null : 'she is not with you', tpickup ? `a daycare day with pickup at ${tpickup}` : 'not a daycare day', ttrip ? 'out of town, traveling' : tctx.atOffice ? 'at the office' : 'at home', churchWords(tctx), tctx.studyNight ? 'a preferred study day' : null, tbedtime ? `her bedtime ${tbedtime}` : null]
     facts.push(
       fact('week.tomorrow', ['cue'], tparts.filter(Boolean).join('; ') + '.', {
         day: tday,
@@ -412,7 +414,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
         daycare: tpickup ? 1 : 0,
         pickup: tpickup,
         office: tctx.atOffice ? 1 : 0,
-        church: tctx.churchDay ? 1 : 0,
+        church: churchWords(tctx) ? 1 : 0,
+        ...(tctx.church && tctx.services?.length ? { services: timesWords(tctx.services) } : {}),
         studyNight: tctx.studyNight ? 1 : 0,
         bedtime: tbedtime,
         ...(ttrip ? { trip: 1 } : {}),
@@ -421,7 +424,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
   }
   const yctx = i.contexts.find((c) => c.day === yesterday)
   const ytrip = i.away !== undefined && Boolean(yctx?.awayFromHome)
-  if (yctx) facts.push(fact('week.yesterday', ['recovery'], `Yesterday was ${yctx.churchDay ? 'a church day' : 'not a church day'}, ${yctx.withHer ? 'with her' : 'without her'}${yctx.studyNight ? ', a preferred study day' : ''}${ytrip ? ', out of town, traveling' : ''}.`, { church: yctx.churchDay ? 1 : 0, studyNight: yctx.studyNight ? 1 : 0, withHer: yctx.withHer ? 1 : 0, ...(ytrip ? { trip: 1 } : {}) }))
+  if (yctx) facts.push(fact('week.yesterday', ['recovery'], `Yesterday was ${churchWords(yctx) ?? 'not a church day'}, ${yctx.withHer ? 'with her' : 'without her'}${yctx.studyNight ? ', a preferred study day' : ''}${ytrip ? ', out of town, traveling' : ''}.`, { church: churchWords(yctx) ? 1 : 0, ...(yctx.church && yctx.services?.length ? { services: timesWords(yctx.services) } : {}), studyNight: yctx.studyNight ? 1 : 0, withHer: yctx.withHer ? 1 : 0, ...(ytrip ? { trip: 1 } : {}) }))
   if (i.away !== undefined) {
     const t = tripFact(i.away.range, i.contexts, today)
     if (t) facts.push(t)

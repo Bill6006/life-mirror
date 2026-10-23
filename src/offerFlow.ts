@@ -1,6 +1,7 @@
 import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { heldPickup } from './dayShape'
 import { peopleAroundByBlock } from './people'
+import { churchBlocks, sabbathOf } from './church'
 import type { Rng } from './rng'
 import { hasMove, LADDERS, moveById, RECOVERY_GAP } from './catalogue'
 import {
@@ -241,7 +242,7 @@ export async function todayState(day: string, settings: Settings, now: Date = ne
   const standing = standingSetups(await db.outcomes.filter((x) => x.outcome === 'done').toArray(), settings.setupUndone)
   // Part 24: with a path on, its row is the day's one people rep.
   const pathIsOn = (await db.aims.filter(pathOn).count()) > 0
-  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn, ...(awayOn() && ctx.awayFromHome ? { homeOut: true } : {}), ...(settings.weather.on && rainSoon(ctx.weather, day, now) === true ? { rain: true } : {}) }
+  return { doneToday, offeredToday, hiddenFamilies, doneRungs, studyNight: ctx.studyNight, withHer: ctx.withHer, churchDay: ctx.churchDay, church: churchBlocks(ctx), sabbath: sabbathOf(ctx), noTimeCeiling: null, standing, atOffice: Boolean(ctx.atOffice), daylight: inDaylight(daylightFor(settings, day), now), pickupTime: heldPickup(ctx), asleep: ctx.withHer && (now.getHours() < 4 || now.getHours() * 60 + now.getMinutes() >= minutesOf(ctx.soloUntil)), peopleAround: peopleAroundByBlock(ctx), pathOn: pathIsOn, ...(awayOn() && ctx.awayFromHome ? { homeOut: true } : {}), ...(settings.weather.on && rainSoon(ctx.weather, day, now) === true ? { rain: true } : {}) }
 }
 
 /** Phase 10: "no time" narrows the block for a week; the draw prefers short windows a little. */

@@ -1874,8 +1874,14 @@ test('the Social path: added under Aims, one People row on Now with its stage in
   await expect(lunch.getByTestId('aim-step')).toBeVisible()
   await expect(lunch.getByTestId('path-none')).toHaveCount(0)
   await expect(lunch.getByTestId('path-would-go-out')).toHaveText('Working from home: this one would mean going out, at lunch, on an errand or to something later.')
-  // The evening at home: still offered, said the same way for the evening.
+  // Its evening holds the Third Day's service on the schedule (Item 3): church context, so the rep fits without going out.
   await page.clock.setFixedTime(new Date(2026, 8, 8, 19, 5))
+  await page.reload()
+  const service = page.locator('[data-kind="path"]')
+  await expect(service.getByTestId('aim-start')).toBeVisible()
+  await expect(service.getByTestId('path-would-go-out')).toHaveCount(0)
+  // The evening at home on a day with no church: still offered, said the same way for the evening.
+  await page.clock.setFixedTime(new Date(2026, 8, 9, 19, 5))
   await page.reload()
   const evening = page.locator('[data-kind="path"]')
   await expect(evening.getByTestId('path-none')).toHaveCount(0)
@@ -4139,4 +4145,138 @@ test.describe('by the stand-in area’s own clock', () => {
       }
     })
   }
+})
+
+// ─── Item 3 (2026-10-23): Sabbath Day and Third Day ───────────────────────────────────────────────────
+
+test('Sabbath Day and Third Day (Item 3): two tabs over the one weekday grid, each schedule’s times behind Edit times, kept through a reload, in the space the Church day took', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 9, 27, 9, 5))
+  await page.goto('./')
+  const open = async () => {
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    await page.getByTestId('settings-week').click()
+  }
+  await open()
+  const block = page.getByTestId('church-schedule')
+  const days = block.locator('.seg-days .seg-opt')
+  const sabbath = page.getByTestId('church-tab-sabbath')
+  const third = page.getByTestId('church-tab-third')
+  // Today, a Tuesday, made on opening: the Third Day's evening service on its schedule.
+  const today = async () => (await rowsOf<{ day: string; church?: string; services?: string[] }>(page, 'days')).find((d) => d.day === '2026-10-27')
+  await expect.poll(async () => (await today())?.church).toBe('third')
+  await expect(sabbath).toHaveText('Sabbath Day')
+  await expect(third).toHaveText('Third Day')
+  await expect(sabbath).toHaveAttribute('aria-selected', 'true')
+  // Saturday, the whole day, by default; one grid, one schedule at a time.
+  await expect(days.nth(6)).toHaveAttribute('aria-pressed', 'true')
+  await expect(block.locator('.seg-days')).toHaveCount(1)
+  await expect(page.getByTestId('church-times')).toHaveCount(0)
+  // As compact as the Church day was: one row where its label was, then the grid, nothing more while times are closed.
+  const head = (await block.locator('.church-head').boundingBox())!
+  const grid = (await block.locator('.seg-days').boundingBox())!
+  const whole = (await block.boundingBox())!
+  expect(head.height).toBeLessThanOrEqual(56)
+  expect(whole.height).toBeLessThanOrEqual(head.height + grid.height + 24)
+  // The Sabbath's three services, behind Edit times.
+  await page.getByTestId('church-times-open').click()
+  await expect(page.getByTestId('church-time')).toHaveCount(3)
+  expect(await page.getByTestId('church-time').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).toEqual(['07:30', '14:30', '19:30'])
+  // Every target at least 48 by 48; the chosen tab marked by its weight and rule, not colour alone.
+  for (const t of [sabbath, third, page.getByTestId('church-times-open'), ...(await page.getByTestId('church-time').all()), ...(await page.getByTestId('church-time-remove').all()), page.getByTestId('church-time-add')]) {
+    const b = (await t.boundingBox())!
+    expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(48)
+  }
+  const mark = (l: typeof sabbath) => l.evaluate((e) => [getComputedStyle(e).fontWeight, getComputedStyle(e).borderBottomColor !== 'rgba(0, 0, 0, 0)'].join(' '))
+  expect([await mark(sabbath), await mark(third)]).toEqual(['600 true', '400 false'])
+  // The Third Day: the same grid, Tuesday chosen, its one service.
+  await third.click()
+  await expect(third).toHaveAttribute('aria-selected', 'true')
+  await expect(days.nth(2)).toHaveAttribute('aria-pressed', 'true')
+  await expect(days.nth(6)).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('church-time')).toHaveCount(1)
+  await expect(page.getByTestId('church-time')).toHaveValue('19:30')
+  // A seasonal change: a second service added, the first moved, then one removed; and the day moved to Thursday.
+  await page.getByTestId('church-time-add').click()
+  await expect(page.getByTestId('church-time')).toHaveCount(2)
+  await page.getByTestId('church-time').nth(1).fill('19:00')
+  await expect.poll(async () => page.getByTestId('church-time').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).toEqual(['07:30', '19:00'])
+  await page.getByTestId('church-time-remove').nth(0).click()
+  await expect(page.getByTestId('church-time')).toHaveCount(1)
+  await days.nth(4).click()
+  await expect(days.nth(4)).toHaveAttribute('aria-pressed', 'true')
+  // The edit re-shapes today alone: Tuesday holds no church now.
+  await expect.poll(async () => (await today())?.church ?? 'none').toBe('none')
+  // Kept through a reload: the Third Day on Thursday at 19:00, the Sabbath untouched.
+  await page.reload()
+  await open()
+  await page.getByTestId('church-tab-third').click()
+  await expect(page.getByTestId('church-schedule').locator('.seg-days .seg-opt').nth(4)).toHaveAttribute('aria-pressed', 'true')
+  await page.getByTestId('church-times-open').click()
+  await expect(page.getByTestId('church-time')).toHaveCount(1)
+  await expect(page.getByTestId('church-time')).toHaveValue('19:00')
+  await page.getByTestId('church-tab-sabbath').click()
+  await expect(page.getByTestId('church-time')).toHaveCount(3)
+})
+
+test('the Sabbath does not ask Out among people today, and writes no answer for it; a Third Day morning asks it as any day; only the Sabbath evening’s note asks about a big social day (Item 3)', async ({ page }) => {
+  type Row = { day: string; block: string; extras?: { chipsShown?: Record<string, boolean> } }
+  const shown = async (day: string) => (await rowsOf<Row>(page, 'checkins')).find((c) => c.day === day && c.block === 'morning')?.extras?.chipsShown?.amongPeople ?? false
+  /** Opens the check-in and taps the middle of every reading until `endId`; a move asked about is left unanswered. */
+  const checkInTo = async (endId: 'give-back' | 'extras') => {
+    await page.getByRole('button', { name: /Check in/ }).click()
+    const end = page.getByTestId(endId)
+    const extras = page.getByTestId('extras')
+    const ask = page.getByTestId('outcome-ask')
+    const anchor = page.getByTestId('anchor').nth(2)
+    for (let i = 0; i < 30; i++) {
+      await expect(end.or(extras).or(ask).or(anchor).first()).toBeVisible()
+      if (await end.isVisible()) break
+      if (await ask.isVisible()) {
+        await page.getByRole('button', { name: /^(Not now|Leave it unanswered)$/ }).click()
+        await page.waitForTimeout(300)
+        continue
+      }
+      if (await extras.isVisible()) {
+        await page.getByRole('button', { name: 'Done', exact: true }).click()
+        await expect(extras).toBeHidden()
+        continue
+      }
+      await tapAnchor(page)
+    }
+    await expect(end).toBeVisible()
+  }
+  // Saturday morning: church on the schedule all day, so the question is not asked, nor marked as seen.
+  await page.clock.setFixedTime(new Date(2026, 9, 24, 9, 5))
+  await page.goto('./')
+  await checkInTo('give-back')
+  await expect(page.getByTestId('chip-office')).toBeVisible()
+  await page.getByTestId('chip-office').scrollIntoViewIfNeeded()
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+  expect(((await rowsOf<{ day: string; amongPeople?: boolean }>(page, 'days')).find((d) => d.day === '2026-10-24'))?.amongPeople).toBeUndefined()
+  // Given the moment Tuesday's mark below takes, and still not marked.
+  await page.waitForTimeout(1500)
+  expect(await shown('2026-10-24')).toBe(false)
+  // Saturday evening: the note asks whether the Sabbath made a big social day; nothing is marked for the person.
+  await page.clock.setFixedTime(new Date(2026, 9, 24, 21, 5))
+  await page.reload()
+  await checkInTo('extras')
+  await expect(page.getByTestId('church-ask')).toContainText('The Sabbath today.')
+  await expect(page.getByTestId('chip-bigSocial')).toHaveAttribute('aria-pressed', 'false')
+  // Tuesday morning, a day worked from home: asked as on any day, and marked as seen; church is its evening alone.
+  await page.clock.setFixedTime(new Date(2026, 9, 27, 9, 5))
+  await page.reload()
+  await checkInTo('give-back')
+  await expect(page.getByTestId('chip-among-people')).toBeVisible()
+  // Seen once half in view, as every chip from item 5.
+  await page.getByTestId('chip-among-people').scrollIntoViewIfNeeded()
+  await expect.poll(() => shown('2026-10-27')).toBe(true)
+  const tue = (await rowsOf<{ day: string; church?: string; services?: string[]; atOffice?: boolean; amongPeople?: boolean }>(page, 'days')).find((d) => d.day === '2026-10-27')
+  expect(tue).toMatchObject({ church: 'third', services: ['19:30'], atOffice: false })
+  expect(tue?.amongPeople).toBeUndefined()
+  // Tuesday evening, its service on the schedule: no special note, since an ordinary service is no big social day.
+  await page.clock.setFixedTime(new Date(2026, 9, 27, 21, 5))
+  await page.reload()
+  await checkInTo('extras')
+  await expect(page.getByTestId('chip-bigSocial')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('church-ask')).toHaveCount(0)
 })

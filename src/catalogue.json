@@ -2455,7 +2455,7 @@
     },
     {
       "id": "church-early",
-      "name": "Arrive ten minutes early on Saturday and talk to one person",
+      "name": "Arrive ten minutes early to church and talk to one person",
       "family": "people",
       "what": "Before the service, one conversation with someone you do not usually talk to.",
       "source": {
@@ -2491,7 +2491,9 @@
         "faith"
       ],
       "when": [
-        "morning"
+        "morning",
+        "afternoon",
+        "evening"
       ],
       "tags": {
         "ingredients": [
@@ -3862,7 +3864,7 @@
     },
     {
       "id": "sabbath-hour",
-      "name": "One screen-free hour on Saturday as rest",
+      "name": "One screen-free hour on the Sabbath as rest",
       "family": "faith",
       "what": "No work, no study, no scrolling, for one hour, on purpose.",
       "source": {

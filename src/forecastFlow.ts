@@ -6,6 +6,7 @@ import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, logge
 import { associationFor, likeForLikeMatched } from './associations'
 import { chipShownAt } from './chips'
 import { natureEvening, natureKnown, natureMoveDays } from './nature'
+import { churchIn } from './church'
 import type { AnchorSwap, Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
 import { checksAsShown, honestyChecks, type HonestyChecks } from './honesty/checks'
 import { guardRepair } from './repair/breaker'
@@ -94,7 +95,8 @@ export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | un
   if (ex.nothingLanded) keys.push('nothingLanded')
   if (ex.hardToSeePoint) keys.push('hardToSeePoint')
   if (necessitiesMissed(ex).length) keys.push('necessity')
-  if (ctx?.churchDay) keys.push('churchDay')
+  // Item 3: a day with church on the schedule that evening, the Third Day's included; the schedule, never attendance.
+  if (ctx?.churchDay || churchIn(ctx, 'evening')) keys.push('churchDay')
   if (workout) keys.push('workout')
   return keys
 }
@@ -107,7 +109,7 @@ function eventTest(key: LastNightKey, ctxByDay: ReadonlyMap<string, DayContext>,
     case 'necessity':
       return (c) => necessitiesMissed(c.extras).length > 0
     case 'churchDay':
-      return (c) => Boolean(ctxByDay.get(c.day)?.churchDay)
+      return (c) => Boolean(ctxByDay.get(c.day)?.churchDay) || churchIn(ctxByDay.get(c.day), 'evening')
     case 'workout':
       return (c) => outside.has(c.day)
     case 'caffeine':

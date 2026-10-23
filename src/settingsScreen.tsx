@@ -6,6 +6,7 @@ import { build } from './build'
 import { Seg, SwitchRow, TimeRow, useSyncedText } from './controls'
 import { copy } from './copy'
 import { db, getSettings, updateSettings } from './db'
+import { ChurchSchedule, churchSummary } from './churchSettings'
 import { fill, formatHHMM, formatWhen } from './format'
 import { useLive } from './live'
 import { installApp, useInstallOffer } from './installOffer'
@@ -53,7 +54,7 @@ export function summaries(s: Settings, theme: ThemeId): Record<SettingsSection |
   const extrasOn = EXTRA_KEYS.filter((k) => s.extras[k]).length
   const tests = build.unitTests === null ? n.aboutNoTests : fill(n.aboutTests, { n: String(build.unitTests) })
   return {
-    week: [w.churchDay === null ? n.churchNone : fill(n.churchOn, { day: weekdayName(w.churchDay) }), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: formatHHMM(w.pickupTime) }), fill(s.place ? n.daylightSun : n.daylight, clockSpan(daylightFor(s, blockAt(new Date()).day))), ...(s.weather.on ? [n.weatherOn] : [])].join(' · '),
+    week: [churchSummary(w), w.pickupTime === null ? n.pickupNone : fill(n.pickupAt, { time: formatHHMM(w.pickupTime) }), fill(s.place ? n.daylightSun : n.daylight, clockSpan(daylightFor(s, blockAt(new Date()).day))), ...(s.weather.on ? [n.weatherOn] : [])].join(' · '),
     location: s.location.on ? fill(n.locationOn, { known: n.locationKnownNone }) : n.locationOff,
     checkins: [...(s.lowDemand ? [n.lowDemandOn] : []), freq, s.depth === 'full' ? n.depthFull : n.depthShort, fill(n.quiet, clockSpan({ from: s.quietStart, to: s.quietEnd })), s.reminders.enabled ? n.remindersOn : n.remindersOff].join(' · '),
     extras: fill(n.extrasOn, { n: String(extrasOn), of: String(EXTRA_KEYS.length) }),
@@ -455,13 +456,7 @@ export function SettingsSectionScreen({ section, onClose, onPrivate }: { section
         return (
           <>
             <div class="card">
-              <Seg
-                label={copy.week.churchDay}
-                class="seg-days"
-                value={w.churchDay === null ? 'none' : String(w.churchDay)}
-                options={[...WEEKDAYS.map((d) => ({ v: String(d), l: copy.week.days[d] })), { v: 'none', l: copy.week.none }]}
-                onChange={(v) => setWeek((week) => ({ ...week, churchDay: v === 'none' ? null : (Number(v) as Weekday) }))}
-              />
+              <ChurchSchedule week={w} />
               <SwitchRow label={copy.week.livesWithMe} note={copy.week.livesWithMeNote} on={w.livesWithMe} onChange={(livesWithMe) => setWeek((week) => ({ ...week, livesWithMe }))} testid="lives-with-me" />
               <DayChips label={copy.week.studyNights} value={w.studyNights} onChange={(studyNights) => setWeek((week) => ({ ...week, studyNights }))} testid="study-days" />
               {/* Workstream 6, D5: a preference only. It orders what is already due to learn; it never makes anything due or picks a subject. */}

@@ -31,7 +31,7 @@ A sentence beyond hello, one follow-up question, or a return to something they t
 - Not progress: Waiting to be spoken to.
 - How it moves: moves by the rule
 - **One sentence past hello** (moves the stage · where: an errand, a recurring place). Attention on: Something about them or the moment, not about yourself. Drop: Hello, and done. Done when you have said the sentence, however they answer.
-- **Arrive ten minutes early on Saturday and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
+- **Arrive ten minutes early to church and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
 - **Ask one follow-up question** (moves the stage · where: one to one, a recurring place, an errand). Attention on: The last thing they said, and one question about it. Drop: A new topic whenever there is a silence. Done when you have asked, however they answer.
 - **Return to something they said last time** (moves the stage · where: a recurring place). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer.
 
@@ -153,7 +153,7 @@ Be where you might meet someone among the people your week already holds, say he
 
 - Not progress: Approaching strangers in the street; waiting for someone to notice you.
 - How it moves: moves by the rule
-- **Arrive ten minutes early on Saturday and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
+- **Arrive ten minutes early to church and talk to one person** (moves the stage · where: a recurring place, a group). Attention on: Who is standing on their own? Drop: Staying with the people you already know. Done when you have talked with one person, however it went.
 - **Greet someone by name** (moves the stage · where: a recurring place, an errand). Attention on: Their name, and one thing you noticed about them today. Drop: A nod instead of the name. Done when you have said it, however they answer.
 - **Introduce yourself to someone new there** (moves the stage · where: a recurring place, a group). Attention on: Your name, then a question about them. Drop: Waiting for someone to introduce you. Done when you have introduced yourself, however they answer.
 - **Say hello again to someone you liked talking to** (moves the stage · where: a recurring place, a group). Attention on: The thing you talked about last time. Drop: Waiting for them to notice you first. Done when you have said hello and one more sentence, however they answer.
@@ -1019,7 +1019,7 @@ Coffee after church, a walk, a game night: one invitation, sent today.
 - Stands in for: make plans, reach out
 - Counts toward: conversations
 
-### Arrive ten minutes early on Saturday and talk to one person
+### Arrive ten minutes early to church and talk to one person
 
 _Social path, stage 2, moves the stage · Partner path, stage 1, moves the stage_
 
@@ -1030,7 +1030,7 @@ Before the service, one conversation with someone you do not usually talk to.
 - Tags: with people, short, connection · intensity medium
 - Should move: Loneliness ↓ (seven days), Mood ↑ (this evening)
 - Starting belief: Loneliness ↓ by about a third of a step over the seven days · VanderWeele 2017 review: attendance predicts lower low mood; about a third of a step over seven days.
-- When: morning
+- When: morning, afternoon, evening
 - Stands in for: stay for coffee after church
 - Counts toward: conversations, faith
 
@@ -1171,7 +1171,7 @@ Paper, a bath, a walk, the kitchen: anything but glass, for thirty minutes.
 - Should move: Stress ↓ (next block), Sleep quality ↑ (next morning)
 - Starting belief: Stress ↓ by about a fifth of a step over the next block · Sonnentag and Fritz 2007; about a fifth of a step on stress.
 - When: afternoon, evening
-- Not alongside: One screen-free hour on Saturday as rest
+- Not alongside: One screen-free hour on the Sabbath as rest
 - Stands in for: a digital detox, put the phone away
 
 ### A warm shower or bath an hour before bed
@@ -1666,7 +1666,7 @@ Three specific things from today, said to God or written down.
 - Stands in for: count your blessings, three good things
 - Counts toward: faith
 
-### One screen-free hour on Saturday as rest
+### One screen-free hour on the Sabbath as rest
 
 No work, no study, no scrolling, for one hour, on purpose.
 

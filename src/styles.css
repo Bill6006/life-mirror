@@ -4220,3 +4220,59 @@ main.has-move-cue {
 .keep-together {
   white-space: nowrap;
 }
+
+/* Sabbath Day and Third Day (Item 3): two tabs where the Church day label was, Edit times at the row's end, one weekday grid
+   below for the tab chosen. The chosen tab is marked by weight and a rule, not colour alone; every target at least 48px. */
+.church-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: -12px 0 -2px;
+}
+
+.church-tab {
+  min-height: 48px;
+  padding: 0 8px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.church-tab:first-child {
+  padding-left: 0;
+}
+
+.church-tab.is-on {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.church-edit {
+  margin-left: auto;
+}
+
+.church-times {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.church-time {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.church-time input[type="time"] {
+  min-height: 48px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--well);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-ctl);
+}

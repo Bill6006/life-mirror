@@ -96,6 +96,9 @@ export interface TodayState {
    * home" earlier in this block; the moves that need the house wait. Absent means at home, as always.
    */
   homeOut?: boolean
+  /** Item 3: the blocks with church on the schedule today, and whether today is the Sabbath; absent where the state does not know them. */
+  church?: Readonly<Record<Block, boolean>>
+  sabbath?: boolean
 }
 
 export type Exclusion = 'proposed' | 'parked' | 'pathOnly' | 'path' | 'noTime' | 'observed' | 'passive' | 'study' | 'schedule' | 'block' | 'hidden' | 'target' | 'band' | 'offeredToday' | 'conflict' | 'rung' | 'standing' | 'daylight' | 'quiet' | 'rain' | 'home' | 'daycare' | 'asleep' | 'people'
@@ -135,14 +138,18 @@ export function screen(move: Move, s: Situation, t: TodayState): Exclusion | nul
   if ((move.family === 'fatherhood' || move.id === 'time-with-her') && t.asleep) return 'asleep'
   // On a daycare day she is there only after pickup: her moves fit the evening, and the afternoon only when pickup falls inside it.
   if ((move.family === 'fatherhood' || move.id === 'time-with-her') && t.pickupTime && (s.block === 'morning' || (s.block === 'afternoon' && minutesOf(t.pickupTime) >= minutesOf(blockStart.evening)))) return 'daycare'
-  if (move.id === 'church-early' && !t.churchDay) return 'schedule'
+  // Item 3: church on the schedule in this block (the Sabbath every block, the Third Day its services'); a state without it reads the morning of a church day, as before.
+  if (move.id === 'church-early' && !(t.church ? t.church[s.block] : t.churchDay && s.block === 'morning')) return 'schedule'
+  // The screen-free hour of the Sabbath is the Sabbath's.
+  if (move.id === 'sabbath-hour' && t.church !== undefined && t.sabbath !== true) return 'schedule'
   if (!move.when.includes(s.block)) return 'block'
   // The needs the app can know: daylight from your daylight hours, quiet from your office days, and the outdoors from the forecast rain while the weather is on.
   if (move.needs.includes('daylight') && t.daylight === false) return 'daylight'
   if (move.needs.includes('quiet') && t.atOffice === true && s.block !== 'evening') return 'quiet'
   if (move.needs.includes('outdoors') && t.rain === true) return 'rain'
   // Post-window, gated: away from home, the moves that need the house wait (never set while the gate is closed).
-  if (t.homeOut === true && needsHome(move.id)) return 'home'
+  // Item 3: a block with church on the schedule keeps the moves that need the house out of it too.
+  if ((t.homeOut === true || t.church?.[s.block] === true) && needsHome(move.id)) return 'home'
   // The third: an adult there in person, from today's shape alone (Part 20's tier 1). Past reps elsewhere never enter here.
   if (inPerson(move) && t.peopleAround && !t.peopleAround[s.block]) return 'people'
   // One people rep a day across the app: while a path is on, its row is it.
