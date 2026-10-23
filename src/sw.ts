@@ -11,10 +11,12 @@ import { fill } from './format'
 import { hhmmOf, inQuietHours, minutesOf, pushDecision } from './settings'
 import { logUse } from './useLog'
 import { VAPID_PUBLIC_KEY } from './vapid'
+import { NOTIFICATION_ICON } from './appIcon'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<PrecacheEntry | string> }
 
 const BASE = '/life-mirror/'
+const ICON = `${BASE}${NOTIFICATION_ICON}`
 
 // A new build takes over at once, so the app never shows a stale phase.
 self.skipWaiting()
@@ -40,12 +42,12 @@ self.addEventListener('push', (event) => {
 
 /** The clean window's qualification report (2026-10-02): the Worker's words from the check's own counts, shown once. */
 async function onReport(body: string): Promise<void> {
-  await self.registration.showNotification(copy.appName, { body, tag: 'report', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+  await self.registration.showNotification(copy.appName, { body, tag: 'report', icon: ICON, data: { url: BASE } })
 }
 
 /** A push sent by hand from the Worker to prove the path: it shows itself. */
 async function onTest(): Promise<void> {
-  await self.registration.showNotification(copy.appName, { body: copy.reminders.test, tag: 'test', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+  await self.registration.showNotification(copy.appName, { body: copy.reminders.test, tag: 'test', icon: ICON, data: { url: BASE } })
 }
 
 /** Nothing is due, but the browser insists a push shows something. A silent notice, taken down at once. */
@@ -72,7 +74,7 @@ async function onCue(followUp: boolean): Promise<void> {
   const plans = latestPlans(todays).filter((p) => p.offerId === null && minutesOf(p.time) <= minute - (followUp ? 40 : 0) && !resting.has(p.aimId))
   const lines = plans.map((p) => (p.step ? `${copy.aims.cues[p.cue]} · ${p.step}` : copy.aims.cues[p.cue]))
   if (!lines.length || inQuietHours(hhmmOf(now), settings)) return quiet()
-  await self.registration.showNotification(copy.appName, { body: (followUp ? copy.reminders.stillOpen + ' · ' : '') + lines.join(' · '), tag: followUp ? 'cue2' : 'cue', icon: `${BASE}icons/icon-192.png`, data: { url: BASE } })
+  await self.registration.showNotification(copy.appName, { body: (followUp ? copy.reminders.stillOpen + ' · ' : '') + lines.join(' · '), tag: followUp ? 'cue2' : 'cue', icon: ICON, data: { url: BASE } })
 }
 
 async function onPing(): Promise<void> {
@@ -89,7 +91,7 @@ async function onPing(): Promise<void> {
     await self.registration.showNotification(copy.appName, {
       body: fill(copy.reminders.body, { block: copy.blocks[decision.block].toLowerCase() }),
       tag: `checkin-${decision.day}-${decision.block}`,
-      icon: `${BASE}icons/icon-192.png`,
+      icon: ICON,
       data: { url: `${BASE}?checkin=1` },
     })
     return

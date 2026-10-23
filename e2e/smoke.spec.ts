@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 /** Taps one phrase of the reading on screen (the middle one unless told otherwise), then waits for the screen to move on: the next reading, the extras, or the card. */
@@ -3570,8 +3572,8 @@ test('stage 1, item m: a line counts as said once on screen: the Worker’s line
 test('the icon: every size the manifest and the page name is served, an image of the size it says, the maskable one among them', async ({ page }) => {
   await page.goto('./')
   const manifest = (await (await page.request.get('manifest.webmanifest')).json()) as { icons: { src: string; sizes: string; purpose?: string }[] }
-  expect(manifest.icons.map((i) => i.src)).toEqual(['icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'])
-  expect(manifest.icons.find((i) => i.purpose === 'maskable')?.src).toBe('icons/maskable-512.png')
+  expect(manifest.icons.map((i) => i.src)).toEqual(['icons/life-mirror-192.png', 'icons/life-mirror-512.png', 'icons/life-mirror-maskable-512.png'])
+  expect(manifest.icons.find((i) => i.purpose === 'maskable')?.src).toBe('icons/life-mirror-maskable-512.png')
   const sizeOf = (src: string) =>
     page.evaluate(async (url) => {
       const blob = await (await fetch(url)).blob()
@@ -3583,11 +3585,92 @@ test('the icon: every size the manifest and the page name is served, an image of
     expect(await sizeOf(icon.src), icon.src).toEqual({ type: 'image/png', w, h })
   }
   const touch = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href')
+  expect(touch).toMatch(/icons\/life-mirror-touch-180\.png$/)
   expect(await sizeOf(touch as string)).toEqual({ type: 'image/png', w: 180, h: 180 })
   const favicon = await page.locator('link[rel="icon"]').getAttribute('href')
+  expect(favicon).toMatch(/icons\/life-mirror-favicon\.svg$/)
   const svg = await (await page.request.get(favicon as string)).text()
   expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 64 64"/)
   expect(svg).toContain('data:image/png;base64,')
+})
+
+test('the icon is the owner’s image (Phase C): each size drawn from it whole, the maskable one inside the safe zone with no seam, and the earlier icon gone', async ({ page }) => {
+  await page.goto('./')
+  // The source is the owner's image exactly as given (2026-10-23), byte for byte.
+  expect(createHash('sha256').update(readFileSync('scripts/icon-source.png')).digest('hex')).toBe('53797c8beda8d449fb4e98775a2328de60e075408ba3f398a5fcf4a6690f0258')
+  const source = `data:image/png;base64,${readFileSync('scripts/icon-source.png').toString('base64')}`
+  const favicon = (await page.locator('link[rel="icon"]').getAttribute('href')) as string
+  const svg = await (await page.request.get(favicon)).text()
+  const favPng = /href="(data:image\/png;base64,[^"]+)"/.exec(svg)?.[1] as string
+  const read = await page.evaluate(
+    async ({ source, favPng }) => {
+      const load = async (src: string) => {
+        const img = new Image()
+        img.src = src
+        await img.decode()
+        return img
+      }
+      /** An image's pixels at n by n, from the part of it given (x, y, size as fractions of it). */
+      const pixels = (img: HTMLImageElement, n: number, part = [0, 0, 1]) => {
+        const c = document.createElement('canvas')
+        c.width = n
+        c.height = n
+        const g = c.getContext('2d') as CanvasRenderingContext2D
+        g.imageSmoothingQuality = 'high'
+        const w = img.naturalWidth
+        g.drawImage(img, part[0] * w, part[1] * w, part[2] * w, part[2] * w, 0, 0, n, n)
+        return g.getImageData(0, 0, n, n).data
+      }
+      /** The mean difference per channel, 0 to 255, between two images at 48 by 48. */
+      const differ = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
+        let sum = 0
+        for (let i = 0; i < a.length; i += 4) sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])
+        return sum / ((a.length / 4) * 3)
+      }
+      const src = await load(source)
+      const whole = pixels(src, 48)
+      const out: Record<string, number> = {}
+      for (const name of ['life-mirror-192', 'life-mirror-512', 'life-mirror-touch-180']) out[name] = differ(pixels(await load(`icons/${name}.png`), 48), whole)
+      out.favicon = differ(pixels(await load(favPng), 48), whole)
+      // The maskable one: the image whole in its middle 90%.
+      const mask = await load('icons/life-mirror-maskable-512.png')
+      out.maskableMiddle = differ(pixels(mask, 48, [0.05, 0.05, 0.9]), whole)
+      // Its artwork inside the safe zone (a circle of 40% radius), measured as the image was: its bright pixels.
+      const c = document.createElement('canvas')
+      c.width = 512
+      c.height = 512
+      const g = c.getContext('2d') as CanvasRenderingContext2D
+      g.drawImage(mask, 0, 0)
+      const d = g.getImageData(0, 0, 512, 512).data
+      let reach = 0
+      let seam = 0
+      for (let y = 0; y < 512; y++)
+        for (let x = 0; x < 512; x++) {
+          const i = (y * 512 + x) * 4
+          if (Math.max(d[i], d[i + 1], d[i + 2]) >= 120) reach = Math.max(reach, Math.hypot(x + 0.5 - 256, y + 0.5 - 256) / 512)
+        }
+      // No seam where the margin meets the image: the step across that edge no larger than the steps inside it.
+      const at = (x: number, y: number) => [d[(y * 512 + x) * 4], d[(y * 512 + x) * 4 + 1], d[(y * 512 + x) * 4 + 2]]
+      const step = (p: number[], q: number[]) => Math.max(...p.map((v, k) => Math.abs(v - q[k])))
+      for (let k = 30; k < 482; k += 4) seam = Math.max(seam, step(at(k, 25), at(k, 26)), step(at(25, k), at(26, k)), step(at(k, 486), at(k, 487)), step(at(486, k), at(487, k)))
+      out.reach = reach
+      out.seam = seam
+      return out
+    },
+    { source, favPng },
+  )
+  for (const name of ['life-mirror-192', 'life-mirror-512', 'life-mirror-touch-180', 'favicon', 'maskableMiddle']) expect(read[name], name).toBeLessThan(4)
+  expect(read.reach).toBeLessThanOrEqual(0.4)
+  expect(read.seam).toBeLessThanOrEqual(6)
+  // The earlier icon's files are gone, none served as an image (the preview answers an unknown path with the page, Pages with
+  // a 404), and nothing names them.
+  for (const old of ['icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'favicon.svg']) {
+    const r = await page.request.get(old)
+    expect(r.ok() && (r.headers()['content-type'] ?? '').startsWith('image/'), old).toBe(false)
+  }
+  const sw = await (await page.request.get('sw.js')).text()
+  expect(sw).toContain('icons/life-mirror-192.png')
+  expect(sw).not.toContain('icon-192.png')
 })
 
 test('Let it out: the night’s words kept as written, read back under Mirror, searched, edited and deleted on a second tap (agreed 2026-10-15)', async ({ page }) => {
@@ -4186,8 +4269,14 @@ test('Sabbath Day and Third Day (Item 3): two tabs over the one weekday grid, ea
     const b = (await t.boundingBox())!
     expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(48)
   }
-  const mark = (l: typeof sabbath) => l.evaluate((e) => [getComputedStyle(e).fontWeight, getComputedStyle(e).borderBottomColor !== 'rgba(0, 0, 0, 0)'].join(' '))
-  expect([await mark(sabbath), await mark(third)]).toEqual(['600 true', '400 false'])
+  const mark = (l: typeof sabbath) => l.evaluate((e) => [getComputedStyle(e).fontWeight, getComputedStyle(e).textDecorationLine].join(' '))
+  expect([await mark(sabbath), await mark(third)]).toEqual(['600 underline', '400 none'])
+  // The underline under the words, clear of the day pills: nothing drawn over the tab where it runs.
+  const clear = await sabbath.evaluate((e) => {
+    const r = e.getBoundingClientRect()
+    return [0.25, 0.5, 0.75].every((f) => e.contains(document.elementFromPoint(r.left + r.width * f, r.top + r.height * 0.8)))
+  })
+  expect(clear).toBe(true)
   // The Third Day: the same grid, Tuesday chosen, its one service.
   await third.click()
   await expect(third).toHaveAttribute('aria-selected', 'true')

@@ -57,13 +57,18 @@ def main(runners):
         rows = table_of(runner)
         problems = []
         for kw in rows:
+            # A break that writes a file (the icon's, 2026-10-23) needs it absent; one that adds bytes, only present.
+            if 'create' in kw:
+                if os.path.exists(ROOT + kw['file']):
+                    problems.append(f"{kw['id']}: the file it creates, {kw['file']}, already exists")
             # A file gone (the old engine's modules, retired 2026-10-20) is reported, never a crash.
-            if not os.path.exists(ROOT + kw['file']):
+            elif not os.path.exists(ROOT + kw['file']):
                 problems.append(f"{kw['id']}: its file {kw['file']} is gone")
                 continue
-            n = io.open(ROOT + kw['file'], encoding='utf-8', newline='').read().count(kw['old'])
-            if n != 1:
-                problems.append(f"{kw['id']}: its text appears {n} times in {kw['file']}")
+            elif 'old' in kw:
+                n = io.open(ROOT + kw['file'], encoding='utf-8', newline='').read().count(kw['old'])
+                if n != 1:
+                    problems.append(f"{kw['id']}: its text appears {n} times in {kw['file']}")
             pat = kw.get('pattern')
             assert kw.get('tests'), f"{kw['id']}: an empty test list would run everything"
             files = [f for i, f in enumerate(kw['tests']) if not f.startswith('-') and (i == 0 or kw['tests'][i - 1] not in ('-g', '-t'))]

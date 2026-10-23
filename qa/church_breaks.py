@@ -249,7 +249,7 @@ TABLE = [
          new='.church-time input[type="time"] {\n  min-height: 30px;',
          tests=[S], pattern=SET_UI),
     dict(id='ui-tab-not-colour-alone', file='src/styles.css',
-         old=".church-tab.is-on {\n  color: var(--ink);\n  font-weight: 600;\n  border-bottom-color: var(--accent);\n}",
+         old=".church-tab.is-on {\n  color: var(--ink);\n  font-weight: 600;\n  text-decoration: underline 2px var(--accent);\n  text-underline-offset: 6px;\n}",
          new=".church-tab.is-on {\n  color: var(--ink);\n}",
          tests=[S], pattern=SET_UI),
     dict(id='ui-sabbath-chip', file='src/extras.tsx',

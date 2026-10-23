@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks'
+import { NOTIFICATION_ICON } from './appIcon'
 import { blockAt, type Block } from './blocks'
 import { copy } from './copy'
 import { markReminded, type CheckIn } from './db'
@@ -27,7 +28,7 @@ export function useReminders(settings: Settings | undefined, all: CheckIn[] | un
       await markReminded(day, block)
       const body = fill(copy.reminders.body, { block: copy.blocks[block].toLowerCase() })
       const base = import.meta.env.BASE_URL
-      const options: NotificationOptions = { body, tag: `checkin-${day}-${block}`, icon: `${base}icons/icon-192.png`, data: { url: base } }
+      const options: NotificationOptions = { body, tag: `checkin-${day}-${block}`, icon: `${base}${NOTIFICATION_ICON}`, data: { url: base } }
       const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined
       if (reg) await reg.showNotification(copy.appName, options)
       else new Notification(copy.appName, options)

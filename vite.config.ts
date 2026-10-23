@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => ({
       },
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['favicon.svg', 'icons/*.png'],
+      includeAssets: ['icons/*.png', 'icons/*.svg'],
       manifest: {
         id: BASE,
         name: 'Life Mirror',
@@ -55,9 +55,9 @@ export default defineConfig(({ mode }) => ({
         background_color: GROUND,
         theme_color: GROUND,
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icons/life-mirror-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/life-mirror-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/life-mirror-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),
