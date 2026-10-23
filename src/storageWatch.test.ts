@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import Dexie, { liveQuery } from 'dexie'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { factSheet } from './brainFlow'
+import { factSheet, writeFactsRow } from './brainFlow'
 import { db } from './db'
 import { FLOORS_WAIT_MS } from './idFloors'
 import { followRead, RETRY_BASE_MS } from './live'
@@ -224,5 +224,16 @@ describe('the storage interrupted under the app', () => {
     expect(sheet.storageFault).toMatchObject({ count: 1, first: '2026-10-23T20:26', name: 'AbortError' })
     // On the sheet beside the facts, never among them: no writer reads it.
     expect(sheet.facts.some((f) => JSON.stringify(f).includes('AbortError'))).toBe(false)
+  })
+
+  it('writes the facts row again when only an interruption is new, so the Worker’s report shows it', async () => {
+    const at = new Date(2026, 9, 23, 16, 30)
+    await writeFactsRow(DAY, at)
+    expect((await db.facts.get(DAY))?.sheet.storageFault).toBeUndefined()
+    // Nothing else changed: the same facts would have kept the old row, and the report would never have shown it.
+    expect(await writeFactsRow(DAY, at)).toBe(false)
+    storageClosed('AbortError', new Date('2026-10-23T20:26:40.000Z'))
+    expect(await writeFactsRow(DAY, at)).toBe(true)
+    expect((await db.facts.get(DAY))?.sheet.storageFault).toMatchObject({ count: 1, name: 'AbortError' })
   })
 })

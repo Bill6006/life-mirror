@@ -173,9 +173,10 @@ export async function writeFactsRow(day: string, now: Date = new Date()): Promis
   const sheet = await factSheet(day, now)
   const coach = await coachFor(day, now)
   const existing = await db.facts.get(day)
-  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
+  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn' | 'engineFault' | 'storageFault') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
   const sameCoach = JSON.stringify(existing?.coach ?? null) === JSON.stringify(coach)
-  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
+  // A failure kept since the last row is written too, so the Worker's report shows it with the facts unchanged (2026-10-23).
+  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && same('engineFault') && same('storageFault') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
   await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet, ...(coach ? { coach } : {}) })
   return true
 }

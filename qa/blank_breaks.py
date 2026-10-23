@@ -5,7 +5,7 @@ A live read asks again each time the storage closes under the app, the database 
 a read that starts while it is shut opens it first; opening it again after a connection closed mid-open closes it properly
 first, so a read waiting on the open never asks again without end; a database closed on purpose stays closed. The
 interruptions are heard (never a close on purpose), kept on this phone and ride the sheet for the Worker's report, which
-shows them. The id floors never hold an open for good: a connection already gone is left, and the wait has a limit. The
+shows them; a new one writes the facts row again though nothing else changed. The id floors never hold an open for good: a connection already gone is left, and the wait has a limit. The
 sync opens the database again before it runs. Now is never an empty screen while it reads: its head and a line, a later
 line with Try again past its limit, the wait kept with its reads, and Try again asks its reads again.
 
@@ -42,6 +42,7 @@ UNHEARD = 'unheard, it goes on within the limit'
 ON_PURPOSE = 'leaves a database closed on purpose closed'
 KEPT = 'keeps each interruption on this phone'
 SHEET = 'rides the Brain'
+ROW = 'writes the facts row again when only an interruption is new'
 SYNC = 'opens the database again when the storage left it shut'
 REPORT = 'gives the storage interruptions the newest facts row carries'
 E_READ = 'the storage cut while Now reads an existing record'
@@ -101,6 +102,10 @@ TABLE = [
          tests=[ST], pattern=KEPT),
     dict(id='sheet-carries', file='src/brainFlow.ts', old=SHEET_LINE, new="", tests=[ST], pattern=SHEET),
     dict(id='sheet-carries-browser', file='src/brainFlow.ts', old=SHEET_LINE, new="", tests=[E], pattern=E_ROW),
+    dict(id='row-written-for-a-fault', file='src/brainFlow.ts',
+         old=" && same('engineFault') && same('storageFault')",
+         new="",
+         tests=[ST], pattern=ROW),
     dict(id='worker-report', file='worker/src/engineReport.ts',
          old=", storage: newest?.sheet.storageFault ?? null }",
          new=", storage: null }",
