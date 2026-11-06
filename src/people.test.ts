@@ -4,7 +4,7 @@ import { hasMove, moveById, moves } from './catalogue'
 import { db, ensureDayContext, getSettings, setDayContext, type DayContext, type Offer, type Outcome } from './db'
 import { candidatesFor, type Situation } from './offers'
 import { todayState } from './offerFlow'
-import { blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, officeDayAtOffice, orderByEvidence, outAmongPeople, peopleAround, uncoveredContexts } from './people'
+import { atOfficeToday, blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, orderByEvidence, outAmongPeople, peopleAround, uncoveredContexts } from './people'
 
 // People around (Part 20): today's shape decides whether an in-person rep may be offered; what
 // completed reps suggest is evidence, and the draw never reads it.
@@ -12,8 +12,9 @@ import { blockOfTime, carriedByContext, carriedLine, dayKindOf, inPerson, office
 const ctx = (patch: Partial<DayContext>): Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay'> => ({ atOffice: false, churchDay: false, pickupTime: null, withHer: true, ...patch })
 
 describe('tier 1: today’s shape, and nothing else', () => {
-  it('puts people around on an office day’s working blocks, the church morning, and a daycare day’s drop-off and pickup blocks', () => {
-    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ atOffice: true }), b as 'morning'))).toEqual([true, true, false])
+  it('puts people around on a day at the office, the church morning, and a daycare day’s drop-off and pickup blocks', () => {
+    // At the office today reads Out among people as Yes (the owner's fixes of 2026-10-19 and 2026-11-06): every block.
+    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ atOffice: true }), b as 'morning'))).toEqual([true, true, true])
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ churchDay: true }), b as 'morning'))).toEqual([true, false, false])
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30' }), b as 'morning'))).toEqual([true, false, true])
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '15:00' }), b as 'morning'))).toEqual([true, true, false])
@@ -23,29 +24,62 @@ describe('tier 1: today’s shape, and nothing else', () => {
     expect(peopleAround(null, 'morning')).toBe(false)
     // A day she is away holds no drop-off or pickup (Part 33); the office and the church morning still hold.
     expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false }), b as 'morning'))).toEqual([false, false, false])
-    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false, atOffice: true }), b as 'morning'))).toEqual([true, true, false])
+    expect(['morning', 'afternoon', 'evening'].map((b) => peopleAround(ctx({ pickupTime: '17:30', withHer: false, atOffice: true }), b as 'morning'))).toEqual([true, true, true])
     expect(blockOfTime('17:30')).toBe('evening')
     expect(blockOfTime('12:00')).toBe('afternoon')
   })
 
-  it('reads a scheduled office day at the office as out among people, in every block, without asking (2026-10-19)', () => {
+  it('reads any day at the office as out among people, in every block, without asking; Working from home infers nothing (2026-10-19, 2026-11-06)', () => {
     const blocks = ['morning', 'afternoon', 'evening'] as const
     // Scheduled at the office, and not marked Working from home.
     const office = ctx({ officeDay: true, atOffice: true })
     expect(blocks.map((b) => peopleAround(office, b))).toEqual([true, true, true])
-    expect([outAmongPeople(office), officeDayAtOffice(office)]).toEqual([true, true])
-    // Marked Working from home: nothing inferred, and the owner's answer stands either way.
+    expect([outAmongPeople(office), atOfficeToday(office)]).toEqual([true, true])
+    // A home day marked At the office today (the owner's fix of 2026-11-06): the same, and the owner taps nothing else.
+    const marked = ctx({ officeDay: false, atOffice: true })
+    expect(blocks.map((b) => peopleAround(marked, b))).toEqual([true, true, true])
+    expect([outAmongPeople(marked), atOfficeToday(marked)]).toEqual([true, true])
+    // A day made before the record kept its schedule reads as it stands too.
+    expect([outAmongPeople(ctx({ atOffice: true })), atOfficeToday(ctx({ atOffice: true }))]).toEqual([true, true])
+    // Marked Working from home: nothing inferred from the schedule, and the owner's answer stands either way.
     const home = ctx({ officeDay: true, atOffice: false })
     expect(blocks.map((b) => peopleAround(home, b))).toEqual([false, false, false])
-    expect([outAmongPeople(home), officeDayAtOffice(home)]).toEqual([false, false])
+    expect([outAmongPeople(home), atOfficeToday(home)]).toEqual([false, false])
     expect(blocks.map((b) => peopleAround(ctx({ officeDay: true, atOffice: false, amongPeople: true }), b))).toEqual([true, true, true])
-    // A home day marked at the office is no scheduled office day: the question is still asked.
-    const marked = ctx({ officeDay: false, atOffice: true })
-    expect(blocks.map((b) => peopleAround(marked, b))).toEqual([true, true, false])
-    expect([outAmongPeople(marked), officeDayAtOffice(marked)]).toEqual([false, false])
-    // A day made before the record kept it reads as before, until the week fills it in.
-    expect(officeDayAtOffice(ctx({ atOffice: true }))).toBe(false)
-    expect([outAmongPeople(null), officeDayAtOffice(undefined)]).toEqual([false, false])
+    // A home day left at home: nothing inferred.
+    expect([outAmongPeople(ctx({ officeDay: false, atOffice: false })), atOfficeToday(ctx({}))]).toEqual([false, false])
+    expect([outAmongPeople(null), atOfficeToday(undefined)]).toEqual([false, false])
+  })
+
+  it('writes nothing for the inference: the owner’s own mark stays apart (2026-11-06)', async () => {
+    await db.delete()
+    await db.open()
+    const settings = await getSettings()
+    const day = '2026-09-07'
+    await ensureDayContext(day, settings)
+    await setDayContext(day, { atOffice: true })
+    const marked = await db.days.get(day)
+    expect(marked?.atOffice).toBe(true)
+    expect(marked?.amongPeople).toBeUndefined()
+    expect(outAmongPeople(marked)).toBe(true)
+    // Off again: the inference goes with it, and nothing of it was kept.
+    await setDayContext(day, { atOffice: false })
+    const home = await db.days.get(day)
+    expect([outAmongPeople(home), home?.amongPeople]).toEqual([false, undefined])
+  })
+
+  it('leaves the Sabbath and the Third Day as they were (Item 3): the Sabbath needs no mark, the Third Day reads as any day', () => {
+    const blocks = ['morning', 'afternoon', 'evening'] as const
+    // The Sabbath: church puts people around in every block, and Out among people is not inferred or written.
+    const sabbath = ctx({ church: 'sabbath', officeDay: false, atOffice: false })
+    expect(blocks.map((b) => peopleAround(sabbath, b))).toEqual([true, true, true])
+    expect(outAmongPeople(sabbath)).toBe(false)
+    // The Third Day at home: its service's block alone; Out among people is not inferred.
+    const third = ctx({ church: 'third', services: ['19:30'], officeDay: false, atOffice: false })
+    expect(blocks.map((b) => peopleAround(third, b))).toEqual([false, false, true])
+    expect(outAmongPeople(third)).toBe(false)
+    // The Third Day at the office: as any day at the office.
+    expect(outAmongPeople({ ...third, atOffice: true })).toBe(true)
   })
 
   it('tags every move that needs another person, and only those: in person, remote, or her', () => {

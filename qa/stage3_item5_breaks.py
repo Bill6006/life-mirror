@@ -96,15 +96,15 @@ TABLE = [
     # Part 7: Out among people today.
     # Restated 2026-10-19: Out among people is read through outAmongPeople since the owner's office-day fix.
     dict(id='among-people-around', file='src/people.ts',
-         old="  return ctx.amongPeople === true || officeDayAtOffice(ctx)\n",
-         new="  return officeDayAtOffice(ctx)\n",
+         old="  return ctx.amongPeople === true || atOfficeToday(ctx)\n",
+         new="  return atOfficeToday(ctx)\n",
          tests=[PE], pattern='reads Out among people today'),
     dict(id='among-people-chip', file='src/extras.tsx',
-         old="{!atOfficeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
-         new="{false && !atOfficeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
+         old="{!officeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
+         new="{false && !officeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow label={copy.today.amongPeople}",
          tests=[S], pattern=AMONG),
     dict(id='among-people-seen', file='src/extras.tsx',
-         old="useChipsSeen(cardRef, { day, block }, record && ctx && !atOfficeToday && !sabbathToday && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])",
+         old="useChipsSeen(cardRef, { day, block }, record && ctx && !officeToday && !sabbathToday && !chipRetired('amongPeople', states) && !record.extras?.chipsShown?.amongPeople ? ['amongPeople'] : [])",
          new="useChipsSeen(cardRef, { day, block }, [])",
          tests=[S], pattern=AMONG),
     # Part 2: sleep asked late.

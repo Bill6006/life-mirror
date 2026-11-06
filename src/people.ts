@@ -24,17 +24,21 @@ import { minutesOf } from './settings'
 type Shape = Pick<DayContext, 'atOffice' | 'churchDay' | 'pickupTime' | 'withHer' | 'amongPeople' | 'officeDay' | 'church' | 'services'>
 
 /**
- * Out among people today, as the day stands (the owner's fix of 2026-10-19): marked so, or a day the week scheduled at the
- * office and not marked Working from home, which needs no asking. People are around in every block of it.
+ * Out among people today, as the day stands: marked so, or at the office today, which needs no asking (the owner's fix of
+ * 2026-10-19, read since 2026-11-06 at their word from the day as it stands, not from the week's schedule). People are
+ * around in every block of it. Nothing is written for the inference: the owner's own mark stays apart.
  */
-export function outAmongPeople(ctx: Pick<DayContext, 'atOffice' | 'amongPeople' | 'officeDay'> | null | undefined): boolean {
+export function outAmongPeople(ctx: Pick<DayContext, 'atOffice' | 'amongPeople'> | null | undefined): boolean {
   if (!ctx) return false
-  return ctx.amongPeople === true || officeDayAtOffice(ctx)
+  return ctx.amongPeople === true || atOfficeToday(ctx)
 }
 
-/** A day the week scheduled at the office, and not marked Working from home: Out among people is not asked on it. */
-export function officeDayAtOffice(ctx: Pick<DayContext, 'atOffice' | 'officeDay'> | null | undefined): boolean {
-  return ctx?.officeDay === true && ctx.atOffice === true
+/**
+ * At the office today, as the day stands: a day the week scheduled at the office and not marked Working from home, or any
+ * day marked At the office today. Out among people is not asked on it. Inside a trip the office gives way, so it never is.
+ */
+export function atOfficeToday(ctx: Pick<DayContext, 'atOffice'> | null | undefined): boolean {
+  return ctx?.atOffice === true
 }
 
 /** The block a time of day falls in. */
@@ -48,9 +52,8 @@ export function blockOfTime(hhmm: string): Block {
 /** Tier 1: whether today's shape puts other adults around in a block. Anything the record does not say is not around; for a path's reps that would mean going out, never out of reach (Pass 3). */
 export function peopleAround(ctx: Shape | null | undefined, block: Block): boolean {
   if (!ctx) return false
-  // Out among people today (stage 3, item 5): around in every block, for today alone; on an office day, without asking.
+  // Out among people today (stage 3, item 5): around in every block, for today alone; at the office today, without asking.
   if (outAmongPeople(ctx)) return true
-  if (ctx.atOffice && (block === 'morning' || block === 'afternoon')) return true
   // Item 3: church on the schedule in this block, the Sabbath every block, the Third Day its services': context for what fits, never attendance.
   if (churchIn(ctx, block)) return true
   const pickup = heldPickup(ctx)

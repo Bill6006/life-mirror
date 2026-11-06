@@ -40,6 +40,7 @@ PCH = 'src/phoneChoices.test.ts'
 CL = 'src/cloud.test.ts'
 LF = 'src/locationFlow.test.ts'
 OFFICE = 'on a scheduled office day Out among people reads Yes'
+OFFICE_ANY = 'a home day marked At the office today reads Out among people as Yes'
 BEFORE = 'a morning from before the owner'
 NAMING = 'naming a place says at once'
 TRIP = 'Away from home, previewed'
@@ -53,14 +54,28 @@ RESTORE_NEW = "    await updateSettings((s) => ({ ...s, location: copy.location,
 
 TABLE = [
     # Item 1, Out among people on a scheduled office day.
+    # Restated 2026-11-06: the inference reads the day as it stands (atOfficeToday), at the owner's word.
     dict(id='office-infers-among-people', file='src/people.ts',
-         old='  return ctx.amongPeople === true || officeDayAtOffice(ctx)\n',
+         old='  return ctx.amongPeople === true || atOfficeToday(ctx)\n',
          new='  return ctx.amongPeople === true\n',
-         tests=[PE], pattern='reads a scheduled office day at the office as out among people'),
+         tests=[PE], pattern='reads any day at the office as out among people'),
     dict(id='working-from-home-asks', file='src/people.ts',
-         old='  return ctx?.officeDay === true && ctx.atOffice === true\n',
-         new='  return ctx?.officeDay === true\n',
-         tests=[PE], pattern='reads a scheduled office day at the office as out among people'),
+         old='  return ctx?.atOffice === true\n',
+         new='  return ctx?.atOffice === true || (ctx as { officeDay?: boolean } | null | undefined)?.officeDay === true\n',
+         tests=[PE], pattern='reads any day at the office as out among people'),
+    # The owner's fix of 2026-11-06: a home day marked At the office today infers it too, and nothing is written for it.
+    dict(id='home-day-at-office-infers', file='src/people.ts',
+         old='  return ctx?.atOffice === true\n',
+         new='  return (ctx as { officeDay?: boolean } | null | undefined)?.officeDay === true && ctx?.atOffice === true\n',
+         tests=[PE], pattern='reads any day at the office as out among people'),
+    dict(id='home-day-at-office-infers-on-screen', file='src/people.ts',
+         old='  return ctx?.atOffice === true\n',
+         new='  return (ctx as { officeDay?: boolean } | null | undefined)?.officeDay === true && ctx?.atOffice === true\n',
+         tests=[S], pattern=OFFICE_ANY),
+    dict(id='office-kept-apart', file='src/extras.tsx',
+         old="              onClick={() => change({ atOffice: !ctx.atOffice })}\n",
+         new="              onClick={() => change({ atOffice: !ctx.atOffice, amongPeople: !ctx.atOffice })}\n",
+         tests=[S], pattern=OFFICE_ANY),
     dict(id='office-day-kept', file='src/db.ts',
          old='    officeDay: w.officeDays[weekday],\n',
          new='',
@@ -78,7 +93,7 @@ TABLE = [
          new=' : null\n',
          tests=['src/pathStage.test.ts'], pattern='out among people into its evening'),
     dict(id='chip-hidden-on-office-day', file='src/extras.tsx',
-         old="          {!atOfficeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow",
+         old="          {!officeToday && !sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow",
          new="          {!sabbathToday && !chipRetired('amongPeople', states) && <ExtraRow",
          tests=[S], pattern=OFFICE),
     dict(id='office-row-from-the-day', file='src/extras.tsx',

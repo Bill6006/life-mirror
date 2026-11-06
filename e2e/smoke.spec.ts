@@ -1348,6 +1348,39 @@ test('the owner’s fix of 2026-10-19: on a scheduled office day Out among peopl
   await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
 })
 
+test('the owner’s fix of 2026-11-06: a home day marked At the office today reads Out among people as Yes and stops asking it, the two kept apart', async ({ page }) => {
+  // Monday morning, the week holding no office day: the row offers At the office today, and Out among people is asked.
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 9, 5))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  const office = page.getByTestId('chip-office')
+  await expect(office).toContainText('At the office today')
+  await expect(office).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByTestId('chip-among-people')).toContainText('Out among people today')
+  // At the office today, tapped once: Out among people is no longer asked, and nothing is written for it.
+  await office.click()
+  await expect(office).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+  const dayRow = async () => (await rowsOf<{ day: string; officeDay?: boolean; atOffice?: boolean; amongPeople?: boolean }>(page, 'days')).find((d) => d.day === '2026-09-07')
+  await expect.poll(async () => (await dayRow())?.atOffice).toBe(true)
+  expect(await dayRow()).toMatchObject({ officeDay: false, atOffice: true })
+  expect((await dayRow())?.amongPeople).toBeUndefined()
+  // A reload keeps the day as left.
+  await page.reload()
+  await page.getByTestId('block-row').first().click()
+  await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('chip-among-people')).toHaveCount(0)
+  // Marked off again: the question is back, unanswered, and the owner's own answer stands.
+  await page.getByTestId('chip-office').click()
+  await expect(page.getByTestId('chip-office')).toHaveAttribute('aria-pressed', 'false')
+  const among = page.getByTestId('chip-among-people')
+  await expect(among).toHaveAttribute('aria-pressed', 'false')
+  await among.click()
+  await expect(among).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => (await dayRow())?.amongPeople).toBe(true)
+})
+
 test('stage 3, item 5: after a morning without them, the afternoon asks the two sleep readings first, each marked asked late', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 5))
   await page.goto('./')
