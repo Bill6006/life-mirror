@@ -1516,6 +1516,11 @@ export const copy = {
         own: 'A turn for the reps only the Partner path holds, which take the People row on at most two days in seven.',
         shared: 'The Partner path’s own reps have had their two days this week, so one it shares with the Social path.',
       },
+      /** A Path the catalogue adds, with a share of the People row (P1). */
+      turnFor: {
+        own: 'A turn for the reps only {name} holds, which take the People row on at most {days} days in seven.',
+        shared: 'The reps only {name} holds have had their {days} days this week, so one it shares with another path.',
+      },
     },
     change: 'Change',
     changeTitle: 'Change the rep',

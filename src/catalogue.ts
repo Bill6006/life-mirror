@@ -19,7 +19,8 @@ export type Necessity = 'food' | 'teeth' | 'shower'
 /** The kinds of setting a path rep happens in (Part 23). */
 export type SettingKind = 'recurring' | 'errand' | 'group' | 'oneToOne' | 'remote' | 'solo'
 export const SETTING_KINDS: readonly SettingKind[] = ['recurring', 'errand', 'group', 'oneToOne', 'remote', 'solo']
-export type PathId = 'social' | 'partner'
+/** A Path's id: Social and Partner, built in, and any Path the catalogue adds (P1, Paths as data, 2026-11-06). */
+export type PathId = string
 
 /** Where a rep sits on a path: its stage, and whether doing it moves that stage. */
 export interface PathPlace {
@@ -31,6 +32,10 @@ export interface PathPlace {
   onDate?: boolean
   /** Reps done first: until each is done, the app does not pick this one, though Change still reaches it. */
   after?: readonly string[]
+  /** The strand it belongs to, on a Path with strands; absent on a Path with one. */
+  strand?: string
+  /** A probe rather than practice (P2): the exit between two stages, or a check that a stage shown still holds. */
+  probe?: 'exit' | 'maintenance'
 }
 
 export interface Source {
@@ -219,6 +224,50 @@ export interface PathAct {
   considerations?: readonly PathConsideration[]
 }
 
+/**
+ * What a Path's name decided before Paths became data (P1, 2026-11-06), stated by the Path itself so
+ * a Path the catalogue adds needs no code: where its record goes, how it shares the People row.
+ */
+export interface PathTraits {
+  /** Its commitment, its steps and their counts ride the fact sheet (Social). */
+  sheet: boolean
+  /** It is in the coach's block, and the coach may choose for its row (Parts 24 and 32). */
+  coach: boolean
+  /** Whose rules its record follows off the phone: Social's, Partner's, or its own, which no reader off the phone sees. */
+  privacy: 'social' | 'partner' | 'own'
+  /** On a day the record reads high stress or overwhelm, light reps alone (Part 27). */
+  lightOnHardDays?: boolean
+  /** Days in seven its own reps, those no Path without a share holds, may take the People row (Part 27). */
+  rowShare?: number
+  /** The share binds with no other Path on too (Partner alone keeps its two days, as since Part 27). */
+  shareBindsAlone?: boolean
+  /** It can take over A person's commitment with its record (Part 24). */
+  convertsFrom?: 'person'
+  /** Its icon. */
+  icon: string
+}
+
+/** One of a Path's parallel tracks (P1): its own stages, and its own rule where it differs from the Path's. */
+export interface PathStrand {
+  id: string
+  name: string
+  what: string
+  stages: readonly PathStage[]
+  rule?: PathRule
+}
+
+/** Why a Path's version changed (the design's reason codes, 2026-11-06). */
+export type PathChangeReason = 'evidence' | 'reinterpretation' | 'personal' | 'preference' | 'correction' | 'withdrawal' | 'design' | 'editorial'
+
+/** One version of a Path and what it changed, shown before it runs: a major change waits for you, a minor one is noted. */
+export interface PathChange {
+  version: string
+  day: string
+  reason: PathChangeReason
+  major: boolean
+  what: string
+}
+
 /** A staged curriculum the app owns (Parts 23 and 26): its stages, rule, reps and the evidence behind them, each wired once the owner gave it Green. */
 export interface Path {
   id: PathId
@@ -235,6 +284,27 @@ export interface Path {
   channels?: readonly PathChannel[]
   acts?: readonly PathAct[]
   parents?: string
+  /** What its name decided before P1, as data. */
+  traits: PathTraits
+  /** Built in: Social and Partner, given Green before P1, offered without a version you started. */
+  builtIn?: true
+  /** Its version, and what each version changed (P1). */
+  version?: string
+  changes?: readonly PathChange[]
+  /** A Path whose structure the evidence holds only as a hypothesis, said plainly. */
+  label?: 'experimental'
+  /** Parallel tracks, each with its own stages; absent for a Path of one track, its own stages. */
+  strands?: readonly PathStrand[]
+  /** A Path the catalogue adds: how it is named on its card, on the add menu and on the plan (Social's and Partner's stay in copy). */
+  names?: { called: string; add: string; addNote: string; plan?: string }
+}
+
+/** The track a Path holds when it has no strands: its own stages, under the Path's own rule. Its id is empty, as a rep placed without a strand. */
+export const ONE_STRAND = ''
+
+/** A Path's strands: its own, or one made of its stages. */
+export function strandsOf(path: Pick<Path, 'strands' | 'name' | 'what' | 'stages' | 'rule'>): PathStrand[] {
+  return path.strands?.length ? [...path.strands] : [{ id: ONE_STRAND, name: path.name, what: path.what, stages: path.stages, rule: path.rule }]
 }
 
 interface CatalogueData {
@@ -255,25 +325,41 @@ export const families: readonly Family[] = catalogue.families
 export const moves: readonly Move[] = catalogue.moves
 export const learnedTags: readonly LearnedTag[] = catalogue.learnedTags
 export const filterTags: readonly FilterTag[] = catalogue.filterTags
-/** The two paths, Social and Partner, as content (Parts 23 and 26). */
+/** The paths as content: Social and Partner (Parts 23 and 26), and any Path the catalogue adds (P1). */
 export const paths: readonly Path[] = catalogue.paths
 
-/** Whether a rep is offered at a stage of a path: from its own stage through the last one it names. */
-export function onStage(m: Pick<Move, 'path'>, id: PathId, stage: number): boolean {
-  const place = m.path?.[id]
-  return place !== undefined && stage >= place.stage && stage <= (place.through ?? place.stage)
+/** A Path by id, or undefined for an id the catalogue no longer holds. */
+export function findPath(id: PathId): Path | undefined {
+  return catalogue.paths.find((p) => p.id === id)
 }
 
-/** The reps a path holds, in stage order, optionally those offered at one stage, a spanning rep at each stage it spans. */
-export function pathReps(id: PathId, stage?: number): Move[] {
+/** Whether a placement is on a strand: the empty strand is a Path's own when it has none. */
+function inStrand(place: PathPlace, strand: string | undefined): boolean {
+  return strand === undefined || (place.strand ?? ONE_STRAND) === strand
+}
+
+/** Whether a rep is offered at a stage of a path: from its own stage through the last one it names; on a strand, that strand's. */
+export function onStage(m: Pick<Move, 'path'>, id: PathId, stage: number, strand?: string): boolean {
+  const place = m.path?.[id]
+  return place !== undefined && inStrand(place, strand) && stage >= place.stage && stage <= (place.through ?? place.stage)
+}
+
+/** The reps a path holds, in stage order, optionally those offered at one stage, a spanning rep at each stage it spans; on a strand, that strand's alone. */
+export function pathReps(id: PathId, stage?: number, strand?: string): Move[] {
   return catalogue.moves
-    .filter((m) => m.path?.[id] && (stage === undefined || onStage(m, id, stage)))
+    .filter((m) => {
+      const place = m.path?.[id]
+      return place !== undefined && inStrand(place, strand) && (stage === undefined || onStage(m, id, stage, strand))
+    })
     .sort((a, b) => (a.path?.[id]?.stage ?? 0) - (b.path?.[id]?.stage ?? 0))
 }
 
-/** The reps a stage introduces: those whose place begins there, for reading a path in full, each once. */
-export function repsIntroducedAt(id: PathId, stage: number): Move[] {
-  return catalogue.moves.filter((m) => m.path?.[id]?.stage === stage)
+/** The reps a stage introduces: those whose place begins there, for reading a path in full, each once; on a strand, that strand's alone. */
+export function repsIntroducedAt(id: PathId, stage: number, strand?: string): Move[] {
+  return catalogue.moves.filter((m) => {
+    const place = m.path?.[id]
+    return place?.stage === stage && inStrand(place, strand)
+  })
 }
 export const research: readonly Research[] = catalogue.research
 export const extensionPrompt: ExtensionPrompt = catalogue.extensionPrompt

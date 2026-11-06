@@ -3,7 +3,7 @@ import { doneBySetting, pathName, pathToday, socialEnergyOn, stageWords } from '
 import { afternoonAssociation, associationFor, associationTier, morningAssociation, privateAssociations, type Association } from './associations'
 import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, latestPlans, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
 import { dueOf, intervalOf, isFaithPractice, rhythmOf, scheduleOf } from './rhythm'
-import { hasMove, moveById, type SettingKind } from './catalogue'
+import { findPath, hasMove, moveById, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
@@ -89,10 +89,12 @@ export interface FactInput {
 
 /**
  * A step the sheet may count: every offer but the Partner path's own. A rep both paths hold,
- * offered through the Social path, is Social's too and stays (Part 27).
+ * offered through the Social path, is Social's too and stays (Part 27). The same for any Path off
+ * the sheet (P1): a step it shares with a Path on the sheet stays.
  */
 export function onTheSheet(o: Pick<Offer, 'paths'>): boolean {
-  return !o.paths?.includes('partner') || o.paths.includes('social')
+  const sheet = (id: string) => findPath(id)?.traits.sheet === true
+  return !o.paths?.some((id) => !sheet(id)) || o.paths.some(sheet)
 }
 
 /** A like-for-like difference worth calling promising for a chip: ten points on the reading out of 100. */
@@ -564,8 +566,9 @@ export function buildFactSheet(i: FactInput): FactSheet {
   const block = blockAt(i.now).block
   for (const aim of i.aims) {
     // A paused path says nothing; it has no row and no step (Part 24). The Partner path writes no
-    // commitment fact at all: the sheet carries it only as the date-day fact (Part 27).
-    if (aim.kind === 'path' && (aim.pausedAt || aim.path === 'partner')) continue
+    // commitment fact at all: the sheet carries it only as the date-day fact (Part 27). A Path the
+    // catalogue adds says nothing either unless it rides the sheet (P1): its own is not read off the phone.
+    if (aim.kind === 'path' && (aim.pausedAt || !findPath(aim.path as string)?.traits.sheet)) continue
     // A paused commitment says nothing either: nothing surfaces it and its paused weeks are never read as fading (Workstream 6).
     if (aim.pausedAt) continue
     const id = aim.id as number

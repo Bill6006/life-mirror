@@ -213,8 +213,9 @@ TABLE = [
          old="  return m.path?.social ? 'social' : 'general'\n",
          new="  return 'general'\n",
          tests=[W], pattern='facts of their own'),
+    # Restated 2026-11-06 (P1, Paths as data): the Partner path's reps, and any Path's off the sheet, by trait.
     dict(id='weekly-partner-never', file='src/weeklyFacts.ts',
-         old="  if (m.path?.partner && !m.path.social) return 'partner'\n",
+         old="  if (held.some((id) => !findPath(id)?.traits.sheet) && !held.some((id) => findPath(id)?.traits.sheet)) return 'partner'\n",
          new="",
          tests=[W], pattern='facts of their own'),
     dict(id='weekly-faith-family', file='src/weeklyFacts.ts',

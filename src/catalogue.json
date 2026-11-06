@@ -9390,7 +9390,16 @@
         "positive-self-statements-disputed",
         "humour-and-liking",
         "humour-kind-not-cutting"
-      ]
+      ],
+      "traits": {
+        "sheet": true,
+        "coach": true,
+        "privacy": "social",
+        "convertsFrom": "person",
+        "icon": "social"
+      },
+      "builtIn": true,
+      "version": "1"
     },
     {
       "id": "partner",
@@ -9775,7 +9784,18 @@
         "token-resistance-disputed",
         "hard-to-get-disputed",
         "touch-in-courtship-disputed"
-      ]
+      ],
+      "traits": {
+        "sheet": false,
+        "coach": true,
+        "privacy": "partner",
+        "lightOnHardDays": true,
+        "rowShare": 2,
+        "shareBindsAlone": true,
+        "icon": "partner"
+      },
+      "builtIn": true,
+      "version": "1"
     }
   ]
 }

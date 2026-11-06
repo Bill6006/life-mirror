@@ -2,7 +2,7 @@ import { addDays, blockAt, dayKey, type Block } from './blocks'
 import { moveById, type PathId } from './catalogue'
 import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type CoachPick, type Expectancy, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
 import { keysOf, planFor } from './aims'
-import { coachPickFor, pathById, pathKey, pathsHolding, peopleRow, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
+import { coachPickFor, pathById, pathKey, pathsHolding, peopleRowAll, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
 import type { CoachBlock } from './factTypes'
 import { logUse } from './useLog'
 
@@ -59,9 +59,9 @@ export function peopleRowOf(views: readonly PathToday[], open: readonly Offer[],
     const started = open.find((o) => keys.includes(o.situationKey))
     if (started) return { view: v, pick: v.pick, paths: [...(started.paths ?? [v.path.id])] }
   }
-  const row = peopleRow(views.find((v) => v.path.id === 'social') ?? null, views.find((v) => v.path.id === 'partner') ?? null, today, seeded(`people|${today}|${block}`))
-  // The coach chooses within the row's own candidates, never around them (Part 32).
-  const pick = row ? coachPickFor(row, coach, today) : null
+  const row = peopleRowAll(views, today, seeded(`people|${today}|${block}`))
+  // The coach chooses within the row's own candidates, never around them (Part 32), and never on the row of a Path it does not choose for (P1).
+  const pick = row && row.view.path.traits.coach ? coachPickFor(row, coach, today) : null
   return row && pick ? { ...row, pick, paths: pathsHolding(pick.moveId, views.map((v) => v.path.id)) } : row
 }
 
@@ -83,7 +83,8 @@ export function coachAllowed(pick: CoachPick | null, checks: readonly MonthlyChe
 export function coachRow(views: readonly PathToday[], open: readonly Offer[], today: string, block: Block): CoachBlock['row'] {
   const started = views.some((v) => open.some((o) => keysOf(v.aim, []).includes(o.situationKey)))
   const row = peopleRowOf(views, open, today, block)
-  if (!row) return null
+  // The row of a Path the coach does not choose for says nothing to the brain, not even whose it is (P1).
+  if (!row || !row.view.path.traits.coach) return null
   return { path: row.view.path.id, candidates: started || !row.pick || row.pick.chosenBy === 'you' ? [] : [...row.pick.candidates] }
 }
 

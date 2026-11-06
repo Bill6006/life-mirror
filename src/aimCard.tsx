@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { setEase, setSessionNote, type SkillWords } from './aimFlow'
 import { cuesFor, type BlockReason, type CheckInSchedule, type CueCount, type Practice, type TodaySessions } from './aims'
 import { blockAt } from './blocks'
-import type { Move, PathId } from './catalogue'
+import { findPath, type Move, type PathId } from './catalogue'
 import { copy } from './copy'
 import type { Aim, Cue, DayContext, Ease, Intention, Offer, Skill } from './db'
 import { fill, formatDayShort, formatHHMM, formatTime } from './format'
@@ -313,7 +313,8 @@ export function practiceLine(p: Practice | null): string {
 
 /** A commitment's icon: its kind, or its path. */
 export function kindIcon(aim: Pick<Aim, 'kind' | 'path'>): IconName {
-  if (aim.kind === 'path') return (aim.path as PathId) === 'partner' ? 'partner' : 'social'
+  // A Path names its own icon (P1): Social's and Partner's as before.
+  if (aim.kind === 'path') return (findPath(aim.path as PathId)?.traits.icon ?? 'social') as IconName
   return aim.kind === 'certification' ? 'study' : aim.kind === 'practice' ? 'practice' : 'person'
 }
 

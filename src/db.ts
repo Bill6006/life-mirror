@@ -794,6 +794,25 @@ export interface BrainRead {
  * have reached, a date with its day and nothing else, or a milestone with its details. No name, no
  * place, and nothing about anyone's answer.
  */
+/**
+ * Your decision on one version of a Path the catalogue adds (P1): started, not this (one reason), or
+ * later. The version's content hash and the cards it rested on are kept with it, so a later version
+ * is shown with what changed before it runs. Social and Partner are built in and need none.
+ */
+export interface PathVersion {
+  id?: number
+  path: PathId
+  version: string
+  /** A hash of the Path's content as you saw it. */
+  hash: string
+  decision: 'started' | 'notThis' | 'later'
+  /** Not this: the one reason you gave, in your words or one of the offered ones. */
+  reason?: string
+  at: string
+  /** The library cards it rested on, each with the day it was last reviewed. */
+  cards: readonly { id: string; reviewed: string }[]
+}
+
 export interface PathMark {
   id?: number
   path: PathId
@@ -925,6 +944,7 @@ class LifeMirrorDB extends Dexie {
   askAnswers!: Table<AskAnswer, string>
   askRuns!: Table<AskRun, string>
   notes!: Table<KeptNote, number>
+  pathVersions!: Table<PathVersion, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1145,6 +1165,10 @@ class LifeMirrorDB extends Dexie {
     // Ask Life Mirror (stage A3, 2026-10-20): notes kept from a question, in the owner's own words. Synced.
     this.version(23).stores({
       notes: '++id, day',
+    })
+    // Paths as data (P1, 2026-11-06): the owner's decision on each version of a Path the catalogue adds, with the evidence it rested on. Synced.
+    this.version(24).stores({
+      pathVersions: '++id, path, at',
     })
     installOutbox(this)
     installPendingCopy(this)

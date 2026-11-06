@@ -1,5 +1,5 @@
 import type { Block } from './blocks'
-import { hasMove, moveById } from './catalogue'
+import { findPath, hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import type { Fact } from './factTypes'
 import { formatDayShort } from './format'
@@ -30,11 +30,12 @@ export interface WeeklyAnalyses {
 
 type Kind = 'general' | 'faith' | 'social' | 'partner'
 
-/** Which switch a move named in an analysis is read under: the Partner path's reps never reach the sheet (Part 27). */
+/** Which switch a move named in an analysis is read under: the Partner path's reps never reach the sheet (Part 27), nor those of any Path off it that no Path on it holds (P1). */
 function kindOf(moveId: string | undefined): Kind {
   if (!moveId || !hasMove(moveId)) return 'general'
   const m = moveById(moveId)
-  if (m.path?.partner && !m.path.social) return 'partner'
+  const held = Object.keys(m.path ?? {})
+  if (held.some((id) => !findPath(id)?.traits.sheet) && !held.some((id) => findPath(id)?.traits.sheet)) return 'partner'
   if (m.family === 'faith' || m.hiddenWith === 'faith') return 'faith'
   return m.path?.social ? 'social' : 'general'
 }

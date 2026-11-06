@@ -1,7 +1,7 @@
 import { BLOCKS } from './blocks'
 import { churchIn } from './church'
 import { addDays, blockIndex, dayKey, daysBetween, type Block } from './blocks'
-import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, PASSIVE, pathReps, paths, type Effort, type Move, type Path, type PathId, type PathPlace, type SettingKind } from './catalogue'
+import { hasMove, isParked, isProposed, moveById, OBSERVED_ONLY, ONE_STRAND, PASSIVE, pathReps, paths, strandsOf, type Effort, type Move, type Path, type PathId, type PathPlace, type PathStrand, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import type { CoachBlock } from './factTypes'
 import type { Aim, CheckIn, CoachPick, DayContext, Offer, Outcome, PathMark } from './db'
@@ -104,7 +104,7 @@ export function meetsRule(done: readonly Pick<PathEntry, 'moveId' | 'setting'>[]
  * were marked done after it was reached, across enough different reps and kinds of setting. A
  * stage reached stands; a declaration (Part 27) moves the stages the rule does not.
  */
-export function stageOf(path: Path, entries: readonly PathEntry[], today: string, declared: { stage: number; day: string } | null = null): StageState {
+export function stageOf(path: Path, entries: readonly PathEntry[], today: string, declared: { stage: number; day: string } | null = null, strand?: string): StageState {
   const rule = path.rule
   const reached: { stage: number; day: string; by: 'rule' | 'declared' }[] = []
   let stage = 1
@@ -114,6 +114,8 @@ export function stageOf(path: Path, entries: readonly PathEntry[], today: string
     if (!st || (st.advance ?? 'counts') === 'declared' || stage >= path.stages.length) break
     const done = entries.filter((e) => {
       const place = placeOn(path.id, e.moveId)
+      // On a strand, its own reps alone move its stages (P1).
+      if (strand !== undefined && (place?.strand ?? ONE_STRAND) !== strand) return false
       return e.outcome === 'done' && place?.stage === stage && place.advances && e.day <= today && (since === null || e.day >= since)
     })
     let metOn: string | null = null
@@ -167,6 +169,8 @@ export interface EligibilityInput {
   doneEver?: ReadonlySet<string>
   /** The faith family is hidden: a faith talk is neither offered nor listed (Rule 10). */
   faithHidden?: boolean
+  /** On a Path with strands, the strand whose reps these are (P1); absent, every rep of the Path's stage. */
+  strand?: string
 }
 
 /** Whether a rep that waits for others may join the app's picks: each of them done or partly done. */
@@ -218,7 +222,7 @@ export function dateStageOf(path: Path): number | null {
 export function eligibility(i: EligibilityInput): Eligibility {
   const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
   const channel = i.path.channels?.find((c) => c.id === 'online')
-  const stageReps = pathReps(i.path.id, stage).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
+  const stageReps = pathReps(i.path.id, stage, i.strand).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
   const eligible = stageReps.filter((m) => {
     if (m.path?.[i.path.id]?.onDate && !i.dateDay) return false
     if (repPrerequisite(m, i.block, i.ctx) !== null) return false
@@ -448,8 +452,18 @@ export function steeredPick(path: Path, eligible: readonly Move[], steer: 'remot
   return steered ? { ...steered, steer } : pick
 }
 
-/** Why this rep, in one line: the rule that chose it, and where, when the rep can happen in more than one kind of setting. */
-export function whyThisRep(pick: RepPick): string {
+const DAY_WORDS: readonly string[] = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven']
+
+/** The slot rule's turn in words: the Partner path's as ever; a Path the catalogue adds, with its own name and share (P1). */
+function turnWords(turn: 'own' | 'shared', path: Pick<Path, 'id' | 'traits'> & Partial<Pick<Path, 'names' | 'name'>> | undefined): string {
+  const c = copy.path.why
+  if (!path || path.id === 'partner' || path.traits.rowShare === undefined) return c.turn[turn]
+  const name = pathName(path).replace(/^The\b/, 'the')
+  return fill(c.turnFor[turn], { name, days: DAY_WORDS[path.traits.rowShare] ?? String(path.traits.rowShare) })
+}
+
+/** Why this rep, in one line: the rule that chose it, and where, when the rep can happen in more than one kind of setting. A turn of the row is said with the Path whose turn it is. */
+export function whyThisRep(pick: RepPick, path?: Pick<Path, 'id' | 'traits'> & Partial<Pick<Path, 'names' | 'name'>>): string {
   const c = copy.path.why
   // Stage 3, item 5: a steered draw is said among the reps the steer kept.
   const rule = pick.steer && (pick.rule === 'draw' || pick.rule === 'only')
@@ -470,7 +484,7 @@ export function whyThisRep(pick: RepPick): string {
   // Toward a call or a message, the rep is done as one: no other kind of setting to say.
   const kinds = pick.steer === 'remote' ? ['remote'] : hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
   const said = pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
-  return pick.turn ? `${c.turn[pick.turn]} ${said}` : said
+  return pick.turn ? `${turnWords(pick.turn, path)} ${said}` : said
 }
 
 /** A number in [0, 1) fixed by its text: the same commitment, day and block draw the same tie until the record changes. */
@@ -525,15 +539,30 @@ export function doneBySetting(path: Path, entries: readonly PathEntry[], today: 
   return out
 }
 
-/** A path as it is named to you: "The Social path". */
-export function pathName(path: Pick<Path, 'id'>): string {
-  return copy.path.names[path.id]
+/** A path as it is named to you: "The Social path"; a Path the catalogue adds names itself. */
+export function pathName(path: Pick<Path, 'id'> & Partial<Pick<Path, 'names' | 'name'>>): string {
+  return (copy.path.names as Readonly<Record<string, string>>)[path.id] ?? path.names?.called ?? path.name ?? path.id
 }
 
 /** "Stage 2 of 6 · One step past hello". */
-export function stageWords(path: Path, stage: number): string {
+export function stageWords(path: Pick<Path, 'stages'>, stage: number): string {
   return fill(copy.path.stage, { n: String(stage), of: String(path.stages.length), name: path.stages.find((s) => s.n === stage)?.name ?? '' })
 }
+
+/** One strand of a Path, today (P1): its stage, and the reps of it that fit. */
+export interface StrandToday {
+  strand: PathStrand
+  state: StageState
+  elig: Eligibility
+}
+
+/** A strand read as a Path of its own: its stages, under its own rule or the Path's. */
+export function strandPath(path: Path, strand: PathStrand): Path {
+  return { ...path, stages: strand.stages, rule: strand.rule ?? path.rule }
+}
+
+/** A Path with strands draws at even chances: its stages differ by strand, so no one stage counts its draws (P1). */
+export const NO_LEAN = -1
 
 export interface PathToday {
   aim: Aim
@@ -541,6 +570,8 @@ export interface PathToday {
   entries: PathEntry[]
   state: StageState
   elig: Eligibility
+  /** Each strand's stage and reps (P1): one, the Path's own, on a Path without strands. */
+  strands: StrandToday[]
   /** Today's rep: yours through Change, else the app's pick; null when no rep of the stage fits this block. */
   pick: RepPick | null
   around: boolean
@@ -587,7 +618,6 @@ export function pathToday(i: PathTodayInput): PathToday {
   const path = pathById(i.aim.path as PathId)
   const marks = i.marks ?? []
   const entries = pathEntries(path.id, i.offers, i.outcomes, i.aim.convertedFrom === 'person')
-  const state = stageOf(path, entries, i.day, declaredStage(path, marks, i.day))
   const around = peopleAround(i.ctx, i.block)
   const yesterday = entries.filter((e) => e.day === addDays(i.day, -1)).pop()?.moveId ?? null
   const doneToday = new Set(i.outcomes.filter((x) => x.day === i.day && (x.outcome === 'done' || x.outcome === 'partly')).map((x) => x.moveId))
@@ -596,8 +626,20 @@ export function pathToday(i: PathTodayInput): PathToday {
   const onlineThisWeek = entries.filter((e) => e.day >= weekAgo && e.day <= i.day && hasMove(e.moveId) && moveById(e.moveId).channel === 'online').length
   const doneEver = new Set(entries.filter((e) => e.outcome === 'done' || e.outcome === 'partly').map((e) => e.moveId))
   const faithHidden = i.faithHidden === true
-  // Light reps only on a hard day is the Partner path's rule (Part 27).
-  const elig = eligibility({ path, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly: path.id === 'partner' && i.lightOnly === true, doneEver, faithHidden })
+  // Light reps only on a hard day is a Path's own rule: the Partner path's (Part 27).
+  const lightOnly = path.traits.lightOnHardDays === true && i.lightOnly === true
+  const fit = (p: Path, state: StageState, strand?: string) => eligibility({ path: p, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly, doneEver, faithHidden, ...(strand !== undefined ? { strand } : {}) })
+  // A Path with strands (P1): each strand's stage from its own reps, the reps that fit from every strand. A declaration moves a Path of one strand alone.
+  const tracks: StrandToday[] | null = path.strands?.length
+    ? path.strands.map((s) => {
+        const sp = strandPath(path, s)
+        const state = stageOf(sp, entries, i.day, null, s.id)
+        return { strand: s, state, elig: fit(sp, state, s.id) }
+      })
+    : null
+  const state = tracks ? tracks[0].state : stageOf(path, entries, i.day, declaredStage(path, marks, i.day))
+  const elig = tracks ? unionOf(tracks) : fit(path, state)
+  const strands = tracks ?? [{ strand: strandsOf(path)[0], state, elig }]
   // One People rep a day across both paths (Part 24; Workstream 6, D4): once today's is done, no other is offered today; after a Partly, only that rep, to finish.
   const today = peopleRepToday(i.offers, i.outcomes, i.day)
   const picked = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
@@ -610,8 +652,26 @@ export function pathToday(i: PathTodayInput): PathToday {
       ? yours(moveById(today.partly))
       : mine
         ? yours(mine)
-        : steeredPick(path, elig.eligible, steerOf(i.socialEnergy), entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), elig.stage, !around)
-  return { aim: i.aim, path, entries, state, elig, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly }
+        : steeredPick(path, elig.eligible, steerOf(i.socialEnergy), entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), tracks ? NO_LEAN : elig.stage, !around)
+  return { aim: i.aim, path, entries, state, elig, strands, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly }
+}
+
+/** The reps that fit across strands: each strand's, once, the first strand's stage as the Path's. */
+function unionOf(tracks: readonly StrandToday[]): Eligibility {
+  const once = (ms: readonly Move[]) => [...new Map(ms.map((m) => [m.id, m])).values()]
+  return {
+    stage: tracks[0].elig.stage,
+    stageReps: once(tracks.flatMap((t) => t.elig.stageReps)),
+    eligible: once(tracks.flatMap((t) => t.elig.eligible)),
+    requiresGoingOut: tracks.some((t) => t.elig.requiresGoingOut),
+  }
+}
+
+/** The stage a rep is offered at, as its own strand stands today: what the step records (P1). */
+export function stageForRep(pt: Pick<PathToday, 'path' | 'strands' | 'elig'>, moveId: string): number {
+  if (!pt.path.strands?.length) return pt.elig.stage
+  const strand = placeOn(pt.path.id, moveId)?.strand ?? ONE_STRAND
+  return pt.strands.find((s) => s.strand.id === strand)?.elig.stage ?? pt.elig.stage
 }
 
 /** A People rep's session, from either path: a step offer that names its paths (or, before paths, a person's step). */
@@ -654,6 +714,14 @@ export interface PeopleRow {
 }
 
 /**
+ * A rep a Path with a share of the People row holds and no Path without a share does: the reps its
+ * own turn draws among (Part 27; P1). On the Partner path, a rep the Social path does not hold.
+ */
+export function ownOnly(path: Pick<Path, 'id'>, moveId: string): boolean {
+  return Boolean(placeOn(path.id, moveId)) && !paths.some((p) => p.id !== path.id && p.traits.rowShare === undefined && placeOn(p.id, moveId))
+}
+
+/**
  * One People row, whatever paths are on (Part 27). A rep you picked through Change is the row's,
  * the later pick of two. Otherwise a Partner-only rep takes the day when the Partner path is on,
  * one fits, and Partner-only reps took fewer than two of the last seven days; otherwise Social's
@@ -661,7 +729,20 @@ export interface PeopleRow {
  * reached, the reps it shares with Social.
  */
 export function peopleRow(social: PathToday | null, partner: PathToday | null, today: string, draw: number): PeopleRow | null {
-  const on = [social, partner].filter((v): v is PathToday => v !== null)
+  return peopleRowAll([social, partner].filter((v): v is PathToday => v !== null), today, draw)
+}
+
+/**
+ * The one People row across every Path on (P1, D4 unchanged: one People rep a day). Done, Partly
+ * and your pick as ever. Then each Path with a share of the row, in the catalogue's order, takes the
+ * day when its own reps fit and took fewer days of the last seven than its share; a share binds with
+ * another Path on, or alone where the Path says so (Partner's). Then the first Path without a share,
+ * Social. With none on, the first Path's reps it shares, as the Partner path alone draws. With Social
+ * and Partner alone this is Part 27's rule, branch for branch.
+ */
+export function peopleRowAll(views: readonly PathToday[], today: string, draw: number): PeopleRow | null {
+  const order = new Map(paths.map((p, k) => [p.id, k]))
+  const on = [...views].sort((a, b) => (order.get(a.path.id) ?? 0) - (order.get(b.path.id) ?? 0))
   if (!on.length) return null
   const ids = on.map((v) => v.path.id)
   const row = (view: PathToday, pick: RepPick | null): PeopleRow => ({ view, pick, paths: pick ? pathsHolding(pick.moveId, ids) : [view.path.id] })
@@ -678,18 +759,22 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
   }
   const yours = on.filter((v) => v.pick?.rule === 'you').sort((a, b) => ((a.aim.pick?.at ?? '') < (b.aim.pick?.at ?? '') ? 1 : -1))
   if (yours.length) return row(yours[0], yours[0].pick)
-  if (partner) {
-    const weekAgo = addDays(today, -6)
-    const days = new Set(partner.entries.filter((e) => e.day >= weekAgo && e.day <= today && partnerOnly(e.moveId)).map((e) => e.day))
-    const only = partner.elig.eligible.filter((m) => partnerOnly(m.id))
-    const turn = (reps: readonly Move[], t: 'own' | 'shared') => {
-      const pick = pickRep(partner.path, reps, partner.entries, today, draw, partner.elig.stage, !partner.around)
-      return pick ? { ...pick, turn: t } : null
-    }
-    if (days.size < PARTNER_ONLY_DAYS && only.length) return row(partner, turn(only, 'own'))
-    if (!social) return row(partner, turn(partner.elig.eligible.filter((m) => !partnerOnly(m.id)), 'shared'))
+  const turn = (v: PathToday, reps: readonly Move[], t: 'own' | 'shared') => {
+    const pick = pickRep(v.path, reps, v.entries, today, draw, v.path.strands?.length ? NO_LEAN : v.elig.stage, !v.around)
+    return pick ? { ...pick, turn: t } : null
   }
-  return row(social as PathToday, (social as PathToday).pick)
+  const sharers = on.filter((v) => v.path.traits.rowShare !== undefined)
+  for (const v of sharers) {
+    const weekAgo = addDays(today, -6)
+    const days = new Set(v.entries.filter((e) => e.day >= weekAgo && e.day <= today && ownOnly(v.path, e.moveId)).map((e) => e.day))
+    const only = v.elig.eligible.filter((m) => ownOnly(v.path, m.id))
+    const binds = v.path.traits.shareBindsAlone === true || on.length > 1
+    if (only.length && (!binds || days.size < (v.path.traits.rowShare ?? 0))) return row(v, turn(v, only, 'own'))
+  }
+  const primary = on.find((v) => v.path.traits.rowShare === undefined)
+  if (primary) return row(primary, primary.pick)
+  const first = sharers[0]
+  return row(first, turn(first, first.elig.eligible.filter((m) => !ownOnly(first.path, m.id)), 'shared'))
 }
 
 /** Today's shape for a block, in words, from the day record alone (tier 1). */
@@ -706,7 +791,9 @@ export function shapeWords(ctx: Pick<DayContext, 'atOffice' | 'churchDay' | 'pic
  * around, the block says an in-person rep would require going out (requiresGoingOut). Built by allowlist from the same
  * computation the row shows; tier 2 is never read here.
  */
-export function coachBlock(views: readonly PathToday[], ctx: PathTodayInput['ctx'], day: string, block: Block, dateDay = false, row: CoachBlock['row'] = null): CoachBlock | null {
+export function coachBlock(all: readonly PathToday[], ctx: PathTodayInput['ctx'], day: string, block: Block, dateDay = false, row: CoachBlock['row'] = null): CoachBlock | null {
+  // A Path the coach does not choose for (P1) is left out whole: its stage, its reps and its counts never reach the brain.
+  const views = all.filter((v) => v.path.traits.coach)
   if (!views.length) return null
   const requiresGoingOut = views.some((v) => v.elig.requiresGoingOut)
   return {
