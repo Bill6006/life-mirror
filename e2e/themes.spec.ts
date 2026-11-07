@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { seedNote, seedRecord as seedAskRecord, seedThread, seedTurns } from './askSeed'
 
@@ -2490,6 +2490,82 @@ for (const theme of THEMES) {
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
       await walk(page, theme, SPEAKING_STATES, width, found)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+// Asking for a Path (P5): the intake filled, a route's own words, your requests with a refused one's reasons open, and a
+// generated Path running with its strand that waits turned on, its Details and its private check open. The rows stand
+// in as the phone pulls them, from e2e/fixtures/generated.json.
+const GENERATED_ROWS = JSON.parse(readFileSync('e2e/fixtures/generated.json', 'utf8')) as { pathId: string }[]
+const asking = (p: Page) => p.locator(`[data-path="${GENERATED_ROWS[1].pathId}"][data-kind="path"]`)
+const MAKE_STATES: typeof STATES = [
+  { name: 'Make a Path, filled', tab: 'Aims', open: async (p) => {
+    await p.getByRole('button', { name: /^Add a commitment/ }).click()
+    await p.getByTestId('aim-kind-make-path').click()
+    await p.getByTestId('make-path-goal').fill('Grow vegetables in a small garden bed this summer')
+    await p.getByTestId('make-path-why').fill('Fresh food, and time outside')
+    await p.getByTestId('make-path-where-home').click()
+    await p.getByTestId('make-path-minutes-120').click()
+  } },
+  { name: 'Make a Path, too vague: asked again', tab: 'Aims', open: async (p) => {
+    await p.getByRole('button', { name: /^Add a commitment/ }).click()
+    await p.getByTestId('aim-kind-make-path').click()
+    await p.getByTestId('make-path-goal').fill('be better')
+    await p.getByTestId('make-path-ask').click()
+  } },
+  { name: 'Aims, your Path requests, a refused one’s reasons open', tab: 'Aims', open: async (p) => {
+    await p.getByTestId('path-requests').scrollIntoViewIfNeeded()
+    await p.getByTestId('path-request-reasons').first().click()
+  } },
+  { name: 'Aims, a generated Path with its strand that waits on, Details and its private check open', tab: 'Aims', open: async (p) => {
+    await asking(p).getByTestId('path-details').click()
+    await asking(p).getByTestId('path-check-safety-yes').click()
+    await asking(p).getByTestId('path-check').scrollIntoViewIfNeeded()
+  } },
+]
+
+async function seedGenerated(page: Page): Promise<void> {
+  await page.evaluate(async (generated) => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const q = indexedDB.open('life-mirror')
+      q.onsuccess = () => res(q.result)
+      q.onerror = () => rej(q.error)
+    })
+    const tx = dbx.transaction(['pathRequests', 'pathJobs', 'generatedPaths', 'pathVersions', 'aims'], 'readwrite')
+    const at = new Date().toISOString()
+    tx.objectStore('pathRequests').put({ id: 1, at, goal: 'Grow vegetables in a small garden bed this summer', minutes: 120, route: 'fits', state: 'queued' })
+    tx.objectStore('pathRequests').put({ id: 2, at, goal: 'Get comfortable asking for help, at a counter and at home', minutes: 120, route: 'fits', state: 'queued' })
+    tx.objectStore('pathRequests').put({ id: 3, at, goal: 'Keep a tidy shed every weekend of the year', minutes: 60, route: 'fits', state: 'queued' })
+    tx.objectStore('pathJobs').put({ id: 'job:1', requestId: 1, state: 'ready', at, day: at.slice(0, 10), pathId: generated[0].pathId, version: '1' })
+    tx.objectStore('pathJobs').put({ id: 'job:2', requestId: 2, state: 'ready', at, day: at.slice(0, 10), pathId: generated[1].pathId, version: '1' })
+    tx.objectStore('pathJobs').put({ id: 'job:3', requestId: 3, state: 'refused', at, day: at.slice(0, 10), reasons: ['strand shed, stage 1: its floor (3 different reps in 1 kinds of setting) must hold with any one of its 3 stage-moving reps taken away', 'a decision on timeline: why it is as it is'] })
+    for (const g of generated) tx.objectStore('generatedPaths').put(g)
+    tx.objectStore('pathVersions').put({ id: 70, path: generated[1].pathId, version: '1', hash: 'seeded', decision: 'started', at, cards: [] })
+    tx.objectStore('aims').put({ id: 70, kind: 'path', path: generated[1].pathId, stepMoveId: null, pausedAt: null, createdAt: at, archivedAt: null, strands: ['together'] })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  }, GENERATED_ROWS)
+}
+
+for (const theme of THEMES) {
+  test(`${theme}: asking for a Path and a generated Path's screens read, fit and can be tapped, at three widths (P5)`, async ({ page }) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await page.clock.setFixedTime(new Date(2026, 10, 9, 19, 5))
+    await page.goto('./')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedGenerated(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, MAKE_STATES, width, found)
     }
     expect(found, found.join('\n')).toEqual([])
   })

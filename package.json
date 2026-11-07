@@ -16,6 +16,7 @@
     "icons": "node scripts/make-icons.mjs",
     "anchors": "node scripts/anchors-md.mjs",
     "catalogue": "node scripts/catalogue-md.mjs",
+    "dossier": "node scripts/dossier-md.mjs",
     "library": "node scripts/library-check.mjs",
     "worker:deploy": "wrangler deploy --config worker/wrangler.toml",
     "worker:dev": "wrangler dev --config worker/wrangler.toml --test-scheduled"

@@ -9,6 +9,7 @@ import { addPathAim, coachAllowed, convertToSocial, monthlyChecks, pathOn, pause
 import { carriedFor, PathCard, PathRow, type PathShared } from './pathCard'
 import { expectancyCounts, expectancyRetired } from './expectancy'
 import { lightOnlyDay, partnerOnly, pathName, pathToday, socialEnergyOn, stageForRep, type PathToday } from './pathStage'
+import { PathRequestsCard } from './pathIntake'
 import { addedPaths, NewPathCards } from './pathRead'
 import { aimOffered } from './pathVersions'
 import { PartnerDates, PartnerPrompts, PartnerSettings } from './partnerScreen'
@@ -378,6 +379,7 @@ export function AimsScreen({
       {aims.length === 0 && <p class="note">{c.none}</p>}
       <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} onChangeRep={(aim) => onChangeRep(aim.id as number)} onPartnerNotes={onPartnerNotes} onRead={onRead} onHandOver={onHandOver} onCheckRecording={onCheckRecording} dueAimId={dueAimId} />
       {onRead && <NewPathCards aims={aims} onRead={onRead} />}
+      {onRead && <PathRequestsCard onRead={onRead} today={today.day} />}
 
       <div class="card doors">
         <ul class="rows">
@@ -477,7 +479,7 @@ function LearningForm({ onAdd }: { onAdd: (goal: string, method: string, about: 
  * Partner path too, only ever by your own tap (Part 27). A person can no longer be added: one already
  * on the list converts to the Social path from its card.
  */
-export function AddAimScreen({ onClose, onRead }: { onClose: () => void; onRead?: (path: string) => void }) {
+export function AddAimScreen({ onClose, onRead, onMakePath }: { onClose: () => void; onRead?: (path: string) => void; onMakePath?: () => void }) {
   const aims = useLive(activeAims, [])
   const [kind, setKind] = useState<AimKind | null>(null)
   if (!aims) return <section class="screen" />
@@ -492,6 +494,8 @@ export function AddAimScreen({ onClose, onRead }: { onClose: () => void; onRead?
     // A Path the catalogue adds is read first, on one screen, and started from there (P4).
     ...(onRead ? addedPaths().filter((p) => !aims.some((a) => a.kind === 'path' && a.path === p.id)).map((p) => ({ id: `path-${p.id}`, label: p.names?.add ?? pathName(p), note: p.names?.addNote ?? p.what, onPick: () => onRead(p.id) })) : []),
     ...(aims.some((a) => a.kind === 'practice') ? [] : [{ id: 'practice', label: c.kinds.practice, note: c.kindNotes.practice, onPick: () => setKind('practice') }]),
+    // P5: something you want to improve, drafted into a Path later and read before it runs.
+    ...(onMakePath ? [{ id: 'make-path', label: copy.path.make.add, note: copy.path.make.addNote, onPick: onMakePath }] : []),
   ]
 
   return (

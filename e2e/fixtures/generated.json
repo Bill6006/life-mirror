@@ -1,0 +1,2403 @@
+[
+ {
+  "pathId": "g-f6bde581",
+  "version": "1",
+  "at": "2026-11-07T03:00:00.000Z",
+  "requestId": 1,
+  "path": {
+   "id": "g-f6bde581",
+   "name": "Garden",
+   "what": "Vegetables in a small bed, planted and tended week by week.",
+   "timeline": "A summer, crop by crop, with no fixed end.",
+   "stages": [
+    {
+     "n": 1,
+     "name": "Planting",
+     "what": "Planting, in your own bed.",
+     "notProgress": "How big anything grew."
+    },
+    {
+     "n": 2,
+     "name": "Tending each week",
+     "what": "Tending each week, in your own bed.",
+     "notProgress": "How big anything grew."
+    },
+    {
+     "n": 3,
+     "name": "A second crop",
+     "what": "A second crop, in your own bed.",
+     "notProgress": "How big anything grew."
+    }
+   ],
+   "rule": {
+    "reps": 6,
+    "distinctReps": 3,
+    "settingKinds": 1,
+    "withinWeeks": 6,
+    "smallerAfterRefusals": 2,
+    "reentryAfterQuietWeeks": 3,
+    "note": "Design judgment: six jobs within six weeks, three different ones, before the next stage.",
+    "sources": []
+   },
+   "strands": [
+    {
+     "id": "bed",
+     "name": "The bed",
+     "what": "Planting, then tending, then a second crop.",
+     "stages": [
+      {
+       "n": 1,
+       "name": "Planting",
+       "what": "Planting, in your own bed.",
+       "notProgress": "How big anything grew."
+      },
+      {
+       "n": 2,
+       "name": "Tending each week",
+       "what": "Tending each week, in your own bed.",
+       "notProgress": "How big anything grew."
+      },
+      {
+       "n": 3,
+       "name": "A second crop",
+       "what": "A second crop, in your own bed.",
+       "notProgress": "How big anything grew."
+      }
+     ],
+     "rule": {
+      "reps": 6,
+      "distinctReps": 3,
+      "settingKinds": 1,
+      "withinWeeks": 6,
+      "smallerAfterRefusals": 2,
+      "reentryAfterQuietWeeks": 3,
+      "note": "Design judgment: six jobs within six weeks, three different ones, before the next stage.",
+      "sources": []
+     }
+    }
+   ],
+   "settingKinds": {
+    "recurring": "A place your week already holds: work, church, a class, a club.",
+    "errand": "Somewhere new to you, among people you have not met.",
+    "group": "Three or more people together.",
+    "oneToOne": "Just the two of you.",
+    "remote": "A call or a message.",
+    "solo": "In the garden, on your own."
+   },
+   "counted": "Jobs done in the bed, by job and by the behaviours checked.",
+   "neverCounted": [
+    "how big anything grew"
+   ],
+   "excluded": [],
+   "cards": [
+    "skill-decay"
+   ],
+   "traits": {
+    "sheet": false,
+    "coach": false,
+    "privacy": "own",
+    "rowShare": 3,
+    "icon": "practice"
+   },
+   "version": "1",
+   "changes": [
+    {
+     "version": "1",
+     "day": "2026-11-07",
+     "reason": "design",
+     "major": true,
+     "what": "The first version, generated from the evidence and compiled."
+    }
+   ],
+   "label": "experimental",
+   "names": {
+    "called": "The Garden path",
+    "add": "The Garden path",
+    "addNote": "Made for your goal: Vegetables in a small bed, planted and tended week by week.",
+    "plan": "Garden rep"
+   },
+   "measurement": {
+    "strands": [
+     {
+      "strand": "bed",
+      "behaviours": [
+       {
+        "id": "spaced",
+        "words": "Spaced the plants as the packet says",
+        "theirs": "Spaced the plants as the packet says"
+       },
+       {
+        "id": "checked",
+        "words": "Checked the soil before watering",
+        "theirs": "Checked the soil before watering"
+       }
+      ]
+     }
+    ],
+    "gates": [
+     {
+      "strand": "bed",
+      "stage": 1,
+      "met": 1,
+      "requires": [
+       "spaced"
+      ],
+      "weeks": 2,
+      "confirmed": 0,
+      "kinds": 1
+     },
+     {
+      "strand": "bed",
+      "stage": 2,
+      "met": 2,
+      "requires": [
+       "checked"
+      ],
+      "weeks": 2,
+      "confirmed": 0,
+      "kinds": 1
+     }
+    ],
+    "cap": 8,
+    "maintenance": {
+     "at": [
+      30,
+      90
+     ],
+     "every": 180
+    }
+   },
+   "decisions": [
+    {
+     "id": "structure",
+     "element": "structure",
+     "decision": "One skill strand in three stages, by how established the bed is.",
+     "basis": "Practice spread out and varied holds better than massed practice.",
+     "origin": "judgment",
+     "cards": [
+      "skill-decay"
+     ],
+     "uncertainty": "No trial has tested this order for a garden.",
+     "change": "Your record of which jobs stick."
+    },
+    {
+     "id": "bed-order",
+     "element": "strand:bed",
+     "decision": "Planting first, then tending, then a second crop.",
+     "basis": "Design judgment: a bed is planted before it is tended.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "The order is not tested.",
+     "change": "Your record of where you stall."
+    },
+    {
+     "id": "bed-gate",
+     "element": "gate:bed",
+     "decision": "Each stage’s own behaviour, on two separate weeks.",
+     "basis": "Skills decay without use, so a stage is shown more than once.",
+     "origin": "inference",
+     "cards": [
+      "skill-decay"
+     ],
+     "uncertainty": "The interval for gardening is not known.",
+     "change": "Your record of what holds."
+    },
+    {
+     "id": "maintenance",
+     "element": "maintenance",
+     "decision": "Checked again about a month and three months after a stage is shown, then about every six.",
+     "basis": "Unpractised skill fades over months.",
+     "origin": "inference",
+     "cards": [
+      "skill-decay"
+     ],
+     "uncertainty": "The intervals come from other skills.",
+     "change": "Checks you keep passing, or missing."
+    },
+    {
+     "id": "floor",
+     "element": "rule",
+     "decision": "Six jobs across three different ones within six weeks.",
+     "basis": "Design judgment, the app’s floor for a skill.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "The numbers are a guess.",
+     "change": "A stage that comes far too easily or never does."
+    },
+    {
+     "id": "timeline",
+     "element": "timeline",
+     "decision": "A summer, with no fixed end.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "How fast it goes is yours.",
+     "change": "Your record."
+    }
+   ],
+   "generated": {
+    "goalTypes": [
+     "skill",
+     "habitOfStarting"
+    ],
+    "provenance": {
+     "run": "test",
+     "model": "opus",
+     "promptHash": "0000000000000000",
+     "retrievedOn": "2026-11-07"
+    }
+   }
+  },
+  "reps": [
+   {
+    "id": "g-f6bde581-prepare-the-bed",
+    "name": "Prepare the bed",
+    "family": "g-f6bde581",
+    "what": "Prepare the bed, the way the packet or the guide says.",
+    "source": {
+     "who": "Macnamara, Hambrick & Oswald",
+     "what": "Deliberate practice explains a real but limited share of performance differences: more in games, music and sport, little in education and professions",
+     "year": 2014,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 1,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "deliberate-practice"
+   },
+   {
+    "id": "g-f6bde581-sow-a-row",
+    "name": "Sow a row",
+    "family": "g-f6bde581",
+    "what": "Sow a row, the way the packet or the guide says.",
+    "source": {
+     "who": "Cepeda et al.",
+     "what": "Practice spread over time is remembered better than the same practice massed into one session; the gap should grow with the delay until the material is needed",
+     "year": 2006,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 1,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "spaced-practice"
+   },
+   {
+    "id": "g-f6bde581-plant-seedlings",
+    "name": "Plant seedlings",
+    "family": "g-f6bde581",
+    "what": "Plant seedlings, the way the packet or the guide says.",
+    "source": {
+     "who": "Macnamara, Hambrick & Oswald",
+     "what": "Deliberate practice explains a real but limited share of performance differences: more in games, music and sport, little in education and professions",
+     "year": 2014,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 1,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "deliberate-practice"
+   },
+   {
+    "id": "g-f6bde581-water-deeply",
+    "name": "Water deeply",
+    "family": "g-f6bde581",
+    "what": "Water deeply, the way the packet or the guide says.",
+    "source": {
+     "who": "Cepeda et al.",
+     "what": "Practice spread over time is remembered better than the same practice massed into one session; the gap should grow with the delay until the material is needed",
+     "year": 2006,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 1,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "spaced-practice"
+   },
+   {
+    "id": "g-f6bde581-weed-a-patch",
+    "name": "Weed a patch",
+    "family": "g-f6bde581",
+    "what": "Weed a patch, the way the packet or the guide says.",
+    "source": {
+     "who": "Macnamara, Hambrick & Oswald",
+     "what": "Deliberate practice explains a real but limited share of performance differences: more in games, music and sport, little in education and professions",
+     "year": 2014,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 2,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "deliberate-practice"
+   },
+   {
+    "id": "g-f6bde581-check-for-pests",
+    "name": "Check for pests",
+    "family": "g-f6bde581",
+    "what": "Check for pests, the way the packet or the guide says.",
+    "source": {
+     "who": "Cepeda et al.",
+     "what": "Practice spread over time is remembered better than the same practice massed into one session; the gap should grow with the delay until the material is needed",
+     "year": 2006,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 2,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "spaced-practice"
+   },
+   {
+    "id": "g-f6bde581-mulch-the-bed",
+    "name": "Mulch the bed",
+    "family": "g-f6bde581",
+    "what": "Mulch the bed, the way the packet or the guide says.",
+    "source": {
+     "who": "Macnamara, Hambrick & Oswald",
+     "what": "Deliberate practice explains a real but limited share of performance differences: more in games, music and sport, little in education and professions",
+     "year": 2014,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 2,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "deliberate-practice"
+   },
+   {
+    "id": "g-f6bde581-thin-the-seedlings",
+    "name": "Thin the seedlings",
+    "family": "g-f6bde581",
+    "what": "Thin the seedlings, the way the packet or the guide says.",
+    "source": {
+     "who": "Cepeda et al.",
+     "what": "Practice spread over time is remembered better than the same practice massed into one session; the gap should grow with the delay until the material is needed",
+     "year": 2006,
+     "strength": "strong"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 2,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "spaced-practice"
+   },
+   {
+    "id": "g-f6bde581-sow-a-second-crop",
+    "name": "Sow a second crop",
+    "family": "g-f6bde581",
+    "what": "Sow a second crop, the way the packet or the guide says.",
+    "source": {
+     "who": "Craske et al.",
+     "what": "Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part",
+     "year": 2008,
+     "strength": "weak"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 3,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "varied-contexts"
+   },
+   {
+    "id": "g-f6bde581-save-some-seed",
+    "name": "Save some seed",
+    "family": "g-f6bde581",
+    "what": "Save some seed, the way the packet or the guide says.",
+    "source": {
+     "who": "Craske et al.",
+     "what": "Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part",
+     "year": 2008,
+     "strength": "weak"
+    },
+    "minutes": 25,
+    "effort": "medium",
+    "needs": [],
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "medium"
+    },
+    "costToAssign": "medium",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-f6bde581": {
+      "stage": 3,
+      "advances": true,
+      "strand": "bed"
+     }
+    },
+    "settings": [
+     "solo"
+    ],
+    "cue": "One step at a time, the guide open.",
+    "crutch": "Doing it all in one rushed go.",
+    "doneWhen": "Done when the job is finished, however the bed looks after.",
+    "method": "varied-contexts"
+   }
+  ],
+  "shared": [],
+  "cards": [],
+  "results": [],
+  "id": "g-f6bde581:1",
+  "hash": "c97915d4aecac183"
+ },
+ {
+  "pathId": "g-390aa7b2",
+  "version": "1",
+  "at": "2026-11-07T03:05:00.000Z",
+  "requestId": 2,
+  "path": {
+   "id": "g-390aa7b2",
+   "name": "Asking",
+   "what": "Asking shop staff for help, from a quick question to a longer one.",
+   "timeline": "Weeks, with no fixed end.",
+   "stages": [
+    {
+     "n": 1,
+     "name": "A quick question",
+     "what": "A quick question, in a shop.",
+     "notProgress": "What the staff thought of you."
+    },
+    {
+     "n": 2,
+     "name": "A longer ask",
+     "what": "A longer ask, in a shop.",
+     "notProgress": "What the staff thought of you."
+    },
+    {
+     "n": 3,
+     "name": "Somewhere new",
+     "what": "Somewhere new, in a shop.",
+     "notProgress": "What the staff thought of you."
+    }
+   ],
+   "rule": {
+    "reps": 6,
+    "distinctReps": 3,
+    "settingKinds": 1,
+    "withinWeeks": 6,
+    "smallerAfterRefusals": 2,
+    "reentryAfterQuietWeeks": 3,
+    "note": "Design judgment.",
+    "sources": []
+   },
+   "strands": [
+    {
+     "id": "asking",
+     "name": "Asking",
+     "what": "A quick question, then a longer one, then somewhere new.",
+     "stages": [
+      {
+       "n": 1,
+       "name": "A quick question",
+       "what": "A quick question, in a shop.",
+       "notProgress": "What the staff thought of you."
+      },
+      {
+       "n": 2,
+       "name": "A longer ask",
+       "what": "A longer ask, in a shop.",
+       "notProgress": "What the staff thought of you."
+      },
+      {
+       "n": 3,
+       "name": "Somewhere new",
+       "what": "Somewhere new, in a shop.",
+       "notProgress": "What the staff thought of you."
+      }
+     ],
+     "rule": {
+      "reps": 6,
+      "distinctReps": 3,
+      "settingKinds": 1,
+      "withinWeeks": 6,
+      "smallerAfterRefusals": 2,
+      "reentryAfterQuietWeeks": 3,
+      "note": "Design judgment.",
+      "sources": []
+     }
+    },
+    {
+     "id": "nerves",
+     "name": "Nerves",
+     "what": "Small tests of what you expect, then bigger ones.",
+     "stages": [
+      {
+       "n": 1,
+       "name": "Small tests",
+       "what": "Small tests, in a shop.",
+       "notProgress": "What the staff thought of you."
+      },
+      {
+       "n": 2,
+       "name": "Bigger tests",
+       "what": "Bigger tests, in a shop.",
+       "notProgress": "What the staff thought of you."
+      }
+     ],
+     "rule": {
+      "reps": 4,
+      "distinctReps": 2,
+      "settingKinds": 1,
+      "withinWeeks": 6,
+      "smallerAfterRefusals": 2,
+      "reentryAfterQuietWeeks": 3,
+      "note": "Design judgment.",
+      "sources": []
+     }
+    },
+    {
+     "id": "together",
+     "name": "Together",
+     "what": "Once you are seeing someone: your own part.",
+     "stages": [
+      {
+       "n": 1,
+       "name": "A quick question",
+       "what": "A quick question, in a shop.",
+       "notProgress": "What the staff thought of you."
+      },
+      {
+       "n": 2,
+       "name": "A longer ask",
+       "what": "A longer ask, in a shop.",
+       "notProgress": "What the staff thought of you."
+      }
+     ],
+     "rule": {
+      "reps": 6,
+      "distinctReps": 3,
+      "settingKinds": 1,
+      "withinWeeks": 6,
+      "smallerAfterRefusals": 2,
+      "reentryAfterQuietWeeks": 3,
+      "note": "Design judgment.",
+      "sources": []
+     },
+     "waits": true,
+     "pauses": [
+      "asking"
+     ]
+    }
+   ],
+   "settingKinds": {
+    "recurring": "A place your week already holds: work, church, a class, a club.",
+    "errand": "A shop, a counter, a queue.",
+    "group": "Three or more people together.",
+    "oneToOne": "Just the two of you.",
+    "remote": "A call or a message.",
+    "solo": "On your own."
+   },
+   "counted": "Questions asked, by rep and by the behaviours checked.",
+   "neverCounted": [
+    "what anyone answered"
+   ],
+   "excluded": [],
+   "cards": [
+    "skill-decay"
+   ],
+   "traits": {
+    "sheet": false,
+    "coach": false,
+    "privacy": "own",
+    "rowShare": 3,
+    "icon": "practice"
+   },
+   "version": "1",
+   "changes": [
+    {
+     "version": "1",
+     "day": "2026-11-07",
+     "reason": "design",
+     "major": true,
+     "what": "The first version, generated from the evidence and compiled."
+    }
+   ],
+   "label": "experimental",
+   "names": {
+    "called": "The Asking path",
+    "add": "The Asking path",
+    "addNote": "Made for your goal: Asking shop staff for help, from a quick question to a longer one.",
+    "plan": "Asking rep"
+   },
+   "measurement": {
+    "strands": [
+     {
+      "strand": "asking",
+      "behaviours": [
+       {
+        "id": "opened",
+        "words": "Opened with the question",
+        "theirs": "Opened with the question"
+       },
+       {
+        "id": "asked",
+        "words": "Asked in one plain sentence",
+        "theirs": "Asked in one plain sentence"
+       }
+      ]
+     },
+     {
+      "strand": "nerves",
+      "behaviours": [
+       {
+        "id": "stayed",
+        "words": "Stayed until the answer",
+        "theirs": "Stayed until the answer"
+       }
+      ]
+     }
+    ],
+    "gates": [
+     {
+      "strand": "asking",
+      "stage": 1,
+      "met": 1,
+      "requires": [
+       "opened"
+      ],
+      "weeks": 2,
+      "confirmed": 0,
+      "kinds": 1
+     },
+     {
+      "strand": "asking",
+      "stage": 2,
+      "met": 1,
+      "requires": [
+       "asked"
+      ],
+      "weeks": 2,
+      "confirmed": 0,
+      "kinds": 1
+     },
+     {
+      "strand": "nerves",
+      "stage": 1,
+      "met": 1,
+      "requires": [
+       "stayed"
+      ],
+      "weeks": 2,
+      "confirmed": 0,
+      "kinds": 1
+     }
+    ],
+    "cap": 8,
+    "maintenance": {
+     "at": [
+      30,
+      90
+     ],
+     "every": 180
+    }
+   },
+   "start": {
+    "questions": [
+     {
+      "id": "avoid",
+      "text": "Do you often avoid social situations or activities?"
+     },
+     {
+      "id": "afraid",
+      "text": "Do social situations often leave you afraid or embarrassed?"
+     }
+    ],
+    "help": "Avoiding social situations, or feeling afraid or embarrassed in them, is common, and a doctor or a psychologist can help with it: talking treatments for it are well tested. This path is practice, not treatment, and it can sit beside help.",
+    "opens": "nerves",
+    "focus": [
+     {
+      "id": "asking",
+      "words": "Asking for help"
+     }
+    ]
+   },
+   "check": {
+    "strand": "together",
+    "name": "A monthly private check",
+    "questions": [
+     {
+      "text": "In the last month, has anyone you are dating made you afraid, or tried to control where you go, whom you see or what you spend?",
+      "helpOnYes": true,
+      "id": "safety"
+     },
+     {
+      "text": "Has anything you did toward them worried you afterwards: a raised voice, pressure, checking up on them?",
+      "helpOnYes": true,
+      "id": "conduct"
+     },
+     {
+      "text": "Is there a doubt about this relationship you keep setting aside?",
+      "helpOnYes": false,
+      "id": "doubt"
+     }
+    ],
+    "help": "If someone’s behaviour frightens you, or your own worries you, you do not have to sort it out alone. The National Domestic Violence Hotline answers day and night: 1-800-799-7233, or text START to 88788, or thehotline.org. In danger now, call 911."
+   },
+   "decisions": [
+    {
+     "id": "structure",
+     "element": "structure",
+     "decision": "One skill strand in three stages, by how established the bed is.",
+     "basis": "Practice spread out and varied holds better than massed practice.",
+     "origin": "judgment",
+     "cards": [
+      "skill-decay"
+     ],
+     "uncertainty": "No trial has tested this order for a garden.",
+     "change": "Your record of which jobs stick."
+    },
+    {
+     "id": "maintenance",
+     "element": "maintenance",
+     "decision": "Checked again about a month and three months after a stage is shown, then about every six.",
+     "basis": "Unpractised skill fades over months.",
+     "origin": "inference",
+     "cards": [
+      "skill-decay"
+     ],
+     "uncertainty": "The intervals come from other skills.",
+     "change": "Checks you keep passing, or missing."
+    },
+    {
+     "id": "floor",
+     "element": "rule",
+     "decision": "Six jobs across three different ones within six weeks.",
+     "basis": "Design judgment, the app’s floor for a skill.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "The numbers are a guess.",
+     "change": "A stage that comes far too easily or never does."
+    },
+    {
+     "id": "timeline",
+     "element": "timeline",
+     "decision": "A summer, with no fixed end.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "How fast it goes is yours.",
+     "change": "Your record."
+    },
+    {
+     "id": "strand-asking",
+     "element": "strand:asking",
+     "decision": "As designed.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "Not tested.",
+     "change": "Your record."
+    },
+    {
+     "id": "strand-nerves",
+     "element": "strand:nerves",
+     "decision": "As designed.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "Not tested.",
+     "change": "Your record."
+    },
+    {
+     "id": "gate-asking",
+     "element": "gate:asking",
+     "decision": "As designed.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "Not tested.",
+     "change": "Your record."
+    },
+    {
+     "id": "gate-nerves",
+     "element": "gate:nerves",
+     "decision": "As designed.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "Not tested.",
+     "change": "Your record."
+    },
+    {
+     "id": "start",
+     "element": "start",
+     "decision": "As designed.",
+     "basis": "Design judgment.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "Not tested.",
+     "change": "Your record."
+    },
+    {
+     "id": "together",
+     "element": "strand:together",
+     "decision": "One skill strand in three stages, by how established the bed is.",
+     "basis": "Practice spread out and varied holds better than massed practice.",
+     "origin": "judgment",
+     "cards": [
+      "skill-decay"
+     ],
+     "uncertainty": "No trial has tested this order for a garden.",
+     "change": "Your record of which jobs stick."
+    }
+   ],
+   "generated": {
+    "goalTypes": [
+     "skill",
+     "exposure"
+    ],
+    "provenance": {
+     "run": "test",
+     "model": "opus",
+     "promptHash": "0000000000000000",
+     "retrievedOn": "2026-11-07"
+    }
+   }
+  },
+  "reps": [
+   {
+    "id": "g-390aa7b2-the-shelf",
+    "name": "the shelf",
+    "family": "g-390aa7b2",
+    "what": "Ask the shelf at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-the-price",
+    "name": "the price",
+    "family": "g-390aa7b2",
+    "what": "Ask the price at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-the-size",
+    "name": "the size",
+    "family": "g-390aa7b2",
+    "what": "Ask the size at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-the-hours",
+    "name": "the hours",
+    "family": "g-390aa7b2",
+    "what": "Ask the hours at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-a-recommendation",
+    "name": "a recommendation",
+    "family": "g-390aa7b2",
+    "what": "Ask a recommendation at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 2,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-a-comparison",
+    "name": "a comparison",
+    "family": "g-390aa7b2",
+    "what": "Ask a comparison at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 2,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-an-order",
+    "name": "an order",
+    "family": "g-390aa7b2",
+    "what": "Ask an order at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 2,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-a-return",
+    "name": "a return",
+    "family": "g-390aa7b2",
+    "what": "Ask a return at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 2,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-a-new-shop",
+    "name": "a new shop",
+    "family": "g-390aa7b2",
+    "what": "Ask a new shop at a counter.",
+    "source": {
+     "who": "Craske et al.",
+     "what": "Practice that varies reps, people and settings is recommended to make gains last, and does no harm, but its advantage over one fixed order is supported only in part",
+     "year": 2008,
+     "strength": "weak"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 3,
+      "advances": true,
+      "strand": "asking"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "varied-contexts",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-test-a-small-fear",
+    "name": "test a small fear",
+    "family": "g-390aa7b2",
+    "what": "Ask test a small fear at a counter.",
+    "source": {
+     "who": "Sandstrom & Boothby",
+     "what": "People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it",
+     "year": 2021,
+     "strength": "weak"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "nerves"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "predict-compare",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-test-another",
+    "name": "test another",
+    "family": "g-390aa7b2",
+    "what": "Ask test another at a counter.",
+    "source": {
+     "who": "Sandstrom & Boothby",
+     "what": "People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it",
+     "year": 2021,
+     "strength": "weak"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "nerves"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "predict-compare",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-test-a-third",
+    "name": "test a third",
+    "family": "g-390aa7b2",
+    "what": "Ask test a third at a counter.",
+    "source": {
+     "who": "Mayo-Wilson et al.",
+     "what": "For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "nerves"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "graded-exposure",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-test-a-bigger-one",
+    "name": "test a bigger one",
+    "family": "g-390aa7b2",
+    "what": "Ask test a bigger one at a counter.",
+    "source": {
+     "who": "Mayo-Wilson et al.",
+     "what": "For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 2,
+      "advances": true,
+      "strand": "nerves"
+     }
+    },
+    "settings": [
+     "errand"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "graded-exposure",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-together-a",
+    "name": "a recommendation",
+    "family": "g-390aa7b2",
+    "what": "Ask a recommendation at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "together"
+     }
+    },
+    "settings": [
+     "oneToOne"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-together-b",
+    "name": "a recommendation",
+    "family": "g-390aa7b2",
+    "what": "Ask a recommendation at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "together"
+     }
+    },
+    "settings": [
+     "oneToOne"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-together-c",
+    "name": "a recommendation",
+    "family": "g-390aa7b2",
+    "what": "Ask a recommendation at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "together"
+     }
+    },
+    "settings": [
+     "oneToOne"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-together-d",
+    "name": "a recommendation",
+    "family": "g-390aa7b2",
+    "what": "Ask a recommendation at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": true,
+      "strand": "together"
+     }
+    },
+    "settings": [
+     "oneToOne"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-together-e",
+    "name": "a recommendation",
+    "family": "g-390aa7b2",
+    "what": "Ask a recommendation at a counter.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 2,
+      "advances": true,
+      "strand": "together"
+     }
+    },
+    "settings": [
+     "oneToOne"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   }
+  ],
+  "shared": [],
+  "cards": [],
+  "results": [],
+  "id": "g-390aa7b2:1",
+  "hash": "2c4bad7a826eacb9"
+ }
+]

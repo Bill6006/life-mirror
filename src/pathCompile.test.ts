@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { moves } from './catalogue'
 import { library } from './library'
 import { compileDossier, partnerCheck, type Dossier, type DossierRep } from './pathCompile'
-import { dossierForTests, PROVENANCE_FOR_TESTS } from './pathCompile.fixture'
+import { dossierForTests, peopleDossierForTests as people, PROVENANCE_FOR_TESTS } from './pathCompile.fixture'
 
 // The generator's compiler (P5, 2026-11-06): a dossier the model drafted becomes a Path only through the rules. A
 // well-formed one compiles into the catalogue's shape, its own and labelled experimental; each broken rule is
@@ -12,66 +12,6 @@ import { dossierForTests, PROVENANCE_FOR_TESTS } from './pathCompile.fixture'
 const CTX = { moves, cards: [...library], minutesPerWeek: 90, day: '2026-11-07', provenance: PROVENANCE_FOR_TESTS }
 
 const dossier = dossierForTests
-
-/** A people dossier: asking shop staff for help, a skill strand and a fear strand a yes on the app's screen opens. */
-function people(): Dossier {
-  const stage = (n: number, name: string) => ({ n, name, what: `${name}, in a shop.`, notProgress: 'What the staff thought of you.' })
-  const rep = (id: string, strand: string, n: number, trains: string[], method: string, extra: Partial<DossierRep> = {}): DossierRep => ({ id, strand, stage: n, advances: true, name: id.replace(/-/g, ' '), what: `Ask ${id.replace(/-/g, ' ')} at a counter.`, doneWhen: 'Done when you have asked once, whatever the answer.', cue: 'The question in one plain sentence.', crutch: 'Rehearsing it until the moment passes.', guardrail: 'One question, and thanks whatever the answer; never when they are busy with someone.', settings: ['errand'], with: 'adult', minutes: 5, effort: 'low', method, trains, ...extra })
-  return {
-    ...dossierForTests(),
-    goal: 'Get comfortable asking shop staff for help',
-    triage: { route: 'fits', types: ['skill', 'exposure'], why: 'A small skill, with nerves for some.' },
-    name: 'Asking',
-    what: 'Asking shop staff for help, from a quick question to a longer one.',
-    timeline: 'Weeks, with no fixed end.',
-    components: [
-      { id: 'open', skill: 'Opening with the question', basis: 'judgment', cards: [], shows: ['opened'] },
-      { id: 'ask-clearly', skill: 'Asking in one plain sentence', basis: 'judgment', cards: [], shows: ['asked'] },
-      { id: 'stay', skill: 'Staying with the moment', basis: 'judgment', cards: [], shows: ['stayed'] },
-    ],
-    links: [{ from: 'open', to: 'ask-clearly', strength: 'hard', basis: 'judgment', cards: [] }],
-    strands: [
-      { id: 'asking', kind: 'skill', name: 'Asking', what: 'A quick question, then a longer one, then somewhere new.', components: ['open', 'ask-clearly'], stages: [stage(1, 'A quick question'), stage(2, 'A longer ask'), stage(3, 'Somewhere new')], rule: { reps: 6, distinctReps: 3, settingKinds: 1, withinWeeks: 6, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 3, note: 'Design judgment.' } },
-      { id: 'nerves', kind: 'exposure', name: 'Nerves', what: 'Small tests of what you expect, then bigger ones.', components: ['stay'], stages: [stage(1, 'Small tests'), stage(2, 'Bigger tests')], rule: { reps: 4, distinctReps: 2, settingKinds: 1, withinWeeks: 6, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 3, note: 'Design judgment.' } },
-    ],
-    reps: [
-      rep('the-shelf', 'asking', 1, ['open'], 'real-rep'),
-      rep('the-price', 'asking', 1, ['open'], 'real-rep'),
-      rep('the-size', 'asking', 1, ['open'], 'real-rep'),
-      rep('the-hours', 'asking', 1, ['open'], 'real-rep'),
-      rep('a-recommendation', 'asking', 2, ['ask-clearly'], 'real-rep'),
-      rep('a-comparison', 'asking', 2, ['ask-clearly'], 'real-rep'),
-      rep('an-order', 'asking', 2, ['ask-clearly'], 'real-rep'),
-      rep('a-return', 'asking', 2, ['ask-clearly'], 'real-rep'),
-      rep('a-new-shop', 'asking', 3, ['ask-clearly'], 'varied-contexts'),
-      rep('test-a-small-fear', 'nerves', 1, ['stay'], 'predict-compare'),
-      rep('test-another', 'nerves', 1, ['stay'], 'predict-compare'),
-      rep('test-a-third', 'nerves', 1, ['stay'], 'graded-exposure'),
-      rep('test-a-bigger-one', 'nerves', 2, ['stay'], 'graded-exposure'),
-    ],
-    measurement: {
-      strands: [
-        { strand: 'asking', behaviours: [{ id: 'opened', words: 'Opened with the question', theirs: 'Opened with the question' }, { id: 'asked', words: 'Asked in one plain sentence', theirs: 'Asked in one plain sentence' }] },
-        { strand: 'nerves', behaviours: [{ id: 'stayed', words: 'Stayed until the answer', theirs: 'Stayed until the answer' }] },
-      ],
-      gates: [
-        { strand: 'asking', stage: 1, met: 1, requires: ['opened'], weeks: 2, confirmed: 0, kinds: 1 },
-        { strand: 'asking', stage: 2, met: 1, requires: ['asked'], weeks: 2, confirmed: 0, kinds: 1 },
-        { strand: 'nerves', stage: 1, met: 1, requires: ['stayed'], weeks: 2, confirmed: 0, kinds: 1 },
-      ],
-      cap: 8,
-      maintenance: { at: [30, 90], every: 180 },
-    },
-    start: { screen: 'socialFear', opens: 'nerves', focus: [{ id: 'asking', words: 'Asking for help' }] },
-    decisions: [
-      ...dossierForTests().decisions.filter((x) => !x.element.includes(':')),
-      ...['strand:asking', 'strand:nerves', 'gate:asking', 'gate:nerves', 'start'].map((element) => ({ id: element.replace(':', '-'), element, decision: 'As designed.', basis: 'Design judgment.', origin: 'judgment' as const, cards: [], uncertainty: 'Not tested.', change: 'Your record.' })),
-    ],
-    counted: 'Questions asked, by rep and by the behaviours checked.',
-    neverCounted: ['what anyone answered'],
-    settingKinds: { errand: 'A shop, a counter, a queue.' },
-  }
-}
 
 const reasons = (d: Dossier, ctx = CTX) => {
   const r = compileDossier(d, ctx)

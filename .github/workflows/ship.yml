@@ -58,6 +58,7 @@ jobs:
         run: |
           node scripts/anchors-md.mjs --check
           node scripts/catalogue-md.mjs --check
+          node scripts/dossier-md.mjs --check
           node scripts/library-check.mjs --check
 
       - name: Build, stamped with this commit and this run

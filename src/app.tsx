@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, PickStepScreen } from './aimsScreen'
 import { PathChangeScreen } from './pathCard'
 import { PathReadScreen, PathStartScreen } from './pathRead'
+import { MakePathScreen } from './pathIntake'
 import { followGenerated } from './generatedPaths'
 import { HandOverScreen, RecordingCheckScreen } from './pathMeasureUi'
 import { PartnerNotesScreen } from './partnerScreen'
@@ -68,6 +69,8 @@ type View =
   | { kind: 'pathChange'; aimId: number }
   /** A Path the catalogue adds (P4): read on one screen, started from there; a recording checked; the phone handed over. */
   | { kind: 'pathRead'; path: string }
+  /** Asking for a Path (P5): the intake, then the route and its words. */
+  | { kind: 'makePath' }
   | { kind: 'pathStart'; path: string }
   | { kind: 'recordingCheck'; offerId: number }
   | { kind: 'handOver'; offerId: number; back?: View }
@@ -283,7 +286,9 @@ export function App() {
       case 'history':
         return <HistoryScreen onClose={closeAll} />
       case 'addAim':
-        return <AddAimScreen onClose={closeAll} onRead={(path) => setView({ kind: 'pathRead', path })} />
+        return <AddAimScreen onClose={closeAll} onRead={(path) => setView({ kind: 'pathRead', path })} onMakePath={() => setView({ kind: 'makePath' })} />
+      case 'makePath':
+        return <MakePathScreen onClose={closeAll} />
       case 'pathRead':
         return <PathReadScreen pathId={view.path} onStart={() => setView({ kind: 'pathStart', path: view.path })} onClose={closeAll} />
       case 'pathStart':
