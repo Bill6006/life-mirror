@@ -342,7 +342,6 @@ export function AimsScreen({
   onAdd,
   onChangeStep,
   onChangeRep,
-  onLadder,
   onFollow,
   onBecoming,
   onHer,
@@ -355,7 +354,6 @@ export function AimsScreen({
   onAdd: () => void
   onChangeStep: (aimId: number) => void
   onChangeRep: (aimId: number) => void
-  onLadder: () => void
   onFollow: () => void
   onBecoming: () => void
   onHer: () => void
@@ -369,9 +367,8 @@ export function AimsScreen({
   const aims = useLive(activeAims, [])
   // The one commitment the Brain's line names is the one thing to do here: its Start carries the accent.
   const line = useLive(() => todaysLine(today.day), [today.day])
-  const proofs = useLive(() => db.rungMarks.count(), [])
   const finished = useLive(finishedAims, [])
-  if (!aims || proofs === undefined || !finished) return <section class="screen" />
+  if (!aims || !finished) return <section class="screen" />
   const c = copy.aims
   const dueAimId = line?.action?.kind === 'plan' ? line.action.aimId : null
 
@@ -388,7 +385,7 @@ export function AimsScreen({
       <div class="card doors">
         <ul class="rows">
           <NavRow label={c.add} note={c.addDoor} onClick={onAdd} />
-          {proofs > 0 && <NavRow label={c.ladder} note={c.ladderDoor} onClick={onLadder} />}
+          {/* Earlier proofs, the retired ladder's record, is kept but no longer shown here (the owner, 2026-11-07). */}
           <NavRow label={c.follow} note={c.followDoor} onClick={onFollow} />
           <NavRow label={c.becoming} note={c.becomingDoor} onClick={onBecoming} />
           <NavRow label={c.her} note={c.herDoor} onClick={onHer} />

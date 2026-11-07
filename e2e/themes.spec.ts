@@ -574,7 +574,6 @@ const MORE: typeof STATES = [
   { name: 'History', tab: 'Moves', open: click(/^History/) },
   { name: 'The catalogue', tab: 'Moves', open: click(/^Read the catalogue/) },
   { name: 'Add a commitment', tab: 'Aims', open: click(/^Add a commitment/) },
-  { name: 'Earlier proofs', tab: 'Aims', open: click(/^Earlier proofs/) },
   {
     // The preferred study days with their part of the day, which shows once a day is chosen.
     name: 'Settings, preferred study days',

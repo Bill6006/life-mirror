@@ -366,7 +366,6 @@ export function App() {
             onAdd={() => open({ kind: 'addAim' })}
             onChangeStep={(aimId) => open({ kind: 'pickStep', aimId })}
             onChangeRep={(aimId) => open({ kind: 'pathChange', aimId })}
-            onLadder={() => open({ kind: 'ladder' })}
             onFollow={() => open({ kind: 'follow' })}
             onBecoming={() => open({ kind: 'becoming' })}
             onHer={() => open({ kind: 'her' })}
