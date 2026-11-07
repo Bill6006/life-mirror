@@ -138,6 +138,21 @@ function record(): Store {
 const week = { from: '2026-09-11', to: DAY, limit: 20 }
 
 describe('the readers', () => {
+  it('never read a generated Path’s steps as anyone’s, under any category: only a Path the reader names (P5)', async () => {
+    const store = record()
+    // A generated Path's step and its answer: its rep is its own, and its words name church.
+    put(store, 'offers', '60', '2026-09-17', { id: 60, day: '2026-09-17', moveId: 'g-1234abcd-church-hello', paths: ['g-1234abcd'], skippedAt: null })
+    put(store, 'outcomes', '61', '2026-09-17', { id: 61, offerId: 60, day: '2026-09-17', outcome: 'done' })
+    const a = accessFor('line', OPEN, readBrainPrefs({}))
+    for (const c of CATEGORIES) {
+      const items = (await readCategory({ store, catalogue, a }, c, week)) ?? []
+      expect(items.map((i) => i.text).join(' | '), c).not.toContain('g-1234abcd')
+    }
+    // The probe: the same step on the Social path is read there, so the Path's own list is what keeps it out.
+    put(store, 'offers', '60', '2026-09-17', { id: 60, day: '2026-09-17', moveId: 'g-1234abcd-church-hello', paths: ['social'], skippedAt: null })
+    expect(((await readCategory({ store, catalogue, a }, 'socialPath', week)) ?? []).map((i) => i.text).join(' | ')).toContain('g-1234abcd-church-hello')
+  })
+
   it('read faith’s records only while faith may be read', async () => {
     const store = record()
     const shown = accessFor('line', OPEN, readBrainPrefs({}))
