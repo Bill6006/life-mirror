@@ -7,7 +7,7 @@
 
 export type TriageRoute = 'refuse' | 'redirect' | 'existing' | 'notAPath' | 'unclear' | 'fits'
 export type ExistingTarget = 'social' | 'partner' | 'speaking' | 'learning' | 'workout'
-export type RedirectKind = 'selfHarm' | 'eating' | 'medication' | 'abuse' | 'clinical'
+export type RedirectKind = 'selfHarm' | 'eating' | 'medication' | 'abuse' | 'body' | 'clinical'
 export type RefuseKind = 'others' | 'deception' | 'monitoring' | 'illegal'
 
 export interface Triage {
@@ -43,6 +43,7 @@ const REDIRECT: readonly [RedirectKind, RegExp][] = [
   ['selfHarm', /\b(suicid\w*|kill myself|end (my|it all)|end my life|self[- ]?harm\w*|cut(ting)? myself|hurt(ing)? myself|not (want|wanting) to (live|be alive|wake up))\b/],
   ['eating', /\b(anorexi\w*|bulimi\w*|purg(e|es|ed|ing)|binge(ing| eating)?|starv\w*|stop eating|skip(ping)? meals|eat (less than|under) \d+|lose \d+ ?(pounds|lbs|lb|kg|kilos|kilograms) (in|by|within) (a|one|two|three|\d+) (day|days|week|weeks)|crash diet\w*|extreme diet\w*|water fast\w*|fast(ing)? for (\d+|several|many|a few) (days|weeks)|lose weight fast|lose weight quickly|get skinny)\b/],
   ['medication', /\b(come off|coming off|stop taking|quit taking|wean (myself )?off|taper( off)?) (my )?(meds|medication|medications|pills|antidepressants|benzos|lithium|insulin)\b|\b(withdraw(al)? from|detox (from|myself)|cold turkey)\b|\b(stop|quit|give up|cut (down|back) on) (drinking|alcohol|booze|weed|cannabis|opioids|painkillers|pills|drugs|benzos)\b/],
+  ['body', /\b((need|get by on|survive on|live on) (less|little|no) sleep|sleep (less|only|just) \d|(\d|one|two|three|four) hours? (of sleep )?(a|each|per) night|stop sleeping|polyphasic|go without sleep|stay awake for (\d+|two|three|several) days|train (through|despite) (pain|an injury)|ignore (the )?pain)\b/],
   ['abuse', /\b(abuse[sd]? me|abusive (partner|husband|wife|boyfriend|girlfriend|relationship)|domestic (violence|abuse)|(hits|beats|chokes|hurts) me|afraid of my (partner|husband|wife|boyfriend|girlfriend))\b/],
   ['clinical', /\b(cure|treat|heal|fix|get rid of|get over|overcome|beat|manage) (my )?(depression|anxiety|social anxiety|ptsd|ocd|adhd|bipolar|trauma|panic( attacks)?|phobia|eating disorder|addiction|insomnia)\b|\b(psychosis|hearing voices|hallucinat\w*|panic attacks (every|each|daily)|diagnos(e|is|ed) (me|myself|my))\b/],
 ]

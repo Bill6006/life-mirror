@@ -153,7 +153,7 @@ const ANSWERED = /\b(they|she|he|someone|the other person|your (friend|partner|d
 /** "Whatever they answer" says the opposite: struck out before a done-when is read. */
 const WHATEVER = /\b(whatever|however|whether or not|no matter (what|how)|even if)\s+(they|she|he|someone|anyone|the other person|your (friend|partner|date))\b[^.,;]*/gi
 /** A rep done with a partner or a date, by its words: it must say it needs a partner, so it waits and carries the app's check. */
-const PARTNER_WORDS = /\b(your (partner|date|girlfriend|boyfriend|wife|husband|spouse)|on (a|the|your) (first |second |next )?date|the person you('re| are) (seeing|dating)|someone you('re| are) (seeing|dating))\b/i
+const PARTNER_WORDS = /\b(your (girlfriend|boyfriend|wife|husband|spouse|fianc[ée]e?)|on (a|the|your) (first |second |next )?date|the person you('re| are) (seeing|dating)|someone you('re| are) (seeing|dating)|romantic partner)\b/i
 /** A rep that asks one person for something they could refuse, by its words: it must say so, and carries the app's own bar. */
 const ASK_WORDS = /\b(ask (them|him|her|someone|one person) (out|to|for|if|whether)|invite (them|him|her|someone|one person)|suggest (meeting|a (plan|time|date|coffee|walk))|(say|tell (them|him|her)) (that )?you('d| would) like to see)\b/i
 /** The app's own words on every ask, never written by the generator: the power bar and the one ask (the design's §4 item 12). */
@@ -365,6 +365,16 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
   const people = moving.length > 0 && moving.filter((r) => r.with).length * 2 >= moving.length
   if (people && d.start?.screen !== 'socialFear') say('most of its stage-moving reps are done with someone, so it opens on the app’s social-fear screen with an exposure strand a yes opens')
 
+  // The share (round of the stress set): beside another Path a generated Path's own reps take the People row three days in
+  // seven, so the strands that run together ask at most three reps a week in all; a strand that waits runs with those it
+  // does not pause.
+  const rate = (s: Dossier['strands'][number]) => s.rule.reps / Math.max(1, s.rule.withinWeeks)
+  const together = [d.strands.filter((s) => !s.waits), ...d.strands.filter((s) => s.waits).map((w) => [w, ...d.strands.filter((s) => !s.waits && !(w.pauses ?? []).includes(s.id))])]
+  for (const group of together) {
+    const total = group.reduce((a, s) => a + rate(s), 0)
+    if (total > 3 + 1e-9) say(`strands ${group.map((s) => s.id).join(', ')}: their floors ask ${Math.round(total * 10) / 10} reps a week together, more than the three a Path's reps may take beside another Path`)
+  }
+
   // Stages: each the rule moves keeps its floor with any one of its reps taken away (a newcomer who never comes, a rep dropped).
   for (const s of d.strands) {
     for (const st of s.stages) {
@@ -390,6 +400,7 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
     for (const b of g.requires ?? []) if (!bs.some((x) => x.id === b)) say(`${where}: it requires ${b}, which its strand does not check`)
     if ((g.requires?.length ?? 0) > g.met) say(`${where}: it requires more behaviours than it asks to be met`)
     const here = d.reps.filter((r) => r.strand === g.strand && r.advances && r.stage === g.stage)
+    if (g.confirmed > 0 && g.stage === 1 && !here.some((r) => r.record)) say(`${where}: a first stage's check from outside the moment can always be given alone, a recording of yourself, never only someone else's`)
     if (g.confirmed > 0 && here.filter((r) => r.record || r.handOver).length < 2) say(`${where}: a check from outside the moment needs two or more of its reps that can give one (a recording of yourself, or an audience's)`)
     if (g.kinds > new Set(here.flatMap((r) => r.settings)).size) say(`${where}: it asks for ${g.kinds} kinds of setting, more than its reps hold`)
   }

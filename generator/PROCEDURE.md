@@ -47,7 +47,9 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    strand's stages are context cells along those dimensions, from the domain: two to six, never a number chosen in
    advance. Each strand has a floor (reps, different reps, kinds of setting, within weeks, the smaller version after
    refusals, re-entry after quiet weeks), at least the compiler's floor for its kind, and its numbers are design
-   judgment, said so in its decision.
+   judgment, said so in its decision. Beside another Path a Path's own reps take the day's People row three days in
+   seven, so the strands that run together ask at most three reps a week in all (a nightly habit is counted three
+   nights a week, however often it is done).
    - **Ask of every stage whether the person's own reps alone can reach it.** A part that depends on someone else's
      yes or on a relationship (being with a partner, a group that takes you in) is a strand that **waits**: off
      until the person turns it on, their word, dated, undone by turning it off. It names the strands it `pauses`
@@ -84,7 +86,8 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    settings:** your own checks for a conversation (the person you talked with is never asked to check you); a
    recording only of yourself alone; a hand-over only to someone in an audience (a group, in person). A gate asks
    for a check from outside the moment (`confirmed`) only where two or more of its reps can give one; otherwise it
-   rests on your own checks, and the decision says so. Every component a strand trains before its last stage is
+   rests on your own checks, and the decision says so. A strand's first stage never waits on someone else: its
+   check from outside the moment, if any, is one you can always give alone, a recording of yourself. Every component a strand trains before its last stage is
    shown by a behaviour some gate of that strand requires: one no gate asks for is never measured. A strand's last
    stage has no gate: reaching it is the end, and what must be shown is shown at the stages before it. An attempt
    cap of four to twelve, with a decision saying why (eight unless you have a reason), and checks again later

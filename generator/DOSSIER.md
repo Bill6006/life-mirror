@@ -271,6 +271,11 @@ export interface PathDecision {
   chance. Every stage the rule moves must keep its floor with any one of its stage-moving reps taken away.
 - **Gates measure every component** a strand trains before its last stage: one of its behaviours is required by a gate.
 - **Floors by kind** (`FLOORS` above): a strand's rule asks at least these reps and different reps.
+- **The share.** Beside another Path a Path's own reps take the People row three days in seven, so the strands that
+  run together ask at most three reps a week in all (`reps` over `withinWeeks`, added up); a strand that waits runs
+  with those it does not pause.
+- **A first stage** never waits on someone else: a check from outside the moment there must be one you can give
+  alone, a recording of yourself.
 - **Minutes.** One to ninety a rep, each within the person's minutes a week; the median rep on three days in seven
   within them, since a Path's own reps take the day's People row at most three days in seven.
 - **Decisions** the compiler requires: `structure`, `strand:<id>` for each strand, `gate:<id>` for each strand with

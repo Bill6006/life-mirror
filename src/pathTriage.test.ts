@@ -32,6 +32,11 @@ describe('the stress set, routed as frozen before any run', () => {
     expect(route('Get my life together')).toEqual({ route: 'unclear' })
     expect(route('Get my ex to want me back')).toEqual({ route: 'refuse', kind: 'others' })
     expect(route('Lose 10 pounds in two weeks')).toEqual({ route: 'redirect', kind: 'eating', practice: false })
+    // Safety outside the model: sleep cut far down, or pain pushed through, routes to the app's own words (the stress set).
+    expect(route('Train myself to need less sleep')).toEqual({ route: 'redirect', kind: 'body', practice: false })
+    expect(route('Get used to four hours a night')).toEqual({ route: 'redirect', kind: 'body', practice: false })
+    expect(route('Keep running and ignore the pain in my knee').route).toBe('redirect')
+    expect(route('Sleep better at night')).toEqual({ route: 'fits' })
   })
 })
 

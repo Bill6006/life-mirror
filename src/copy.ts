@@ -1691,6 +1691,7 @@ export const copy = {
           eating: 'Losing weight fast, skipping meals or purging can harm your body, and a doctor can help you find a safe way. Life Mirror makes no Path for this.',
           medication: 'Stopping or changing a medication, alcohol or drugs is safest planned with a doctor or a pharmacist. In the US, the SAMHSA helpline is free and answers day and night: 1-800-662-4357. Life Mirror makes no Path for this.',
           abuse: 'Life Mirror makes no Path for this.',
+          body: 'Cutting sleep far down, or pushing through pain, can harm your body; a doctor can help you find what is safe for you. Life Mirror makes no Path for this.',
         } as Record<string, string>,
       },
       requests: 'Your Path requests',

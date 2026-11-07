@@ -135,7 +135,7 @@ describe('the rules round 1 of the known-answer test added', () => {
     expect(reasons(withRep(p, 'a-return', { needs: ['plan'] }))).toContain('rep a-return: it needs someone\'s yes to a plan, so it moves no stage')
     expect(reasons(withRep(p, 'a-return', { needs: ['partner'] }))).toContain('rep a-return: it needs a partner, so it sits on a strand that waits')
     // Its words give it away: a rep with your partner or on a date says it needs one.
-    expect(reasons(withRep(p, 'a-return', { what: 'Ask your partner what they would like to do this weekend.' }))).toContain('rep a-return: it is done with a partner or a date, so it says it needs a partner')
+    expect(reasons(withRep(p, 'a-return', { what: 'Ask your wife what she would like to do this weekend.' }))).toContain('rep a-return: it is done with a partner or a date, so it says it needs a partner')
     expect(reasons(withRep(p, 'a-return', { what: 'Ask for help with a return at the counter.' }))).toEqual([])
   })
 
@@ -150,9 +150,10 @@ describe('the rules round 1 of the known-answer test added', () => {
     const p = people()
     const handed = { ...p, measurement: { ...p.measurement, strands: p.measurement.strands.map((s) => ({ ...s, handOver: true })) } }
     expect(reasons(withRep(handed, 'the-price', { handOver: true }))).toContain('rep the-price: a hand-over only where there is an audience (a group, in person), never one to one or remote')
-    const gated = { ...handed, measurement: { ...handed.measurement, gates: handed.measurement.gates.map((g) => (g.strand === 'asking' && g.stage === 1 ? { ...g, confirmed: 1 } : g)) } }
-    expect(reasons(withRep(gated, 'the-price', { handOver: true, settings: ['group'] }))).toContain('gate asking/1: a check from outside the moment needs two or more of its reps that can give one (a recording of yourself, or an audience\'s)')
-    expect(reasons(withRep(withRep(gated, 'the-price', { handOver: true, settings: ['group', 'errand'] }), 'the-size', { handOver: true, settings: ['group', 'errand'] }))).toEqual([])
+    // At stage 2, where the stage below can come back: a first stage never waits on someone else's check.
+    const gated = { ...handed, measurement: { ...handed.measurement, gates: handed.measurement.gates.map((g) => (g.strand === 'asking' && g.stage === 2 ? { ...g, confirmed: 1 } : g)) } }
+    expect(reasons(withRep(gated, 'a-comparison', { handOver: true, settings: ['group'] }))).toContain('gate asking/2: a check from outside the moment needs two or more of its reps that can give one (a recording of yourself, or an audience\'s)')
+    expect(reasons(withRep(withRep(gated, 'a-comparison', { handOver: true, settings: ['group', 'errand'] }), 'an-order', { handOver: true, settings: ['group', 'errand'] }))).toEqual([])
   })
 
   it('every component is shown by a behaviour or built from its parts, trained by a rep, a hard prerequisite never trained later', () => {
@@ -202,6 +203,21 @@ describe('the rules round 1 of the known-answer test added', () => {
     expect(reasons({ ...w, reps: w.reps.filter((x) => x.id !== 'together-ask-first') })).toContain('strand together: a strand done with a partner holds a rep of asking in words before anything physical')
     const d = dossier()
     expect(reasons({ ...d, measurement: { ...d.measurement, gates: [...d.measurement.gates, { strand: 'bed', stage: 3, met: 1, requires: ['checked'], weeks: 2, confirmed: 0, kinds: 1 }] } })).toContain('gate bed/3: a strand’s last stage has no gate, as nothing moves on from it')
+  })
+
+  it('the share, a first stage that waits on no one, and the partner words read for what they are (the stress set)', () => {
+    const d = dossier()
+    // Twelve reps in two weeks is six a week: more than the three a Path's reps may take beside another Path.
+    expect(reasons({ ...d, strands: [{ ...d.strands[0], rule: { ...d.strands[0].rule, reps: 12, withinWeeks: 2 } }] })).toContain('strands bed: their floors ask 6 reps a week together, more than the three a Path\'s reps may take beside another Path')
+    // Two strands running together add up.
+    const p = people()
+    expect(reasons({ ...p, strands: p.strands.map((s) => ({ ...s, rule: { ...s.rule, reps: 8, withinWeeks: 4 } })) })).toContain('strands asking, nerves: their floors ask 4 reps a week together, more than the three a Path\'s reps may take beside another Path')
+    const handed = { ...p, measurement: { ...p.measurement, strands: p.measurement.strands.map((s) => ({ ...s, handOver: true })), gates: p.measurement.gates.map((g) => (g.strand === 'asking' && g.stage === 1 ? { ...g, confirmed: 1 } : g)) } }
+    const twoHanded = withRep(withRep(handed, 'the-price', { handOver: true, settings: ['group', 'errand'] }), 'the-size', { handOver: true, settings: ['group', 'errand'] })
+    expect(reasons(twoHanded)).toContain("gate asking/1: a first stage's check from outside the moment can always be given alone, a recording of yourself, never only someone else's")
+    // "Your partner" in a scene or a practice is no romance.
+    expect(reasons(withRep(p, 'the-hours', { what: 'Ask your partner in the exercise what they noticed.' }))).toEqual([])
+    expect(reasons(withRep(p, 'the-hours', { what: 'Ask your wife what she would like this weekend.' }))).toContain('rep the-hours: it is done with a partner or a date, so it says it needs a partner')
   })
 
   it('a smaller version that is smaller, and every component a gated strand trains measured by a gate (round 2)', () => {
