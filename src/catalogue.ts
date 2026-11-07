@@ -363,17 +363,25 @@ interface CatalogueData {
 
 const catalogue = data as unknown as CatalogueData
 
-export const families: readonly Family[] = catalogue.families
+// The lists the app reads (P5): the catalogue's own, and any Path the generator made that you have in your record,
+// joined at runtime by registerGenerated. The arrays are the same objects for the whole run, so every module that
+// imported them sees what is registered; nothing of the catalogue's own entries ever changes but the placements a
+// generated Path adds to reps it shares, which go again when it does.
+const allFamilies: Family[] = [...catalogue.families]
+const allMoves: Move[] = [...catalogue.moves]
+const allPaths: Path[] = [...catalogue.paths]
+
+export const families: readonly Family[] = allFamilies
 /** Every entry, proposed ones included: what the catalogue screen and the document show. */
-export const moves: readonly Move[] = catalogue.moves
+export const moves: readonly Move[] = allMoves
 export const learnedTags: readonly LearnedTag[] = catalogue.learnedTags
 export const filterTags: readonly FilterTag[] = catalogue.filterTags
 /** The paths as content: Social and Partner (Parts 23 and 26), and any Path the catalogue adds (P1). */
-export const paths: readonly Path[] = catalogue.paths
+export const paths: readonly Path[] = allPaths
 
 /** A Path by id, or undefined for an id the catalogue no longer holds. */
 export function findPath(id: PathId): Path | undefined {
-  return catalogue.paths.find((p) => p.id === id)
+  return allPaths.find((p) => p.id === id)
 }
 
 /** Whether a placement is on a strand: the empty strand is a Path's own when it has none. */
@@ -394,7 +402,7 @@ export function guardrailOf(m: Pick<Move, 'path' | 'guardrail'>, id: PathId): st
 
 /** The reps a path holds, in stage order, optionally those offered at one stage, a spanning rep at each stage it spans; on a strand, that strand's alone. */
 export function pathReps(id: PathId, stage?: number, strand?: string): Move[] {
-  return catalogue.moves
+  return allMoves
     .filter((m) => {
       const place = m.path?.[id]
       return place !== undefined && inStrand(place, strand) && (stage === undefined || onStage(m, id, stage, strand))
@@ -404,7 +412,7 @@ export function pathReps(id: PathId, stage?: number, strand?: string): Move[] {
 
 /** The reps a stage introduces: those whose place begins there, for reading a path in full, each once; on a strand, that strand's alone. */
 export function repsIntroducedAt(id: PathId, stage: number, strand?: string): Move[] {
-  return catalogue.moves.filter((m) => {
+  return allMoves.filter((m) => {
     const place = m.path?.[id]
     return place?.stage === stage && inStrand(place, strand)
   })
@@ -430,6 +438,49 @@ export function isPathOnly(m: Move): boolean {
 export const liveMoves: readonly Move[] = moves.filter((m) => !isProposed(m) && !isParked(m) && !isPathOnly(m))
 
 const byId = new Map(moves.map((m) => [m.id, m]))
+
+/** A Path the generator made, compiled, as your record holds it: the Path, its own reps, and the placements it adds to reps it shares. */
+export interface GeneratedEntry {
+  path: Path
+  reps: readonly Move[]
+  shared: readonly { move: string; place: PathPlace }[]
+}
+
+/** The generated Paths registered now, by id. */
+const registered = new Set<string>()
+
+/**
+ * Your generated Paths, joined to the catalogue for the engine to run (P5). A call replaces the last: what it no
+ * longer names goes, with its reps, its family and the placements it added. A catalogue Path's id, or a rep id the
+ * catalogue holds, is never taken over: such an entry is skipped.
+ */
+export function registerGenerated(entries: readonly GeneratedEntry[]): void {
+  for (let k = allPaths.length - 1; k >= 0; k--) if (registered.has(allPaths[k].id)) allPaths.splice(k, 1)
+  for (let k = allFamilies.length - 1; k >= 0; k--) if (registered.has(allFamilies[k].id)) allFamilies.splice(k, 1)
+  for (let k = allMoves.length - 1; k >= 0; k--) {
+    if (registered.has(allMoves[k].family)) {
+      byId.delete(allMoves[k].id)
+      allMoves.splice(k, 1)
+    }
+  }
+  for (const m of allMoves) for (const id of registered) if (m.path?.[id]) delete m.path[id]
+  registered.clear()
+  const own = new Set(catalogue.moves.map((m) => m.id))
+  for (const e of entries) {
+    if (catalogue.paths.some((p) => p.id === e.path.id) || registered.has(e.path.id) || e.reps.some((m) => own.has(m.id) || m.family !== e.path.id)) continue
+    registered.add(e.path.id)
+    allPaths.push(e.path)
+    allFamilies.push({ id: e.path.id, name: e.path.name })
+    for (const m of e.reps) {
+      allMoves.push(m)
+      byId.set(m.id, m)
+    }
+    for (const s of e.shared) {
+      const m = byId.get(s.move)
+      if (m && own.has(m.id)) m.path = { ...m.path, [e.path.id]: s.place }
+    }
+  }
+}
 
 export function moveById(id: string): Move {
   const m = byId.get(id)

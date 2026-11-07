@@ -102,3 +102,27 @@ describe('the rules a dossier cannot pass', () => {
     expect(r.some((x) => x.includes('doneWhen must begin “Done ”'))).toBe(true)
   })
 })
+
+describe('a compiled Path, registered', () => {
+  it('runs in the engine like any Path, and leaves the catalogue exactly as it was once it goes', async () => {
+    const { families, findPath, moves: all, pathReps, paths, registerGenerated } = await import('./catalogue')
+    const { pathToday } = await import('./pathStage')
+    const before = { moves: all.length, paths: paths.length, families: families.length, ask: JSON.stringify(all.find((m) => m.id === 'ask-follow-up')) }
+    const d = dossier()
+    const r = compileDossier({ ...d, shared: [{ move: 'ask-follow-up', strand: 'cooking', stage: 1, advances: false, guardrail: 'Your part only.' }] }, CTX)
+    if (!r.ok) throw new Error(r.reasons.join('; '))
+    registerGenerated([{ path: r.path, reps: r.reps, shared: r.shared }])
+    expect(findPath(r.path.id)?.name).toBe('Cooking')
+    expect(pathReps(r.path.id).map((m) => m.id)).toContain('ask-follow-up')
+    const aim = { id: 77, kind: 'path' as const, path: r.path.id, stepMoveId: null, createdAt: '2026-11-01T12:00:00.000Z', archivedAt: null }
+    const v = pathToday({ aim, offers: [], outcomes: [], ctx: null, day: '2026-11-07', block: 'evening' })
+    expect(v.strands.map((s) => [s.strand.id, s.state.stage])).toEqual([['cooking', 1]])
+    expect(v.pick?.moveId.startsWith(r.path.id) || v.pick?.moveId === 'ask-follow-up').toBe(true)
+    // A catalogue Path's id is never taken over.
+    registerGenerated([{ path: { ...r.path, id: 'social' }, reps: [], shared: [] }])
+    expect(paths.filter((p) => p.id === 'social')).toHaveLength(1)
+    registerGenerated([])
+    expect({ moves: all.length, paths: paths.length, families: families.length, ask: JSON.stringify(all.find((m) => m.id === 'ask-follow-up')) }).toEqual(before)
+    expect(findPath(r.path.id)).toBeUndefined()
+  })
+})
