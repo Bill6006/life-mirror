@@ -74,6 +74,8 @@ export interface DossierRep {
   needs?: RepNeed[]
   /** What doing it gives a later rep. */
   gives?: RepNeed[]
+  /** It asks one person for something they could refuse (a plan, a date, a favour, their interest): it carries the app's own bar. */
+  asks?: boolean
 }
 
 /** A placement on a rep the catalogue already holds: an overlap composed, counted once, never duplicated. */
@@ -152,6 +154,12 @@ const ANSWERED = /\b(they|she|he|someone|the other person|your (friend|partner|d
 const WHATEVER = /\b(whatever|however|whether or not|no matter (what|how)|even if)\s+(they|she|he|someone|anyone|the other person|your (friend|partner|date))\b[^.,;]*/gi
 /** A rep done with a partner or a date, by its words: it must say it needs a partner, so it waits and carries the app's check. */
 const PARTNER_WORDS = /\b(your (partner|date|girlfriend|boyfriend|wife|husband|spouse)|on (a|the|your) (first |second |next )?date|the person you('re| are) (seeing|dating)|someone you('re| are) (seeing|dating))\b/i
+/** A rep that asks one person for something they could refuse, by its words: it must say so, and carries the app's own bar. */
+const ASK_WORDS = /\b(ask (them|him|her|someone|one person) (out|to|for|if|whether)|invite (them|him|her|someone|one person)|suggest (meeting|a (plan|time|date|coffee|walk))|(say|tell (them|him|her)) (that )?you('d| would) like to see)\b/i
+/** The app's own words on every ask, never written by the generator: the power bar and the one ask (the design's §4 item 12). */
+export const ASK_BAR = 'Never someone who cannot freely say no: someone you supervise or who supervises you, who serves you at work, or whom you teach or care for. One ask, and anything but a yes is final.'
+/** A rep of asking before anything physical: the strand done with a partner holds one. */
+const CONSENT_WORDS = /\b(consent|ask (in words )?before (any|a|the) (touch|kiss|physical|intimacy)|ask before anything physical)\b/i
 const FAITH = /\b(church|pray(er|ing)?|bible|worship|sermon|scripture|sabbath)\b/i
 /** The Partner path's own monthly check, in the order of its questions. */
 const CHECK_IDS = ['safety', 'conduct', 'doubt'] as const
@@ -329,6 +337,7 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
     }
     for (const t of [r.what, r.doneWhen]) if (RATING.test(t)) say(`${where}: it asks you to record what the Path does not measure (a rating, a score, how it went): “${t}”`)
     if ([r.name, r.what, r.doneWhen, r.cue].some((x) => PARTNER_WORDS.test(x)) && !r.needs?.includes('partner')) say(`${where}: it is done with a partner or a date, so it says it needs a partner`)
+    if ([r.name, r.what, r.doneWhen].some((x) => ASK_WORDS.test(x)) && !r.asks) say(`${where}: it asks one person for something they could refuse, so it says it asks and carries the app’s own bar`)
     if (ANSWERED.test(r.doneWhen.replace(WHATEVER, ''))) say(`${where}: done by your own act, whatever anyone answers: “${r.doneWhen}”`)
     // Calls and messages move a stage only on a strand that says they do.
     if (r.advances && strand && !strand.remote && remoteOnly(r)) say(`${where}: a call or a message moves no stage of ${strand.id}, which says calls and messages do not`)
@@ -350,6 +359,7 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
   // A partner's strand is one: it carries the app's own check.
   const partnerStrands = [...new Set(d.reps.filter((r) => r.needs?.includes('partner')).map((r) => r.strand))]
   if (partnerStrands.length > 1) say('reps that need a partner sit on one strand, which carries the app’s own check')
+  for (const s of partnerStrands) if (!d.reps.some((r) => r.strand === s && [r.name, r.what, r.doneWhen].some((x) => CONSENT_WORDS.test(x)))) say(`strand ${s}: a strand done with a partner holds a rep of asking in words before anything physical`)
   // A people Path opens on the app's social-fear screen, its fear strand opened by a yes: the domain decides, not the wording.
   const moving = d.reps.filter((r) => r.advances)
   const people = moving.length > 0 && moving.filter((r) => r.with).length * 2 >= moving.length
@@ -375,6 +385,7 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
   for (const g of m.gates) {
     const where = `gate ${g.strand}/${g.stage}`
     const bs = behavioursOf(g.strand)
+    if (g.stage >= (strandOf(g.strand)?.stages.length ?? 0)) say(`${where}: a strand’s last stage has no gate, as nothing moves on from it`)
     if (!g.requires?.length) say(`${where}: it names the behaviours its stage exists for`)
     for (const b of g.requires ?? []) if (!bs.some((x) => x.id === b)) say(`${where}: it requires ${b}, which its strand does not check`)
     if ((g.requires?.length ?? 0) > g.met) say(`${where}: it requires more behaviours than it asks to be met`)
@@ -477,7 +488,7 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
       crutch: r.crutch,
       doneWhen: r.doneWhen,
       method: r.method,
-      ...(r.guardrail ? { guardrail: r.guardrail } : {}),
+      ...(r.guardrail || r.asks ? { guardrail: [r.guardrail, r.asks ? ASK_BAR : ''].filter(Boolean).join(' ') } : {}),
       ...(r.record ? { record: true } : {}),
       ...(r.handOver ? { handOver: true } : {}),
       ...([r.name, r.what, r.cue].some((t) => FAITH.test(t)) ? { hiddenWith: 'faith' as const } : {}),

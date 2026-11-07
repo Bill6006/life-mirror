@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { moves } from './catalogue'
 import { library } from './library'
-import { compileDossier, partnerCheck, type Dossier, type DossierRep } from './pathCompile'
-import { dossierForTests, peopleDossierForTests as people, PROVENANCE_FOR_TESTS } from './pathCompile.fixture'
+import { ASK_BAR, compileDossier, partnerCheck, type Dossier, type DossierRep } from './pathCompile'
+import { dossierForTests, peopleDossierForTests as people, PROVENANCE_FOR_TESTS, waitingDossierForTests } from './pathCompile.fixture'
 
 // The generator's compiler (P5, 2026-11-06): a dossier the model drafted becomes a Path only through the rules. A
 // well-formed one compiles into the catalogue's shape, its own and labelled experimental; each broken rule is
@@ -184,12 +184,24 @@ describe('the rules round 1 of the known-answer test added', () => {
     const p = people()
     const together = { id: 'together', kind: 'skill' as const, name: 'Together', what: 'Once you are seeing someone.', components: ['ask-clearly'], waits: true, pauses: ['asking'], stages: p.strands[0].stages.slice(0, 2), rule: p.strands[0].rule }
     const reps: DossierRep[] = ['a', 'b', 'c', 'd'].map((x) => ({ ...p.reps[4], id: `together-${x}`, strand: 'together', stage: 1, needs: ['partner'], settings: ['oneToOne'] }))
-    const r = compileDossier({ ...p, strands: [...p.strands, together], reps: [...p.reps, ...reps, { ...reps[0], id: 'together-e', stage: 2 }], decisions: [...p.decisions, { ...p.decisions[0], id: 'together', element: 'strand:together' }] }, CTX)
+    const consent: DossierRep = { ...reps[0], id: 'together-ask-first', advances: false, what: 'Ask before anything physical, in plain words.' }
+    const r = compileDossier({ ...p, strands: [...p.strands, together], reps: [...p.reps, ...reps, { ...reps[0], id: 'together-e', stage: 2 }, consent], decisions: [...p.decisions, { ...p.decisions[0], id: 'together', element: 'strand:together' }] }, CTX)
     expect(r.ok ? [] : r.reasons).toEqual([])
     if (!r.ok) return
     expect(r.path.check).toEqual(partnerCheck('together'))
     expect(r.path.check?.questions.map((q) => q.id)).toEqual(['safety', 'conduct', 'doubt'])
     expect(r.path.strands?.find((s) => s.id === 'together')).toMatchObject({ waits: true, pauses: ['asking'] })
+  })
+
+  it('an ask says so and carries the app’s own bar; a partner’s strand practises consent; no gate on a last stage (round 2)', () => {
+    const p = people()
+    expect(reasons(withRep(p, 'a-recommendation', { what: 'Ask them out for a coffee this week.' }))).toContain('rep a-recommendation: it asks one person for something they could refuse, so it says it asks and carries the app’s own bar')
+    const r = compileDossier(withRep(p, 'a-recommendation', { what: 'Ask them out for a coffee this week.', asks: true }), CTX)
+    expect(r.ok && r.reps.find((m) => m.id.endsWith('-a-recommendation'))?.guardrail).toBe(`One question, and thanks whatever the answer; never when they are busy with someone. ${ASK_BAR}`)
+    const w = waitingDossierForTests()
+    expect(reasons({ ...w, reps: w.reps.filter((x) => x.id !== 'together-ask-first') })).toContain('strand together: a strand done with a partner holds a rep of asking in words before anything physical')
+    const d = dossier()
+    expect(reasons({ ...d, measurement: { ...d.measurement, gates: [...d.measurement.gates, { strand: 'bed', stage: 3, met: 1, requires: ['checked'], weeks: 2, confirmed: 0, kinds: 1 }] } })).toContain('gate bed/3: a strand’s last stage has no gate, as nothing moves on from it')
   })
 
   it('a smaller version that is smaller, and every component a gated strand trains measured by a gate (round 2)', () => {

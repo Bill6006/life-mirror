@@ -63,6 +63,8 @@ export interface DossierRep {
   needs?: RepNeed[]
   /** What doing it gives a later rep. */
   gives?: RepNeed[]
+  /** It asks one person for something they could refuse (a plan, a date, a favour, their interest): it carries the app's own bar. */
+  asks?: boolean
 }
 
 /** A placement on a rep the catalogue already holds: an overlap composed, counted once, never duplicated. */
@@ -256,6 +258,9 @@ export interface PathDecision {
   on and off on the Path's card; at least one stays on. A strand that `waits` is off until they turn it on, dated;
   while it is on, the strands it `pauses` are off, and they come back with their stages kept when it goes off. A
   strand that is off offers nothing, and its checks again later wait.
+- **An ask** (`asks`): a rep that asks one person for something they could refuse carries the app's own bar,
+  appended to its guardrail word for word: never someone who cannot freely say no, one ask, anything but a yes
+  final. A strand done with a partner holds a rep of asking in words before anything physical.
 - **The app's own private check.** A strand whose reps need a partner carries the app's monthly private check,
   questions and help written by the app, never by you; its answers are never kept.
 - **Calls and messages.** On a strand without `remote`, a rep that can be done by a call or a message moves no stage.

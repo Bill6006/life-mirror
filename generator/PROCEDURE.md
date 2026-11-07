@@ -69,7 +69,13 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    needs, in enough kinds of setting, so the stage holds when one rep cannot happen (no newcomer comes, a rep is
    dropped).
    Every stage the rule moves holds a rep below high effort: after refusals the app offers the stage's lightest rep,
-   so it must be lighter. A guardrail never makes a rep wait on someone else's answer: when the other person keeps
+   so it must be lighter. A rep that asks one person for something they could refuse (a plan, a date, a favour,
+   their interest) says so (`asks`): the app adds its own bar, never someone who cannot freely say no. Needing
+   someone else's yes keeps a thing out of the count, never out of the Path: a phase reached through a yes (a date,
+   being with someone) is a strand that waits, with your own practice in it, and a strand done with a partner holds
+   a rep of asking in words before anything physical. List every kind of setting a rep fits, by where it happens and
+   who is there (an ask at a place your week holds, just the two of you, is both). A guardrail never makes a rep wait
+   on someone else's answer: when the other person keeps
    it light, or says no, the rep is still done by your own offer. A rep that needs a plan someone agreed to is
    offered like any other, and on a day with no plan you answer that there was no chance.
 8. **Measurement**, in P2's shape: per strand the behaviours a rep checks (your own acts, never anyone's reaction),

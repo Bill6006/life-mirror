@@ -2412,12 +2412,76 @@
     "doneWhen": "Done when you have asked once, whatever the answer.",
     "method": "real-rep",
     "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
+   },
+   {
+    "id": "g-390aa7b2-together-ask-first",
+    "name": "Ask before anything physical",
+    "family": "g-390aa7b2",
+    "what": "Ask before anything physical, in plain words, and take anything but a clear yes as a no.",
+    "source": {
+     "who": "Beidel et al.",
+     "what": "Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded",
+     "year": 2014,
+     "strength": "moderate"
+    },
+    "minutes": 5,
+    "effort": "low",
+    "needs": [
+     "anotherPerson"
+    ],
+    "with": "adult",
+    "targets": [
+     {
+      "reading": "mood",
+      "direction": "up",
+      "window": "laterToday"
+     }
+    ],
+    "conflicts": [],
+    "replaces": [],
+    "countsToward": [],
+    "when": [
+     "morning",
+     "afternoon",
+     "evening"
+    ],
+    "tags": {
+     "ingredients": [
+      "withPeople",
+      "short"
+     ],
+     "reward": [
+      "mastery"
+     ],
+     "intensity": "low"
+    },
+    "costToAssign": "low",
+    "prior": {
+     "effect": 0,
+     "note": "A generated Path’s rep, offered through the Path alone and never by the day’s draw: no starting belief."
+    },
+    "status": "path",
+    "path": {
+     "g-390aa7b2": {
+      "stage": 1,
+      "advances": false,
+      "strand": "together"
+     }
+    },
+    "settings": [
+     "oneToOne"
+    ],
+    "cue": "The question in one plain sentence.",
+    "crutch": "Rehearsing it until the moment passes.",
+    "doneWhen": "Done when you have asked once, whatever the answer.",
+    "method": "real-rep",
+    "guardrail": "One question, and thanks whatever the answer; never when they are busy with someone."
    }
   ],
   "shared": [],
   "cards": [],
   "results": [],
   "id": "g-390aa7b2:1",
-  "hash": "95a3c2def09bb053"
+  "hash": "68929f0253c0a3ed"
  }
 ]

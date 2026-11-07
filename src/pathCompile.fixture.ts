@@ -70,7 +70,8 @@ export function waitingDossierForTests(): Dossier {
   const p = peopleDossierForTests()
   const together = { id: 'together', kind: 'skill' as const, name: 'Together', what: 'Once you are seeing someone: your own part.', components: ['ask-clearly'], waits: true, pauses: ['asking'], stages: p.strands[0].stages.slice(0, 2), rule: p.strands[0].rule }
   const reps: DossierRep[] = ['a', 'b', 'c', 'd'].map((x) => ({ ...p.reps[4], id: `together-${x}`, strand: 'together', stage: 1, needs: ['partner'], settings: ['oneToOne'] }))
-  return { ...p, goal: 'Get comfortable asking for help, at a counter and at home', strands: [...p.strands, together], reps: [...p.reps, ...reps, { ...reps[0], id: 'together-e', stage: 2 }], decisions: [...p.decisions, { ...p.decisions[0], id: 'together', element: 'strand:together' }] }
+  const consent: DossierRep = { ...reps[0], id: 'together-ask-first', stage: 1, advances: false, name: 'Ask before anything physical', what: 'Ask before anything physical, in plain words, and take anything but a clear yes as a no.', trains: ['ask-clearly'] }
+  return { ...p, goal: 'Get comfortable asking for help, at a counter and at home', strands: [...p.strands, together], reps: [...p.reps, ...reps, { ...reps[0], id: 'together-e', stage: 2 }, consent], decisions: [...p.decisions, { ...p.decisions[0], id: 'together', element: 'strand:together' }] }
 }
 
 /** A small, well-formed dossier for a garden goal: one skill strand, three stages, solo reps. */
