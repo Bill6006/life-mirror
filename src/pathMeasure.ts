@@ -30,6 +30,8 @@ export interface StageGate {
   stage: number
   /** Behaviours a rep must meet. */
   met: number
+  /** The behaviours its stage exists for, each shown on every rep that counts (P5); absent, any `met` of them. */
+  requires?: readonly string[]
   /** Separate weeks with such a rep. */
   weeks: number
   /** Of them, confirmed from outside the moment: a recording checked later, or someone who was there. */
@@ -75,13 +77,27 @@ export function placeIn(path: Pick<Path, 'id'>, rep: Pick<Move, 'path'> | undefi
   return place ? { strand: place.strand ?? ONE_STRAND, place } : null
 }
 
+/** A rep's best view and the behaviours in it: from outside the moment when there is one, else your own right after. */
+function bestView(r: RepChecks, behaviours: readonly Behaviour[]): { met: number; outside: boolean; ids: readonly string[] } {
+  const ids = new Set(behaviours.map((b) => b.id))
+  const mine = (xs: readonly string[] | undefined) => (xs ?? []).filter((x) => ids.has(x))
+  const recorded = mine(r.recordingChecks)
+  const other = mine(r.otherChecks)
+  const outside = recorded.length >= other.length ? recorded : other
+  const own = mine(r.checks)
+  return outside.length >= own.length && (r.recordingChecks || r.otherChecks) ? { met: outside.length, outside: true, ids: outside } : { met: own.length, outside: false, ids: own }
+}
+
 /** A rep's best view of the behaviours: from outside the moment when there is one, else your own right after. */
 export function viewOf(r: RepChecks, behaviours: readonly Behaviour[]): { met: number; outside: boolean } {
-  const ids = new Set(behaviours.map((b) => b.id))
-  const count = (xs: readonly string[] | undefined) => (xs ?? []).filter((x) => ids.has(x)).length
-  const outside = Math.max(count(r.recordingChecks), count(r.otherChecks))
-  const own = count(r.checks)
-  return outside >= own && (r.recordingChecks || r.otherChecks) ? { met: outside, outside: true } : { met: own, outside: false }
+  const v = bestView(r, behaviours)
+  return { met: v.met, outside: v.outside }
+}
+
+/** Whether a rep shows a gate: enough of the behaviours in its best view, each one its stage requires among them (P5). */
+export function shows(r: RepChecks, gate: Pick<StageGate, 'met' | 'requires'>, behaviours: readonly Behaviour[]): boolean {
+  const v = bestView(r, behaviours)
+  return v.met >= gate.met && (gate.requires ?? []).every((id) => v.ids.includes(id))
 }
 
 /** The Monday a day's week begins on, so two reps in one week count as one week. */
@@ -112,8 +128,7 @@ export function readGate(gate: StageGate, behaviours: readonly Behaviour[], reps
   const meeting: MeasuredRep[] = []
   let metOn: string | null = null
   for (const r of mine) {
-    const v = viewOf(r, behaviours)
-    if (v.met >= gate.met) meeting.push(r)
+    if (shows(r, gate, behaviours)) meeting.push(r)
     const weeks = new Set(meeting.map((m) => weekOf(m.day))).size
     const confirmed = meeting.filter((m) => viewOf(m, behaviours).outside).length
     const kinds = new Set(meeting.map((m) => m.setting)).size
@@ -148,9 +163,9 @@ export function maintenanceOf(shownOn: string, gate: StageGate, behaviours: read
     if (day > today) return { kind: 'holding', next: day }
     const first = done.find((r) => r.day >= day)
     if (!first) return daysBetween(day, today) > CHECK_GRACE_DAYS ? { kind: 'refresh', since: day } : { kind: 'holding', next: day }
-    if (viewOf(first, behaviours).met < gate.met) {
+    if (!shows(first, gate, behaviours)) {
       // Not met at the check: the stage's reps come back until a later rep of it meets the behaviours again.
-      const again = done.find((r) => r.day > first.day && viewOf(r, behaviours).met >= gate.met)
+      const again = done.find((r) => r.day > first.day && shows(r, gate, behaviours))
       if (!again) return { kind: 'refresh', since: first.day }
     }
   }
@@ -173,14 +188,26 @@ export function calibration(reps: readonly RepChecks[], behaviours: readonly Beh
   return { reps: n, yours, outside }
 }
 
-/** The strands you have on: those you chose, else every strand but the one the Path's start opens on a yes. */
+/** The strands you have on: those you chose, else every strand but the one the Path's start opens on a yes and those that wait. */
 export function activeStrands(path: Pick<Path, 'strands' | 'start'>, aim: { strands?: readonly string[] }): string[] {
   const all = (path.strands ?? []).map((s) => s.id)
   const chosen = (aim.strands ?? []).filter((id) => all.includes(id))
   if (chosen.length) return chosen
-  const off = path.start?.opens
-  const rest = all.filter((id) => id !== off)
+  const off = new Set([path.start?.opens, ...(path.strands ?? []).filter((s) => s.waits).map((s) => s.id)])
+  const rest = all.filter((id) => !off.has(id))
   return rest.length ? rest : all
+}
+
+/** The strands on after a tap on one (P5): turning on a strand that waits turns off those it pauses, and turning it off brings them back. Empty when it would leave none. */
+export function strandsAfterTap(path: Pick<Path, 'strands'>, on: readonly string[], id: string): string[] {
+  const all = (path.strands ?? []).map((s) => s.id)
+  const pauses = (path.strands?.find((s) => s.id === id)?.pauses ?? []).filter((x) => all.includes(x) && x !== id)
+  return on.includes(id) ? all.filter((x) => x !== id && (on.includes(x) || pauses.includes(x))) : all.filter((x) => x === id || (on.includes(x) && !pauses.includes(x)))
+}
+
+/** Whether a Path's private check is open this month (P5): its strand is on and this month's is not answered. */
+export function checkDue(path: Pick<Path, 'strands' | 'start' | 'check'>, aim: { strands?: readonly string[]; checkedMonth?: string }, today: string): boolean {
+  return Boolean(path.check) && activeStrands(path, aim).includes(path.check?.strand ?? '') && aim.checkedMonth !== today.slice(0, 7)
 }
 
 /** A Path's done and answered reps as the measurement reads them: each step's answer with the behaviours its record holds. */
@@ -248,7 +275,7 @@ export function strandReader(path: Pick<Path, 'id' | 'measurement'>, strand: str
 /** Practice apart from what is shown: reps done or partly done, and the kinds of setting the current stage has been shown in. */
 export function twoNumbers(gate: StageGate | undefined, behaviours: readonly Behaviour[], reps: readonly MeasuredRep[], atStage: readonly MeasuredRep[]): { practised: number; shownIn: number; of: number } {
   const practised = reps.filter((r) => r.outcome === 'done' || r.outcome === 'partly').length
-  const shown = gate ? new Set(atStage.filter((r) => r.outcome === 'done' && viewOf(r, behaviours).met >= gate.met).map((r) => r.setting)).size : 0
+  const shown = gate ? new Set(atStage.filter((r) => r.outcome === 'done' && shows(r, gate, behaviours)).map((r) => r.setting)).size : 0
   return { practised, shownIn: shown, of: gate?.kinds ?? 0 }
 }
 

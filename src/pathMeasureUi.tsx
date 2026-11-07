@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { blockAt, daysBetween } from './blocks'
-import { hasMove, moveById, ONE_STRAND, paths, type Path, type PathId } from './catalogue'
+import { hasMove, moveById, ONE_STRAND, paths, type Path, type PathCheck, type PathId } from './catalogue'
 import { copy } from './copy'
 import { db, EXPECTANCIES, type Aim, type Outcome } from './db'
 import { fill } from './format'
 import { useLive } from './live'
-import { checkRecording, deleteRecording, recordingFor, recordingList, saveRecording, setOtherChecks, setRepSheet, setStrands } from './measureFlow'
+import { checkedThisMonth, checkRecording, deleteRecording, recordingFor, recordingList, saveRecording, setOtherChecks, setRepSheet, setStrands } from './measureFlow'
 import { setExpectancy } from './pathFlow'
-import { calibration, measuredReps, recordingsDue, type Behaviour } from './pathMeasure'
+import { calibration, measuredReps, recordingsDue, strandsAfterTap, type Behaviour } from './pathMeasure'
 import { StageProgress } from './ui'
 import type { PathToday } from './pathStage'
 
@@ -493,12 +493,55 @@ export function StrandsSetting({ aim, path, on }: { aim: Aim; path: Path; on: re
         on={(id) => on.includes(id)}
         words={(id) => path.strands?.find((s) => s.id === id)?.name ?? id}
         testid="path-strand-on"
-        onTap={(id) => {
-          const next = on.includes(id) ? on.filter((x) => x !== id) : all.filter((x) => x === id || on.includes(x))
-          void setStrands(aim.id as number, next)
-        }}
+        onTap={(id) => void setStrands(aim.id as number, strandsAfterTap(path, on, id))}
       />
       <span class="sub">{c.strandsNote}</span>
+      {(path.strands ?? [])
+        .filter((s) => s.waits)
+        .map((s) => {
+          const paused = (s.pauses ?? []).map((id) => path.strands?.find((x) => x.id === id)?.name).filter(Boolean)
+          return (
+            <span key={s.id} class="sub" data-testid="path-strand-waits">
+              {fill(c.waitsNote, { name: s.name })}
+              {paused.length ? ` ${fill(c.pausesNote, { name: s.name, paused: paused.join(', ') })}` : ''}
+            </span>
+          )
+        })}
+    </div>
+  )
+}
+
+/** The app's own private check on a strand (P5): monthly while it is on; a yes to a marked question shows the fixed help; only the month is kept, never the answers. */
+export function PathCheckCard({ aim, check, today }: { aim: Aim; check: PathCheck; today: string }) {
+  const c = copy.path.check
+  const [answers, setAnswers] = useState<Record<string, boolean>>({})
+  const help = check.questions.some((q) => q.helpOnYes && answers[q.id] === true)
+  return (
+    <div class="ease" data-testid="path-check">
+      <span class="sub ink">{check.name}</span>
+      <span class="sub">{c.note}</span>
+      {check.questions.map((q) => (
+        <div key={q.id} class="ease" data-testid="path-check-question">
+          <span class="sub ink">{q.text}</span>
+          <span class="when" role="group" aria-label={q.text}>
+            {([true, false] as const).map((v) => (
+              <button key={String(v)} type="button" class={answers[q.id] === v ? 'when-chip is-on' : 'when-chip'} aria-pressed={answers[q.id] === v} data-testid={`path-check-${q.id}-${v ? 'yes' : 'no'}`} onClick={() => setAnswers((a) => ({ ...a, [q.id]: v }))}>
+                {v ? c.yes : c.no}
+              </button>
+            ))}
+          </span>
+        </div>
+      ))}
+      {help && (
+        <p class="note ink" data-testid="path-check-help">
+          {check.help}
+        </p>
+      )}
+      <div class="actions">
+        <button type="button" class="pill-quiet" data-testid="path-check-done" onClick={() => void checkedThisMonth(aim.id as number, today.slice(0, 7))}>
+          {c.done}
+        </button>
+      </div>
     </div>
   )
 }

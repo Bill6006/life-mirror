@@ -31,9 +31,19 @@ export function setAsidePath(path: Path, decision: 'later' | 'notThis', reason?:
 }
 
 /** The strands you have on, changed from the card: never none. */
-export async function setStrands(aimId: number, strands: readonly string[]): Promise<void> {
+export async function setStrands(aimId: number, strands: readonly string[], now: Date = new Date()): Promise<void> {
   if (!strands.length) return
-  await db.aims.update(aimId, { strands: [...strands] })
+  // Dated (P5): turning on a strand that waits is your word, undone by turning it off.
+  await db.transaction('rw', db.aims, async () => {
+    const aim = await db.aims.get(aimId)
+    if (!aim) return
+    await db.aims.update(aimId, { strands: [...strands], strandsLog: [...(aim.strandsLog ?? []), { at: now.toISOString(), strands: [...strands] }] })
+  })
+}
+
+/** This month's private check answered (P5): the month alone is kept, never the answers. */
+export async function checkedThisMonth(aimId: number, month: string): Promise<void> {
+  await db.aims.update(aimId, { checkedMonth: month })
 }
 
 async function outcomeOf(offerId: number): Promise<Outcome | undefined> {

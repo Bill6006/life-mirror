@@ -1,38 +1,75 @@
 import { describe, expect, it } from 'vitest'
 import { moves } from './catalogue'
 import { library } from './library'
-import { compileDossier, type Dossier } from './pathCompile'
+import { compileDossier, partnerCheck, type Dossier, type DossierRep } from './pathCompile'
+import { dossierForTests, PROVENANCE_FOR_TESTS } from './pathCompile.fixture'
 
 // The generator's compiler (P5, 2026-11-06): a dossier the model drafted becomes a Path only through the rules. A
 // well-formed one compiles into the catalogue's shape, its own and labelled experimental; each broken rule is
-// refused, every reason at once; too little evidence abstains.
+// refused, every reason at once; too little evidence abstains. The rules after "round 1" came from the known-answer
+// test's comparisons: each names the weakness it closes.
 
-const CTX = { moves, cards: [...library], minutesPerWeek: 90, day: '2026-11-07' }
+const CTX = { moves, cards: [...library], minutesPerWeek: 90, day: '2026-11-07', provenance: PROVENANCE_FOR_TESTS }
 
-/** A small, well-formed dossier for a weeknight cooking goal: one skill strand, three stages, solo reps. */
-function dossier(): Dossier {
-  const stage = (n: number, name: string) => ({ n, name, what: `${name}, on a weeknight.`, notProgress: 'How it tasted to anyone else.' })
-  const rep = (id: string, n: number, method = 'deliberate-practice') => ({ id, strand: 'cooking', stage: n, advances: true, name: `Cook ${id.replace(/-/g, ' ')}`, what: `Cook ${id.replace(/-/g, ' ')} from scratch on a weeknight.`, doneWhen: 'Done when it is on the plate, however it turned out.', cue: 'One step at a time, the recipe open.', crutch: 'Ordering in once it gets late.', settings: ['solo' as const], minutes: 25, effort: 'medium' as const, method })
+const dossier = dossierForTests
+
+/** A people dossier: asking shop staff for help, a skill strand and a fear strand a yes on the app's screen opens. */
+function people(): Dossier {
+  const stage = (n: number, name: string) => ({ n, name, what: `${name}, in a shop.`, notProgress: 'What the staff thought of you.' })
+  const rep = (id: string, strand: string, n: number, trains: string[], method: string, extra: Partial<DossierRep> = {}): DossierRep => ({ id, strand, stage: n, advances: true, name: id.replace(/-/g, ' '), what: `Ask ${id.replace(/-/g, ' ')} at a counter.`, doneWhen: 'Done when you have asked once, whatever the answer.', cue: 'The question in one plain sentence.', crutch: 'Rehearsing it until the moment passes.', guardrail: 'One question, and thanks whatever the answer; never when they are busy with someone.', settings: ['errand'], with: 'adult', minutes: 5, effort: 'low', method, trains, ...extra })
   return {
-    goal: 'Get comfortable cooking dinner from scratch on weeknights',
-    triage: { route: 'fits', types: ['skill', 'habitOfStarting'], why: 'A practical skill with a weeknight cue.' },
-    name: 'Cooking',
-    what: 'Dinner from scratch on weeknights, one dish at a time.',
-    timeline: 'Weeks, dish by dish, with no fixed end.',
-    components: [{ id: 'one-dish', skill: 'One dish start to finish', basis: 'judgment', cards: [] }, { id: 'rotation', skill: 'A rotation of dishes', basis: 'judgment', cards: [] }],
-    links: [{ from: 'one-dish', to: 'rotation', strength: 'soft', basis: 'judgment', cards: [] }],
-    contexts: ['how familiar the dish is'],
-    strands: [{ id: 'cooking', kind: 'skill', name: 'Cooking', what: 'One dish, then a rotation, then something new.', components: ['one-dish', 'rotation'], stages: [stage(1, 'A dish you know'), stage(2, 'Two dishes in turn'), stage(3, 'Something new each week')], rule: { reps: 4, distinctReps: 2, settingKinds: 1, withinWeeks: 4, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 3, note: 'Design judgment: four dinners within four weeks, two different dishes, before the next stage.' } }],
-    reps: [rep('pasta', 1), rep('omelette', 1, 'spaced-practice'), rep('stir-fry', 2), rep('soup', 2, 'spaced-practice'), rep('new-dish', 3, 'varied-contexts')],
-    shared: [],
-    measurement: { strands: [{ strand: 'cooking', behaviours: [{ id: 'picked', words: 'Picked the dish before five', theirs: 'Picked the dish before five' }, { id: 'prepped', words: 'Prepped before the heat', theirs: 'Prepped before the heat' }] }], gates: [{ strand: 'cooking', stage: 1, met: 2, weeks: 2, confirmed: 0, kinds: 1 }, { strand: 'cooking', stage: 2, met: 2, weeks: 2, confirmed: 0, kinds: 1 }], cap: 8, maintenance: { at: [30, 90], every: 180 } },
-    decisions: [{ id: 'structure', element: 'structure', decision: 'One skill strand in three stages, by how familiar the dish is.', basis: 'Practice spread out and varied holds better than massed practice.', origin: 'judgment', cards: ['skill-decay'], uncertainty: 'No trial has tested this order for cooking.', change: 'Your record of which dishes stick.' }, { id: 'cooking-gate', element: 'gate:cooking', decision: 'Two behaviours on two separate weeks.', basis: 'Skills decay without use, so a stage is shown more than once.', origin: 'inference', cards: ['skill-decay'], uncertainty: 'The interval for cooking is not known.', change: 'Your record of what holds.' }],
-    cards: ['skill-decay'],
-    counted: 'Dinners cooked, by dish and by the behaviours checked.',
-    neverCounted: ['how it tasted to anyone else'],
-    excluded: [],
-    settingKinds: { solo: 'At home, on your own.' },
-    provenance: { run: 'test', model: 'opus', promptHash: '0000', retrievedOn: '2026-11-07' },
+    ...dossierForTests(),
+    goal: 'Get comfortable asking shop staff for help',
+    triage: { route: 'fits', types: ['skill', 'exposure'], why: 'A small skill, with nerves for some.' },
+    name: 'Asking',
+    what: 'Asking shop staff for help, from a quick question to a longer one.',
+    timeline: 'Weeks, with no fixed end.',
+    components: [
+      { id: 'open', skill: 'Opening with the question', basis: 'judgment', cards: [], shows: ['opened'] },
+      { id: 'ask-clearly', skill: 'Asking in one plain sentence', basis: 'judgment', cards: [], shows: ['asked'] },
+      { id: 'stay', skill: 'Staying with the moment', basis: 'judgment', cards: [], shows: ['stayed'] },
+    ],
+    links: [{ from: 'open', to: 'ask-clearly', strength: 'hard', basis: 'judgment', cards: [] }],
+    strands: [
+      { id: 'asking', kind: 'skill', name: 'Asking', what: 'A quick question, then a longer one, then somewhere new.', components: ['open', 'ask-clearly'], stages: [stage(1, 'A quick question'), stage(2, 'A longer ask'), stage(3, 'Somewhere new')], rule: { reps: 6, distinctReps: 3, settingKinds: 1, withinWeeks: 6, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 3, note: 'Design judgment.' } },
+      { id: 'nerves', kind: 'exposure', name: 'Nerves', what: 'Small tests of what you expect, then bigger ones.', components: ['stay'], stages: [stage(1, 'Small tests'), stage(2, 'Bigger tests')], rule: { reps: 4, distinctReps: 2, settingKinds: 1, withinWeeks: 6, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 3, note: 'Design judgment.' } },
+    ],
+    reps: [
+      rep('the-shelf', 'asking', 1, ['open'], 'real-rep'),
+      rep('the-price', 'asking', 1, ['open'], 'real-rep'),
+      rep('the-size', 'asking', 1, ['open'], 'real-rep'),
+      rep('the-hours', 'asking', 1, ['open'], 'real-rep'),
+      rep('a-recommendation', 'asking', 2, ['ask-clearly'], 'real-rep'),
+      rep('a-comparison', 'asking', 2, ['ask-clearly'], 'real-rep'),
+      rep('an-order', 'asking', 2, ['ask-clearly'], 'real-rep'),
+      rep('a-return', 'asking', 2, ['ask-clearly'], 'real-rep'),
+      rep('a-new-shop', 'asking', 3, ['ask-clearly'], 'varied-contexts'),
+      rep('test-a-small-fear', 'nerves', 1, ['stay'], 'predict-compare'),
+      rep('test-another', 'nerves', 1, ['stay'], 'predict-compare'),
+      rep('test-a-third', 'nerves', 1, ['stay'], 'graded-exposure'),
+      rep('test-a-bigger-one', 'nerves', 2, ['stay'], 'graded-exposure'),
+    ],
+    measurement: {
+      strands: [
+        { strand: 'asking', behaviours: [{ id: 'opened', words: 'Opened with the question', theirs: 'Opened with the question' }, { id: 'asked', words: 'Asked in one plain sentence', theirs: 'Asked in one plain sentence' }] },
+        { strand: 'nerves', behaviours: [{ id: 'stayed', words: 'Stayed until the answer', theirs: 'Stayed until the answer' }] },
+      ],
+      gates: [
+        { strand: 'asking', stage: 1, met: 1, requires: ['opened'], weeks: 2, confirmed: 0, kinds: 1 },
+        { strand: 'asking', stage: 2, met: 1, requires: ['asked'], weeks: 2, confirmed: 0, kinds: 1 },
+        { strand: 'nerves', stage: 1, met: 1, requires: ['stayed'], weeks: 2, confirmed: 0, kinds: 1 },
+      ],
+      cap: 8,
+      maintenance: { at: [30, 90], every: 180 },
+    },
+    start: { screen: 'socialFear', opens: 'nerves', focus: [{ id: 'asking', words: 'Asking for help' }] },
+    decisions: [
+      ...dossierForTests().decisions.filter((x) => !x.element.includes(':')),
+      ...['strand:asking', 'strand:nerves', 'gate:asking', 'gate:nerves', 'start'].map((element) => ({ id: element.replace(':', '-'), element, decision: 'As designed.', basis: 'Design judgment.', origin: 'judgment' as const, cards: [], uncertainty: 'Not tested.', change: 'Your record.' })),
+    ],
+    counted: 'Questions asked, by rep and by the behaviours checked.',
+    neverCounted: ['what anyone answered'],
+    settingKinds: { errand: 'A shop, a counter, a queue.' },
   }
 }
 
@@ -40,6 +77,9 @@ const reasons = (d: Dossier, ctx = CTX) => {
   const r = compileDossier(d, ctx)
   return r.ok ? [] : r.reasons
 }
+
+/** The dossier with one rep changed. */
+const withRep = (d: Dossier, id: string, patch: Partial<DossierRep>): Dossier => ({ ...d, reps: d.reps.map((r) => (r.id === id ? { ...r, ...patch } : r)) })
 
 describe('a well-formed dossier', () => {
   it('compiles into a Path of its own, labelled experimental, with namespaced reps the engine can run', () => {
@@ -50,11 +90,25 @@ describe('a well-formed dossier', () => {
     expect(r.path).toMatchObject({ label: 'experimental', version: '1', traits: { privacy: 'own', sheet: false, coach: false, rowShare: 3 } })
     expect(r.path.builtIn).toBeUndefined()
     expect(r.path.generated?.goalTypes).toEqual(['skill', 'habitOfStarting'])
-    expect(r.reps.map((m) => m.id)).toEqual(['pasta', 'omelette', 'stir-fry', 'soup', 'new-dish'].map((x) => `${r.path.id}-${x}`))
-    expect(r.reps.every((m) => m.status === 'path' && m.family === r.path.id && m.path?.[r.path.id]?.strand === 'cooking')).toBe(true)
+    expect(r.reps.map((m) => m.id)).toEqual(dossier().reps.map((x) => `${r.path.id}-${x.id}`))
+    expect(r.reps.every((m) => m.status === 'path' && m.family === r.path.id && m.path?.[r.path.id]?.strand === 'bed')).toBe(true)
     // The same goal and name compile to the same id, every time.
     const again = compileDossier(dossier(), CTX)
     expect(again.ok && again.path.id).toBe(r.path.id)
+  })
+
+  it('carries the harness’s stamp of the run, never the model’s', () => {
+    const r = compileDossier({ ...dossier(), provenance: { run: 'mine', model: 'me', promptHash: 'x', retrievedOn: 'y' } } as Dossier, CTX)
+    expect(r.ok && r.path.generated?.provenance).toEqual(PROVENANCE_FOR_TESTS)
+    expect(reasons(dossier(), { ...CTX, provenance: { ...PROVENANCE_FOR_TESTS, promptHash: '' } })).toContain('the harness stamps the run, the model, the procedure’s hash and the day the evidence was read')
+  })
+
+  it('compiles a people dossier that opens on the app’s own social-fear screen, its fear strand opened by a yes', () => {
+    const r = compileDossier(people(), CTX)
+    expect(r.ok ? [] : r.reasons).toEqual([])
+    if (!r.ok) return
+    expect(r.path.start?.opens).toBe('nerves')
+    expect(r.path.start?.questions.map((q) => q.id)).toEqual(['avoid', 'afraid'])
   })
 })
 
@@ -72,57 +126,140 @@ describe('the rules a dossier cannot pass', () => {
     expect(a).toMatchObject({ ok: false, abstain: true })
     const d = dossier()
     const thin = compileDossier({ ...d, decisions: d.decisions.map((x) => ({ ...x, cards: [] })), reps: d.reps.map((r) => ({ ...r, method: 'mental-rehearsal' })) }, { ...CTX, cards: CTX.cards.map((c) => (c.id === 'skill-decay' ? c : { ...c, status: 'draft' as const })) })
-    expect(thin.ok ? [] : thin.reasons).toContain('strand cooking: no admitted card stands behind it')
+    expect(thin.ok ? [] : thin.reasons).toContain('strand bed: no admitted card stands behind it')
   })
 
   it('refuse a fixed shape, treatment, a tactic, a missing crutch, a method outside the library and a budget overrun, every reason at once', () => {
     const d = dossier()
-    expect(reasons({ ...d, strands: [{ ...d.strands[0], stages: d.strands[0].stages.slice(0, 1) }] })).toContain('strand cooking: two to six stages, from the domain, never a fixed number')
-    const bad = { ...d, reps: d.reps.map((r, k) => (k === 0 ? { ...r, what: 'A dinner that works as therapy.', crutch: '' } : k === 1 ? { ...r, cue: 'A trick to get them to agree.' } : k === 2 ? { ...r, method: 'no-such-method' } : r)) }
+    expect(reasons({ ...d, strands: [{ ...d.strands[0], stages: d.strands[0].stages.slice(0, 1) }] })).toContain('strand bed: two to six stages, from the domain, never a fixed number')
+    const bad = { ...d, reps: d.reps.map((r, k) => (k === 0 ? { ...r, what: 'A job that works as therapy.', crutch: '' } : k === 1 ? { ...r, cue: 'A trick to get them to agree.' } : k === 2 ? { ...r, method: 'no-such-method' } : r)) }
     const all = reasons(bad)
-    expect(all.some((x) => x.startsWith('rep pasta: treatment words'))).toBe(true)
-    expect(all).toContain('rep pasta: the crutch to drop, filled')
-    expect(all.some((x) => x.startsWith('rep omelette: a tactic on someone'))).toBe(true)
-    expect(all).toContain('rep stir-fry: method no-such-method is not in the library')
-    expect(reasons(d, { ...CTX, minutesPerWeek: 60 }).some((x) => x.includes('more than the 60 minutes a week you have'))).toBe(true)
+    expect(all.some((x) => x.startsWith('rep prepare-the-bed: treatment words'))).toBe(true)
+    expect(all).toContain('rep prepare-the-bed: the crutch to drop, filled')
+    expect(all.some((x) => x.startsWith('rep sow-a-row: a tactic on someone'))).toBe(true)
+    expect(all).toContain('rep plant-seedlings: method no-such-method is not in the library')
+    expect(reasons(d, { ...CTX, minutesPerWeek: 60 })).toContain('a typical rep of 25 minutes on three days in seven is more than the 60 minutes a week you have')
   })
 
   it('refuse an exposure strand without the app’s own start, a start screen it does not have, and a cycle of prerequisites', () => {
     const d = dossier()
     expect(reasons({ ...d, strands: [{ ...d.strands[0], kind: 'exposure' }] })).toContain('an exposure strand opens with one of the app’s own start screens')
-    expect(reasons({ ...d, start: { screen: 'madeUp' as never, opens: 'cooking', focus: [] } })).toContain('the start screen madeUp is not one of the app’s own')
-    expect(reasons({ ...d, links: [...d.links, { from: 'rotation', to: 'one-dish', strength: 'hard', basis: 'judgment', cards: [] }] })).toContain('prerequisite links must not form a cycle')
+    expect(reasons({ ...d, start: { screen: 'madeUp' as never, opens: 'bed', focus: [] } })).toContain('the start screen madeUp is not one of the app’s own')
+    expect(reasons({ ...d, links: [...d.links, { from: 'tending', to: 'planting', strength: 'soft', basis: 'judgment', cards: [] }] })).toContain('prerequisite links must not form a cycle')
   })
 
   it('hand P1’s checks the whole Path, its shared placements included', () => {
     const d = dossier()
-    expect(reasons({ ...d, shared: [{ move: 'no-such-rep', strand: 'cooking', stage: 1, advances: false, guardrail: 'Your part only.' }] })).toContain('shared no-such-rep: no such rep in the catalogue')
+    expect(reasons({ ...d, shared: [{ move: 'no-such-rep', strand: 'bed', stage: 1, advances: false, guardrail: 'Your part only.' }] })).toContain('shared no-such-rep: no such rep in the catalogue')
     // A done-when that is not your own act fails P1's wording check.
-    const r = reasons({ ...d, reps: d.reps.map((x, k) => (k === 0 ? { ...x, doneWhen: 'When they say it was good.' } : x)) })
+    const r = reasons(withRep(d, 'prepare-the-bed', { doneWhen: 'When the bed looks good.' }))
     expect(r.some((x) => x.includes('doneWhen must begin “Done ”'))).toBe(true)
   })
 })
 
-describe('a compiled Path, registered', () => {
-  it('runs in the engine like any Path, and leaves the catalogue exactly as it was once it goes', async () => {
-    const { families, findPath, moves: all, pathReps, paths, registerGenerated } = await import('./catalogue')
-    const { pathToday } = await import('./pathStage')
-    const before = { moves: all.length, paths: paths.length, families: families.length, ask: JSON.stringify(all.find((m) => m.id === 'ask-follow-up')) }
+describe('the rules round 1 of the known-answer test added', () => {
+  it('a people Path opens on the app’s social-fear screen: the domain decides, not the goal’s wording', () => {
+    const { start: _start, ...bare } = people()
+    expect(reasons(bare)).toContain('most of its stage-moving reps are done with someone, so it opens on the app’s social-fear screen with an exposure strand a yes opens')
+    expect(reasons({ ...people(), start: { screen: 'fear', opens: 'nerves', focus: [{ id: 'asking', words: 'Asking' }] } })).toContain('most of its stage-moving reps are done with someone, so it opens on the app’s social-fear screen with an exposure strand a yes opens')
+    // The screen opens an exposure strand, never the skill one, and its focus never names the strand a yes opens.
+    expect(reasons({ ...people(), start: { screen: 'socialFear', opens: 'asking', focus: [{ id: 'asking', words: 'Asking' }] } })).toContain('the start opens asking, which must be an exposure strand of the Path')
+    expect(reasons({ ...people(), start: { screen: 'socialFear', opens: 'nerves', focus: [{ id: 'nerves', words: 'Nerves' }] } })).toContain('the start’s focus nerves names a strand a yes opens or one that waits')
+  })
+
+  it('a gate names the behaviours its stage exists for, from its own strand', () => {
     const d = dossier()
-    const r = compileDossier({ ...d, shared: [{ move: 'ask-follow-up', strand: 'cooking', stage: 1, advances: false, guardrail: 'Your part only.' }] }, CTX)
-    if (!r.ok) throw new Error(r.reasons.join('; '))
-    registerGenerated([{ path: r.path, reps: r.reps, shared: r.shared }])
-    expect(findPath(r.path.id)?.name).toBe('Cooking')
-    expect(pathReps(r.path.id).map((m) => m.id)).toContain('ask-follow-up')
-    const aim = { id: 77, kind: 'path' as const, path: r.path.id, stepMoveId: null, createdAt: '2026-11-01T12:00:00.000Z', archivedAt: null }
-    const v = pathToday({ aim, offers: [], outcomes: [], ctx: null, day: '2026-11-07', block: 'evening' })
-    expect(v.strands.map((s) => [s.strand.id, s.state.stage])).toEqual([['cooking', 1]])
-    expect(v.pick?.moveId.startsWith(r.path.id) || v.pick?.moveId === 'ask-follow-up').toBe(true)
-    // A catalogue Path's id is never taken over.
-    registerGenerated([{ path: { ...r.path, id: 'social' }, reps: [], shared: [] }])
-    expect(paths.filter((p) => p.id === 'social')).toHaveLength(1)
-    registerGenerated([])
-    expect({ moves: all.length, paths: paths.length, families: families.length, ask: JSON.stringify(all.find((m) => m.id === 'ask-follow-up')) }).toEqual(before)
-    expect(findPath(r.path.id)).toBeUndefined()
+    const gates = d.measurement.gates
+    expect(reasons({ ...d, measurement: { ...d.measurement, gates: [{ ...gates[0], requires: undefined }, gates[1]] } })).toContain('gate bed/1: it names the behaviours its stage exists for')
+    expect(reasons({ ...d, measurement: { ...d.measurement, gates: [{ ...gates[0], requires: ['made-up'] }, gates[1]] } })).toContain('gate bed/1: it requires made-up, which its strand does not check')
+    expect(reasons({ ...d, measurement: { ...d.measurement, gates: [{ ...gates[0], met: 1, requires: ['spaced', 'checked'] }, gates[1]] } })).toContain('gate bed/1: it requires more behaviours than it asks to be met')
+  })
+
+  it('a rep asks you to record only what the Path measures, and is done whatever anyone answers', () => {
+    expect(reasons(withRep(dossier(), 'sow-a-row', { what: 'Sow a row, then one tap on how it went.' })).some((x) => x.startsWith('rep sow-a-row: it asks you to record what the Path does not measure'))).toBe(true)
+    expect(reasons(withRep(dossier(), 'sow-a-row', { what: 'Sow a row and rate it out of ten.' })).some((x) => x.startsWith('rep sow-a-row: it asks you to record what the Path does not measure'))).toBe(true)
+    expect(reasons(withRep(people(), 'the-price', { doneWhen: 'Done when they answered your question.' }))).toContain('rep the-price: done by your own act, whatever anyone answers: “Done when they answered your question.”')
+    expect(reasons(withRep(people(), 'the-price', { doneWhen: 'Done when you have met.' }))).toContain('rep the-price: done by your own act, whatever anyone answers: “Done when you have met.”')
+    // The words that say the opposite pass: whatever they answer, asking someone how their day went.
+    expect(reasons(withRep(people(), 'the-price', { doneWhen: 'Done when you have asked once, whatever they answer.' }))).toEqual([])
+    expect(reasons(withRep(people(), 'the-price', { what: 'Ask how it went, the thing they told you about last time.' }))).toEqual([])
+  })
+
+  it('a rep is feasible: each need given at or before its stage, a plan never moving a stage, a partner only on a strand that waits', () => {
+    const p = people()
+    expect(reasons(withRep(p, 'a-return', { needs: ['contact'] }))).toContain('rep a-return: it needs a way to reach the person, which no rep at or before it gives')
+    // Given at an earlier stage of its strand, it holds.
+    expect(reasons(withRep(withRep(p, 'a-return', { needs: ['contact'] }), 'the-hours', { gives: ['contact'] }))).toEqual([])
+    // Given only at a later stage, it does not.
+    expect(reasons(withRep(withRep(p, 'the-hours', { needs: ['acquaintance'] }), 'a-return', { gives: ['acquaintance'] }))).toContain('rep the-hours: it needs someone talked with before, which no rep at or before it gives')
+    expect(reasons(withRep(p, 'a-return', { needs: ['plan'] }))).toContain('rep a-return: it needs someone\'s yes to a plan, so it moves no stage')
+    expect(reasons(withRep(p, 'a-return', { needs: ['partner'] }))).toContain('rep a-return: it needs a partner, so it sits on a strand that waits')
+    // Its words give it away: a rep with your partner or on a date says it needs one.
+    expect(reasons(withRep(p, 'a-return', { what: 'Ask your partner what they would like to do this weekend.' }))).toContain('rep a-return: it is done with a partner or a date, so it says it needs a partner')
+    expect(reasons(withRep(p, 'a-return', { what: 'Ask for help with a return at the counter.' }))).toEqual([])
+  })
+
+  it('every stage the rule moves keeps its floor with any one of its reps taken away', () => {
+    const d = dossier()
+    expect(reasons({ ...d, reps: d.reps.filter((r) => r.id !== 'water-deeply') })).toContain('strand bed, stage 1: its floor (3 different reps in 1 kinds of setting) must hold with any one of its 3 stage-moving reps taken away')
+    // The last stage moves nowhere, so it needs no spare.
+    expect(reasons({ ...d, reps: d.reps.filter((r) => r.id !== 'save-some-seed') })).toEqual([])
+  })
+
+  it('an outside check needs an audience, on two or more of its stage’s reps', () => {
+    const p = people()
+    const handed = { ...p, measurement: { ...p.measurement, strands: p.measurement.strands.map((s) => ({ ...s, handOver: true })) } }
+    expect(reasons(withRep(handed, 'the-price', { handOver: true }))).toContain('rep the-price: a hand-over only where there is an audience (a group, in person), never one to one or remote')
+    const gated = { ...handed, measurement: { ...handed.measurement, gates: handed.measurement.gates.map((g) => (g.strand === 'asking' && g.stage === 1 ? { ...g, confirmed: 1 } : g)) } }
+    expect(reasons(withRep(gated, 'the-price', { handOver: true, settings: ['group'] }))).toContain('gate asking/1: a check from outside the moment needs two or more of its reps that can give one (a recording of yourself, or an audience\'s)')
+    expect(reasons(withRep(withRep(gated, 'the-price', { handOver: true, settings: ['group', 'errand'] }), 'the-size', { handOver: true, settings: ['group', 'errand'] }))).toEqual([])
+  })
+
+  it('every component is shown by a behaviour or built from its parts, trained by a rep, a hard prerequisite never trained later', () => {
+    const d = dossier()
+    expect(reasons({ ...d, components: d.components.map((c) => (c.id === 'tending' ? { ...c, shows: [] } : c)) })).toContain('component tending: shown by a behaviour its strand checks, or marked composite')
+    expect(reasons({ ...d, components: [...d.components, { id: 'whole-bed', skill: 'A whole bed', basis: 'judgment', cards: [], composite: true }], strands: [{ ...d.strands[0], components: [...d.strands[0].components, 'whole-bed'] }] })).toContain('component whole-bed: a composite is built from its parts, by links into it')
+    expect(reasons({ ...d, reps: d.reps.map((r) => ({ ...r, trains: r.trains.filter((c) => c !== 'tending').length ? r.trains.filter((c) => c !== 'tending') : ['planting'] })) })).toContain('component tending: trained by a rep')
+    // Tending trained at stage 1, before the planting it needs: refused.
+    expect(reasons({ ...d, reps: d.reps.map((r) => (r.stage === 1 ? { ...r, trains: ['tending'] } : r.stage === 2 ? { ...r, trains: ['planting'] } : r)) })).toContain('strand bed: tending is trained at stage 1, before planting, which it needs, at stage 2')
+  })
+
+  it('a call or a message moves a stage only on a strand that says calls and messages do', () => {
+    const p = people()
+    expect(reasons(withRep(p, 'the-price', { with: 'remote', settings: ['remote'] }))).toContain('rep the-price: a call or a message moves no stage of asking, which says calls and messages do not')
+    expect(reasons(withRep({ ...p, strands: p.strands.map((s) => (s.id === 'asking' ? { ...s, remote: true } : s)) }, 'the-price', { with: 'remote', settings: ['remote', 'errand'] }))).toEqual([])
+  })
+
+  it('a strand that waits is off until you turn it on, pauses only others, and never stands alone', () => {
+    const p = people()
+    const waits = { ...p, strands: p.strands.map((s) => (s.id === 'asking' ? { ...s, waits: true, pauses: ['asking'] } : s)) }
+    expect(reasons(waits)).toEqual(expect.arrayContaining(['strand asking: it pauses asking, which must be another strand that does not wait', 'at least one strand runs from the start: one that neither waits nor is opened by a yes', 'the start’s focus asking names a strand a yes opens or one that waits']))
+    expect(reasons({ ...p, strands: p.strands.map((s) => (s.id === 'asking' ? { ...s, pauses: ['nerves'] } : s)) })).toContain('strand asking: only a strand that waits pauses others')
+    // A declared stage is a strand that waits: no generated stage is declared.
+    const d = dossier()
+    expect(reasons({ ...d, strands: [{ ...d.strands[0], stages: d.strands[0].stages.map((st) => (st.n === 3 ? { ...st, advance: 'declared' as const } : st)) }] })).toContain('strand bed, stage 3: a generated stage moves by its rule alone; one that waits on someone else is a strand that waits')
+  })
+
+  it('a strand whose reps need a partner carries the app’s own private check, the Partner path’s words, never generated', () => {
+    const p = people()
+    const together = { id: 'together', kind: 'skill' as const, name: 'Together', what: 'Once you are seeing someone.', components: ['ask-clearly'], waits: true, pauses: ['asking'], stages: p.strands[0].stages.slice(0, 2), rule: p.strands[0].rule }
+    const reps: DossierRep[] = ['a', 'b', 'c', 'd'].map((x) => ({ ...p.reps[4], id: `together-${x}`, strand: 'together', stage: 1, needs: ['partner'], settings: ['oneToOne'] }))
+    const r = compileDossier({ ...p, strands: [...p.strands, together], reps: [...p.reps, ...reps, { ...reps[0], id: 'together-e', stage: 2 }], decisions: [...p.decisions, { ...p.decisions[0], id: 'together', element: 'strand:together' }] }, CTX)
+    expect(r.ok ? [] : r.reasons).toEqual([])
+    if (!r.ok) return
+    expect(r.path.check).toEqual(partnerCheck('together'))
+    expect(r.path.check?.questions.map((q) => q.id)).toEqual(['safety', 'conduct', 'doubt'])
+    expect(r.path.strands?.find((s) => s.id === 'together')).toMatchObject({ waits: true, pauses: ['asking'] })
+  })
+
+  it('the minutes, the floors by kind, the attempt cap and the decisions every number needs', () => {
+    const d = dossier()
+    expect(reasons(withRep(d, 'sow-a-row', { minutes: 95 }))).toEqual(expect.arrayContaining(['rep sow-a-row: one to ninety minutes', 'rep sow-a-row: 95 minutes is more than the 90 minutes a week you have']))
+    // A sixty-minute rep fits now, the median carrying the budget.
+    expect(reasons(withRep(d, 'sow-a-row', { minutes: 60 }))).toEqual([])
+    expect(reasons({ ...d, strands: [{ ...d.strands[0], rule: { ...d.strands[0].rule, reps: 4, distinctReps: 2 } }] })).toContain('strand bed: a skill strand moves a stage on at least 6 reps across 3 different ones')
+    expect(reasons({ ...d, measurement: { ...d.measurement, cap: 13 } })).toContain('an attempt cap of four to twelve, not 13')
+    expect(reasons({ ...d, decisions: d.decisions.filter((x) => x.element !== 'timeline') })).toContain('a decision on timeline: why it is as it is')
+    expect(reasons({ ...d, decisions: d.decisions.filter((x) => x.element !== 'gate:bed') })).toContain('a decision on gate:bed: why it is as it is')
   })
 })

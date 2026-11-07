@@ -263,6 +263,18 @@ export interface PathStrand {
   what: string
   stages: readonly PathStage[]
   rule?: PathRule
+  /** A strand that waits on someone else's yes (P5): off until you turn it on, your word, and off again when it ends. */
+  waits?: boolean
+  /** The strands it pauses while it is on, each back with its stages kept when it goes off. */
+  pauses?: readonly string[]
+}
+
+/** The app's own private check on a strand (P5): monthly while that strand is on; a yes shows the fixed help; the answers are never kept. */
+export interface PathCheck {
+  strand: string
+  name: string
+  questions: readonly (PathQuestion & { id: string })[]
+  help: string
 }
 
 /** Why a Path's version changed (the design's reason codes, 2026-11-06). */
@@ -310,6 +322,8 @@ export interface Path {
   measurement?: PathMeasurement
   /** What starting it asks (P4): questions after a guideline whose yes shows the app's own fixed text and opens a strand, and where it should show up. */
   start?: PathStart
+  /** The app's own private check, on a strand whose reps are done with a partner (P5). */
+  check?: PathCheck
   /** About how long it runs, said before it starts (P4). */
   timeline?: string
   /** A Path the generator made (P5): its goal types and how it was made. Absent on the catalogue's own. */

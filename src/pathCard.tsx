@@ -13,8 +13,8 @@ import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { markExpectancyAsked, setExpectancy, setPathPick } from './pathFlow'
 import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, repStageWords, socialEnergyOn, stageWords, strandOfRep, whyThisRep, type PathToday } from './pathStage'
-import { CalibrationLine, measured, PredictBox, Recorder, RecordingsDue, records, RepSheet, StrandsBlock, StrandsSetting, WhyBuilt } from './pathMeasureUi'
-import { activeStrands } from './pathMeasure'
+import { CalibrationLine, measured, PathCheckCard, PredictBox, Recorder, RecordingsDue, records, RepSheet, StrandsBlock, StrandsSetting, WhyBuilt } from './pathMeasureUi'
+import { activeStrands, checkDue } from './pathMeasure'
 import { Tag } from './ui'
 import { carriedByContext, carriedLine, dayKindOf, orderByEvidence } from './people'
 
@@ -371,6 +371,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
       </div>
       {path.strands?.length ? <StrandsBlock pt={p.pt} /> : <StageProgress n={p.pt.state.stage} of={path.stages.length} name={stage?.name ?? ''} next={nextStage(path, p.pt.state.stage)} testid="path-progress" />}
       {measuring && p.onCheckRecording && <RecordingsDue pt={p.pt} today={p.today} onCheck={p.onCheckRecording} />}
+      {path.check && checkDue(path, p.aim, p.today) && <PathCheckCard aim={p.aim} check={path.check} today={p.today} />}
       {p.pt.state.reentry && (
         <p class="note" data-testid="path-reentry">
           {c.reentry}

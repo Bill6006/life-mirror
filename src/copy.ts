@@ -1643,11 +1643,19 @@ export const copy = {
     start: {
       eyebrow: 'Before you start',
       questionsNote: 'Two questions, yes or no. Your answers are not kept: only the strands you choose.',
+      questionNote: 'One question, yes or no. Your answer is not kept: only the strands you choose.',
       yes: 'Yes',
       no: 'No',
       focus: 'Where should it start?',
       nerves: 'Add the {name} strand',
       begin: 'Start the path',
+    },
+    /** A Path's private check (P5): the app's own questions and help, monthly while its strand is on. */
+    check: {
+      note: 'Once a month, yes or no. Your answers are not kept: only that you answered this month.',
+      yes: 'Yes',
+      no: 'No',
+      done: 'Done for this month',
     },
     /** A measured Path on the card (P2): your own behaviours, never anyone’s reaction. */
     measure: {
@@ -1692,6 +1700,8 @@ export const copy = {
       calibration: 'Your checks beside an outside view, on {n} reps: {yours} by you, {outside} from outside.',
       strandsOn: 'Strands on',
       strandsNote: 'At least one stays on.',
+      waitsNote: '{name} waits: turn it on when it applies to you, and off when it ends.',
+      pausesNote: 'While {name} is on, {paused} pauses, its stages kept.',
     },
   },
   her: {

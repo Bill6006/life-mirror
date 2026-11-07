@@ -9,6 +9,7 @@ import type { ClaimCard } from './libraryTypes'
 import { compiledPaths } from './pathCheck'
 import { useLive } from './live'
 import { setAsidePath, startPath } from './measureFlow'
+import { activeStrands } from './pathMeasure'
 import { WhyBuilt } from './pathMeasureUi'
 import { pathName } from './pathStage'
 import { standing } from './pathVersions'
@@ -229,11 +230,12 @@ export function PathReadScreen({ pathId, onStart, onClose }: { pathId: string; o
   )
 }
 
-/** The strands a focus choice turns on: a strand's own id, or every strand but the one a yes opens. */
+/** The strands a focus choice turns on: a strand's own id, or every strand but the one a yes opens and those that wait (P5). */
 export function strandsFor(path: Pick<Path, 'strands' | 'start'>, focus: string, nerves: boolean): string[] {
   const all = (path.strands ?? []).map((s) => s.id)
   const opens = path.start?.opens
-  const base = all.includes(focus) && focus !== opens ? [focus] : all.filter((id) => id !== opens)
+  const waiting = new Set((path.strands ?? []).filter((s) => s.waits).map((s) => s.id))
+  const base = all.includes(focus) && focus !== opens && !waiting.has(focus) ? [focus] : all.filter((id) => id !== opens && !waiting.has(id))
   return all.filter((id) => base.includes(id) || (nerves && id === opens))
 }
 
@@ -286,7 +288,7 @@ export function PathStartScreen({ pathId, onDone, onBack }: { pathId: string; on
       <h1 class="title">{pathName(path)}</h1>
       {start && (
         <>
-          <p class="note">{c.questionsNote}</p>
+          <p class="note">{start.questions.length === 1 ? c.questionNote : c.questionsNote}</p>
           {start.questions.map((q) => (
             <div key={q.id} class="ease" data-testid="path-start-question">
               <span class="sub ink">{q.text}</span>
@@ -325,7 +327,7 @@ export function PathStartScreen({ pathId, onDone, onBack }: { pathId: string; on
         </>
       )}
       <div class="actions">
-        <button type="button" class="pill-ink" data-testid="path-start-begin" disabled={Boolean(start) && focus === null} onClick={() => void startPath(path, start && focus ? strandsFor(path, focus, nervesOn) : (path.strands ?? []).map((s) => s.id)).then(onDone)}>
+        <button type="button" class="pill-ink" data-testid="path-start-begin" disabled={Boolean(start) && focus === null} onClick={() => void startPath(path, start && focus ? strandsFor(path, focus, nervesOn) : activeStrands(path, {})).then(onDone)}>
           {c.begin}
         </button>
         <button type="button" class="textbtn" onClick={onBack}>

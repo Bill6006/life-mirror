@@ -595,8 +595,12 @@ export interface Aim {
   /** A Social path converted from A person, which keeps that commitment's whole record. */
   convertedFrom?: 'person'
   convertedAt?: string
-  /** A Path with strands (P1, P4): the strands you chose to have on; absent, every strand but the one its start opens on a yes. */
+  /** A Path with strands (P1, P4): the strands you chose to have on; absent, every strand but the one its start opens on a yes and those that wait. */
   strands?: string[]
+  /** Each change of the strands on, dated (P5): turning on a strand that waits is your word, undone by turning it off. */
+  strandsLog?: { at: string; strands: string[] }[]
+  /** The month a Path's private check was last answered (P5): its answers are never kept. */
+  checkedMonth?: string
   /** Today's rep, picked by you through Change: offered whatever the day's shape says. With two paths on, the later pick is the row's. */
   pick?: { day: string; moveId: string; at?: string }
   createdAt: string
@@ -847,7 +851,8 @@ export interface PathRequest {
  * how it was made and what the compiler found. Your decisions on it live in pathVersions, as for every Path.
  */
 export interface GeneratedPathRow {
-  id?: number
+  /** The brain row's id: the Worker writes each version, and the phone keeps what it pulls, as Ask's answers. */
+  id?: string
   pathId: string
   version: string
   at: string
@@ -1019,7 +1024,7 @@ class LifeMirrorDB extends Dexie {
   pathVersions!: Table<PathVersion, number>
   recordings!: Table<Recording, number>
   pathRequests!: Table<PathRequest, number>
-  generatedPaths!: Table<GeneratedPathRow, number>
+  generatedPaths!: Table<GeneratedPathRow, string>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1249,10 +1254,11 @@ class LifeMirrorDB extends Dexie {
     this.version(25).stores({
       recordings: '++id, offerId, at',
     })
-    // The generator (P5, 2026-11-06): your Path requests, and each generated Path's versions. Both synced.
+    // The generator (P5, 2026-11-06): your Path requests (synced), and each generated Path's versions as the Worker
+    // writes them and the phone pulls them, checked (as Ask's answers are).
     this.version(26).stores({
       pathRequests: '++id, at',
-      generatedPaths: '++id, pathId, at',
+      generatedPaths: 'id, pathId, at',
     })
     installOutbox(this)
     installPendingCopy(this)
