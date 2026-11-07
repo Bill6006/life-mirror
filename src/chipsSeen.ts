@@ -1,5 +1,5 @@
 import type { RefObject } from 'preact'
-import { useEffect } from 'preact/hooks'
+import { useEffect, useRef } from 'preact/hooks'
 import { blockAt, type Slot } from './blocks'
 import { markChipsShown } from './db'
 
@@ -12,8 +12,17 @@ import { markChipsShown } from './db'
 export function useChipsSeen(ref: RefObject<HTMLElement>, slot: Slot, fresh: readonly string[]): void {
   const today = blockAt(new Date()).day
   const key = fresh.join(',')
+  const sig = `${key}|${slot.day}|${slot.block}|${today}`
+  const watching = useRef<{ sig: string; root: HTMLElement | null; io: IntersectionObserver | null }>({ sig: '', root: null, io: null })
+  // After every render: a screen can draw the chips' container only after the record that names them, so the observer is
+  // armed whenever the container or the chips to watch change, never only once (2026-11-07: an evening whose last reads
+  // arrived after its record had no chip marked at all).
   useEffect(() => {
     const root = ref.current
+    const w = watching.current
+    if (w.sig === sig && w.root === root) return
+    w.io?.disconnect()
+    watching.current = { sig, root, io: null }
     if (!key || slot.day !== today || !root || typeof IntersectionObserver === 'undefined') return
     const io = new IntersectionObserver(
       (entries) => {
@@ -28,6 +37,7 @@ export function useChipsSeen(ref: RefObject<HTMLElement>, slot: Slot, fresh: rea
       const el = root.querySelector(`[data-chip="${id}"]`)
       if (el) io.observe(el)
     }
-    return () => io.disconnect()
-  }, [key, slot.day, slot.block, today])
+    watching.current.io = io
+  })
+  useEffect(() => () => watching.current.io?.disconnect(), [])
 }
