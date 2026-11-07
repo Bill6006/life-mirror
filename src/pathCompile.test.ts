@@ -134,7 +134,7 @@ describe('the rules round 1 of the known-answer test added', () => {
     const p = people()
     expect(reasons(withRep(p, 'a-return', { needs: ['contact'] }))).toContain('rep a-return: it needs a way to reach the person, which no rep at or before it gives')
     // Given at an earlier stage of its strand, it holds.
-    expect(reasons(withRep(withRep(p, 'a-return', { needs: ['contact'] }), 'the-hours', { gives: ['contact'] }))).toEqual([])
+    expect(reasons(withRep(withRep(p, 'a-return', { needs: ['contact'] }), 'the-hours', { gives: ['contact'], asks: true, minutes: 10 }))).toEqual([])
     // Given only at a later stage, it does not.
     expect(reasons(withRep(withRep(p, 'the-hours', { needs: ['acquaintance'] }), 'a-return', { gives: ['acquaintance'] }))).toContain('rep the-hours: it needs someone talked with before, which no rep at or before it gives')
     expect(reasons(withRep(p, 'a-return', { needs: ['plan'] }))).toContain('rep a-return: it needs someone\'s yes to a plan, so it moves no stage')
@@ -202,7 +202,7 @@ describe('the rules round 1 of the known-answer test added', () => {
   it('an ask says so and carries the app’s own bar; a partner’s strand practises consent; no gate on a last stage (round 2)', () => {
     const p = people()
     expect(reasons(withRep(p, 'a-recommendation', { what: 'Ask them out for a coffee this week.' }))).toContain('rep a-recommendation: it asks one person for something they could refuse, so it says it asks and carries the app’s own bar')
-    const r = compileDossier(withRep(p, 'a-recommendation', { what: 'Ask them out for a coffee this week.', asks: true }), CTX)
+    const r = compileDossier(withRep(p, 'a-recommendation', { what: 'Ask them out for a coffee this week.', asks: true, minutes: 10 }), CTX)
     expect(r.ok && r.reps.find((m) => m.id.endsWith('-a-recommendation'))?.guardrail).toBe(`One question, and thanks whatever the answer; never when they are busy with someone. ${ASK_BAR}`)
     const w = waitingDossierForTests()
     expect(reasons({ ...w, reps: w.reps.filter((x) => x.id !== 'together-ask-first') })).toContain('strand together: a strand done with a partner holds a rep of asking in words before anything physical')
@@ -228,6 +228,20 @@ describe('the rules round 1 of the known-answer test added', () => {
     // "Your partner" in a scene or a practice is no romance.
     expect(reasons(withRep(p, 'the-hours', { what: 'Ask your partner in the exercise what they noticed.' }))).toEqual([])
     expect(reasons(withRep(p, 'the-hours', { what: 'Ask your wife what she would like this weekend.' }))).toContain('rep the-hours: it is done with a partner or a date, so it says it needs a partner')
+  })
+
+  it('gates the stage’s reps can show, every behaviour gated, contact offered as an ask, no second approach, no stage moved by asks alone (round 3)', () => {
+    const d = dossier()
+    // A gate requiring two behaviours no single rep of its stage trains together.
+    expect(reasons({ ...d, measurement: { ...d.measurement, gates: d.measurement.gates.map((g) => (g.stage === 1 ? { ...g, met: 2, requires: ['spaced', 'checked'] } : g)) } })).toContain('gate bed/1: no stage-moving rep of its stage trains every behaviour it requires (spaced, checked)')
+    // A behaviour checked that no gate requires.
+    expect(reasons({ ...d, components: d.components.map((c) => (c.id === 'tending' ? { ...c, shows: ['checked', 'watered'] } : c)), measurement: { ...d.measurement, strands: [{ ...d.measurement.strands[0], behaviours: [...d.measurement.strands[0].behaviours, { id: 'watered', words: 'Watered at the roots', theirs: 'Watered at the roots' }] }] } })).toContain('strand bed: behaviour watered is checked but no gate requires it')
+    const p = people()
+    expect(reasons(withRep(withRep(p, 'a-return', { needs: ['contact'] }), 'the-hours', { gives: ['contact'] }))).toContain('rep the-hours: offering a way to stay in touch is something they can decline, so it is an ask and carries the app’s own bar')
+    expect(reasons(withRep(p, 'the-price', { guardrail: 'One question; if they say no, offer to come back another day.' }))).toContain('rep the-price: anything but a yes is final, so no second approach after a no: “One question; if they say no, offer to come back another day.”')
+    // A stage whose stage-moving reps all ask, and a smaller version that asks.
+    const allAsk = { ...p, reps: p.reps.map((r) => (r.strand === 'asking' && r.stage === 2 ? { ...r, asks: true } : r)) }
+    expect(reasons(allAsk)).toEqual(expect.arrayContaining(['strand asking, stage 2: a stage-moving rep that is not an ask, so the stage never moves by asking alone', 'strand asking, stage 2: its lightest rep, the smaller version after refusals, is an ask; make a lighter rep that asks no one']))
   })
 
   it('a smaller version that is smaller, and every component a gated strand trains measured by a gate (round 2)', () => {

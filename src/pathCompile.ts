@@ -163,6 +163,8 @@ const ASK_WORDS = /\b(ask (them|him|her|someone|one person) (out|to|for|if|wheth
 export const ASK_BAR = 'Never someone who cannot freely say no: someone you supervise or who supervises you, who serves you at work, or whom you teach or care for. One ask, and anything but a yes is final.'
 /** A rep of asking before anything physical: the strand done with a partner holds one. */
 const CONSENT_WORDS = /\bconsent\b|\bask(ing)?\b[^.]{0,24}\bbefore\b[^.]{0,16}\b(physical|touch|touching|kiss|kissing|intimacy|intimate)\b/i
+/** A second approach after a no: an offer, a suggestion or an ask again once someone has declined. Anything but a yes is final. */
+const AFTER_NO = /\b(if|when|after|once) (they|she|he|someone|the other person) (decline[sd]?|say[s]? no|said no|refuse[sd]?|turn[s]? (it|you) down|can't|cannot|won't)\b[^.]{0,80}\b(offer|suggest|ask (again|once more|another)|tell (them|her|him) (where|when)|try (again|another))\b/i
 const FAITH = /\b(church|pray(er|ing)?|bible|worship|sermon|scripture|sabbath)\b/i
 /** The Partner path's own monthly check, in the order of its questions. */
 const CHECK_IDS = ['safety', 'conduct', 'doubt'] as const
@@ -343,6 +345,8 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
     }
     for (const t of [r.what, r.doneWhen]) if (RATING.test(t)) say(`${where}: it asks you to record what the Path does not measure (a rating, a score, how it went): “${t}”`)
     if ([r.name, r.what, r.doneWhen, r.cue].some((x) => PARTNER_WORDS.test(x)) && !r.needs?.includes('partner')) say(`${where}: it is done with a partner or a date, so it says it needs a partner`)
+    if (r.gives?.includes('contact') && !r.asks) say(`${where}: offering a way to stay in touch is something they can decline, so it is an ask and carries the app’s own bar`)
+    for (const x of [r.what, r.doneWhen, r.guardrail ?? '']) if (AFTER_NO.test(x)) say(`${where}: anything but a yes is final, so no second approach after a no: “${x}”`)
     if ([r.name, r.what, r.doneWhen].some((x) => ASK_WORDS.test(x)) && !r.asks) say(`${where}: it asks one person for something they could refuse, so it says it asks and carries the app’s own bar`)
     if (ANSWERED.test(r.doneWhen.replace(WHATEVER, ''))) say(`${where}: done by your own act, whatever anyone answers: “${r.doneWhen}”`)
     // Calls and messages move a stage only on a strand that says they do.
@@ -395,6 +399,11 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
       const offered = d.reps.filter((r) => r.strand === s.id && r.stage <= st.n && st.n <= (r.through ?? r.stage))
       if (here.length * 2 < offered.length) say(`strand ${s.id}, stage ${st.n}: at least half the reps it offers move it (here ${here.length} of ${offered.length}), or support reps take the share's few days`)
       // The smaller version after refusals is the stage's lightest rep: one below high effort, or it is no smaller (round 2).
+      // Asks depend on someone's yes and press on the few who qualify: a stage never moves by asks alone, and the
+      // smaller version after refusals is never another ask (round 3).
+      if (here.length && here.every((r) => r.asks)) say(`strand ${s.id}, stage ${st.n}: a stage-moving rep that is not an ask, so the stage never moves by asking alone`)
+      const lightest = [...offered].sort((a, b) => EFFORTS.indexOf(a.effort) - EFFORTS.indexOf(b.effort) || a.minutes - b.minutes)[0]
+      if (lightest?.asks) say(`strand ${s.id}, stage ${st.n}: its lightest rep, the smaller version after refusals, is an ask; make a lighter rep that asks no one`)
       if (here.length && here.every((r) => r.effort === 'high')) say(`strand ${s.id}, stage ${st.n}: a stage-moving rep below high effort, so the smaller version after refusals is smaller`)
     }
   }
@@ -414,6 +423,24 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
     if (g.confirmed > 0 && g.stage === 1 && !here.some((r) => r.record)) say(`${where}: a first stage's check from outside the moment can always be given alone, a recording of yourself, never only someone else's`)
     if (g.confirmed > 0 && here.filter((r) => r.record || r.handOver).length < 2) say(`${where}: a check from outside the moment needs two or more of its reps that can give one (a recording of yourself, or an audience's)`)
     if (g.kinds > new Set(here.flatMap((r) => r.settings)).size) say(`${where}: it asks for ${g.kinds} kinds of setting, more than its reps hold`)
+  }
+  // A gate's required behaviours are shown together by a stage-moving rep of its stage, by the components it trains (round 3).
+  const showsOf = (r: DossierRep) => new Set((r.trains ?? []).flatMap((c) => d.components.find((x) => x.id === c)?.shows ?? []))
+  for (const g of m.gates) {
+    const here = d.reps.filter((r) => r.strand === g.strand && r.advances && r.stage === g.stage)
+    if ((g.requires ?? []).length && !here.some((r) => (g.requires ?? []).every((b) => showsOf(r).has(b)))) say(`gate ${g.strand}/${g.stage}: no stage-moving rep of its stage trains every behaviour it requires (${(g.requires ?? []).join(', ')})`)
+  }
+  // Every behaviour a gated strand checks is required by some gate, unless only its last stage trains it (round 3).
+  for (const s of d.strands) {
+    const gated = m.gates.filter((g) => g.strand === s.id)
+    if (!gated.length) continue
+    const required = new Set(gated.flatMap((g) => g.requires ?? []))
+    for (const b of behavioursOf(s.id)) {
+      if (required.has(b.id)) continue
+      const trainedAt = d.reps.filter((r) => r.strand === s.id && showsOf(r).has(b.id)).map((r) => r.stage)
+      if (trainedAt.length && Math.min(...trainedAt) >= s.stages.length) continue
+      say(`strand ${s.id}: behaviour ${b.id} is checked but no gate requires it`)
+    }
   }
   // A component its strand trains before the last stage is shown at some gate of that strand (round 2): one no gate requires is never measured.
   for (const s of d.strands) {

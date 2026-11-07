@@ -59,9 +59,11 @@ The compiler reports every reason at once; read them all, fix them all, and comp
      stage is ever declared. Reps that need a partner sit on such a strand; the app adds its own private check.
    - **Calls and messages.** Say for each strand whether calls and messages move its stages (`remote`), and why, in
      its decision. Where the intake puts the goal in person, they do not: a rep done by message supports only.
+   - **Adjacent stages change one or two context dimensions at a time**, never four at once (after a stage done alone,
+     a few people you know before a room).
    - **The hardest setting the intake names** (a talk, a room of strangers) is the top of a strand: the stage that
      names it holds stage-moving reps in that setting, and a one-to-one version of it stays support. Each stage's
-     words describe only what its own reps offer.
+     words describe only what its own reps offer. An exposure strand's top stage holds that setting too.
 7. **Reps.** Concrete, real-world, the person's own act, complete whatever anyone answers: a done-when never waits
    on a reply, a yes, an arrival or a meeting. Each: what to do, done when (beginning "Done "), where attention goes
    (`cue`), the crutch to drop, the settings, whether someone else is there (`with`: `adult` in person, `remote`
@@ -73,8 +75,10 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    needs, in enough kinds of setting, so the stage holds when one rep cannot happen (no newcomer comes, a rep is
    dropped).
    Every stage the rule moves holds a rep below high effort: after refusals the app offers the stage's lightest rep,
-   so it must be lighter. A rep that asks one person for something they could refuse (a plan, a date, a favour,
-   their interest) says so (`asks`): the app adds its own bar, never someone who cannot freely say no. Needing
+   so it must be lighter. A rep whose act the other person can accept or decline (a plan, a date, a favour, their
+   interest, your number) is an ask and says so (`asks`), and it states plainly what is asked, when and where (a
+   romantic ask says it is a date); no stage moves by asks alone, and its lightest rep never asks. Anything but a
+   yes is final: no rep or guardrail offers a second approach after a no. An ask the app adds its own bar, never someone who cannot freely say no. Needing
    someone else's yes keeps a thing out of the count, never out of the Path: a phase reached through a yes (a date,
    being with someone) is a strand that waits, with your own practice in it, and a strand done with a partner holds
    a rep of asking in words before anything physical. List every kind of setting a rep fits, by where it happens and
@@ -87,7 +91,10 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    stage exists for (behaviours met, separate weeks, kinds of setting). **Pick each stage's check source from its
    settings:** your own checks for a conversation (the person you talked with is never asked to check you); a
    recording only of yourself alone; a hand-over only to someone in an audience (a group, in person). A gate asks
-   for a check from outside the moment (`confirmed`) only where two or more of its reps can give one; otherwise it
+   for a check from outside the moment (`confirmed`) only where two or more of its reps can give one. **Write the
+   gates after the reps**, from the behaviours each stage's words name: a gate's required behaviours are trained
+   together by at least one stage-moving rep of its stage, every behaviour a strand checks is required by some gate,
+   and a core behaviour first shown alone is required again at a live stage; otherwise it
    rests on your own checks, and the decision says so. A strand's first stage never waits on someone else: its
    check from outside the moment, if any, is one you can always give alone, a recording of yourself. Every component a strand trains before its last stage is
    shown by a behaviour some gate of that strand requires: one no gate asks for is never measured. A strand's last

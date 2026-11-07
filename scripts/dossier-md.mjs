@@ -61,7 +61,9 @@ const reads = `## How the app reads what you write
   on and off on the Path's card; at least one stays on. A strand that \`waits\` is off until they turn it on, dated;
   while it is on, the strands it \`pauses\` are off, and they come back with their stages kept when it goes off. A
   strand that is off offers nothing, and its checks again later wait.
-- **An ask** (\`asks\`): a rep that asks one person for something they could refuse carries the app's own bar,
+- **An ask** (\`asks\`): a rep that asks one person for something they could refuse, offering a way to stay in touch
+  among them, carries the app's own bar; no stage moves by asks alone, its lightest rep never asks, and nothing offers a
+  second approach after a no. The bar,
   appended to its guardrail word for word: never someone who cannot freely say no, one ask, anything but a yes
   final. A strand done with a partner holds a rep of asking in words before anything physical.
 - **The app's own private check.** A strand whose reps need a partner carries the app's monthly private check,
@@ -73,6 +75,8 @@ const reads = `## How the app reads what you write
   that waits; a rep that needs a plan is offered like any other, and with no plan the person answers there was no
   chance. Every stage the rule moves must keep its floor with any one of its stage-moving reps taken away.
 - **Gates measure every component** a strand trains before its last stage: one of its behaviours is required by a gate.
+  Every behaviour a gated strand checks is required by some gate, and a gate's required behaviours are trained
+  together by at least one stage-moving rep of its stage (by the components its \`trains\` names).
 - **Floors by kind** (\`FLOORS\` above): a strand's rule asks at least these reps and different reps.
 - **The share.** Beside another Path a Path's own reps take the People row three days in seven, and a third of those
   days goes to misses and support reps, so the strands that run together ask at most two reps a week in all
