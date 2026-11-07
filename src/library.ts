@@ -31,6 +31,11 @@ export function registerOwnCards(cards: readonly ClaimCard[]): void {
   ownCards.splice(0, ownCards.length, ...cards.filter((c) => !library.some((l) => l.id === c.id)))
 }
 
+/** The cards a Path may cite: the public library's and your generated Paths' own (P5); the Brain and Ask read the library alone. */
+export function pathCards(): readonly ClaimCard[] {
+  return [...library, ...ownCards]
+}
+
 /** A card as a Path's screens read it: the public library's, else one of your generated Paths' own. */
 export function pathCardById(id: string): ClaimCard | undefined {
   return cardById(id) ?? ownCards.find((c) => c.id === id)

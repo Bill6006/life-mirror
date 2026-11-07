@@ -74,7 +74,7 @@ CHANGED = "    if (t.level !== c.level || t.direction !== c.direction || (t.revi
 BY_CALL = "  return RANK[b.level] - RANK[a.level] || (DIRECTION[a.direction ?? ''] ?? 3) - (DIRECTION[b.direction ?? ''] ?? 3) || a.key.localeCompare(b.key)\n"
 QUEUE = "lines: ev.waiting.length ? ev.waiting.map((t) => fill(w.queueLine, { move: nameOf(t.moveId), reading: readingName(t.target), window: windowOf(t.window) })) : [w.queueNone] })"
 # Restated 2026-11-06 (P1, Paths as data): pathVersions joined the list after notes.
-SYNCED = "'askThreads', 'askTurns', 'notes', 'pathVersions']"
+SYNCED = "'askThreads', 'askTurns', 'notes', 'pathVersions', 'pathRequests']"
 NEXT_RULE = "find((t) => !taken.has(t.moveId) && this.mayEnter(t, d))"
 
 TABLE = [
@@ -240,10 +240,10 @@ TABLE = [
          new="  const keys = 'keys' in ref ? [...ref.keys] : []\n",
          tests=[FT], pattern='asks about a finding in a new thread'),
     dict(id='synced', file='src/cloudOutbox.ts', old=SYNCED,
-         new="'notes', 'pathVersions']",
+         new="'notes', 'pathVersions', 'pathRequests']",
          tests=[QT], pattern='is synced'),
     dict(id='tombstones', file='src/cloudOutbox.ts', old=SYNCED,
-         new="'notes', 'pathVersions']",
+         new="'notes', 'pathVersions', 'pathRequests']",
          tests=[FT], pattern='deletes a thread whole'),
     dict(id='export-answers', file='src/export.ts',
          old='answer: t.quick?.sections ?? null, cited: t.cited,',
@@ -727,8 +727,8 @@ TABLE = [
          new="...(r.noteOffer ? { noteOffer: true } : {})",
          tests=[CLT], pattern='reads a run or an answer only whole'),
     dict(id='a3-notes-synced', file='src/cloudOutbox.ts',
-         old="'askTurns', 'notes', 'pathVersions']",
-         new="'askTurns', 'pathVersions']",
+         old="'askTurns', 'notes', 'pathVersions', 'pathRequests']",
+         new="'askTurns', 'pathVersions', 'pathRequests']",
          tests=[QT], pattern='is synced'),
     dict(id='a3-notes-exported', file='src/export.ts',
          old="notes: (records?.ask?.notes ?? []).map(",

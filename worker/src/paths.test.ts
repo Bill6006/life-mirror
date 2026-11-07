@@ -191,6 +191,28 @@ describe('new evidence and its reading', () => {
   })
 })
 
+describe('a card its reader found only partly supported', () => {
+  it('is left out, every citation of it with it, and the Path compiles without it or says why it cannot', async () => {
+    const store = record()
+    await started(store)
+    const ctx = (q: string) => handlePathContext(deps(store, at('22:10')), new URL(`https://w.test/claude/context?task=path&day=${DAY}&${q}`))
+    await ctx('category=abstract&source=10.1000/garden')
+    const claim = (await ctx(`category=locate&source=10.1000/garden&passage=${encodeURIComponent('weekly practice sessions improved planting accuracy')}`)).body as { at: number; length: number; hash: string }
+    const effect = (await ctx(`category=locate&source=10.1000/garden&passage=${encodeURIComponent('by 30 percent over twelve weeks')}`)).body as { at: number; length: number; hash: string }
+    const card = { id: 'garden-practice', claim: 'Weekly practice sessions improved planting accuracy.', domain: 'skill', tags: [], grade: 'C', replication: 'untested', effect: '30 percent over twelve weeks.', population: 'Adults in one trial.', caveats: 'One trial.', origin: 'direct', sources: [{ cite: 'A B (2020)', doi: '10.1000/garden' }], spans: [{ field: 'claim', source: '10.1000/garden', via: 'europepmc', ...claim }, { field: 'effect', source: '10.1000/garden', via: 'europepmc', ...effect }] }
+    const d = { ...dossierForTests(), goal: GOAL, cards: ['skill-decay', 'garden-practice'] }
+    await handlePathLine(deps(store, at('22:41')), { task: 'path', day: DAY, answer: { dossier: d, cards: [card] } })
+    await runPaths(env, store, at('23:00'), { ...OPEN, fireFetcher: world() })
+    const served = ((await brief(store, at('23:05'), 'pathRead')).body as { cards: { id: string; read: string }[] }).cards
+    const r = await handlePathLine(deps(store, at('23:21')), { task: 'pathRead', day: DAY, answer: { verdicts: [{ id: served[0].id, read: served[0].read, verdict: 'partly', why: 'Only one trial, and a narrower outcome.' }] } })
+    expect(r.body).toMatchObject({ ok: true, admitted: [], dropped: [served[0].id] })
+    const row = await store.readBrainRow<GeneratedPathRow>('generated', `${generatedPathIdOf(GOAL, d.name)}:1`)
+    expect(row?.cards).toEqual([])
+    expect(row?.path.cards).not.toContain(served[0].id)
+    expect(row?.results).toEqual([`card ${served[0].id}: left out, its reader did not find it supported`])
+  })
+})
+
 describe('a dry run', () => {
   it('goes the whole way on a stand-in goal and writes nothing where the phone reads', async () => {
     const store = memoryStore()

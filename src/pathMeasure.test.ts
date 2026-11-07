@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
+import { strandsFor } from './pathRead'
 import { activeStrands, calibration, checkDue, checksDue, maintenanceOf, readGate, shows, strandsAfterTap, twoNumbers, viewOf, weekOf, type Behaviour, type MeasuredRep, type StageGate } from './pathMeasure'
 
 // The measurement layer, its pure part (P2, 2026-11-06): your own behaviours, never anyone's reaction.
@@ -126,6 +127,11 @@ describe('a strand that waits', () => {
     // A strand without pauses turns on and off alone; the last one on never goes off.
     expect(strandsAfterTap(path, ['meet'], 'nerves')).toEqual(['meet', 'nerves'])
     expect(strandsAfterTap(path, ['meet'], 'meet')).toEqual([])
+  })
+  it('is never turned on by the start’s focus: only by your own tap', () => {
+    expect(strandsFor(path, 'meet', false)).toEqual(['meet'])
+    expect(strandsFor(path, 'all', false)).toEqual(['meet'])
+    expect(strandsFor(path, 'together', true)).toEqual(['meet', 'nerves'])
   })
   it('opens the app’s own private check monthly while its strand is on', () => {
     const checked = { ...path, check: { strand: 'together', name: 'A monthly private check', questions: [], help: '' } }

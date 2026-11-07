@@ -49,4 +49,16 @@ describe('the generated Paths in your record', () => {
     expect(registerRows([{ ...a, path: { ...a.path, check: { strand: 'bed', name: 'A check', questions: [], help: 'Model-written help.' } } }])).toEqual([a.pathId])
     expect(findPath(a.pathId)).toBeUndefined()
   })
+
+  it('offer a Path that cites its own new cards to be read, as the catalogue’s own Paths are', async () => {
+    const { addedPaths } = await import('./pathRead')
+    const a = await row('2026-11-07T10:00:00.000Z')
+    const card = { ...library[0], id: `${a.pathId}-own-card`, status: 'admitted' as const }
+    const citing = { ...a, path: { ...a.path, cards: [...a.path.cards, card.id] }, cards: [card] }
+    expect(registerRows([citing])).toEqual([])
+    expect(addedPaths().map((p) => p.id)).toContain(a.pathId)
+    // The Brain's and Ask's own lookup never finds it.
+    const { cardById } = await import('./library')
+    expect(cardById(card.id)).toBeUndefined()
+  })
 })

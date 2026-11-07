@@ -4,7 +4,7 @@ import { copy } from './copy'
 import { db, getSettings, type Aim } from './db'
 import type { WeekShape } from './settings'
 import { fill } from './format'
-import { library, pathCardById } from './library'
+import { pathCardById, pathCards } from './library'
 import type { ClaimCard } from './libraryTypes'
 import { compiledPaths } from './pathCheck'
 import { useLive } from './live'
@@ -21,7 +21,7 @@ import { Disclosure, Tag } from './ui'
 // you start it, and a later version that changes it in a major way waits for you to read what changed.
 
 /** The Paths the catalogue adds that pass the compiler's checks, run again on the phone: the only ones the add sheet and the Aims tab offer. */
-export function addedPaths(all: readonly Path[] = paths, reps: readonly Move[] = moves, cards: readonly Pick<ClaimCard, 'id' | 'status'>[] = library): Path[] {
+export function addedPaths(all: readonly Path[] = paths, reps: readonly Move[] = moves, cards: readonly Pick<ClaimCard, 'id' | 'status'>[] = pathCards()): Path[] {
   return compiledPaths(all.filter((p) => !p.builtIn), reps, cards)
 }
 
