@@ -88,6 +88,13 @@ const reads = `## How the app reads what you write
   gates, \`start\` when there is one, \`maintenance\`, \`rule\`, \`cap\` and \`timeline\`.
 - **An abstention** is \`{ goal, triage: { route: 'abstain', types, why } }\` alone: the compiler ends there, and the
   person reads the reason and what would be needed.
+- **Words the compiler refuses**, each named with its text: rating and outcome words anywhere (rated, rating, score, how
+  it went, a win or a result someone gives you), treatment, cure and diagnosis words, a tactic on someone, and a
+  done-when that waits on someone's answer.
+- **A link's basis** is an origin label alone (direct, indirect, mechanism, expert, inference, judgment); its reasons go
+  in the strand's decision.
+- **A rep with someone there, or recorded,** has a guardrail: for a recording, that it is of you alone and stays on
+  your phone.
 - **Provenance** is stamped by the harness that runs you: never write it.
 `
 
