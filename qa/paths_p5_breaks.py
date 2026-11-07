@@ -255,6 +255,11 @@ TABLE = [
          old="  ['body', /",
          new="  ['bodyOff', /\\bnever matches\\b|",
          tests=['src/pathTriage.test.ts'], pattern='asks back on a vague goal'),
+    # The database version.
+    dict(id='v26-drops-a-store', file='src/db.ts',
+         old="      pathJobs: 'id, requestId',\n    })",
+         new="      pathJobs: 'id, requestId',\n      checkins: null,\n    })",
+         tests=['src/dbMigration26.test.ts'], pattern='keeps a version-25 record whole'),
     # The engine.
     dict(id='requires-ignored', file='src/pathMeasure.ts',
          old="  return v.met >= gate.met && (gate.requires ?? []).every((id) => v.ids.includes(id))\n",
