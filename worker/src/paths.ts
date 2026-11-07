@@ -448,9 +448,19 @@ export async function handlePathLine(deps: PathsDeps, raw: unknown): Promise<Rep
     const request = await requestFor(deps, t)
     if (!request) return reply(409, { error: 'the request this run drafts for is not there' })
     const d = obj(answer.dossier) as unknown as Dossier
-    if (!d || typeof d.goal !== 'string' || !Array.isArray(d.strands)) return refuse(['the answer holds no dossier in the guide’s shape'])
+    const abstaining = obj(obj(d).triage).route === 'abstain'
+    if (!d || typeof d.goal !== 'string' || (!abstaining && !Array.isArray(d.strands))) return refuse(['the answer holds no dossier in the guide’s shape'])
     // The goal is the request's, word for word: a run never drafts for another.
     if (d.goal !== request.goal) return refuse(['the dossier’s goal is not the request’s, word for word'])
+    // An abstention is an answer: the job ends there, with why and what would be needed, never retried as a refusal.
+    if (abstaining) {
+      const r = compileDossier(d, { moves: catalogueMoves, cards: library, minutesPerWeek: request.minutes, day: t.day, provenance: provenanceOf(t, written) })
+      if (!r.ok && r.abstain) {
+        await end('abstained', { reasons: r.reasons.slice(0, 40) })
+        return reply(200, { ok: true, abstained: true, reasons: r.reasons })
+      }
+      return refuse(r.ok ? ['an abstention that compiled'] : r.reasons)
+    }
     const rawCards = Array.isArray(answer.cards) ? (answer.cards as unknown[]) : []
     const cardReasons = (await Promise.all(rawCards.map((c) => draftedCardProblems(deps, c)))).flat()
     const taken = rawCards.map((c) => String(obj(c).id)).filter((id) => library.some((x) => x.id === id))

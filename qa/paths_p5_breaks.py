@@ -260,6 +260,10 @@ TABLE = [
          old="      pathJobs: 'id, requestId',\n    })",
          new="      pathJobs: 'id, requestId',\n      checkins: null,\n    })",
          tests=['src/dbMigration26.test.ts'], pattern='keeps a version-25 record whole'),
+    dict(id='abstain-needs-shape', file=C,
+         old="  if (d.triage?.route === 'abstain') return { ok: false, abstain: reasons.length === 0, reasons: [...reasons, `the generator abstained: ${d.triage.why}`] }\n",
+         new="  if (d.triage?.route === 'abstain') abstains.push(`the generator abstained: ${d.triage.why}`)\n",
+         tests=[COMPILE], pattern='abstain when the model does'),
     # The engine.
     dict(id='requires-ignored', file='src/pathMeasure.ts',
          old="  return v.met >= gate.met && (gate.requires ?? []).every((id) => v.ids.includes(id))\n",
@@ -389,6 +393,10 @@ TABLE = [
          old="    const { dossier, cards } = namespaced(d, drafted, pathId)\n",
          new="    const { dossier, cards } = { dossier: d, cards: drafted }\n",
          tests=[WORKER], pattern='checks each new card'),
+    dict(id='worker-abstain-refused', file=W,
+         old="    if (!d || typeof d.goal !== 'string' || (!abstaining && !Array.isArray(d.strands))) return refuse(",
+         new="    if (!d || typeof d.goal !== 'string' || !Array.isArray(d.strands)) return refuse(",
+         tests=[WORKER], pattern='ends the job as abstained, with why'),
     # The phone's screens.
     dict(id='list-words-from-route-alone', file='src/pathIntake.tsx',
          old="  const triage = routeOf({ goal: r.goal, why: r.why, offLimits: r.offLimits })\n",

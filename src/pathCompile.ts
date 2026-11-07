@@ -233,7 +233,10 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
   const rules = triageGoal(d.goal)
   // The known-answer test rebuilds Paths that already exist: only there may a goal an existing Path covers compile.
   if (rules.route !== 'fits' && !(rules.route === 'redirect' && rules.practice) && !(ctx.knownAnswer && rules.route === 'existing')) say(`the goal routes as ${rules.route}${rules.to ? ` (${rules.to})` : ''} by the rules, so no Path is made`)
-  if (d.triage.route === 'abstain') abstains.push(`the generator abstained: ${d.triage.why}`)
+  // The generator's own abstention ends it here: nothing is built, so no shape is asked of it (the stress set's probe,
+  // 2026-11-07: an abstention read as a refusal would have been retried and closed as refused). A route the rules
+  // refuse stays refused.
+  if (d.triage?.route === 'abstain') return { ok: false, abstain: reasons.length === 0, reasons: [...reasons, `the generator abstained: ${d.triage.why}`] }
   if (!d.triage.types.length || d.triage.types.some((t) => !GOAL_TYPES.includes(t))) say('goal types must come from the closed list')
   if (!(ctx.provenance.run && ctx.provenance.model && ctx.provenance.promptHash && ctx.provenance.retrievedOn)) say('the harness stamps the run, the model, the procedure’s hash and the day the evidence was read')
 

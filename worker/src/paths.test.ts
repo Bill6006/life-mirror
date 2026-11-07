@@ -134,6 +134,14 @@ describe('the drafting run', () => {
     expect(await jobOf(store)).toMatchObject({ state: 'ready', pathId, version: '1' })
   })
 
+  it('ends the job as abstained, with why, the first time the generator abstains: never retried as a refusal', async () => {
+    const store = record()
+    await started(store)
+    const r = await handlePathLine(deps(store, at('22:40')), { task: 'path', day: DAY, answer: { dossier: { goal: GOAL, triage: { route: 'abstain', types: ['skill'], why: 'The library holds nothing on this garden.' } }, cards: [] } })
+    expect(r).toMatchObject({ status: 200, body: { ok: true, abstained: true } })
+    expect(await jobOf(store)).toMatchObject({ state: 'abstained', reasons: ['the generator abstained: The library holds nothing on this garden.'] })
+  })
+
   it('refuses a dossier with every reason at once, lets the run try again, and ends the job after its last attempt', async () => {
     const store = record()
     await started(store)

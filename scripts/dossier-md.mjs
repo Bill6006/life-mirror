@@ -83,6 +83,8 @@ const reads = `## How the app reads what you write
   within them, since a Path's own reps take the day's People row at most three days in seven.
 - **Decisions** the compiler requires: \`structure\`, \`strand:<id>\` for each strand, \`gate:<id>\` for each strand with
   gates, \`start\` when there is one, \`maintenance\`, \`rule\`, \`cap\` and \`timeline\`.
+- **An abstention** is \`{ goal, triage: { route: 'abstain', types, why } }\` alone: the compiler ends there, and the
+  person reads the reason and what would be needed.
 - **Provenance** is stamped by the harness that runs you: never write it.
 `
 

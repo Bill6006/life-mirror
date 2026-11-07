@@ -23,7 +23,8 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    transfer, maintenance), `exposure` (where fear may limit the person: testing predictions, varied, never a
    strict ladder), `habitOfStarting` (a stable cue for starting the rep, never the live performance), `knowledge`
    (spaced retrieval), `lifestyle` (self-monitoring, goals, feedback and plans). If the goal is too vague to build
-   on, or the library holds nothing a strand could stand on, set `triage.route` to `abstain` with the reason.
+   on, or the library holds nothing a strand could stand on, set `triage.route` to `abstain` with the reason and
+   what would be needed. An abstention is the goal and its triage alone: build nothing else.
 2. **Take the goal apart, setting by setting.** For each setting the goal reaches (the intake's "where it should
    show up" first), say what being good at it looks like there and which observable acts show it. A setting with
    skills of its own gets its own strand or its own behaviours; it is never a rung passed on the way to another.

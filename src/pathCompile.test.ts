@@ -64,6 +64,11 @@ describe('the rules a dossier cannot pass', () => {
   it('abstain when the model does, or when no admitted card stands behind a strand', () => {
     const a = compileDossier({ ...dossier(), triage: { route: 'abstain', types: ['skill'], why: 'too vague to build on' } }, CTX)
     expect(a).toMatchObject({ ok: false, abstain: true })
+    // An abstention needs no shape: nothing built, nothing else asked, the reason alone (the stress set's probe).
+    const bare = { goal: 'Be a better version of myself at work', triage: { route: 'abstain', types: ['skill'], why: 'Too broad to build on yet: say one act you would do differently.' } } as unknown as Dossier
+    expect(compileDossier(bare, CTX)).toEqual({ ok: false, abstain: true, reasons: ['the generator abstained: Too broad to build on yet: say one act you would do differently.'] })
+    // A goal the rules refuse stays refused, whatever the model says.
+    expect(compileDossier({ ...bare, goal: 'Get my ex to want me back' }, CTX)).toMatchObject({ ok: false, abstain: false })
     const d = dossier()
     const thin = compileDossier({ ...d, decisions: d.decisions.map((x) => ({ ...x, cards: [] })), reps: d.reps.map((r) => ({ ...r, method: 'mental-rehearsal' })) }, { ...CTX, cards: CTX.cards.map((c) => (c.id === 'skill-decay' ? c : { ...c, status: 'draft' as const })) })
     expect(thin.ok ? [] : thin.reasons).toContain('strand bed: no admitted card stands behind it')
