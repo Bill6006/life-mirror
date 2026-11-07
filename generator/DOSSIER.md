@@ -125,7 +125,7 @@ export const START_SCREENS = {
 export type StartScreenId = keyof typeof START_SCREENS
 
 /** The decisions every generated Path records: why its shape is as it is, each number included. */
-const REQUIRED_DECISIONS = ['structure', 'maintenance', 'rule', 'timeline'] as const
+const REQUIRED_DECISIONS = ['structure', 'maintenance', 'rule', 'timeline', 'cap'] as const
 
 
 /** One behaviour a strand's reps check: in your words, and as it is asked of someone who was there. */
@@ -233,7 +233,7 @@ export interface PathDecision {
   ones, `settingKinds` kinds of setting), counting only stage-moving reps (`advances`) placed at that stage, and,
   where the stage has a gate, when the gate holds too: reps whose best view shows `met` behaviours and every one
   in `requires`, on `weeks` separate weeks, `confirmed` of them from outside the moment, in `kinds` kinds of
-  setting. A strand's last stage is practice, checked again later.
+  setting. A strand's last stage is practice: reaching it is the end of the strand.
 - **The attempt cap** (`measurement.cap`, four to twelve). An attempt is a done rep of the stage with behaviours
   checked. After `cap` attempts without the gate holding, the stage below's reps come back beside the current
   ones: practice steps back, nothing shown is erased, and nothing is called a demotion.
@@ -248,7 +248,11 @@ export interface PathDecision {
   kept. A Path most of whose stage-moving reps are done with someone must open on `socialFear`.
 - **Where it starts** (`start.focus`). Each choice is a strand's id (that strand alone), or any other id (every
   strand but the one a yes opens and those that wait). A focus never names the strand a yes opens or one that waits.
-- **Strands on.** Every strand but the one a yes opens and those that wait is on at first. The person turns strands
+- **A strand's last stage** has no gate and is never checked again: reaching it is the end of the strand.
+- **The smaller version.** After `smallerAfterRefusals` refusals in a row the app offers the stage's lightest rep, by
+  effort and then minutes, so every stage the rule moves holds a rep below high effort.
+- **Strands on.** The strand a start opens is off at first without `waits`: a yes turns it on.
+  Every strand but the one a yes opens and those that wait is on at first. The person turns strands
   on and off on the Path's card; at least one stays on. A strand that `waits` is off until they turn it on, dated;
   while it is on, the strands it `pauses` are off, and they come back with their stages kept when it goes off. A
   strand that is off offers nothing, and its checks again later wait.
@@ -258,12 +262,14 @@ export interface PathDecision {
 - **Feasibility** (`needs`, `gives`): `contact` (a way to reach the person) and `acquaintance` (someone talked
   with before) must be given by a rep at or before the needing rep's stage on its strand, or by a rep on another
   strand that does not wait; `plan` (someone's yes to a plan) never moves a stage; `partner` sits only on a strand
-  that waits. Every stage the rule moves must keep its floor with any one of its stage-moving reps taken away.
+  that waits; a rep that needs a plan is offered like any other, and with no plan the person answers there was no
+  chance. Every stage the rule moves must keep its floor with any one of its stage-moving reps taken away.
+- **Gates measure every component** a strand trains before its last stage: one of its behaviours is required by a gate.
 - **Floors by kind** (`FLOORS` above): a strand's rule asks at least these reps and different reps.
 - **Minutes.** One to ninety a rep, each within the person's minutes a week; the median rep on three days in seven
   within them, since a Path's own reps take the day's People row at most three days in seven.
 - **Decisions** the compiler requires: `structure`, `strand:<id>` for each strand, `gate:<id>` for each strand with
-  gates, `start` when there is one, `maintenance`, `rule` and `timeline`.
+  gates, `start` when there is one, `maintenance`, `rule`, `cap` and `timeline`.
 - **Provenance** is stamped by the harness that runs you: never write it.
 
 ## An example, for its shape only (a garden goal)
@@ -315,6 +321,7 @@ export function dossierForTests(): Dossier {
       { id: 'maintenance', element: 'maintenance', decision: 'Checked again about a month and three months after a stage is shown, then about every six.', basis: 'Unpractised skill fades over months.', origin: 'inference', cards: ['skill-decay'], uncertainty: 'The intervals come from other skills.', change: 'Checks you keep passing, or missing.' },
       { id: 'floor', element: 'rule', decision: 'Six jobs across three different ones within six weeks.', basis: 'Design judgment, the app’s floor for a skill.', origin: 'judgment', cards: [], uncertainty: 'The numbers are a guess.', change: 'A stage that comes far too easily or never does.' },
       { id: 'timeline', element: 'timeline', decision: 'A summer, with no fixed end.', basis: 'Design judgment.', origin: 'judgment', cards: [], uncertainty: 'How fast it goes is yours.', change: 'Your record.' },
+      { id: 'cap', element: 'cap', decision: 'Eight attempts at a stage before the stage below comes back beside it.', basis: 'Design judgment: enough tries to show a stage, few enough that a stuck stage gets help.', origin: 'judgment', cards: [], uncertainty: 'The number is a guess.', change: 'Stages often stuck at the cap, or never near it.' },
     ],
     cards: ['skill-decay'],
     counted: 'Jobs done in the bed, by job and by the behaviours checked.',

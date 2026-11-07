@@ -233,6 +233,16 @@
      "cards": [],
      "uncertainty": "How fast it goes is yours.",
      "change": "Your record."
+    },
+    {
+     "id": "cap",
+     "element": "cap",
+     "decision": "Eight attempts at a stage before the stage below comes back beside it.",
+     "basis": "Design judgment: enough tries to show a stage, few enough that a stuck stage gets help.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "The number is a guess.",
+     "change": "Stages often stuck at the cap, or never near it."
     }
    ],
    "generated": {
@@ -824,7 +834,7 @@
   "cards": [],
   "results": [],
   "id": "g-f6bde581:1",
-  "hash": "c97915d4aecac183"
+  "hash": "70b40c2af4def4eb"
  },
  {
   "pathId": "g-390aa7b2",
@@ -1163,6 +1173,16 @@
      "cards": [],
      "uncertainty": "How fast it goes is yours.",
      "change": "Your record."
+    },
+    {
+     "id": "cap",
+     "element": "cap",
+     "decision": "Eight attempts at a stage before the stage below comes back beside it.",
+     "basis": "Design judgment: enough tries to show a stage, few enough that a stuck stage gets help.",
+     "origin": "judgment",
+     "cards": [],
+     "uncertainty": "The number is a guess.",
+     "change": "Stages often stuck at the cap, or never near it."
     },
     {
      "id": "strand-asking",
@@ -2398,6 +2418,6 @@
   "cards": [],
   "results": [],
   "id": "g-390aa7b2:1",
-  "hash": "2c4bad7a826eacb9"
+  "hash": "95a3c2def09bb053"
  }
 ]

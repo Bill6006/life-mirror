@@ -87,7 +87,7 @@ test('asking for a Path: the rules route it before anything is kept, the app’s
   await page.getByTestId('make-path-minutes-120').click()
   await page.getByTestId('make-path-ask').click()
   await expect(page.getByTestId('make-path-route')).toHaveAttribute('data-route', 'fits')
-  await expect(page.getByTestId('make-path-route')).toContainText('It takes hours, never minutes, and never between 9:00 and 11:30. Nothing runs until you read it and start it.')
+  await expect(page.getByTestId('make-path-route')).toContainText('It takes hours, never minutes, and never between 9:00 AM and 11:30 AM. Nothing runs until you read it and start it.')
   await page.getByTestId('make-path-done').click()
   await expect.poll(async () => (await rows(page, 'pathRequests')).map((r) => [r.goal, r.where, r.minutes, r.route, r.state])).toEqual([['Grow vegetables in a small garden bed this summer', ['home'], 120, 'fits', 'queued']])
   await expect.poll(async () => (await rows(page, 'outbox')).filter((r) => r.store === 'pathRequests').length).toBe(1)

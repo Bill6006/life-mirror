@@ -119,6 +119,7 @@ export function dossierForTests(): Dossier {
       { id: 'maintenance', element: 'maintenance', decision: 'Checked again about a month and three months after a stage is shown, then about every six.', basis: 'Unpractised skill fades over months.', origin: 'inference', cards: ['skill-decay'], uncertainty: 'The intervals come from other skills.', change: 'Checks you keep passing, or missing.' },
       { id: 'floor', element: 'rule', decision: 'Six jobs across three different ones within six weeks.', basis: 'Design judgment, the app’s floor for a skill.', origin: 'judgment', cards: [], uncertainty: 'The numbers are a guess.', change: 'A stage that comes far too easily or never does.' },
       { id: 'timeline', element: 'timeline', decision: 'A summer, with no fixed end.', basis: 'Design judgment.', origin: 'judgment', cards: [], uncertainty: 'How fast it goes is yours.', change: 'Your record.' },
+      { id: 'cap', element: 'cap', decision: 'Eight attempts at a stage before the stage below comes back beside it.', basis: 'Design judgment: enough tries to show a stage, few enough that a stuck stage gets help.', origin: 'judgment', cards: [], uncertainty: 'The number is a guess.', change: 'Stages often stuck at the cap, or never near it.' },
     ],
     cards: ['skill-decay'],
     counted: 'Jobs done in the bed, by job and by the behaviours checked.',

@@ -192,6 +192,16 @@ describe('the rules round 1 of the known-answer test added', () => {
     expect(r.path.strands?.find((s) => s.id === 'together')).toMatchObject({ waits: true, pauses: ['asking'] })
   })
 
+  it('a smaller version that is smaller, and every component a gated strand trains measured by a gate (round 2)', () => {
+    const d = dossier()
+    expect(reasons({ ...d, reps: d.reps.map((r) => (r.stage === 1 ? { ...r, effort: 'high' as const } : r)) })).toContain('strand bed, stage 1: a stage-moving rep below high effort, so the smaller version after refusals is smaller')
+    // The last stage moves nowhere: its reps may all be high effort.
+    expect(reasons({ ...d, reps: d.reps.map((r) => (r.stage === 3 ? { ...r, effort: 'high' as const } : r)) })).toEqual([])
+    // Tending trained at stage 2 and shown by "checked": a gate that never requires it leaves it unmeasured.
+    expect(reasons({ ...d, measurement: { ...d.measurement, gates: d.measurement.gates.map((g) => (g.stage === 2 ? { ...g, requires: ['spaced'] } : g)) } })).toContain('strand bed: component tending is trained before its last stage, and no gate requires a behaviour that shows it')
+    expect(reasons({ ...d, decisions: d.decisions.filter((x) => x.element !== 'cap') })).toContain('a decision on cap: why it is as it is')
+  })
+
   it('the minutes, the floors by kind, the attempt cap and the decisions every number needs', () => {
     const d = dossier()
     expect(reasons(withRep(d, 'sow-a-row', { minutes: 95 }))).toEqual(expect.arrayContaining(['rep sow-a-row: one to ninety minutes', 'rep sow-a-row: 95 minutes is more than the 90 minutes a week you have']))

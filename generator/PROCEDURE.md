@@ -30,6 +30,11 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    Then the components (what a person must be able to do), each with its basis as an origin label (`direct`,
    `indirect`, `mechanism`, `expert`, `inference`, `judgment`) and the cards behind it. Each component is shown
    by at least one behaviour (`shows`), or is marked `composite` and built from its parts by links into it.
+   Name every layer the goal implies, from the evidence and the intake (for a goal about people, for example:
+   talking one to one, joining a group, bringing people together, a commitment that recurs): each gets components
+   and reps, or an `excluded` entry that names it and says why. When components differ by setting and by how they
+   can be confirmed (a conversation is checked by you alone; a talk can be recorded or handed over), give each group
+   its own strand, with its own gates and its own focus at the start.
 3. **Preconditions.** For every component and every rep, ask what must already exist: a way to reach the person,
    someone talked with before, someone's yes to a plan, a partner. Write a rep's as `needs` from the closed list.
    A rep that gives one (offering a way to stay in touch; a first talk) says so in `gives`, at or before the stage
@@ -50,6 +55,9 @@ The compiler reports every reason at once; read them all, fix them all, and comp
      stage is ever declared. Reps that need a partner sit on such a strand; the app adds its own private check.
    - **Calls and messages.** Say for each strand whether calls and messages move its stages (`remote`), and why, in
      its decision. Where the intake puts the goal in person, they do not: a rep done by message supports only.
+   - **The hardest setting the intake names** (a talk, a room of strangers) is the top of a strand: the stage that
+     names it holds stage-moving reps in that setting, and a one-to-one version of it stays support. Each stage's
+     words describe only what its own reps offer.
 7. **Reps.** Concrete, real-world, the person's own act, complete whatever anyone answers: a done-when never waits
    on a reply, a yes, an arrival or a meeting. Each: what to do, done when (beginning "Done "), where attention goes
    (`cue`), the crutch to drop, the settings, whether someone else is there (`with`: `adult` in person, `remote`
@@ -60,14 +68,21 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    own one-line prediction before each start. Give every stage the rule moves **one rep more** than its floor
    needs, in enough kinds of setting, so the stage holds when one rep cannot happen (no newcomer comes, a rep is
    dropped).
+   Every stage the rule moves holds a rep below high effort: after refusals the app offers the stage's lightest rep,
+   so it must be lighter. A guardrail never makes a rep wait on someone else's answer: when the other person keeps
+   it light, or says no, the rep is still done by your own offer. A rep that needs a plan someone agreed to is
+   offered like any other, and on a day with no plan you answer that there was no chance.
 8. **Measurement**, in P2's shape: per strand the behaviours a rep checks (your own acts, never anyone's reaction),
    written stage by stage from each stage's `what`; per stage a gate whose `requires` names the behaviours that
    stage exists for (behaviours met, separate weeks, kinds of setting). **Pick each stage's check source from its
    settings:** your own checks for a conversation (the person you talked with is never asked to check you); a
    recording only of yourself alone; a hand-over only to someone in an audience (a group, in person). A gate asks
    for a check from outside the moment (`confirmed`) only where two or more of its reps can give one; otherwise it
-   rests on your own checks, and the decision says so. An attempt cap of four to twelve (eight unless a decision
-   says why), and checks again later (about a month and three months, then about every six).
+   rests on your own checks, and the decision says so. Every component a strand trains before its last stage is
+   shown by a behaviour some gate of that strand requires: one no gate asks for is never measured. A strand's last
+   stage has no gate: reaching it is the end, and what must be shown is shown at the stages before it. An attempt
+   cap of four to twelve, with a decision saying why (eight unless you have a reason), and checks again later
+   (about a month and three months, then about every six).
 9. **The start, from the domain.** A Path most of whose stage-moving reps are done with someone opens on the app's
    `socialFear` screen and holds an exposure strand a yes opens; a strand of kind `exposure`, or a goal with a
    clinical word, opens on one of the app's own screens (`socialFear` or `fear`), named by id: you never write its
@@ -76,7 +91,8 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    the start screen asks it; anything else the intake did not ask, state the default you assumed and what would
    change it.
 10. **Decisions.** One record per element: the structure, each strand (`strand:<id>`), each strand's gates
-   (`gate:<id>`), the start, the maintenance, the floor (`rule`) and the timeline, and any rep whose shape needs a
+   (`gate:<id>`), the start, the maintenance, the floor (`rule`), the attempt cap (`cap`) and the timeline, and any
+   rep whose shape needs a
    reason: what was decided, on what basis, its origin, the cards, how unsure it is, and what would change it. Most
    of a new Path is design judgment: say so plainly. A guardrail or a reason for leaving something out that states
    a finding cites the card it rests on.

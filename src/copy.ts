@@ -1669,7 +1669,7 @@ export const copy = {
       privacy: 'Your words go to your own Claude and nowhere else; a search for evidence never carries them.',
       done: 'Done',
       routes: {
-        fits: 'Life Mirror will draft it with your own Claude, then check it with its compiler. It takes hours, never minutes, and never between 9:00 and 11:30. Nothing runs until you read it and start it.',
+        fits: 'Life Mirror will draft it with your own Claude, then check it with its compiler. It takes hours, never minutes, and never between 9:00 AM and 11:30 AM. Nothing runs until you read it and start it.',
         practice: 'This is common, and a doctor or a psychologist can help with it: talking treatments for it are well tested. A Path can be practice beside help, never treatment. Life Mirror will draft one as practice, and it opens with its own short screen.',
         unclear: 'What would you like to get better at? Say it in a few words: what you would do, where, or with whom.',
         notAPath: 'That sounds like a one-off task rather than something to practise. A Path is for a skill or a habit you build over weeks.',

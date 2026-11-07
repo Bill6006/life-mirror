@@ -136,7 +136,7 @@ export const START_SCREENS = {
 export type StartScreenId = keyof typeof START_SCREENS
 
 /** The decisions every generated Path records: why its shape is as it is, each number included. */
-const REQUIRED_DECISIONS = ['structure', 'maintenance', 'rule', 'timeline'] as const
+const REQUIRED_DECISIONS = ['structure', 'maintenance', 'rule', 'timeline', 'cap'] as const
 
 export type Compiled = { ok: true; path: Path; reps: Move[]; shared: { move: string; place: PathPlace }[] } | { ok: false; abstain: boolean; reasons: string[] }
 
@@ -363,6 +363,8 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
       const kinds = (rs: readonly DossierRep[]) => new Set(rs.flatMap((r) => r.settings)).size
       const short = here.length < s.rule.distinctReps + 1 || here.some((x) => kinds(here.filter((r) => r !== x)) < s.rule.settingKinds)
       if (short) say(`strand ${s.id}, stage ${st.n}: its floor (${s.rule.distinctReps} different reps in ${s.rule.settingKinds} kinds of setting) must hold with any one of its ${here.length} stage-moving reps taken away`)
+      // The smaller version after refusals is the stage's lightest rep: one below high effort, or it is no smaller (round 2).
+      if (here.length && here.every((r) => r.effort === 'high')) say(`strand ${s.id}, stage ${st.n}: a stage-moving rep below high effort, so the smaller version after refusals is smaller`)
     }
   }
 
@@ -379,6 +381,19 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
     const here = d.reps.filter((r) => r.strand === g.strand && r.advances && r.stage === g.stage)
     if (g.confirmed > 0 && here.filter((r) => r.record || r.handOver).length < 2) say(`${where}: a check from outside the moment needs two or more of its reps that can give one (a recording of yourself, or an audience's)`)
     if (g.kinds > new Set(here.flatMap((r) => r.settings)).size) say(`${where}: it asks for ${g.kinds} kinds of setting, more than its reps hold`)
+  }
+  // A component its strand trains before the last stage is shown at some gate of that strand (round 2): one no gate requires is never measured.
+  for (const s of d.strands) {
+    const gated = m.gates.filter((g) => g.strand === s.id)
+    if (!gated.length) continue
+    const required = new Set(gated.flatMap((g) => g.requires ?? []))
+    for (const id of s.components) {
+      const c = d.components.find((x) => x.id === id)
+      if (!c || c.composite) continue
+      const firstStage = Math.min(...d.reps.filter((r) => r.strand === s.id && r.trains?.includes(id)).map((r) => r.stage))
+      if (firstStage >= s.stages.length) continue
+      if (!(c.shows ?? []).some((b) => required.has(b))) say(`strand ${s.id}: component ${id} is trained before its last stage, and no gate requires a behaviour that shows it`)
+    }
   }
   for (const r of d.reps) if (r.record || r.handOver) if (!m.strands.find((x) => x.strand === r.strand)?.[r.record ? 'record' : 'handOver']) say(`rep ${r.id}: ${r.record ? 'a recording' : 'a hand-over'} on a strand whose measurement does not take one`)
 

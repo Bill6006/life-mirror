@@ -132,7 +132,7 @@ try {
     await shot(make, 'p5-make')
     await page.getByTestId('make-path-ask').click()
     const route = page.getByTestId('make-path-route')
-    check('a goal the rules route as a Path waits for a draft, never instantly, never in the morning hours', (await route.getAttribute('data-route')) === 'fits' && (await text(route)).includes('never between 9:00 and 11:30'), await text(route))
+    check('a goal the rules route as a Path waits for a draft, never instantly, never in the morning hours', (await route.getAttribute('data-route')) === 'fits' && (await text(route)).includes('never between 9:00 AM and 11:30 AM'), await text(route))
     const requests = await rowsUntil(page, 'pathRequests', (r) => r.length === 1)
     check('the request is kept with its route, queued', requests.length === 1 && requests[0].route === 'fits' && requests[0].state === 'queued')
     const outbox = await rows(page, 'outbox')
