@@ -202,8 +202,8 @@ TABLE = [
          tests=[S], pattern=CHIPS),
     # Part 3: Social energy steering the People row.
     dict(id='steer-draws-only', file='src/pathStage.ts',
-         old="  if (!steer || pick?.rule !== 'draw') return pick\n",
-         new="  if (!steer || !pick) return pick\n",
+         old="  if (!steer || pick?.rule !== 'draw' || (steer === 'remote' && fit.no?.has('remote'))) return pick\n",
+         new="  if (!steer || !pick || (steer === 'remote' && fit.no?.has('remote'))) return pick\n",
          tests=[ST], pattern='own rules stand'),
     dict(id='steer-calls-and-messages', file='src/pathStage.ts',
          old="return steer === 'remote' ? !inPerson(m) && (m.settings ?? []).includes('remote') : inPerson(m)",

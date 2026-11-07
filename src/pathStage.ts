@@ -9,6 +9,7 @@ import { fill } from './format'
 import { heldPickup } from './dayShape'
 import { inPerson, outAmongPeople, peopleAround } from './people'
 import { activeStrands, measuredReps, strandReader, type StrandMeasureToday } from './pathMeasure'
+import { adaptedOf, HARD_EFFORT, UNADAPTED, type Adapted, type PathAdaptation } from './pathAdapt'
 
 // The path commitment (Part 24), the pure part: the stage a path stands on, derived from the
 // record and never stored; the reps that fit this block by their own prerequisites (Pass 3); the
@@ -178,6 +179,16 @@ export interface EligibilityInput {
   strand?: string
   /** On a measured Path (P2), stages whose reps come back beside the current one: the stage below when stuck, a stage shown whose check was missed. */
   alsoStages?: readonly number[]
+  /** Your changes to how the Path runs (P6): a rep set aside, or one needing only a kind of setting you don't have, is not offered. */
+  adapted?: Adapted
+}
+
+/** Whether a change of yours sets a rep aside (P6): by name, or because it needs only a kind of setting you said you don't have. */
+export function setAsideBy(a: Adapted | undefined, m: Move): boolean {
+  if (!a || a === UNADAPTED) return false
+  if (a.setAside.has(m.id)) return true
+  if (!a.noSettings.size) return false
+  return (m.settings?.length ? m.settings : [defaultSetting(m)]).every((k) => a.noSettings.has(k))
 }
 
 /** Whether a rep that waits for others may join the app's picks: each of them done or partly done. */
@@ -229,7 +240,7 @@ export function dateStageOf(path: Path): number | null {
 export function eligibility(i: EligibilityInput): Eligibility {
   const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
   const channel = i.path.channels?.find((c) => c.id === 'online')
-  const stageReps = [stage, ...(i.alsoStages ?? []).filter((n) => n !== stage)].flatMap((n) => pathReps(i.path.id, n, i.strand)).filter((m, k, all) => all.findIndex((x) => x.id === m.id) === k).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
+  const stageReps = [stage, ...(i.alsoStages ?? []).filter((n) => n !== stage)].flatMap((n) => pathReps(i.path.id, n, i.strand)).filter((m, k, all) => all.findIndex((x) => x.id === m.id) === k).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith') && !setAsideBy(i.adapted, m))
   const eligible = stageReps.filter((m) => {
     if (m.path?.[i.path.id]?.onDate && !i.dateDay) return false
     if (repPrerequisite(m, i.block, i.ctx) !== null) return false
@@ -309,8 +320,10 @@ export const GOING_OUT_KINDS: readonly SettingKind[] = ['errand', 'oneToOne', 'g
  * reps used least within the rule's weeks. Where today's shape puts no one around (out), an
  * in-person rep's going-out kinds come first, when it has any (Pass 3).
  */
-export function settingFor(m: Move, path: Path, entries: readonly PathEntry[], today: string, out = false): SettingKind {
-  const own = m.settings?.length ? m.settings : [defaultSetting(m)]
+export function settingFor(m: Move, path: Path, entries: readonly PathEntry[], today: string, out = false, no?: ReadonlySet<SettingKind>): SettingKind {
+  const all = m.settings?.length ? m.settings : [defaultSetting(m)]
+  // A kind of setting you said you don't have is never where a rep is meant to happen, while it has another (P6).
+  const own = no?.size && all.some((k) => !no.has(k)) ? all.filter((k) => !no.has(k)) : all
   const fits = inPerson(m) ? own.filter((k) => IN_PERSON_KINDS.includes(k)) : own
   const outing = out && inPerson(m) ? fits.filter((k) => GOING_OUT_KINDS.includes(k)) : []
   const kinds = outing.length ? outing : fits.length ? fits : own
@@ -337,7 +350,21 @@ export interface RepPick {
   steer?: 'remote' | 'inPerson'
   /** Part 32: the coach's one line of today's version, shown under the rep. */
   version?: string
+  /** P6: the smaller version first, after a rep of the stage you marked hard or had no time for. */
+  first?: true
+  /** P6: a draw that leaned toward a rep you said you prefer. */
+  preferred?: true
 }
+
+/** Your changes as a pick reads them (P6): the reps you prefer, the reps whose smaller version comes first now, and the kinds of setting you don't have. */
+export interface PickFit {
+  prefer?: ReadonlySet<string>
+  smaller?: ReadonlySet<string>
+  no?: ReadonlySet<SettingKind>
+}
+
+/** How much more often a rep you prefer is drawn, before the chances are held within their bounds. */
+export const PREFER_WEIGHT = 2
 
 const EFFORT_ORDER: Record<Effort, number> = { low: 0, medium: 1, high: 2 }
 
@@ -400,16 +427,23 @@ export function drawChances(eligible: readonly Move[], entries: readonly PathEnt
  * the comparisons read only what chance decided. Then where it is meant to happen: the kind of
  * setting used least lately.
  */
-export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number, stage = 1, out = false): RepPick | null {
+export function pickRep(path: Path, eligible: readonly Move[], entries: readonly PathEntry[], today: string, draw: number, stage = 1, out = false, fit: PickFit = {}): RepPick | null {
   if (!eligible.length) return null
   const candidates = eligible.map((m) => m.id)
-  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today, out), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 }, leaning: false })
-  if (refusalsInARow(entries) >= path.rule.smallerAfterRefusals) {
-    const order = new Map(candidates.map((id, k) => [id, k]))
-    return one([...eligible].sort((a, b) => EFFORT_ORDER[a.effort] - EFFORT_ORDER[b.effort] || a.minutes - b.minutes || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))[0], 'smaller')
-  }
+  const one = (m: Move, rule: PickRule): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, today, out, fit.no), rule, chosenBy: 'app', candidates, propensities: { [m.id]: 1 }, leaning: false })
+  const order = new Map(candidates.map((id, k) => [id, k]))
+  const lightest = (ms: readonly Move[]) => [...ms].sort((a, b) => EFFORT_ORDER[a.effort] - EFFORT_ORDER[b.effort] || a.minutes - b.minutes || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))[0]
+  if (refusalsInARow(entries) >= path.rule.smallerAfterRefusals) return one(lightest(eligible), 'smaller')
+  // P6: a change you took brings a stage's smaller version first, after a rep of it you marked hard or had no time for.
+  const first = fit.smaller?.size ? eligible.filter((m) => fit.smaller?.has(m.id)) : []
+  if (first.length) return { ...one(lightest(first), 'smaller'), first: true }
   if (eligible.length === 1) return one(eligible[0], 'only')
-  const { chances, leaning } = drawChances(eligible, entries, stage)
+  const drawn = drawChances(eligible, entries, stage)
+  const leaning = drawn.leaning
+  // P6: a rep you prefer is drawn more often among those that fit, its chance kept like every other.
+  const prefer = fit.prefer
+  const leans = Boolean(prefer?.size) && eligible.some((m) => prefer?.has(m.id)) && eligible.some((m) => !prefer?.has(m.id))
+  const chances = leans ? clipChances(Object.fromEntries(eligible.map((m) => [m.id, drawn.chances[m.id] * (prefer?.has(m.id) ? PREFER_WEIGHT : 1)]))) : drawn.chances
   let at = 0
   let m = eligible[eligible.length - 1]
   for (const rep of eligible) {
@@ -419,7 +453,7 @@ export function pickRep(path: Path, eligible: readonly Move[], entries: readonly
       break
     }
   }
-  return { moveId: m.id, setting: settingFor(m, path, entries, today, out), rule: 'draw', chosenBy: 'app', candidates, propensities: chances, leaning }
+  return { moveId: m.id, setting: settingFor(m, path, entries, today, out, fit.no), rule: 'draw', chosenBy: 'app', candidates, propensities: chances, leaning, ...(leans ? { preferred: true as const } : {}) }
 }
 
 /** Stage 3, item 5: low Social energy (Empty or Low) steers toward a call or a message, high (Up for it or Drawn out) toward in person; otherwise none. */
@@ -448,14 +482,15 @@ export function ofSteer(m: Pick<Move, 'settings' | 'with'>, steer: 'remote' | 'i
  * also be met in person is done as a call or a message. It never touches the stage, and a call or a message is still a
  * rep of it (Part 24: unblock, don't downgrade).
  */
-export function steeredPick(path: Path, eligible: readonly Move[], steer: 'remote' | 'inPerson' | null, entries: readonly PathEntry[], today: string, draw: number, stage: number, out: boolean): RepPick | null {
-  const pick = pickRep(path, eligible, entries, today, draw, stage, out)
-  if (!steer || pick?.rule !== 'draw') return pick
+export function steeredPick(path: Path, eligible: readonly Move[], steer: 'remote' | 'inPerson' | null, entries: readonly PathEntry[], today: string, draw: number, stage: number, out: boolean, fit: PickFit = {}): RepPick | null {
+  const pick = pickRep(path, eligible, entries, today, draw, stage, out, fit)
+  // Toward a call or a message is no steer once you said you don't have that kind of setting (P6).
+  if (!steer || pick?.rule !== 'draw' || (steer === 'remote' && fit.no?.has('remote'))) return pick
   const kept = eligible.filter((m) => ofSteer(m, steer))
   const toward = steer === 'remote' ? kept.map((m) => ({ ...m, settings: ['remote'] as SettingKind[] })) : kept
   const narrows = kept.length < eligible.length || (steer === 'remote' && kept.some((m) => (m.settings ?? []).some((k) => k !== 'remote')))
   if (!kept.length || !narrows) return pick
-  const steered = pickRep(path, toward, entries, today, draw, stage, out)
+  const steered = pickRep(path, toward, entries, today, draw, stage, out, fit)
   return steered ? { ...steered, steer } : pick
 }
 
@@ -476,7 +511,9 @@ export function whyThisRep(pick: RepPick, path?: Pick<Path, 'id' | 'traits'> & P
   const rule = pick.steer && (pick.rule === 'draw' || pick.rule === 'only')
     ? `${c.steer[pick.steer]} ${pick.rule === 'only' ? c.steered.only : fill(pick.leaning ? c.steered.leaning : c.steered.draw, { n: String(pick.candidates.length) })}`
     : pick.rule === 'smaller'
-      ? c.smaller
+      ? pick.first
+        ? c.smallerFirst
+        : c.smaller
       : pick.rule === 'only'
         ? c.only
         : pick.rule === 'you'
@@ -487,7 +524,7 @@ export function whyThisRep(pick: RepPick, path?: Pick<Path, 'id' | 'traits'> & P
               ? c.coach
               : pick.rule === 'coach+draw'
                 ? c.coachDraw
-                : fill(pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
+                : fill(pick.preferred ? c.preferred : pick.leaning ? c.leaning : c.draw, { n: String(pick.candidates.length) })
   // Toward a call or a message, the rep is done as one: no other kind of setting to say.
   const kinds = pick.steer === 'remote' ? ['remote'] : hasMove(pick.moveId) ? (moveById(pick.moveId).settings ?? []) : []
   const said = pick.rule !== 'you' && kinds.length > 1 ? `${rule} ${fill(c.setting, { where: copy.catalogue.paths.settingNames[pick.setting] })}` : rule
@@ -594,6 +631,9 @@ export interface PathToday {
   repDone: RepDone | null
   /** Today's People rep answered Partly with none done: the rep Resume finishes. */
   repPartly: string | null
+  /** Your applied changes to how the Path runs (P6), and how a pick reads them. */
+  adapted: Adapted
+  fit: PickFit
 }
 
 /** Today's People rep, completed: the rep, when it was marked done, and the paths it counted for. */
@@ -620,6 +660,21 @@ export interface PathTodayInput {
   lightOnly?: boolean
   /** The faith family is hidden in Settings (Rule 10). */
   faithHidden?: boolean
+  /** P6: the adaptation log, every Path's rows; only this Path's applied ones change how it runs. Absent, it runs as it always has. */
+  adaptations?: readonly PathAdaptation[]
+}
+
+/**
+ * A strand's stage whose smaller version comes first now (P6): a change you took for it, and the stage's latest answered
+ * rep since then done and marked hard, or a No for no time.
+ */
+function smallerNow(path: Path, adapted: Adapted, strand: string, stage: number, entries: readonly PathEntry[], outcomes: readonly Outcome[]): boolean {
+  const row = adapted.smallerFirst.filter((s) => s.strand === strand && s.stage === stage).pop()
+  if (!row) return false
+  const answer = new Map(outcomes.map((x) => [x.offerId, x]))
+  const latest = entries.filter((e) => e.outcome !== null && e.at > row.at && (placeOn(path.id, e.moveId)?.strand ?? ONE_STRAND) === strand && placeOn(path.id, e.moveId)?.stage === stage).pop()
+  const x = latest ? answer.get(latest.offerId) : undefined
+  return Boolean(x && ((x.outcome === 'done' && (x.effort ?? 0) >= HARD_EFFORT) || (x.outcome === 'no' && x.why === 'noTime')))
 }
 
 /** Everything a path's row, card, fact and coach block show for this block, computed one way. */
@@ -637,7 +692,11 @@ export function pathToday(i: PathTodayInput): PathToday {
   const faithHidden = i.faithHidden === true
   // Light reps only on a hard day is a Path's own rule: the Partner path's (Part 27).
   const lightOnly = path.traits.lightOnHardDays === true && i.lightOnly === true
-  const fit = (p: Path, state: StageState, strand?: string, alsoStages?: readonly number[]) => eligibility({ path: p, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly, doneEver, faithHidden, ...(strand !== undefined ? { strand } : {}), ...(alsoStages?.length ? { alsoStages } : {}) })
+  // P6: your applied changes, and nothing else, change how the Path runs.
+  const adapted = adaptedOf(path.id, i.adaptations)
+  const fit = (p: Path, state: StageState, strand?: string, alsoStages?: readonly number[]) => eligibility({ path: p, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly, doneEver, faithHidden, ...(strand !== undefined ? { strand } : {}), ...(alsoStages?.length ? { alsoStages } : {}), ...(adapted !== UNADAPTED ? { adapted } : {}) })
+  // A step-down you took: the stage below's reps back beside the stage it was taken on, while the strand stands there.
+  const down = (strand: string, state: StageState) => (state.stage > 1 && adapted.stepDown.some((d) => d.strand === strand && d.stage === state.stage) ? [state.stage - 1] : [])
   // A Path with strands (P1): each strand's stage from its own reps, the reps that fit from every strand you have on. A declaration moves a Path of one strand alone.
   // A measured Path (P2): a stage with a gate moves on when its gate holds too; stuck at the cap, or a stage shown whose check was missed, brings reps back.
   const measured = path.measurement ? measuredReps(entries, i.outcomes) : []
@@ -647,31 +706,35 @@ export function pathToday(i: PathTodayInput): PathToday {
         const sp = strandPath(path, s)
         if (!path.measurement) {
           const state = stageOf(sp, entries, i.day, null, s.id)
-          return { strand: s, state, elig: fit(sp, state, s.id) }
+          return { strand: s, state, elig: fit(sp, state, s.id, down(s.id, state)) }
         }
-        const reader = strandReader(path, s.id, measured, (id) => placeOn(path.id, id), i.day)
+        const reader = strandReader(path, s.id, measured, (id) => placeOn(path.id, id), i.day, adapted.spacing.filter((x) => x.strand === s.id))
         const state = stageOf(sp, entries, i.day, null, s.id, reader.gate)
         const also = reader.also(state, s.stages.length)
-        return { strand: s, state, elig: fit(sp, state, s.id, also), measure: reader.today(state, s.stages.length, also) }
+        const back = [...new Set([...also, ...down(s.id, state)])].sort((a, b) => a - b)
+        return { strand: s, state, elig: fit(sp, state, s.id, back), measure: reader.today(state, s.stages.length, also) }
       })
     : null
   const state = tracks ? tracks[0].state : stageOf(path, entries, i.day, declaredStage(path, marks, i.day))
-  const elig = tracks ? unionOf(tracks) : fit(path, state)
+  const elig = tracks ? unionOf(tracks) : fit(path, state, undefined, down(ONE_STRAND, state))
   const strands = tracks ?? [{ strand: strandsOf(path)[0], state, elig }]
+  // How a pick reads your changes: the reps you prefer, the kinds you don't have, and each strand whose smaller version comes first now.
+  const smaller = new Set(strands.filter((t) => smallerNow(path, adapted, t.strand.id, t.state.stage, entries, i.outcomes)).flatMap((t) => t.elig.eligible.map((m) => m.id)))
+  const pickFit: PickFit = adapted === UNADAPTED ? {} : { prefer: adapted.prefer, no: adapted.noSettings, ...(smaller.size ? { smaller } : {}) }
   // One People rep a day across both paths (Part 24; Workstream 6, D4): once today's is done, no other is offered today; after a Partly, only that rep, to finish.
   const today = peopleRepToday(i.offers, i.outcomes, i.day)
   const picked = i.aim.pick && i.aim.pick.day === i.day && hasMove(i.aim.pick.moveId) && !doneToday.has(i.aim.pick.moveId) ? moveById(i.aim.pick.moveId) : null
   // Your pick stands whatever the shape says, but never a faith talk while the faith family is hidden.
   const mine = picked && !(faithHidden && picked.hiddenWith === 'faith') ? picked : null
-  const yours = (m: Move): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, i.day, !around), rule: 'you', chosenBy: 'you', candidates: [m.id], propensities: { [m.id]: 1 }, leaning: false })
+  const yours = (m: Move): RepPick => ({ moveId: m.id, setting: settingFor(m, path, entries, i.day, !around, pickFit.no), rule: 'you', chosenBy: 'you', candidates: [m.id], propensities: { [m.id]: 1 }, leaning: false })
   const pick: RepPick | null = today.done
     ? null
     : today.partly && hasMove(today.partly)
       ? yours(moveById(today.partly))
       : mine
         ? yours(mine)
-        : steeredPick(path, elig.eligible, steerOf(i.socialEnergy), entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), tracks ? NO_LEAN : elig.stage, !around)
-  return { aim: i.aim, path, entries, state, elig, strands, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly }
+        : steeredPick(path, elig.eligible, steerOf(i.socialEnergy), entries, i.day, seeded(`${i.aim.id ?? 0}|${i.day}|${i.block}`), tracks ? NO_LEAN : elig.stage, !around, pickFit)
+  return { aim: i.aim, path, entries, state, elig, strands, pick, around, dateDay, doneEver, faithHidden, repDone: today.done, repPartly: today.done ? null : today.partly, adapted, fit: pickFit }
 }
 
 /** The reps that fit across strands: each strand's, once, the first strand's stage as the Path's. */
@@ -793,7 +856,7 @@ export function peopleRowAll(views: readonly PathToday[], today: string, draw: n
   const yours = on.filter((v) => v.pick?.rule === 'you').sort((a, b) => ((a.aim.pick?.at ?? '') < (b.aim.pick?.at ?? '') ? 1 : -1))
   if (yours.length) return row(yours[0], yours[0].pick)
   const turn = (v: PathToday, reps: readonly Move[], t: 'own' | 'shared') => {
-    const pick = pickRep(v.path, reps, v.entries, today, draw, v.path.strands?.length ? NO_LEAN : v.elig.stage, !v.around)
+    const pick = pickRep(v.path, reps, v.entries, today, draw, v.path.strands?.length ? NO_LEAN : v.elig.stage, !v.around, v.fit)
     return pick ? { ...pick, turn: t } : null
   }
   const sharers = on.filter((v) => v.path.traits.rowShare !== undefined)
@@ -871,7 +934,7 @@ export function coachPickFor(row: PeopleRow, coach: CoachPick | null, today: str
   const chosen = ids.length === 2 ? (seeded(`coach|${today}|${coach.id}`) < 0.5 ? ids[0] : ids[1]) : ids[0]
   return {
     moveId: chosen,
-    setting: settingFor(moveById(chosen), row.view.path, row.view.entries, today, !row.view.around),
+    setting: settingFor(moveById(chosen), row.view.path, row.view.entries, today, !row.view.around, row.view.fit?.no),
     rule: ids.length === 2 ? 'coach+draw' : 'coach',
     chosenBy: 'coach',
     candidates: ids,

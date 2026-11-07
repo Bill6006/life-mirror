@@ -54,13 +54,14 @@ function useAims() {
   const checks = useLive(monthlyChecks, [])
   // A Path the catalogue adds runs only on a version you started (P1, P4).
   const versions = useLive(() => db.pathVersions.toArray(), [])
+  const adaptations = useLive(() => db.pathAdaptations.toArray(), [])
   // Parts 40 and 41: each learning commitment's skill coach; null while their gate is closed. While an ask waits, read again each
   // 20 seconds, so its words keep up with the clock and the network (D7 as amended 2026-10-18).
   const [tick, setTick] = useState(0)
   const skillCoach = useLive(() => coachStates(today), [today, tick])
   useWaitingCoach(skillCoach, today, () => setTick((n) => n + 1))
-  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks || !versions || skillCoach === undefined) return null
-  return { aims, skills, marks, open, records, intentions, ctx: withCheckIns(ctx, settings), today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), socialEnergy: socialEnergyOn(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach, versions }
+  if (!aims || !skills || !marks || !open || !records || !intentions || ctx === undefined || !offers || !outcomes || !contexts || !pathMarks || !settings || !todays || !coach || !checks || !versions || !adaptations || skillCoach === undefined) return null
+  return { aims, skills, marks, open, records, intentions, ctx: withCheckIns(ctx, settings), today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly: lightOnlyDay(todays, today), socialEnergy: socialEnergyOn(todays, today), coach: coachAllowed([...coach].sort((a, b) => (a.at < b.at ? 1 : -1))[0] ?? null, checks, today), skillCoach, versions, adaptations }
 }
 
 /** How often a waiting card looks for its answer (D7 as the owner amended it on 2026-10-18: "every 20 seconds"). */
@@ -141,7 +142,7 @@ function planLabel(pt: PathToday): string {
 
 /** The cards of every commitment, with Resume and the unblock offer; shared by Now and the Aims tab. */
 /** Every commitment with its protected step: full cards on Aims, or one row each on Now so several fit without a scroll. A paused path has no row on Now. */
-export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, onRead, onHandOver, onCheckRecording, compact = false, dueAimId = null }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; onPartnerNotes?: () => void; onRead?: (path: string) => void; onHandOver?: (offerId: number) => void; onCheckRecording?: (offerId: number) => void; compact?: boolean; dueAimId?: number | null }) {
+export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, onRead, onHandOver, onCheckRecording, onFit, compact = false, dueAimId = null }: { onRemove?: (aim: Aim) => void; onChangeStep?: (aim: Aim) => void; onChangeRep?: (aim: Aim) => void; onPartnerNotes?: () => void; onRead?: (path: string) => void; onHandOver?: (offerId: number) => void; onCheckRecording?: (offerId: number) => void; onFit?: (aim: Aim) => void; compact?: boolean; dueAimId?: number | null }) {
   const data = useAims()
   // Parts 40 and 41: a review due on a current skill is put in place when the screen opens or a session is answered; nothing while their gate is closed.
   const answered = data?.records.outcomes.length ?? 0
@@ -149,7 +150,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
     if (data && skillCoachOpen()) void ensureReviews(data.today)
   }, [data?.today, answered])
   if (!data) return null
-  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, socialEnergy, coach, skillCoach, versions } = data
+  const { skills, marks, open, records, intentions, ctx, today, block, offers, outcomes, contexts, pathMarks, settings, lightOnly, socialEnergy, coach, skillCoach, versions, adaptations } = data
   const easeOff = easeRetired(records.offers, records.outcomes, settings.easeBack ?? null)
   // Stage 3, item 5: the People rep's expectancy tap, until it has gone unused a dozen times running.
   const expectOff = expectancyRetired(records.outcomes, settings.expectancyBack ?? null)
@@ -158,7 +159,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
   const studyAims = aims.filter((a) => a.kind === 'certification')
   const socialOn = aims.some((a) => a.kind === 'path' && a.path === 'social')
   // The paths computed once for this block: their cards, and the one People row between them (Part 27).
-  const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, socialEnergy, marks: pathMarks, online: settings.partnerOnline, lightOnly, faithHidden: settings.hideFaith })
+  const todayFor = (aim: Aim) => pathToday({ aim, offers, outcomes, ctx, day: today, block, socialEnergy, marks: pathMarks, online: settings.partnerOnline, lightOnly, faithHidden: settings.hideFaith, adaptations })
   // A Path the catalogue adds is offered only on a version you started; one a major change left waiting is read first (P1).
   const offered = (aim: Aim) => aimOffered(aim, versions, (p) => addedPaths().includes(p))
   const views = aims.filter(pathOn).filter(offered).map(todayFor)
@@ -191,6 +192,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
       onPlan: (cue: Cue, time: string) => void planAim(planHolder ?? aim, cue, time, new Date(), planLabel(pt)),
       onHandOver,
       onCheckRecording,
+      ...(onFit ? { onFit: () => onFit(aim) } : {}),
     }
   }
   let rowShown = false
@@ -348,6 +350,7 @@ export function AimsScreen({
   onRead,
   onHandOver,
   onCheckRecording,
+  onFit,
 }: {
   onAdd: () => void
   onChangeStep: (aimId: number) => void
@@ -360,6 +363,7 @@ export function AimsScreen({
   onRead?: (path: string) => void
   onHandOver?: (offerId: number) => void
   onCheckRecording?: (offerId: number) => void
+  onFit?: (aimId: number) => void
 }) {
   const today = blockAt(new Date())
   const aims = useLive(activeAims, [])
@@ -377,7 +381,7 @@ export function AimsScreen({
 
       <SectionLabel index={0}>{c.commitments}</SectionLabel>
       {aims.length === 0 && <p class="note">{c.none}</p>}
-      <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} onChangeRep={(aim) => onChangeRep(aim.id as number)} onPartnerNotes={onPartnerNotes} onRead={onRead} onHandOver={onHandOver} onCheckRecording={onCheckRecording} dueAimId={dueAimId} />
+      <AimCards onRemove={(aim) => void removeAim(aim.id as number)} onChangeStep={(aim) => onChangeStep(aim.id as number)} onChangeRep={(aim) => onChangeRep(aim.id as number)} onPartnerNotes={onPartnerNotes} onRead={onRead} onHandOver={onHandOver} onCheckRecording={onCheckRecording} onFit={onFit ? (aim) => onFit(aim.id as number) : undefined} dueAimId={dueAimId} />
       {onRead && <NewPathCards aims={aims} onRead={onRead} />}
       {onRead && <PathRequestsCard onRead={onRead} today={today.day} />}
 

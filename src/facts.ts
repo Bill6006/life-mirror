@@ -8,7 +8,7 @@ import { copy } from './copy'
 import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
-import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
+import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathAdaptation, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
 import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
 import { chipShownAt } from './chips'
@@ -73,6 +73,8 @@ export interface FactInput {
   lowDemand: boolean
   /** Part 27: the paths' declarations, for the one Partner fact the sheet carries, the date day. */
   pathMarks?: PathMark[]
+  /** P6: your changes to how each Path runs, so the sheet's step is the one its row offers; the changes themselves never reach the sheet. */
+  adaptations?: PathAdaptation[]
   /** Follow-up F1: how Life Mirror is used, and what its counts are set against. Absent, no usage fact is written. */
   use?: { rows: UseRow[]; coachPicks: CoachPick[]; allAims: Aim[] }
   /** Parts 40 and 41, once their gate is open: the progression review open on a learning commitment's current skill, by commitment. Absent, the sheet is as it was. */
@@ -574,7 +576,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const id = aim.id as number
     const study = aim.kind === 'certification'
     // The sheet the free models read never takes in the Partner path (Part 27): a Partner-only rep done today changes nothing here, though the People row and the coach know it (D4).
-    const pt = aim.kind === 'path' ? pathToday({ aim, offers: pathOffers, outcomes: i.outcomes, ctx, day: today, block, socialEnergy: socialEnergyOn(i.checkins, today) }) : null
+    const pt = aim.kind === 'path' ? pathToday({ aim, offers: pathOffers, outcomes: i.outcomes, ctx, day: today, block, socialEnergy: socialEnergyOn(i.checkins, today), adaptations: i.adaptations }) : null
     const name = pt ? pathName(pt.path) : (aim.name ?? copy.aims.kinds[aim.kind])
     const step = pt?.pick ? sittingOf(moveById(pt.pick.moveId)) : stepFor(aim, i.skills, i.marks, studyAims)
     // Something to learn (Workstream 6): its current skill and the practice on it; the retired ladder is history, not a fact of today.

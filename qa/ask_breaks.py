@@ -74,7 +74,7 @@ CHANGED = "    if (t.level !== c.level || t.direction !== c.direction || (t.revi
 BY_CALL = "  return RANK[b.level] - RANK[a.level] || (DIRECTION[a.direction ?? ''] ?? 3) - (DIRECTION[b.direction ?? ''] ?? 3) || a.key.localeCompare(b.key)\n"
 QUEUE = "lines: ev.waiting.length ? ev.waiting.map((t) => fill(w.queueLine, { move: nameOf(t.moveId), reading: readingName(t.target), window: windowOf(t.window) })) : [w.queueNone] })"
 # Restated 2026-11-06 (P1, Paths as data): pathVersions joined the list after notes.
-SYNCED = "'askThreads', 'askTurns', 'notes', 'pathVersions', 'pathRequests']"
+SYNCED = "'askThreads', 'askTurns', 'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays']"
 NEXT_RULE = "find((t) => !taken.has(t.moveId) && this.mayEnter(t, d))"
 
 TABLE = [
@@ -240,10 +240,10 @@ TABLE = [
          new="  const keys = 'keys' in ref ? [...ref.keys] : []\n",
          tests=[FT], pattern='asks about a finding in a new thread'),
     dict(id='synced', file='src/cloudOutbox.ts', old=SYNCED,
-         new="'notes', 'pathVersions', 'pathRequests']",
+         new="'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays']",
          tests=[QT], pattern='is synced'),
     dict(id='tombstones', file='src/cloudOutbox.ts', old=SYNCED,
-         new="'notes', 'pathVersions', 'pathRequests']",
+         new="'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays']",
          tests=[FT], pattern='deletes a thread whole'),
     dict(id='export-answers', file='src/export.ts',
          old='answer: t.quick?.sections ?? null, cited: t.cited,',
@@ -513,8 +513,8 @@ TABLE = [
          new='      {askOn() && !onAsk && (\n',
          tests=[AS], pattern='in the Brain card'),
     dict(id='export-from-data', file='src/dataScreen.tsx',
-         old=', ask: { threads: await db.askThreads.toArray(), turns: await db.askTurns.toArray(), answers: await db.askAnswers.toArray(), notes: await db.notes.toArray() } }), [])',
-         new=' }), [])',
+         old=', ask: { threads: await db.askThreads.toArray(), turns: await db.askTurns.toArray(), answers: await db.askAnswers.toArray(), notes: await db.notes.toArray() }, pathAdaptations:',
+         new=', pathAdaptations:',
          tests=[AS], pattern='the export carries every conversation'),
 
     # Stage A3: the asked term in the engine.
@@ -727,16 +727,16 @@ TABLE = [
          new="...(r.noteOffer ? { noteOffer: true } : {})",
          tests=[CLT], pattern='reads a run or an answer only whole'),
     dict(id='a3-notes-synced', file='src/cloudOutbox.ts',
-         old="'askTurns', 'notes', 'pathVersions', 'pathRequests']",
-         new="'askTurns', 'pathVersions', 'pathRequests']",
+         old="'askTurns', 'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays']",
+         new="'askTurns', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays']",
          tests=[QT], pattern='is synced'),
     dict(id='a3-notes-exported', file='src/export.ts',
          old="notes: (records?.ask?.notes ?? []).map(",
          new="notes: ([] as KeptNote[]).map(",
          tests=[ET], pattern='carries Ask Life Mirror'),
     dict(id='a3-notes-from-data', file='src/dataScreen.tsx',
-         old=", notes: await db.notes.toArray() } }), [])",
-         new=" } }), [])",
+         old=", notes: await db.notes.toArray() }, pathAdaptations:",
+         new=" }, pathAdaptations:",
          tests=[AS], pattern='the export carries every conversation'),
     dict(id='a3-asked-exported', file='src/export.ts',
          old="cited: t.cited, ...(t.asked?.length ? { asked: t.asked } : {}),",

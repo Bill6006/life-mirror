@@ -2552,6 +2552,84 @@ async function seedGenerated(page: Page): Promise<void> {
   }, GENERATED_ROWS)
 }
 
+/**
+ * Personalization (P6) on the speaking Path three weeks in: a rep set aside for safety yesterday, said in front; a
+ * preference applied and one undone; and four of a Nerves rep's steps answered with no chance coming up, so the record
+ * suggests setting it aside.
+ */
+async function seedForYou(page: Page): Promise<void> {
+  await seedSpeaking(page)
+  await page.evaluate(async () => {
+    const day = (back: number) => {
+      const x = new Date()
+      x.setDate(x.getDate() - back)
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const q = indexedDB.open('life-mirror')
+      q.onsuccess = () => res(q.result)
+      q.onerror = () => rej(q.error)
+    })
+    const tx = dbx.transaction(['offers', 'outcomes', 'pathAdaptations'], 'readwrite')
+    ;[5, 4, 3, 2].forEach((back, k) => {
+      const d = day(back)
+      tx.objectStore('offers').put({ id: 930 + k, kind: 'step', day: d, block: 'morning', at: `${d}T15:00:00.000Z`, situationKey: 'aim:path:speaking', target: 'mood', stance: '', band: '', reading: 0, moveId: 'sp-n-no-lines', minutes: 2, cardId: null, candidates: ['sp-n-no-lines'], coinFlip: false, passiveId: null, whyNot: null, propensity: 1, propensities: { 'sp-n-no-lines': 1 }, chosenBy: 'app', paths: ['speaking'], setting: 'group', rule: 'only', stage: 1, skippedAt: null, closedAt: `${d}T20:00:00.000Z` })
+      tx.objectStore('outcomes').put({ id: 1930 + k, offerId: 930 + k, moveId: 'sp-n-no-lines', day: d, block: 'evening', at: `${d}T20:00:00.000Z`, outcome: 'no', why: null, passiveOutcome: null, reason: 'noReason', seen: true, chance: false, pathWhy: 'noChance' })
+    })
+    const key = (r: Record<string, unknown>) => [r.kind, r.rep ?? '', r.strand ?? '', r.stage ?? '', r.setting ?? '', r.after ?? '', r.lever ?? ''].join('|')
+    const at = (back: number) => `${day(back)}T18:00:00.000Z`
+    const rows = [
+      { id: 1, at: at(6), day: day(6), path: 'speaking', version: '1', hash: 'seeded', kind: 'prefer', rep: 'sp-n-eyes-up', origin: 'preference', why: 'You said you prefer it.', state: 'applied', stateAt: at(6) },
+      { id: 2, at: at(8), day: day(8), path: 'speaking', version: '1', hash: 'seeded', kind: 'prefer', rep: 'sp-n-one-question', origin: 'preference', why: 'You said you prefer it.', state: 'undone', stateAt: at(7) },
+      { id: 3, at: at(1), day: day(1), path: 'speaking', version: '1', hash: 'seeded', kind: 'setAside', rep: 'sp-their-thread', origin: 'safety', why: 'You said it felt unsafe or harmful, yesterday.', state: 'applied', stateAt: at(1) },
+    ]
+    for (const r of rows) tx.objectStore('pathAdaptations').put({ ...r, key: key(r) })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+const FOR_YOU_STATES: typeof STATES = [
+  { name: 'Aims, the speaking Path, a rep set aside for safety, in front', tab: 'Aims', open: async (p) => speakingCard(p).getByTestId('path-safety').scrollIntoViewIfNeeded() },
+  { name: 'Aims, the speaking Path, Details: a suggestion and your changes', tab: 'Aims', open: async (p) => {
+    await speakingCard(p).getByTestId('path-details').click()
+    await speakingCard(p).getByTestId('path-for-you').scrollIntoViewIfNeeded()
+  } },
+  { name: 'Your reps and settings, a tap refused', tab: 'Aims', open: async (p) => {
+    await speakingCard(p).getByTestId('path-details').click()
+    await speakingCard(p).getByTestId('path-fit-open').click()
+    await p.locator('[data-testid="path-fit-rep"][data-rep="sp-point-to-few"]').getByTestId('path-fit-aside').click()
+    await p.getByTestId('path-fit-refused').waitFor()
+  } },
+  { name: 'Your reps and settings, the kinds of setting', tab: 'Aims', open: async (p) => {
+    await speakingCard(p).getByTestId('path-details').click()
+    await speakingCard(p).getByTestId('path-fit-open').click()
+    await p.getByTestId('path-fit-settings').scrollIntoViewIfNeeded()
+  } },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: how a Path runs for you reads, fits and can be tapped, at three widths (P6)`, async ({ page }) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await page.clock.setFixedTime(new Date(2026, 10, 10, 10, 5))
+    await page.goto('./')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedForYou(page)
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, FOR_YOU_STATES, width, found)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
 for (const theme of THEMES) {
   test(`${theme}: asking for a Path and a generated Path's screens read, fit and can be tapped, at three widths (P5)`, async ({ page }) => {
     test.setTimeout(300_000)

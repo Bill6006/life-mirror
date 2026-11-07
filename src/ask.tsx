@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { findPath, moveById } from './catalogue'
 import { copy } from './copy'
 import { easeRetired } from './aims'
-import { db, getSettings, type Ease, type Offer, type OutcomeWhy, type WinOutcome } from './db'
+import { db, getSettings, type Ease, type Offer, type OutcomeWhy, type PathWhy, type WinOutcome } from './db'
+import { PATH_WHYS } from './pathAdapt'
 import { parseSkillSessionId } from './ladder'
 import { useLive } from './live'
 import { offerName, outcomeFor } from './offerFlow'
@@ -20,6 +21,8 @@ export interface Answer {
   later?: boolean
   /** A measured Path's rep after Partly or No (P2): whether the chance came up at all; null when left. */
   chance?: boolean | null
+  /** A Path rep's own reason after a No (P6); null when left. */
+  pathWhy?: PathWhy | null
 }
 
 const EASES: readonly Ease[] = ['hard', 'right', 'easy']
@@ -37,8 +40,11 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
   const easeOff = useLive(async () => (learning ? easeRetired(await db.offers.toArray(), await db.outcomes.toArray(), (await getSettings()).easeBack) : true), [offer.id])
   const [why, setWhy] = useState<OutcomeWhy | null | undefined>(undefined)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
-  // A measured Path's rep (P2): after Partly or No, one optional tap on whether the chance came up. Never with a passive item.
+  // A measured Path's rep (P2): after Partly, one optional tap on whether the chance came up. Never with a passive item.
   const measuredRep = offer.kind === 'step' && !passive && Boolean(offer.paths?.some((id) => findPath(id)?.measurement))
+  // Any Path's rep (P6): after No and its why, one optional tap of the Path's own reason, which on a measured Path also says
+  // whether the chance came up.
+  const pathRep = offer.kind === 'step' && !passive && Boolean(offer.paths?.length)
   const nothing = offer.moveId === NOTHING
   const existing = useLive(() => outcomeFor(offer.id), [offer.id])
   const c = copy.ask
@@ -50,7 +56,8 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
   const askWhy = !passiveOnly && outcome === 'no' && why === undefined
   const askPassive = passive !== null && (passiveOnly || (outcome !== undefined && !askWhy))
   const askEase = learning && !easeOff && (outcome === 'done' || outcome === 'partly')
-  const askChance = measuredRep && (outcome === 'partly' || (outcome === 'no' && why !== undefined))
+  const askChance = measuredRep && outcome === 'partly'
+  const askPathWhy = pathRep && outcome === 'no' && why !== undefined
 
   function finish(passiveOutcome: 'done' | 'no' | null) {
     if (passiveOnly && existing) onAnswer({ outcome: existing.outcome, why: existing.why, passiveOutcome, ease: null })
@@ -66,12 +73,16 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
 
   function chooseWhy(w: OutcomeWhy | null) {
     setWhy(w)
-    if (measuredRep) return
+    if (pathRep) return
     if (!passive) onAnswer({ outcome: 'no', why: w, passiveOutcome: null, ease: null })
   }
 
   function chooseChance(v: boolean | null) {
     onAnswer({ outcome: outcome ?? null, why: outcome === 'no' ? (why ?? null) : null, passiveOutcome: null, ease: null, chance: v })
+  }
+
+  function choosePathWhy(pw: PathWhy | null) {
+    onAnswer({ outcome: 'no', why: why ?? null, passiveOutcome: null, ease: null, pathWhy: pw, ...(measuredRep ? { chance: pw === null ? null : pw !== 'noChance' } : {}) })
   }
 
   function chooseEase(e: Ease | null) {
@@ -153,6 +164,29 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
               {c.chance.no}
             </button>
             <button type="button" class="textbtn" data-testid="chance-skip" onClick={() => chooseChance(null)}>
+              {c.whySkip}
+            </button>
+          </div>
+        </>
+      )}
+
+      {askPathWhy && (
+        <>
+          <p class="note">{copy.path.adapt.whyQuestion}</p>
+          <div class="card">
+            <ul class="rows">
+              {PATH_WHYS.map((w) => (
+                <li key={w}>
+                  <button type="button" class="row anchor" data-testid={`path-why-${w}`} onClick={() => choosePathWhy(w)}>
+                    <span class="anchor-mark" aria-hidden="true" />
+                    <span class="row-main">{copy.path.adapt.whys[w]}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div class="actions">
+            <button type="button" class="textbtn" data-testid="path-why-skip" onClick={() => choosePathWhy(null)}>
               {c.whySkip}
             </button>
           </div>

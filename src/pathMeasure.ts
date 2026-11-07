@@ -137,15 +137,51 @@ export function readGate(gate: StageGate, behaviours: readonly Behaviour[], reps
   return { metOn, weeks: new Set(meeting.map((m) => weekOf(m.day))).size, confirmed: meeting.filter((m) => viewOf(m, behaviours).outside).length, kinds: new Set(meeting.map((m) => m.setting)).size, attempts }
 }
 
-/** The days a stage shown is checked again, from the day it was shown: each offset, then every so many days after the last; up to today and the next one after it. */
-export function checksDue(shownOn: string, plan: PathMeasurement['maintenance'], today: string): string[] {
+/** A spacing you took for a stage's checks (P6): from the check it follows, every so many days. */
+export interface CheckSpacing {
+  after: string
+  every: number
+}
+
+/**
+ * The days a stage shown is checked again, from the day it was shown: each offset, then every so many days after the last;
+ * up to today and the next one after it. A spacing you took (P6) restarts the checks from the check it follows.
+ */
+export function checksDue(shownOn: string, plan: PathMeasurement['maintenance'], today: string, spacing: readonly CheckSpacing[] = []): string[] {
   const out: string[] = []
   if (!plan.at.length || plan.every <= 0) return out
-  const last = plan.at[plan.at.length - 1]
+  let from = shownOn
+  let at: readonly number[] = plan.at
+  let every = plan.every
   for (let k = 0; ; k++) {
-    const day = addDays(shownOn, k < plan.at.length ? plan.at[k] : last + (k - plan.at.length + 1) * plan.every)
+    const last = at[at.length - 1]
+    const day = addDays(from, k < at.length ? at[k] : last + (k - at.length + 1) * every)
     out.push(day)
     if (day > today) break
+    const take = spacing.filter((s) => s.after === day && s.every > 0).pop()
+    if (take) {
+      from = day
+      at = [take.every]
+      every = take.every
+      k = -1
+    }
+  }
+  return out
+}
+
+/**
+ * Each check of a stage shown that is decided (P6): passed when the first done rep on or after it meets the behaviours,
+ * missed when none came within the grace or that one did not; with the days to the check after it.
+ */
+export function checkHistory(shownOn: string, gate: StageGate, behaviours: readonly Behaviour[], reps: readonly MeasuredRep[], plan: PathMeasurement['maintenance'], today: string, spacing: readonly CheckSpacing[] = []): { day: string; passed: boolean; next: number }[] {
+  const due = checksDue(shownOn, plan, today, spacing)
+  const done = reps.filter((r) => r.outcome === 'done' && r.day <= today).sort((a, b) => (a.day < b.day ? -1 : 1))
+  const out: { day: string; passed: boolean; next: number }[] = []
+  for (let k = 0; k + 1 < due.length && due[k] <= today; k++) {
+    const first = done.find((r) => r.day >= due[k])
+    const next = daysBetween(due[k], due[k + 1])
+    if (first) out.push({ day: due[k], passed: shows(first, gate, behaviours), next })
+    else if (daysBetween(due[k], today) > CHECK_GRACE_DAYS) out.push({ day: due[k], passed: false, next })
   }
   return out
 }
@@ -156,8 +192,8 @@ export type CheckState = { kind: 'holding'; next: string } | { kind: 'refresh'; 
  * A stage shown, checked again: each due day needs a done rep of the stage on or after it that meets the
  * behaviours; one that does not, or none within the grace, brings the stage's reps back until one does.
  */
-export function maintenanceOf(shownOn: string, gate: StageGate, behaviours: readonly Behaviour[], reps: readonly MeasuredRep[], plan: PathMeasurement['maintenance'], today: string): CheckState {
-  const due = checksDue(shownOn, plan, today)
+export function maintenanceOf(shownOn: string, gate: StageGate, behaviours: readonly Behaviour[], reps: readonly MeasuredRep[], plan: PathMeasurement['maintenance'], today: string, spacing: readonly CheckSpacing[] = []): CheckState {
+  const due = checksDue(shownOn, plan, today, spacing)
   const done = reps.filter((r) => r.outcome === 'done' && r.day <= today).sort((a, b) => (a.day < b.day ? -1 : 1))
   for (const day of due) {
     if (day > today) return { kind: 'holding', next: day }
@@ -231,8 +267,9 @@ export interface StrandMeasureToday {
 }
 
 /** The measurement of one strand, read from its reps: what `stageOf` asks of a stage's gate, and what the card shows. */
-export function strandReader(path: Pick<Path, 'id' | 'measurement'>, strand: string, reps: readonly MeasuredRep[], placeOf: (moveId: string) => PathPlace | undefined, today: string) {
+export function strandReader(path: Pick<Path, 'id' | 'measurement'>, strand: string, reps: readonly MeasuredRep[], placeOf: (moveId: string) => PathPlace | undefined, today: string, spacing: readonly (CheckSpacing & { stage: number })[] = []) {
   const m = path.measurement
+  const spaced = (stage: number) => spacing.filter((s) => s.stage === stage)
   const behaviours = m?.strands.find((s) => s.strand === strand)?.behaviours ?? []
   const gateOf = (stage: number) => m?.gates.find((g) => g.strand === strand && g.stage === stage) ?? null
   const mine = reps.filter((r) => (placeOf(r.moveId)?.strand ?? ONE_STRAND) === strand)
@@ -255,10 +292,21 @@ export function strandReader(path: Pick<Path, 'id' | 'measurement'>, strand: str
       for (const r of state.reached) {
         const shown = r.stage - 1
         const gs = gateOf(shown)
-        if (m && gs && maintenanceOf(r.day, gs, behaviours, at(shown), m.maintenance, today).kind === 'refresh') out.add(shown)
+        if (m && gs && maintenanceOf(r.day, gs, behaviours, at(shown), m.maintenance, today, spaced(shown)).kind === 'refresh') out.add(shown)
       }
       out.delete(state.stage)
       return [...out].sort((a, b) => a - b)
+    },
+    /** P6: the latest decided check of each stage shown, for the check-again spacing it may suggest. */
+    checks: (state: { reached: readonly { stage: number; day: string }[] }): { strand: string; stage: number; day: string; passed: boolean; next: number }[] => {
+      const out: { strand: string; stage: number; day: string; passed: boolean; next: number }[] = []
+      for (const r of state.reached) {
+        const shown = r.stage - 1
+        const gs = gateOf(shown)
+        const latest = m && gs ? checkHistory(r.day, gs, behaviours, at(shown), m.maintenance, today, spaced(shown)).pop() : undefined
+        if (latest) out.push({ strand, stage: shown, ...latest })
+      }
+      return out
     },
     /** What the card shows for the current stage. */
     today: (state: { stage: number; reached: readonly { stage: number; day: string }[] }, last: number, also: readonly number[]): StrandMeasureToday => {

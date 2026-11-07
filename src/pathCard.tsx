@@ -14,6 +14,7 @@ import { doneOpen, recordDoneNow } from './offerFlow'
 import { markExpectancyAsked, setExpectancy, setPathPick } from './pathFlow'
 import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, repStageWords, socialEnergyOn, stageWords, strandOfRep, whyThisRep, type PathToday } from './pathStage'
 import { CalibrationLine, measured, PathCheckCard, PredictBox, Recorder, RecordingsDue, records, RepSheet, StrandsBlock, StrandsSetting, WhyBuilt } from './pathMeasureUi'
+import { PathChanges, SafetyNotice, suggestionsSub, useForYou } from './pathAdaptUi'
 import { activeStrands, checkDue } from './pathMeasure'
 import { Tag } from './ui'
 import { carriedByContext, carriedLine, dayKindOf, orderByEvidence } from './people'
@@ -50,6 +51,8 @@ export interface PathShared {
   onHandOver?: (offerId: number) => void
   /** A measured Path (P2): a recording of yourself, checked the next day or later. */
   onCheckRecording?: (offerId: number) => void
+  /** P6: the sheet of your stage's reps and the kinds of setting. */
+  onFit?: () => void
 }
 
 /**
@@ -358,6 +361,8 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
   const repStrand = rep ? strandOfRep(p.pt, rep.id) : null
   const shownStage = repStrand ? repStrand.strand.stages.find((s) => s.n === repStrand.state.stage) : stage
   const label = path.label ? (copy.path.read.label[path.label] ?? path.label) : null
+  // P6: the changes you took and what the record suggests.
+  const forYou = useForYou(p.pt, p.today)
   return (
     <div class={p.due && !p.open && !done && rep ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind="path" data-path={path.id}>
       <div class="aim-head">
@@ -372,6 +377,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
       {path.strands?.length ? <StrandsBlock pt={p.pt} /> : <StageProgress n={p.pt.state.stage} of={path.stages.length} name={stage?.name ?? ''} next={nextStage(path, p.pt.state.stage)} testid="path-progress" />}
       {measuring && p.onCheckRecording && <RecordingsDue pt={p.pt} today={p.today} onCheck={p.onCheckRecording} />}
       {path.check && checkDue(path, p.aim, p.today) && <PathCheckCard aim={p.aim} check={path.check} today={p.today} />}
+      {forYou && <SafetyNotice path={path} rows={forYou.rows} today={p.today} />}
       {p.pt.state.reentry && (
         <p class="note" data-testid="path-reentry">
           {c.reentry}
@@ -498,7 +504,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
       )}
 
       {/* One Details row, as on every commitment's card: your reps and the plans by cue (moved here 2026-10-18), how the path works, then its settings. */}
-      <Disclosure label={d.details} testid="path-details">
+      <Disclosure label={d.details} sub={suggestionsSub(forYou?.proposals.length ?? 0)} testid="path-details">
         {reps.length === 0 ? (
           <p class="reps-line" data-testid="path-reps">
             <span class="eyebrow">{c.byRep}</span>
@@ -555,6 +561,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
             </p>
           )}
         </div>
+        {forYou && <PathChanges path={path} rows={forYou.rows} proposals={forYou.proposals} onFit={p.onFit} />}
         {path.decisions?.length ? (
           <div class="calc" data-testid="path-why-built-head">
             <p class="calc-line ink">{copy.path.read.why}</p>
@@ -596,13 +603,14 @@ export function PathChangeScreen({ aimId, onClose }: { aimId: number; onClose: (
   const settings = useLive(getSettings, [])
   const ctx = useLive(() => getDayContext(day), [day])
   const todays = useLive(() => db.checkins.where('day').equals(day).toArray(), [day])
-  if (aim === undefined || !others || !offers || !outcomes || !contexts || !marks || !settings || ctx === undefined || !todays) return <section class="screen" />
+  const adaptations = useLive(() => db.pathAdaptations.toArray(), [])
+  if (aim === undefined || !others || !offers || !outcomes || !contexts || !marks || !settings || ctx === undefined || !todays || !adaptations) return <section class="screen" />
   if (aim === null || aim.kind !== 'path') {
     onClose()
     return <section class="screen" />
   }
   const c = copy.path
-  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, socialEnergy: socialEnergyOn(todays, day), marks, online: settings.partnerOnline, faithHidden: settings.hideFaith })
+  const pt = pathToday({ aim, offers, outcomes, ctx, day, block, socialEnergy: socialEnergyOn(todays, day), marks, online: settings.partnerOnline, faithHidden: settings.hideFaith, adaptations })
   const carried = carriedByContext(offers, outcomes, contexts, day)
   const list = orderByEvidence(pt.elig.stageReps, dayKindOf(day, ctx), block, carried)
   return (

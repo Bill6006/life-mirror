@@ -9,6 +9,10 @@ import type { PathId, SettingKind } from './catalogue'
 import type { CoachBlock } from './factTypes'
 import type { GeneratedPathRow, PathJob, PathRequest } from './pathJob'
 export type { GeneratedPathRow, PathRequest } from './pathJob'
+import type { PathAdaptation, PathWhy } from './pathAdapt'
+export type { PathAdaptation, PathWhy } from './pathAdapt'
+import type { PathTest, PathTestDay } from './pathTests'
+export type { PathTest, PathTestDay } from './pathTests'
 import type { FactSheet } from './facts'
 import type { PickRule } from './pathStage'
 import type { Tier } from './weights'
@@ -321,6 +325,8 @@ export interface Offer {
   logged?: boolean
   /** A measured Path's rep (P2): what you expected would happen, one line written before Start. */
   prediction?: string
+  /** A small test's version on this rep (P6, the slow loop): the test, the version it got, and the chance it had. */
+  test?: { id: number; version: 0 | 1; chance: number }
   skippedAt: string | null
   /** "Not now" on its question at a check-in: asked once more at the next one, where leaving it is said plainly (stage 1, item i). */
   deferredAt?: string
@@ -516,6 +522,8 @@ export interface Outcome {
   chance?: boolean
   /** How hard it was, one to five. */
   effort?: 1 | 2 | 3 | 4 | 5
+  /** A Path rep's own reason after a No (P6), beside `why`, which stays as it is: no chance came up, can't do it yet, felt wrong or pointless, felt unsafe or harmful. */
+  pathWhy?: PathWhy
 }
 
 /**
@@ -985,6 +993,11 @@ class LifeMirrorDB extends Dexie {
   generatedPaths!: Table<GeneratedPathRow, string>
   /** The Worker's rows on your Path requests (P5), as pulled: where each job stands. */
   pathJobs!: Table<PathJob, string>
+  /** Every change to how a Path runs for you (P6), with its origin and why: the one thing the runtime reads beyond the Path itself. */
+  pathAdaptations!: Table<PathAdaptation, number>
+  /** The small tests you started (P6, the slow loop), and the days a test's version was on show. */
+  pathTests!: Table<PathTest, number>
+  pathTestDays!: Table<PathTestDay, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1220,6 +1233,13 @@ class LifeMirrorDB extends Dexie {
       pathRequests: '++id, at',
       generatedPaths: 'id, pathId, at',
       pathJobs: 'id, requestId',
+    })
+    // Personalization (P6, 2026-11-07): the adaptation log, every change to how a Path runs for you with its origin and why;
+    // and the small tests you start, with the days a test's version was on show. All synced, all in the export.
+    this.version(27).stores({
+      pathAdaptations: '++id, path, at',
+      pathTests: '++id, path, at',
+      pathTestDays: '++id, test, day',
     })
     installOutbox(this)
     installPendingCopy(this)

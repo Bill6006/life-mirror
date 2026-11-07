@@ -153,6 +153,26 @@ describe('the readers', () => {
     expect(((await readCategory({ store, catalogue, a }, 'socialPath', week)) ?? []).map((i) => i.text).join(' | ')).toContain('g-1234abcd-church-hello')
   })
 
+  it('never read your changes to how a Path runs, a small test, or a Path rep’s own reason, under any category (P6)', async () => {
+    const store = record()
+    const mark = 'zq-adapt-marker'
+    put(store, 'pathAdaptations', '70', DAY, { id: 70, path: 'social', kind: 'setAside', rep: 'eye-contact-stranger', origin: 'safety', why: mark, state: 'applied', day: DAY })
+    put(store, 'pathTests', '71', DAY, { id: 71, path: 'social', lever: 'planLine', day: DAY, at: mark })
+    put(store, 'pathTestDays', '72', DAY, { id: 72, test: 71, day: DAY, version: 1, chance: 0.5, at: mark })
+    // A Social step answered No, with the Path's own reason beside it.
+    put(store, 'offers', '73', '2026-09-17', { id: 73, day: '2026-09-17', moveId: 'greet-by-name', paths: ['social'], skippedAt: null })
+    put(store, 'outcomes', '74', '2026-09-17', { id: 74, offerId: 73, day: '2026-09-17', outcome: 'no', pathWhy: 'unsafe' })
+    const a = accessFor('line', OPEN, readBrainPrefs({}))
+    const all: string[] = []
+    for (const c of CATEGORIES) all.push(...((await readCategory({ store, catalogue, a }, c, week)) ?? []).map((i) => i.text))
+    const text = all.join(' | ')
+    for (const word of [mark, 'unsafe', 'planLine', 'setAside']) expect(text, word).not.toContain(word)
+    // The probe: the Social step itself is read, and the same marker in a check-in's note is too.
+    expect(text).toContain('Greet someone by name, not done')
+    put(store, 'checkins', '75', '2026-09-17', { id: 75, day: '2026-09-17', block: 'morning', answers: {}, extras: { note: mark } })
+    expect(((await readCategory({ store, catalogue, a }, 'notes', week)) ?? []).map((i) => i.text).join(' | ')).toContain(mark)
+  })
+
   it('read faith’s records only while faith may be read', async () => {
     const store = record()
     const shown = accessFor('line', OPEN, readBrainPrefs({}))

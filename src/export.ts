@@ -1,5 +1,5 @@
 import { compareSlots } from './blocks'
-import { type Aim, type AnchorSwap, askedOf, setAside, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathMark, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
+import { type Aim, type AnchorSwap, askedOf, setAside, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathAdaptation, type PathMark, type PathTest, type PathTestDay, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
 import type { Fact } from './factTypes'
 import { pathKey } from './pathStage'
@@ -53,6 +53,10 @@ export interface RecordsData {
   claims?: readonly Claim[]
   /** Ask Life Mirror (stage A1): your conversations, each question with the app's answer as laid out then. */
   ask?: { threads: readonly AskThread[]; turns: readonly AskTurn[]; answers?: readonly AskAnswer[]; notes?: readonly KeptNote[] }
+  /** P6: every change to how a Path runs for you, with its origin and why, and the small tests you started with their days. */
+  pathAdaptations?: readonly PathAdaptation[]
+  pathTests?: readonly PathTest[]
+  pathTestDays?: readonly PathTestDay[]
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -186,6 +190,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ask: 'Ask Life Mirror: each conversation (threads) and each question in it (turns). A quick answer is the app’s own layout of the tested findings at the time, with the findings it cited (each test’s key, its rung, direction, revised mark and size range); a typed question waits for Claude, and its checked answer (claude) is Claude’s words with the facts it cited, or that no checked answer came. Nothing here is evidence: the learning engine and the Brain never read it. A turn’s asked lists the tests you asked about and the days, the one thing the test queue reads, for priority alone.',
         notes: 'Notes you kept from Ask, in your own words, each on its day: read as a check-in’s note is, never a reading or a finding.',
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
+        ...(records?.pathAdaptations?.length || records?.pathTests?.length
+          ? { pathAdaptations: 'pathAdaptations lists every change to how a Path runs for you (P6): what it does (kind and target), its origin (population evidence, a small test of yours, a pattern in your record, your preference, feasibility, safety, newly published research, your correction, a change to the Path’s design), why in the words shown then, with the counts, and its state: applied, a suggestion you declined, or undone, never deleted. A step’s pathWhy is a Path rep’s own reason after a No: noChance, cantYet, wrong (felt wrong or pointless), unsafe (felt unsafe or harmful). pathTests are the small tests you started, and pathTestDays the days a test’s version was on show with the chance it had. None of it is evidence for the learning engine or the Brain.' }
+          : {}),
         useLog: 'How Life Mirror was used, in its own words: appOpened (launch, or return after five minutes away), screen (which one), checkinOpened and checkinLeft (the block), lineAction, lineWhy, notification (its kind) and changePicked, each with its day and time. Never content, never anything outside the app. The Partner path’s own screens are left out unless the Partner path is included. usage is what Claude may be given of it: counts over windows ending the day before, what was observed and never why.',
       },
       readings: readings.map((r) => ({ id: r.id, name: r.name, unit: r.unit, anchors: r.anchors })),
@@ -213,7 +220,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ? {
             offers: offers.map((o) => {
               const x = records.outcomes.find((y) => y.offerId === o.id)
-              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null && !setAside(o), cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, expectancy: x?.expectancy ?? null, answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null, ...(homeOnlyOn() && o.skipReason === 'notHome' ? { skipReason: o.skipReason } : {}), ...(setAside(o) ? { setAside: 'the day changed' } : {}), ...(o.redrawn ? { redrawn: true } : {}) }
+              return { id: o.id, kind: o.kind, day: o.day, block: o.block, at: o.at, situation: o.situationKey, target: o.target, move: o.moveId, label: o.label ?? null, coinFlip: o.coinFlip, passive: o.passiveId, skipped: o.skippedAt !== null && !setAside(o), cardId: o.cardId, outcome: x?.outcome ?? null, why: x?.why ?? null, passiveOutcome: x?.passiveOutcome ?? null, ease: x?.ease ?? null, note: x?.note ?? null, expectancy: x?.expectancy ?? null, ...(x?.pathWhy ? { pathWhy: x.pathWhy } : {}), answeredAt: x?.at ?? null, chosenBy: o.chosenBy ?? null, paths: pathsOf(o), setting: o.setting ?? null, rule: o.rule ?? null, stage: o.stage ?? null, candidates: o.candidates, propensities: o.propensities ?? null, ...(homeOnlyOn() && o.skipReason === 'notHome' ? { skipReason: o.skipReason } : {}), ...(setAside(o) ? { setAside: 'the day changed' } : {}), ...(o.redrawn ? { redrawn: true } : {}) }
             }),
             // The days marked Unwell today (the owner's decision, 2026-10-10).
             unwellDays: (records.days ?? []).filter((d) => d.unwell).map((d) => d.day),
@@ -225,6 +232,9 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             answersWithoutTheirMove: records.outcomes.filter((x) => x.lostOfferId !== undefined).map((x) => ({ day: x.day, block: x.block, at: x.at, move: x.moveId, outcome: x.outcome, why: x.why, passiveOutcome: x.passiveOutcome, ease: x.ease ?? null, note: x.note ?? null })),
             cards: records.cards.map((c) => ({ id: c.id, createdAt: c.createdAt, situation: c.situationKey, target: c.target, move: c.moveId, alternative: c.alternativeId, window: c.window, worthwhile: c.worthwhile, origin: c.origin ?? 'app', weights: c.weights ?? null })),
             declarations: records.declarations.map((d) => ({ cardId: d.cardId, at: d.at, diff: d.diff, lo: d.lo, hi: d.hi, level: d.level, nDone: d.nDone, nAlternative: d.nAlternative })),
+            // P6: the adaptation log and the small tests, the Partner path's only when it is included.
+            ...((records.pathAdaptations ?? []).some((r) => partner || r.path !== 'partner') ? { pathAdaptations: (records.pathAdaptations ?? []).filter((r) => partner || r.path !== 'partner').map((r) => ({ path: r.path, version: r.version, at: r.at, day: r.day, kind: r.kind, rep: r.rep ?? null, strand: r.strand ?? null, stage: r.stage ?? null, setting: r.setting ?? null, every: r.every ?? null, after: r.after ?? null, lever: r.lever ?? null, choice: r.choice ?? null, origin: r.origin, why: r.why, state: r.state, stateAt: r.stateAt })) } : {}),
+            ...((records.pathTests ?? []).some((x) => partner || x.path !== 'partner') ? { pathTests: (records.pathTests ?? []).filter((x) => partner || x.path !== 'partner').map((x) => ({ id: x.id, path: x.path, lever: x.lever, at: x.at, day: x.day, stoppedAt: x.stoppedAt ?? null })), pathTestDays: (records.pathTestDays ?? []).filter((d) => (records.pathTests ?? []).some((x) => x.id === d.test && (partner || x.path !== 'partner'))).map((d) => ({ test: d.test, day: d.day, version: d.version, chance: d.chance, at: d.at })) } : {}),
             forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
             forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
             her: {

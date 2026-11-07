@@ -7,13 +7,14 @@ import { expect, it, vi } from 'vitest'
 // app at version 26. Every row of every store comes back exactly as it was; the three new stores (your Path requests,
 // the generated versions, the jobs' rows) start empty. Version 26 only adds stores, so nothing of yours is touched.
 
-const NEW_STORES = ['pathRequests', 'generatedPaths', 'pathJobs']
+// Every store added since: the generator's (26) and personalization's (27, P6), each empty after the upgrade.
+const NEW_STORES = ['pathRequests', 'generatedPaths', 'pathJobs', 'pathAdaptations', 'pathTests', 'pathTestDays']
 
 it('keeps a version-25 record whole when the app opens it at version 26', async () => {
   // The schema of every store version 25 had, read from the app's own declaration.
   const { db: current } = await import('./db')
   await current.open()
-  expect(current.verno).toBe(26)
+  expect(current.verno).toBeGreaterThanOrEqual(26)
   const specs = Object.fromEntries(current.tables.filter((t) => !NEW_STORES.includes(t.name)).map((t) => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map((i) => i.src)].join(', ')]))
   current.close()
 
@@ -42,7 +43,7 @@ it('keeps a version-25 record whole when the app opens it at version 26', async 
   vi.resetModules()
   const { db } = await import('./db')
   await db.open()
-  expect(db.verno).toBe(26)
+  expect(db.verno).toBeGreaterThanOrEqual(26)
   for (const [store, rows] of Object.entries(seeded)) expect(await db.table(store).toArray(), store).toEqual(rows)
   for (const store of NEW_STORES) expect(await db.table(store).count(), store).toBe(0)
   db.close()

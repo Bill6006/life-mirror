@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, PickStepScreen } from './aimsScreen'
 import { PathChangeScreen } from './pathCard'
+import { PathFitScreen } from './pathAdaptUi'
 import { PathReadScreen, PathStartScreen } from './pathRead'
 import { MakePathScreen } from './pathIntake'
 import { followGenerated } from './generatedPaths'
@@ -67,6 +68,8 @@ type View =
   | { kind: 'addAim' }
   | { kind: 'pickStep'; aimId: number }
   | { kind: 'pathChange'; aimId: number }
+  /** P6: your stage's reps and the kinds of setting, each tap a change to how the Path runs for you. */
+  | { kind: 'pathFit'; aimId: number }
   /** A Path the catalogue adds (P4): read on one screen, started from there; a recording checked; the phone handed over. */
   | { kind: 'pathRead'; path: string }
   /** Asking for a Path (P5): the intake, then the route and its words. */
@@ -301,6 +304,8 @@ export function App() {
         return <PickStepScreen aimId={view.aimId} onClose={closeAll} />
       case 'pathChange':
         return <PathChangeScreen aimId={view.aimId} onClose={closeAll} />
+      case 'pathFit':
+        return <PathFitScreen aimId={view.aimId} onClose={closeAll} />
       case 'partnerNotes':
         return <PartnerNotesScreen onClose={closeAll} />
       case 'ladder':
@@ -367,6 +372,7 @@ export function App() {
             onHer={() => open({ kind: 'her' })}
             onPartnerNotes={() => open({ kind: 'partnerNotes' })}
             onRead={(path) => open({ kind: 'pathRead', path })}
+            onFit={(aimId) => open({ kind: 'pathFit', aimId })}
             onHandOver={(offerId) => open({ kind: 'handOver', offerId })}
             onCheckRecording={(offerId) => open({ kind: 'recordingCheck', offerId })}
           />

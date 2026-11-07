@@ -11,7 +11,7 @@ import { clockTimesIn, fill } from './format'
 import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
 import { firmMode, firmOn, firmPrefNow, firmPrefOf, type FirmMode } from './firmFlow'
 import type { Firmness } from './firmness'
-import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathMark } from './db'
+import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathAdaptation, type PathMark } from './db'
 import { buildFactSheet, onTheSheet, type FactSheet } from './facts'
 import { wasShown } from './shown'
 import { briefData, usualFor, weeklyAnalyses } from './forecastFlow'
@@ -50,7 +50,7 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   ])
   // Parts 40 and 41: the reviews waiting for an answer, read only while their gate is open; closed, the sheet is as it was.
   // Pass 2: How firm is read only while its gate is open; closed, the ranking is said as it always was.
-  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow, cards, declarations, scores, swaps] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined), db.cards.toArray(), db.declarations.toArray(), db.forecastScores.toArray(), db.anchorSwaps.toArray()])
+  const [offers, outcomes, pathMarks, useRows, coachPicks, allAims, asks, prefsRow, cards, declarations, scores, swaps, adaptations] = await Promise.all([db.offers.toArray(), db.outcomes.toArray(), db.pathMarks.toArray(), db.useLog.toArray(), db.coachPicks.toArray(), db.aims.toArray(), skillCoachOpen(coach) ? db.coachAsks.toArray() : Promise.resolve([]), firmOn(firm) ? db.brainPrefs.get('prefs') : Promise.resolve(undefined), db.cards.toArray(), db.declarations.toArray(), db.forecastScores.toArray(), db.anchorSwaps.toArray(), db.pathAdaptations.toArray()])
   const firmPref = firmPrefOf(firmOn(firm) ? readBrainPrefs(prefsRow) : undefined, firm)
   const reviews = new Map<number, { days: number; reason: 'ordinary' | 'struggle' }>()
   for (const a of asks) {
@@ -66,7 +66,7 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27); with
   // stage R7's honesty checks, and the scorecard's count the learning engine's own.
   const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers, repair: repair ? trackSummary(repair) : null }, day)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, cards, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
+  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, cards, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, adaptations, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
   const said = log.filter((l) => l.situationId !== null && wasShown(l, brainBriefs)).map((l) => ({ day: l.day, situationId: l.situationId }))
@@ -116,6 +116,8 @@ interface PathRecord {
   /** The faith family is hidden: a path's faith talk is neither offered nor listed (Rule 10). */
   faithHidden: boolean
   checkins: CheckIn[]
+  /** P6: your changes to how each Path runs, the one thing beyond the Path itself that changes its rows. */
+  adaptations: PathAdaptation[]
 }
 
 /**
@@ -123,7 +125,7 @@ interface PathRecord {
  * awaits only so far, so what it shows must be read before anything is computed.
  */
 async function pathRecord(day: string): Promise<PathRecord> {
-  const [aims, offers, outcomes, ctx, marks, settings, checkins] = await Promise.all([
+  const [aims, offers, outcomes, ctx, marks, settings, checkins, adaptations] = await Promise.all([
     db.aims.filter((a) => a.archivedAt === null).toArray(),
     db.offers.toArray(),
     db.outcomes.toArray(),
@@ -131,16 +133,17 @@ async function pathRecord(day: string): Promise<PathRecord> {
     db.pathMarks.toArray(),
     db.settings.get(1),
     db.checkins.where('day').equals(day).toArray(),
+    db.pathAdaptations.toArray(),
   ])
   const s = withDefaults(settings)
-  return { aims, offers, outcomes, ctx: ctx ?? null, marks, online: s.partnerOnline, faithHidden: s.hideFaith, checkins }
+  return { aims, offers, outcomes, ctx: ctx ?? null, marks, online: s.partnerOnline, faithHidden: s.hideFaith, checkins, adaptations }
 }
 
 /** The paths on in this block, computed the one way their rows are: with their declarations, the online switch, and whether today reads hard. */
 function pathViews(r: PathRecord, day: string, now: Date): PathToday[] {
   const { block } = blockAt(now)
   const lightOnly = lightOnlyDay(r.checkins, day)
-  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, socialEnergy: socialEnergyOn(r.checkins, day), marks: r.marks, online: r.online, lightOnly, faithHidden: r.faithHidden }))
+  return r.aims.filter(pathOn).map((aim) => pathToday({ aim, offers: r.offers, outcomes: r.outcomes, ctx: r.ctx, day, block, socialEnergy: socialEnergyOn(r.checkins, day), marks: r.marks, online: r.online, lightOnly, faithHidden: r.faithHidden, adaptations: r.adaptations }))
 }
 
 /**
