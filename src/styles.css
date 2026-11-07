@@ -1727,8 +1727,10 @@ a.chip {
   margin: 0 0 12px;
 }
 
-/* The church day's ask under the big-social chip, set in line with the chip's words: past its mark and gap (the final checklist, item 1). */
-.church-ask {
+/* The church day's ask under the big-social chip, and what counts under Something sweet (2026-11-07), set in line with the
+   chip's words: past its mark and gap (the final checklist, item 1). */
+.church-ask,
+.sweet-hint {
   padding: 0 0 12px 22px;
 }
 
@@ -2742,6 +2744,30 @@ button.chip {
 .when-chip.is-figure {
   min-width: 48px;
   padding: 0;
+}
+
+/* How hard, one to five: five figures in one row wherever five 48-pixel targets fit with 4 pixels between them, their
+   gap growing to 8 where there is room; three to a row where they do not (Now's row beside its mark, a narrow phone,
+   text zoomed), so no figure is ever left alone on a line (2026-11-07). */
+.figures {
+  container-type: inline-size;
+  align-self: stretch;
+}
+
+.when.is-figures {
+  display: grid;
+  grid-template-columns: repeat(5, 48px);
+  justify-content: space-between;
+  max-width: 272px;
+  gap: 10px 4px;
+}
+
+@container (width < 256px) {
+  .when.is-figures {
+    grid-template-columns: repeat(3, 48px);
+    justify-content: start;
+    column-gap: 8px;
+  }
 }
 
 .ease .when {

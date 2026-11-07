@@ -67,8 +67,8 @@ function minutesAndSeconds(ms: number): string {
 function Toggles<T extends string | number>({ label, items, on, words, testid, onTap, narrow = false }: { label: string; items: readonly T[]; on: (x: T) => boolean; words: (x: T) => string; testid: string; onTap: (x: T) => void; narrow?: boolean }) {
   // A chip of one figure is drawn as wide as its tap area, so five of them in a row keep their areas apart.
   const base = narrow ? 'when-chip is-figure' : 'when-chip'
-  return (
-    <span class="when" role="group" aria-label={label}>
+  const group = (
+    <span class={narrow ? 'when is-figures' : 'when'} role="group" aria-label={label}>
       {items.map((x) => (
         <button key={String(x)} type="button" class={on(x) ? `${base} is-on` : base} aria-pressed={on(x)} data-testid={`${testid}-${x}`} onClick={() => onTap(x)}>
           {words(x)}
@@ -76,6 +76,8 @@ function Toggles<T extends string | number>({ label, items, on, words, testid, o
       ))}
     </span>
   )
+  // Figures read as one set: the room they are given decides five to a row or three, never one alone (styles.css).
+  return narrow ? <div class="figures">{group}</div> : group
 }
 
 /** Each strand you have on: its stage, practice apart from what the stage has shown, and what has come back. */

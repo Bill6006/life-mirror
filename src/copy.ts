@@ -607,6 +607,8 @@ export const copy = {
     natureMorning: 'The mornings after read {mean}, against {without} after evenings that started the same ({k} and {m}).',
     /** Stage 3, item 5: one optional tap at the afternoon and the evening. */
     sweet: 'Something sweet since the last check-in?',
+    /** What counts, said under the question wherever it is asked (the owner's words, 2026-11-07): what it always meant. */
+    sweetHint: 'Sweets, desserts, sugary drinks or juice. Whole fruit doesn’t count.',
     sweetTimes: '{times} before. The evening read {mean}, against {without} after afternoons that started the same ({k} and {m}).',
     sweetNoNext: '{times} before. No evening readings after them yet.',
     sweetUnmatched: '{times} before. The evening read {mean} ({k}); nothing yet to set it against.',

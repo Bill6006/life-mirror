@@ -171,6 +171,11 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
                   <span class="anchor-mark" aria-hidden="true" />
                   <span class="row-main">{keepTogether(copy.extras[key], key === 'nature' ? '20+ min' : 'check-in?')}</span>
                 </button>
+                {key === 'sweet' && (
+                  <p class="note faint no-gap sweet-hint" data-testid="sweet-hint">
+                    {copy.extras.sweetHint}
+                  </p>
+                )}
                 {fromMove && (
                   <p class="note faint no-gap" data-testid="nature-from-move">
                     {fill(copy.extras.natureFromMove, { move: fromMove })}
@@ -400,6 +405,9 @@ export function SweetChip({ record }: { record: CheckIn }) {
               <span class="anchor-mark" aria-hidden="true" />
               <span class="row-main">{keepTogether(copy.extras.sweet, 'check-in?')}</span>
             </button>
+            <p class="note faint no-gap sweet-hint" data-testid="sweet-hint">
+              {copy.extras.sweetHint}
+            </p>
             {on && (
               <div class="calc chip-answer" data-testid="chip-answer">
                 <p class="calc-line">{answer}</p>

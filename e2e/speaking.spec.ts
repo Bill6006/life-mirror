@@ -327,3 +327,48 @@ test('a speaking rep answered Partly at the next check-in asks once whether the 
   await card.getByTestId('path-sheet').getByTestId('path-effort-2').click()
   await expect.poll(async () => (await rows(page, 'outcomes')).map((x) => [x.outcome, x.effort])).toEqual([['partly', 2]])
 })
+
+// How hard, one to five, on Now's narrower row (2026-11-07): the five figures read as one set at every width the phone
+// has. One row wherever five 48-pixel targets fit (256 pixels, with 4 between them), three to a row where they do not,
+// so no figure is ever left alone on a line; each keeps its full width.
+for (const theme of ['nocturne', 'instrument', 'signal'] as const) {
+  test(`${theme}: Now's five effort figures read as one set at 390, 360 and 390 at 130 percent, never one alone on a line`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await page.clock.setFixedTime(new Date(2026, 10, 9, 9, 5))
+    await page.goto('./')
+    if (process.env.WIDE_FONT && theme === 'instrument') await page.addStyleTag({ content: ':root, [data-theme] { --font: Verdana, "DejaVu Sans", sans-serif }' })
+    await startSpeaking(page)
+    await tab(page, 'Now')
+    const row = page.locator('[data-kind="path"]')
+    await row.getByTestId('aim-start').click()
+    await row.getByTestId('path-predict-input').fill('I will rush the ending')
+    await row.getByTestId('path-predict-start').click()
+    await row.getByTestId('aim-done').click()
+    const sheet = row.getByTestId('path-sheet')
+    await expect(sheet.getByTestId('path-effort-5')).toBeVisible()
+    const laid = () =>
+      sheet.evaluate((el) => {
+        const chips = [1, 2, 3, 4, 5].map((n) => (el.querySelector(`[data-testid="path-effort-${n}"]`) as Element).getBoundingClientRect())
+        const tops = [...new Set(chips.map((c) => Math.round(c.top)))].sort((a, b) => a - b)
+        const box = ((el.querySelector('[data-testid="path-effort-1"]') as Element).closest('.figures') as Element | null)?.getBoundingClientRect()
+        return {
+          room: box?.width ?? 0,
+          lines: tops.map((t) => chips.filter((c) => Math.round(c.top) === t).length),
+          narrowest: Math.min(...chips.map((c) => Math.round(c.width))),
+          inOrder: chips.every((c, i) => i === 0 || c.top > chips[i - 1].top + 1 || c.left >= chips[i - 1].right),
+          inside: Boolean(box) && chips.every((c) => c.left >= (box?.left ?? 0) - 0.5 && c.right <= (box?.right ?? 0) + 0.5),
+        }
+      })
+    for (const width of [390, 360, 300]) {
+      await page.setViewportSize({ width, height: 844 })
+      await expect.poll(async () => (await laid()).lines.length).toBeGreaterThan(0)
+      const l = await laid()
+      expect(l.narrowest, `${width}: a figure narrower than its 48-pixel target`).toBe(48)
+      expect(l.inOrder, `${width}: the figures out of order`).toBe(true)
+      expect(l.inside, `${width}: a figure past the room it is given`).toBe(true)
+      expect(l.lines, `${width} (room ${l.room}): five to a row where they fit, three to a row where they do not`).toEqual(l.room >= 256 ? [5] : [3, 2])
+      // At the phone's own width, with its text at its own size, every theme has room for the five in one row.
+      if (width === 390) expect(l.lines).toEqual([5])
+    }
+  })
+}

@@ -1497,6 +1497,17 @@ test('stage 3, item 5: time in nature and Something sweet, each marked shown onc
   await sweet.scrollIntoViewIfNeeded()
   // "check-in?" whole on one line at the phone's width: it broke at its hyphen until 2026-10-18.
   expect(await sweet.locator('.keep-together').evaluate((el) => el.getClientRects().length)).toBe(1)
+  // What counts, said under the question (2026-11-07); the question alone stays the button's words.
+  await expect(page.locator('[data-chip="sweet"]').getByTestId('sweet-hint')).toHaveText('Sweets, desserts, sugary drinks or juice. Whole fruit doesn’t count.')
+  await expect(sweet).not.toContainText('Whole fruit')
+  // In line with the question's words, past the chip's mark, as the church day's ask is.
+  const inLine = (li: Locator) =>
+    li.evaluate((el) => {
+      const r = document.createRange()
+      r.selectNodeContents(el.querySelector('[data-testid="sweet-hint"]') as Element)
+      return Math.round(r.getClientRects()[0].left - (el.querySelector('.row-main') as Element).getBoundingClientRect().left)
+    })
+  expect(await inLine(page.locator('[data-chip="sweet"]'))).toBe(0)
   await expect.poll(async () => ((await extrasOf(page, '2026-09-07', 'afternoon'))?.chipsShown as Record<string, true> | undefined)?.sweet).toBe(true)
   expect((await extrasOf(page, '2026-09-07', 'afternoon'))?.sweet).toBeUndefined()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
@@ -1520,6 +1531,9 @@ test('stage 3, item 5: time in nature and Something sweet, each marked shown onc
   const eveningSweet = page.getByTestId('extras').getByTestId('chip-sweet')
   await eveningSweet.scrollIntoViewIfNeeded()
   expect(await eveningSweet.locator('.keep-together').evaluate((el) => el.getClientRects().length)).toBe(1)
+  await expect(page.getByTestId('extras').locator('[data-chip="sweet"]').getByTestId('sweet-hint')).toHaveText('Sweets, desserts, sugary drinks or juice. Whole fruit doesn’t count.')
+  await expect(eveningSweet).not.toContainText('Whole fruit')
+  expect(await inLine(page.getByTestId('extras').locator('[data-chip="sweet"]'))).toBe(0)
   // The old chip is asked no longer.
   await expect(page.getByTestId('chip-outside')).toHaveCount(0)
   const nature = page.getByTestId('extras').getByTestId('chip-nature')
@@ -3460,6 +3474,16 @@ test('the browser’s offer to install shows as one card at the top of Settings,
 
 test('stage 1, item i: “Not now” on a move’s question asks once more at the next check-in, where it says plainly “Leave it unanswered”', async ({ page }) => {
   test.setTimeout(150_000)
+  // The page's draws fixed (2026-11-07), as its clock is, so every run draws the same moves: Nothing extra in the morning,
+  // skipped for a move, then a move beside a passive item in the afternoon. Unseeded, an afternoon that drew Nothing extra
+  // beside a passive item left the evening a question with no Not now, and the loop below timed out.
+  await page.addInitScript((seed) => {
+    let x = seed
+    Math.random = () => {
+      x = (x * 16807) % 2147483647
+      return x / 2147483647
+    }
+  }, 7)
   await page.clock.setFixedTime(new Date(2026, 8, 7, 8, 5))
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
