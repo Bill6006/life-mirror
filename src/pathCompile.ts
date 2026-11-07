@@ -162,7 +162,7 @@ const ASK_WORDS = /\b(ask (them|him|her|someone|one person) (out|to|for|if|wheth
 /** The app's own words on every ask, never written by the generator: the power bar and the one ask (the design's §4 item 12). */
 export const ASK_BAR = 'Never someone who cannot freely say no: someone you supervise or who supervises you, who serves you at work, or whom you teach or care for. One ask, and anything but a yes is final.'
 /** A rep of asking before anything physical: the strand done with a partner holds one. */
-const CONSENT_WORDS = /\b(consent|ask (in words )?before (any|a|the) (touch|kiss|physical|intimacy)|ask before anything physical)\b/i
+const CONSENT_WORDS = /\bconsent\b|\bask(ing)?\b[^.]{0,24}\bbefore\b[^.]{0,16}\b(physical|touch|touching|kiss|kissing|intimacy|intimate)\b/i
 const FAITH = /\b(church|pray(er|ing)?|bible|worship|sermon|scripture|sabbath)\b/i
 /** The Partner path's own monthly check, in the order of its questions. */
 const CHECK_IDS = ['safety', 'conduct', 'doubt'] as const

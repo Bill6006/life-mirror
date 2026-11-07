@@ -206,6 +206,8 @@ describe('the rules round 1 of the known-answer test added', () => {
     expect(r.ok && r.reps.find((m) => m.id.endsWith('-a-recommendation'))?.guardrail).toBe(`One question, and thanks whatever the answer; never when they are busy with someone. ${ASK_BAR}`)
     const w = waitingDossierForTests()
     expect(reasons({ ...w, reps: w.reps.filter((x) => x.id !== 'together-ask-first') })).toContain('strand together: a strand done with a partner holds a rep of asking in words before anything physical')
+    // Said plainly, in the words people use: asking in words before anything physical is that rep.
+    expect(reasons({ ...w, reps: w.reps.map((x) => (x.id === 'together-ask-first' ? { ...x, what: 'Ask in words before anything physical, and take the answer as given.' } : x)) })).toEqual([])
     const d = dossier()
     expect(reasons({ ...d, measurement: { ...d.measurement, gates: [...d.measurement.gates, { strand: 'bed', stage: 3, met: 1, requires: ['checked'], weeks: 2, confirmed: 0, kinds: 1 }] } })).toContain('gate bed/3: a strand’s last stage has no gate, as nothing moves on from it')
   })
