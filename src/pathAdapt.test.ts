@@ -173,7 +173,9 @@ describe('the Path with your changes', () => {
     const a = adaptedOf('speaking', [row('speaking', 'noSetting', { setting: 'solo' })])
     expect(setAsideBy(a, moveById('read-aloud'))).toBe(true)
     expect(setAsideBy(a, moveById('sp-n-one-question'))).toBe(false)
-    expect(settingFor(moveById('sp-n-one-question'), speaking, [], '2026-11-20', false, new Set(['recurring']))).toBe('group')
+    // Its first kind, a group, is where it would happen; said not to be there, the next kind it has.
+    expect(settingFor(moveById('sp-n-one-question'), speaking, [], '2026-11-20')).toBe('group')
+    expect(settingFor(moveById('sp-n-one-question'), speaking, [], '2026-11-20', false, new Set(['group']))).toBe('recurring')
     expect(settingFor(moveById('sp-n-one-question'), speaking, [], '2026-11-20', false, new Set(['group', 'recurring']))).toBe('group')
   })
 
