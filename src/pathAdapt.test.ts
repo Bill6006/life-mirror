@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { findPath, moveById, type Path, type PathId } from './catalogue'
 import type { Aim, Offer, Outcome } from './db'
 import { adaptedOf, CANT_YET, keyOf, NO_CHANCE, proposalsOf, SPACING, TOO_MUCH, UNADAPTED, type AdaptRep, type PathAdaptation, type ProposalInput } from './pathAdapt'
-import { checksDue } from './pathMeasure'
+import { checkHistory, checksDue, strandReader } from './pathMeasure'
 import { pathToday, pickRep, setAsideBy, settingFor, whyThisRep, type PathTodayInput } from './pathStage'
 
 // The fast loop (P6, 2026-11-07): the runtime reads only the applied rows of a Path's own log; a proposal comes from the
@@ -110,6 +110,27 @@ describe('check-again spacing: half as late again after a pass, half as soon aft
     expect(missed[0].every).toBe(SPACING.least)
     expect(proposalsOf(input([], { strands, checks: [{ strand: 'speaking', stage: 2, day: '2026-11-01', passed: false, next: 60 }] }))[0].every).toBe(30)
   })
+  it('reads each check of a stage shown, passed or missed, with the days to the next, and the reader gives the latest', () => {
+    const b = [{ id: 'a', words: 'A', theirs: 'A' }, { id: 'b', words: 'B', theirs: 'B' }]
+    const gate = { strand: 's', stage: 1, met: 2, weeks: 1, confirmed: 0, kinds: 1 }
+    const plan = { at: [30, 90], every: 180 }
+    const done = (day: string, checks: string[]) => ({ offerId: ++n, moveId: 'r', day, setting: 'solo' as const, outcome: 'done' as const, checks })
+    // The first check met two days after it; the second by a rep missing a behaviour.
+    const reps = [done('2026-02-02', ['a', 'b']), done('2026-04-03', ['a'])]
+    expect(checkHistory('2026-01-01', gate, b, reps, plan, '2026-06-01')).toEqual([
+      { day: '2026-01-31', passed: true, next: 60 },
+      { day: '2026-04-01', passed: false, next: 180 },
+    ])
+    // None within the grace is missed; inside it, not decided yet.
+    expect(checkHistory('2026-01-01', gate, b, [], plan, '2026-02-20')).toEqual([{ day: '2026-01-31', passed: false, next: 60 }])
+    expect(checkHistory('2026-01-01', gate, b, [], plan, '2026-02-10')).toEqual([])
+    const path = { id: 'x' as PathId, measurement: { strands: [{ strand: 's', behaviours: b }], gates: [gate], cap: 4, maintenance: plan } }
+    const reader = strandReader(path, 's', reps, () => ({ stage: 1, strand: 's', advances: true }), '2026-06-01')
+    const checks = reader.checks({ reached: [{ stage: 2, day: '2026-01-01' }] })
+    expect(checks).toEqual([{ strand: 's', stage: 1, day: '2026-04-01', passed: false, next: 180 }])
+    expect(proposalsOf(input([], { strands: [{ strand: 's', stage: 2 }], checks })).map((p) => [p.kind, p.after, p.every])).toEqual([['spacing', '2026-04-01', 90]])
+  })
+
   it('restarts the checks from the check it follows, every so many days', () => {
     const plan = { at: [30, 90], every: 180 }
     expect(checksDue('2026-01-01', plan, '2026-06-01')).toEqual(['2026-01-31', '2026-04-01', '2026-09-28'])

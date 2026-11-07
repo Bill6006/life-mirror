@@ -44,7 +44,7 @@ function units(s: Scenario, r: () => number): TestUnit[] {
     const week = Math.floor(d / 7)
     const streak = s.streak && week === 0
     const version: 0 | 1 = streak ? 1 : r() < 0.5 ? 1 : 0
-    const p = s.base(week) + (version === 1 ? s.delta(week) : 0) + (s.carry && last ? s.carry : 0)
+    const p: number = s.base(week) + (version === 1 ? s.delta(week) : 0) + (s.carry && last ? s.carry : 0)
     const y: 0 | 1 = streak ? 1 : r() < Math.min(1, Math.max(0, p)) ? 1 : 0
     last = y === 1
     if (r() < (s.seen ?? 1)) out.push({ week, version, chance: 0.5, y })
