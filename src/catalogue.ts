@@ -312,6 +312,8 @@ export interface Path {
   start?: PathStart
   /** About how long it runs, said before it starts (P4). */
   timeline?: string
+  /** A Path the generator made (P5): its goal types and how it was made. Absent on the catalogue's own. */
+  generated?: { goalTypes: readonly string[]; provenance: { run: string; model: string; promptHash: string; retrievedOn: string } }
   /** Why it looks as it does (P3): a record for each element, from which the app lays out "Why", never written freely. */
   decisions?: readonly PathDecision[]
 }
