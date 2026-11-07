@@ -278,6 +278,8 @@ export interface PathDecision {
   days goes to misses and support reps, so the strands that run together ask at most two reps a week in all
   (`reps` over `withinWeeks`, added up); a strand that waits runs
   with those it does not pause.
+- **Draws.** The app draws a day's rep among all the reps a stage offers (its own, and those carried `through` it), so
+  at every stage the rule moves at least half the reps offered move it.
 - **A first stage** never waits on someone else: a check from outside the moment there must be one you can give
   alone, a recording of yourself.
 - **Minutes.** One to ninety a rep, each within the person's minutes a week; the median rep on three days in seven

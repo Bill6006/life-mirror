@@ -214,6 +214,9 @@ describe('the rules round 1 of the known-answer test added', () => {
     const d = dossier()
     // Nine reps in three weeks is three a week: the whole share, with nothing left for a miss or a support rep.
     expect(reasons({ ...d, strands: [{ ...d.strands[0], rule: { ...d.strands[0].rule, reps: 9, withinWeeks: 3 } }] })).toContain('strands bed: their floors ask 3 reps a week together, more than the 2 a week a Path\'s floors may ask beside another Path')
+    // Support reps that outnumber the stage-moving ones crowd them out of the share's days.
+    const support = ['a', 'b', 'c', 'd', 'e'].map((x) => ({ ...d.reps[0], id: `support-${x}`, advances: false }))
+    expect(reasons({ ...d, reps: [...d.reps, ...support] })).toContain('strand bed, stage 1: at least half the reps it offers move it (here 4 of 9), or support reps take the share\'s few days')
     // Two strands running together add up.
     const p = people()
     expect(reasons({ ...p, strands: p.strands.map((s) => ({ ...s, rule: { ...s.rule, reps: 6, withinWeeks: 4 } })) })).toContain('strands asking, nerves: their floors ask 3 reps a week together, more than the 2 a week a Path\'s floors may ask beside another Path')

@@ -390,6 +390,10 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
       const kinds = (rs: readonly DossierRep[]) => new Set(rs.flatMap((r) => r.settings)).size
       const short = here.length < s.rule.distinctReps + 1 || here.some((x) => kinds(here.filter((r) => r !== x)) < s.rule.settingKinds)
       if (short) say(`strand ${s.id}, stage ${st.n}: its floor (${s.rule.distinctReps} different reps in ${s.rule.settingKinds} kinds of setting) must hold with any one of its ${here.length} stage-moving reps taken away`)
+      // The share's few days go to the reps the stage offers, drawn alike: at least half of them move it, or support reps
+      // crowd it out (the stress set: a nightly habit with three support reps beside two stood still for twelve weeks).
+      const offered = d.reps.filter((r) => r.strand === s.id && r.stage <= st.n && st.n <= (r.through ?? r.stage))
+      if (here.length * 2 < offered.length) say(`strand ${s.id}, stage ${st.n}: at least half the reps it offers move it (here ${here.length} of ${offered.length}), or support reps take the share's few days`)
       // The smaller version after refusals is the stage's lightest rep: one below high effort, or it is no smaller (round 2).
       if (here.length && here.every((r) => r.effort === 'high')) say(`strand ${s.id}, stage ${st.n}: a stage-moving rep below high effort, so the smaller version after refusals is smaller`)
     }
