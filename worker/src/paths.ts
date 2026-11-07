@@ -25,6 +25,8 @@ export type PathsEnv = ClaudeEnv & { TIMEZONE: string }
 /** A drafting run may take hours; a reading run less. Past these, the job fails and says so. */
 export const DRAFT_MINUTES = 180
 export const READ_MINUTES = 90
+/** After a fire the routine refused, an hour before the next, or the routine's own retry-after when later. */
+export const FIRE_RETRY_MINUTES = 60
 /** Posts a run may make: each compiles, and a refusal comes back with every reason. */
 export const PATH_POSTS = 8
 /** Searches and abstracts a drafting run may ask for. */
@@ -93,6 +95,14 @@ async function queued(store: Store): Promise<(PathRequest & { id: number })[]> {
     .sort((a, b) => (a.at < b.at ? -1 : 1))
 }
 
+/** The routine's own retry-after on a refused fire, in milliseconds since the epoch: seconds after the fire, or a date. */
+function retryAfterMs(t: TaskRow): number {
+  const ra = t.retryAfter?.trim()
+  if (!ra) return 0
+  const seconds = Number(ra)
+  return Number.isFinite(seconds) ? Date.parse(t.at) + seconds * 1000 : Date.parse(ra) || 0
+}
+
 /** Marks the run, then fires the routine with no personal text: the task, the day and the model alias. */
 async function startRun(env: PathsEnv, store: Store, now: Date, task: 'path' | 'pathRead', day: string, request: number, opts: PathsOptions): Promise<PathsResult> {
   const id = pathTaskIdOf(day, task)
@@ -134,6 +144,10 @@ export async function runPaths(env: PathsEnv, store: Store, now: Date, opts: Pat
   const hhmm = `${String(lt.hour).padStart(2, '0')}:${String(lt.minute).padStart(2, '0')}`
   if (quietHours(hhmm) && !opts.force) return { ran: false, reason: 'quiet hours: 9:00 to 11:30 keep the window for the day’s line', day }
   const dry = Boolean(opts.dry)
+  // A fire the routine refused is tried again only after its wait, never every quarter hour (P5).
+  const refused = runs.filter((t) => t.status === 'fallback' && !t.firedAt).map((t) => ({ ...t, at: t.at }))
+  const waitUntil = Math.max(0, ...refused.map((t) => Math.max(Date.parse(t.at) + FIRE_RETRY_MINUTES * 60_000, retryAfterMs(t))))
+  if (!opts.force && now.getTime() < waitUntil) return { ran: false, reason: `the routine refused the last fire; it is tried again at ${new Date(waitUntil).toISOString()}`, day }
   // A draft waiting for its reading goes first: it is the nearer of the two to being yours to read.
   const drafts = await store.readBrainRows<DraftRow>(storesOf(dry).drafts, 50)
   const waiting = drafts.find((d) => !d.body.readBy)

@@ -83,6 +83,14 @@ describe('the generator’s job', () => {
     expect((await jobOf(store))?.state).toBe('refused')
   })
 
+  it('tries a fire the routine refused again only after an hour, never every quarter hour', async () => {
+    const store = record()
+    const refusing = (async () => new Response(JSON.stringify({ error: { message: 'paused' } }), { status: 400 })) as unknown as typeof fetch
+    expect(await runPaths(env, store, at('22:00'), { ...OPEN, fireFetcher: refusing })).toMatchObject({ ran: false })
+    expect(await runPaths(env, store, at('22:15'), { ...OPEN, fireFetcher: world() })).toMatchObject({ ran: false, reason: expect.stringContaining('the routine refused the last fire') })
+    expect(await runPaths(env, store, at('23:01'), { ...OPEN, fireFetcher: world() })).toMatchObject({ ran: true })
+  })
+
   it('lets a run go past its time, the job failed and said so', async () => {
     const store = record()
     await started(store)
