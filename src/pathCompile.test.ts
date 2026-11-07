@@ -212,11 +212,11 @@ describe('the rules round 1 of the known-answer test added', () => {
 
   it('the share, a first stage that waits on no one, and the partner words read for what they are (the stress set)', () => {
     const d = dossier()
-    // Twelve reps in two weeks is six a week: more than the three a Path's reps may take beside another Path.
-    expect(reasons({ ...d, strands: [{ ...d.strands[0], rule: { ...d.strands[0].rule, reps: 12, withinWeeks: 2 } }] })).toContain('strands bed: their floors ask 6 reps a week together, more than the three a Path\'s reps may take beside another Path')
+    // Nine reps in three weeks is three a week: the whole share, with nothing left for a miss or a support rep.
+    expect(reasons({ ...d, strands: [{ ...d.strands[0], rule: { ...d.strands[0].rule, reps: 9, withinWeeks: 3 } }] })).toContain('strands bed: their floors ask 3 reps a week together, more than the 2 a week a Path\'s floors may ask beside another Path')
     // Two strands running together add up.
     const p = people()
-    expect(reasons({ ...p, strands: p.strands.map((s) => ({ ...s, rule: { ...s.rule, reps: 8, withinWeeks: 4 } })) })).toContain('strands asking, nerves: their floors ask 4 reps a week together, more than the three a Path\'s reps may take beside another Path')
+    expect(reasons({ ...p, strands: p.strands.map((s) => ({ ...s, rule: { ...s.rule, reps: 6, withinWeeks: 4 } })) })).toContain('strands asking, nerves: their floors ask 3 reps a week together, more than the 2 a week a Path\'s floors may ask beside another Path')
     const handed = { ...p, measurement: { ...p.measurement, strands: p.measurement.strands.map((s) => ({ ...s, handOver: true })), gates: p.measurement.gates.map((g) => (g.strand === 'asking' && g.stage === 1 ? { ...g, confirmed: 1 } : g)) } }
     const twoHanded = withRep(withRep(handed, 'the-price', { handOver: true, settings: ['group', 'errand'] }), 'the-size', { handOver: true, settings: ['group', 'errand'] })
     expect(reasons(twoHanded)).toContain("gate asking/1: a first stage's check from outside the moment can always be given alone, a recording of yourself, never only someone else's")

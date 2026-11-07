@@ -137,6 +137,9 @@ export const START_SCREENS = {
 } as const
 export type StartScreenId = keyof typeof START_SCREENS
 
+/** Reps a week the floors of the strands that run together may ask in all: the share of three days in seven, a third kept for misses and support reps. */
+export const SHARE_FLOOR = 2
+
 /** The decisions every generated Path records: why its shape is as it is, each number included. */
 const REQUIRED_DECISIONS = ['structure', 'maintenance', 'rule', 'timeline', 'cap'] as const
 
@@ -368,14 +371,15 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
   const people = moving.length > 0 && moving.filter((r) => r.with).length * 2 >= moving.length
   if (people && d.start?.screen !== 'socialFear') say('most of its stage-moving reps are done with someone, so it opens on the app’s social-fear screen with an exposure strand a yes opens')
 
-  // The share (round of the stress set): beside another Path a generated Path's own reps take the People row three days in
-  // seven, so the strands that run together ask at most three reps a week in all; a strand that waits runs with those it
-  // does not pause.
+  // The share (the stress set): beside another Path a generated Path's own reps take the People row three days in seven,
+  // and a third of those days goes to misses and support reps, so the strands that run together ask at most two reps a
+  // week in all (design judgment: a floor asking all three a week stood still when support reps took a day); a strand
+  // that waits runs with those it does not pause.
   const rate = (s: Dossier['strands'][number]) => s.rule.reps / Math.max(1, s.rule.withinWeeks)
   const together = [d.strands.filter((s) => !s.waits), ...d.strands.filter((s) => s.waits).map((w) => [w, ...d.strands.filter((s) => !s.waits && !(w.pauses ?? []).includes(s.id))])]
   for (const group of together) {
     const total = group.reduce((a, s) => a + rate(s), 0)
-    if (total > 3 + 1e-9) say(`strands ${group.map((s) => s.id).join(', ')}: their floors ask ${Math.round(total * 10) / 10} reps a week together, more than the three a Path's reps may take beside another Path`)
+    if (total > SHARE_FLOOR + 1e-9) say(`strands ${group.map((s) => s.id).join(', ')}: their floors ask ${Math.round(total * 10) / 10} reps a week together, more than the ${SHARE_FLOOR} a week a Path's floors may ask beside another Path`)
   }
 
   // Stages: each the rule moves keeps its floor with any one of its reps taken away (a newcomer who never comes, a rep dropped).

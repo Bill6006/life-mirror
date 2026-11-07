@@ -240,7 +240,7 @@ TABLE = [
          tests=[COMPILE], pattern='an ask says so and carries the app'),
     # The stress set's rules.
     dict(id='share-ignored', file=C,
-         old="    if (total > 3 + 1e-9) say(",
+         old="    if (total > SHARE_FLOOR + 1e-9) say(",
          new="    if (false) say(",
          tests=[COMPILE], pattern='the share, a first stage that waits on no one'),
     dict(id='first-stage-waits', file=C,

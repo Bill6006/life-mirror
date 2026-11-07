@@ -49,8 +49,8 @@ The compiler reports every reason at once; read them all, fix them all, and comp
    advance. Each strand has a floor (reps, different reps, kinds of setting, within weeks, the smaller version after
    refusals, re-entry after quiet weeks), at least the compiler's floor for its kind, and its numbers are design
    judgment, said so in its decision. Beside another Path a Path's own reps take the day's People row three days in
-   seven, so the strands that run together ask at most three reps a week in all (a nightly habit is counted three
-   nights a week, however often it is done).
+   seven, and a third of those days goes to misses and support reps, so the strands that run together ask at most two
+   reps a week in all (a nightly habit is counted on those days, however often it is done).
    - **Ask of every stage whether the person's own reps alone can reach it.** A part that depends on someone else's
      yes or on a relationship (being with a partner, a group that takes you in) is a strand that **waits**: off
      until the person turns it on, their word, dated, undone by turning it off. It names the strands it `pauses`

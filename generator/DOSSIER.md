@@ -126,6 +126,9 @@ export const START_SCREENS = {
 } as const
 export type StartScreenId = keyof typeof START_SCREENS
 
+/** Reps a week the floors of the strands that run together may ask in all: the share of three days in seven, a third kept for misses and support reps. */
+export const SHARE_FLOOR = 2
+
 /** The decisions every generated Path records: why its shape is as it is, each number included. */
 const REQUIRED_DECISIONS = ['structure', 'maintenance', 'rule', 'timeline', 'cap'] as const
 
@@ -271,8 +274,9 @@ export interface PathDecision {
   chance. Every stage the rule moves must keep its floor with any one of its stage-moving reps taken away.
 - **Gates measure every component** a strand trains before its last stage: one of its behaviours is required by a gate.
 - **Floors by kind** (`FLOORS` above): a strand's rule asks at least these reps and different reps.
-- **The share.** Beside another Path a Path's own reps take the People row three days in seven, so the strands that
-  run together ask at most three reps a week in all (`reps` over `withinWeeks`, added up); a strand that waits runs
+- **The share.** Beside another Path a Path's own reps take the People row three days in seven, and a third of those
+  days goes to misses and support reps, so the strands that run together ask at most two reps a week in all
+  (`reps` over `withinWeeks`, added up); a strand that waits runs
   with those it does not pause.
 - **A first stage** never waits on someone else: a check from outside the moment there must be one you can give
   alone, a recording of yourself.
