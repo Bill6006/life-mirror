@@ -1814,6 +1814,7 @@ export const copy = {
       notForMe: 'Not for me',
       fitSettings: 'Where reps happen',
       noSetting: 'I don’t have this',
+      short: 'Without what you don’t have, too few different reps are left to move on at {stages}. Undo a kind here, or the change under Details.',
       whyQuestion: 'One optional tap: what got in the way?',
       whys: { noChance: 'No chance came up', cantYet: 'Can’t do it yet', wrong: 'Felt wrong or pointless', unsafe: 'Felt unsafe or harmful' },
     },

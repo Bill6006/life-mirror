@@ -91,6 +91,17 @@ export function floorLostWithout(pt: Pick<PathToday, 'path' | 'adapted'>, moveId
   return left.length < rule.distinctReps || (rule.settingKinds > 1 && kinds.size < rule.settingKinds)
 }
 
+/** The strands on whose stage your changes leave too few different stage-moving reps to move on: what the sheet says beside the kinds you don't have. */
+export function stagesShort(pt: Pick<PathToday, 'path' | 'adapted' | 'strands'>): string[] {
+  return pt.strands
+    .filter((t) => {
+      const rule = (pt.path.strands?.length ? t.strand.rule : null) ?? pt.path.rule
+      const left = pathReps(pt.path.id, t.state.stage, pt.path.strands?.length ? t.strand.id : undefined).filter((m) => offerable(m) && m.path?.[pt.path.id]?.advances && !setAsideBy(pt.adapted, m))
+      return t.state.stage < (pt.path.strands?.length ? t.strand.stages.length : pt.path.stages.length) && left.length < rule.distinctReps
+    })
+    .map((t) => stageName(pt.path, pt.path.strands?.length ? t.strand.id : ONE_STRAND, t.state.stage))
+}
+
 /** What the record suggests for this Path now, each with its why in words. */
 export function proposalsFor(pt: PathToday, outcomes: readonly Outcome[], rows: readonly PathAdaptation[], today: string): Proposal[] {
   const mine = rows.filter((r) => r.path === pt.path.id)

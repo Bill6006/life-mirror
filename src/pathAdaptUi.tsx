@@ -6,7 +6,7 @@ import { db, getDayContext, getSettings, type PathAdaptation } from './db'
 import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import type { Proposal } from './pathAdapt'
-import { changeWords, declineProposal, proposalsFor, setTap, undoChange, useProposal } from './pathAdaptFlow'
+import { changeWords, declineProposal, proposalsFor, setTap, stagesShort, undoChange, useProposal } from './pathAdaptFlow'
 import { defaultSetting, offerable, pathName, pathToday, socialEnergyOn, stageWords, type PathToday } from './pathStage'
 
 // How a Path runs for you, on its card (P6 of the AI-generated Paths design, 2026-11-07): the changes you took, each with
@@ -172,6 +172,8 @@ export function PathFitScreen({ aimId, onClose }: { aimId: number; onClose: () =
     if (on && repState(mine, m.id).prefer) await setTap(pt, 'prefer', { rep: m.id }, false)
   }
   const none = new Set(mine.filter((r) => r.state === 'applied' && r.kind === 'noSetting').map((r) => r.setting))
+  // What your changes leave a stage on: too few different reps to move on, said plainly, never refused (a kind you don't have is a fact).
+  const short = stagesShort(pt)
   return (
     <section class="screen" data-testid="path-fit">
       <header class="screen-head">
@@ -224,6 +226,11 @@ export function PathFitScreen({ aimId, onClose }: { aimId: number; onClose: () =
             </span>
           </div>
         ))}
+        {short.length > 0 && (
+          <p class="note" data-testid="path-fit-short">
+            {fill(c.short, { stages: short.join(', ') })}
+          </p>
+        )}
       </div>
       <div class="actions">
         <button type="button" class="textbtn" data-testid="path-fit-close" onClick={onClose}>

@@ -5,7 +5,7 @@ import { SYNCED_STORES } from './cloudOutbox'
 import { db, getSettings, type Aim, type Offer } from './db'
 import { buildExport } from './export'
 import { recordOutcome } from './offerFlow'
-import { declineProposal, proposalsFor, setTap, undoChange, useProposal } from './pathAdaptFlow'
+import { declineProposal, proposalsFor, setTap, stagesShort, undoChange, useProposal } from './pathAdaptFlow'
 import { pathToday, type PathToday } from './pathStage'
 
 // The fast loop's record on the phone (P6, 2026-11-07): your taps applied at once and undone in place, a rep set aside
@@ -69,6 +69,10 @@ describe('your taps', () => {
     const [r] = await db.pathAdaptations.toArray()
     expect([r.kind, r.setting, r.origin]).toEqual(['noSetting', 'solo', 'correction'])
     expect((await view(aim)).elig.stageReps.map((m) => m.id)).not.toContain('read-aloud')
+    // A fact, never refused: the stage it leaves short of different reps is said instead.
+    expect(stagesShort(await view(aim))).toEqual(['Speaking to several people, stage 1'])
+    await setTap(await view(aim), 'noSetting', { setting: 'solo' }, false, NOW)
+    expect(stagesShort(await view(aim))).toEqual([])
   })
 })
 
