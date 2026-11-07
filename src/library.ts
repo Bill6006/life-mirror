@@ -21,6 +21,21 @@ export function admitted(): ClaimCard[] {
   return library.filter((c) => c.status === 'admitted')
 }
 
+/**
+ * Cards a generated Path of yours rests on (P5): on this phone only, read by the Path's own screens through
+ * pathCardById. The Brain, Ask and the brief never see them: they read the public library alone.
+ */
+const ownCards: ClaimCard[] = []
+
+export function registerOwnCards(cards: readonly ClaimCard[]): void {
+  ownCards.splice(0, ownCards.length, ...cards.filter((c) => !library.some((l) => l.id === c.id)))
+}
+
+/** A card as a Path's screens read it: the public library's, else one of your generated Paths' own. */
+export function pathCardById(id: string): ClaimCard | undefined {
+  return cardById(id) ?? ownCards.find((c) => c.id === id)
+}
+
 export function cardById(id: string): ClaimCard | undefined {
   return library.find((c) => c.id === id)
 }

@@ -2,7 +2,7 @@ import { Fragment } from 'preact'
 import { extensionPrompt, families, filterTags, guardrailOf, isParked, isPathOnly, isProposed, learnedTags, type Move, moves, movesInFamily, type Path, paths, proposals, repsIntroducedAt, research, strandsOf, type Source } from './catalogue'
 import { WhyBuilt } from './pathMeasureUi'
 import { Tag } from './ui'
-import { cardById, gradeWord } from './library'
+import { gradeWord, pathCardById } from './library'
 import { blockAt } from './blocks'
 import { copy } from './copy'
 import { updateSettings } from './db'
@@ -323,7 +323,7 @@ function PathSection({ path }: { path: Path }) {
         <p class="calc-line ink">{c.evidence}</p>
         <p class="note faint">{path.builtIn ? c.evidenceNote : c.evidenceNoteOwn}</p>
         {path.cards.map((id) => {
-          const card = cardById(id)
+          const card = pathCardById(id)
           if (!card) return null
           const status = card.status === 'disputed' ? c.disputed : card.status === 'draft' ? c.draft : c.admitted
           return (

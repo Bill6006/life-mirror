@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, PickStepScreen } from './aimsScreen'
 import { PathChangeScreen } from './pathCard'
 import { PathReadScreen, PathStartScreen } from './pathRead'
+import { followGenerated } from './generatedPaths'
 import { HandOverScreen, RecordingCheckScreen } from './pathMeasureUi'
 import { PartnerNotesScreen } from './partnerScreen'
 import { HerPickScreen, HerScreen } from './herScreen'
@@ -109,6 +110,9 @@ function screenOf(view: View, tab: Tab): string | null {
 export function App() {
   const [tab, setTab] = useState<Tab>('now')
   const [view, setView] = useState<View>({ kind: 'tabs' })
+  // Your generated Paths (P5): joined to the catalogue as the store holds them, the screens drawn again when it changes.
+  const [, setGenerated] = useState(0)
+  useEffect(() => followGenerated(() => setGenerated((k) => k + 1)), [])
   const pushed = useRef(0)
   // Part 34: how the app is used, on this phone alone. A screen each time it opens; a check-in when it opens, and when it is left before its end.
   const shown = screenOf(view, tab)

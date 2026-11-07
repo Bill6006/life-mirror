@@ -5,7 +5,8 @@ import type { CoachAsk, CoachProposal, CoachRun } from './coachShared'
 import type { AskThread, AskTurn, KeptNote } from './ask/types'
 import type { AskAnswer, AskRun } from './ask/shared'
 import type { Firmness } from './firmness'
-import type { PathId, SettingKind } from './catalogue'
+import type { Move, Path, PathId, PathPlace, SettingKind } from './catalogue'
+import type { ClaimCard } from './libraryTypes'
 import type { CoachBlock } from './factTypes'
 import type { FactSheet } from './facts'
 import type { PickRule } from './pathStage'
@@ -817,6 +818,48 @@ export interface BrainRead {
  * later. The version's content hash and the cards it rested on are kept with it, so a later version
  * is shown with what changed before it runs. Social and Partner are built in and need none.
  */
+/**
+ * Something you want to improve, asked for as a Path (P5): your words, the intake's answers, its route by the rules,
+ * and where the job stands. Synced with your record; its words reach your own Claude through the routine and nothing
+ * else, and the search for evidence never carries them.
+ */
+export interface PathRequest {
+  id?: number
+  at: string
+  goal: string
+  why?: string
+  where?: string[]
+  month?: string
+  minutes: number
+  offLimits?: string
+  route: 'refuse' | 'redirect' | 'existing' | 'notAPath' | 'unclear' | 'fits'
+  state: 'triaged' | 'queued' | 'drafting' | 'reading' | 'ready' | 'refused' | 'abstained' | 'failed' | 'withdrawn'
+  /** The generated Path it made, when ready. */
+  pathId?: string
+  /** Every reason, when the compiler refused or abstained. */
+  reasons?: string[]
+  updatedAt?: string
+}
+
+/**
+ * One version of a Path the generator made for you (P5), append-only: the compiled Path, its reps and the placements
+ * it adds to reps it shares, the new cards it rests on (yours alone, never the public library's), its content hash,
+ * how it was made and what the compiler found. Your decisions on it live in pathVersions, as for every Path.
+ */
+export interface GeneratedPathRow {
+  id?: number
+  pathId: string
+  version: string
+  at: string
+  hash: string
+  requestId?: number
+  path: Path
+  reps: Move[]
+  shared: { move: string; place: PathPlace }[]
+  cards: ClaimCard[]
+  results: string[]
+}
+
 /** A recording of yourself for a measured Path's rep (P2): on this phone alone, never synced, exported or sent; kept until you delete it. */
 export interface Recording {
   id?: number
@@ -975,6 +1018,8 @@ class LifeMirrorDB extends Dexie {
   notes!: Table<KeptNote, number>
   pathVersions!: Table<PathVersion, number>
   recordings!: Table<Recording, number>
+  pathRequests!: Table<PathRequest, number>
+  generatedPaths!: Table<GeneratedPathRow, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1203,6 +1248,11 @@ class LifeMirrorDB extends Dexie {
     // A measured Path's recordings of yourself (P2, 2026-11-06): kept on this phone alone, never synced, never exported, never sent.
     this.version(25).stores({
       recordings: '++id, offerId, at',
+    })
+    // The generator (P5, 2026-11-06): your Path requests, and each generated Path's versions. Both synced.
+    this.version(26).stores({
+      pathRequests: '++id, at',
+      generatedPaths: '++id, pathId, at',
     })
     installOutbox(this)
     installPendingCopy(this)

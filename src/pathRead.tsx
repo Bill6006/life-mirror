@@ -4,7 +4,7 @@ import { copy } from './copy'
 import { db, getSettings, type Aim } from './db'
 import type { WeekShape } from './settings'
 import { fill } from './format'
-import { cardById, library } from './library'
+import { library, pathCardById } from './library'
 import type { ClaimCard } from './libraryTypes'
 import { compiledPaths } from './pathCheck'
 import { useLive } from './live'
@@ -115,7 +115,7 @@ export function PathReadScreen({ pathId, onStart, onClose }: { pathId: string; o
   const c = copy.path.read
   const st = standing(path, versions)
   const label = labelOf(path)
-  const disputed = path.cards.filter((id) => cardById(id)?.status === 'disputed').length
+  const disputed = path.cards.filter((id) => pathCardById(id)?.status === 'disputed').length
   const least = path.decisions?.find((d) => d.element === 'structure')?.uncertainty
   return (
     <section class="screen" data-testid="path-read" data-path={path.id}>
