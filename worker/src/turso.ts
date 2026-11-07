@@ -86,10 +86,14 @@ export interface BriefRow {
 export interface TaskRow {
   id: string
   kind: 'task'
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'path' | 'pathRead'
   day: string
   at: string
   status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
+  /** The generator's runs (P5): the request drafted or read for, a dry run's stand-in, and the procedure's hash as served. */
+  request?: number
+  standIn?: { goal: string; minutes: number; where?: string[] }
+  procedureHash?: string
   trigger: NonNullable<BriefRow['trigger']>
   /** The day of the sheet the task is written from. */
   factsDay: string
@@ -302,6 +306,10 @@ export interface Store {
   answerIds(): Promise<Set<string>>
   readAnswers(ids: readonly string[]): Promise<AskAnswer[]>
   writeAnswer(row: AskAnswer, now: string): Promise<void>
+  /** The generator's own rows (P5): a job, a draft, a version, an abstract fetched; one written, one read, a store's newest. */
+  writeBrainRow(store: string, id: string, day: string, body: unknown, now: string): Promise<void>
+  readBrainRow<T>(store: string, id: string): Promise<T | null>
+  readBrainRows<T>(store: string, limit?: number): Promise<{ id: string; body: T }[]>
 }
 
 function parse<T>(body: unknown): T | null {
@@ -493,6 +501,17 @@ export function tursoStore(url: string, token: string): Store {
     async writeAnswer(row, now) {
       await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'askAnswers', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
     },
+    async writeBrainRow(store, id, day, body, now) {
+      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, store, id, day, JSON.stringify(body), now, DEVICE, now] })
+    },
+    async readBrainRow(store, id) {
+      const r = await rows(`SELECT body FROM records WHERE app = ? AND store = ? AND id = ? AND deleted = 0`, [BRAIN_APP, store, id])
+      return r[0] ? parse(r[0].body) : null
+    },
+    async readBrainRows(store, limit = 200) {
+      const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = ? AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, store, limit])
+      return r.map((x) => ({ id: String(x.id), body: parse(x.body) })).filter((x): x is { id: string; body: never } => x.body !== null)
+    },
   }
 }
 
@@ -676,6 +695,20 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async writeAnswer(row, now) {
       rows.set(key(BRAIN_APP, 'askAnswers', row.id), { app: BRAIN_APP, store: 'askAnswers', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async writeBrainRow(store, id, day, body, now) {
+      rows.set(key(BRAIN_APP, store, id), { app: BRAIN_APP, store, id, day, body: JSON.stringify(body), updated_at: now, deleted: 0, synced_at: now })
+    },
+    async readBrainRow(store, id) {
+      const r = rows.get(key(BRAIN_APP, store, id))
+      return r && !r.deleted ? parse(r.body) : null
+    },
+    async readBrainRows(store, limit = 200) {
+      return live(BRAIN_APP, store)
+        .sort((a, b) => (a.synced_at < b.synced_at ? 1 : -1))
+        .slice(0, limit)
+        .map((r) => ({ id: r.id, body: parse(r.body) }))
+        .filter((x): x is { id: string; body: never } => x.body !== null)
     },
   }
 }

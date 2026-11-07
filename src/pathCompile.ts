@@ -168,6 +168,11 @@ function idHash(text: string): string {
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
+/** A generated Path's id: from its goal and its name, the same on every compile. */
+export function generatedPathIdOf(goal: string, name: string): string {
+  return `g-${idHash(`${goal}|${name}`)}`
+}
+
 /** The source a generated rep shows: the first card its method rests on, as the catalogue's moves cite theirs. */
 function sourceOf(method: string, cards: readonly Pick<ClaimCard, 'id' | 'grade' | 'claim' | 'sources'>[]): Source {
   const card = methodById(method)?.cards.map((id) => cards.find((c) => c.id === id)).find(Boolean)
@@ -401,7 +406,7 @@ export function compileDossier(d: Dossier, ctx: { moves: readonly Move[]; cards:
   if (reasons.length || abstains.length) return { ok: false, abstain: !reasons.length && abstains.length > 0, reasons: [...reasons, ...abstains] }
 
   // Built: the Path in the catalogue's shape, its own and off the phone's readers, labelled experimental.
-  const id = `g-${idHash(`${d.goal}|${d.name}`)}`
+  const id = generatedPathIdOf(d.goal, d.name)
   const strands: PathStrand[] = d.strands.map((s) => ({ id: s.id, name: s.name, what: s.what, stages: s.stages, rule: { ...s.rule, sources: [] }, ...(s.waits ? { waits: true } : {}), ...(s.pauses?.length ? { pauses: s.pauses } : {}) }))
   const first = strands[0]
   const check = partnerStrands.length ? partnerCheck(partnerStrands[0]) : null

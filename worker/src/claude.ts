@@ -26,7 +26,7 @@ import type { BriefRow, Store, TaskRow } from './turso'
 // the record.
 
 export const FIRE_BETA = 'experimental-cc-routine-2026-04-01'
-export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
+export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'path' | 'pathRead'
 /** A line may be posted twice: the first, and one corrected retry after a refusal. */
 export const MAX_POSTS = 2
 /** No valid line within this many minutes, and the free chain writes (the plan's twenty). */
@@ -359,6 +359,7 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   const open = await openTask(deps, url.searchParams.get('task'), url.searchParams.get('day'))
   if (!open.ok) return open.reply
   const t = open.t
+  if (t.task === 'path' || t.task === 'pathRead') return reply(400, { error: 'the generator reads through its own context' })
   const q = parseContextQuery(url, t.day)
   if (!q.ok) return reply(400, { error: q.reason })
   const [settings, prefs] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs')])

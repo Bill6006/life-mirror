@@ -4,6 +4,7 @@ import type { CoachProposal, CoachRun } from './coachShared'
 import type { AskAnswer, AskRun } from './ask/shared'
 import { isFirmness } from './firmness'
 import type { BrainBrief, BrainRead, CoachPick } from './db'
+import { GENERATED_STORE, generatedRowOf, PATH_JOBS_STORE, pathJobOf } from './pathJob'
 import { useEffect, useState } from 'preact/hooks'
 import { APP, dayOf, markSilent, onOutboxChange, outboxDelete, outboxPut, SYNCED_STORES, type CloudMeta, type OutboxRow } from './cloudOutbox'
 import { bodyByHand } from './dayChoice'
@@ -684,8 +685,21 @@ async function pullBrain(store: CloudStore): Promise<number> {
     const meta = await getBrainMeta()
     const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
     if (!rows.length) break
-    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.askAnswers, db.askRuns, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.askAnswers, db.askRuns, db.pathJobs, db.generatedPaths, db.cloudMeta], async () => {
       for (const row of rows) {
+        // The generator's rows (P5): where each request stands, and each compiled version, checked again before anything shows it.
+        if (row.store === PATH_JOBS_STORE) {
+          const job = row.deleted || !row.body ? null : pathJobOf(row.id, row.body)
+          if (job) await db.pathJobs.put(job)
+          else await db.pathJobs.delete(row.id)
+          continue
+        }
+        if (row.store === GENERATED_STORE) {
+          const version = row.deleted || !row.body ? null : generatedRowOf(row.id, row.body)
+          if (version) await db.generatedPaths.put(version)
+          else await db.generatedPaths.delete(row.id)
+          continue
+        }
         if (row.store === BRIDGE_STORE) {
           const run = row.deleted || !row.body ? null : coachRunOf(row.id, row.body)
           if (run) await db.coachRuns.put(run)

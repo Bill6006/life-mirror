@@ -13,6 +13,7 @@ import { bearerOk, handleBriefing, handleContext, handleLine } from './claude'
 import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
 import { handleAskBriefing, handleAskContext, handleAskLine, runAsks } from './ask'
+import { handlePathBriefing, handlePathContext, handlePathLine, PATH_BODY_LIMIT, runPaths } from './paths'
 import { engineReport } from './engineReport'
 import { SKILL_COACH } from '../../src/coachShared'
 import { addDays, localTime } from './time'
@@ -122,6 +123,15 @@ const handler: ExportedHandler<Env> = {
         } catch (e) {
           console.log(JSON.stringify({ job: 'commitments', error: e instanceof Error ? e.message : String(e) }))
         }
+        // P5: a Path request drafted, or its new evidence read, on the quarter-hour; never between 9:00 and 11:30. Closed, it does nothing.
+        try {
+          if (env.TURSO_TOKEN) {
+            const r = await runPaths(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), now)
+            if (r.reason !== 'nothing asked' && r.reason !== 'gated') console.log(JSON.stringify({ job: 'paths', ...r }))
+          }
+        } catch (e) {
+          console.log(JSON.stringify({ job: 'paths', error: e instanceof Error ? e.message : String(e) }))
+        }
         // The clean window's report (2026-10-02), after everything else and apart from it: it only reads the day's rows, and writes its own.
         try {
           if (env.TURSO_TOKEN) {
@@ -180,17 +190,18 @@ const handler: ExportedHandler<Env> = {
         if (url.pathname === '/claude/briefing' && request.method === 'GET') {
           // Parts 40 and 41: a skill coach run's briefing, refused while their gate is closed.
           const task = url.searchParams.get('task')
-          const r = task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : task === 'ask' || task === 'deep' ? await handleAskBriefing(deps, url) : await handleBriefing(deps, url)
+          const r = task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : task === 'ask' || task === 'deep' ? await handleAskBriefing(deps, url) : task === 'path' || task === 'pathRead' ? await handlePathBriefing(deps, url) : await handleBriefing(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/context' && request.method === 'GET') {
           const task = url.searchParams.get('task')
-          const r = task === 'ask' || task === 'deep' ? await handleAskContext(deps, url) : await handleContext(deps, url)
+          const r = task === 'ask' || task === 'deep' ? await handleAskContext(deps, url) : task === 'path' ? await handlePathContext(deps, url) : await handleContext(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/line' && request.method === 'POST') {
           const text = await request.text()
-          if (text.length > 20_000) return json({ error: 'at most 20,000 characters' }, 413)
+          // A dossier is long (P5); every other answer keeps its 20,000 characters.
+          if (text.length > PATH_BODY_LIMIT) return json({ error: 'at most 300,000 characters' }, 413)
           let body: unknown
           try {
             body = JSON.parse(text)
@@ -198,7 +209,8 @@ const handler: ExportedHandler<Env> = {
             return json({ error: 'the body is not JSON' }, 400)
           }
           const task = body && typeof body === 'object' ? (body as { task?: unknown }).task : undefined
-          const r = task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : task === 'ask' || task === 'deep' ? await handleAskLine(deps, body) : await handleLine(deps, body)
+          if (task !== 'path' && task !== 'pathRead' && text.length > 20_000) return json({ error: 'at most 20,000 characters' }, 413)
+          const r = task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : task === 'ask' || task === 'deep' ? await handleAskLine(deps, body) : task === 'path' || task === 'pathRead' ? await handlePathLine(deps, body) : await handleLine(deps, body)
           return json(r.body, r.status)
         }
         return json({ error: 'not found' }, 404)
@@ -298,6 +310,21 @@ const handler: ExportedHandler<Env> = {
       const question = url.searchParams.get('q') ?? ''
       if (!question.trim()) return json({ reason: 'q: a stand-in question' }, 400)
       return json(await runAsks(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), { dry: true, question, deep: url.searchParams.get('deep') === '1' }))
+    }
+    // With the run key (P5): a dry run of the generator on a stand-in goal, the whole way, its rows never where the phone reads;
+    // and the jobs' states, never their words.
+    if (url.pathname === '/run/paths' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      if (url.searchParams.get('report') === '1') {
+        const dry = url.searchParams.get('dry') === '1'
+        const [jobs, versions] = await Promise.all([store.readBrainRows<{ requestId: number; state: string; at: string; reasons?: string[]; pathId?: string; version?: string }>(dry ? 'pathJobsDry' : 'pathJobs', 50), store.readBrainRows<{ pathId: string; version: string; at: string }>(dry ? 'generatedDry' : 'generated', 50)])
+        return json({ jobs: jobs.map((j) => ({ id: j.id, request: j.body.requestId, state: j.body.state, at: j.body.at, reasons: j.body.reasons?.length ?? 0, pathId: j.body.pathId ?? null, version: j.body.version ?? null })), versions: versions.map((v) => ({ id: v.id, pathId: v.body.pathId, version: v.body.version, at: v.body.at })) })
+      }
+      const goal = url.searchParams.get('goal') ?? ''
+      if (!goal.trim()) return json({ reason: 'goal: a stand-in goal, or report=1' }, 400)
+      const minutes = Number(url.searchParams.get('minutes') ?? 90)
+      return json(await runPaths(env, store, new Date(), { dry: { goal: goal.trim().slice(0, 200), minutes: Number.isFinite(minutes) ? minutes : 90 }, force: url.searchParams.get('force') === '1' }))
     }
     // With the run key: the learning engine's failures on the phone (the owner's requirement of 2026-10-20: no fallback, the
     // failure shown), read from the newest facts row of the day and the day before, so the builder sees one without the
