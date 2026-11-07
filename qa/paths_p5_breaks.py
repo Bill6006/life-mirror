@@ -386,6 +386,9 @@ def run(tests, pattern):
 
 
 def main(ids):
+    # An id that matches no entry is refused, never skipped: a list read with stray characters once ran one entry of 71.
+    unknown = [i for i in ids if i not in {t['id'] for t in TABLE}]
+    assert not unknown, f'no entry is named {unknown}'
     rows = [t for t in TABLE if not ids or t['id'] in ids]
     assert rows, 'no entry matched'
     results = []
