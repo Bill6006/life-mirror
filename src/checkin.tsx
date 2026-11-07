@@ -114,7 +114,7 @@ export function CheckInScreen({
         void deferOutcome(toAsk)
         return
       }
-      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }, a.ease)
+      void recordOutcome(toAsk, a.outcome, a.why, a.passiveOutcome, { day, block }, a.ease, a.chance ?? null)
     }
     return <OutcomeAsk key={toAsk.id} offer={toAsk} onAnswer={answer} />
   }

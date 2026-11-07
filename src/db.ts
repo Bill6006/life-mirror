@@ -317,6 +317,8 @@ export interface Offer {
   stage?: number
   /** Recorded after the fact with "Did it already": a session done away from the app, started and done at the same moment. */
   logged?: boolean
+  /** A measured Path's rep (P2): what you expected would happen, one line written before Start. */
+  prediction?: string
   skippedAt: string | null
   /** "Not now" on its question at a check-in: asked once more at the next one, where leaving it is said plainly (stage 1, item i). */
   deferredAt?: string
@@ -498,6 +500,20 @@ export interface Outcome {
   reason?: OutcomeReason
   /** Whether its card had been seen on Now by the time it was answered (requirement 2). Absent on answers from before. */
   seen?: boolean
+  // A measured Path's rep (P2 of the AI-generated Paths design, 2026-11-06): your own behaviours, never anyone's reaction.
+  /** The behaviours you checked you did, right after. */
+  checks?: string[]
+  /** The behaviours a recording of yourself showed, checked the next day or later, with the line you wrote first. */
+  recordingChecks?: string[]
+  recordingNote?: string
+  recordingCheckedAt?: string
+  /** The behaviours someone who was there noticed, on your phone; no name is kept. */
+  otherChecks?: string[]
+  otherAt?: string
+  /** After Partly or No: whether the chance came up at all, so a missed chance says nothing about you or the rep. */
+  chance?: boolean
+  /** How hard it was, one to five. */
+  effort?: 1 | 2 | 3 | 4 | 5
 }
 
 /**
@@ -578,6 +594,8 @@ export interface Aim {
   /** A Social path converted from A person, which keeps that commitment's whole record. */
   convertedFrom?: 'person'
   convertedAt?: string
+  /** A Path with strands (P1, P4): the strands you chose to have on; absent, every strand but the one its start opens on a yes. */
+  strands?: string[]
   /** Today's rep, picked by you through Change: offered whatever the day's shape says. With two paths on, the later pick is the row's. */
   pick?: { day: string; moveId: string; at?: string }
   createdAt: string
@@ -799,6 +817,17 @@ export interface BrainRead {
  * later. The version's content hash and the cards it rested on are kept with it, so a later version
  * is shown with what changed before it runs. Social and Partner are built in and need none.
  */
+/** A recording of yourself for a measured Path's rep (P2): on this phone alone, never synced, exported or sent; kept until you delete it. */
+export interface Recording {
+  id?: number
+  offerId: number
+  at: string
+  /** The recording's audio, as the browser made it. */
+  audio: Blob
+  mime: string
+  ms: number
+}
+
 export interface PathVersion {
   id?: number
   path: PathId
@@ -945,6 +974,7 @@ class LifeMirrorDB extends Dexie {
   askRuns!: Table<AskRun, string>
   notes!: Table<KeptNote, number>
   pathVersions!: Table<PathVersion, number>
+  recordings!: Table<Recording, number>
   constructor() {
     // Every write is flushed to disk before it counts. The browser's default lets a write sit
     // acknowledged but unflushed, the one way a committed record can still be gone after the
@@ -1169,6 +1199,10 @@ class LifeMirrorDB extends Dexie {
     // Paths as data (P1, 2026-11-06): the owner's decision on each version of a Path the catalogue adds, with the evidence it rested on. Synced.
     this.version(24).stores({
       pathVersions: '++id, path, at',
+    })
+    // A measured Path's recordings of yourself (P2, 2026-11-06): kept on this phone alone, never synced, never exported, never sent.
+    this.version(25).stores({
+      recordings: '++id, offerId, at',
     })
     installOutbox(this)
     installPendingCopy(this)

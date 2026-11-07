@@ -1,0 +1,36 @@
+name: library-weekly
+# The evidence library's weekly notices (P3 of the AI-generated Paths design, 2026-11-06). Crossref and
+# PubMed are asked about every admitted card's sources (retractions, corrections, expressions of concern);
+# each notice is listed with the Path elements that rest on its card, in one issue kept up to date. It
+# deploys nothing, writes nothing to the repository, holds no token but the run's own, and reads nothing
+# personal. A notice changes no claim by itself: a reading comes first.
+on:
+  schedule:
+    - cron: '41 8 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  notices:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Ask Crossref and PubMed about every admitted card's sources
+        run: node scripts/library-currency.mjs
+      - name: List each notice with what rests on it
+        run: node scripts/library-impact.mjs --notices > notices.md
+      - name: Keep one issue up to date
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --label evidence-notices --json number --jq '.[0].number // empty')
+          if [ -s notices.md ]; then
+            gh label create evidence-notices --color BFD4F2 --description 'Retractions and corrections on cited evidence' 2>/dev/null || true
+            if [ -n "$existing" ]; then gh issue edit "$existing" --body-file notices.md; else gh issue create --title 'Evidence notices' --label evidence-notices --body-file notices.md; fi
+          elif [ -n "$existing" ]; then
+            gh issue close "$existing" --comment 'No notices this week.'
+          fi

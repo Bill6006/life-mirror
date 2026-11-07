@@ -29,6 +29,11 @@ const STRENGTH = { strong: 'strong', moderate: 'moderate', weak: 'thin', practic
 const proposed = data.moves.filter((m) => m.status === 'proposed')
 
 const source = (s) => `${s.who} (${s.year}). ${s.what}. Evidence: ${STRENGTH[s.strength]}.`
+// A Path with strands (P1, P4): its own strands, or one made of its stages; a rep's guardrail as that Path shows it.
+const strandsOf = (p) => (p.strands?.length ? p.strands : [{ id: '', name: p.name, stages: p.stages, rule: p.rule }])
+const guardOf = (m, id) => m.path?.[id]?.guardrail ?? m.guardrail
+const ORIGIN = { direct: 'direct evidence', indirect: 'indirect evidence', mechanism: 'a mechanism', expert: 'expert advice', inference: 'an inference', judgment: 'design judgment' }
+const LABEL = { experimental: 'Experimental' }
 const arrow = (d) => (d === 'up' ? '↑' : '↓')
 
 let md = '# Life Mirror — the catalogue of moves\n\n'
@@ -40,32 +45,48 @@ md += 'Proposed entries, tags, beliefs and trades are content to read and veto. 
 
 // The paths (Parts 23 and 26): each stage with its reps, the rule, what is counted and never counted, what is left out, and the evidence.
 md += '## Paths\n\n'
-md += 'Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.\n\n'
+md += 'The Social and Partner paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row. '
+md += 'A Path the catalogue adds is read on one screen first and runs only once you start it: the Speaking path, labelled experimental, compiled once by hand from the research (P4). It shares the same one People row.\n\n'
 for (const p of data.paths) {
-  md += `### ${p.name} path\n\n${p.what}\n\n`
-  for (const st of p.stages) {
-    md += `#### Stage ${st.n} · ${st.name}\n\n${st.what}\n\n- Not progress: ${st.notProgress}\n- How it moves: ${ADVANCE[st.advance ?? 'counts']}\n`
-    const reps = data.moves.filter((m) => m.path?.[p.id]?.stage === st.n)
-    for (const m of reps) {
-      const place = m.path[p.id]
-      const bits = [place.advances ? 'moves the stage' : 'moves no stage']
-      if (m.settings?.length) bits.push(`where: ${m.settings.map((k) => SETTING[k]).join(', ')}`)
-      if (m.channel) bits.push(`channel: ${m.channel}`)
-      if (place.through) bits.push(`from ${p.stages.find((s) => s.n === place.stage)?.name} through ${p.stages.find((s) => s.n === place.through)?.name}`)
-      if (place.onDate) bits.push('on a declared date day')
-      if (place.after) bits.push(`offered by the app once these are done: ${place.after.map((id) => data.moves.find((x) => x.id === id)?.name ?? id).join(', ')}`)
-      if (m.hiddenWith === 'faith') bits.push('hidden while the faith family is hidden')
-      if (m.status === 'proposed') bits.push('proposed')
-      md += `- **${m.name}** (${bits.join(' · ')}). Attention on: ${m.cue} Drop: ${m.crutch} ${m.doneWhen}${m.guardrail ? ` ${m.guardrail}` : ''}\n`
-    }
-    for (const a of (p.acts ?? []).filter((x) => x.stage === st.n)) {
-      const questions = a.questions ? ` The questions: ${a.questions.map((q, i) => `(${i + 1}) ${q.text}${q.helpOnYes ? ' A yes shows the help.' : ''}`).join(' ')}` : ''
-      const parts = a.parts ? ` In parts: ${a.parts.map((pt) => `(${pt.name}) ${pt.prompt}`).join(' ')}` : ''
-      const weigh = a.considerations ? ` To weigh: ${a.considerations.map((x) => `${x.text} (${{ evidence: 'evidence', adjacent: 'related evidence', opinion: 'expert opinion' }[x.basis]}: ${x.source})`).join(' ')}` : ''
-      md += `- **${a.name}.** ${a.what}${questions}${a.help ? ` The help the app shows itself: ${a.help}` : ''}${parts}${weigh} Source: ${source(a.source)}\n`
-    }
-    md += '\n'
+  md += `### ${p.name} path${p.label ? ` (${LABEL[p.label] ?? p.label})` : ''}\n\n${p.what}\n\n${p.timeline ? `How long: ${p.timeline}\n\n` : ''}`
+  if (p.start) {
+    md += `#### Before it starts\n\nTwo questions, yes or no, whose answers are not kept: ${p.start.questions.map((q, i) => `(${i + 1}) ${q.text}`).join(' ')} A yes to either shows the app’s own text first: ${p.start.help}\n\n`
+    md += `Where it starts: ${p.start.focus.map((f) => f.words).join('; ')}.\n\n`
   }
+  for (const strand of strandsOf(p)) {
+    if (strand.id) md += `#### Strand: ${strand.name}\n\n${strand.what}\n\n`
+    if (strand.id && strand.rule) md += `How a stage of it is reached: ${strand.rule.note}\n\n`
+    const measure = p.measurement?.strands.find((x) => x.strand === strand.id)
+    if (measure) md += `Its behaviours, checked by you right after${measure.record ? ', on a recording of yourself the next day or later' : ''}${measure.handOver ? ', and by someone who was there, on your phone' : ''}: ${measure.behaviours.map((b) => b.words).join('; ')}.\n\n`
+    for (const st of strand.stages) {
+      md += `${strand.id ? '#####' : '####'} Stage ${st.n} · ${st.name}\n\n${st.what}\n\n- Not progress: ${st.notProgress}\n- How it moves: ${ADVANCE[st.advance ?? 'counts']}\n`
+      const gate = p.measurement?.gates.find((g) => g.strand === strand.id && g.stage === st.n)
+      if (gate) md += `- Shown when: ${gate.met} of its behaviours on reps in ${gate.weeks} separate weeks${gate.confirmed ? `, ${gate.confirmed} of them checked from outside the moment` : ''}, in ${gate.kinds} kind${gate.kinds === 1 ? '' : 's'} of setting\n`
+      const reps = data.moves.filter((m) => m.path?.[p.id]?.stage === st.n && (m.path[p.id].strand ?? '') === strand.id)
+      for (const m of reps) {
+        const place = m.path[p.id]
+        const bits = [place.advances ? 'moves the stage' : 'moves no stage']
+        if (m.settings?.length) bits.push(`where: ${m.settings.map((k) => SETTING[k]).join(', ')}`)
+        if (m.channel) bits.push(`channel: ${m.channel}`)
+        if (place.through) bits.push(`from ${strand.stages.find((s) => s.n === place.stage)?.name} through ${strand.stages.find((s) => s.n === place.through)?.name}`)
+        if (place.onDate) bits.push('on a declared date day')
+        if (place.after) bits.push(`offered by the app once these are done: ${place.after.map((id) => data.moves.find((x) => x.id === id)?.name ?? id).join(', ')}`)
+        if (m.hiddenWith === 'faith') bits.push('hidden while the faith family is hidden')
+        if (m.record && measure?.record) bits.push('recorded of yourself')
+        if (m.status === 'proposed') bits.push('proposed')
+        const guard = guardOf(m, p.id)
+        md += `- **${m.name}** (${bits.join(' · ')}). Attention on: ${m.cue} Drop: ${m.crutch} ${m.doneWhen}${guard ? ` ${guard}` : ''}\n`
+      }
+      for (const a of (p.acts ?? []).filter((x) => x.stage === st.n)) {
+        const questions = a.questions ? ` The questions: ${a.questions.map((q, i) => `(${i + 1}) ${q.text}${q.helpOnYes ? ' A yes shows the help.' : ''}`).join(' ')}` : ''
+        const parts = a.parts ? ` In parts: ${a.parts.map((pt) => `(${pt.name}) ${pt.prompt}`).join(' ')}` : ''
+        const weigh = a.considerations ? ` To weigh: ${a.considerations.map((x) => `${x.text} (${{ evidence: 'evidence', adjacent: 'related evidence', opinion: 'expert opinion' }[x.basis]}: ${x.source})`).join(' ')}` : ''
+        md += `- **${a.name}.** ${a.what}${questions}${a.help ? ` The help the app shows itself: ${a.help}` : ''}${parts}${weigh} Source: ${source(a.source)}\n`
+      }
+      md += '\n'
+    }
+  }
+  if (p.measurement) md += `#### Checked again, and stuck\n\nA stage shown is checked again about ${p.measurement.maintenance.at.join(' and ')} days after it was shown, then about every ${p.measurement.maintenance.every} days; a check missed or not met brings its reps back. After ${p.measurement.cap} tries at a stage without its behaviours shown, the stage below’s reps come back beside it.\n\n`
   md += `#### How a stage is reached\n\n${p.rule.note}\n\n`
   for (const src of p.rule.sources) md += `- Source: ${source(src)}\n`
   md += '\nKinds of setting:\n\n'
@@ -77,6 +98,11 @@ for (const p of data.paths) {
   for (const e of p.excluded) md += `- ${e.what}: ${e.why}\n`
   md += '\n'
   if (p.parents) md += `#### For a parent\n\n${p.parents}\n\n`
+  if (p.decisions?.length) {
+    md += '#### Why it is built this way\n\n'
+    for (const d of p.decisions) md += `- **${d.decision}** Rests on ${ORIGIN[d.origin] ?? d.origin}, ${d.cards.length} cards. ${d.basis} Unsure: ${d.uncertainty} Would change it: ${d.change}\n`
+    md += '\n'
+  }
   md += '#### The evidence\n\nClaim cards, each source verified at Crossref, admitted once their path was wired; the disputed ones are never cited. A card about dating reaches the day’s line only on a date day you declared, and one about a relationship never does.\n\n'
   for (const id of p.cards) {
     const c = cardOf.get(id)
@@ -110,7 +136,7 @@ for (const f of data.families) {
     if (m.ladder) status.push(`rung ${m.ladder.rung} of the participation ladder`)
     if (m.setup) status.push(m.setup.kind === 'necessity' ? `a setup whose target is a necessity: ${NECESSITY[m.setup.necessity]}` : SETUP[m.setup.kind])
     if (m.passive) status.push('proposed as a passive item')
-    for (const p of data.paths) if (m.path?.[p.id]) status.push(`${p.name} path, stage ${m.path[p.id].stage}, ${m.path[p.id].advances ? 'moves the stage' : 'moves no stage'}`)
+    for (const p of data.paths) if (m.path?.[p.id]) status.push(`${p.name} path, ${m.path[p.id].strand ? `${p.strands?.find((x) => x.id === m.path[p.id].strand)?.name ?? m.path[p.id].strand}, ` : ''}stage ${m.path[p.id].stage}, ${m.path[p.id].advances ? 'moves the stage' : 'moves no stage'}`)
     if (status.length) md += `_${status.join(' · ')}_\n\n`
     md += `${m.what}\n\n`
     md += `- Source: ${source(m.source)}\n`

@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { moveById } from './catalogue'
+import { findPath, moveById } from './catalogue'
 import { copy } from './copy'
 import { easeRetired } from './aims'
 import { db, getSettings, type Ease, type Offer, type OutcomeWhy, type WinOutcome } from './db'
@@ -18,6 +18,8 @@ export interface Answer {
   ease: Ease | null
   /** Not now: asked once more at the next check-in, nothing recorded (stage 1, item i). */
   later?: boolean
+  /** A measured Path's rep after Partly or No (P2): whether the chance came up at all; null when left. */
+  chance?: boolean | null
 }
 
 const EASES: readonly Ease[] = ['hard', 'right', 'easy']
@@ -35,6 +37,8 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
   const easeOff = useLive(async () => (learning ? easeRetired(await db.offers.toArray(), await db.outcomes.toArray(), (await getSettings()).easeBack) : true), [offer.id])
   const [why, setWhy] = useState<OutcomeWhy | null | undefined>(undefined)
   const passive = offer.passiveId ? moveById(offer.passiveId) : null
+  // A measured Path's rep (P2): after Partly or No, one optional tap on whether the chance came up. Never with a passive item.
+  const measuredRep = offer.kind === 'step' && !passive && Boolean(offer.paths?.some((id) => findPath(id)?.measurement))
   const nothing = offer.moveId === NOTHING
   const existing = useLive(() => outcomeFor(offer.id), [offer.id])
   const c = copy.ask
@@ -46,6 +50,7 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
   const askWhy = !passiveOnly && outcome === 'no' && why === undefined
   const askPassive = passive !== null && (passiveOnly || (outcome !== undefined && !askWhy))
   const askEase = learning && !easeOff && (outcome === 'done' || outcome === 'partly')
+  const askChance = measuredRep && (outcome === 'partly' || (outcome === 'no' && why !== undefined))
 
   function finish(passiveOutcome: 'done' | 'no' | null) {
     if (passiveOnly && existing) onAnswer({ outcome: existing.outcome, why: existing.why, passiveOutcome, ease: null })
@@ -55,12 +60,18 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
   function chooseOutcome(o: WinOutcome | null) {
     setOutcome(o)
     if (learning && !easeOff && (o === 'done' || o === 'partly')) return
+    if (measuredRep && o === 'partly') return
     if (o !== 'no' && !passive) onAnswer({ outcome: o, why: null, passiveOutcome: null, ease: null })
   }
 
   function chooseWhy(w: OutcomeWhy | null) {
     setWhy(w)
+    if (measuredRep) return
     if (!passive) onAnswer({ outcome: 'no', why: w, passiveOutcome: null, ease: null })
+  }
+
+  function chooseChance(v: boolean | null) {
+    onAnswer({ outcome: outcome ?? null, why: outcome === 'no' ? (why ?? null) : null, passiveOutcome: null, ease: null, chance: v })
   }
 
   function chooseEase(e: Ease | null) {
@@ -125,6 +136,23 @@ export function OutcomeAsk({ offer, onAnswer, notice = null }: { offer: Offer; o
           </div>
           <div class="actions">
             <button type="button" class="textbtn" onClick={() => chooseWhy(null)}>
+              {c.whySkip}
+            </button>
+          </div>
+        </>
+      )}
+
+      {askChance && (
+        <>
+          <p class="note">{c.chanceQuestion}</p>
+          <div class="actions">
+            <button type="button" class="pill-quiet" data-testid="chance-yes" onClick={() => chooseChance(true)}>
+              {c.chance.yes}
+            </button>
+            <button type="button" class="pill-quiet" data-testid="chance-no" onClick={() => chooseChance(false)}>
+              {c.chance.no}
+            </button>
+            <button type="button" class="textbtn" data-testid="chance-skip" onClick={() => chooseChance(null)}>
               {c.whySkip}
             </button>
           </div>

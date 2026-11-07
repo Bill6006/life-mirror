@@ -2393,3 +2393,104 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+/**
+ * The speaking Path started (P4), three weeks into its Speaking strand: six recorded reps shown its first stage, so
+ * a few people you know is today's stage; yesterday's recording waits to be checked; today's rep, in person, is done
+ * with two behaviours checked. Conversation and Nerves are on beside it.
+ */
+async function seedSpeaking(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const day = (back: number) => {
+      const x = new Date()
+      x.setDate(x.getDate() - back)
+      return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+    }
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const q = indexedDB.open('life-mirror')
+      q.onsuccess = () => res(q.result)
+      q.onerror = () => rej(q.error)
+    })
+    const tx = dbx.transaction(['pathVersions', 'aims', 'offers', 'outcomes', 'recordings'], 'readwrite')
+    tx.objectStore('pathVersions').put({ id: 1, path: 'speaking', version: '1', hash: 'seeded', decision: 'started', at: `${day(22)}T12:00:00.000Z`, cards: [] })
+    tx.objectStore('aims').put({ id: 50, kind: 'path', path: 'speaking', stepMoveId: null, pausedAt: null, createdAt: `${day(22)}T12:00:00.000Z`, archivedAt: null, strands: ['conversation', 'speaking', 'nerves'] })
+    const reps = ['sp-record-point', 'story-recording', 'read-aloud']
+    const rep = (id: number, back: number, moveId: string, setting: string, stage: number, extra: Record<string, unknown>) => {
+      const d = day(back)
+      tx.objectStore('offers').put({ id, kind: 'step', day: d, block: 'morning', at: `${d}T14:00:00.000Z`, situationKey: 'aim:path:speaking', target: 'mood', stance: '', band: '', reading: 0, moveId, minutes: 5, cardId: null, candidates: [moveId], coinFlip: false, passiveId: null, whyNot: null, propensity: 1, propensities: { [moveId]: 1 }, chosenBy: 'app', paths: ['speaking'], setting, rule: 'only', stage, skippedAt: null, closedAt: `${d}T14:10:00.000Z` })
+      tx.objectStore('outcomes').put({ id: id + 1000, offerId: id, moveId, day: d, block: 'morning', at: `${d}T14:10:00.000Z`, outcome: 'done', why: null, passiveOutcome: null, reason: 'done', seen: true, ...extra })
+    }
+    ;[20, 17, 13, 10, 6, 3].forEach((back, k) => rep(900 + k, back, reps[k % 3], 'solo', 1, { checks: ['opening', 'pauses', 'example'], ...(k === 4 ? { recordingChecks: ['opening', 'pauses', 'ending'], recordingCheckedAt: `${day(3)}T14:00:00.000Z` } : {}) }))
+    rep(910, 1, 'read-aloud', 'solo', 1, { effort: 2 })
+    tx.objectStore('recordings').put({ id: 1, offerId: 910, at: `${day(1)}T14:05:00.000Z`, audio: new Blob([new Uint8Array(2048)], { type: 'audio/webm' }), mime: 'audio/webm', ms: 61_000 })
+    rep(911, 0, 'sp-point-to-few', 'recurring', 2, { checks: ['opening', 'example'], effort: 4 })
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+}
+
+const speakingCard = (p: Page) => p.locator('[data-path="speaking"][data-kind="path"]')
+
+// The speaking Path's screens (P4): its card with three strands and today's sheet, its Details, a recording to check
+// and the phone handed over; before it starts, the new Path to read, the one screen with its decisions, and the start.
+const SPEAKING_STATES: typeof STATES = [
+  { name: 'Aims, the speaking Path', tab: 'Aims', open: async (p) => speakingCard(p).scrollIntoViewIfNeeded() },
+  { name: 'Aims, the speaking Path, Details open', tab: 'Aims', open: async (p) => {
+    await speakingCard(p).getByTestId('path-details').click()
+    await speakingCard(p).getByTestId('path-why-built').scrollIntoViewIfNeeded()
+  } },
+  { name: 'A recording to check, its line written', tab: 'Aims', open: async (p) => {
+    await speakingCard(p).getByTestId('path-recording-check').click()
+    await p.getByTestId('recording-note').fill('Rushed the end')
+    await p.getByTestId('recording-check-opening').click()
+  } },
+  { name: 'The phone handed over', tab: 'Aims', open: async (p) => {
+    await speakingCard(p).getByTestId('path-hand-over').click()
+    await p.getByTestId('hand-check-opening').click()
+  } },
+  { name: 'Now, the speaking row', tab: 'Now' },
+]
+const SPEAKING_FRESH: typeof STATES = [
+  { name: 'Aims, a new Path to read', tab: 'Aims', open: async (p) => p.getByTestId('path-new').scrollIntoViewIfNeeded() },
+  { name: 'The new Path, read, its decisions open', tab: 'Aims', open: async (p) => {
+    await p.getByTestId('path-new-read').click()
+    await p.getByTestId('path-read-why').click()
+  } },
+  { name: 'The new Path, Not this', tab: 'Aims', open: async (p) => {
+    await p.getByTestId('path-new-read').click()
+    await p.getByTestId('path-read-notthis').click()
+  } },
+  { name: 'The start, a yes and a focus', tab: 'Aims', open: async (p) => {
+    await p.getByTestId('path-new-read').click()
+    await p.getByTestId('path-read-start').click()
+    await p.getByTestId('path-start-avoid-yes').click()
+    await p.getByTestId('path-start-afraid-no').click()
+    await p.getByTestId('path-start-focus-both').click()
+  } },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the speaking Path's screens read, fit and can be tapped, before it starts and three weeks in, at three widths (P4)`, async ({ page }) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await page.clock.setFixedTime(new Date(2026, 10, 10, 10, 5))
+    await page.goto('./')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, SPEAKING_FRESH, width, found)
+    }
+    await seedSpeaking(page)
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, SPEAKING_STATES, width, found)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}

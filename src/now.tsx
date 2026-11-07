@@ -249,7 +249,7 @@ function NowReading({ day, missing, onAgain }: { day: string; missing: readonly 
   )
 }
 
-export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onAway?: () => void; onAsk?: (about: AskAboutThis) => void }) {
+export function NowScreen({ onCheckIn, onOpen, onChangeRep, onHandOver, onAway, onAsk }: { onCheckIn: (day: string, block: Block) => void; onOpen: (day: string, block: Block) => void; onChangeRep?: (aimId: number) => void; onHandOver?: (offerId: number) => void; onAway?: () => void; onAsk?: (about: AskAboutThis) => void }) {
   // Re-evaluate the current block once a minute so an open app crosses 12:00 and 17:00 correctly,
   // and open the slot before pickup when its window arrives.
   const [tick, setTick] = useState(0)
@@ -346,7 +346,7 @@ export function NowScreen({ onCheckIn, onOpen, onChangeRep, onAway, onAsk }: { o
           {action}
         </button>
       )}
-      <AimsOnNow onChangeRep={onChangeRep} dueAimId={dueAimId} />
+      <AimsOnNow onChangeRep={onChangeRep} onHandOver={onHandOver} dueAimId={dueAimId} />
 
       {!settings.hideMoves && pickup && <MoveCard offer={pickup} onSkip={(reason) => void skipOffer(pickup, reason ?? null)} />}
       {/* A card left from an earlier check-in waits for the next check-in's question: no Skip promises what it cannot give (D6),

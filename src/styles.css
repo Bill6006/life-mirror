@@ -2715,6 +2715,35 @@ button.chip {
   margin-top: 10px;
 }
 
+/* A measured Path (P4): each strand on its card, a recording to play back, and the screen handed to someone who was there. */
+.strands .strand + .strand {
+  margin-top: 14px;
+}
+
+.strands .stage {
+  margin-bottom: 6px;
+}
+
+.rec-audio {
+  display: block;
+  width: 100%;
+  margin: 6px 0 10px;
+}
+
+.hand-over .title {
+  font-size: 28px;
+}
+
+.hand-over .when-chip {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.when-chip.is-figure {
+  min-width: 48px;
+  padding: 0;
+}
+
 .ease .when {
   margin-top: 2px;
 }

@@ -1,5 +1,5 @@
-import { pathReps, type Path, type PathChange } from './catalogue'
-import { db, type PathVersion } from './db'
+import { findPath, pathReps, type Path, type PathChange, type PathId } from './catalogue'
+import { db, type Aim, type PathVersion } from './db'
 
 // Your decisions on the versions of a Path the catalogue adds (P1, Paths as data, 2026-11-06): a Path
 // that is not built in is offered nowhere until you start its version; a later version is shown with
@@ -69,6 +69,12 @@ export function standing(path: Path, versions: readonly PathVersion[]): PathStan
 export function offeredNow(path: Path, versions: readonly PathVersion[]): boolean {
   const s = standing(path, versions)
   return s.kind === 'builtIn' || s.kind === 'started'
+}
+
+/** Whether a commitment is offered today: one on a Path the catalogue adds only on a version you started that passes the compiler's checks (P1, P4); every other as ever. */
+export function aimOffered(aim: Pick<Aim, 'kind' | 'path'>, versions: readonly PathVersion[], compiled: (path: Path) => boolean = () => true): boolean {
+  const path = aim.kind === 'path' ? findPath(aim.path as PathId) : undefined
+  return !path || (offeredNow(path, versions) && (path.builtIn === true || compiled(path)))
 }
 
 /** Your decision on the Path as it stands now: its version, its content's hash and the cards it rests on, each with its review day. */

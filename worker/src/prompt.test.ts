@@ -99,6 +99,20 @@ describe('what the model is asked', () => {
     expect(retrieve([both], dateDay)).toEqual([])
   })
 
+  it('never brings a card that backs a Path of its own: the speaking Path’s cards carry its tag alone, which no fact carries (P4)', () => {
+    const own = library.filter((c) => c.tags.includes('speaking'))
+    expect(own.length).toBeGreaterThanOrEqual(21)
+    for (const c of own) expect(c.tags, c.id).toEqual(['speaking'])
+    // A day touching every other tag the library has brings none of them.
+    const every: FactSheet = { ...sheet, facts: [...sheet.facts, { id: 'people.seen', tags: [...new Set(library.flatMap((c) => c.tags))].filter((t) => t !== 'speaking'), text: 'Everything.', values: {}, n: 9 }] }
+    const all = retrieve(library, every, 1000)
+    expect(all.length).toBeGreaterThan(100)
+    expect(all.filter((c) => c.tags.includes('speaking'))).toEqual([])
+    // The probe can say yes: a fact carrying the tag would bring them.
+    const tagged: FactSheet = { ...sheet, facts: [{ id: 'probe', tags: ['speaking'], text: 'A probe.', values: {}, n: 9 }] }
+    expect(retrieve(library, tagged, 1000).filter((c) => c.tags.includes('speaking')).length).toBe(own.length)
+  })
+
   it('reads the JSON out of whatever surrounds it, and the text out of whichever shape the model family returns', () => {
     expect(parseOutput('Here you go:\n```json\n{"mode":"observation","text":"x","factIds":["aim.1"],"cardIds":[]}\n```')).toEqual({ mode: 'observation', text: 'x', factIds: ['aim.1'], cardIds: [] })
     expect(parseOutput('no json here')).toBeNull()

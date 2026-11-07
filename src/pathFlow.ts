@@ -93,7 +93,7 @@ export function coachRow(views: readonly PathToday[], open: readonly Offer[], to
  * check-in, carrying who chose it, the paths it counts for, where it was meant to happen, the rule
  * that picked it, the stage, and the reps it was picked among with each one's chance.
  */
-export function resumePath(aim: Aim, pick: RepPick, stage: number, now: Date = new Date(), paths: readonly PathId[] = [aim.path as PathId]): Promise<Offer> {
+export function resumePath(aim: Aim, pick: RepPick, stage: number, now: Date = new Date(), paths: readonly PathId[] = [aim.path as PathId], prediction?: string): Promise<Offer> {
   return db.transaction('rw', [db.offers, db.intentions, db.aims], async () => {
     const { day, block } = blockAt(now)
     const move = moveById(pick.moveId)
@@ -122,6 +122,8 @@ export function resumePath(aim: Aim, pick: RepPick, stage: number, now: Date = n
       rule: pick.rule,
       ...(pick.steer ? { steer: pick.steer } : {}),
       stage,
+      // A measured Path's rep (P2): the line you wrote before Start, kept with the step.
+      ...(prediction?.trim() ? { prediction: prediction.trim() } : {}),
       skippedAt: null,
       closedAt: null,
     }

@@ -133,8 +133,8 @@ describe('catalogue health and the extension prompt', () => {
 
   it('names an unreachable family with the filter that blocks it', () => {
     const health = catalogueHealth([], [], [situation])
-    // A family with nothing live (the Partner reps before their Green) has no row.
-    expect(health).toHaveLength(families.filter((f) => f.id !== 'partner').length)
+    // A family with nothing live (the Partner reps before their Green; the speaking Path's, its row's alone) has no row.
+    expect(health).toHaveLength(families.filter((f) => f.id !== 'partner' && f.id !== 'speaking').length)
     const money = health.find((h) => h.family === 'money')
     expect(money?.reachable).toBe(false)
     expect(money?.blocker).toBe('target')

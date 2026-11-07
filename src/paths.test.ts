@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPathOnly, isProposed, liveMoves, moves, onStage, pathReps, paths, SETTING_KINDS, type Move, type Path } from './catalogue'
+import { guardrailOf, isPathOnly, isProposed, liveMoves, moves, ONE_STRAND, onStage, pathReps, paths, SETTING_KINDS, strandsOf, type Move, type Path } from './catalogue'
 import { MONTHLY_PARTS, VALUES_PARTS } from './db'
 import { NEGATED_OUTCOME, OUTCOME_WORDS } from './brainShared'
 import { cardById } from './library'
@@ -11,6 +11,9 @@ import { candidatesFor, NOTHING, type Situation, type TodayState } from './offer
 
 const social = paths.find((p) => p.id === 'social') as Path
 const partner = paths.find((p) => p.id === 'partner') as Path
+const speaking = paths.find((p) => p.id === 'speaking') as Path
+// The two Paths the plan names, whose shape these pins hold; the speaking Path (P4) has its own below.
+const twoPaths = [social, partner]
 const IN_PERSON = new Set(['recurring', 'errand', 'group', 'oneToOne'])
 
 /** Every text a path shows: its own words and each of its reps', never its lists of what is left out or never counted. */
@@ -19,7 +22,7 @@ function pathTexts(p: Path): string[] {
   for (const st of p.stages) out.push(st.what, st.notProgress)
   for (const ch of p.channels ?? []) out.push(ch.what)
   for (const a of p.acts ?? []) out.push(a.name, a.what, ...(a.questions ?? []).map((q) => q.text), ...(a.parts ?? []).flatMap((x) => [x.name, x.prompt]), ...(a.considerations ?? []).map((x) => x.text))
-  for (const m of pathReps(p.id)) out.push(m.name, m.what, m.cue ?? '', m.crutch ?? '', m.doneWhen ?? '', m.guardrail ?? '')
+  for (const m of pathReps(p.id)) out.push(m.name, m.what, m.cue ?? '', m.crutch ?? '', m.doneWhen ?? '', guardrailOf(m, p.id) ?? '')
   return out
 }
 
@@ -31,7 +34,7 @@ describe('the two paths, as the plan names them', () => {
   })
 
   it('states one rule shape with its numbers as design judgment, and the sources beside it', () => {
-    for (const p of paths) {
+    for (const p of twoPaths) {
       expect(p.rule).toMatchObject({ reps: 6, distinctReps: 3, settingKinds: 2, withinWeeks: 6, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 4 })
       expect(p.rule.sources.length).toBeGreaterThanOrEqual(3)
     }
@@ -45,14 +48,16 @@ describe('the two paths, as the plan names them', () => {
       expect(reps.length, p.id).toBeGreaterThan(10)
       for (const m of reps) {
         const place = m.path?.[p.id]
-        expect(p.stages.some((s) => s.n === place?.stage), m.id).toBe(true)
+        // On a Path with strands, the stage is its strand's.
+        const stages = strandsOf(p).find((s) => s.id === (place?.strand ?? ONE_STRAND))?.stages ?? []
+        expect(stages.some((s) => s.n === place?.stage), m.id).toBe(true)
         // A rep spans stages only among those you declare, never among those the rule counts.
         if (place?.through !== undefined) {
           expect(place.through, m.id).toBeGreaterThan(place.stage)
-          expect(p.stages.some((s) => s.n === place.through), m.id).toBe(true)
-          for (let n = place.stage; n <= place.through; n++) expect(p.stages.find((s) => s.n === n)?.advance, `${m.id} at ${n}`).toBe('declared')
+          expect(stages.some((s) => s.n === place.through), m.id).toBe(true)
+          for (let n = place.stage; n <= place.through; n++) expect(stages.find((s) => s.n === n)?.advance, `${m.id} at ${n}`).toBe('declared')
         }
-        expect(['people', 'charisma', 'partner'], m.id).toContain(m.family)
+        expect(['people', 'charisma', 'partner', 'speaking'], m.id).toContain(m.family)
         expect(m.settings?.length, m.id).toBeGreaterThan(0)
         for (const k of m.settings ?? []) expect(SETTING_KINDS, m.id).toContain(k)
         for (const f of [m.cue, m.crutch, m.doneWhen]) expect(f?.length ?? 0, m.id).toBeGreaterThan(5)
@@ -63,7 +68,7 @@ describe('the two paths, as the plan names them', () => {
   })
 
   it('lets every stage the rule moves be met in person: three reps that move it, across two kinds of setting', () => {
-    for (const p of paths) {
+    for (const p of twoPaths) {
       for (const st of p.stages.filter((s) => s.advance !== 'declared')) {
         const moving = pathReps(p.id, st.n).filter((m) => m.path?.[p.id]?.advances && m.with === 'adult' && !m.channel)
         expect(moving.length, `${p.id} stage ${st.n}`).toBeGreaterThanOrEqual(3)
@@ -74,7 +79,7 @@ describe('the two paths, as the plan names them', () => {
   })
 
   it('never moves a stage with a solo, remote or online rep', () => {
-    for (const p of paths) {
+    for (const p of twoPaths) {
       for (const m of pathReps(p.id)) {
         const onlyApart = (m.settings ?? []).every((k) => k === 'remote' || k === 'solo')
         if (onlyApart || m.channel || m.with === 'remote' || !m.needs.includes('anotherPerson')) expect(m.path?.[p.id]?.advances, m.id).toBe(false)
@@ -118,7 +123,7 @@ describe('what the paths say', () => {
   })
 
   it('lists what is never counted, and names what is left out with its reason', () => {
-    for (const p of paths) {
+    for (const p of twoPaths) {
       const never = p.neverCounted.join('; ')
       for (const w of ['yeses and noes', 'replies', 'matches', 'numbers exchanged', 'second dates', 'how many people', 'any rating of a person', 'a second ask after a no']) expect(never, p.id).toContain(w)
       for (const e of p.excluded) expect(e.why.length, e.what).toBeGreaterThan(20)
@@ -273,14 +278,16 @@ describe('the Partner revision: learning fit and choosing deliberately (owner, 2
 })
 
 describe('the day’s draw unchanged, and the evidence admitted once each path is wired', () => {
-  it('keeps every new rep out of the day’s draw: each path’s own reps offered through its row alone, the Social path’s since Part 24 and the Partner path’s since Part 27', () => {
+  it('keeps every new rep out of the day’s draw: each path’s own reps offered through its row alone, the Social path’s since Part 24, the Partner path’s since Part 27 and the speaking Path’s since P4', () => {
     const wired = moves.filter((m) => m.path && isPathOnly(m))
     const proposed = moves.filter((m) => m.path && isProposed(m))
     // Pass 3 (R1): six reps wired, one shared with the Social path and five the Partner path's alone.
-    expect(wired.length).toBe(44)
+    // P4: the speaking Path's eighteen reps, its alone.
+    expect(wired.length).toBe(62)
     expect(proposed.map((m) => m.id)).toEqual([])
-    expect(wired.filter((m) => !m.path?.social).length).toBe(32)
-    for (const m of wired) expect(m.path?.social ?? m.path?.partner, m.id).toBeDefined()
+    expect(wired.filter((m) => !m.path?.social).length).toBe(50)
+    expect(wired.filter((m) => m.path?.speaking && !m.path?.social && !m.path?.partner).length).toBe(18)
+    for (const m of wired) expect(m.path?.social ?? m.path?.partner ?? m.path?.speaking, m.id).toBeDefined()
     const fresh = wired
     const live = new Set(liveMoves.map((m) => m.id))
     for (const m of fresh) expect(live.has(m.id), m.id).toBe(false)
@@ -304,10 +311,120 @@ describe('the day’s draw unchanged, and the evidence admitted once each path i
         for (const s of c?.sources ?? []) expect(s.doi, `${id}: ${s.cite}`).toMatch(/^10\./)
       }
     }
-    const disputed = paths.flatMap((p) => p.cards).filter((id) => cardById(id)?.status === 'disputed')
+    const disputed = twoPaths.flatMap((p) => p.cards).filter((id) => cardById(id)?.status === 'disputed')
     expect(disputed.sort()).toEqual(['divorce-prediction-disputed', 'hard-to-get-disputed', 'love-languages-disputed', 'matching-algorithms-disputed', 'positive-self-statements-disputed', 'power-posing-disputed', 'token-resistance-disputed', 'touch-in-courtship-disputed'])
+    // The speaking Path cites a disputed card only beside what it leaves out.
+    expect(speaking.cards.filter((id) => cardById(id)?.status === 'disputed').sort()).toEqual(['learning-styles-disputed', 'positive-self-statements-disputed', 'power-posing-disputed', 'smart-goals-disputed'])
     // The follow-up-question card and rep, lowered for their contested source.
     expect(cardById('asking-questions-liking')).toMatchObject({ grade: 'D', replication: 'mixed', status: 'admitted' })
     expect(moves.find((m) => m.id === 'ask-follow-up')?.source.strength).toBe('weak')
+  })
+})
+
+describe('the speaking Path (P4), compiled once by hand', () => {
+  it('is labelled experimental, keeps to itself, and holds three strands in the design’s order', () => {
+    expect(speaking.label).toBe('experimental')
+    expect(speaking.traits).toMatchObject({ sheet: false, coach: false, privacy: 'own', rowShare: 3, icon: 'speaking' })
+    expect(speaking.builtIn).toBeUndefined()
+    expect(speaking.changes?.map((c) => [c.version, c.reason, c.major])).toEqual([['1', 'design', true]])
+    expect(speaking.strands?.map((s) => [s.id, s.stages.map((st) => st.name)])).toEqual([
+      ['conversation', ['Questions that follow', 'A short story', 'A voice in a group']],
+      ['speaking', ['Recorded alone', 'A few people you know', 'A meeting or a group', 'A short talk']],
+      ['nerves', ['A first step', 'Earlier and longer', 'The talk you would avoid']],
+    ])
+  })
+
+  it('keeps the Paths’ floor, one kind of setting on the strand that starts alone, four reps across two on Nerves', () => {
+    expect(speaking.rule).toMatchObject({ reps: 6, distinctReps: 3, settingKinds: 2, withinWeeks: 6, smallerAfterRefusals: 2, reentryAfterQuietWeeks: 4 })
+    expect(speaking.rule.sources.length).toBeGreaterThanOrEqual(3)
+    const rules = Object.fromEntries((speaking.strands ?? []).map((s) => [s.id, s.rule]))
+    expect(rules.conversation).toMatchObject({ reps: 6, distinctReps: 3, settingKinds: 2, withinWeeks: 6 })
+    expect(rules.speaking).toMatchObject({ reps: 6, distinctReps: 3, settingKinds: 1, withinWeeks: 6 })
+    expect(rules.nerves).toMatchObject({ reps: 4, distinctReps: 2, settingKinds: 1, withinWeeks: 6 })
+    for (const r of Object.values(rules)) expect(r?.note, 'every number is design judgment').toMatch(/^Design judgment/)
+  })
+
+  it('moves a stage alone only on the Speaking strand’s first, by a recording of yourself, never remote or online', () => {
+    for (const m of pathReps('speaking')) {
+      const place = m.path?.speaking
+      const alone = (m.settings ?? []).every((k) => k === 'solo')
+      if (alone && place?.advances) {
+        expect([place.strand, place.stage], m.id).toEqual(['speaking', 1])
+        expect(m.record, m.id).toBe(true)
+      }
+      if (m.record) expect(m.with, m.id).toBeUndefined()
+      expect(m.channel, m.id).toBeUndefined()
+      expect((m.settings ?? []).includes('remote'), m.id).toBe(false)
+    }
+    expect(pathReps('speaking', 1, 'speaking').filter((m) => m.record).map((m) => m.id).sort()).toEqual(['read-aloud', 'sp-record-point', 'story-recording'])
+  })
+
+  it('puts a guardrail on every rep with someone there or a recording, adding one to a shared rep without changing Social’s', () => {
+    const YOURS = 'Your part only: how anyone answers is theirs, never counted.'
+    const RECORD = 'Record only yourself; the recording stays on this phone.'
+    for (const m of pathReps('speaking')) if (m.with === 'adult' || m.record) expect([YOURS, RECORD], m.id).toContain(guardrailOf(m, 'speaking'))
+    const shared = pathReps('speaking').filter((m) => m.family !== 'speaking')
+    expect(shared.map((m) => m.id).sort()).toEqual(['ask-follow-up', 'ask-one-question', 'matched-disclosure', 'read-aloud', 'return-to-last-time', 'say-one-full-thought', 'start-a-topic', 'story-recording', 'tell-one-short-story'])
+    for (const m of shared) {
+      expect(m.guardrail, `${m.id} keeps its own`).toBeUndefined()
+      expect(guardrailOf(m, 'social'), m.id).toBeUndefined()
+    }
+  })
+
+  it('never counts anyone’s reaction, and names what it leaves out beside a disputed card', () => {
+    expect(speaking.neverCounted).toEqual(['anyone’s reaction, yes or no', 'how many people listened', 'laughs, replies or applause'])
+    expect(speaking.excluded.map((e) => e.what)).toEqual(['Power posing', 'Positive self-statements', 'Matching to a learning style', 'The SMART-goal template'])
+    for (const e of speaking.excluded) expect(e.why, e.what).toMatch(/\(a disputed card\)\.$/)
+  })
+
+  it('opens with the two starting questions, the fixed help that opens Nerves, and the choice of focus', () => {
+    expect(speaking.start?.questions.map((q) => q.id)).toEqual(['avoid', 'afraid'])
+    expect(speaking.start?.opens).toBe('nerves')
+    expect(speaking.start?.help).toContain('a doctor or a psychologist can help')
+    expect(speaking.start?.help).toContain('practice, not treatment')
+    expect(speaking.start?.focus.map((f) => f.id)).toEqual(['conversation', 'speaking', 'both'])
+  })
+
+  it('measures behaviours per strand, with gates confirmed from outside the moment on the Speaking strand, a cap and checks again later', () => {
+    const m = speaking.measurement
+    expect(m?.strands.map((s) => [s.strand, s.behaviours.length, Boolean(s.record), Boolean(s.handOver)])).toEqual([
+      ['conversation', 4, false, false],
+      ['speaking', 4, true, true],
+      ['nerves', 3, false, false],
+    ])
+    expect(m?.gates.map((g) => [g.strand, g.stage, g.met, g.weeks, g.confirmed, g.kinds])).toEqual([
+      ['conversation', 1, 2, 2, 0, 2],
+      ['conversation', 2, 2, 2, 0, 2],
+      ['speaking', 1, 3, 2, 1, 1],
+      ['speaking', 2, 3, 2, 1, 2],
+      ['speaking', 3, 3, 2, 1, 2],
+      ['nerves', 1, 2, 2, 0, 1],
+      ['nerves', 2, 2, 2, 0, 1],
+    ])
+    expect(m?.cap).toBe(8)
+    expect(m?.maintenance).toEqual({ at: [30, 90], every: 180 })
+  })
+
+  it('records each decision with its origin, its cards, its uncertainty and what would change it', () => {
+    expect(speaking.decisions?.map((d) => [d.id, d.origin])).toEqual([
+      ['structure', 'judgment'],
+      ['conversation-order', 'expert'],
+      ['conversation-gate', 'judgment'],
+      ['speaking-order', 'judgment'],
+      ['speaking-gate', 'judgment'],
+      ['nerves-strand', 'indirect'],
+      ['start-help', 'direct'],
+      ['maintenance', 'inference'],
+      ['attention', 'indirect'],
+      ['floor', 'judgment'],
+      ['reps-real', 'indirect'],
+      ['timeline', 'inference'],
+    ])
+    expect(speaking.timeline).toBe('Months, step by step, with no fixed end: a first pass at nerves is about eight to sixteen weeks, and the skills take longer.')
+    for (const d of speaking.decisions ?? []) {
+      for (const id of d.cards) expect(speaking.cards, `${d.id}: ${id}`).toContain(id)
+      expect(d.uncertainty.length, d.id).toBeGreaterThan(20)
+      expect(d.change.length, d.id).toBeGreaterThan(20)
+    }
   })
 })

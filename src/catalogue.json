@@ -59,6 +59,10 @@
     {
       "id": "partner",
       "name": "Partner"
+    },
+    {
+      "id": "speaking",
+      "name": "Speaking"
     }
   ],
   "moves": [
@@ -3544,6 +3548,12 @@
         "partner": {
           "stage": 2,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 1,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -4869,6 +4879,12 @@
         "social": {
           "stage": 4,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 3,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -4944,6 +4960,12 @@
         "social": {
           "stage": 4,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 3,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -5025,6 +5047,12 @@
         "social": {
           "stage": 4,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 2,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -5106,6 +5134,12 @@
         "social": {
           "stage": 4,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 3,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -5173,6 +5207,12 @@
         "social": {
           "stage": 4,
           "advances": false
+        },
+        "speaking": {
+          "strand": "speaking",
+          "stage": 1,
+          "advances": true,
+          "guardrail": "Record only yourself; the recording stays on this phone."
         }
       },
       "settings": [
@@ -5180,7 +5220,8 @@
       ],
       "cue": "The story you would tell the group.",
       "crutch": "Recording it again until it is perfect.",
-      "doneWhen": "Done when you have listened back once."
+      "doneWhen": "Done when you have listened back once.",
+      "record": true
     },
     {
       "conflicts": [],
@@ -5240,6 +5281,12 @@
         "social": {
           "stage": 4,
           "advances": false
+        },
+        "speaking": {
+          "strand": "speaking",
+          "stage": 1,
+          "advances": true,
+          "guardrail": "Record only yourself; the recording stays on this phone."
         }
       },
       "settings": [
@@ -5247,7 +5294,8 @@
       ],
       "cue": "The room you are speaking to.",
       "crutch": "Mumbling it to get it over with.",
-      "doneWhen": "Done when the page is read."
+      "doneWhen": "Done when the page is read.",
+      "record": true
     },
     {
       "conflicts": [],
@@ -5964,6 +6012,12 @@
         "partner": {
           "stage": 2,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 2,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -6127,6 +6181,12 @@
         "partner": {
           "stage": 2,
           "advances": true
+        },
+        "speaking": {
+          "strand": "conversation",
+          "stage": 1,
+          "advances": true,
+          "guardrail": "Your part only: how anyone answers is theirs, never counted."
         }
       },
       "settings": [
@@ -8910,6 +8970,1278 @@
       "cue": "What you each like, said kindly.",
       "crutch": "Waiting for it to come up on its own.",
       "doneWhen": "Done when you have talked."
+    },
+    {
+      "id": "sp-their-thread",
+      "name": "Their thread, three turns",
+      "family": "speaking",
+      "what": "Phone out of sight, stay with what they are talking about for three turns before you change the subject.",
+      "source": {
+        "who": "Kluger and colleagues",
+        "what": "664 effects: feeling listened to went with better outcomes, though most of the evidence is self-report",
+        "year": 2023,
+        "strength": "weak"
+      },
+      "minutes": 3,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "conversation",
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring",
+        "group"
+      ],
+      "cue": "What they just said, and staying with it.",
+      "crutch": "A new topic the moment there is a pause.",
+      "doneWhen": "Done when you stayed with their topic for three turns, however it went.",
+      "method": "real-rep",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-swap-stories",
+      "name": "Swap a story",
+      "family": "speaking",
+      "what": "After a short story of your own, ask for one of theirs, and follow it with a question.",
+      "source": {
+        "who": "Atir and Epley",
+        "what": "Three experiments: a conversation made people more optimistic about the next, but it faded within a week or two",
+        "year": 2026,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [
+        "conversations"
+      ],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "connection"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "conversation",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "oneToOne",
+        "recurring",
+        "group"
+      ],
+      "cue": "Their story, and one question about it.",
+      "crutch": "Topping their story with a better one.",
+      "doneWhen": "Done when you told yours and asked for theirs.",
+      "method": "real-rep",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-record-point",
+      "name": "Record one point",
+      "family": "speaking",
+      "what": "Record yourself making one point in about ninety seconds: an opening, one idea, one example, a clean ending. Check it tomorrow.",
+      "source": {
+        "who": "Fukkink, Trienekens and Kramer",
+        "what": "33 studies: video feedback on recorded practice, against a set list of what to watch for, improved interaction skills",
+        "year": 2010,
+        "strength": "moderate"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "kit",
+        "quiet"
+      ],
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "solo"
+      ],
+      "cue": "The one point, and its example.",
+      "crutch": "Reading it from a script.",
+      "doneWhen": "Done when it is recorded.",
+      "method": "self-review-recording",
+      "record": true,
+      "guardrail": "Record only yourself; the recording stays on this phone."
+    },
+    {
+      "id": "sp-point-to-few",
+      "name": "One point to a few people you know",
+      "family": "speaking",
+      "what": "Make one point to two or three people you know: an opening, one idea, one example, a clean ending.",
+      "source": {
+        "who": "van Ginkel and colleagues",
+        "what": "144 students: a teacher’s feedback improved presentation behaviour more than peers’ feedback or self-assessment",
+        "year": 2015,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "The listeners’ faces, not your notes.",
+      "crutch": "Apologising before you start.",
+      "doneWhen": "Done when you have made the point, however it was received.",
+      "method": "outside-check",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-explain-to-few",
+      "name": "Explain something you know well",
+      "family": "speaking",
+      "what": "Explain something you know well to two or three people, with one example and a question for them at the end.",
+      "source": {
+        "who": "Szpunar, Khan and Schacter",
+        "what": "Two experiments: recall tests between lecture segments reduced mind wandering and improved learning",
+        "year": 2013,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group",
+        "oneToOne"
+      ],
+      "cue": "What they would need to follow you.",
+      "crutch": "Saying everything you know.",
+      "doneWhen": "Done when you have explained it and asked your question.",
+      "method": "attention-moment",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-story-to-few",
+      "name": "A story with a point",
+      "family": "speaking",
+      "what": "Tell two or three people a short story that makes one point, with a turn and an ending.",
+      "source": {
+        "who": "Braddock and Dillard",
+        "what": "37 to 40 studies: stories changed beliefs, attitudes and intentions a little",
+        "year": 2016,
+        "strength": "moderate"
+      },
+      "minutes": 4,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group",
+        "oneToOne"
+      ],
+      "cue": "The turn in the story.",
+      "crutch": "Explaining the point before the story.",
+      "doneWhen": "Done when you have told it.",
+      "method": "story-in-a-point",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-meeting-point",
+      "name": "One point in three sentences",
+      "family": "speaking",
+      "what": "In a meeting or a group, make one point in three sentences: the point, one example, why it matters.",
+      "source": {
+        "who": "Carpenter and colleagues",
+        "what": "A fluent lecturer was rated higher, yet students learned no more than from a halting one",
+        "year": 2013,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "The point, said first.",
+      "crutch": "Waiting until you are sure it is perfect.",
+      "doneWhen": "Done when you have said it.",
+      "method": "structure-first",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-attention-moment",
+      "name": "A moment for them",
+      "family": "speaking",
+      "what": "In anything you say for more than three minutes, give the listeners one moment to answer or recall something.",
+      "source": {
+        "who": "Szpunar, Khan and Schacter",
+        "what": "Two experiments: recall tests between lecture segments reduced mind wandering and improved learning",
+        "year": 2013,
+        "strength": "weak"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "When to stop and ask them.",
+      "crutch": "Talking straight through.",
+      "doneWhen": "Done when you have given them the moment.",
+      "method": "attention-moment",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-sum-up",
+      "name": "Sum it up for the room",
+      "family": "speaking",
+      "what": "Near the end of a meeting or a discussion, offer a two-sentence summary of where it got to.",
+      "source": {
+        "who": "Carpenter and colleagues",
+        "what": "A fluent lecturer was rated higher, yet students learned no more than from a halting one",
+        "year": 2013,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "What was decided, in plain words.",
+      "crutch": "Leaving it to someone else.",
+      "doneWhen": "Done when you have offered the summary.",
+      "method": "structure-first",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-short-talk",
+      "name": "A short talk",
+      "family": "speaking",
+      "what": "Give a talk of three to five minutes to an audience, with one moment for them, and hand your phone to someone who was there.",
+      "source": {
+        "who": "van Ginkel and colleagues",
+        "what": "144 students: a teacher’s feedback improved presentation behaviour more than peers’ feedback or self-assessment",
+        "year": 2015,
+        "strength": "weak"
+      },
+      "minutes": 15,
+      "effort": "high",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 4,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "The listeners, and the moment for them.",
+      "crutch": "Memorising it word for word.",
+      "doneWhen": "Done when you have given the talk.",
+      "method": "outside-check",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-talk-new-people",
+      "name": "The talk to new people",
+      "family": "speaking",
+      "what": "Give your short talk to people you have not spoken to before, checked the same way.",
+      "source": {
+        "who": "Alfieri, Nokes-Malach and Schunn",
+        "what": "57 experiments: comparing two cases side by side helped people use the principle in new problems",
+        "year": 2013,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "high",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "speaking",
+          "stage": 4,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "errand"
+      ],
+      "cue": "The new room, and the same point.",
+      "crutch": "Only ever the familiar room.",
+      "doneWhen": "Done when you have given it.",
+      "method": "varied-contexts",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted.",
+      "handOver": true
+    },
+    {
+      "id": "sp-n-one-question",
+      "name": "One question where you would stay quiet",
+      "family": "speaking",
+      "what": "In a group or a meeting where you would usually stay quiet, ask one question.",
+      "source": {
+        "who": "Ebrahimi and colleagues",
+        "what": "30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up",
+        "year": 2019,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "low",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "low",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "What you are curious about.",
+      "crutch": "Rehearsing it until the moment passes.",
+      "doneWhen": "Done when you have asked it.",
+      "method": "graded-exposure",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-n-eyes-up",
+      "name": "Look at them as you speak",
+      "family": "speaking",
+      "what": "The next time you speak to a few people, look at the listeners rather than down or away.",
+      "source": {
+        "who": "Clark and Wells; Rowa and colleagues",
+        "what": "Dropping safety behaviours and turning attention outward helped anxious people come across better, in experiments on social anxiety",
+        "year": 2015,
+        "strength": "weak"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring",
+        "oneToOne"
+      ],
+      "cue": "One listener at a time.",
+      "crutch": "Eyes on the table or your notes.",
+      "doneWhen": "Done when you have spoken looking at them.",
+      "method": "drop-safety-behaviours",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-n-no-lines",
+      "name": "Without your written lines",
+      "family": "speaking",
+      "what": "Speak in a meeting or a group without your written lines, with a card of three words at most.",
+      "source": {
+        "who": "Clark and Wells; Rowa and colleagues",
+        "what": "Dropping safety behaviours and turning attention outward helped anxious people come across better, in experiments on social anxiety",
+        "year": 2015,
+        "strength": "weak"
+      },
+      "minutes": 2,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 1,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "The three words, and the people.",
+      "crutch": "Every sentence written out.",
+      "doneWhen": "Done when you have spoken from the card.",
+      "method": "drop-safety-behaviours",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-n-speak-early",
+      "name": "Speak in the first ten minutes",
+      "family": "speaking",
+      "what": "In a meeting, say something in the first ten minutes rather than waiting.",
+      "source": {
+        "who": "Ebrahimi and colleagues",
+        "what": "30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up",
+        "year": 2019,
+        "strength": "moderate"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "The first thing you can add.",
+      "crutch": "Waiting for the perfect moment.",
+      "doneWhen": "Done when you have spoken early.",
+      "method": "graded-exposure",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-n-stay-in-the-pause",
+      "name": "Stay in the pause",
+      "family": "speaking",
+      "what": "After you have spoken, let the pause sit without filling it or taking it back.",
+      "source": {
+        "who": "Clark and Wells; Rowa and colleagues",
+        "what": "Dropping safety behaviours and turning attention outward helped anxious people come across better, in experiments on social anxiety",
+        "year": 2015,
+        "strength": "weak"
+      },
+      "minutes": 1,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring",
+        "oneToOne"
+      ],
+      "cue": "The listeners, while they take it in.",
+      "crutch": "Apologising or explaining again at once.",
+      "doneWhen": "Done when you let the pause stand.",
+      "method": "drop-safety-behaviours",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-n-offer-to-present",
+      "name": "Offer to present",
+      "family": "speaking",
+      "what": "Offer to present something short to a group: a summary, an update or a story.",
+      "source": {
+        "who": "Ebrahimi and colleagues",
+        "what": "30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up",
+        "year": 2019,
+        "strength": "moderate"
+      },
+      "minutes": 5,
+      "effort": "medium",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "medium",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 2,
+          "advances": true
+        }
+      },
+      "settings": [
+        "recurring",
+        "group"
+      ],
+      "cue": "What you could share.",
+      "crutch": "Waiting to be asked.",
+      "doneWhen": "Done when you have offered, whatever the answer.",
+      "method": "graded-exposure",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
+    },
+    {
+      "id": "sp-n-the-talk",
+      "name": "The talk you would avoid",
+      "family": "speaking",
+      "what": "Give the short talk you would most like to avoid, one you have prepared, to people you know.",
+      "source": {
+        "who": "Ebrahimi and colleagues",
+        "what": "30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up",
+        "year": 2019,
+        "strength": "moderate"
+      },
+      "minutes": 15,
+      "effort": "high",
+      "needs": [
+        "anotherPerson"
+      ],
+      "with": "adult",
+      "targets": [
+        {
+          "reading": "confidence",
+          "direction": "up",
+          "window": "nextBlock"
+        },
+        {
+          "reading": "socialEnergy",
+          "direction": "up",
+          "window": "nextBlock"
+        }
+      ],
+      "conflicts": [],
+      "replaces": [],
+      "countsToward": [],
+      "when": [
+        "morning",
+        "afternoon",
+        "evening"
+      ],
+      "tags": {
+        "ingredients": [
+          "withPeople",
+          "short"
+        ],
+        "reward": [
+          "mastery"
+        ],
+        "intensity": "medium"
+      },
+      "costToAssign": "high",
+      "prior": {
+        "effect": 0,
+        "note": "A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief."
+      },
+      "status": "path",
+      "path": {
+        "speaking": {
+          "strand": "nerves",
+          "stage": 3,
+          "advances": true
+        }
+      },
+      "settings": [
+        "group",
+        "recurring"
+      ],
+      "cue": "What you expect, and what happens.",
+      "crutch": "Cancelling at the last moment.",
+      "doneWhen": "Done when you have given it.",
+      "method": "graded-exposure",
+      "guardrail": "Your part only: how anyone answers is theirs, never counted."
     }
   ],
   "learnedTags": [
@@ -9796,6 +11128,609 @@
       },
       "builtIn": true,
       "version": "1"
+    },
+    {
+      "id": "speaking",
+      "name": "Speaking",
+      "what": "Speaking to people and holding their attention, in conversation and with several people listening. Compiled by hand from the research as an experiment: its structure is design judgment, resting on evidence that is strongest for nerves and thinnest for conversation.",
+      "timeline": "Months, step by step, with no fixed end: a first pass at nerves is about eight to sixteen weeks, and the skills take longer.",
+      "stages": [
+        {
+          "n": 1,
+          "name": "Questions that follow",
+          "what": "Questions about what they said, and staying with their thread.",
+          "notProgress": "Counting how they answered."
+        },
+        {
+          "n": 2,
+          "name": "A short story",
+          "what": "A short story with a turn and an end, and asking for theirs.",
+          "notProgress": "How it was received."
+        },
+        {
+          "n": 3,
+          "name": "A voice in a group",
+          "what": "A question, a full thought and a topic of your own in a group.",
+          "notProgress": "Who spoke most."
+        }
+      ],
+      "rule": {
+        "reps": 6,
+        "distinctReps": 3,
+        "settingKinds": 2,
+        "withinWeeks": 6,
+        "smallerAfterRefusals": 2,
+        "reentryAfterQuietWeeks": 4,
+        "note": "Design judgment, the Paths’ floor: a stage is yours once you have done six of its reps within six weeks, across three different reps and two kinds of setting, and its behaviours are shown as its gate asks.",
+        "sources": [
+          {
+            "who": "Craske, Treanor, Conway, Zbozinek and Vervliet",
+            "what": "Exposure works through new learning, helped by variety across settings, people and reps; the benefit of variety over a fixed order is supported only in part",
+            "year": 2014,
+            "strength": "moderate"
+          },
+          {
+            "who": "Kircanski and colleagues; Knowles, Jessup and Olatunji",
+            "what": "Exposure in a random or variable order did as well as a graded hierarchy, in small analogue samples",
+            "year": 2012,
+            "strength": "weak"
+          },
+          {
+            "who": "Rowe and Craske",
+            "what": "Exposure spread across a week held at follow-up where the same exposure massed into one day saw fear return",
+            "year": 1998,
+            "strength": "moderate"
+          },
+          {
+            "who": "Sandstrom, Boothby and Cooney",
+            "what": "One short conversation a day for a week made people less pessimistic about rejection, lasting at least a week",
+            "year": 2022,
+            "strength": "moderate"
+          },
+          {
+            "who": "Lally, van Jaarsveld, Potts and Wardle",
+            "what": "Missing one opportunity did not materially affect how a habit formed; the median time to automaticity was sixty-six days",
+            "year": 2010,
+            "strength": "moderate"
+          }
+        ]
+      },
+      "settingKinds": {
+        "recurring": "A place your week already holds: work, church, a class, a club.",
+        "errand": "Somewhere new to you, among people you have not met.",
+        "group": "Three or more people listening or talking together.",
+        "oneToOne": "Just the two of you.",
+        "remote": "A call: it keeps a day in touch.",
+        "solo": "On your own: a recording, checked the next day."
+      },
+      "counted": "Reps done, by rep, by setting and by the behaviours checked: yours right after, a recording of yourself the next day, and what someone who was there noticed. A rep is done when you did your part, however anyone answered.",
+      "neverCounted": [
+        "anyone’s reaction, yes or no",
+        "how many people listened",
+        "laughs, replies or applause"
+      ],
+      "excluded": [
+        {
+          "what": "Power posing",
+          "why": "Its effects on hormones and behaviour did not replicate (a disputed card)."
+        },
+        {
+          "what": "Positive self-statements",
+          "why": "Repeating them left people with low self-esteem feeling worse (a disputed card)."
+        },
+        {
+          "what": "Matching to a learning style",
+          "why": "The evidence needed to support it is virtually absent (a disputed card)."
+        },
+        {
+          "what": "The SMART-goal template",
+          "why": "It is not based on theory or consistent with the evidence on goals (a disputed card)."
+        }
+      ],
+      "cards": [
+        "speaking-fear-treatments",
+        "supportive-audience-confidence",
+        "feedback-interventions",
+        "feedback-information",
+        "video-feedback-form",
+        "self-views-and-performance",
+        "prediction-and-benchmark",
+        "outside-feedback-presentations",
+        "anxious-speakers-self-ratings",
+        "training-to-life-gradient",
+        "skill-decay",
+        "brief-boosters",
+        "attention-span-claims",
+        "recall-questions-attention",
+        "narrative-persuasion",
+        "fluency-not-learning",
+        "mini-spin",
+        "belief-updates-fade",
+        "listening-meta",
+        "case-comparison",
+        "rehearsal-not-in-situ",
+        "social-anxiety-treatments",
+        "safety-behaviours-attention",
+        "liking-gap",
+        "conversation-fears-overestimated",
+        "practice-over-observation",
+        "familiar-stories",
+        "power-posing-disputed",
+        "positive-self-statements-disputed",
+        "learning-styles-disputed",
+        "smart-goals-disputed"
+      ],
+      "traits": {
+        "sheet": false,
+        "coach": false,
+        "privacy": "own",
+        "rowShare": 3,
+        "icon": "speaking"
+      },
+      "version": "1",
+      "changes": [
+        {
+          "version": "1",
+          "day": "2026-11-06",
+          "reason": "design",
+          "major": true,
+          "what": "The first version, compiled by hand from the research."
+        }
+      ],
+      "label": "experimental",
+      "names": {
+        "called": "The Speaking path",
+        "add": "The Speaking path",
+        "addNote": "Experimental: conversation and speaking to several people, step by step, checked from outside the moment. Read it first.",
+        "plan": "Speaking rep"
+      },
+      "strands": [
+        {
+          "id": "conversation",
+          "name": "Conversation",
+          "what": "One to one and in small groups: questions that follow, a short story, a voice in a group.",
+          "stages": [
+            {
+              "n": 1,
+              "name": "Questions that follow",
+              "what": "Questions about what they said, and staying with their thread.",
+              "notProgress": "Counting how they answered."
+            },
+            {
+              "n": 2,
+              "name": "A short story",
+              "what": "A short story with a turn and an end, and asking for theirs.",
+              "notProgress": "How it was received."
+            },
+            {
+              "n": 3,
+              "name": "A voice in a group",
+              "what": "A question, a full thought and a topic of your own in a group.",
+              "notProgress": "Who spoke most."
+            }
+          ],
+          "rule": {
+            "reps": 6,
+            "distinctReps": 3,
+            "settingKinds": 2,
+            "withinWeeks": 6,
+            "smallerAfterRefusals": 2,
+            "reentryAfterQuietWeeks": 4,
+            "note": "Design judgment, the Paths’ floor: a stage is yours once you have done six of its reps within six weeks, across three different reps and two kinds of setting, and its behaviours are shown as its gate asks.",
+            "sources": []
+          }
+        },
+        {
+          "id": "speaking",
+          "name": "Speaking to several people",
+          "what": "A point made to several people: recorded alone first, then a few people you know, then a meeting or a group, then a short talk.",
+          "stages": [
+            {
+              "n": 1,
+              "name": "Recorded alone",
+              "what": "A point of about ninety seconds, recorded and checked the next day.",
+              "notProgress": "How it sounded the moment you stopped."
+            },
+            {
+              "n": 2,
+              "name": "A few people you know",
+              "what": "A point, an explanation or a story to two or three people you know.",
+              "notProgress": "Their reactions."
+            },
+            {
+              "n": 3,
+              "name": "A meeting or a group",
+              "what": "One point in a meeting, a moment for the listeners, a summary for the room.",
+              "notProgress": "How many people listened."
+            },
+            {
+              "n": 4,
+              "name": "A short talk",
+              "what": "A short talk to an audience, with a moment for them, to people you know and then to new people.",
+              "notProgress": "Applause or questions."
+            }
+          ],
+          "rule": {
+            "reps": 6,
+            "distinctReps": 3,
+            "settingKinds": 1,
+            "withinWeeks": 6,
+            "smallerAfterRefusals": 2,
+            "reentryAfterQuietWeeks": 4,
+            "note": "Design judgment: the floor as on every Path, but in one kind of setting, since this strand’s first stage is recorded alone; from its second stage its gate asks for two kinds.",
+            "sources": []
+          }
+        },
+        {
+          "id": "nerves",
+          "name": "Nerves",
+          "what": "The speaking situations you would avoid, met step by step, one crutch left out at a time.",
+          "stages": [
+            {
+              "n": 1,
+              "name": "A first step",
+              "what": "One question where you would stay quiet; eyes on the listeners; speaking without written lines.",
+              "notProgress": "Feeling calm."
+            },
+            {
+              "n": 2,
+              "name": "Earlier and longer",
+              "what": "Speaking early in a meeting, letting a pause stand, offering to present.",
+              "notProgress": "Feeling calm."
+            },
+            {
+              "n": 3,
+              "name": "The talk you would avoid",
+              "what": "The short talk you would most like to avoid.",
+              "notProgress": "Feeling calm."
+            }
+          ],
+          "rule": {
+            "reps": 4,
+            "distinctReps": 2,
+            "settingKinds": 1,
+            "withinWeeks": 6,
+            "smallerAfterRefusals": 2,
+            "reentryAfterQuietWeeks": 4,
+            "note": "Design judgment: four reps of a step within six weeks, across two different reps, before the next step; exposure works through meeting it again in varied settings.",
+            "sources": []
+          }
+        }
+      ],
+      "measurement": {
+        "strands": [
+          {
+            "strand": "conversation",
+            "behaviours": [
+              {
+                "id": "follow-up",
+                "words": "A question about what they said",
+                "theirs": "Asked about what I said"
+              },
+              {
+                "id": "their-thread",
+                "words": "Stayed with their topic",
+                "theirs": "Stayed with my topic"
+              },
+              {
+                "id": "phone-away",
+                "words": "Phone out of sight",
+                "theirs": "Phone out of sight"
+              },
+              {
+                "id": "turn-and-end",
+                "words": "A story with a turn and an end",
+                "theirs": "A story with a turn and an end"
+              }
+            ]
+          },
+          {
+            "strand": "speaking",
+            "record": true,
+            "handOver": true,
+            "behaviours": [
+              {
+                "id": "opening",
+                "words": "A clear opening",
+                "theirs": "A clear opening"
+              },
+              {
+                "id": "pauses",
+                "words": "Pauses between ideas",
+                "theirs": "Pauses between ideas"
+              },
+              {
+                "id": "example",
+                "words": "One example",
+                "theirs": "One example"
+              },
+              {
+                "id": "ending",
+                "words": "A clean ending",
+                "theirs": "A clean ending"
+              }
+            ]
+          },
+          {
+            "strand": "nerves",
+            "behaviours": [
+              {
+                "id": "stayed",
+                "words": "Stayed until it was done",
+                "theirs": "Stayed until it was done"
+              },
+              {
+                "id": "crutch-left-out",
+                "words": "The crutch left out",
+                "theirs": "No crutch"
+              },
+              {
+                "id": "compared",
+                "words": "Compared what happened with what I expected",
+                "theirs": "Compared what happened with what was expected"
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "strand": "conversation",
+            "stage": 1,
+            "met": 2,
+            "weeks": 2,
+            "confirmed": 0,
+            "kinds": 2
+          },
+          {
+            "strand": "conversation",
+            "stage": 2,
+            "met": 2,
+            "weeks": 2,
+            "confirmed": 0,
+            "kinds": 2
+          },
+          {
+            "strand": "speaking",
+            "stage": 1,
+            "met": 3,
+            "weeks": 2,
+            "confirmed": 1,
+            "kinds": 1
+          },
+          {
+            "strand": "speaking",
+            "stage": 2,
+            "met": 3,
+            "weeks": 2,
+            "confirmed": 1,
+            "kinds": 2
+          },
+          {
+            "strand": "speaking",
+            "stage": 3,
+            "met": 3,
+            "weeks": 2,
+            "confirmed": 1,
+            "kinds": 2
+          },
+          {
+            "strand": "nerves",
+            "stage": 1,
+            "met": 2,
+            "weeks": 2,
+            "confirmed": 0,
+            "kinds": 1
+          },
+          {
+            "strand": "nerves",
+            "stage": 2,
+            "met": 2,
+            "weeks": 2,
+            "confirmed": 0,
+            "kinds": 1
+          }
+        ],
+        "cap": 8,
+        "maintenance": {
+          "at": [
+            30,
+            90
+          ],
+          "every": 180
+        }
+      },
+      "start": {
+        "questions": [
+          {
+            "id": "avoid",
+            "text": "Do you often avoid social situations or activities?"
+          },
+          {
+            "id": "afraid",
+            "text": "Do social situations often leave you afraid or embarrassed?"
+          }
+        ],
+        "help": "Avoiding social situations, or feeling afraid or embarrassed in them, is common, and a doctor or a psychologist can help with it: talking treatments for it are well tested. The Speaking path is practice, not treatment, and it can sit beside help. Its Nerves strand is open.",
+        "opens": "nerves",
+        "focus": [
+          {
+            "id": "conversation",
+            "words": "Conversation, one to one and in small groups"
+          },
+          {
+            "id": "speaking",
+            "words": "Speaking to several people"
+          },
+          {
+            "id": "both",
+            "words": "Both"
+          }
+        ]
+      },
+      "decisions": [
+        {
+          "id": "structure",
+          "element": "structure",
+          "decision": "Three strands rather than one ladder: conversation, speaking to several people, and nerves, each moving by its own reps.",
+          "basis": "The goal splits into tracks with different evidence: nerves (strongest), speaking performance (moderate), conversation (thinnest); fear and how others see the talk move apart.",
+          "origin": "judgment",
+          "cards": [
+            "speaking-fear-treatments",
+            "supportive-audience-confidence",
+            "training-to-life-gradient"
+          ],
+          "uncertainty": "No trial has tested this structure, or any other, for this goal.",
+          "change": "A trial comparing structures; or your record showing a strand that never moves while another does."
+        },
+        {
+          "id": "conversation-order",
+          "element": "strand:conversation",
+          "decision": "Questions that follow, then a short story, then a voice in a group.",
+          "basis": "The order the best-evaluated social skills curricula use, set by experts; Social’s own stages hold the same reps in the same order.",
+          "origin": "expert",
+          "cards": [
+            "practice-over-observation",
+            "liking-gap",
+            "conversation-fears-overestimated"
+          ],
+          "uncertainty": "No trial has tested the order of these skills.",
+          "change": "Your own record: a stage that stalls while the next comes easily."
+        },
+        {
+          "id": "conversation-gate",
+          "element": "gate:conversation",
+          "decision": "Two of the strand’s behaviours, checked by you right after, on two separate weeks and in two kinds of setting.",
+          "basis": "Self-checks of specific behaviours are better than a global impression, though still weak; nobody else in a conversation is asked to check you.",
+          "origin": "judgment",
+          "cards": [
+            "self-views-and-performance"
+          ],
+          "uncertainty": "Every number here is design judgment; conversation has no outside check, by design.",
+          "change": "Your own checks drifting from what you notice later; a better way to see conversation from outside."
+        },
+        {
+          "id": "speaking-order",
+          "element": "strand:speaking",
+          "decision": "Recorded alone first, then a few people you know, then a meeting or a group, then a short talk.",
+          "basis": "Rising audience and stakes; a recording checked the next day against a set list, before others check, and a friendly first audience.",
+          "origin": "judgment",
+          "cards": [
+            "video-feedback-form",
+            "prediction-and-benchmark",
+            "supportive-audience-confidence"
+          ],
+          "uncertainty": "The steps are design judgment; evidence for practising speaking comes mostly from classes and small studies.",
+          "change": "Your record: a step that is passed without effort, or one that never comes together."
+        },
+        {
+          "id": "speaking-gate",
+          "element": "gate:speaking",
+          "decision": "Three of four behaviours on two separate weeks, one of them confirmed from outside the moment: a recording checked the next day or later, or someone who was there.",
+          "basis": "How well people think they did tracks how well they did only weakly, and anxious speakers judge themselves more harshly than observers do; an outside view and a benchmark sharpen your own checks.",
+          "origin": "judgment",
+          "cards": [
+            "self-views-and-performance",
+            "anxious-speakers-self-ratings",
+            "outside-feedback-presentations",
+            "prediction-and-benchmark"
+          ],
+          "uncertainty": "The thresholds are design judgment; the behaviours list is not a validated rubric.",
+          "change": "Your checks and outside checks agreeing or not, over time."
+        },
+        {
+          "id": "nerves-strand",
+          "element": "strand:nerves",
+          "decision": "Open on a yes to either starting question, or when you choose it: steps toward what you avoid, one crutch left out at a time.",
+          "basis": "Exposure-based treatment reduces the fear of public speaking, and dropping safety behaviours helps anxious people; the two starting questions follow NICE’s guideline on social anxiety.",
+          "origin": "indirect",
+          "cards": [
+            "speaking-fear-treatments",
+            "safety-behaviours-attention",
+            "social-anxiety-treatments",
+            "mini-spin"
+          ],
+          "uncertainty": "The trials are of treatment, mostly against waiting; for everyday nerves the size is not known.",
+          "change": "Your record: what you expected against what happened."
+        },
+        {
+          "id": "start-help",
+          "element": "start",
+          "decision": "A yes to either question shows the app’s own fixed text first, never written by a model: help exists, and this is practice, not treatment.",
+          "basis": "A short screen finds most people with social anxiety, though about half of those it flags do not have it: a yes is an invitation, never a label.",
+          "origin": "direct",
+          "cards": [
+            "mini-spin"
+          ],
+          "uncertainty": "The two questions are a prompt from a guideline, not a validated scale.",
+          "change": "A validated screen free to use in the app."
+        },
+        {
+          "id": "maintenance",
+          "element": "maintenance",
+          "decision": "A stage shown is checked again about a month and three months later, then about every six months.",
+          "basis": "Unpractised procedural skills lose about half their gain within months, and brief practice keeps them.",
+          "origin": "inference",
+          "cards": [
+            "skill-decay",
+            "brief-boosters"
+          ],
+          "uncertainty": "From procedural skills; the right interval for conversation and speaking is not known.",
+          "change": "Your own checks: a stage that holds without them, or one that fades."
+        },
+        {
+          "id": "attention",
+          "element": "rep:sp-attention-moment",
+          "decision": "Hold attention with a moment for the listeners, not a timer.",
+          "basis": "The ten-to-fifteen-minute attention limit lacks support; recall moments reduced mind wandering in lectures.",
+          "origin": "indirect",
+          "cards": [
+            "recall-questions-attention",
+            "attention-span-claims",
+            "fluency-not-learning"
+          ],
+          "uncertainty": "From lectures and recorded videos, not live talks.",
+          "change": "Evidence from live talks."
+        },
+        {
+          "id": "floor",
+          "element": "rule",
+          "decision": "The Paths’ floor on every strand: six reps within six weeks across three different reps (four across two on Nerves), before a gate can be met.",
+          "basis": "Spaced, varied practice, as on Social and Partner.",
+          "origin": "judgment",
+          "cards": [
+            "practice-over-observation"
+          ],
+          "uncertainty": "The numbers are design judgment.",
+          "change": "Your own record over months."
+        },
+        {
+          "id": "reps-real",
+          "element": "reps",
+          "decision": "A rep counts only as a real interaction or a recording of yourself; rehearsal prepares it.",
+          "basis": "Skills rehearsed in the room were not used in the real situation, and training effects shrink the further a measure stands from the training room.",
+          "origin": "indirect",
+          "cards": [
+            "rehearsal-not-in-situ",
+            "training-to-life-gradient",
+            "practice-over-observation"
+          ],
+          "uncertainty": "From children and from clinical groups.",
+          "change": "Evidence on adults practising everyday conversation."
+        },
+        {
+          "id": "timeline",
+          "element": "timeline",
+          "decision": "Months, with no fixed end: about eight to sixteen weeks for a first pass at nerves, longer for the skills.",
+          "basis": "The treatments studied for the fear of speaking and for social anxiety run over weeks to months, and skills keep building after them.",
+          "origin": "inference",
+          "cards": [
+            "speaking-fear-treatments",
+            "social-anxiety-treatments"
+          ],
+          "uncertainty": "No study measured how long practice like this takes outside treatment.",
+          "change": "Your own record of how long each strand takes to show its stages."
+        }
+      ]
     }
   ]
 }

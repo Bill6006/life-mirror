@@ -87,7 +87,7 @@ describe('a Path with strands', () => {
     expect(pathName(trial)).toBe('The Trial path')
     const row = peopleRowAll([view(socialAim), view(trialAim)], DAY, 0.3)
     expect(row?.view.path.id).toBe('trial')
-    expect(whyThisRep(row!.pick!, row!.view.path)).toMatch(/^A turn for the reps only the Trial path holds, which take the People row on at most three days in seven\. /)
+    expect(whyThisRep(row!.pick!, row!.view.path)).toMatch(/^A turn for the Trial path, which takes the People row on at most three days in seven while another path is on\. /)
   })
 })
 
@@ -100,11 +100,34 @@ describe('the one People row with a third Path', () => {
     expect(peopleRowAll([view(socialAim, three.slice(0, 2)), view(trialAim, three.slice(0, 2))], DAY, 0.3)?.view.path.id).toBe('trial')
   })
 
-  it('takes every day alone, its share binding only beside another Path', () => {
+  it('takes every day alone, its share binding only beside another Path, drawing among all its reps (P4)', () => {
     const seven = [1, 2, 3, 4, 5, 6].map((d) => step('t-b1', addDays(DAY, -d), ['trial']))
-    const row = peopleRowAll([view(trialAim, seven)], DAY, 0.3)
+    const alone = view(trialAim, seven)
+    const row = peopleRowAll([alone], DAY, 0.3)
     expect(row?.view.path.id).toBe('trial')
-    expect(row?.pick?.turn).toBe('own')
+    // Its own pick, no turn said: the rep it shares with Social is among the candidates, as on its own card.
+    expect(row?.pick).toEqual(alone.pick)
+    expect(row?.pick?.turn).toBeUndefined()
+    expect(row?.pick?.candidates).toContain('one-sentence-past-hello')
+  })
+
+  it('takes on its turn a rep it shares that Social no longer holds at its stage, and leaves Social one it holds (P4)', () => {
+    const shared = 'one-sentence-past-hello'
+    // Social at its first stage does not hold the shared rep (its second stage's): the Trial path's turn may draw it.
+    const early = peopleRowAll([view(socialAim), view(trialAim)], DAY, 0.3)
+    expect(early?.view.path.id).toBe('trial')
+    expect(early?.pick?.candidates).toContain(shared)
+    // Social at its second stage holds it: the Trial path's turn draws among the reps it holds alone.
+    const firsts = ['eye-contact-stranger', 'attention-outward', 'greet-by-name'].flatMap((id, k) => [1, 2].map((d) => step(id, addDays(DAY, -(k * 2 + d)), ['social'], { setting: k ? 'recurring' : 'errand' })))
+    const second = view(socialAim, firsts, firsts.map(done))
+    expect(second.state.stage).toBe(2)
+    const late = peopleRowAll([second, view(trialAim)], DAY, 0.3)
+    expect(late?.view.path.id).toBe('trial')
+    expect(late?.pick?.candidates).not.toContain(shared)
+    // A day it drew the shared rep while Social did not hold it counts toward its share no more once Social does.
+    const three = [1, 2, 3].map((d) => step(shared, addDays(DAY, -d), ['social', 'trial']))
+    expect(peopleRowAll([view(socialAim, three), view(trialAim, three)], DAY, 0.3)?.view.path.id).toBe('social')
+    expect(peopleRowAll([view(socialAim, [...firsts, ...three], firsts.map(done)), view(trialAim, three)], DAY, 0.3)?.view.path.id).toBe('trial')
   })
 
   it('counts a rep it shares with Social for both, and one it holds alone for itself', () => {

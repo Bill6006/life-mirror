@@ -1,0 +1,11 @@
+{
+  "note": "The evidence library's second-version fields and their closed lists (P3, 2026-11-06), read by the app (src/libraryRules.ts) and by scripts/library-check.mjs alike.",
+  "origin": ["direct", "indirect", "mechanism", "expert", "inference", "judgment"],
+  "design": ["meta", "rct", "quasi", "singleCase", "observational", "expert", "theory"],
+  "outcomeDistance": ["knowledge", "rolePlay", "observed", "realLife"],
+  "comparator": ["none", "waitlist", "usual", "active", "placebo"],
+  "heterogeneity": ["low", "moderate", "high", "unknown"],
+  "biasRisk": ["low", "some", "high"],
+  "spanFields": ["claim", "effect", "population", "caveats"],
+  "verdicts": ["supports", "partly", "doesNot"]
+}

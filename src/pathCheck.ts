@@ -1,6 +1,8 @@
 import { NEGATED_OUTCOME, OUTCOME_WORDS } from './brainShared'
-import { ONE_STRAND, strandsOf, type Move, type Path, type PathStrand, type SettingKind } from './catalogue'
+import { guardrailOf, ONE_STRAND, strandsOf, type Move, type Path, type PathStrand } from './catalogue'
+import { ORIGINS } from './libraryRules'
 import type { ClaimCard } from './libraryTypes'
+import { isBlocked, methodById } from './methods'
 
 // The compiler's checks (P1, Paths as data, 2026-11-06). A Path is data, so nothing but these checks
 // stands between a Path the catalogue adds and the phone: every rep on a real strand and stage, every
@@ -9,7 +11,7 @@ import type { ClaimCard } from './libraryTypes'
 // phone's readers, a version with its change record, and reps offered through the Path alone. The unit
 // tests run them over every Path in the catalogue; the phone runs them again before it shows one.
 
-export type PathProblemCode = 'structure' | 'reachable' | 'wording' | 'guardrail' | 'cards' | 'traits' | 'version' | 'status'
+export type PathProblemCode = 'structure' | 'reachable' | 'wording' | 'guardrail' | 'cards' | 'traits' | 'version' | 'status' | 'method' | 'decisions' | 'measurement'
 
 export interface PathProblem {
   code: PathProblemCode
@@ -18,19 +20,16 @@ export interface PathProblem {
   what: string
 }
 
-/** The kinds of setting another adult is there in person for, as the engine counts them. */
-const IN_PERSON: readonly SettingKind[] = ['recurring', 'errand', 'group', 'oneToOne']
-
 /** The Paths Green before P1: built in, and the only ones that may say so. */
 const BUILT_IN: readonly string[] = ['social', 'partner']
 
 function texts(path: Path): string[] {
   const strandTexts = (path.strands ?? []).flatMap((s) => [s.name, s.what, ...s.stages.flatMap((st) => [st.name, st.what, st.notProgress])])
-  return [path.name, path.what, path.counted, path.rule.note, ...path.stages.flatMap((s) => [s.name, s.what, s.notProgress]), ...strandTexts, ...(path.names ? [path.names.called, path.names.add, path.names.addNote] : [])]
+  return [path.name, path.what, ...(path.timeline ? [path.timeline] : []), path.counted, path.rule.note, ...path.stages.flatMap((s) => [s.name, s.what, s.notProgress]), ...strandTexts, ...(path.names ? [path.names.called, path.names.add, path.names.addNote] : [])]
 }
 
-function repTexts(m: Move): string[] {
-  return [m.name, m.what, m.doneWhen ?? '', m.cue ?? '', m.crutch ?? '', m.guardrail ?? ''].filter(Boolean)
+function repTexts(m: Move, id: string): string[] {
+  return [m.name, m.what, m.doneWhen ?? '', m.cue ?? '', m.crutch ?? '', guardrailOf(m, id) ?? ''].filter(Boolean)
 }
 
 const outcomeWords = (t: string) => OUTCOME_WORDS.test(t.replace(NEGATED_OUTCOME, ''))
@@ -44,6 +43,11 @@ function placedAt(path: Path, strand: PathStrand, stage: number, moves: readonly
     const place = m.path?.[path.id]
     return place !== undefined && (place.strand ?? ONE_STRAND) === strand.id && stage >= place.stage && stage <= (place.through ?? place.stage)
   })
+}
+
+/** The Paths among these that pass every check: the only ones the phone shows or offers (P1). */
+export function compiledPaths(all: readonly Path[], moves: readonly Move[], cards: readonly Pick<ClaimCard, 'id' | 'status'>[]): Path[] {
+  return all.filter((p) => checkPath(p, moves, cards).length === 0)
 }
 
 /** Every problem with a Path, all at once (a checker that stops at its first reason leaves a writer chasing the next). */
@@ -84,21 +88,22 @@ export function checkPath(path: Path, moves: readonly Move[], cards: readonly Pi
     for (const st of s.stages) {
       if (!byRule(st.advance) || st.n >= s.stages.length) continue
       const moving = placedAt(path, s, st.n, reps).filter((m) => m.path?.[path.id]?.advances && m.path?.[path.id]?.stage === st.n && m.status !== 'proposed' && !m.parked)
-      const kinds = new Set(moving.flatMap((m) => (m.settings ?? []).filter((k) => IN_PERSON.includes(k))))
+      // Every kind of setting counts, as the engine's rule counts them.
+      const kinds = new Set(moving.flatMap((m) => m.settings ?? []))
       if (moving.length < rule.distinctReps) say('reachable', `${path.id}/${s.id || 'stages'}/${st.n}`, `${moving.length} stage-moving reps, and the rule asks for ${rule.distinctReps} different ones`)
-      if (kinds.size < rule.settingKinds) say('reachable', `${path.id}/${s.id || 'stages'}/${st.n}`, `stage-moving reps in ${kinds.size} kinds of in-person setting, and the rule asks for ${rule.settingKinds}`)
+      if (kinds.size < rule.settingKinds) say('reachable', `${path.id}/${s.id || 'stages'}/${st.n}`, `stage-moving reps in ${kinds.size} kinds of setting, and the rule asks for ${rule.settingKinds}`)
     }
   }
 
   // Wording: no rating or outcome words, a negation struck out first; every counted rep done by your own act.
   for (const t of texts(path)) if (outcomeWords(t)) say('wording', path.id, `rating or outcome words: “${t}”`)
   for (const m of reps) {
-    for (const t of repTexts(m)) if (outcomeWords(t)) say('wording', `${path.id}:${m.id}`, `rating or outcome words: “${t}”`)
+    for (const t of repTexts(m, path.id)) if (outcomeWords(t)) say('wording', `${path.id}:${m.id}`, `rating or outcome words: “${t}”`)
     if (m.doneWhen !== undefined && !m.doneWhen.startsWith('Done ')) say('wording', `${path.id}:${m.id}`, 'doneWhen must begin “Done ”')
   }
 
-  // A guardrail on every in-person rep of a Path the catalogue adds.
-  if (!builtIn) for (const m of reps) if (m.with === 'adult' && !m.guardrail) say('guardrail', `${path.id}:${m.id}`, 'an in-person rep of a new Path needs a guardrail')
+  // A guardrail on every in-person or recorded rep of a Path the catalogue adds: its own, or one it adds to a rep it shares.
+  if (!builtIn) for (const m of reps) if ((m.with === 'adult' || m.record) && !guardrailOf(m, path.id)) say('guardrail', `${path.id}:${m.id}`, 'an in-person or recorded rep of a new Path needs a guardrail')
 
   // Cards: each in the library, admitted or disputed; a disputed one is cited only beside something the Path excludes.
   const byId = new Map(cards.map((c) => [c.id, c]))
@@ -121,6 +126,54 @@ export function checkPath(path: Path, moves: readonly Move[], cards: readonly Pi
   if (!builtIn) {
     if (!path.version) say('version', path.id, 'a new Path needs a version')
     else if (!(path.changes ?? []).some((c) => c.version === path.version)) say('version', path.id, `no change record for version ${path.version}`)
+  }
+
+  // Each rep only it holds names its method from the library, and none is blocked (P3).
+  if (!builtIn) for (const m of reps) {
+    const elsewhere = Object.keys(m.path ?? {}).some((id) => id !== path.id && BUILT_IN.includes(id))
+    if (elsewhere) continue
+    if (!m.method) say('method', `${path.id}:${m.id}`, 'a rep of a new Path names its method')
+    else if (isBlocked(m.method)) say('method', `${path.id}:${m.id}`, `its method is blocked: ${m.method}`)
+    else if (!methodById(m.method)) say('method', `${path.id}:${m.id}`, `its method is not in the library: ${m.method}`)
+  }
+
+  // Its decision records: each origin from the closed list, each card in the library and cited by the Path (P3).
+  for (const d of path.decisions ?? []) {
+    if (!ORIGINS.includes(d.origin)) say('decisions', `${path.id}/${d.id}`, `origin "${d.origin}" outside the list`)
+    if (!d.cards.length && d.origin !== 'judgment' && d.origin !== 'expert') say('decisions', `${path.id}/${d.id}`, 'a decision resting on evidence names its cards')
+    for (const id of d.cards) {
+      const c = byId.get(id)
+      if (!c || (c.status !== 'admitted' && c.status !== 'disputed')) say('decisions', `${path.id}/${d.id}`, `cites a card that is not admitted: ${id}`)
+      if (!path.cards.includes(id)) say('decisions', `${path.id}/${d.id}`, `cites a card the Path does not: ${id}`)
+    }
+    for (const t of [d.decision, d.basis, d.uncertainty, d.change]) if (outcomeWords(t)) say('wording', `${path.id}/${d.id}`, `rating or outcome words: “${t}”`)
+  }
+  if (!builtIn && !(path.decisions ?? []).some((d) => d.element === 'structure')) say('decisions', path.id, 'a new Path says why its structure is as it is')
+
+  // Its measurement: gates on real strands and stages; behaviours named once; a recorded or handed-over rep only on a strand that allows it (P2).
+  const measure = path.measurement
+  if (measure) {
+    for (const g of measure.gates) {
+      const s = strands.find((x) => x.id === g.strand)
+      if (!s || !s.stages.some((st) => st.n === g.stage)) say('measurement', `${path.id}/${g.strand}/${g.stage}`, 'a gate on a strand or stage the Path does not have')
+      const behaviours = measure.strands.find((x) => x.strand === g.strand)?.behaviours ?? []
+      if (g.met < 1 || g.met > behaviours.length) say('measurement', `${path.id}/${g.strand}/${g.stage}`, `a gate asks for ${g.met} of ${behaviours.length} behaviours`)
+    }
+    for (const s of measure.strands) {
+      if (new Set(s.behaviours.map((b) => b.id)).size !== s.behaviours.length) say('measurement', `${path.id}/${s.strand}`, 'a behaviour named twice')
+      for (const b of s.behaviours) for (const t of [b.words, b.theirs]) if (outcomeWords(t)) say('wording', `${path.id}/${s.strand}/${b.id}`, `rating or outcome words: “${t}”`)
+    }
+    for (const m of reps) {
+      const strand = m.path?.[path.id]?.strand ?? ONE_STRAND
+      const sm = measure.strands.find((x) => x.strand === strand)
+      if (m.record && !sm?.record) say('measurement', `${path.id}:${m.id}`, 'a recorded rep on a strand that records nothing')
+      if (m.handOver && !sm?.handOver) say('measurement', `${path.id}:${m.id}`, 'a handed-over rep on a strand that hands nothing over')
+      if (m.record && m.with === 'adult') say('measurement', `${path.id}:${m.id}`, 'a recording is of yourself alone, never of anyone else')
+    }
+  }
+  if (path.start) {
+    if (!strands.some((s) => s.id === path.start?.opens)) say('structure', path.id, `its start opens a strand it does not have: ${path.start.opens}`)
+    for (const t of [path.start.help, ...path.start.questions.map((q) => q.text)]) if (outcomeWords(t)) say('wording', path.id, `rating or outcome words: “${t}”`)
   }
 
   // Its own reps are offered through it alone, never by the day's draw.

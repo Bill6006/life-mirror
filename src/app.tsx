@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { AddAimScreen, AimsScreen, BecomingScreen, FollowScreen, LadderScreen, PickStepScreen } from './aimsScreen'
 import { PathChangeScreen } from './pathCard'
+import { PathReadScreen, PathStartScreen } from './pathRead'
+import { HandOverScreen, RecordingCheckScreen } from './pathMeasureUi'
 import { PartnerNotesScreen } from './partnerScreen'
 import { HerPickScreen, HerScreen } from './herScreen'
 import { blockAt, type Block } from './blocks'
@@ -63,6 +65,11 @@ type View =
   | { kind: 'addAim' }
   | { kind: 'pickStep'; aimId: number }
   | { kind: 'pathChange'; aimId: number }
+  /** A Path the catalogue adds (P4): read on one screen, started from there; a recording checked; the phone handed over. */
+  | { kind: 'pathRead'; path: string }
+  | { kind: 'pathStart'; path: string }
+  | { kind: 'recordingCheck'; offerId: number }
+  | { kind: 'handOver'; offerId: number; back?: View }
   | { kind: 'partnerNotes' }
   | { kind: 'ladder' }
   | { kind: 'follow' }
@@ -272,7 +279,15 @@ export function App() {
       case 'history':
         return <HistoryScreen onClose={closeAll} />
       case 'addAim':
-        return <AddAimScreen onClose={closeAll} />
+        return <AddAimScreen onClose={closeAll} onRead={(path) => setView({ kind: 'pathRead', path })} />
+      case 'pathRead':
+        return <PathReadScreen pathId={view.path} onStart={() => setView({ kind: 'pathStart', path: view.path })} onClose={closeAll} />
+      case 'pathStart':
+        return <PathStartScreen pathId={view.path} onDone={closeAll} onBack={() => setView({ kind: 'pathRead', path: view.path })} />
+      case 'recordingCheck':
+        return <RecordingCheckScreen offerId={view.offerId} onClose={closeAll} />
+      case 'handOver':
+        return <HandOverScreen offerId={view.offerId} onClose={() => (view.back ? setView(view.back) : closeAll())} />
       case 'pickStep':
         return <PickStepScreen aimId={view.aimId} onClose={closeAll} />
       case 'pathChange':
@@ -322,6 +337,7 @@ export function App() {
             onCheckIn={(day, block) => open({ kind: 'checkin', day, block })}
             onOpen={(day, block) => open({ kind: 'summary', day, block, fresh: false })}
             onChangeRep={(aimId) => open({ kind: 'pathChange', aimId })}
+            onHandOver={(offerId) => open({ kind: 'handOver', offerId })}
             onAway={() => open({ kind: 'away' })}
             onAsk={(about) => open({ kind: 'ask', open: { about } })}
           />
@@ -341,6 +357,9 @@ export function App() {
             onBecoming={() => open({ kind: 'becoming' })}
             onHer={() => open({ kind: 'her' })}
             onPartnerNotes={() => open({ kind: 'partnerNotes' })}
+            onRead={(path) => open({ kind: 'pathRead', path })}
+            onHandOver={(offerId) => open({ kind: 'handOver', offerId })}
+            onCheckRecording={(offerId) => open({ kind: 'recordingCheck', offerId })}
           />
         )
       case 'settings':

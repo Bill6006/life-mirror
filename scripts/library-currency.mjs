@@ -39,6 +39,41 @@ for (const c of library) {
   }
 }
 
+// PubMed beside Crossref (P3, 2026-11-06): Crossref's corrections are its least complete category, so
+// every source PubMed holds is asked for a retraction, an erratum or an expression of concern too.
+const NOTICE = { RetractionIn: 'retraction', ErratumIn: 'correction', ExpressionOfConcernIn: 'concern', RetractionOf: 'retraction' }
+const pause = () => new Promise((r) => setTimeout(r, 350))
+async function pmidOf(s) {
+  if (s.pmid) return s.pmid
+  if (!s.doi) return null
+  try {
+    const r = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term=${encodeURIComponent(`${s.doi}[doi]`)}`)
+    await pause()
+    return r.ok ? ((await r.json())?.esearchresult?.idlist?.[0] ?? null) : null
+  } catch {
+    return null
+  }
+}
+for (const c of library) {
+  if (c.status !== 'admitted') continue
+  for (const s of c.sources) {
+    const pmid = await pmidOf(s)
+    if (!pmid) continue
+    try {
+      const r = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml`)
+      await pause()
+      if (!r.ok) continue
+      const xml = await r.text()
+      for (const m of xml.matchAll(/<CommentsCorrections RefType="(RetractionIn|ErratumIn|ExpressionOfConcernIn|RetractionOf)"/g)) {
+        const kind = NOTICE[m[1]]
+        if (!flags.some((f) => f.id === c.id && f.kind === kind && f.detail.includes(`PMID ${pmid}`))) flags.push({ id: c.id, kind, detail: `PubMed: PMID ${pmid} (${s.doi ?? 'no DOI'}) carries ${m[1]}` })
+      }
+    } catch {
+      continue
+    }
+  }
+}
+
 writeFileSync('library/currency.json', JSON.stringify({ checkedOn: today.toISOString().slice(0, 10), flags }, null, 2) + '\n')
 for (const f of flags) console.log(`library: ${f.kind} ${f.id}: ${f.detail}`)
 console.log(`library: ${flags.length} flag(s) across ${library.filter((c) => c.status === 'admitted').length} admitted cards`)

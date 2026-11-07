@@ -1,4 +1,7 @@
-import { extensionPrompt, families, filterTags, isParked, isPathOnly, isProposed, learnedTags, type Move, moves, movesInFamily, type Path, paths, proposals, repsIntroducedAt, research, type Source } from './catalogue'
+import { Fragment } from 'preact'
+import { extensionPrompt, families, filterTags, guardrailOf, isParked, isPathOnly, isProposed, learnedTags, type Move, moves, movesInFamily, type Path, paths, proposals, repsIntroducedAt, research, strandsOf, type Source } from './catalogue'
+import { WhyBuilt } from './pathMeasureUi'
+import { Tag } from './ui'
 import { cardById, gradeWord } from './library'
 import { blockAt } from './blocks'
 import { copy } from './copy'
@@ -45,7 +48,9 @@ function statusLine(m: Move): string | null {
   if (isPathOnly(m)) parts.push(c.pathOnly)
   for (const p of paths) {
     const place = m.path?.[p.id]
-    if (place) parts.push(`${fill(c.paths.onPath, { path: p.name, n: String(place.stage) })}, ${place.advances ? c.paths.advances : c.paths.movesNothing}`)
+    // On a Path with strands, the rep's own strand is named with its stage.
+    const strand = place?.strand ? p.strands?.find((s) => s.id === place.strand)?.name : undefined
+    if (place) parts.push(`${strand ? fill(c.paths.onStrand, { path: p.name, strand, n: String(place.stage) }) : fill(c.paths.onPath, { path: p.name, n: String(place.stage) })}, ${place.advances ? c.paths.advances : c.paths.movesNothing}`)
   }
   if (isParked(m)) parts.push(c.parked)
   if (m.ladder) parts.push(fill(c.ladderRung, { n: String(m.ladder.rung) }))
@@ -130,6 +135,7 @@ function PathRep({ m, path }: { m: Move; path: Path }) {
         {place?.through ? ` · ${fill(c.spans, { first: stageName(path, place.stage), last: stageName(path, place.through) })}` : ''}
         {place?.onDate ? ` · ${c.onDate}` : ''}
         {m.hiddenWith === 'faith' ? ` · ${c.faithHidden}` : ''}
+        {m.record && path.measurement?.strands.find((s) => s.strand === place?.strand)?.record ? ` · ${c.recorded}` : ''}
         {isProposed(m) ? ` · ${copy.catalogue.proposed}` : ''}
       </p>
       {place?.after && (
@@ -148,31 +154,85 @@ function PathRep({ m, path }: { m: Move; path: Path }) {
         </p>
       )}
       {m.doneWhen && <p class="move-meta">{m.doneWhen}</p>}
-      {m.guardrail && <p class="move-status">{m.guardrail}</p>}
+      {guardrailOf(m, path.id) && <p class="move-status">{guardrailOf(m, path.id)}</p>}
     </li>
   )
 }
 
-/** A path in full (Parts 23 and 26): its stages and reps, the rule and its sources, what is counted and never counted, what is left out, and the evidence. */
+/** A stage's gate in words, on a measured Path. */
+function gateWords(path: Path, strand: string, stage: number): string | null {
+  const c = copy.catalogue.paths
+  const g = path.measurement?.gates.find((x) => x.strand === strand && x.stage === stage)
+  if (!g) return null
+  return fill(c.shownWhen, { met: String(g.met), weeks: String(g.weeks), confirmed: g.confirmed ? fill(c.confirmed, { n: String(g.confirmed) }) : '', kinds: g.kinds === 1 ? c.kindOne : fill(c.kinds, { n: String(g.kinds) }) })
+}
+
+/** A path in full (Parts 23 and 26; P4): its start, each strand with its stages and reps, the rule and its sources, what is counted and never counted, what is left out, why it is built as it is, and the evidence. */
 function PathSection({ path }: { path: Path }) {
   const c = copy.catalogue.paths
+  const strands = strandsOf(path)
+  const label = path.label ? (copy.path.read.label[path.label] ?? path.label) : null
+  const m = path.measurement
   return (
     <div id={`path-${path.id}`} class="family" data-testid="path">
       <h2 class="section">
-        {fill(c.name, { path: path.name })} · {path.stages.length}
+        {fill(c.name, { path: path.name })} · {strands.reduce((n, s) => n + s.stages.length, 0)}
       </h2>
+      {label && (
+        <p data-testid="path-label">
+          <Tag>{label}</Tag>
+        </p>
+      )}
       <p class="note">{path.what}</p>
-      {path.stages.map((st) => {
-        const reps = repsIntroducedAt(path.id, st.n)
-        const acts = (path.acts ?? []).filter((a) => a.stage === st.n)
+      {path.timeline && (
+        <p class="note" data-testid="path-timeline">
+          {c.howLong}: {path.timeline}
+        </p>
+      )}
+      {path.start && (
+        <div class="card pad" data-testid="path-start-text">
+          <p class="calc-line ink">{c.start}</p>
+          <p class="calc-line">{fill(c.startLine, { questions: path.start.questions.map((q, i) => `(${i + 1}) ${q.text}`).join(' '), help: path.start.help })}</p>
+          <p class="calc-line">{fill(c.focus, { focus: path.start.focus.map((f) => f.words).join('; ') })}</p>
+        </div>
+      )}
+      {strands.map((strand) => {
+        const measure = m?.strands.find((x) => x.strand === strand.id)
         return (
-          <div key={st.n} class="card pad" data-testid="path-stage">
+          <Fragment key={strand.id}>
+            {strand.id && (
+              <div class="calc" data-testid="path-strand-text">
+                <p class="calc-line ink">{strand.name}</p>
+                <p class="calc-line">{strand.what}</p>
+                {strand.rule && (
+                  <p class="calc-line">
+                    {c.strandRule}: {strand.rule.note}
+                  </p>
+                )}
+                {measure && (
+                  <p class="calc-line">
+                    {c.behaviours}, {fill(c.behavioursHow, { record: measure.record ? c.behavioursRecord : '', handOver: measure.handOver ? c.behavioursHandOver : '', list: measure.behaviours.map((b) => b.words).join('; ') })}
+                  </p>
+                )}
+              </div>
+            )}
+            {strand.stages.map((st) => {
+        const reps = repsIntroducedAt(path.id, st.n, strand.id)
+        const acts = (path.acts ?? []).filter((a) => a.stage === st.n)
+        const gate = gateWords(path, strand.id, st.n)
+        return (
+          <div key={`${strand.id}-${st.n}`} class="card pad" data-testid="path-stage">
             <h3 class="move-name">{fill(c.stage, { n: String(st.n), name: st.name })}</h3>
             <p class="move-what">{st.what}</p>
             <p class="move-meta">
               {c.notProgress}: {st.notProgress}
             </p>
             <p class="move-status">{c.moves[st.advance ?? 'counts']}</p>
+            {gate && (
+              <p class="move-meta" data-testid="path-gate">
+                {gate}
+              </p>
+            )}
             {reps.length > 0 && (
               <ul class="moves">
                 {reps.map((m) => (
@@ -209,8 +269,12 @@ function PathSection({ path }: { path: Path }) {
             ))}
           </div>
         )
+            })}
+          </Fragment>
+        )
       })}
       <div class="card pad">
+        {m && <p class="calc-line">{fill(c.checkedAgain, { at: m.maintenance.at.join(' and '), every: String(m.maintenance.every), cap: String(m.cap) })}</p>}
         <p class="calc-line ink">{c.rule}</p>
         <p class="calc-line">{path.rule.note}</p>
         {path.rule.sources.map((s) => (
@@ -249,9 +313,15 @@ function PathSection({ path }: { path: Path }) {
           </>
         )}
       </div>
+      {path.decisions?.length ? (
+        <div class="card pad" data-testid="path-decisions">
+          <p class="calc-line ink">{c.why}</p>
+          <WhyBuilt path={path} />
+        </div>
+      ) : null}
       <div class="card pad" data-testid="path-evidence">
         <p class="calc-line ink">{c.evidence}</p>
-        <p class="note faint">{c.evidenceNote}</p>
+        <p class="note faint">{path.builtIn ? c.evidenceNote : c.evidenceNoteOwn}</p>
         {path.cards.map((id) => {
           const card = cardById(id)
           if (!card) return null

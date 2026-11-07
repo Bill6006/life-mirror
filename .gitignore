@@ -22,3 +22,6 @@ worker/.dev.vars
 
 # The bridge key (Part 29): the owner pastes it once into the environment credential form; never committed.
 worker/.bridge-key
+
+# The evidence library's local cache (P3): fetched abstracts, reader layouts and the impact map, never committed.
+library/.cache/

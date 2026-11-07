@@ -8,6 +8,7 @@ import type { Aim, CheckIn, CoachPick, DayContext, Offer, Outcome, PathMark } fr
 import { fill } from './format'
 import { heldPickup } from './dayShape'
 import { inPerson, outAmongPeople, peopleAround } from './people'
+import { activeStrands, measuredReps, strandReader, type StrandMeasureToday } from './pathMeasure'
 
 // The path commitment (Part 24), the pure part: the stage a path stands on, derived from the
 // record and never stored; the reps that fit this block by their own prerequisites (Pass 3); the
@@ -104,7 +105,7 @@ export function meetsRule(done: readonly Pick<PathEntry, 'moveId' | 'setting'>[]
  * were marked done after it was reached, across enough different reps and kinds of setting. A
  * stage reached stands; a declaration (Part 27) moves the stages the rule does not.
  */
-export function stageOf(path: Path, entries: readonly PathEntry[], today: string, declared: { stage: number; day: string } | null = null, strand?: string): StageState {
+export function stageOf(path: Path, entries: readonly PathEntry[], today: string, declared: { stage: number; day: string } | null = null, strand?: string, gate?: (stage: number, since: string | null) => string | null | undefined): StageState {
   const rule = path.rule
   const reached: { stage: number; day: string; by: 'rule' | 'declared' }[] = []
   let stage = 1
@@ -127,6 +128,10 @@ export function stageOf(path: Path, entries: readonly PathEntry[], today: string
       }
     }
     if (metOn === null) break
+    // A stage with a gate (P2) moves on when its gate holds too, on the later of the two days.
+    const shown: string | null | undefined = gate?.(stage, since)
+    if (shown === null) break
+    if (shown !== undefined && shown > metOn) metOn = shown
     stage += 1
     since = metOn
     reached.push({ stage, day: metOn, by: 'rule' })
@@ -171,6 +176,8 @@ export interface EligibilityInput {
   faithHidden?: boolean
   /** On a Path with strands, the strand whose reps these are (P1); absent, every rep of the Path's stage. */
   strand?: string
+  /** On a measured Path (P2), stages whose reps come back beside the current one: the stage below when stuck, a stage shown whose check was missed. */
+  alsoStages?: readonly number[]
 }
 
 /** Whether a rep that waits for others may join the app's picks: each of them done or partly done. */
@@ -222,7 +229,7 @@ export function dateStageOf(path: Path): number | null {
 export function eligibility(i: EligibilityInput): Eligibility {
   const stage = i.state.reentry ? i.state.stage - 1 : i.state.stage
   const channel = i.path.channels?.find((c) => c.id === 'online')
-  const stageReps = pathReps(i.path.id, stage, i.strand).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
+  const stageReps = [stage, ...(i.alsoStages ?? []).filter((n) => n !== stage)].flatMap((n) => pathReps(i.path.id, n, i.strand)).filter((m, k, all) => all.findIndex((x) => x.id === m.id) === k).filter((m) => offerable(m) && (m.channel !== 'online' || i.online === true) && !(i.faithHidden && m.hiddenWith === 'faith'))
   const eligible = stageReps.filter((m) => {
     if (m.path?.[i.path.id]?.onDate && !i.dateDay) return false
     if (repPrerequisite(m, i.block, i.ctx) !== null) return false
@@ -554,6 +561,8 @@ export interface StrandToday {
   strand: PathStrand
   state: StageState
   elig: Eligibility
+  /** On a measured Path (P2): its gate, whether it is stuck, the stages shown come back, and the two numbers. */
+  measure?: StrandMeasureToday
 }
 
 /** A strand read as a Path of its own: its stages, under its own rule or the Path's. */
@@ -628,13 +637,22 @@ export function pathToday(i: PathTodayInput): PathToday {
   const faithHidden = i.faithHidden === true
   // Light reps only on a hard day is a Path's own rule: the Partner path's (Part 27).
   const lightOnly = path.traits.lightOnHardDays === true && i.lightOnly === true
-  const fit = (p: Path, state: StageState, strand?: string) => eligibility({ path: p, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly, doneEver, faithHidden, ...(strand !== undefined ? { strand } : {}) })
-  // A Path with strands (P1): each strand's stage from its own reps, the reps that fit from every strand. A declaration moves a Path of one strand alone.
+  const fit = (p: Path, state: StageState, strand?: string, alsoStages?: readonly number[]) => eligibility({ path: p, state, around, block: i.block, ctx: i.ctx, yesterday, doneToday, dateDay, online: i.online === true, onlineThisWeek, lightOnly, doneEver, faithHidden, ...(strand !== undefined ? { strand } : {}), ...(alsoStages?.length ? { alsoStages } : {}) })
+  // A Path with strands (P1): each strand's stage from its own reps, the reps that fit from every strand you have on. A declaration moves a Path of one strand alone.
+  // A measured Path (P2): a stage with a gate moves on when its gate holds too; stuck at the cap, or a stage shown whose check was missed, brings reps back.
+  const measured = path.measurement ? measuredReps(entries, i.outcomes) : []
+  const on = path.strands?.length ? activeStrands(path, i.aim) : []
   const tracks: StrandToday[] | null = path.strands?.length
-    ? path.strands.map((s) => {
+    ? path.strands.filter((s) => on.includes(s.id)).map((s) => {
         const sp = strandPath(path, s)
-        const state = stageOf(sp, entries, i.day, null, s.id)
-        return { strand: s, state, elig: fit(sp, state, s.id) }
+        if (!path.measurement) {
+          const state = stageOf(sp, entries, i.day, null, s.id)
+          return { strand: s, state, elig: fit(sp, state, s.id) }
+        }
+        const reader = strandReader(path, s.id, measured, (id) => placeOn(path.id, id), i.day)
+        const state = stageOf(sp, entries, i.day, null, s.id, reader.gate)
+        const also = reader.also(state, s.stages.length)
+        return { strand: s, state, elig: fit(sp, state, s.id, also), measure: reader.today(state, s.stages.length, also) }
       })
     : null
   const state = tracks ? tracks[0].state : stageOf(path, entries, i.day, declaredStage(path, marks, i.day))
@@ -672,6 +690,20 @@ export function stageForRep(pt: Pick<PathToday, 'path' | 'strands' | 'elig'>, mo
   if (!pt.path.strands?.length) return pt.elig.stage
   const strand = placeOn(pt.path.id, moveId)?.strand ?? ONE_STRAND
   return pt.strands.find((s) => s.strand.id === strand)?.elig.stage ?? pt.elig.stage
+}
+
+/** The strand a rep stands on today, on a Path with strands: its own strand's view; null on a Path of one. */
+export function strandOfRep(pt: Pick<PathToday, 'path' | 'strands'>, moveId: string): StrandToday | null {
+  if (!pt.path.strands?.length) return null
+  const strand = placeOn(pt.path.id, moveId)?.strand ?? ONE_STRAND
+  return pt.strands.find((s) => s.strand.id === strand) ?? null
+}
+
+/** The stage in words for the rep on show: on a Path with strands, its own strand's ("Speaking to several people · Recorded alone"); else the Path's. */
+export function repStageWords(pt: Pick<PathToday, 'path' | 'strands' | 'state'>, moveId: string | null): string {
+  const s = moveId ? strandOfRep(pt, moveId) : null
+  if (!s) return stageWords(pt.path, pt.state.stage)
+  return `${s.strand.name} · ${s.strand.stages.find((x) => x.n === s.state.stage)?.name ?? ''}`
 }
 
 /** A People rep's session, from either path: a step offer that names its paths (or, before paths, a person's step). */
@@ -736,9 +768,10 @@ export function peopleRow(social: PathToday | null, partner: PathToday | null, t
  * The one People row across every Path on (P1, D4 unchanged: one People rep a day). Done, Partly
  * and your pick as ever. Then each Path with a share of the row, in the catalogue's order, takes the
  * day when its own reps fit and took fewer days of the last seven than its share; a share binds with
- * another Path on, or alone where the Path says so (Partner's). Then the first Path without a share,
- * Social. With none on, the first Path's reps it shares, as the Partner path alone draws. With Social
- * and Partner alone this is Part 27's rule, branch for branch.
+ * another Path on, or alone where the Path says so (Partner's), and a Path alone whose share does not
+ * bind draws among all its reps (P4). Then the first Path without a share, Social. With none on, the
+ * first Path's reps it shares, as the Partner path alone draws. With Social and Partner alone this is
+ * Part 27's rule, branch for branch.
  */
 export function peopleRowAll(views: readonly PathToday[], today: string, draw: number): PeopleRow | null {
   const order = new Map(paths.map((p, k) => [p.id, k]))
@@ -764,12 +797,19 @@ export function peopleRowAll(views: readonly PathToday[], today: string, draw: n
     return pick ? { ...pick, turn: t } : null
   }
   const sharers = on.filter((v) => v.path.traits.rowShare !== undefined)
+  // The reps the Paths without a share hold at their stages today: theirs to offer through their own pick.
+  const primaryHolds = new Set(on.filter((v) => v.path.traits.rowShare === undefined).flatMap((v) => v.elig.stageReps.map((m) => m.id)))
   for (const v of sharers) {
     const weekAgo = addDays(today, -6)
-    const days = new Set(v.entries.filter((e) => e.day >= weekAgo && e.day <= today && ownOnly(v.path, e.moveId)).map((e) => e.day))
-    const only = v.elig.eligible.filter((m) => ownOnly(v.path, m.id))
     const binds = v.path.traits.shareBindsAlone === true || on.length > 1
-    if (only.length && (!binds || days.size < (v.path.traits.rowShare ?? 0))) return row(v, turn(v, only, 'own'))
+    // A share that binds only with another Path on (P4): alone, the Path draws among all its reps, as its own pick does.
+    if (!binds) return row(v, v.pick)
+    // Its own reps: on the Partner path, those no Path without a share holds (Part 27); on a Path whose share binds only
+    // with another on (P4), also one it shares that the other no longer holds at its stage, so no strand of it starves.
+    const own = (id: string) => ownOnly(v.path, id) || (v.path.traits.shareBindsAlone !== true && !primaryHolds.has(id) && Boolean(placeOn(v.path.id, id)))
+    const days = new Set(v.entries.filter((e) => e.day >= weekAgo && e.day <= today && own(e.moveId)).map((e) => e.day))
+    const only = v.elig.eligible.filter((m) => own(m.id))
+    if (only.length && days.size < (v.path.traits.rowShare ?? 0)) return row(v, turn(v, only, 'own'))
   }
   const primary = on.find((v) => v.path.traits.rowShare === undefined)
   if (primary) return row(primary, primary.pick)

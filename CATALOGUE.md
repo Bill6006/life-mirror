@@ -1,6 +1,6 @@
 # Life Mirror — the catalogue of moves
 
-143 moves across 15 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
+161 moves across 16 families, 0 of them proposed and not yet wired. Every entry carries its source and how strong that evidence is, how long it takes, the effort to start, what being given it costs, its learned tags, its starting belief, what it needs, which readings it should move and over what window, what it conflicts with, what it replaces, and what it counts toward. Generated from `src/catalogue.json` by `scripts/catalogue-md.mjs`; edit the JSON, not this file.
 
 Strength of evidence: **strong** (meta-analyses or several trials), **moderate** (a good trial or review), **thin** (a small study, or evidence for something adjacent), **practice** (common advice, untested).
 
@@ -8,7 +8,7 @@ Proposed entries, tags, beliefs and trades are content to read and veto. Yellow 
 
 ## Paths
 
-Two paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row.
+The Social and Partner paths, each a staged curriculum of reps, with your Green. Both are wired: add either under Aims, and each path’s own reps are offered through its row alone. With both on, Now still shows one People row. A Path the catalogue adds is read on one screen first and runs only once you start it: the Speaking path, labelled experimental, compiled once by hand from the research (P4). It shares the same one People row.
 
 ### Social path
 
@@ -353,6 +353,233 @@ Claim cards, each source verified at Crossref, admitted once their path was wire
 - **thin evidence** (disputed, never cited). The belief that a no to sex often means yes is disputed: people’s own accounts mostly did not fit it, and men who hold it take refusals less seriously. Muehlenhard & Rodgers (1998). Token Resistance to Sex. Psychology of Women Quarterly, 22(3), 443–463. Osman (2003). Predicting Men's Rape Perceptions Based on the Belief That “No” Really Means “Yes”. Journal of Applied Social Psychology, 33(4), 683–692.
 - **thin evidence** (disputed, never cited). The advice to seem uninterested or keep someone guessing is disputed: the results conflict, playing hard to get lowered liking even where it raised wanting, and stated interest raised appeal. Whitchurch, Wilson & Gilbert (2011). “He Loves Me, He Loves Me Not . . . ”. Psychological Science, 22(2), 172–175. Dai, Dong & Jia (2014). When does playing hard to get increase romantic attraction? Journal of Experimental Psychology: General, 143(2), 521–526. Birnbaum et al. (2018). Are you into me? Uncertainty and sexual desire in online encounters and established relationships. Computers in Human Behavior, 85, 372–384. Birnbaum, Zholtack & Reis (2020). No pain, no gain: Perceived partner mate value mediates the desire-inducing effect of being hard to get during online and face-to-face encounters. Journal of Social and Personal Relationships, 37(8-9), 2510–2528. Hazel, Barker & Pronin (2023). Playing Hard-to-Get: A New Look at an Old Strategy. The Journal of Sex Research, 60(3), 368–383.
 - **thin evidence** (disputed, never cited). The claim that a light touch makes someone more receptive is disputed, because its best-known field study was retracted in 2024. Guéguen (2007). Courtship compliance: The effect of touch on women's behavior. Social Influence, 2(2), 81–97. Retracted in 2024.
+
+### Speaking path (Experimental)
+
+Speaking to people and holding their attention, in conversation and with several people listening. Compiled by hand from the research as an experiment: its structure is design judgment, resting on evidence that is strongest for nerves and thinnest for conversation.
+
+How long: Months, step by step, with no fixed end: a first pass at nerves is about eight to sixteen weeks, and the skills take longer.
+
+#### Before it starts
+
+Two questions, yes or no, whose answers are not kept: (1) Do you often avoid social situations or activities? (2) Do social situations often leave you afraid or embarrassed? A yes to either shows the app’s own text first: Avoiding social situations, or feeling afraid or embarrassed in them, is common, and a doctor or a psychologist can help with it: talking treatments for it are well tested. The Speaking path is practice, not treatment, and it can sit beside help. Its Nerves strand is open.
+
+Where it starts: Conversation, one to one and in small groups; Speaking to several people; Both.
+
+#### Strand: Conversation
+
+One to one and in small groups: questions that follow, a short story, a voice in a group.
+
+How a stage of it is reached: Design judgment, the Paths’ floor: a stage is yours once you have done six of its reps within six weeks, across three different reps and two kinds of setting, and its behaviours are shown as its gate asks.
+
+Its behaviours, checked by you right after: A question about what they said; Stayed with their topic; Phone out of sight; A story with a turn and an end.
+
+##### Stage 1 · Questions that follow
+
+Questions about what they said, and staying with their thread.
+
+- Not progress: Counting how they answered.
+- How it moves: moves by the rule
+- Shown when: 2 of its behaviours on reps in 2 separate weeks, in 2 kinds of setting
+- **Ask one follow-up question** (moves the stage · where: one to one, a recurring place, an errand). Attention on: The last thing they said, and one question about it. Drop: A new topic whenever there is a silence. Done when you have asked, however they answer. Your part only: how anyone answers is theirs, never counted.
+- **Return to something they said last time** (moves the stage · where: a recurring place). Attention on: The one thing they told you last time. Drop: Starting from nothing each time you meet. Done when you have asked, however they answer. Your part only: how anyone answers is theirs, never counted.
+- **Their thread, three turns** (moves the stage · where: one to one, a recurring place, a group). Attention on: What they just said, and staying with it. Drop: A new topic the moment there is a pause. Done when you stayed with their topic for three turns, however it went. Your part only: how anyone answers is theirs, never counted.
+
+##### Stage 2 · A short story
+
+A short story with a turn and an end, and asking for theirs.
+
+- Not progress: How it was received.
+- How it moves: moves by the rule
+- Shown when: 2 of its behaviours on reps in 2 separate weeks, in 2 kinds of setting
+- **Tell one short story** (moves the stage · where: a group, a recurring place, one to one). Attention on: Something they have lived too; familiar stories land better. Drop: Saving it for a bigger audience. Done when you have told it. Your part only: how anyone answers is theirs, never counted.
+- **Answer a disclosure with one of your own** (moves the stage · where: one to one, a recurring place). Attention on: What they just shared, and what you have of the same size. Drop: Asking question after question and answering none. Done when you have said it, however they take it. Your part only: how anyone answers is theirs, never counted.
+- **Swap a story** (moves the stage · where: one to one, a recurring place, a group). Attention on: Their story, and one question about it. Drop: Topping their story with a better one. Done when you told yours and asked for theirs. Your part only: how anyone answers is theirs, never counted.
+
+##### Stage 3 · A voice in a group
+
+A question, a full thought and a topic of your own in a group.
+
+- Not progress: Who spoke most.
+- How it moves: moves by the rule
+- **Ask one question in a group** (moves the stage · where: a group, a recurring place). Attention on: The thing you are actually curious about. Drop: Waiting until you have the perfect question. Done when you have asked it. Your part only: how anyone answers is theirs, never counted.
+- **Say one full thought, start to finish** (moves the stage · where: a group, a recurring place). Attention on: Start, middle, end, then stop. Drop: Trailing off before the end. Done when you have said it through. Your part only: how anyone answers is theirs, never counted.
+- **Start a topic** (moves the stage · where: a group, a recurring place). Attention on: Something the group shares. Drop: Waiting for someone else to fill the lull. Done when you have started it. Your part only: how anyone answers is theirs, never counted.
+
+#### Strand: Speaking to several people
+
+A point made to several people: recorded alone first, then a few people you know, then a meeting or a group, then a short talk.
+
+How a stage of it is reached: Design judgment: the floor as on every Path, but in one kind of setting, since this strand’s first stage is recorded alone; from its second stage its gate asks for two kinds.
+
+Its behaviours, checked by you right after, on a recording of yourself the next day or later, and by someone who was there, on your phone: A clear opening; Pauses between ideas; One example; A clean ending.
+
+##### Stage 1 · Recorded alone
+
+A point of about ninety seconds, recorded and checked the next day.
+
+- Not progress: How it sounded the moment you stopped.
+- How it moves: moves by the rule
+- Shown when: 3 of its behaviours on reps in 2 separate weeks, 1 of them checked from outside the moment, in 1 kind of setting
+- **Record one story and listen back once** (moves the stage · where: on your own · recorded of yourself). Attention on: The story you would tell the group. Drop: Recording it again until it is perfect. Done when you have listened back once. Record only yourself; the recording stays on this phone.
+- **Read one page aloud, as if to a room** (moves the stage · where: on your own · recorded of yourself). Attention on: The room you are speaking to. Drop: Mumbling it to get it over with. Done when the page is read. Record only yourself; the recording stays on this phone.
+- **Record one point** (moves the stage · where: on your own · recorded of yourself). Attention on: The one point, and its example. Drop: Reading it from a script. Done when it is recorded. Record only yourself; the recording stays on this phone.
+
+##### Stage 2 · A few people you know
+
+A point, an explanation or a story to two or three people you know.
+
+- Not progress: Their reactions.
+- How it moves: moves by the rule
+- Shown when: 3 of its behaviours on reps in 2 separate weeks, 1 of them checked from outside the moment, in 2 kinds of setting
+- **One point to a few people you know** (moves the stage · where: a recurring place, a group). Attention on: The listeners’ faces, not your notes. Drop: Apologising before you start. Done when you have made the point, however it was received. Your part only: how anyone answers is theirs, never counted.
+- **Explain something you know well** (moves the stage · where: a recurring place, a group, one to one). Attention on: What they would need to follow you. Drop: Saying everything you know. Done when you have explained it and asked your question. Your part only: how anyone answers is theirs, never counted.
+- **A story with a point** (moves the stage · where: a recurring place, a group, one to one). Attention on: The turn in the story. Drop: Explaining the point before the story. Done when you have told it. Your part only: how anyone answers is theirs, never counted.
+
+##### Stage 3 · A meeting or a group
+
+One point in a meeting, a moment for the listeners, a summary for the room.
+
+- Not progress: How many people listened.
+- How it moves: moves by the rule
+- Shown when: 3 of its behaviours on reps in 2 separate weeks, 1 of them checked from outside the moment, in 2 kinds of setting
+- **One point in three sentences** (moves the stage · where: a recurring place, a group). Attention on: The point, said first. Drop: Waiting until you are sure it is perfect. Done when you have said it. Your part only: how anyone answers is theirs, never counted.
+- **A moment for them** (moves the stage · where: a recurring place, a group). Attention on: When to stop and ask them. Drop: Talking straight through. Done when you have given them the moment. Your part only: how anyone answers is theirs, never counted.
+- **Sum it up for the room** (moves the stage · where: a recurring place, a group). Attention on: What was decided, in plain words. Drop: Leaving it to someone else. Done when you have offered the summary. Your part only: how anyone answers is theirs, never counted.
+
+##### Stage 4 · A short talk
+
+A short talk to an audience, with a moment for them, to people you know and then to new people.
+
+- Not progress: Applause or questions.
+- How it moves: moves by the rule
+- **A short talk** (moves the stage · where: a group, a recurring place). Attention on: The listeners, and the moment for them. Drop: Memorising it word for word. Done when you have given the talk. Your part only: how anyone answers is theirs, never counted.
+- **The talk to new people** (moves the stage · where: a group, an errand). Attention on: The new room, and the same point. Drop: Only ever the familiar room. Done when you have given it. Your part only: how anyone answers is theirs, never counted.
+
+#### Strand: Nerves
+
+The speaking situations you would avoid, met step by step, one crutch left out at a time.
+
+How a stage of it is reached: Design judgment: four reps of a step within six weeks, across two different reps, before the next step; exposure works through meeting it again in varied settings.
+
+Its behaviours, checked by you right after: Stayed until it was done; The crutch left out; Compared what happened with what I expected.
+
+##### Stage 1 · A first step
+
+One question where you would stay quiet; eyes on the listeners; speaking without written lines.
+
+- Not progress: Feeling calm.
+- How it moves: moves by the rule
+- Shown when: 2 of its behaviours on reps in 2 separate weeks, in 1 kind of setting
+- **One question where you would stay quiet** (moves the stage · where: a group, a recurring place). Attention on: What you are curious about. Drop: Rehearsing it until the moment passes. Done when you have asked it. Your part only: how anyone answers is theirs, never counted.
+- **Look at them as you speak** (moves the stage · where: a group, a recurring place, one to one). Attention on: One listener at a time. Drop: Eyes on the table or your notes. Done when you have spoken looking at them. Your part only: how anyone answers is theirs, never counted.
+- **Without your written lines** (moves the stage · where: a recurring place, a group). Attention on: The three words, and the people. Drop: Every sentence written out. Done when you have spoken from the card. Your part only: how anyone answers is theirs, never counted.
+
+##### Stage 2 · Earlier and longer
+
+Speaking early in a meeting, letting a pause stand, offering to present.
+
+- Not progress: Feeling calm.
+- How it moves: moves by the rule
+- Shown when: 2 of its behaviours on reps in 2 separate weeks, in 1 kind of setting
+- **Speak in the first ten minutes** (moves the stage · where: a recurring place, a group). Attention on: The first thing you can add. Drop: Waiting for the perfect moment. Done when you have spoken early. Your part only: how anyone answers is theirs, never counted.
+- **Stay in the pause** (moves the stage · where: a group, a recurring place, one to one). Attention on: The listeners, while they take it in. Drop: Apologising or explaining again at once. Done when you let the pause stand. Your part only: how anyone answers is theirs, never counted.
+- **Offer to present** (moves the stage · where: a recurring place, a group). Attention on: What you could share. Drop: Waiting to be asked. Done when you have offered, whatever the answer. Your part only: how anyone answers is theirs, never counted.
+
+##### Stage 3 · The talk you would avoid
+
+The short talk you would most like to avoid.
+
+- Not progress: Feeling calm.
+- How it moves: moves by the rule
+- **The talk you would avoid** (moves the stage · where: a group, a recurring place). Attention on: What you expect, and what happens. Drop: Cancelling at the last moment. Done when you have given it. Your part only: how anyone answers is theirs, never counted.
+
+#### Checked again, and stuck
+
+A stage shown is checked again about 30 and 90 days after it was shown, then about every 180 days; a check missed or not met brings its reps back. After 8 tries at a stage without its behaviours shown, the stage below’s reps come back beside it.
+
+#### How a stage is reached
+
+Design judgment, the Paths’ floor: a stage is yours once you have done six of its reps within six weeks, across three different reps and two kinds of setting, and its behaviours are shown as its gate asks.
+
+- Source: Craske, Treanor, Conway, Zbozinek and Vervliet (2014). Exposure works through new learning, helped by variety across settings, people and reps; the benefit of variety over a fixed order is supported only in part. Evidence: moderate.
+- Source: Kircanski and colleagues; Knowles, Jessup and Olatunji (2012). Exposure in a random or variable order did as well as a graded hierarchy, in small analogue samples. Evidence: thin.
+- Source: Rowe and Craske (1998). Exposure spread across a week held at follow-up where the same exposure massed into one day saw fear return. Evidence: moderate.
+- Source: Sandstrom, Boothby and Cooney (2022). One short conversation a day for a week made people less pessimistic about rejection, lasting at least a week. Evidence: moderate.
+- Source: Lally, van Jaarsveld, Potts and Wardle (2010). Missing one opportunity did not materially affect how a habit formed; the median time to automaticity was sixty-six days. Evidence: moderate.
+
+Kinds of setting:
+
+- a recurring place: A place your week already holds: work, church, a class, a club.
+- an errand: Somewhere new to you, among people you have not met.
+- a group: Three or more people listening or talking together.
+- one to one: Just the two of you.
+- a call or a message: A call: it keeps a day in touch.
+- on your own: On your own: a recording, checked the next day.
+
+#### Counted, and never counted
+
+Reps done, by rep, by setting and by the behaviours checked: yours right after, a recording of yourself the next day, and what someone who was there noticed. A rep is done when you did your part, however anyone answered.
+
+Never counted, stored or asked: anyone’s reaction, yes or no; how many people listened; laughs, replies or applause.
+
+#### Left out, and why
+
+- Power posing: Its effects on hormones and behaviour did not replicate (a disputed card).
+- Positive self-statements: Repeating them left people with low self-esteem feeling worse (a disputed card).
+- Matching to a learning style: The evidence needed to support it is virtually absent (a disputed card).
+- The SMART-goal template: It is not based on theory or consistent with the evidence on goals (a disputed card).
+
+#### Why it is built this way
+
+- **Three strands rather than one ladder: conversation, speaking to several people, and nerves, each moving by its own reps.** Rests on design judgment, 3 cards. The goal splits into tracks with different evidence: nerves (strongest), speaking performance (moderate), conversation (thinnest); fear and how others see the talk move apart. Unsure: No trial has tested this structure, or any other, for this goal. Would change it: A trial comparing structures; or your record showing a strand that never moves while another does.
+- **Questions that follow, then a short story, then a voice in a group.** Rests on expert advice, 3 cards. The order the best-evaluated social skills curricula use, set by experts; Social’s own stages hold the same reps in the same order. Unsure: No trial has tested the order of these skills. Would change it: Your own record: a stage that stalls while the next comes easily.
+- **Two of the strand’s behaviours, checked by you right after, on two separate weeks and in two kinds of setting.** Rests on design judgment, 1 cards. Self-checks of specific behaviours are better than a global impression, though still weak; nobody else in a conversation is asked to check you. Unsure: Every number here is design judgment; conversation has no outside check, by design. Would change it: Your own checks drifting from what you notice later; a better way to see conversation from outside.
+- **Recorded alone first, then a few people you know, then a meeting or a group, then a short talk.** Rests on design judgment, 3 cards. Rising audience and stakes; a recording checked the next day against a set list, before others check, and a friendly first audience. Unsure: The steps are design judgment; evidence for practising speaking comes mostly from classes and small studies. Would change it: Your record: a step that is passed without effort, or one that never comes together.
+- **Three of four behaviours on two separate weeks, one of them confirmed from outside the moment: a recording checked the next day or later, or someone who was there.** Rests on design judgment, 4 cards. How well people think they did tracks how well they did only weakly, and anxious speakers judge themselves more harshly than observers do; an outside view and a benchmark sharpen your own checks. Unsure: The thresholds are design judgment; the behaviours list is not a validated rubric. Would change it: Your checks and outside checks agreeing or not, over time.
+- **Open on a yes to either starting question, or when you choose it: steps toward what you avoid, one crutch left out at a time.** Rests on indirect evidence, 4 cards. Exposure-based treatment reduces the fear of public speaking, and dropping safety behaviours helps anxious people; the two starting questions follow NICE’s guideline on social anxiety. Unsure: The trials are of treatment, mostly against waiting; for everyday nerves the size is not known. Would change it: Your record: what you expected against what happened.
+- **A yes to either question shows the app’s own fixed text first, never written by a model: help exists, and this is practice, not treatment.** Rests on direct evidence, 1 cards. A short screen finds most people with social anxiety, though about half of those it flags do not have it: a yes is an invitation, never a label. Unsure: The two questions are a prompt from a guideline, not a validated scale. Would change it: A validated screen free to use in the app.
+- **A stage shown is checked again about a month and three months later, then about every six months.** Rests on an inference, 2 cards. Unpractised procedural skills lose about half their gain within months, and brief practice keeps them. Unsure: From procedural skills; the right interval for conversation and speaking is not known. Would change it: Your own checks: a stage that holds without them, or one that fades.
+- **Hold attention with a moment for the listeners, not a timer.** Rests on indirect evidence, 3 cards. The ten-to-fifteen-minute attention limit lacks support; recall moments reduced mind wandering in lectures. Unsure: From lectures and recorded videos, not live talks. Would change it: Evidence from live talks.
+- **The Paths’ floor on every strand: six reps within six weeks across three different reps (four across two on Nerves), before a gate can be met.** Rests on design judgment, 1 cards. Spaced, varied practice, as on Social and Partner. Unsure: The numbers are design judgment. Would change it: Your own record over months.
+- **A rep counts only as a real interaction or a recording of yourself; rehearsal prepares it.** Rests on indirect evidence, 3 cards. Skills rehearsed in the room were not used in the real situation, and training effects shrink the further a measure stands from the training room. Unsure: From children and from clinical groups. Would change it: Evidence on adults practising everyday conversation.
+- **Months, with no fixed end: about eight to sixteen weeks for a first pass at nerves, longer for the skills.** Rests on an inference, 2 cards. The treatments studied for the fear of speaking and for social anxiety run over weeks to months, and skills keep building after them. Unsure: No study measured how long practice like this takes outside treatment. Would change it: Your own record of how long each strand takes to show its stages.
+
+#### The evidence
+
+Claim cards, each source verified at Crossref, admitted once their path was wired; the disputed ones are never cited. A card about dating reaches the day’s line only on a date day you declared, and one about a relationship never does.
+
+- **good evidence** (admitted). Psychological interventions for the fear of public speaking reduced that fear, and the gains were larger at follow-up. Ebrahimi et al. (2019). Psychological Interventions for the Fear of Public Speaking: A Meta-Analysis. Frontiers in Psychology, 10, 488.
+- **some evidence** (admitted). Practising before a supportive virtual audience, rather than an unsupportive one, led instructors to rate speakers as more confident in a real presentation afterwards. Kroczek & Mühlberger (2023). Public speaking training in front of a supportive audience in Virtual Reality improves performance in real-life. Scientific Reports, 13(1), 13968.
+- **good evidence** (admitted). Feedback interventions improved performance on average, yet in over a third of cases they reduced performance. Kluger & DeNisi (1996). The effects of feedback interventions on performance: A historical review, a meta-analysis, and a preliminary feedback intervention theory. Psychological Bulletin, 119(2), 254–284.
+- **good evidence** (admitted). Feedback had a medium effect on student learning on average, and its effects varied widely. Wisniewski, Zierer & Hattie (2020). The Power of Feedback Revisited: A Meta-Analysis of Educational Feedback Research. Frontiers in Psychology, 10, 3087.
+- **good evidence** (admitted). Across 33 studies, video feedback in education and training had a positive effect on average. Fukkink, Trienekens & Kramer (2010). Video Feedback in Education and Training: Putting Learning in the Picture. Educational Psychology Review, 23(1), 45–63.
+- **strong evidence** (admitted). Across 22 meta-analyses, how well people judge their abilities correlated only moderately with how well they did. Zell & Krizan (2014). Do People Have Insight Into Their Abilities? A Metasynthesis. Perspectives on Psychological Science, 9(2), 111–125.
+- **some evidence** (admitted). Students’ judgments of their own recorded clinical skills matched an expert’s only moderately at first; seeing a benchmark recording with video feedback may sharpen them. Hawkins et al. (2012). Improving the accuracy of self-assessment of practical clinical skills using video feedback – The importance of including benchmarks. Medical Teacher, 34(4), 279–284.
+- **some evidence** (admitted). In a quasi-experiment, teacher feedback was superior for developing students’ presentation behaviour, and self-assessment had less impact; their thinking and attitude toward presenting developed whatever the feedback source. van Ginkel et al. (2015). The impact of the feedback source on developing oral presentation competence. Studies in Higher Education, 42(9), 1671–1685.
+- **some evidence** (admitted). People with social phobia rated their own public speaking worse than controls did, while observers’ global ratings showed no significant difference between the groups. Rapee & Lim (1992). Discrepancy between self- and observer ratings of performance in social phobics. Journal of Abnormal Psychology, 101(4), 728–731.
+- **good evidence** (admitted). Social skills training had large effects on content-mastery exams and moderate effects on performance-based measures and on community functioning. Kurtz & Mueser (2008). A meta-analysis of controlled research on social skills training for schizophrenia. Journal of Consulting and Clinical Psychology, 76(3), 491–504.
+- **good evidence** (admitted). Procedural skill left unpractised decayed: half of the gain in accuracy was lost in about 6.5 months, and in speed in about 13. Tatel & Ackerman (2025). Procedural skill retention and decay: A meta-analytic review. Psychological Bulletin, 151(6), 696–736.
+- **some evidence** (admitted). Six minutes of practice a month kept nursing students’ resuscitation skills up over a year. Oermann, Kardong-Edgren & Odom-Maryon (2011). Effects of monthly practice on nursing students’ CPR psychomotor skill performance. Resuscitation, 82(4), 447–453.
+- **some evidence** (admitted). The primary data do not support a ten-to-fifteen-minute limit on students’ attention in lectures, though institutions act on it as common knowledge. Bradbury (2016). Attention span during lectures: 8 seconds, 10 minutes, or more? Advances in Physiology Education, 40(4), 509–513.
+- **some evidence** (admitted). In two experiments, interpolating online lectures with memory tests helped students sustain attention to the lecture and discouraged mind wandering. Szpunar, Khan & Schacter (2013). Interpolated memory tests reduce mind wandering and improve learning of online lectures. Proceedings of the National Academy of Sciences, 110(16), 6313–6317.
+- **good evidence** (admitted). Exposure to narratives was positively related to beliefs, attitudes and intentions consistent with the story. Braddock & Dillard (2016). Meta-analytic evidence for the persuasive effect of narratives on beliefs, attitudes, intentions, and behaviors. Communication Monographs, 83(4), 446–467.
+- **some evidence** (admitted). A fluent instructor was rated higher than a disfluent one on preparedness and effectiveness, but the difference in how much was learned was not statistically significant. Carpenter et al. (2013). Appearances can be deceiving: instructor fluency increases perceptions of learning without increasing actual learning. Psychonomic Bulletin & Review, 20(6), 1350–1356.
+- **good evidence** (admitted). The Mini-SPIN, a brief screening assessment for generalised social anxiety disorder, at a score of 6 or more had a sensitivity of 88.7% and a specificity of 90%. Connor et al. (2001). Mini-SPIN: A brief screening assessment for generalized social anxiety disorder. Depression and Anxiety, 14(2), 137–140.
+- **some evidence** (admitted). Having a conversation made expectations about a future conversation more optimistic, but within 1 or 2 weeks they reverted to a more pessimistic baseline. Atir & Epley (2026). Fleeting generalization: How unstable belief updating keeps people overly pessimistic about talking to strangers. Journal of Personality and Social Psychology, 131(3), 422–443.
+- **good evidence** (admitted). Perceived listening was related to work outcomes, though 75% of the literature relied on self-reports. Kluger et al. (2023). A Meta-analytic Systematic Review and Theory of the Effects of Perceived Listening on Work Outcomes. Journal of Business and Psychology, 39(2), 295–344.
+- **good evidence** (admitted). Comparing cases led to greater learning outcomes than other ways of studying them. Alfieri, Nokes-Malach & Schunn (2013). Learning Through Case Comparisons: A Meta-Analytic Review. Educational Psychologist, 48(2), 87–113.
+- **some evidence** (admitted). Behavioural skills training taught children to perform gun-safety skills in a supervised role play, but the skills were not used when the children were assessed outside it. Himle et al. (2004). An Evaluation of Two Procedures for Training Skills to Prevent Gun Play in Children. Pediatrics, 113(1), 70–77.
+- **good evidence** (admitted). For social anxiety, individual cognitive-behavioural therapy had the largest effect of the psychological treatments; exposure with social-skills training, and self-help with support, also did better than waiting. Mayo-Wilson et al. (2014). Psychological and pharmacological interventions for social anxiety disorder in adults: a systematic review and network meta-analysis. The Lancet Psychiatry, 1(5), 368–376.
+- **some evidence** (admitted). Dropping the small habits used to feel safe in conversation, and turning attention outward, made people come across better and feel better in experiments on social anxiety. McManus, Sacadura & Clark (2008). Why social anxiety persists: an experimental investigation of the role of safety behaviours as a maintaining factor. Journal of Behavior Therapy and Experimental Psychiatry, 39(2), 147–161. Taylor & Alden (2011). To see ourselves as others see us: an experimental integration of the intra and interpersonal consequences of self-protection in social anxiety disorder. Journal of Abnormal Psychology, 120(1), 129–141. Meulders et al. (2016). The use of safety-seeking behavior in exposure-based treatments for fear and anxiety: benefit or burden? A meta-analytic review. Clinical Psychology Review, 45, 144–156.
+- **some evidence** (admitted). After a conversation, people underestimate how much the other person liked them and enjoyed their company. Boothby, Cooney, Sandstrom & Clark (2018). The liking gap in conversations: do people like us more than we think? Psychological Science, 29(11), 1742–1756.
+- **some evidence** (admitted). People expect a conversation with a stranger to go worse than it does, and those fears go with avoiding it. Sandstrom & Boothby (2021). Why do people avoid talking to strangers? A mini meta-analysis of predicted fears and actual experiences talking to a stranger. Self and Identity, 20(1), 47–71.
+- **good evidence** (admitted). Practising social skills changes behaviour where watching others does not: skills training added to exposure beat exposure alone, and training effects on behaviour held where knowledge faded. Beidel et al. (2014). The impact of social skills training for social anxiety disorder: a randomized controlled trial. Journal of Anxiety Disorders, 28(8), 908–918. Taylor, Russ-Eft & Chan (2005). A meta-analytic review of behavior modeling training. Journal of Applied Psychology, 90(4), 692–709.
+- **some evidence** (admitted). Listeners enjoyed hearing stories about experiences they had shared more than novel ones, though both speakers and listeners predicted the opposite. Cooney, Gilbert & Wilson (2017). The novelty penalty: why do people like talking about new experiences but hearing about old ones? Psychological Science, 28(3), 380–394.
+- **thin evidence** (disputed, never cited). The claim that expansive “power poses” change hormones and confident behaviour is disputed: the hormone effects did not replicate, and what remains is small and comes from not slumping. Ranehill et al. (2015). Assessing the robustness of power posing: no effect on hormones and risk tolerance in a large sample of men and women. Psychological Science, 26(5), 653–656. Elkjær et al. (2020). Expansive and contractive postures and movement: a systematic review and meta-analysis of the effect of motor displays on affective and behavioral responses. Perspectives on Psychological Science, 17(1), 276–304. Körner, Röseler & Schütz (2022). Dominance and prestige: meta-analytic review of experimentally induced body position effects on behavioral, self-report, and physiological dependent variables. Psychological Bulletin, 148(1–2), 67–85.
+- **thin evidence** (disputed, never cited). The advice to repeat positive self-statements is disputed: in two experiments people with low self-esteem who repeated one felt worse, and the finding stands unreplicated. Wood, Perunovic & Lee (2009). Positive self-statements: power for some, peril for others. Psychological Science, 20(7), 860–866.
+- **some evidence** (disputed, never cited). The advice to tailor teaching to a learning style is disputed: the review found virtually no evidence for the pattern that would support it. Pashler et al. (2008). Learning Styles. Psychological Science in the Public Interest, 9(3), 105–119.
+- **thin evidence** (disputed, never cited). The SMART acronym is disputed: a review found it is not based on scientific theory and not consistent with empirical evidence. Swann et al. (2022). The (over)use of SMART goals for physical activity promotion: A narrative review and critique. Health Psychology Review, 17(2), 211–226.
 
 ## Learned tags and their starting beliefs
 
@@ -1420,7 +1647,7 @@ Somewhere ordinary, a question and a follow-up, with no aim beyond the conversat
 
 ### Ask one follow-up question
 
-_Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
+_Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage · Speaking path, Conversation, stage 1, moves the stage_
 
 In any conversation today, ask about the thing the other person just said: one follow-up, never a barrage, and something of your own in turn.
 
@@ -1450,7 +1677,7 @@ One honest line about how it went, then this beneath it: they probably liked you
 
 ### Ask one question in a group
 
-_rung 1 of the participation ladder · Social path, stage 4, moves the stage_
+_rung 1 of the participation ladder · Social path, stage 4, moves the stage · Speaking path, Conversation, stage 3, moves the stage_
 
 In the next group you are in, ask one real question and listen to the whole answer. Audience to participant in one move.
 
@@ -1465,7 +1692,7 @@ In the next group you are in, ask one real question and listen to the whole answ
 
 ### Say one full thought, start to finish
 
-_rung 2 of the participation ladder · Social path, stage 4, moves the stage_
+_rung 2 of the participation ladder · Social path, stage 4, moves the stage · Speaking path, Conversation, stage 3, moves the stage_
 
 One complete thought in a group, without trailing off or handing it away. Counted, never rated.
 
@@ -1480,7 +1707,7 @@ One complete thought in a group, without trailing off or handing it away. Counte
 
 ### Tell one short story
 
-_rung 3 of the participation ladder · Social path, stage 4, moves the stage_
+_rung 3 of the participation ladder · Social path, stage 4, moves the stage · Speaking path, Conversation, stage 2, moves the stage_
 
 One story under a minute, with a beginning and an end, to people who are there. The rep is the telling, not how it lands.
 
@@ -1495,7 +1722,7 @@ One story under a minute, with a beginning and an end, to people who are there. 
 
 ### Start a topic
 
-_rung 4 of the participation ladder · Social path, stage 4, moves the stage_
+_rung 4 of the participation ladder · Social path, stage 4, moves the stage · Speaking path, Conversation, stage 3, moves the stage_
 
 When the conversation lulls, bring up something new rather than waiting for someone else to. The rung above answering.
 
@@ -1510,7 +1737,7 @@ When the conversation lulls, bring up something new rather than waiting for some
 
 ### Record one story and listen back once
 
-_Social path, stage 4, moves no stage_
+_Social path, stage 4, moves no stage · Speaking path, Speaking to several people, stage 1, moves the stage_
 
 Sixty seconds into the phone, one story you might tell this week; listen once, no notes. A rep that works with nobody home.
 
@@ -1524,7 +1751,7 @@ Sixty seconds into the phone, one story you might tell this week; listen once, n
 
 ### Read one page aloud, as if to a room
 
-_Social path, stage 4, moves no stage_
+_Social path, stage 4, moves no stage · Speaking path, Speaking to several people, stage 1, moves the stage_
 
 One page of anything, out loud, with the pauses and the emphasis you would use for a room. Voice practice with nobody present.
 
@@ -1553,7 +1780,7 @@ In the next conversation, notice three things about them: what they said, how th
 
 ### Answer a disclosure with one of your own
 
-_Offered through its path’s row alone, never by the day’s draw · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 3, moves the stage · Partner path, stage 2, moves the stage · Speaking path, Conversation, stage 2, moves the stage_
 
 When someone tells you something real about themselves, tell them something of about the same weight about you. Turn for turn, not a speech.
 
@@ -1582,7 +1809,7 @@ In a conversation with someone you would like to know better, tell one short, tr
 
 ### Return to something they said last time
 
-_Offered through its path’s row alone, never by the day’s draw · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage_
+_Offered through its path’s row alone, never by the day’s draw · Social path, stage 2, moves the stage · Partner path, stage 2, moves the stage · Speaking path, Conversation, stage 1, moves the stage_
 
 With someone you see again, bring up one thing they told you the last time: how it went, or what came of it.
 
@@ -2406,6 +2633,244 @@ Once, kindly and without a deadline, talk with your partner about intimacy: what
 - Should move: Mood ↑ (this evening), Loneliness ↓ (this evening)
 - Starting belief: Mood ↑ by about a tenth of a step over the this evening · Mallory 2022: quality of sexual communication went with satisfaction; correlational, a tenth of a step.
 - When: evening
+
+## Speaking
+
+### Their thread, three turns
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Conversation, stage 1, moves the stage_
+
+Phone out of sight, stay with what they are talking about for three turns before you change the subject.
+
+- Source: Kluger and colleagues (2023). 664 effects: feeling listened to went with better outcomes, though most of the evidence is self-report. Evidence: thin.
+- Takes: 3 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, short, connection · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+- Counts toward: conversations
+
+### Swap a story
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Conversation, stage 2, moves the stage_
+
+After a short story of your own, ask for one of theirs, and follow it with a question.
+
+- Source: Atir and Epley (2026). Three experiments: a conversation made people more optimistic about the next, but it faded within a week or two. Evidence: thin.
+- Takes: 5 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, connection · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+- Counts toward: conversations
+
+### Record one point
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 1, moves the stage_
+
+Record yourself making one point in about ninety seconds: an opening, one idea, one example, a clean ending. Check it tomorrow.
+
+- Source: Fukkink, Trienekens and Kramer (2010). 33 studies: video feedback on recorded practice, against a set list of what to watch for, improved interaction skills. Evidence: moderate.
+- Takes: 5 min · effort to start: medium · cost to assign: medium · needs: kit, quiet
+- Tags: short, mastery · intensity medium
+- Should move: Confidence ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### One point to a few people you know
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 2, moves the stage_
+
+Make one point to two or three people you know: an opening, one idea, one example, a clean ending.
+
+- Source: van Ginkel and colleagues (2015). 144 students: a teacher’s feedback improved presentation behaviour more than peers’ feedback or self-assessment. Evidence: thin.
+- Takes: 5 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Explain something you know well
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 2, moves the stage_
+
+Explain something you know well to two or three people, with one example and a question for them at the end.
+
+- Source: Szpunar, Khan and Schacter (2013). Two experiments: recall tests between lecture segments reduced mind wandering and improved learning. Evidence: thin.
+- Takes: 5 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### A story with a point
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 2, moves the stage_
+
+Tell two or three people a short story that makes one point, with a turn and an ending.
+
+- Source: Braddock and Dillard (2016). 37 to 40 studies: stories changed beliefs, attitudes and intentions a little. Evidence: moderate.
+- Takes: 4 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### One point in three sentences
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 3, moves the stage_
+
+In a meeting or a group, make one point in three sentences: the point, one example, why it matters.
+
+- Source: Carpenter and colleagues (2013). A fluent lecturer was rated higher, yet students learned no more than from a halting one. Evidence: thin.
+- Takes: 2 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### A moment for them
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 3, moves the stage_
+
+In anything you say for more than three minutes, give the listeners one moment to answer or recall something.
+
+- Source: Szpunar, Khan and Schacter (2013). Two experiments: recall tests between lecture segments reduced mind wandering and improved learning. Evidence: thin.
+- Takes: 5 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Sum it up for the room
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 3, moves the stage_
+
+Near the end of a meeting or a discussion, offer a two-sentence summary of where it got to.
+
+- Source: Carpenter and colleagues (2013). A fluent lecturer was rated higher, yet students learned no more than from a halting one. Evidence: thin.
+- Takes: 2 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### A short talk
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 4, moves the stage_
+
+Give a talk of three to five minutes to an audience, with one moment for them, and hand your phone to someone who was there.
+
+- Source: van Ginkel and colleagues (2015). 144 students: a teacher’s feedback improved presentation behaviour more than peers’ feedback or self-assessment. Evidence: thin.
+- Takes: 15 min · effort to start: high · cost to assign: high · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### The talk to new people
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Speaking to several people, stage 4, moves the stage_
+
+Give your short talk to people you have not spoken to before, checked the same way.
+
+- Source: Alfieri, Nokes-Malach and Schunn (2013). 57 experiments: comparing two cases side by side helped people use the principle in new problems. Evidence: moderate.
+- Takes: 15 min · effort to start: high · cost to assign: high · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### One question where you would stay quiet
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 1, moves the stage_
+
+In a group or a meeting where you would usually stay quiet, ask one question.
+
+- Source: Ebrahimi and colleagues (2019). 30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up. Evidence: moderate.
+- Takes: 1 min · effort to start: low · cost to assign: low · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Look at them as you speak
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 1, moves the stage_
+
+The next time you speak to a few people, look at the listeners rather than down or away.
+
+- Source: Clark and Wells; Rowa and colleagues (2015). Dropping safety behaviours and turning attention outward helped anxious people come across better, in experiments on social anxiety. Evidence: thin.
+- Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Without your written lines
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 1, moves the stage_
+
+Speak in a meeting or a group without your written lines, with a card of three words at most.
+
+- Source: Clark and Wells; Rowa and colleagues (2015). Dropping safety behaviours and turning attention outward helped anxious people come across better, in experiments on social anxiety. Evidence: thin.
+- Takes: 2 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Speak in the first ten minutes
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 2, moves the stage_
+
+In a meeting, say something in the first ten minutes rather than waiting.
+
+- Source: Ebrahimi and colleagues (2019). 30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up. Evidence: moderate.
+- Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Stay in the pause
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 2, moves the stage_
+
+After you have spoken, let the pause sit without filling it or taking it back.
+
+- Source: Clark and Wells; Rowa and colleagues (2015). Dropping safety behaviours and turning attention outward helped anxious people come across better, in experiments on social anxiety. Evidence: thin.
+- Takes: 1 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### Offer to present
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 2, moves the stage_
+
+Offer to present something short to a group: a summary, an update or a story.
+
+- Source: Ebrahimi and colleagues (2019). 30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up. Evidence: moderate.
+- Takes: 5 min · effort to start: medium · cost to assign: medium · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
+
+### The talk you would avoid
+
+_Offered through its path’s row alone, never by the day’s draw · Speaking path, Nerves, stage 3, moves the stage_
+
+Give the short talk you would most like to avoid, one you have prepared, to people you know.
+
+- Source: Ebrahimi and colleagues (2019). 30 randomised trials: psychological treatments, mostly exposure and cognitive-behavioural, reduced the fear of public speaking, the gains holding at follow-up. Evidence: moderate.
+- Takes: 15 min · effort to start: high · cost to assign: high · needs: another person
+- Tags: with people, short, mastery · intensity medium
+- Should move: Confidence ↑ (next block), Social energy ↑ (next block)
+- Starting belief: Confidence ↑ by about no change, until the record says of a step over the next block · A Speaking path rep, offered through the Path alone and never by the day’s draw: no starting belief..
+- When: morning, afternoon, evening
 
 ## Proposed trades
 

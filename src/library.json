@@ -4525,5 +4525,1299 @@
     "app": "Excluded: no rep involves touch.",
     "reviewed": "2026-09-25",
     "status": "disputed"
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "speaking-fear-treatments",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "size": "medium",
+    "claim": "Psychological interventions for the fear of public speaking reduced that fear, and the gains were larger at follow-up.",
+    "effect": "g = 0.74 (95% CI 0.61 to 0.87) across 30 randomised trials with 1,355 people",
+    "population": "people with a fear of public speaking, in randomised trials",
+    "sources": [
+      {
+        "cite": "Ebrahimi et al. (2019). Psychological Interventions for the Fear of Public Speaking: A Meta-Analysis. Frontiers in Psychology, 10, 488.",
+        "doi": "10.3389/fpsyg.2019.00488"
+      }
+    ],
+    "caveats": "Most trials were of exposure and cognitive-behavioural methods, against waiting lists, which makes effects look larger; fear and how others rate the speech move apart; dose was never analysed.",
+    "app": "The Speaking path’s Nerves strand: speaking situations met step by step, in varied order.",
+    "design": "meta",
+    "origin": "direct",
+    "k": 30,
+    "n": 1355,
+    "heterogeneity": "moderate",
+    "comparator": "waitlist",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.3389/fpsyg.2019.00488",
+        "via": "europepmc",
+        "at": 2040,
+        "length": 158,
+        "hash": "de272d0bbb4976b3"
+      },
+      {
+        "field": "effect",
+        "source": "10.3389/fpsyg.2019.00488",
+        "via": "europepmc",
+        "at": 1647,
+        "length": 153,
+        "hash": "97e8d0971e00e18a"
+      },
+      {
+        "field": "claim",
+        "source": "10.3389/fpsyg.2019.00488",
+        "via": "europepmc",
+        "at": 2589,
+        "length": 194,
+        "hash": "0a66b60e343152b4"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give g = 0.74 (CI 0.61 to 0.87) across 30 RCTs with 1,355 participants, and a larger follow-up effect, g = 1.11.",
+      "at": "2026-11-06",
+      "read": "51eac537570a22f0"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "supportive-audience-confidence",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "Practising before a supportive virtual audience, rather than an unsupportive one, led instructors to rate speakers as more confident in a real presentation afterwards.",
+    "effect": "73 participants, one virtual practice session",
+    "population": "participants practising a presentation in virtual reality",
+    "sources": [
+      {
+        "cite": "Kroczek & Mühlberger (2023). Public speaking training in front of a supportive audience in Virtual Reality improves performance in real-life. Scientific Reports, 13(1), 13968.",
+        "doi": "10.1038/s41598-023-41155-9"
+      }
+    ],
+    "caveats": "One study; the instructors were blind to the condition, by the authors’ account; confidence was rated, and nothing else about the talk is reported.",
+    "app": "A friendly first audience for the Speaking strand’s early talks.",
+    "design": "rct",
+    "origin": "direct",
+    "k": 1,
+    "n": 73,
+    "comparator": "active",
+    "outcomeDistance": "realLife",
+    "singleLab": true,
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1038/s41598-023-41155-9",
+        "via": "europepmc",
+        "at": 997,
+        "length": 199,
+        "hash": "4b3832aeaac0cd37"
+      },
+      {
+        "field": "effect",
+        "source": "10.1038/s41598-023-41155-9",
+        "via": "europepmc",
+        "at": 223,
+        "length": 196,
+        "hash": "deb90d781cfb60de"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages state supportive-audience practice gave instructors a more positive rating of speaker confidence in real-life speaking, and that 73 participants did a virtual reality practice session.",
+      "at": "2026-11-06",
+      "read": "cfda2f14efa7ee83"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "feedback-interventions",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "claim": "Feedback interventions improved performance on average, yet in over a third of cases they reduced performance.",
+    "effect": "d = 0.41 across 607 effect sizes and 23,663 observations, with over a third of the effects negative",
+    "population": "performance in the studies pooled",
+    "sources": [
+      {
+        "cite": "Kluger & DeNisi (1996). The effects of feedback interventions on performance: A historical review, a meta-analysis, and a preliminary feedback intervention theory. Psychological Bulletin, 119(2), 254–284.",
+        "doi": "10.1037/0033-2909.119.2.254"
+      }
+    ],
+    "caveats": "The authors’ explanation is that feedback which draws attention toward the self rather than the task does harm; school, work and laboratory tasks, old studies, not social skills.",
+    "app": "The rep’s sheet names one thing done and one thing to try, about the task, never about you.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "school, work and laboratory tasks, not conversation or speaking",
+    "n": 23663,
+    "heterogeneity": "high",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1037/0033-2909.119.2.254",
+        "via": "openalex",
+        "at": 127,
+        "length": 167,
+        "hash": "eb791b65213859c4"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passage gives d = .41 on average with over a third of feedback interventions decreasing performance, from 607 effect sizes and 23,663 observations.",
+      "at": "2026-11-06",
+      "read": "5d5c9bdf34d49081"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "feedback-information",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "claim": "Feedback had a medium effect on student learning on average, and its effects varied widely.",
+    "effect": "d = 0.48 across 435 studies and 994 effect sizes",
+    "population": "students, in educational research",
+    "sources": [
+      {
+        "cite": "Wisniewski, Zierer & Hattie (2020). The Power of Feedback Revisited: A Meta-Analysis of Educational Feedback Research. Frontiers in Psychology, 10, 3087.",
+        "doi": "10.3389/fpsyg.2019.03087"
+      }
+    ],
+    "caveats": "The authors found more informative feedback did more; education, not social skills.",
+    "app": "Checks name specific behaviours, so what the feedback says is information.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "students learning school material",
+    "k": 435,
+    "heterogeneity": "high",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.3389/fpsyg.2019.03087",
+        "via": "europepmc",
+        "at": 0,
+        "length": 298,
+        "hash": "fcfbff0a6fdc81c8"
+      },
+      {
+        "field": "claim",
+        "source": "10.3389/fpsyg.2019.03087",
+        "via": "europepmc",
+        "at": 299,
+        "length": 246,
+        "hash": "596b893356aa8d49"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give d = 0.48 on student learning from 435 studies (k = 994) and report significant heterogeneity, so varied effects is fair paraphrase.",
+      "at": "2026-11-06",
+      "read": "9f993fd2ce2becbc"
+    },
+    "size": "medium"
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "video-feedback-form",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "untested",
+    "claim": "Across 33 studies, video feedback in education and training had a positive effect on average.",
+    "effect": "d = 0.40 across 33 studies",
+    "population": "learners in education and training",
+    "sources": [
+      {
+        "cite": "Fukkink, Trienekens & Kramer (2010). Video Feedback in Education and Training: Putting Learning in the Picture. Educational Psychology Review, 23(1), 45–63.",
+        "doi": "10.1007/s10648-010-9144-5"
+      }
+    ],
+    "caveats": "The studies were mostly of interaction skills, with a trainer and a set list of what to watch for; not public speaking.",
+    "app": "The Speaking strand’s recording, checked the next day against its four behaviours.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "professionals’ interaction skills, with a trainer giving the feedback",
+    "k": 33,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1007/s10648-010-9144-5",
+        "via": "openalex",
+        "at": 180,
+        "length": 182,
+        "hash": "cbdb44b24da81728"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passage gives a 0.40 SD aggregate effect from 33 studies and 1,058 people; the video feedback and education scope is carried by the citation title.",
+      "at": "2026-11-06",
+      "read": "d6aff2465b402467"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "self-views-and-performance",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "A",
+    "replication": "replicated",
+    "claim": "Across 22 meta-analyses, how well people judge their abilities correlated only moderately with how well they did.",
+    "effect": "r = .29 across 22 meta-analyses, ranging from .09 to .63",
+    "population": "people judging their own abilities, across the abilities studied",
+    "sources": [
+      {
+        "cite": "Zell & Krizan (2014). Do People Have Insight Into Their Abilities? A Metasynthesis. Perspectives on Psychological Science, 9(2), 111–125.",
+        "doi": "10.1177/1745691613518075"
+      }
+    ],
+    "caveats": "Higher for specific, familiar and objective tasks; lower for vague ones; social skills are not among the abilities listed.",
+    "app": "Self-checks calibrate and never gate a stage alone; an outside view confirms.",
+    "design": "meta",
+    "origin": "direct",
+    "k": 22,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1177/1745691613518075",
+        "via": "europepmc",
+        "at": 148,
+        "length": 411,
+        "hash": "605caa86d7bf1898"
+      },
+      {
+        "field": "effect",
+        "source": "10.1177/1745691613518075",
+        "via": "europepmc",
+        "at": 560,
+        "length": 199,
+        "hash": "e76d3367d225c203"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give mean r = .29, called moderate, between ability self-evaluations and objective performance across 22 meta-analyses, with individual effects from .09 to .63.",
+      "at": "2026-11-06",
+      "read": "29867dc6663f9c22"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "prediction-and-benchmark",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "Students’ judgments of their own recorded clinical skills matched an expert’s only moderately at first; seeing a benchmark recording with video feedback may sharpen them.",
+    "effect": "31 students; their self-assessments correlated r = 0.48 with an expert’s before the feedback",
+    "population": "final-year medical students",
+    "sources": [
+      {
+        "cite": "Hawkins et al. (2012). Improving the accuracy of self-assessment of practical clinical skills using video feedback – The importance of including benchmarks. Medical Teacher, 34(4), 279–284.",
+        "doi": "10.3109/0142159X.2012.658897"
+      }
+    ],
+    "caveats": "One small study of clinical skills; the size of the improvement is from one group.",
+    "app": "Before listening to a recording, you write what you think went wrong, then check it.",
+    "design": "quasi",
+    "origin": "indirect",
+    "mismatch": "medical students’ practical skills",
+    "k": 1,
+    "n": 31,
+    "outcomeDistance": "observed",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.3109/0142159X.2012.658897",
+        "via": "europepmc",
+        "at": 949,
+        "length": 63,
+        "hash": "803ae30f80dca7d7"
+      },
+      {
+        "field": "effect",
+        "source": "10.3109/0142159X.2012.658897",
+        "via": "europepmc",
+        "at": 1013,
+        "length": 313,
+        "hash": "50aee1ce333d48b3"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2026-11-06",
+      "verdict": "supports",
+      "why": "n = 31 final-year medical students, moderate r = 0.48 before feedback, and hedged 'may improve accuracy' with a video benchmark match; 'clinical skills' is only implied.",
+      "at": "2026-11-06",
+      "read": "a4bf388731e41f98"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "outside-feedback-presentations",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "In a quasi-experiment, teacher feedback was superior for developing students’ presentation behaviour, and self-assessment had less impact; their thinking and attitude toward presenting developed whatever the feedback source.",
+    "effect": "144 first-year undergraduate students",
+    "population": "first-year undergraduate students",
+    "sources": [
+      {
+        "cite": "van Ginkel et al. (2015). The impact of the feedback source on developing oral presentation competence. Studies in Higher Education, 42(9), 1671–1685.",
+        "doi": "10.1080/03075079.2015.1117064"
+      }
+    ],
+    "caveats": "One quasi-experiment in classes; the teachers were trained raters.",
+    "app": "Someone who was there checks the same behaviours you do.",
+    "design": "quasi",
+    "origin": "direct",
+    "k": 1,
+    "n": 144,
+    "outcomeDistance": "observed",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1080/03075079.2015.1117064",
+        "via": "openalex",
+        "at": 244,
+        "length": 254,
+        "hash": "de7fd9a45c25460f"
+      },
+      {
+        "field": "claim",
+        "source": "10.1080/03075079.2015.1117064",
+        "via": "openalex",
+        "at": 611,
+        "length": 226,
+        "hash": "991f134ea36aaf7c"
+      },
+      {
+        "field": "claim",
+        "source": "10.1080/03075079.2015.1117064",
+        "via": "openalex",
+        "at": 838,
+        "length": 145,
+        "hash": "7606cc822c756f36"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages state teacher feedback was superior for presentation behaviour, self-assessment had less impact, and cognition and attitude developed irrespective of source, among 144 first-year undergraduates.",
+      "at": "2026-11-06",
+      "read": "6b65c2755551e48d"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "anxious-speakers-self-ratings",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "replicated",
+    "claim": "People with social phobia rated their own public speaking worse than controls did, while observers’ global ratings showed no significant difference between the groups.",
+    "effect": "Twenty-eight people with social phobia and 33 without gave a speech, rated by themselves and their audience",
+    "population": "people meeting criteria for social phobia, and controls",
+    "sources": [
+      {
+        "cite": "Rapee & Lim (1992). Discrepancy between self- and observer ratings of performance in social phobics. Journal of Abnormal Psychology, 101(4), 728–731.",
+        "doi": "10.1037/0021-843X.101.4.728"
+      }
+    ],
+    "caveats": "A small, old study, excluding comorbid affective disorder; the pattern has been found again since.",
+    "app": "A low self-check may be nerves rather than skill: an outside view settles it.",
+    "design": "observational",
+    "origin": "direct",
+    "k": 1,
+    "n": 61,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1037/0021-843X.101.4.728",
+        "via": "pubmed",
+        "at": 0,
+        "length": 304,
+        "hash": "ee4be9d47f2faf37"
+      },
+      {
+        "field": "claim",
+        "source": "10.1037/0021-843X.101.4.728",
+        "via": "pubmed",
+        "at": 650,
+        "length": 203,
+        "hash": "1b0d77579d9fbadc"
+      },
+      {
+        "field": "claim",
+        "source": "10.1037/0021-843X.101.4.728",
+        "via": "pubmed",
+        "at": 515,
+        "length": 134,
+        "hash": "cc23810b406432dc"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give 28 people with social phobia and 33 controls giving a speech, worse self-ratings in social phobia, and no significant group difference in observers' global ratings.",
+      "at": "2026-11-06",
+      "read": "5c61348834ed5f36"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "training-to-life-gradient",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "mixed",
+    "size": "large",
+    "claim": "Social skills training had large effects on content-mastery exams and moderate effects on performance-based measures and on community functioning.",
+    "effect": "d = 1.20 on content-mastery exams, 0.52 on performance-based measures, moderate on community functioning, across 22 studies with 1,521 clients",
+    "population": "the clients in the studies pooled",
+    "sources": [
+      {
+        "cite": "Kurtz & Mueser (2008). A meta-analysis of controlled research on social skills training for schizophrenia. Journal of Consulting and Clinical Psychology, 76(3), 491–504.",
+        "doi": "10.1037/0022-006X.76.3.491"
+      }
+    ],
+    "caveats": "People with schizophrenia, by the review’s title; a later, better-controlled analysis found smaller effects, near none against active controls.",
+    "app": "Stages are shown out in real settings, never in rehearsal alone.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "people with schizophrenia in treatment",
+    "k": 22,
+    "n": 1521,
+    "heterogeneity": "moderate",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1037/0022-006X.76.3.491",
+        "via": "europepmc",
+        "at": 108,
+        "length": 392,
+        "hash": "ab37c3d0583d802d"
+      },
+      {
+        "field": "claim",
+        "source": "10.1037/0022-006X.76.3.491",
+        "via": "europepmc",
+        "at": 501,
+        "length": 371,
+        "hash": "14cdb718d7955a36"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give d = 1.20 for content-mastery exams, 0.52 for performance-based measures and 0.52 for community functioning, across 22 studies with 1,521 clients.",
+      "at": "2026-11-06",
+      "read": "a0d6ba7ba1fdf141"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "skill-decay",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "untested",
+    "claim": "Procedural skill left unpractised decayed: half of the gain in accuracy was lost in about 6.5 months, and in speed in about 13.",
+    "effect": "half-loss times of about 6.5 months for accuracy and 13 months for speed, across 1,344 effect sizes from 457 reports",
+    "population": "learners of procedural skills, in the reports pooled",
+    "sources": [
+      {
+        "cite": "Tatel & Ackerman (2025). Procedural skill retention and decay: A meta-analytic review. Psychological Bulletin, 151(6), 696–736.",
+        "doi": "10.1037/bul0000481"
+      }
+    ],
+    "caveats": "Procedural skills such as surgical or cognitive tasks, not conversation; decay differs by skill.",
+    "app": "A stage shown is checked again about a month and three months later.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "procedural skills such as surgical or cognitive tasks",
+    "n": 1344,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1037/bul0000481",
+        "via": "europepmc",
+        "at": 546,
+        "length": 69,
+        "hash": "96d41d91c416d309"
+      },
+      {
+        "field": "effect",
+        "source": "10.1037/bul0000481",
+        "via": "europepmc",
+        "at": 982,
+        "length": 182,
+        "hash": "fbba3b403e69153b"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages state half of skill gains were lost with lack of use, after about 6.5 months for accuracy and 13 for speed; 1,344 effect sizes from 457 reports.",
+      "at": "2026-11-06",
+      "read": "145b41aa9de6273b"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "brief-boosters",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "Six minutes of practice a month kept nursing students’ resuscitation skills up over a year.",
+    "effect": "606 students, six minutes of practice a month for 12 months",
+    "population": "nursing students",
+    "sources": [
+      {
+        "cite": "Oermann, Kardong-Edgren & Odom-Maryon (2011). Effects of monthly practice on nursing students’ CPR psychomotor skill performance. Resuscitation, 82(4), 447–453.",
+        "doi": "10.1016/j.resuscitation.2010.11.022"
+      }
+    ],
+    "caveats": "A motor skill, not conversation; one study.",
+    "app": "Maintenance after a stage is shown needs only a short check now and then.",
+    "design": "rct",
+    "origin": "indirect",
+    "mismatch": "nursing students’ CPR skills",
+    "k": 1,
+    "n": 606,
+    "comparator": "usual",
+    "outcomeDistance": "observed",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1016/j.resuscitation.2010.11.022",
+        "via": "europepmc",
+        "at": 243,
+        "length": 296,
+        "hash": "8d6cac807125535d"
+      },
+      {
+        "field": "claim",
+        "source": "10.1016/j.resuscitation.2010.11.022",
+        "via": "europepmc",
+        "at": 1377,
+        "length": 108,
+        "hash": "f86f188fbbc7502a"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2026-11-06",
+      "verdict": "supports",
+      "why": "n = 606 nursing students, 6 minutes of monthly practice, random assignment, and skills maintained or improved over 12 months all match the passages.",
+      "at": "2026-11-06",
+      "read": "97c7d2afb932ad83"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "attention-span-claims",
+    "domain": "attention",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "The primary data do not support a ten-to-fifteen-minute limit on students’ attention in lectures, though institutions act on it as common knowledge.",
+    "effect": "the 10 to 15 minute limit, reviewed against the primary data",
+    "population": "students in lectures",
+    "sources": [
+      {
+        "cite": "Bradbury (2016). Attention span during lectures: 8 seconds, 10 minutes, or more? Advances in Physiology Education, 40(4), 509–513.",
+        "doi": "10.1152/advan.00109.2016"
+      }
+    ],
+    "caveats": "A review, not a trial: the author found few primary studies, many with flawed methods; attention does wander more as time goes on.",
+    "app": "Talks hold attention with a moment for the listeners, not with a timer.",
+    "design": "expert",
+    "origin": "direct",
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1152/advan.00109.2016",
+        "via": "europepmc",
+        "at": 729,
+        "length": 95,
+        "hash": "1ed6e39142e7df2f"
+      },
+      {
+        "field": "effect",
+        "source": "10.1152/advan.00109.2016",
+        "via": "europepmc",
+        "at": 130,
+        "length": 198,
+        "hash": "2ad099b62ad47ee6"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages state the available primary data do not support a 10- to 15-minute attention limit, and that several institutions shortened lectures on that common-knowledge basis.",
+      "at": "2026-11-06",
+      "read": "feb7c5ccbbf5a80e"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "recall-questions-attention",
+    "domain": "attention",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "In two experiments, interpolating online lectures with memory tests helped students sustain attention to the lecture and discouraged mind wandering.",
+    "effect": "two experiments; less mind wandering and more learned when tests came between segments",
+    "population": "students watching online lectures",
+    "sources": [
+      {
+        "cite": "Szpunar, Khan & Schacter (2013). Interpolated memory tests reduce mind wandering and improve learning of online lectures. Proceedings of the National Academy of Sciences, 110(16), 6313–6317.",
+        "doi": "10.1073/pnas.1221764110"
+      }
+    ],
+    "caveats": "Recorded lectures, not live talks; one paper.",
+    "app": "A talk of more than a few minutes includes a moment where listeners answer or recall something.",
+    "design": "rct",
+    "origin": "indirect",
+    "mismatch": "people watching recorded lectures",
+    "k": 1,
+    "singleLab": true,
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1073/pnas.1221764110",
+        "via": "europepmc",
+        "at": 329,
+        "length": 304,
+        "hash": "12805c10c76b6d9b"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passage reports two experiments in which interpolating online lectures with memory tests helped students sustain attention, discouraged mind wandering and improved learning.",
+      "at": "2026-11-06",
+      "read": "ce2aad68c9935e66"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "narrative-persuasion",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "untested",
+    "claim": "Exposure to narratives was positively related to beliefs, attitudes and intentions consistent with the story.",
+    "effect": "r = .17 to .19 across the outcomes pooled",
+    "population": "the studies pooled",
+    "sources": [
+      {
+        "cite": "Braddock & Dillard (2016). Meta-analytic evidence for the persuasive effect of narratives on beliefs, attitudes, intentions, and behaviors. Communication Monographs, 83(4), 446–467.",
+        "doi": "10.1080/03637751.2015.1128555"
+      }
+    ],
+    "caveats": "Persuasion, not attention; the numbers of studies differ by outcome.",
+    "app": "A story serves a point in a talk; it is not a technique to be scored.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "persuasion by written or filmed stories, not holding attention",
+    "k": 40,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1080/03637751.2015.1128555",
+        "via": "openalex",
+        "at": 349,
+        "length": 257,
+        "hash": "43f07a4eb7eb795c"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passage gives positive relationships with narrative-consistent beliefs (r = .17), attitudes (.19) and intentions (.17); the effect range covers these three, leaving out behaviours (.23).",
+      "at": "2026-11-06",
+      "read": "862fda9b49118e96"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "fluency-not-learning",
+    "domain": "attention",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "A fluent instructor was rated higher than a disfluent one on preparedness and effectiveness, but the difference in how much was learned was not statistically significant.",
+    "effect": "two experiments with one of two short videos of an instructor; ratings rose, and learning showed no significant difference",
+    "population": "participants watching one of two short instructor videos",
+    "sources": [
+      {
+        "cite": "Carpenter et al. (2013). Appearances can be deceiving: instructor fluency increases perceptions of learning without increasing actual learning. Psychonomic Bulletin & Review, 20(6), 1350–1356.",
+        "doi": "10.3758/s13423-013-0442-z"
+      }
+    ],
+    "caveats": "Short videos, not live talks; one paper.",
+    "app": "Delivery is worked on for how it lands, while structure and a point carry what listeners keep.",
+    "design": "rct",
+    "origin": "indirect",
+    "mismatch": "participants watching short videos of an instructor, not live talks",
+    "k": 1,
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.3758/s13423-013-0442-z",
+        "via": "europepmc",
+        "at": 1029,
+        "length": 109,
+        "hash": "aabc9b7b47f1c4a2"
+      },
+      {
+        "field": "claim",
+        "source": "10.3758/s13423-013-0442-z",
+        "via": "europepmc",
+        "at": 837,
+        "length": 191,
+        "hash": "c400f39d4789855d"
+      },
+      {
+        "field": "population",
+        "source": "10.3758/s13423-013-0442-z",
+        "via": "europepmc",
+        "at": 111,
+        "length": 94,
+        "hash": "957c2efac1aca97d"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-5-2026-11-06",
+      "verdict": "supports",
+      "why": "For both experiments the passages state significantly higher preparedness and effectiveness ratings for the fluent instructor and no significant effect on amount learned; passage 3 gives the two-video design and population. 'Ratings rose' matches 'rated higher'.",
+      "at": "2026-11-06",
+      "read": "0ad8ce363e854224"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "mini-spin",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "claim": "The Mini-SPIN, a brief screening assessment for generalised social anxiety disorder, at a score of 6 or more had a sensitivity of 88.7% and a specificity of 90%.",
+    "effect": "at 6 or more, sensitivity 88.7% and specificity 90%, positive predictive value 52.5%; 7,165 people sent the questionnaire",
+    "population": "patients",
+    "sources": [
+      {
+        "cite": "Connor et al. (2001). Mini-SPIN: A brief screening assessment for generalized social anxiety disorder. Depression and Anxiety, 14(2), 137–140.",
+        "doi": "10.1002/da.1055"
+      }
+    ],
+    "caveats": "About half of those it flags do not have the disorder: a positive screen is an invitation to be assessed, never a label.",
+    "app": "The Speaking path asks the three questions at its start and shows the app’s own text at 6 or more.",
+    "design": "observational",
+    "origin": "direct",
+    "n": 7165,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1002/da.1055",
+        "via": "europepmc",
+        "at": 1211,
+        "length": 186,
+        "hash": "9a3edc6a03e24480"
+      },
+      {
+        "field": "effect",
+        "source": "10.1002/da.1055",
+        "via": "europepmc",
+        "at": 574,
+        "length": 104,
+        "hash": "d0c82cbefbb071a3"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-3-2026-11-06",
+      "verdict": "supports",
+      "why": "Cutoff 6 or greater gives sensitivity 88.7%, specificity 90.0%, PPV 52.5%; patients (n = 7,165) were sent the questionnaire; the title supplies the social anxiety screening purpose.",
+      "at": "2026-11-06",
+      "read": "7c654dfca52eaf7f"
+    }
+  },
+  {
+    "status": "disputed",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "learning-styles-disputed",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "failed",
+    "claim": "The advice to tailor teaching to a learning style is disputed: the review found virtually no evidence for the pattern that would support it.",
+    "effect": "virtually no evidence for the interaction that would support it",
+    "population": "the research reviewed",
+    "sources": [
+      {
+        "cite": "Pashler et al. (2008). Learning Styles. Psychological Science in the Public Interest, 9(3), 105–119.",
+        "doi": "10.1111/j.1539-6053.2009.01038.x"
+      }
+    ],
+    "caveats": "People do state preferences about how information is presented; matching to them is what lacks evidence.",
+    "app": "No Path tailors reps to a learning style.",
+    "design": "expert",
+    "origin": "direct",
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1111/j.1539-6053.2009.01038.x",
+        "via": "europepmc",
+        "at": 2968,
+        "length": 186,
+        "hash": "489a1e981aabf9a2"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passage states virtually no evidence for the interaction pattern judged a precondition for validating educational applications of learning styles; 'disputed' is milder than the finding.",
+      "at": "2026-11-06",
+      "read": "da76f35095917ae0"
+    }
+  },
+  {
+    "status": "disputed",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "smart-goals-disputed",
+    "domain": "behaviour-change",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "D",
+    "replication": "untested",
+    "claim": "The SMART acronym is disputed: a review found it is not based on scientific theory and not consistent with empirical evidence.",
+    "effect": "a narrative review of its scientific underpinnings",
+    "population": "the research reviewed",
+    "sources": [
+      {
+        "cite": "Swann et al. (2022). The (over)use of SMART goals for physical activity promotion: A narrative review and critique. Health Psychology Review, 17(2), 211–226.",
+        "doi": "10.1080/17437199.2021.2023608"
+      }
+    ],
+    "caveats": "Reviewed for physical activity promotion; specific goals themselves help (see goal-setting-specific).",
+    "app": "No Path sets goals by the SMART template.",
+    "design": "expert",
+    "origin": "direct",
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1080/17437199.2021.2023608",
+        "via": "europepmc",
+        "at": 450,
+        "length": 359,
+        "hash": "d133e5a9b7b2ddb1"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passage says the review suggests SMART is not based on scientific theory and not consistent with empirical evidence; 'found' for 'suggests' is ordinary paraphrase.",
+      "at": "2026-11-06",
+      "read": "4d271b5822424d4b"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "belief-updates-fade",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "Having a conversation made expectations about a future conversation more optimistic, but within 1 or 2 weeks they reverted to a more pessimistic baseline.",
+    "effect": "three longitudinal experiments; expectations returned to baseline within 1 or 2 weeks",
+    "population": "participants in three longitudinal experiments",
+    "sources": [
+      {
+        "cite": "Atir & Epley (2026). Fleeting generalization: How unstable belief updating keeps people overly pessimistic about talking to strangers. Journal of Personality and Social Psychology, 131(3), 422–443.",
+        "doi": "10.1037/pspa0000483"
+      }
+    ],
+    "caveats": "Conversations with strangers, by the paper’s title; one lab’s experiments.",
+    "app": "Reps come at least weekly, so what a conversation teaches is met again before it fades.",
+    "design": "rct",
+    "origin": "direct",
+    "k": 3,
+    "singleLab": true,
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1037/pspa0000483",
+        "via": "europepmc",
+        "at": 393,
+        "length": 205,
+        "hash": "5304088a57af1f90"
+      },
+      {
+        "field": "effect",
+        "source": "10.1037/pspa0000483",
+        "via": "europepmc",
+        "at": 599,
+        "length": 148,
+        "hash": "995924739fea7a97"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages state that in three longitudinal experiments a conversation made expectations more optimistic, then within 1 or 2 weeks they reverted to a more pessimistic baseline.",
+      "at": "2026-11-06",
+      "read": "600d0226c75adcbd"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "listening-meta",
+    "domain": "social",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "untested",
+    "claim": "Perceived listening was related to work outcomes, though 75% of the literature relied on self-reports.",
+    "effect": "r = .39 (95% CI .36 to .43) across 664 effect sizes; 75% of the literature self-report",
+    "population": "the work outcomes studied",
+    "sources": [
+      {
+        "cite": "Kluger et al. (2023). A Meta-analytic Systematic Review and Theory of the Effects of Perceived Listening on Work Outcomes. Journal of Business and Psychology, 39(2), 295–344.",
+        "doi": "10.1007/s10869-023-09897-5"
+      }
+    ],
+    "caveats": "Mostly correlational; fewer experiments, mostly from one research network.",
+    "app": "Listening reps: attention on them and their thread, phone away.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "workplaces, mostly self-reports",
+    "heterogeneity": "high",
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1007/s10869-023-09897-5",
+        "via": "crossref",
+        "at": 347,
+        "length": 183,
+        "hash": "1e61fe7c12f2eab9"
+      },
+      {
+        "field": "effect",
+        "source": "10.1007/s10869-023-09897-5",
+        "via": "crossref",
+        "at": 531,
+        "length": 323,
+        "hash": "47c2c05d903b1760"
+      },
+      {
+        "field": "effect",
+        "source": "10.1007/s10869-023-09897-5",
+        "via": "crossref",
+        "at": 999,
+        "length": 99,
+        "hash": "ae06c4d77d602b25"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-3-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give r = .39, CI .36 to .43, 664 effect sizes and 75% self-report reliance. Population field names outcomes, not people, but adds nothing beyond the passages.",
+      "at": "2026-11-06",
+      "read": "98c2824d8653b03a"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "case-comparison",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "B",
+    "replication": "replicated",
+    "size": "medium",
+    "claim": "Comparing cases led to greater learning outcomes than other ways of studying them.",
+    "effect": "d = 0.50 (95% CI 0.44 to 0.56) across 336 comparisons in 57 experiments",
+    "population": "the experiments pooled",
+    "sources": [
+      {
+        "cite": "Alfieri, Nokes-Malach & Schunn (2013). Learning Through Case Comparisons: A Meta-Analytic Review. Educational Psychologist, 48(2), 87–113.",
+        "doi": "10.1080/00461520.2013.775712"
+      }
+    ],
+    "caveats": "Academic concepts and procedures, not social skills; the authors report the benefit for learning the shared principle.",
+    "app": "Comparing two of your own talks or conversations, for what carries over.",
+    "design": "meta",
+    "origin": "indirect",
+    "mismatch": "academic concepts and procedures",
+    "k": 57,
+    "spans": [
+      {
+        "field": "effect",
+        "source": "10.1080/00461520.2013.775712",
+        "via": "openalex",
+        "at": 233,
+        "length": 248,
+        "hash": "b214c932c36cffb2"
+      },
+      {
+        "field": "effect",
+        "source": "10.1080/00461520.2013.775712",
+        "via": "openalex",
+        "at": 482,
+        "length": 284,
+        "hash": "b9bf2cddf784fcfb"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages give d = .50 from 336 tests in 57 experiments; case comparison commonly led to greater learning than other case study forms, traditional instruction and control.",
+      "at": "2026-11-06",
+      "read": "0882640154ec1062"
+    }
+  },
+  {
+    "status": "admitted",
+    "reviewed": "2026-11-06",
+    "drafted": {
+      "by": "builder",
+      "run": "p4-draft-2026-11-06"
+    },
+    "id": "rehearsal-not-in-situ",
+    "domain": "learning",
+    "tags": [
+      "speaking"
+    ],
+    "grade": "C",
+    "replication": "untested",
+    "claim": "Behavioural skills training taught children to perform gun-safety skills in a supervised role play, but the skills were not used when the children were assessed outside it.",
+    "effect": "Thirty-one children; the skill appeared in role-play and not when tested in a realistic situation",
+    "population": "4- and 5-year-old children",
+    "sources": [
+      {
+        "cite": "Himle et al. (2004). An Evaluation of Two Procedures for Training Skills to Prevent Gun Play in Children. Pediatrics, 113(1), 70–77.",
+        "doi": "10.1542/peds.113.1.70"
+      }
+    ],
+    "caveats": "Young children and a safety skill, far from adult conversation; the training used instruction, modelling, rehearsal and feedback.",
+    "app": "Rehearsal prepares a rep; only a real interaction counts as one.",
+    "design": "rct",
+    "origin": "indirect",
+    "mismatch": "young children learning a safety skill",
+    "k": 1,
+    "n": 31,
+    "outcomeDistance": "realLife",
+    "spans": [
+      {
+        "field": "claim",
+        "source": "10.1542/peds.113.1.70",
+        "via": "europepmc",
+        "at": 1320,
+        "length": 272,
+        "hash": "61533648f908c7d8"
+      },
+      {
+        "field": "effect",
+        "source": "10.1542/peds.113.1.70",
+        "via": "europepmc",
+        "at": 699,
+        "length": 64,
+        "hash": "77950e80f808a6b3"
+      }
+    ],
+    "support": {
+      "reader": "claude",
+      "run": "p4-reader-2-2026-11-06",
+      "verdict": "supports",
+      "why": "Passages state behavioural skills training taught gun-safety skills in supervised role play but they were not used in real-life assessments; 31 children aged 4 and 5.",
+      "at": "2026-11-06",
+      "read": "c6ff0c8cdb78182c"
+    }
   }
 ]

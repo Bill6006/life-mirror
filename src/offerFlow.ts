@@ -555,7 +555,7 @@ export async function replacementsFor(offer: Offer, now: Date = new Date(), notH
 }
 
 /** What happened, in one tap, kept apart from what was offered. Null closes the question without an answer. */
-export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }, ease: Ease | null = null): Promise<void> {
+export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: OutcomeWhy | null, passiveOutcome: 'done' | 'no' | null, askedIn: { day: string; block: Block }, ease: Ease | null = null, chance: boolean | null = null): Promise<void> {
   return db.transaction('rw', [db.offers, db.outcomes], async () => {
     const now = new Date().toISOString()
     // Recorded from the card already: only the passive item was left to answer.
@@ -567,7 +567,8 @@ export function recordOutcome(offer: Offer, outcome: WinOutcome | null, why: Out
     }
     // A learning session's one optional tap on how it went rides with the answer (Workstream 6); nothing moves a rung (D2).
     const seen = Boolean((await db.offers.get(offer.id as number))?.seenAt)
-    const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome, ...(ease && outcome !== 'no' && outcome !== null ? { ease } : {}), reason: outcomeReasonOf(outcome, why), seen }
+    // A measured Path's rep after Partly or No (P2): whether the chance came up, when you said.
+    const record: Outcome = { offerId: offer.id as number, moveId: offer.moveId, day: askedIn.day, block: askedIn.block, at: now, outcome, why, passiveOutcome, ...(ease && outcome !== 'no' && outcome !== null ? { ease } : {}), ...(chance !== null && (outcome === 'partly' || outcome === 'no') ? { chance } : {}), reason: outcomeReasonOf(outcome, why), seen }
     await db.outcomes.add(record)
     await db.offers.update(offer.id as number, { closedAt: now })
   })

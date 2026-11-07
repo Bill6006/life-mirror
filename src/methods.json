@@ -1,0 +1,251 @@
+{
+  "note": "The method library (P3 of the AI-generated Paths design, 2026-11-06): the training methods a Path the catalogue adds may build its reps from, each with the library cards behind it, where it works, where it fails and its expected size in words; and the methods no Path may use, each with the card that rules it out. The compiler refuses a new Path's rep that names no method from here, or one that is blocked.",
+  "methods": [
+    {
+      "id": "real-rep",
+      "name": "The real thing, with a goal",
+      "what": "A real interaction or performance, with one specific goal written first, rather than practice that stays in the head or the room.",
+      "cards": [
+        "practice-over-observation",
+        "rehearsal-not-in-situ",
+        "training-to-life-gradient"
+      ],
+      "works": "Practising a social skill changed behaviour where watching others did not, and its effect on behaviour held where knowledge faded.",
+      "fails": "Rehearsed skills were not used in the real situation in one study, and training effects shrink the further a measure stands from the training room.",
+      "size": "Small to moderate on behaviour."
+    },
+    {
+      "id": "predict-compare",
+      "name": "Say what you expect, then compare",
+      "what": "One line before the rep on what you expect, and one tap after on how it went against that.",
+      "cards": [
+        "conversation-fears-overestimated",
+        "liking-gap",
+        "one-conversation-a-day",
+        "belief-updates-fade"
+      ],
+      "works": "People expected conversations with strangers to go worse than they did, and were liked more than they guessed; a week of short conversations made them less pessimistic, for at least a week.",
+      "fails": "A changed expectation faded within a week or two in experiments, so it is met again before it fades.",
+      "size": "Expectations moved within a week; the lasting size is not known."
+    },
+    {
+      "id": "graded-exposure",
+      "name": "Step by step toward what you avoid",
+      "what": "Situations you find harder, met in a varied order and setting, staying long enough to learn what actually happens.",
+      "cards": [
+        "social-anxiety-treatments",
+        "exposure-variety",
+        "speaking-fear-treatments"
+      ],
+      "works": "Psychological treatments, mostly exposure, reduced the fear of public speaking and the gains held; for social anxiety, cognitive-behavioural therapy and exposure with skills training did better than waiting.",
+      "fails": "Its trials are of people with social anxiety, and the advantage of variety over one fixed order is supported only in part.",
+      "size": "From treatment trials; the size for everyday nerves is not known."
+    },
+    {
+      "id": "drop-safety-behaviours",
+      "name": "One crutch dropped",
+      "what": "One habit used to feel safe (rehearsed lines, avoiding eyes, the phone in hand) left out on purpose.",
+      "cards": [
+        "safety-behaviours-attention"
+      ],
+      "works": "Dropping the small habits used to feel safe, and turning attention outward, made people come across better and feel better, in experiments on social anxiety.",
+      "fails": "Tested in social anxiety; the size for everyday nerves is uncertain.",
+      "size": "From small experiments."
+    },
+    {
+      "id": "if-then-start",
+      "name": "An if-then plan to start",
+      "what": "When a stated moment comes, the rep begins: a plan for starting and for an obstacle, never a script for the rep itself.",
+      "cards": [
+        "implementation-intentions"
+      ],
+      "works": "If-then plans made people act on their goals more often, most for those who plan poorly.",
+      "fails": "Small for recurring effortful behaviour, and a rigid plan can cost flexibility.",
+      "size": "Small on average once publication bias is allowed for."
+    },
+    {
+      "id": "self-monitoring",
+      "name": "Keeping your own record",
+      "what": "Each rep and what you did in it, kept where you can see it, beside a specific goal.",
+      "cards": [
+        "monitoring-progress",
+        "goal-setting-specific"
+      ],
+      "works": "Monitoring progress and specific goals each raised goal attainment, more when the record was kept and seen.",
+      "fails": "From health behaviour, not from learning a skill with others; monitoring alone moves little.",
+      "size": "Small to moderate."
+    },
+    {
+      "id": "spaced-practice",
+      "name": "Spread out, not crammed",
+      "what": "Reps spread across days and weeks rather than massed into one sitting.",
+      "cards": [
+        "spacing-effect",
+        "distributed-practice-motor"
+      ],
+      "works": "Spacing improved retention of what was learned, for knowledge and for motor skills.",
+      "fails": "Never tested on everyday social skills; the best gap is not known for them.",
+      "size": "Moderate for retention."
+    },
+    {
+      "id": "varied-contexts",
+      "name": "Different people and places",
+      "what": "The same skill practised with different people, group sizes and settings, then tried once where it has not been practised.",
+      "cards": [
+        "exposure-variety"
+      ],
+      "works": "Varying the reps, people and settings is recommended to make gains last, and does no harm.",
+      "fails": "Its advantage over one fixed order is supported only in part.",
+      "size": "Not known."
+    },
+    {
+      "id": "deliberate-practice",
+      "name": "Practice at the edge of your ability",
+      "what": "Effortful practice on one specific part, a little beyond what is easy, with feedback, repeated.",
+      "cards": [
+        "deliberate-practice-share"
+      ],
+      "works": "It explains part of the difference between performers.",
+      "fails": "It explains much less than once claimed, least in professions; hours alone promise nothing.",
+      "size": "About a seventh of the variance overall, far less in professions."
+    },
+    {
+      "id": "mental-rehearsal",
+      "name": "Going through it in your head",
+      "what": "Picturing the steps of the rep before it, as preparation.",
+      "cards": [
+        "mental-practice"
+      ],
+      "works": "Mental practice improved performance, though less than real practice.",
+      "fails": "It prepares for the rep and never replaces it.",
+      "size": "Smaller than physical practice."
+    },
+    {
+      "id": "self-review-recording",
+      "name": "Checking a recording of yourself",
+      "what": "A recording of yourself alone, listened to the next day or later after writing what you think went wrong, then checked against a set list of behaviours.",
+      "cards": [
+        "video-feedback-form",
+        "prediction-and-benchmark",
+        "self-views-and-performance"
+      ],
+      "works": "Video feedback against a set list of what to watch for improved trained interaction skills; how well people judge themselves tracks how well they do only weakly, and an outside view helps.",
+      "fails": "The studies are of professionals and medical students, with trainers; checking yourself is still your own view.",
+      "size": "Small to moderate in the studies of video feedback."
+    },
+    {
+      "id": "outside-check",
+      "name": "Someone who was there checks the same list",
+      "what": "After a rep with others there, someone who was there marks which of the behaviours they noticed, on your phone.",
+      "cards": [
+        "outside-feedback-presentations",
+        "anxious-speakers-self-ratings"
+      ],
+      "works": "A teacher’s feedback improved presentation behaviour more than peers’ feedback or self-assessment; anxious speakers judged themselves more harshly than observers did.",
+      "fails": "One quasi-experiment in classes; the person who was there is not a trained observer.",
+      "size": "Not known for a check by a friend or a colleague."
+    },
+    {
+      "id": "task-feedback",
+      "name": "One thing done, one thing to try",
+      "what": "Feedback about the task, from the behaviours checked: one thing done and one thing to try next, never about you.",
+      "cards": [
+        "feedback-interventions",
+        "feedback-information"
+      ],
+      "works": "Feedback helped on average, and more the more information it carried.",
+      "fails": "In over a third of studies it lowered performance, most when it turned attention toward the self.",
+      "size": "Moderate on average, and widely spread."
+    },
+    {
+      "id": "attention-moment",
+      "name": "A moment for the listeners",
+      "what": "In anything longer than a few minutes, a moment where the listeners answer or recall something.",
+      "cards": [
+        "recall-questions-attention",
+        "attention-span-claims"
+      ],
+      "works": "Recall moments between lecture segments reduced mind wandering and helped learning; a fixed attention limit lacks support.",
+      "fails": "From recorded lectures, not live talks.",
+      "size": "Not known for live talks."
+    },
+    {
+      "id": "structure-first",
+      "name": "One point, one example, a clean ending",
+      "what": "A point said first, one example, and a clean ending, before any work on delivery.",
+      "cards": [
+        "fluency-not-learning"
+      ],
+      "works": "Listeners learned no more from a fluent delivery than from a halting one, which points what they keep toward content and structure.",
+      "fails": "No study tests a structure for a short spoken point: the shape is design judgment.",
+      "size": "Not known."
+    },
+    {
+      "id": "story-in-a-point",
+      "name": "A story that makes a point",
+      "what": "A short story with a turn and an ending, told because it makes one point.",
+      "cards": [
+        "narrative-persuasion",
+        "familiar-stories"
+      ],
+      "works": "Stories changed beliefs and intentions a little, and familiar stories went over better than novel ones.",
+      "fails": "Studies of persuasion and of listening, not of training people to tell stories.",
+      "size": "Small."
+    },
+    {
+      "id": "maintenance-check",
+      "name": "A check again later",
+      "what": "A stage shown is checked again about a month and three months later, then about every six months.",
+      "cards": [
+        "skill-decay",
+        "brief-boosters"
+      ],
+      "works": "Unpractised skills lost about half their gain within months, and brief monthly practice kept a skill.",
+      "fails": "From procedural skills; the interval for conversation and speaking is not known.",
+      "size": "Not known for these skills."
+    },
+    {
+      "id": "case-comparison",
+      "name": "Two of your own cases side by side",
+      "what": "Two of your own talks or conversations compared, for what carried over and what did not.",
+      "cards": [
+        "case-comparison"
+      ],
+      "works": "Comparing two cases helped people learn the principle they share and use it in new problems.",
+      "fails": "Academic learning, not social skills.",
+      "size": "Moderate."
+    }
+  ],
+  "blocked": [
+    {
+      "id": "power-posing",
+      "name": "Power posing",
+      "why": "Its effects on hormones and behaviour did not replicate.",
+      "card": "power-posing-disputed"
+    },
+    {
+      "id": "positive-self-statements",
+      "name": "Positive self-statements",
+      "why": "Repeating them left people with low self-esteem feeling worse.",
+      "card": "positive-self-statements-disputed"
+    },
+    {
+      "id": "willpower-pacing",
+      "name": "Pacing by willpower running out",
+      "why": "Ego depletion did not replicate in multi-lab trials.",
+      "card": "ego-depletion-not-replicated"
+    },
+    {
+      "id": "learning-styles",
+      "name": "Matching to a learning style",
+      "why": "The evidence needed to support it is virtually absent.",
+      "card": "learning-styles-disputed"
+    },
+    {
+      "id": "smart-template",
+      "name": "The SMART-goal template",
+      "why": "It is not based on theory, nor consistent with the evidence on goals.",
+      "card": "smart-goals-disputed"
+    }
+  ]
+}

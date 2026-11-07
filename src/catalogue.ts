@@ -1,5 +1,6 @@
 import data from './catalogue.json'
 import type { Block } from './blocks'
+import type { PathMeasurement } from './pathMeasure'
 import type { ReadingId } from './readings'
 
 // The catalogue of moves lives in catalogue.json so the same source feeds the app, the tests,
@@ -36,6 +37,8 @@ export interface PathPlace {
   strand?: string
   /** A probe rather than practice (P2): the exit between two stages, or a check that a stage shown still holds. */
   probe?: 'exit' | 'maintenance'
+  /** A guardrail this Path adds to a rep it shares with another, leaving that Path's rep as it is (P4). */
+  guardrail?: string
 }
 
 export interface Source {
@@ -118,6 +121,12 @@ export interface Move {
   setup?: { kind: string; necessity?: Necessity }
   /** Proposed as a passive item, riding alongside a move. */
   passive?: boolean
+  /** On a Path the catalogue adds: the training method it is built from, from the method library (P3). */
+  method?: string
+  /** On a measured Path: a rep recorded on the phone, of yourself alone, and checked the next day or later (P2). */
+  record?: boolean
+  /** On a measured Path: a rep with others there, which someone who was there may check on your phone (P2). */
+  handOver?: boolean
 }
 
 export interface LearnedTag {
@@ -297,6 +306,38 @@ export interface Path {
   strands?: readonly PathStrand[]
   /** A Path the catalogue adds: how it is named on its card, on the add menu and on the plan (Social's and Partner's stay in copy). */
   names?: { called: string; add: string; addNote: string; plan?: string }
+  /** What it checks and what a stage must show beyond its floor (P2); absent on Social and Partner. */
+  measurement?: PathMeasurement
+  /** What starting it asks (P4): questions after a guideline whose yes shows the app's own fixed text and opens a strand, and where it should show up. */
+  start?: PathStart
+  /** About how long it runs, said before it starts (P4). */
+  timeline?: string
+  /** Why it looks as it does (P3): a record for each element, from which the app lays out "Why", never written freely. */
+  decisions?: readonly PathDecision[]
+}
+
+/** Starting a Path the catalogue adds (P4). */
+export interface PathStart {
+  questions: readonly { id: string; text: string }[]
+  /** The app's own words on a yes to any question, never model-written. */
+  help: string
+  /** The strand a yes opens. */
+  opens: string
+  /** Where it should show up: each choice names the strands it turns on, or both. */
+  focus: readonly { id: string; words: string }[]
+}
+
+/** Why one element of a Path is as it is (P3): the decision, its basis, its origin, the cards behind it, its uncertainty and what would change it. */
+export interface PathDecision {
+  id: string
+  /** The element: structure, rule, start, maintenance, reps, strand:<id>, gate:<id> or rep:<id>. */
+  element: string
+  decision: string
+  basis: string
+  origin: 'direct' | 'indirect' | 'mechanism' | 'expert' | 'inference' | 'judgment'
+  cards: readonly string[]
+  uncertainty: string
+  change: string
 }
 
 /** The track a Path holds when it has no strands: its own stages, under the Path's own rule. Its id is empty, as a rep placed without a strand. */
@@ -342,6 +383,11 @@ function inStrand(place: PathPlace, strand: string | undefined): boolean {
 export function onStage(m: Pick<Move, 'path'>, id: PathId, stage: number, strand?: string): boolean {
   const place = m.path?.[id]
   return place !== undefined && inStrand(place, strand) && stage >= place.stage && stage <= (place.through ?? place.stage)
+}
+
+/** A rep's guardrail as a path shows it: the one that path adds to a rep it shares, else the rep's own. */
+export function guardrailOf(m: Pick<Move, 'path' | 'guardrail'>, id: PathId): string | undefined {
+  return m.path?.[id]?.guardrail ?? m.guardrail
 }
 
 /** The reps a path holds, in stage order, optionally those offered at one stage, a spanning rep at each stage it spans; on a strand, that strand's alone. */

@@ -704,11 +704,11 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Read the catalogue/ }).click()
   await expect(page.getByText('The catalogue', { exact: true })).toBeVisible()
-  await expect(page.getByTestId('family-moves')).toHaveCount(15)
+  await expect(page.getByTestId('family-moves')).toHaveCount(16)
   const count = await page.locator('[data-testid="family-moves"] .move').count()
   expect(count).toBeGreaterThanOrEqual(60)
-  // Every entry, live moves and path reps; the plan's hundred live moves is held by the unit test.
-  expect(count).toBeLessThanOrEqual(150)
+  // Every entry, live moves and path reps (the speaking Path's eighteen since P4); the plan's hundred live moves is held by the unit test.
+  expect(count).toBeLessThanOrEqual(180)
   await expect(page.getByRole('heading', { name: 'Time with her, no agenda' })).toBeVisible()
   await expect(page.locator('#move-low-pressure-conversation')).toBeVisible()
 
@@ -722,17 +722,30 @@ test('the catalogue is readable in full from the Moves tab', async ({ page }) =>
   // The paths are named as paths, beside the families they share a word with: no two choices read alike (owner, 2026-09-26).
   const chips = page.locator('.family-chips .chip')
   const labels = (await chips.allTextContents()).map((t) => t.trim())
-  expect(labels.slice(0, 2)).toEqual(['Social path', 'Partner path'])
+  expect(labels.slice(0, 3)).toEqual(['Social path', 'Partner path', 'Speaking path'])
   expect(labels).toContain('People')
   expect(labels).toContain('Partner')
+  expect(labels).toContain('Speaking')
   expect(new Set(labels).size).toBe(labels.length)
   await expect(page.getByTestId('path').first().locator('h2')).toHaveText(/^Social path · [0-9]+$/)
   await expect(page.getByTestId('path').nth(1).locator('h2')).toHaveText(/^Partner path · [0-9]+$/)
   await expect(page.locator('#family-partner h2').first()).toHaveText(/^Partner\b(?! path)/)
 
   // Parts 23 and 26: both paths readable in full; since Parts 24 and 27 their reps are offered through their rows alone.
-  await expect(page.getByTestId('path')).toHaveCount(2)
-  await expect(page.getByTestId('path-stage')).toHaveCount(13)
+  // P4: the speaking Path, labelled experimental, its three strands' ten stages, its start, its gates and its decisions.
+  await expect(page.getByTestId('path')).toHaveCount(3)
+  await expect(page.getByTestId('path-stage')).toHaveCount(23)
+  const speaking = page.getByTestId('path').nth(2)
+  await expect(speaking.locator('h2')).toHaveText(/^Speaking path · 10$/)
+  await expect(speaking.getByTestId('path-label')).toHaveText('Experimental')
+  await expect(speaking.getByTestId('path-strand-text')).toHaveCount(3)
+  await expect(speaking.getByTestId('path-start-text')).toContainText('whose answers are not kept')
+  await expect(speaking.getByTestId('path-gate').first()).toContainText('Shown when: 2 of its behaviours on reps in 2 separate weeks, in 2 kinds of setting.')
+  await expect(speaking.getByTestId('path-decisions').getByTestId('path-decision')).toHaveCount(12)
+  await expect(page.locator('#move-ask-follow-up .move-status')).toContainText('Speaking path, Conversation, stage 1, moves the stage')
+  // A rep it shares with Social shows the guardrail the speaking Path adds, and Social's own section shows the rep as before.
+  await expect(speaking.getByTestId('path-rep').filter({ hasText: 'Ask one follow-up question' })).toContainText('Your part only: how anyone answers is theirs, never counted.')
+  await expect(page.getByTestId('path').first().getByTestId('path-rep').filter({ hasText: 'Ask one follow-up question' })).not.toContainText('Your part only')
   await expect(page.getByTestId('path').first()).toContainText('Stage 1 · Presence')
   await expect(page.getByTestId('path').nth(1)).toContainText('Stage 7 · Keeping')
   await expect(page.getByTestId('path-channel')).toContainText('off until you turn it on')

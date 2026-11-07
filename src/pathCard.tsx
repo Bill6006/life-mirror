@@ -5,14 +5,17 @@ import { Icon } from './icons'
 import { ClampText, Disclosure, Facts, StageProgress } from './ui'
 import { lastLine, type CueCount } from './aims'
 import { blockAt, type Block } from './blocks'
-import { hasMove, moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
+import { guardrailOf, hasMove, moveById, type Move, type Path, type PathId, type SettingKind } from './catalogue'
 import { copy } from './copy'
 import { db, EXPECTANCIES, getDayContext, getSettings, type Aim, type Cue, type DayContext, type Expectancy, type Intention, type Offer } from './db'
 import { fill, formatTime } from './format'
 import { useLive } from './live'
 import { doneOpen, recordDoneNow } from './offerFlow'
 import { markExpectancyAsked, setExpectancy, setPathPick } from './pathFlow'
-import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, socialEnergyOn, stageWords, whyThisRep, type PathToday } from './pathStage'
+import { countsByRep, opensNow, pathById, pathName, pathToday, repPrerequisite, repRequiresGoingOut, repStageWords, socialEnergyOn, stageWords, strandOfRep, whyThisRep, type PathToday } from './pathStage'
+import { CalibrationLine, measured, PredictBox, Recorder, RecordingsDue, records, RepSheet, StrandsBlock, StrandsSetting, WhyBuilt } from './pathMeasureUi'
+import { activeStrands } from './pathMeasure'
+import { Tag } from './ui'
 import { carriedByContext, carriedLine, dayKindOf, orderByEvidence } from './people'
 
 // A path on the screen (Part 24). On Now, one People row: the rep, its one line, its minutes and
@@ -39,9 +42,14 @@ export interface PathShared {
   elsewhere?: { path: PathId; shared: boolean } | null
   /** Stage 3, item 5: whether to ask, after a rep is marked done here, how it went against what you expected. */
   askExpect?: boolean
-  onResume: () => void
+  /** Start or Resume; on a measured Path, with the one line written before it (P2). */
+  onResume: (prediction?: string) => void
   onChange: () => void
   onPlan: (cue: Cue, time: string) => void
+  /** A measured Path (P2): the phone handed to someone who was there, for a rep just done. */
+  onHandOver?: (offerId: number) => void
+  /** A measured Path (P2): a recording of yourself, checked the next day or later. */
+  onCheckRecording?: (offerId: number) => void
 }
 
 /**
@@ -93,6 +101,14 @@ function repOf(p: Pick<PathShared, 'pt' | 'open' | 'openOffer'>): Move | null {
   if (p.open && p.openOffer) return moveById(p.openOffer.moveId)
   if (p.pt.repDone && hasMove(p.pt.repDone.moveId)) return moveById(p.pt.repDone.moveId)
   return p.pt.pick ? moveById(p.pt.pick.moveId) : null
+}
+
+/** The step of today's rep on this path, done or else partly done, newest first: the one its sheet belongs to. */
+function doneOfferId(pt: PathToday): number | null {
+  const moveId = pt.repDone?.moveId ?? pt.repPartly
+  if (!moveId) return null
+  const outcome = pt.repDone ? 'done' : 'partly'
+  return [...pt.entries].reverse().find((e) => e.moveId === moveId && e.outcome === outcome)?.offerId ?? null
 }
 
 /** Today's one People rep is done and nothing is started: the row and the card say so and offer nothing more today (D4). */
@@ -171,11 +187,14 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
   useQuarterMinute()
   const [planOpen, setPlanOpen] = useState(false)
   const [justDone, setJustDone] = useState<number | null>(null)
+  const [predicting, setPredicting] = useState(false)
   const rep = repOf(p)
   const canDone = p.openOffer !== null && doneOpen(p.openOffer)
   const setting = p.open ? (p.openOffer?.setting ?? null) : (p.pt.pick?.setting ?? null)
   const { pending, cues } = planState(p.plan, p.ctx)
   const notes = rep && (rep.cue || !rep.path?.[p.pt.path.id]?.advances)
+  // A measured Path (P2): one line before Start, a recorder while a recorded rep is open, the rep's sheet right after Done.
+  const measuring = measured(p.pt.path)
   const done = doneToday(p)
   // Plan opens the cue chips and, under them, the rep's cue and warm-up note; with no cue ahead the same tap says it is about the rep.
   const showTap = !p.open && !done && rep && ((!pending && cues > 0) || notes)
@@ -188,7 +207,7 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
       path={p.pt.path.id}
       kind={
         <span class="aim-kind" data-testid="path-stage">
-          <Facts items={[pathName(p.pt.path), stageWords(p.pt.path, p.pt.state.stage)]} />
+          <Facts items={[pathName(p.pt.path), repStageWords(p.pt, rep?.id ?? null)]} />
         </span>
       }
       title={
@@ -209,9 +228,9 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
               {p.pt.pick.version}
             </span>
           )}
-          {rep?.guardrail && (
+          {rep && guardrailOf(rep, p.pt.path.id) && (
             <span class="sub ink" data-testid="path-guardrail">
-              {rep.guardrail}
+              {guardrailOf(rep, p.pt.path.id)}
             </span>
           )}
           {rep && !p.open && !done && repRequiresGoingOut(p.pt, rep) && (
@@ -239,8 +258,10 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
             {copy.aims.doneToday}
           </span>
         ) : (
-          rep && (
-            <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={p.pt.repPartly === rep.id ? 'aim-resume' : 'aim-start'} onClick={p.onResume}>
+          // While the line before Start is open, its own Start is the one shown.
+          rep &&
+          !predicting && (
+            <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={p.pt.repPartly === rep.id ? 'aim-resume' : 'aim-start'} onClick={() => (measuring && p.pt.repPartly !== rep.id ? setPredicting(true) : p.onResume())}>
               {startLabel(p, rep)}
             </button>
           )
@@ -263,7 +284,18 @@ export function PathRow(p: PathShared & { index?: number; due?: boolean }) {
         )
       }
       below={
-        done && p.askExpect && justDone !== null ? (
+        measuring && done && justDone !== null && p.pt.repDone ? (
+          <RepSheet key={justDone} path={p.pt.path} offerId={justDone} moveId={p.pt.repDone.moveId} onHandOver={p.onHandOver} />
+        ) : measuring && p.open && p.openOffer && records(p.pt.path, p.openOffer.moveId) ? (
+          <Recorder offerId={p.openOffer.id as number} />
+        ) : measuring && predicting && !p.open && !done && rep ? (
+          <PredictBox
+            onStart={(line) => {
+              setPredicting(false)
+              p.onResume(line || undefined)
+            }}
+          />
+        ) : done && p.askExpect && justDone !== null ? (
           <ExpectTap key={justDone} offerId={justDone} />
         ) : (
         !p.open &&
@@ -319,13 +351,26 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
   const last = p.pt.entries.filter((e) => e.outcome === 'done' && shown(e.moveId)).pop()
   const hasNotes = rep && (rep.cue || !rep.path?.[path.id]?.advances)
   const done = doneToday(p)
+  // A measured Path (P2): one line before Start, a recorder while a recorded rep is open, the rep's sheet right after Done.
+  const measuring = measured(path)
+  const [predicting, setPredicting] = useState(false)
+  // On a Path with strands, what the rep's own strand stage means.
+  const repStrand = rep ? strandOfRep(p.pt, rep.id) : null
+  const shownStage = repStrand ? repStrand.strand.stages.find((s) => s.n === repStrand.state.stage) : stage
+  const label = path.label ? (copy.path.read.label[path.label] ?? path.label) : null
   return (
     <div class={p.due && !p.open && !done && rep ? 'card pad move-card aim-card is-due' : 'card pad move-card aim-card'} data-testid="aim-card" data-kind="path" data-path={path.id}>
       <div class="aim-head">
         <Icon name={kindIcon(p.aim)} />
         <p class="eyebrow">{pathName(path)}</p>
+        {label && (
+          <span data-testid="path-label">
+            <Tag>{label}</Tag>
+          </span>
+        )}
       </div>
-      <StageProgress n={p.pt.state.stage} of={path.stages.length} name={stage?.name ?? ''} next={nextStage(path, p.pt.state.stage)} testid="path-progress" />
+      {path.strands?.length ? <StrandsBlock pt={p.pt} /> : <StageProgress n={p.pt.state.stage} of={path.stages.length} name={stage?.name ?? ''} next={nextStage(path, p.pt.state.stage)} testid="path-progress" />}
+      {measuring && p.onCheckRecording && <RecordingsDue pt={p.pt} today={p.today} onCheck={p.onCheckRecording} />}
       {p.pt.state.reentry && (
         <p class="note" data-testid="path-reentry">
           {c.reentry}
@@ -356,9 +401,9 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
                 {rep.name}
               </p>
               <ClampText class="move-what" text={rep.what} testid="path-rep-what" />
-              {rep.guardrail && (
+              {guardrailOf(rep, path.id) && (
                 <p class="calc-line ink" data-testid="path-guardrail">
-                  {rep.guardrail}
+                  {guardrailOf(rep, path.id)}
                 </p>
               )}
               {!p.open && !done && repRequiresGoingOut(p.pt, rep) && (
@@ -396,8 +441,9 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               </span>
             ) : (
               <>
-                {rep && (
-                  <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={p.pt.repPartly === rep.id ? 'aim-resume' : 'aim-start'} onClick={p.onResume}>
+                {/* While the line before Start is open, its own Start is the one shown. */}
+                {rep && !predicting && (
+                  <button type="button" class={p.due ? 'pill-quiet is-primary' : 'pill-quiet'} data-testid={p.pt.repPartly === rep.id ? 'aim-resume' : 'aim-start'} onClick={() => (measuring && p.pt.repPartly !== rep.id ? setPredicting(true) : p.onResume())}>
                     {startLabel(p, rep)}
                   </button>
                 )}
@@ -409,7 +455,18 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               </>
             )}
           </div>
-          {done && p.askExpect && justDone !== null && <ExpectTap key={justDone} offerId={justDone} />}
+          {measuring && predicting && !p.open && !done && rep && (
+            <PredictBox
+              onStart={(line) => {
+                setPredicting(false)
+                p.onResume(line || undefined)
+              }}
+            />
+          )}
+          {measuring && p.open && p.openOffer && records(path, p.openOffer.moveId) && <Recorder offerId={p.openOffer.id as number} />}
+          {/* On Aims the sheet stays for today's rep until the day ends, so a hand-over or a later look keeps it. */}
+          {measuring && !p.open && (done || p.pt.repPartly) && doneOfferId(p.pt) !== null && <RepSheet key={doneOfferId(p.pt)} path={path} offerId={doneOfferId(p.pt) as number} moveId={p.pt.repDone?.moveId ?? (p.pt.repPartly as string)} onHandOver={p.onHandOver} />}
+          {!measuring && done && p.askExpect && justDone !== null && <ExpectTap key={justDone} offerId={justDone} />}
           {!p.open && !done && rep && (pending || planOpen) && (
             <>
               <When
@@ -459,7 +516,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
         <CueCounts counts={p.counts} />
         <div class="calc evidence" data-testid="path-how">
           <p class="calc-line ink">{d.how}</p>
-          {stage && <p class="move-what">{stage.what}</p>}
+          {shownStage && <p class="move-what">{shownStage.what}</p>}
           {rep && !rep.path?.[path.id]?.advances && (
             <p class="calc-line" data-testid="path-warmup">
               {c.warmUp}
@@ -470,7 +527,7 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
               <span class="calc-key">{c.why.title}</span>
               <span class="calc-line" data-testid="path-why">
                 <span class="dot-sep">{c.why.title} · </span>
-                {whyThisRep(p.pt.pick)}
+                {whyThisRep(p.pt.pick, path)}
               </span>
             </div>
           )}
@@ -478,12 +535,13 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
             <span class="calc-key">{c.counts}</span>
             <span class="calc-line">{path.counted}</span>
           </div>
-          {stage && (
+          {shownStage && (
             <div class="ev">
               <span class="calc-key">{c.notProgress}</span>
-              <span class="calc-line">{stage.notProgress}</span>
+              <span class="calc-line">{shownStage.notProgress}</span>
             </div>
           )}
+          {measuring && <CalibrationLine pt={p.pt} />}
           {last && (
             <p class="calc-line" data-testid="path-last">
               {fill(c.lastRep, { rep: moveById(last.moveId).name, when: lastLine('done', last.day, p.today) })}
@@ -496,8 +554,15 @@ export function PathCard(p: PathShared & { today: string; counts: readonly CueCo
             </p>
           )}
         </div>
+        {path.decisions?.length ? (
+          <div class="calc" data-testid="path-why-built-head">
+            <p class="calc-line ink">{copy.path.read.why}</p>
+            <WhyBuilt path={path} />
+          </div>
+        ) : null}
         <div data-testid="path-settings">
           {p.settings}
+          {path.strands?.length ? <StrandsSetting aim={p.aim} path={path} on={activeStrands(path, p.aim)} /> : null}
           <div class="actions">
             <button type="button" class="textbtn" data-testid="path-pause" onClick={() => p.onPause(!paused)}>
               {paused ? c.unpause : c.pause}
