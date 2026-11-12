@@ -21,6 +21,12 @@ export interface DayPoint {
   outcome: number | null
 }
 
+/** A comparison's own name and the size worth saying on its scale: with it, the comparison is given its chance. */
+export interface Named {
+  id: string
+  worth: number
+}
+
 export interface Association {
   /** Evenings before today that carried the event. */
   times: number
@@ -49,7 +55,7 @@ const BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firi
  * smaller side. The difference itself is the counted foundation's (2026-11-12): this hands it the occasions that have
  * a band and an outcome, band by band in the order it has always taken them, so every number is the one it always was.
  */
-export function likeForLike(points: readonly DayPoint[], named?: { id: string; worth: number }): Association {
+export function likeForLike(points: readonly DayPoint[], named?: Named): Association {
   const withEvent = points.filter((p) => p.event)
   const without = points.filter((p) => !p.event)
   const withValues = withEvent.map((p) => p.outcome).filter((v): v is number => v !== null)
@@ -102,8 +108,8 @@ export function eveningPoints(checkins: readonly CheckIn[], today: string, isEve
   return evenings.map((c) => ({ day: c.day, band: eveningBand(byKey, c.day), event: isEvent(c), outcome: morningAfter(byKey, c.day) }))
 }
 
-export function associationFor(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include?: (c: CheckIn) => boolean): Association {
-  return likeForLike(eveningPoints(checkins, today, isEvent, include))
+export function associationFor(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include?: (c: CheckIn) => boolean, named?: Named): Association {
+  return likeForLike(eveningPoints(checkins, today, isEvent, include), named)
 }
 
 /**
@@ -120,8 +126,8 @@ export function eveningPointsBy(checkins: readonly CheckIn[], today: string, isE
     })
 }
 
-export function associationBy(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, measure: (morning: CheckIn) => number | null): Association {
-  return likeForLike(eveningPointsBy(checkins, today, isEvent, measure))
+export function associationBy(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, measure: (morning: CheckIn) => number | null, named?: Named): Association {
+  return likeForLike(eveningPointsBy(checkins, today, isEvent, measure), named)
 }
 
 /** Every morning before today as a point: whether it carried the event, its band, and what that afternoon read. A morning the record knows nothing about for this event (include says no) enters neither side. */
@@ -138,13 +144,13 @@ export function morningPoints(checkins: readonly CheckIn[], today: string, isEve
 }
 
 /** An afternoon's statement, like for like (stage 3, item 5): the evenings after afternoons that carried it, against the evenings after afternoons that started the same. */
-export function afternoonAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include?: (c: CheckIn) => boolean): Association {
-  return likeForLike(afternoonPoints(checkins, today, isEvent, include))
+export function afternoonAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, include?: (c: CheckIn) => boolean, named?: Named): Association {
+  return likeForLike(afternoonPoints(checkins, today, isEvent, include), named)
 }
 
 /** A morning's statement, like for like: the afternoons after mornings that carried it, against the afternoons after mornings that started the same. */
-export function morningAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean): Association {
-  return likeForLike(morningPoints(checkins, today, isEvent))
+export function morningAssociation(checkins: readonly CheckIn[], today: string, isEvent: (c: CheckIn) => boolean, named?: Named): Association {
+  return likeForLike(morningPoints(checkins, today, isEvent), named)
 }
 
 /**
@@ -164,8 +170,8 @@ export function dayPoints(checkins: readonly CheckIn[], today: string, isEventDa
 }
 
 /** A day's event, like for like: the evenings of days that carried it, against the evenings of days that started the same. */
-export function dayAssociation(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean, include?: (day: string) => boolean): Association {
-  return likeForLike(dayPoints(checkins, today, isEventDay, include))
+export function dayAssociation(checkins: readonly CheckIn[], today: string, isEventDay: (day: string) => boolean, include?: (day: string) => boolean, named?: Named): Association {
+  return likeForLike(dayPoints(checkins, today, isEventDay, include), named)
 }
 
 export type AssociationTier = 'little' | 'unclear' | 'promising'
@@ -186,7 +192,7 @@ export function associationTier(a: Association, worthwhilePoints: number): Assoc
  * outcome is the card's target reading the next morning, in points. A day it was assigned but
  * never answered is left out: silence is not evidence.
  */
-export function passiveAssociation(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], passiveId: string, target: ReadingId, today: string): Association {
+export function passiveAssociation(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], passiveId: string, target: ReadingId, today: string, named?: Named): Association {
   const byKey = indexCheckIns(checkins)
   const byOffer = new Map(outcomes.map((x) => [x.offerId, x]))
   const state = new Map<string, 'done' | 'no' | 'unanswered'>()
@@ -205,7 +211,7 @@ export function passiveAssociation(checkins: readonly CheckIn[], offers: readonl
     const p = byKey.get(slotKey(addDays(c.day, 1), 'morning'))?.answers[target]
     points.push({ day: c.day, band: eveningBand(byKey, c.day), event: s === 'done', outcome: p === undefined ? null : pointsFor(target, p as Position) })
   }
-  return likeForLike(points)
+  return likeForLike(points, named)
 }
 
 /** Every afternoon before today as a point: whether it carried the event, its band, and what that evening read (Pass 3). */
@@ -267,7 +273,7 @@ const PRIVATE_POINTS: Readonly<Record<Block, typeof eveningPoints>> = { morning:
  * check-ins where the item was on screen enter either side (Rule 2). Each carries an alternative
  * the part of the day allows. Off, this returns nothing at all.
  */
-export function privateAssociations(on: boolean, items: readonly { id?: number; name: string; createdAt?: string; blocks?: Block[] }[], checkins: readonly CheckIn[], today: string): PrivateAssociation[] {
+export function privateAssociations(on: boolean, items: readonly { id?: number; name: string; createdAt?: string; blocks?: Block[] }[], checkins: readonly CheckIn[], today: string, worth?: number): PrivateAssociation[] {
   if (!on) return []
   const out: PrivateAssociation[] = []
   items.forEach((it, i) => {
@@ -275,7 +281,7 @@ export function privateAssociations(on: boolean, items: readonly { id?: number; 
     const placed = (['morning', 'afternoon', 'evening'] as const).filter((b) => (it.blocks?.length ? it.blocks : ['evening']).includes(b))
     for (const block of placed) {
       const alternatives = PRIVATE_ALTERNATIVES[block].filter(hasMove)
-      const association = likeForLike(PRIVATE_POINTS[block](checkins, today, privateIsLogged(it.id), (c) => privateShownAt(it, c)))
+      const association = likeForLike(PRIVATE_POINTS[block](checkins, today, privateIsLogged(it.id), (c) => privateShownAt(it, c)), worth === undefined ? undefined : { id: block === 'evening' ? `private.${it.id}` : `private.${it.id}.${block}`, worth })
       if (association.times > 0) out.push({ itemId: it.id, name: it.name, block, association, alternativeId: alternatives[i % alternatives.length] })
     }
   })

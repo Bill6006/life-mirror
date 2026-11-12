@@ -127,11 +127,11 @@ export interface WeatherEvidence {
  * neither side, and the sunnier days are those above the middle day's share of daylight in sun, so a long summer day is
  * not counted sunnier for its length alone.
  */
-export function weatherEvidence(checkins: readonly CheckIn[], contexts: readonly DayContext[], today: string): WeatherEvidence | null {
+export function weatherEvidence(checkins: readonly CheckIn[], contexts: readonly DayContext[], today: string, worth?: number): WeatherEvidence | null {
   const known = new Map(contexts.filter((c) => c.day < today && c.weather).map((c) => [c.day, c]))
   if (known.size < WEATHER_DAYS_MIN) return null
   const isRainy = (day: string) => (known.get(day)?.weather?.rain ?? 0) >= RAIN_DAY_MM
-  const rain = dayAssociation(checkins, today, isRainy, (day) => known.has(day))
+  const rain = dayAssociation(checkins, today, isRainy, (day) => known.has(day), worth === undefined ? undefined : { id: 'assoc.weather.rain', worth })
   const shares = new Map([...known.values()].flatMap((c) => {
     const s = sunShare(c)
     return s === null ? [] : [[c.day, s] as const]
@@ -139,7 +139,7 @@ export function weatherEvidence(checkins: readonly CheckIn[], contexts: readonly
   const sorted = [...shares.values()].sort((a, b) => a - b)
   const middle = sorted.length ? (sorted[Math.floor((sorted.length - 1) / 2)] + sorted[Math.ceil((sorted.length - 1) / 2)]) / 2 : 0
   const isSunnier = (day: string) => (shares.get(day) ?? 0) > middle
-  const sun = dayAssociation(checkins, today, isSunnier, (day) => shares.has(day))
+  const sun = dayAssociation(checkins, today, isSunnier, (day) => shares.has(day), worth === undefined ? undefined : { id: 'assoc.weather.sun', worth })
   return { days: known.size, rainy: [...known.keys()].filter(isRainy).length, shared: shares.size, sunnier: [...shares.keys()].filter(isSunnier).length, rain, sun }
 }
 

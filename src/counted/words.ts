@@ -71,11 +71,14 @@ export interface WithWords {
 /** "With against without": what was read after occasions with the thing, against occasions without it. */
 export function withWords(w: WithWords): string {
   const counts = `${w.n} with it, ${w.m} without`
-  if (w.standing === 'tooFew' || w.diff === null) return `${STANDING_WORDS.tooFew}: ${w.thing}, ${counts}.`
+  // After the standing's own words the sentence runs on, so "Mornings after" is said as "mornings after".
+  const after = `${w.after.charAt(0).toLowerCase()}${w.after.slice(1)}`
+  // Too few says where it would be read and the counts, and no difference: there is none to stand on yet.
+  if (w.standing === 'tooFew' || w.diff === null) return `${STANDING_WORDS.tooFew}: ${after} ${w.thing}, ${counts}.`
   const size = `${Math.abs(Math.round(w.diff * 10) / 10)} ${w.unit}`
   const way = w.direction === 'none' ? 'the same' : `${size} ${w.direction}`
   const good = w.higherIsGood === undefined || w.direction === 'none' ? '' : (w.direction === 'higher') === w.higherIsGood ? ', the good direction' : ', not the good direction'
-  const read = `${w.after} ${w.thing} read ${way}${good}${w.likeForLike ? ', like for like' : ''} (${counts})`
+  const read = `${after} ${w.thing} read ${way}${good}${w.likeForLike ? ', like for like' : ''} (${counts})`
   switch (w.standing) {
     case 'noPattern':
       return `${STANDING_WORDS.noPattern}: ${read}.`

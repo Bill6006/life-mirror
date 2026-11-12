@@ -142,7 +142,10 @@ describe('time in nature on the day’s sheet and in the library', () => {
     expect(evening?.values).toMatchObject({ times: 3, minutes: 20 })
     expect(morning?.values).toMatchObject({ times: 3, minutes: 20 })
     expect(Number(evening?.values.diff)).toBeGreaterThan(0)
-    expect(evening?.text).toContain(`Evenings of ${NATURE_EVENT}`)
+    // Three days with it: under eight a side, so it says where it would be read and the counts, and no difference yet.
+    expect(evening?.text).toContain(`Too few to compare yet: evenings of ${NATURE_EVENT}, 3 with it`)
+    expect(evening?.values).toMatchObject({ standing: 'tooFew' })
+    expect(evening?.tier).toBe('little')
     // The mornings after are matched on the evening's band, and here the evenings differ: said plainly, nothing compared yet.
     expect(morning?.text).toBe(`${NATURE_EVENT} has 3 days behind it; nothing can be compared yet.`)
     // The older mark has no comparison of its own any longer, and never joins this one.

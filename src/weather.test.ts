@@ -156,10 +156,15 @@ describe('the day’s sheet', () => {
     }
     const facts = weatherFacts(checkins, contexts, day(15))
     expect(facts.map((f) => f.id)).toEqual(['assoc.weather.rain', 'assoc.weather.sun'])
-    expect(facts[0].text).toBe('Evenings of rainy days (1 mm of rain or more) read -50 against evenings of dry days, like for like on the morning’s band, 3 rainy days of 14 with weather (unclear).')
-    expect(facts[0].values).toEqual({ diff: -50, with: 25, without: 75, times: 3, days: 14, bands: 1, mm: 1, rainy: 3 })
+    // Three rainy days are under eight a side: the counts are said, and no difference yet.
+    expect(facts[0].text).toBe('Rainy days (1 mm of rain or more): 3 rainy days of 14 with weather; nothing can be compared yet.')
+    expect(facts[0].values).toEqual({ diff: -50, with: 25, without: 75, times: 3, days: 14, bands: 1, mm: 1, rainy: 3, standing: 'tooFew', direction: 'none', helpful: null, p: null, m: 0 })
+    expect(facts[0].tier).toBe('little')
     // Two of the seven sunnier days were rainy, one of the seven greyer: (2 × 25 + 5 × 75) / 7 against (25 + 6 × 75) / 7.
-    expect(facts[1].text).toBe('Evenings of sunnier days read -7 against greyer ones, like for like on the morning’s band, 7 sunnier days of 14 with weather and daylight known, split at the middle day’s share of its daylight in sun (unclear).')
+    // Seven sunnier days against seven greyer: one short of eight a side.
+    expect(facts[1].text).toContain('7 sunnier days of 14 with weather and daylight known')
+    expect(facts[1].text).not.toContain('read -7')
+    expect(facts[1].values).toMatchObject({ standing: 'tooFew' })
     expect(facts[1].values).toMatchObject({ diff: -7, with: 61, without: 68, times: 7, days: 14, sunnier: 7, shared: 14 })
     expect(weatherFacts(checkins, contexts.slice(1), day(15))).toEqual([])
   })

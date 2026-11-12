@@ -53,10 +53,10 @@ describe('the words for a standing', () => {
 
   it('say a difference with its size, its direction, whether that is the good direction, and its counts', () => {
     const w = { thing: 'a late or heavy dinner', after: 'Mornings after', unit: 'points', n: 14, m: 31, likeForLike: true, family: 12 }
-    expect(withWords({ ...w, diff: -12.34, standing: 'pattern', direction: 'lower', higherIsGood: true })).toBe('A steady pattern: Mornings after a late or heavy dinner read 12.3 points lower, not the good direction, like for like (14 with it, 31 without).')
-    expect(withWords({ ...w, diff: 12.34, standing: 'lead', direction: 'higher', higherIsGood: true })).toBe('A lead, not yet a pattern: Mornings after a late or heavy dinner read 12.3 points higher, the good direction, like for like (14 with it, 31 without). 12 comparisons were looked at.')
-    expect(withWords({ ...w, diff: 3, standing: 'noPattern', direction: 'higher' })).toBe('No clear pattern yet: Mornings after a late or heavy dinner read 3 points higher, like for like (14 with it, 31 without).')
-    expect(withWords({ ...w, n: 3, diff: 20, standing: 'tooFew', direction: 'higher' })).toBe('Too few to compare yet: a late or heavy dinner, 3 with it, 31 without.')
+    expect(withWords({ ...w, diff: -12.34, standing: 'pattern', direction: 'lower', higherIsGood: true })).toBe('A steady pattern: mornings after a late or heavy dinner read 12.3 points lower, not the good direction, like for like (14 with it, 31 without).')
+    expect(withWords({ ...w, diff: 12.34, standing: 'lead', direction: 'higher', higherIsGood: true })).toBe('A lead, not yet a pattern: mornings after a late or heavy dinner read 12.3 points higher, the good direction, like for like (14 with it, 31 without). 12 comparisons were looked at.')
+    expect(withWords({ ...w, diff: 3, standing: 'noPattern', direction: 'higher' })).toBe('No clear pattern yet: mornings after a late or heavy dinner read 3 points higher, like for like (14 with it, 31 without).')
+    expect(withWords({ ...w, n: 3, diff: 20, standing: 'tooFew', direction: 'higher' })).toBe('Too few to compare yet: mornings after a late or heavy dinner, 3 with it, 31 without.')
     expect(withWords({ ...w, diff: null, standing: 'tooFew', direction: 'none' })).toContain('Too few to compare yet')
   })
 })

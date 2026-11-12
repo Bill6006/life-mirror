@@ -1,4 +1,5 @@
 import { anchorSwapDue } from './audit'
+import { WORTH_POINTS, WORTH_STEPS } from './counted/compare'
 import { awayDays, homeDaysOnly } from './awayFlow'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
 import { associationBy, associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
@@ -108,25 +109,25 @@ export async function evidence(today: string): Promise<Evidence> {
   const passives: PassiveEvidence[] = cards
     .filter((c) => c.origin === 'passive')
     .map((card) => {
-      const association = passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today)
+      const association = passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today, { id: `evidence.${card.moveId}`, worth: card.worthwhile * 25 })
       return { card, association, tier: associationTier(association, card.worthwhile * 25) }
     })
   const weightCards = cards.filter((c) => c.origin === 'weight').map((card) => ({ card, stats: weightStanding(card, checkins, declarations, today).stats }))
-  const cooling = associationFor(checkins, today, (c) => Boolean(c.extras?.coolingOff))
-  const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial))
-  const caffeine = morningAssociation(checkins, today, (c) => Boolean(c.extras?.heavyCaffeine))
+  const cooling = associationFor(checkins, today, (c) => Boolean(c.extras?.coolingOff), undefined, { id: 'assoc.coolingOff', worth: WORTH_POINTS })
+  const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial), undefined, { id: 'assoc.bigSocial', worth: WORTH_POINTS })
+  const caffeine = morningAssociation(checkins, today, (c) => Boolean(c.extras?.heavyCaffeine), { id: 'assoc.heavyCaffeine', worth: WORTH_POINTS })
   const cafe = caffeineEvidence(checkins, today)
   const sessions = await db.outside.toArray()
   const outsideDays = new Set(sessions.map((o) => o.day))
-  const workouts = dayAssociation(checkins, today, (d) => outsideDays.has(d))
+  const workouts = dayAssociation(checkins, today, (d) => outsideDays.has(d), undefined, { id: 'assoc.workouts', worth: WORTH_POINTS })
   // Part 35: evening sessions against the night and the morning after; hard sessions against the next morning's four readings.
   const evenings = eveningWorkoutDays(sessions)
   const onEvening = (c: CheckIn) => evenings.has(c.day)
-  const eveningMorning = associationFor(checkins, today, onEvening)
-  const eveningSleep = associationBy(checkins, today, onEvening, (m) => (m.answers.sleepQuality === undefined ? null : (m.answers.sleepQuality - 1) * 25))
+  const eveningMorning = associationFor(checkins, today, onEvening, undefined, { id: 'assoc.eveningWorkout', worth: WORTH_POINTS })
+  const eveningSleep = associationBy(checkins, today, onEvening, (m) => (m.answers.sleepQuality === undefined ? null : (m.answers.sleepQuality - 1) * 25), { id: 'assoc.eveningWorkout.sleep', worth: WORTH_POINTS })
   const hard = hardDays(sessions)
   const onHard = (c: CheckIn) => hard.has(c.day)
-  const hardMeasures = Object.fromEntries(HARD_MEASURES.map((id) => [id, associationBy(checkins, today, onHard, (m) => m.answers[id] ?? null)])) as Record<HardMeasure, Association>
+  const hardMeasures = Object.fromEntries(HARD_MEASURES.map((id) => [id, associationBy(checkins, today, onHard, (m) => m.answers[id] ?? null, { id: `assoc.hardWorkout.${id}`, worth: WORTH_STEPS })])) as Record<HardMeasure, Association>
   const first = checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
   const weeks = first ? Math.floor((Math.max(0, (Date.parse(today) - Date.parse(first)) / 86_400_000) + 1) / 7) : 0
   // A Nothing extra the app set aside when the day changed was never offered to you (stage 3, item 5).

@@ -57,7 +57,7 @@ export interface NatureAssociations {
 }
 
 /** A nature day's two comparisons, one rule for the sheet and the chip's answer: associations, never a cause. */
-export function natureAssociations(checkins: readonly CheckIn[], outcomes: readonly Outcome[], today: string): NatureAssociations {
+export function natureAssociations(checkins: readonly CheckIn[], outcomes: readonly Outcome[], today: string, worth?: number): NatureAssociations {
   const moves = natureMoveDays(outcomes)
   const evenings = new Map(checkins.filter((c) => c.block === 'evening').map((c) => [c.day, c]))
   const isDay = (day: string) => {
@@ -69,8 +69,8 @@ export function natureAssociations(checkins: readonly CheckIn[], outcomes: reado
     return e ? natureKnown(e, moves) : day >= NATURE_SINCE && moves.has(day)
   }
   return {
-    evening: dayAssociation(checkins, today, isDay, knownDay),
-    morning: associationFor(checkins, today, (c) => natureEvening(c, moves), (c) => natureKnown(c, moves)),
+    evening: dayAssociation(checkins, today, isDay, knownDay, worth === undefined ? undefined : { id: 'assoc.nature', worth }),
+    morning: associationFor(checkins, today, (c) => natureEvening(c, moves), (c) => natureKnown(c, moves), worth === undefined ? undefined : { id: 'assoc.nature.morning', worth }),
   }
 }
 
