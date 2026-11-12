@@ -77,6 +77,29 @@ describe('what comes before your days', () => {
 describe('the pattern tonight matches (stage 3, group 3)', () => {
   const today = '2026-09-20'
 
+  it('gives each pair its standing among the sixteen, by the one standard', () => {
+    // Four fortnights, stressed on each one's 1st, 2nd, 4th and 8th evenings: an arrangement a turn cannot mistake for itself.
+    const out: CheckIn[] = []
+    for (let i = 0; i < 56; i++) {
+      const day = addDays('2026-07-01', i)
+      const stressed = [0, 1, 3, 7].includes(i % 14)
+      out.push(ci(day, 'evening', 3, { stress: stressed ? 5 : 3 }))
+      out.push(ci(addDays(day, 1), 'morning', 3, stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {}))
+    }
+    const pairs = comesBefore(out, today, { resamples: 100 })
+    const high = pairs.find((p) => p.reading === 'stress' && p.level === 'high')
+    expect(high).toMatchObject({ withN: 16, withoutN: 40, standing: 'pattern', direction: 'lower', family: 1 })
+    // No other reading was ever at its top two or lowest two phrases: nothing to compare, and nothing joins the family.
+    expect(pairs.filter((p) => p !== high).every((p) => p.standing === 'tooFew' && p.family === 1)).toBe(true)
+  })
+
+  it('reads a strictly alternating record as no clear pattern yet: turned round, every other day cannot be told from itself', () => {
+    // Stressed every other evening for 24 days, the morning after lower each time. The difference and its interval are
+    // as they were; the chance check, which keeps a streak a streak, has nothing to tell this arrangement from.
+    const high = comesBefore(record(24), today, { resamples: 100 }).find((p) => p.reading === 'stress' && p.level === 'high')
+    expect(high).toMatchObject({ enough: true, withN: 12, withoutN: 12, standing: 'noPattern', direction: 'lower' })
+  })
+
   it('after an evening with stress high, shows the stress-high pair, the largest the evening matches', () => {
     const p = matchingPair(record(24), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })
     expect(p?.reading).toBe('stress')

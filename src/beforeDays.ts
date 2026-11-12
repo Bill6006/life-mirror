@@ -1,4 +1,5 @@
 import { eveningPoints, likeForLike, type DayPoint } from './associations'
+import { type Compared, type Direction, type Standing, standings, WORTH_POINTS } from './counted/compare'
 import type { CheckIn } from './db'
 import type { ReadingId } from './readings'
 
@@ -30,6 +31,11 @@ export interface BeforePair {
   lo: number | null
   hi: number | null
   enough: boolean
+  /** Where the pair stands among all sixteen, by the one standard (2026-11-12), and which way it reads. */
+  standing: Standing
+  direction: Direction
+  /** How many of the sixteen were tested: the number said with a lead. */
+  family: number
 }
 
 function atLevel(position: number, level: Level): boolean {
@@ -84,6 +90,7 @@ export function comesBefore(checkins: readonly CheckIn[], today: string, opts: {
   const min = opts.min ?? BEFORE_MIN
   const resamples = opts.resamples ?? 600
   const pairs: BeforePair[] = []
+  const compared: Compared[] = []
   for (const reading of EVENING_READINGS) {
     for (const level of ['high', 'low'] as const) {
       const points = eveningPoints(
@@ -92,12 +99,15 @@ export function comesBefore(checkins: readonly CheckIn[], today: string, opts: {
         (c) => atLevel(c.answers[reading] as number, level),
         (c) => c.answers[reading] !== undefined,
       )
-      const a = likeForLike(points)
+      const a = likeForLike(points, { id: `before.${reading}.${level}`, worth: WORTH_POINTS })
+      compared.push(a.compared as Compared)
       const enough = a.withEvent.n >= min && a.without.n >= min && a.diff !== null
       const iv = enough ? resampledInterval(points, resamples, seedOf(`${reading}:${level}:${points.length}`)) : null
-      pairs.push({ reading, level, withN: a.withEvent.n, withoutN: a.without.n, diff: a.diff, lo: iv?.lo ?? null, hi: iv?.hi ?? null, enough: enough && iv !== null })
+      pairs.push({ reading, level, withN: a.withEvent.n, withoutN: a.without.n, diff: a.diff, lo: iv?.lo ?? null, hi: iv?.hi ?? null, enough: enough && iv !== null, standing: 'tooFew', direction: 'none', family: 0 })
     }
   }
+  // The sixteen pairs are one family: each is given its standing among all of them.
+  standings(compared).forEach((s, i) => Object.assign(pairs[i], { standing: s.standing, direction: s.direction, family: s.family }))
   const shown = pairs.filter((p) => p.enough).sort((p, q) => Math.abs(q.diff as number) - Math.abs(p.diff as number))
   const gathering = pairs.filter((p) => !p.enough).sort((p, q) => Math.min(q.withN, q.withoutN) - Math.min(p.withN, p.withoutN))
   return [...shown, ...gathering]

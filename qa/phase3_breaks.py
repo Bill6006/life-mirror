@@ -23,6 +23,8 @@ F = 'src/facts.ts'
 T = 'src/sheetStandings.test.ts'
 S = 'src/situations.ts'
 E = 'src/evidenceFlow.ts'
+B = 'src/beforeDays.ts'
+BT = 'src/beforeDays.test.ts'
 PE = 'src/passiveEvidence.test.ts'
 ST = 'src/situations.test.ts'
 FG = 'src/firmGated.test.ts'
@@ -83,6 +85,10 @@ TABLE = [
          old="return { card, association, standing, tier: tierFor(standing,",
          new="return { card, association, standing, tier: association.times >= 3 && (association.diff ?? 0) >= 10 ? 'promising' : tierFor(standing,",
          tests=[PE], pattern='done three times'),
+    dict(id='a-pair-has-its-standing', file=B,
+         old="Object.assign(pairs[i], { standing: s.standing, direction: s.direction, family: s.family })",
+         new="Object.assign(pairs[i], { direction: s.direction, family: s.family })",
+         tests=[BT], pattern='its standing among the sixteen'),
 ]
 
 
