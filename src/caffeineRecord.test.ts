@@ -26,7 +26,7 @@ import { lastNightKeys } from './forecastFlow'
 import { library } from './library'
 import { blockReadings, type Answers, type Position } from './readings'
 import { readingOf } from './score'
-import { bestDays } from './weekly'
+import { bestConditions } from './weekly'
 
 // What the record may say about caffeine (Part 22): three states never collapsed, groups of five
 // merged like for like, Promising only from fifteen a group across six weeks, the late line fired
@@ -351,7 +351,8 @@ describe('best days, from reported bands', () => {
       rows.push(ci(day, 'evening', { pos: good ? 5 : 3 }))
     }
     expect(itemDays(rows, TODAY)).toBe(10)
-    const b = bestDays(rows, [], [], [], TODAY)
+    const b = bestConditions(rows, [], [], [], TODAY)
+    if (!b) throw new Error('thirty days are past the threshold')
     const row = [...b.controlled, ...b.uncontrolled].find((d) => d.label === 'at least 200 mg of caffeine reported')
     // Ten days carry the item's record: two of them among the best, eight among the others.
     expect(row).toMatchObject({ onBest: 0, ofBest: 2, onOthers: 8, ofOthers: 8 })
@@ -359,7 +360,8 @@ describe('best days, from reported bands', () => {
     // Twenty-eight days of the item's own record retire the old rows.
     const later = rows.map((c) => (c.block === 'morning' ? { ...c, extras: { ...c.extras, caffeineShown: true as const } } : c))
     expect(itemDays(later, TODAY)).toBe(30)
-    const b2 = bestDays(later, [], [], [], TODAY)
-    expect([...b2.controlled].some((d) => d.label === 'heavy caffeine in the morning' || d.label === 'caffeine after midday')).toBe(false)
+    const b2 = bestConditions(later, [], [], [], TODAY)
+    expect(b2?.controlled.some((d) => d.label === 'at least 200 mg of caffeine reported')).toBe(true)
+    expect(b2?.controlled.some((d) => d.label === 'heavy caffeine in the morning' || d.label === 'caffeine after midday')).toBe(false)
   })
 })

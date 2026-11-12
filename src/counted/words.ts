@@ -16,6 +16,50 @@ export const STANDING_WORDS: Readonly<Record<Standing, string>> = {
 /** How many comparisons were looked at to say one thing: said with every lead. */
 const looked = (family: number): string => `${family} ${family === 1 ? 'comparison was' : 'comparisons were'} looked at`
 
+/** A standing as it is said inside a sentence: "a lead, not yet a pattern". */
+const said = (standing: Standing): string => `${STANDING_WORDS[standing].charAt(0).toLowerCase()}${STANDING_WORDS[standing].slice(1)}`
+
+/** A standing as one short line beside its numbers: its own words, and with a lead how many comparisons were looked at. */
+export function standingLine(s: { standing: Standing; family: number }): string {
+  return s.standing === 'lead' ? `${STANDING_WORDS.lead} · ${s.family} looked at` : STANDING_WORDS[s.standing]
+}
+
+export interface BestWords {
+  /** The condition, in the weekly view's own words: "a nap", "Saturday", "she was away". */
+  thing: string
+  /** How many of the best days the record can speak for carried it, and of the other days. */
+  k: number
+  n: number
+  restK: number
+  m: number
+  standing: Standing
+  direction: Direction
+}
+
+/**
+ * Best days: how many conditions had enough days to be compared. Said once for a list, so every lead in it is read
+ * against that number.
+ */
+export function bestFamilyWords(family: number): string {
+  if (family === 0) return 'nothing has enough days to be compared yet (eight best days and eight others, with five occurrences)'
+  return `${family} ${family === 1 ? 'thing has' : 'things have'} enough days to be compared, as one family, and a thing is said here only at a lead`
+}
+
+/** Best days: how often one thing was recorded on the best days, against the other days. Its list says how many were compared. */
+export function bestWords(w: BestWords): string {
+  const counts = `${w.k} of ${w.n} best days, ${w.restK} of ${w.m} others`
+  const often = w.direction === 'lower' ? 'less often' : 'more often'
+  switch (w.standing) {
+    case 'tooFew':
+    case 'noPattern':
+      return `${w.thing}: ${counts} (${said(w.standing)})`
+    case 'lead':
+      return `${w.thing}: ${counts}, ${often} on the best days (${said('lead')})`
+    case 'pattern':
+      return `${w.thing}: ${counts}, ${often} on the best days (${said('pattern')})`
+  }
+}
+
 export interface WhenWords {
   /** The thing, as a noun phrase: "a short night", "something sweet". */
   thing: string

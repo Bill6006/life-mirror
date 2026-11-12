@@ -184,7 +184,8 @@ export function kindsOf(input: CountedInput): Kind[] {
     category: 'dayRecord',
     private: false,
     since: NATURE_SINCE,
-    known: (d) => d.day >= NATURE_SINCE && (d.natureMove || (evening(d) !== undefined && natureKnown(evening(d) as CheckIn, new Set()))),
+    // From the definition's start: the rule is nature.ts's own, in the moves' days and in what an evening knows.
+    known: (d) => d.natureMove || (evening(d) !== undefined && natureKnown(evening(d) as CheckIn, new Set())),
     happened: (d) => d.natureMove || (evening(d) !== undefined && natureEvening(evening(d) as CheckIn, new Set())),
   })
   kinds.push({

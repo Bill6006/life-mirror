@@ -4,7 +4,7 @@ import { extensionPrompt, families, moveById } from './catalogue'
 import type { CheckIn, DayContext, ForecastScore, Offer, Outcome } from './db'
 import type { Situation } from './offers'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { bestDays, catalogueHealth, dayReading, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard } from './weekly'
+import { bestConditions, bestDays, catalogueHealth, dayReading, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard } from './weekly'
 
 const allAt = (ids: readonly ReadingId[], p: Position): Answers => Object.fromEntries(ids.map((id) => [id, p]))
 const ci = (day: string, block: CheckIn['block'], p: Position, activeMs = 30_000, extras?: CheckIn['extras']): CheckIn => ({ day, block, answers: allAt(blockReadings(block), p), startedAt: '', completedAt: 'x', updatedAt: '', activeMs, extras })
@@ -69,25 +69,28 @@ describe('the scorecard', () => {
 describe('best-days', () => {
   it('stays silent under twenty days and says how many it has', () => {
     const b = bestDays(daysOf(12, () => 3), [], [], [], TODAY)
-    expect(b).toMatchObject({ silent: true, days: 12, threshold: 20, top: [] })
+    expect(b).toMatchObject({ silent: true, days: 12, threshold: 20, top: [], family: 0 })
+    expect(bestConditions(daysOf(12, () => 3), [], [], [], TODAY)).toBeNull()
   })
 
-  it('names the top tenth above the threshold, with what was different, split into what you control and what you don’t', () => {
-    // Thirty days: every third day reads high. A walk was done on those days; the rest never.
+  it('counts each condition only over the days the record can speak for it, split into what you control and what you don’t', () => {
+    // Thirty days: every third day reads high. A walk was offered and done on those days, and never offered on the rest.
     const checkins = daysOf(30, (i) => (i % 3 === 0 ? 5 : 3))
     const highDays = [...new Set(checkins.map((c) => c.day))].filter((d) => dayReading(checkins, d) === 100)
     const offers = highDays.map((d, i) => offer(i + 1, d, 'walk-ten'))
     const outcomes = offers.map((o) => done(o.id as number))
     const contexts: DayContext[] = highDays.map((day) => ({ day, weekday: 2, withHer: false, studyNight: false, churchDay: false, pickupTime: null, soloUntil: '20:00', changed: false, createdAt: '' }))
-    const b = bestDays(checkins, offers, outcomes, contexts, TODAY)
-    expect(b.silent).toBe(false)
-    expect(b.days).toBe(30)
-    expect(b.top).toHaveLength(3)
-    const walk = b.controlled.find((d) => d.label === moveById('walk-ten').name)
-    expect(walk).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 7, ofOthers: 27 })
-    const away = b.uncontrolled.find((d) => d.label === 'she was away')
-    expect(away?.onBest).toBe(3)
-    expect(b.controlled.length).toBeLessThanOrEqual(4)
+    const all = bestConditions(checkins, offers, outcomes, contexts, TODAY)
+    expect(all?.days).toBe(30)
+    expect(all?.top).toHaveLength(3)
+    // A day the walk was never offered is in neither count: ten days known, where every one of the thirty used to count.
+    const walk = all?.controlled.find((d) => d.label === moveById('walk-ten').name)
+    expect(walk).toMatchObject({ moveId: 'walk-ten', onBest: 3, ofBest: 3, onOthers: 7, ofOthers: 7 })
+    // A day with no context row says nothing about who was around.
+    expect(all?.uncontrolled.find((d) => d.label === 'she was away')).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 7, ofOthers: 7 })
+    // An evening chip is known wherever the evening was completed, and a weekday on every day.
+    expect(all?.controlled.find((d) => d.label === 'a nap')).toMatchObject({ onBest: 0, ofBest: 3, onOthers: 0, ofOthers: 27 })
+    expect(all?.uncontrolled.filter((d) => /day$/.test(d.label) && d.ofBest + d.ofOthers === 30)).toHaveLength(7)
   })
 
   it('counts a chip added in stage 3, item 5, only over the days that showed it (Rule 2)', () => {
@@ -99,9 +102,72 @@ describe('best-days', () => {
       if (c.block !== 'evening' || i > 9) return c
       return { ...c, extras: { chipsShown: { sweet: true as const }, ...(i % 3 === 0 ? { sweet: true as const } : {}) } }
     })
-    const b = bestDays(checkins, [], [], [], TODAY)
-    const sweet = b.controlled.find((d) => d.label === 'something sweet')
+    const sweet = bestConditions(checkins, [], [], [], TODAY)?.controlled.find((d) => d.label === 'something sweet')
     expect(sweet).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 0, ofOthers: 6 })
+  })
+})
+
+// Best days under the one standard (Phase 3, 2026-11-12). Ninety days whose nine best keep no rhythm and fall on
+// no one weekday. A nap was tapped on eight of the nine and on nine of the other eighty-one evenings; a late dinner
+// on two of the nine and eighteen of the others, the same rate on both sides.
+const BEST = [3, 12, 20, 29, 37, 46, 54, 65, 78]
+const NAPS = [3, 12, 20, 29, 37, 46, 54, 65, 8, 17, 26, 35, 44, 53, 62, 71, 86]
+const DINNERS = [3, 46, 1, 6, 11, 16, 21, 26, 31, 36, 41, 51, 56, 61, 66, 71, 76, 81, 86, 90]
+function ninety(days = 90): CheckIn[] {
+  return daysOf(days, (i) => (BEST.includes(i) ? 5 : 3)).map((c) => {
+    const i = Math.round((Date.parse(TODAY) - Date.parse(c.day)) / 86_400_000)
+    if (c.block !== 'evening') return c
+    return { ...c, extras: { ...(NAPS.includes(i) ? { napped: true as const } : {}), ...(DINNERS.includes(i) ? { dinner: true as const } : {}) } }
+  })
+}
+
+describe('best-days under the one standard', () => {
+  it('shows a condition once it stands at a lead among everything compared, with its counts, and says a lead at most', () => {
+    const checkins = ninety()
+    const b = bestDays(checkins, [], [], [], TODAY)
+    expect(b).toMatchObject({ silent: false, days: 90, family: 9 })
+    expect(b.top).toHaveLength(9)
+    // Eight of nine best days against nine of eighty-one others: past chance even after the family's correction, and still said as a lead.
+    expect(b.controlled).toEqual([{ label: 'a nap', onBest: 8, ofBest: 9, onOthers: 9, ofOthers: 81, standing: 'lead', direction: 'higher' }])
+    // Nothing outside your control stands out: no weekday holds more than two of the nine.
+    expect(b.uncontrolled).toEqual([])
+    expect(b.own).toEqual([])
+  })
+
+  it('keeps a condition with the same rate on both sides, or too few days, off the list, and says where each stands', () => {
+    const all = bestConditions(ninety(), [], [], [], TODAY)
+    // Two of nine against eighteen of eighty-one: both 22 in 100.
+    expect(all?.controlled.find((d) => d.label === 'a late or heavy dinner')).toMatchObject({ onBest: 2, ofBest: 9, onOthers: 18, ofOthers: 81, standing: 'noPattern' })
+    // Never tapped: under five occurrences, nothing is tested.
+    expect(all?.controlled.find((d) => d.label === 'nothing landed')).toMatchObject({ onBest: 0, ofBest: 9, standing: 'tooFew' })
+    // One family: the nap, the dinner and the seven weekdays were tested together, and that is the number a lead says.
+    expect(all?.family).toBe(9)
+    expect(all?.uncontrolled.filter((d) => d.standing !== 'tooFew')).toHaveLength(7)
+  })
+
+  it('says nothing stands out while the top tenth holds fewer than eight days, where the four largest differences used to show', () => {
+    // Seventy days: the top tenth is seven, one short of the eight a side the standard needs. The nap is on all seven.
+    const b = bestDays(ninety(70), [], [], [], TODAY)
+    expect(b.top).toHaveLength(7)
+    expect(b).toMatchObject({ silent: false, family: 0, controlled: [], uncontrolled: [] })
+    const nap = bestConditions(ninety(70), [], [], [], TODAY)?.controlled.find((d) => d.label === 'a nap')
+    expect(nap).toMatchObject({ onBest: 7, ofBest: 7, standing: 'tooFew' })
+  })
+
+  it('shows at most four in a list, the largest difference first', () => {
+    // Five of your own chips, each tapped on the best days and on fewer and fewer of them; the first on all nine.
+    const own = ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, label: `chip ${id}`, createdAt: '2026-01-01T00:00:00.000Z', removedAt: null }))
+    const checkins = ninety().map((c) => {
+      const i = Math.round((Date.parse(TODAY) - Date.parse(c.day)) / 86_400_000)
+      if (c.block !== 'evening') return c
+      const at = BEST.indexOf(i)
+      const tapped = Object.fromEntries(own.filter((_, n) => at >= 0 && at < 9 - n).map((chip) => [chip.id, true as const]))
+      return { ...c, extras: { ...c.extras, chipsShown: Object.fromEntries(own.map((chip) => [`own:${chip.id}`, true as const])), own: tapped } }
+    })
+    const b = bestDays(checkins, [], [], [], TODAY, new Set(), own)
+    expect(b.own?.map((d) => [d.label, d.onBest, d.standing])).toEqual([['chip a', 9, 'lead'], ['chip b', 8, 'lead'], ['chip c', 7, 'lead'], ['chip d', 6, 'lead']])
+    // Your own chips are in the same family as the rest.
+    expect(b.family).toBe(14)
   })
 })
 

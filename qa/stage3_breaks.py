@@ -74,7 +74,7 @@ TABLE = [
          new="",
          tests=['src/beforeDays.test.ts'], pattern='belongs to the evening alone'),
     dict(id='pattern-ready-only', file='src/beforeDays.ts',
-         old=".filter((p) => p.enough && p.diff !== null)",
+         old=".filter((p) => p.enough && p.diff !== null && (p.standing === 'lead' || p.standing === 'pattern'))",
          new=".filter((p) => p.diff !== null)",
          tests=['src/beforeDays.test.ts'], pattern='tonight matches no pair'),
     dict(id='pattern-shown', file='src/checkin.tsx',

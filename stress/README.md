@@ -54,6 +54,7 @@ seeds 500001–502000.
 | `countedJudge.ts`, `countedBound.ts` | The judge of that simulation, and the bounds its two power marks are set against. |
 | `counted_recount.py` | An independent recount of that judge's counts and bounds, in another language. |
 | `countedTune.ts`, `counted-calib.mjs`, `counted-bound.mjs` | Its tuning tools: ways of shuffling compared on the tuning seeds; the chance itself read on a results folder; the power bound computed before the criteria were frozen. |
+| `countedSteps.ts`, `countedBest.ts` | Two families the verdict did not hold, each asked of the same simulated people: with against without on one reading in steps, and best days (each condition's rate on the top tenth of days against the rest). Both are capped at a lead in the app; `RESULTS-8.md` has the tables. |
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
 | `scenarios.ts` | The simulated people of the criteria's list, one scenario each. |
 | `engineA.ts` | Today's engine, replayed. The draw mirrors `offerFlow.ensureOffer` and the daily run mirrors `learningFlow.runLearning`, calling the committed functions in `src/`. |

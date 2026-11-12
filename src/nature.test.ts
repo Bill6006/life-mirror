@@ -16,7 +16,7 @@ import library from './library.json'
 import type { ClaimCard } from './libraryTypes'
 import { NATURE_EVENT, NATURE_MINUTES, NATURE_MOVES, NATURE_SINCE, natureAnswerWords, natureAssociations, natureDay, natureEvening, natureMoveDays, natureMoveToday } from './nature'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { bestDays } from './weekly'
+import { bestConditions } from './weekly'
 import { retrieve } from '../worker/src/library'
 
 // Time in nature (item 2 of 4, 2026-10-21), the evening's "20+ min in nature today, in total", defined from the evidence
@@ -198,16 +198,17 @@ describe('time in nature among best days', () => {
       checkins.push(ci(day, 'morning', p), ci(day, 'evening', p, shown ? { chipsShown: { nature: true }, ...(i === 3 || i === 6 ? { nature: true as const } : {}) } : undefined))
       if (i === 9) outcomes.push(answered(day, 'green-walk'))
     }
-    const b = bestDays(checkins, [], outcomes, [], today)
-    expect(b.controlled.find((d) => d.label === '20+ minutes in nature')).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 0, ofOthers: 6 })
+    const b = bestConditions(checkins, [], outcomes, [], today)
+    expect(b?.controlled.find((d) => d.label === '20+ minutes in nature')).toMatchObject({ onBest: 3, ofBest: 3, onOthers: 0, ofOthers: 6 })
     // Days before the definition began count for nothing, whatever they carry.
     const early: CheckIn[] = []
     for (let i = 30; i >= 1; i--) {
       const day = addDays('2026-10-21', -i)
       early.push(ci(day, 'morning', i % 3 === 0 ? 5 : 3), ci(day, 'evening', i % 3 === 0 ? 5 : 3, { chipsShown: { nature: true }, ...(i % 3 === 0 ? { nature: true as const } : {}) }))
     }
-    const none = bestDays(early, [], [], [], '2026-10-21').controlled.find((d) => d.label === '20+ minutes in nature')
-    expect((none?.ofBest ?? 0) + (none?.ofOthers ?? 0)).toBe(0)
+    const none = bestConditions(early, [], [], [], '2026-10-21')?.controlled.find((d) => d.label === '20+ minutes in nature')
+    // The condition is there, and holds no day on either side.
+    expect(none).toMatchObject({ onBest: 0, ofBest: 0, onOthers: 0, ofOthers: 0, standing: 'tooFew' })
   })
 })
 

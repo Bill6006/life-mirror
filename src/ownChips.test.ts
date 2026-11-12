@@ -83,11 +83,15 @@ describe('a label never reaches the day’s sheet', () => {
   it('is left off every fact, the weekly ones included, while the weekly view on the phone counts it', async () => {
     const label = 'Stand-in label zq'
     await updateSettings((s) => ({ ...s, ownChips: [{ id: 'a', label, createdAt: '2026-09-01T00:00:00.000Z', removedAt: null }] }))
-    // Thirty days, the chip shown every evening and tapped on every third.
+    // Ninety days, the chip shown every evening; tapped on the nine best days, which keep no rhythm, and on nine others.
+    const best = [3, 12, 20, 29, 37, 46, 54, 65, 78]
+    const tapped = [...best, 8, 17, 26, 35, 44, 53, 62, 71, 86]
+    // A morning at its best: every reading at the top, and the three that read better lower at the bottom.
+    const atBest = (c: CheckIn): CheckIn => ({ ...c, answers: { ...c.answers, stress: 1, overwhelm: 1, irritation: 1 } })
     const rows: CheckIn[] = []
-    for (let k = 30; k >= 1; k--) {
+    for (let k = 90; k >= 1; k--) {
       const day = addDays(DAY, -k)
-      rows.push(ci(day, 'morning', ((k % 5) + 1) as Position), ci(day, 'evening', 3, { chipsShown: { [ownShownKey('a')]: true }, ...(k % 3 === 0 ? { own: { a: true as const } } : {}) }))
+      rows.push(best.includes(k) ? atBest(ci(day, 'morning', 5)) : ci(day, 'morning', 3), ci(day, 'evening', 3, { chipsShown: { [ownShownKey('a')]: true }, ...(tapped.includes(k) ? { own: { a: true as const } } : {}) }))
     }
     await db.checkins.bulkAdd(rows)
     const sheet = await factSheet(DAY, new Date(2026, 9, 10, 20, 0))
@@ -96,7 +100,7 @@ describe('a label never reaches the day’s sheet', () => {
     // The probe that could have said yes: the phone's weekly view names it.
     const view = await weeklyData(DAY)
     expect(view.best.own?.map((d) => d.label)).toEqual([label])
-    const d = view.best.own?.[0]
-    expect([(d?.ofBest ?? 0) + (d?.ofOthers ?? 0), (d?.onBest ?? 0) + (d?.onOthers ?? 0)]).toEqual([30, 10])
+    // On all nine best days against nine of the other eighty-one: a lead, the standing that puts it on the view.
+    expect(view.best.own?.[0]).toMatchObject({ onBest: 9, ofBest: 9, onOthers: 9, ofOthers: 81, standing: 'lead', direction: 'higher' })
   })
 })

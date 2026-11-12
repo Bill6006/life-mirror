@@ -1,6 +1,7 @@
 import type { Block } from './blocks'
 import { findPath, hasMove, moveById } from './catalogue'
 import { copy } from './copy'
+import { bestFamilyWords, bestWords } from './counted/words'
 import type { Fact } from './factTypes'
 import { formatDayShort } from './format'
 import { readingById } from './readings'
@@ -94,13 +95,13 @@ function movedFact(w: WeeklyAnalyses['moved']): Fact {
   }
 }
 
-/** A list of differences as the view writes them, with each number in the values under its own key. */
+/** A list of best days' conditions, each in the standard's own sentence with its standing, and each number in the values under its own key. */
 function differences(list: readonly Difference[], prefix: string, values: Fact['values']): string {
   return list
     .map((d, k) => {
       const key = `${prefix}${k + 1}`
-      Object.assign(values, { [key]: d.label, [`${key}Best`]: d.onBest, [`${key}BestOf`]: d.ofBest, [`${key}Others`]: d.onOthers, [`${key}OthersOf`]: d.ofOthers })
-      return `${d.label}: ${d.onBest} of ${d.ofBest} best days, ${d.onOthers} of ${d.ofOthers} others`
+      Object.assign(values, { [key]: d.label, [`${key}Best`]: d.onBest, [`${key}BestOf`]: d.ofBest, [`${key}Others`]: d.onOthers, [`${key}OthersOf`]: d.ofOthers, [`${key}Standing`]: d.standing })
+      return bestWords({ thing: d.label, k: d.onBest, n: d.ofBest, restK: d.onOthers, m: d.ofOthers, standing: d.standing, direction: d.direction })
     })
     .join('; ')
 }
@@ -108,22 +109,24 @@ function differences(list: readonly Difference[], prefix: string, values: Fact['
 function bestFacts(b: BestDays): Fact[] {
   if (b.silent) return [{ id: 'weekly.best', tags: [], text: `Best-days, from the weekly view, stays silent until twenty days with two logged blocks: ${b.days} so far.`, values: { days: b.days, threshold: b.threshold } }]
   const by = (k: Kind) => b.controlled.filter((d) => kindOf(d.moveId) === k)
-  const values: Fact['values'] = { days: b.days, top: b.top.length }
+  const values: Fact['values'] = { days: b.days, top: b.top.length, family: b.family }
   const control = differences(by('general'), 'c', values)
   const other = differences(b.uncontrolled, 'u', values)
+  // The one standard (2026-11-12): a thing is said here only once it stands at a lead among everything compared, and the family is said once.
+  const compared = bestFamilyWords(b.family)
   const out: Fact[] = [
     {
       id: 'weekly.best',
       tags: [],
-      text: `Best-days, from the weekly view: the top tenth of days, ${b.top.length} of ${b.days}, against the others. What you control: ${control || 'nothing differs yet'}. What you don’t: ${other || 'nothing differs yet'}.`,
+      text: `Best-days, from the weekly view: the top tenth of days, ${b.top.length} of ${b.days}, against the others, by how often each thing was recorded on the best days and on the rest; ${compared}. What you control: ${control || 'nothing stands out yet'}. What you don’t: ${other || 'nothing stands out yet'}.`,
       values,
     },
   ]
   for (const k of ['faith', 'social'] as const) {
     const list = by(k)
     if (!list.length) continue
-    const v: Fact['values'] = { days: b.days, top: b.top.length }
-    out.push({ id: `weekly.best.${k}`, tags: [], text: `Best-days, from the weekly view, the ${SUFFIX[k]} among what you control, over the same ${b.top.length} best days of ${b.days}: ${differences(list, 'c', v)}.`, values: v })
+    const v: Fact['values'] = { days: b.days, top: b.top.length, family: b.family }
+    out.push({ id: `weekly.best.${k}`, tags: [], text: `Best-days, from the weekly view, the ${SUFFIX[k]} among what you control, over the same ${b.top.length} best days of ${b.days}, ${b.family} compared as one family: ${differences(list, 'c', v)}.`, values: v })
   }
   return out
 }

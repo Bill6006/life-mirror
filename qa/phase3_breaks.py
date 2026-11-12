@@ -6,6 +6,9 @@ three-valued field and says no difference; "promising" there is only ever a lead
 a comparison on a scale of steps says a lead at most. The phone's own lines that state a difference speak only at a
 lead or a pattern, say which, and take the higher strength only at a pattern.
 
+Best days: each condition is counted only over the days the record can speak for it, every condition is one family, a
+list shows up to four that stand at a lead, the largest difference first, and a lead is the most it says.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -39,6 +42,11 @@ A = 'src/associations.ts'
 LT = 'src/counted/likeForLike.test.ts'
 W = 'src/counted/words.ts'
 WT = 'src/counted/words.test.ts'
+WK = 'src/weekly.ts'
+WKT = 'src/weekly.test.ts'
+WF = 'src/weeklyFacts.ts'
+WFT = 'src/weeklyFacts.test.ts'
+C = 'src/counted/compare.ts'
 
 TABLE = [
     dict(id='promising-is-only-the-good-direction', file=A,
@@ -93,6 +101,42 @@ TABLE = [
          old=" && (p.standing === 'lead' || p.standing === 'pattern'))",
          new=")",
          tests=[BT], pattern='after an evening with stress high'),
+    dict(id='best-days-says-a-lead-at-most', file=WK,
+         old="const capped = (standing: Standing): Standing => (standing === 'pattern' ? 'lead' : standing)",
+         new="const capped = (standing: Standing): Standing => standing",
+         tests=[WKT], pattern='says a lead at most'),
+    dict(id='best-days-shows-only-what-stands-at-a-lead', file=WK,
+         old="      .filter((d) => d.standing === 'lead' || d.standing === 'pattern')\n",
+         new="",
+         tests=[WKT], pattern='once it stands at a lead'),
+    dict(id='best-days-counts-only-the-days-the-record-can-speak-for', file=WK,
+         old="      if (!d || !c.known(d)) continue",
+         new="      if (!d) continue",
+         tests=[WKT], pattern='only over the days the record can speak for it'),
+    dict(id='best-days-is-one-family', file=WK,
+         old="  const stood = standings(cells)",
+         new="  const stood = cells.flatMap((c) => standings([c]))",
+         tests=[WKT], pattern='says where each stands'),
+    dict(id='best-days-shows-four-at-most', file=WK,
+         old="      .slice(0, 4)",
+         new="      .slice(0, 5)",
+         tests=[WKT], pattern='at most four in a list'),
+    dict(id='best-days-largest-difference-first', file=WK,
+         old="Math.abs(share(b)) - Math.abs(share(a)))",
+         new="Math.abs(share(a)) - Math.abs(share(b)))",
+         tests=[WKT], pattern='at most four in a list'),
+    dict(id='best-days-needs-eight-best-days', file=C,
+         old="  const enough = cells.map((_, i) => sizes[i] >= MIN_SIDE && ",
+         new="  const enough = cells.map((_, i) => sizes[i] >= 7 && ",
+         tests=[WKT], pattern='fewer than eight days'),
+    dict(id='best-days-fact-says-how-many-were-compared', file=WF,
+         old="on the best days and on the rest; ${compared}. What you control:",
+         new="on the best days and on the rest. What you control:",
+         tests=[WFT], pattern='a faith practice and a Social path rep'),
+    dict(id='best-days-fact-says-each-standing', file=W,
+         old="      return `${w.thing}: ${counts}, ${often} on the best days (${said('lead')})`",
+         new="      return `${w.thing}: ${counts}`",
+         tests=[WFT], pattern='a faith practice and a Social path rep'),
 ]
 
 

@@ -14,7 +14,7 @@ const SCORE: Scorecard = { scored: 20, hitRate: 0.65, target: 0.6, averageMiss: 
 const health = (family: string, name: string, over: Partial<FamilyHealth> = {}): FamilyHealth => ({ family, name, live: 4, offered: 6, done: 2, reachable: true, blocker: null, dead: [], ...over })
 const BASE: WeeklyAnalyses = {
   scorecard: SCORE,
-  best: { days: 12, threshold: 20, silent: true, top: [], controlled: [], uncontrolled: [] },
+  best: { days: 12, threshold: 20, silent: true, top: [], family: 0, controlled: [], uncontrolled: [] },
   gap: { days: 5, typical: null, good: null, best: null, howOften: null, lastGoodDaysAgo: null },
   moved: { reading: { thisWeek: null, lastWeek: null, delta: null }, ingredients: [] },
   lasts: { decays: [], byReward: [{ reward: 'pleasure', first: null, later: null }] },
@@ -46,17 +46,23 @@ describe('the weekly facts', () => {
   })
 
   it('put a faith practice and a Social path rep in facts of their own, and never a Partner path rep', () => {
-    const d = (label: string, moveId: string | undefined, onBest: number) => ({ label, ...(moveId ? { moveId } : {}), onBest, ofBest: 4, onOthers: 3, ofOthers: 36 })
+    // Each stands at a lead among fourteen compared: the only standing best days shows (the one standard, 2026-11-12).
+    const d = (label: string, moveId: string | undefined, onBest: number) => ({ label, ...(moveId ? { moveId } : {}), onBest, ofBest: 9, onOthers: 9, ofOthers: 81, standing: 'lead' as const, direction: 'higher' as const })
     const f = byId({
       ...BASE,
-      best: { days: 40, threshold: 20, silent: false, top: ['a', 'b', 'c', 'd'], controlled: [d('A ten-minute walk, now', 'walk-ten', 3), d('Five minutes of prayer', 'five-minutes-prayer', 2), d('Greet someone by name', 'greet-by-name', 2), d('One low-pressure conversation with a woman', 'low-pressure-conversation', 2), d('a nap', undefined, 1)], uncontrolled: [d('Monday', undefined, 2)] },
+      best: { days: 90, threshold: 20, silent: false, top: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'], family: 14, controlled: [d('A ten-minute walk, now', 'walk-ten', 8), d('Five minutes of prayer', 'five-minutes-prayer', 7), d('Greet someone by name', 'greet-by-name', 7), d('One low-pressure conversation with a woman', 'low-pressure-conversation', 7), d('a nap', undefined, 6)], uncontrolled: [{ ...d('Monday', undefined, 0), direction: 'lower' as const }] },
       lasts: { decays: [{ moveId: 'walk-ten', daysHeld: 2, runs: 3 }, { moveId: 'one-verse', daysHeld: 3, runs: 4 }, { moveId: 'low-pressure-conversation', daysHeld: 1, runs: 3 }], byReward: [{ reward: 'mastery', first: { mean: 0.42, n: 6 }, later: { mean: 0.1, n: 9 } }] },
       health: [health('movement', 'Movement'), health('faith', 'Faith', { reachable: false, blocker: 'hidden' }), health('partner', 'Partner')],
     })
     expect([...f.keys()]).toEqual(['weekly.scorecard', 'weekly.gap', 'weekly.moved', 'weekly.best', 'weekly.best.faith', 'weekly.best.social', 'weekly.lasts', 'weekly.lasts.faith', 'weekly.health', 'weekly.health.faith', 'weekly.together', 'weekly.misses', 'weekly.missing'])
-    expect(f.get('weekly.best')?.text).toBe('Best-days, from the weekly view: the top tenth of days, 4 of 40, against the others. What you control: A ten-minute walk, now: 3 of 4 best days, 3 of 36 others; a nap: 1 of 4 best days, 3 of 36 others. What you don’t: Monday: 2 of 4 best days, 3 of 36 others.')
-    expect(f.get('weekly.best.faith')?.text).toBe('Best-days, from the weekly view, the faith practices among what you control, over the same 4 best days of 40: Five minutes of prayer: 2 of 4 best days, 3 of 36 others.')
-    expect(f.get('weekly.best.social')?.text).toBe('Best-days, from the weekly view, the Social path reps among what you control, over the same 4 best days of 40: Greet someone by name: 2 of 4 best days, 3 of 36 others.')
+    expect(f.get('weekly.best')?.text).toBe('Best-days, from the weekly view: the top tenth of days, 9 of 90, against the others, by how often each thing was recorded on the best days and on the rest; 14 things have enough days to be compared, as one family, and a thing is said here only at a lead. What you control: A ten-minute walk, now: 8 of 9 best days, 9 of 81 others, more often on the best days (a lead, not yet a pattern); a nap: 6 of 9 best days, 9 of 81 others, more often on the best days (a lead, not yet a pattern). What you don’t: Monday: 0 of 9 best days, 9 of 81 others, less often on the best days (a lead, not yet a pattern).')
+    expect(f.get('weekly.best')?.values).toMatchObject({ days: 90, top: 9, family: 14, c1: 'A ten-minute walk, now', c1Best: 8, c1BestOf: 9, c1Others: 9, c1OthersOf: 81, c1Standing: 'lead' })
+    expect(f.get('weekly.best.faith')?.text).toBe('Best-days, from the weekly view, the faith practices among what you control, over the same 9 best days of 90, 14 compared as one family: Five minutes of prayer: 7 of 9 best days, 9 of 81 others, more often on the best days (a lead, not yet a pattern).')
+    expect(f.get('weekly.best.social')?.text).toBe('Best-days, from the weekly view, the Social path reps among what you control, over the same 9 best days of 90, 14 compared as one family: Greet someone by name: 7 of 9 best days, 9 of 81 others, more often on the best days (a lead, not yet a pattern).')
+    // With nothing at a lead, and with nothing yet compared, it says so and names no difference.
+    const quiet = (family: number) => byId({ ...BASE, best: { days: 40, threshold: 20, silent: false, top: ['a', 'b', 'c', 'd'], family, controlled: [], uncontrolled: [] } }).get('weekly.best')?.text
+    expect(quiet(0)).toBe('Best-days, from the weekly view: the top tenth of days, 4 of 40, against the others, by how often each thing was recorded on the best days and on the rest; nothing has enough days to be compared yet (eight best days and eight others, with five occurrences). What you control: nothing stands out yet. What you don’t: nothing stands out yet.')
+    expect(quiet(1)).toContain('; 1 thing has enough days to be compared, as one family, and a thing is said here only at a lead. What you control: nothing stands out yet.')
     expect(f.get('weekly.lasts')?.text).toBe('What lasts, from the weekly view: A ten-minute walk, now held about 2 days after a run (3 runs). Each reward’s first three times against its later ones: mastery: the first three +0.42 steps (6), later +0.1 steps (9).')
     expect(f.get('weekly.lasts.faith')?.text).toBe('What lasts, from the weekly view, the faith practices: Read one verse and sit with it held about 3 days after a run (4 runs).')
     expect(f.get('weekly.health')?.text).toBe('Catalogue health, from the weekly view, by family: Movement: 4 live, offered 6, done 2.')
@@ -69,7 +75,7 @@ describe('the weekly facts', () => {
       ...BASE,
       gap: { days: 30, typical: 52, good: 61, best: 74, howOften: 0.3, lastGoodDaysAgo: 2 },
       moved: { reading: { thisWeek: 55.34, lastWeek: 52.01, delta: 3.33 }, ingredients: [{ reading: 'stress', thisWeek: 2.5, lastWeek: 3, delta: 0.5 }] },
-      best: { days: 40, threshold: 20, silent: false, top: ['a', 'b', 'c', 'd'], controlled: [{ label: 'a nap', onBest: 1, ofBest: 4, onOthers: 3, ofOthers: 36 }], uncontrolled: [{ label: 'Monday', onBest: 2, ofBest: 4, onOthers: 5, ofOthers: 36 }] },
+      best: { days: 90, threshold: 20, silent: false, top: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'], family: 14, controlled: [{ label: 'a nap', onBest: 6, ofBest: 9, onOthers: 7, ofOthers: 81, standing: 'lead', direction: 'higher' }], uncontrolled: [{ label: 'Monday', onBest: 5, ofBest: 9, onOthers: 8, ofOthers: 81, standing: 'lead', direction: 'higher' }] },
       lasts: { decays: [{ moveId: 'walk-ten', daysHeld: 2, runs: 3 }], byReward: [{ reward: 'mastery', first: { mean: -0.42, n: 6 }, later: null }] },
       health: [health('movement', 'Movement', { dead: [{ id: 'x', name: 'Stretch', blocker: 'parked' }] })],
     })

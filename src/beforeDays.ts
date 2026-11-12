@@ -1,6 +1,5 @@
 import { eveningPoints, likeForLike, type DayPoint } from './associations'
 import { type Compared, type Direction, type Standing, standings, WORTH_POINTS } from './counted/compare'
-import { STANDING_WORDS } from './counted/words'
 import type { CheckIn } from './db'
 import type { ReadingId } from './readings'
 
@@ -40,9 +39,7 @@ export interface BeforePair {
 }
 
 /** A pair's standing as its row says it: the standing's own words, and with a lead how many pairs were looked at. */
-export function standingLine(p: Pick<BeforePair, 'standing' | 'family'>): string {
-  return p.standing === 'lead' ? `${STANDING_WORDS.lead} · ${p.family} looked at` : STANDING_WORDS[p.standing]
-}
+export { standingLine } from './counted/words'
 
 function atLevel(position: number, level: Level): boolean {
   return level === 'high' ? position >= 4 : position <= 2

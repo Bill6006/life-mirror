@@ -3993,6 +3993,77 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
   await expect(page.getByTestId('behind-it')).toHaveCount(0)
 })
 
+test('best-days under the one standard (Phase 3): too few to compare while the top tenth holds under eight days; then a thing shows at a lead, with its counts and how many were compared', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 21, 5))
+  await page.goto('./')
+  await page.getByTestId('direction-input').fill('One line, mine')
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+  // Days counted back from today, each with a morning and an evening. The best days keep no rhythm and fall on no one
+  // weekday; a nap was tapped on the evening of eight of them and on nine other evenings.
+  const seed = (from: number, to: number) =>
+    page.evaluate(
+      async ([from, to]) => {
+        const BEST = [3, 12, 20, 29, 37, 46, 54, 65, 78]
+        const NAPS = [3, 12, 20, 29, 37, 46, 54, 65, 8, 17, 26, 35, 44, 53, 62, 71, 86]
+        const blocks: Record<string, string[]> = {
+          morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
+          evening: ['mood', 'irritation', 'energy', 'hunger', 'stress', 'focus', 'overwhelm', 'loneliness'],
+        }
+        const dbx = await new Promise<IDBDatabase>((res, rej) => {
+          const r = indexedDB.open('life-mirror')
+          r.onsuccess = () => res(r.result)
+          r.onerror = () => rej(r.error)
+        })
+        const tx = dbx.transaction(['checkins'], 'readwrite')
+        const store = tx.objectStore('checkins')
+        const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const good: Record<string, number> = { mood: 5, energy: 5, focus: 5, stress: 1, overwhelm: 1, irritation: 1 }
+        for (let back = from; back >= to; back--) {
+          const date = new Date(2026, 8, 30 - back)
+          for (const block of ['morning', 'evening']) {
+            const answers: Record<string, number> = {}
+            for (const id of blocks[block]) answers[id] = (BEST.includes(back) ? good[id] : undefined) ?? 3
+            const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), block === 'morning' ? 7 : 19, 40)
+            const done = new Date(at.getTime() + 95_000).toISOString()
+            store.add({ day: key(date), block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000, ...(block === 'evening' && NAPS.includes(back) ? { extras: { napped: true } } : {}) })
+          }
+        }
+        await new Promise<void>((res, rej) => {
+          tx.oncomplete = () => res()
+          tx.onerror = () => rej(tx.error)
+        })
+        dbx.close()
+      },
+      [from, to],
+    )
+  const open = async () => {
+    await page.reload()
+    await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+    await page.getByRole('button', { name: /^The weekly view/ }).click()
+    await page.getByTestId('weekly-best').click()
+    await expect(page.getByTestId('best-days')).toBeVisible()
+  }
+  // Seventy days: the top tenth is seven days, one short of the eight a side the standard needs. The nap is on all seven, and nothing is said of it.
+  await seed(70, 1)
+  await open()
+  const card = page.getByTestId('best-days')
+  await expect(card).toContainText('Your top tenth of days, 7 of 70')
+  await expect(card.getByTestId('best-rule')).toHaveText('Too few to compare yet: a thing needs eight best days and eight others, and your top tenth holds 7.')
+  await expect(card.getByTestId('best-control-none')).toHaveText('Nothing you control stands out yet.')
+  await expect(card.getByTestId('best-not-control-none')).toHaveText('Nothing outside your control stands out yet.')
+  await expect(card.getByTestId('best-line')).toHaveCount(0)
+  // Twenty earlier days more: nine best days of ninety. The nap, on eight of the nine and nine of the other eighty-one, stands at a lead.
+  await seed(90, 71)
+  await open()
+  await expect(card).toContainText('Your top tenth of days, 9 of 90')
+  await expect(card.getByTestId('best-rule')).toContainText('8 compared. One shows here only at a lead, the most this list says.')
+  await expect(card.getByTestId('best-line')).toHaveCount(1)
+  await expect(card.getByTestId('best-line')).toHaveText('a nap: 8 of 9 best days, 9 of 81 others · A lead, not yet a pattern · 8 looked at')
+  await expect(card.getByTestId('best-control-none')).toHaveCount(0)
+  // No weekday holds more than two of the nine: nothing outside your control is said.
+  await expect(card.getByTestId('best-not-control-none')).toBeVisible()
+})
+
 test('timing (stage 3, group 2): the Plan when chips come in the order the record keeps them for this commitment', async ({ page }) => {
   // A Tuesday morning: her bedtime and the next check-in are still ahead, and no pickup is set.
   await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 5))

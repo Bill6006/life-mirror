@@ -11,7 +11,8 @@ import { useLive } from './live'
 import { WeekReviewCard } from './weekReview'
 import { Disclosure } from './ui'
 import { readingById } from './readings'
-import type { Moved, Scorecard } from './weekly'
+import { standingLine } from './counted/words'
+import type { Difference, Moved, Scorecard } from './weekly'
 import { missingLines, missLines, togetherLine } from './honesty/words'
 
 // Mirror → The weekly view (final UI polish, 2026-09-26): the week ahead (its line, the graph, always
@@ -56,6 +57,16 @@ export function rangeWords(sc: Pick<Scorecard, 'scored' | 'hitRate'>): string {
   const c = copy.weekly
   if (sc.scored < MEASURED_FROM || sc.hitRate === null) return c.modelBuilt
   return fill(c.modelMeasured, { n: String(sc.scored), hits: String(Math.round(sc.hitRate * sc.scored)), rate: pct(sc.hitRate) })
+}
+
+/** One condition of best days: its counts on the best days and on the others, then where it stands, in the standard's own words. */
+function BestLine({ d, family }: { d: Difference; family: number }) {
+  return (
+    <p class="calc-line" data-testid="best-line">
+      {fill(copy.weekly.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
+      <span data-testid="best-standing"> · {standingLine({ standing: d.standing, family })}</span>
+    </p>
+  )
 }
 
 export function WeeklyScreen({ onClose }: { onClose: () => void }) {
@@ -172,6 +183,9 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
           ) : (
             <>
               <p class="note">{fill(c.bestNote, { k: String(w.best.top.length), days: String(w.best.days) })}</p>
+              <p class="note faint" data-testid="best-rule">
+                {w.best.family === 0 ? fill(c.bestTooFew, { k: String(w.best.top.length) }) : fill(c.bestRule, { family: String(w.best.family) })}
+              </p>
               <p class="move-meta">{c.control}</p>
               <div class="calc">
                 {w.best.controlled.length === 0 && (
@@ -180,9 +194,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
                   </p>
                 )}
                 {w.best.controlled.map((d) => (
-                  <p key={d.label} class="calc-line">
-                    {fill(c.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
-                  </p>
+                  <BestLine key={d.label} d={d} family={w.best.family} />
                 ))}
               </div>
               {w.best.own && w.best.own.length > 0 && (
@@ -190,9 +202,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
                   <p class="move-meta">{c.own}</p>
                   <div class="calc" data-testid="best-own">
                     {w.best.own.map((d, i) => (
-                      <p key={i} class="calc-line">
-                        {fill(c.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
-                      </p>
+                      <BestLine key={i} d={d} family={w.best.family} />
                     ))}
                   </div>
                 </>
@@ -205,9 +215,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
                   </p>
                 )}
                 {w.best.uncontrolled.map((d) => (
-                  <p key={d.label} class="calc-line">
-                    {fill(c.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
-                  </p>
+                  <BestLine key={d.label} d={d} family={w.best.family} />
                 ))}
               </div>
             </>

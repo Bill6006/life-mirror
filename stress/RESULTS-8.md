@@ -929,3 +929,56 @@ runs-persistent      60   20820     5.54     1.20    2000      101     5.05     
 runs-persistent     180   24000     5.85     1.26    2000      124     6.20     7.34       23.65  NOT DECIDED: a second read is needed
 runs-persistent     365   24000     5.73     1.33    2000       50     2.50     3.28        1.55  pass
 ```
+
+## Afterwards: best days, a check on the tuning seeds (2026-11-12)
+
+The weekly view sets the top tenth of days against the others and asks, of each condition, how often it was
+recorded on the best days and on the rest. That is the core's "when" question with the split "a best day or another
+day", one occasion a day, whole days changing places inside the fortnight: the call the verdict judged for the splits
+by what came before the day. What the verdict did not hold is a split taken from the day's own reading, set against
+things that come in runs. `countedBest.ts` asks it of the simulated people on the tuning seeds: twelve evening things,
+the day thing and the seven weekdays as conditions, one family of twenty, at day 90, 180 and 365 (at day 60 the top
+tenth holds six days, and nothing is tested). `follows-band` is left out: a thing that follows a low evening does go
+with worse days, so for this question it is no world with nothing there. In `weekly-rhythm` the weekdays are real, so
+there only the things are counted.
+
+How it would be read was written before it ran: a cell whose 95% interval reaches above 7 in 100 (the first
+criterion's own mark), or a chance that is plainly eager (at or under 0.05 in more than 5.6 comparisons of 100, or at
+or under 0.01 in more than 1.3), caps best days at a lead. It is a reported check on tuning seeds, not a verdict.
+
+```text
+seeds 1 to 1000; each condition's rate on the top tenth of days against the other days, one family of 20
+world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark
+independent-10       90   12835     1.72     0.27    1000       10     1.00     1.83       18.60  within
+independent-10      180   19985     2.30     0.39    1000       15     1.50     2.46       33.70  within
+independent-10      365   20000     2.85     0.56    1000       17     1.70     2.71       21.50  within
+independent-30       90   13636     2.14     0.26    1000       11     1.10     1.96       24.40  within
+independent-30      180   20000     2.67     0.45    1000       21     2.10     3.19       40.70  within
+independent-30      365   20000     3.50     0.63    1000       23     2.30     3.43       42.30  within
+independent-50       90   13636     2.06     0.31    1000       13     1.30     2.21       22.70  within
+independent-50      180   20000     2.97     0.48    1000       17     1.70     2.71       43.60  within
+independent-50      365   20000     3.64     0.67    1000       30     3.00     4.25       43.60  within
+runs                 90   13622     2.20     0.43    1000       19     1.90     2.95       23.90  within
+runs                180   20000     3.45     0.60    1000       31     3.10     4.37       46.30  within
+runs                365   20000     3.96     0.81    1000       42     4.20     5.63       46.10  within
+weekly-rhythm        90    6554     2.49     0.37    1000        4     0.40     1.02       13.70  within
+weekly-rhythm       180   13000     3.32     0.70    1000       16     1.60     2.58       33.00  within
+weekly-rhythm       365   13000     3.80     0.77    1000       22     2.20     3.31       37.00  within
+missing-on-state     90      48     2.08     0.00    1000        0     0.00     0.38        0.10  within (22 silent)
+missing-on-state    180   12323     2.45     0.36    1000        8     0.80     1.57       23.70  within
+missing-on-state    365   19592     2.90     0.43    1000       17     1.70     2.71       42.40  within
+runs-persistent      90   13702     2.45     0.53    1000       28     2.80     4.02       24.60  within
+runs-persistent     180   20000     3.77     0.91    1000       57     5.70     7.31       46.90  OVER: the interval reaches above 7 in 100
+runs-persistent     365   20000     4.97     1.20    1000       68     6.80     8.53       50.40  OVER: the interval reaches above 7 in 100
+season               90   13538     1.34     0.27    1000       12     1.20     2.09       16.00  within
+season              180   20000     1.02     0.12    1000        4     0.40     1.02       18.40  within
+season              365   20000     2.47     0.29    1000        4     0.40     1.02       26.30  within
+```
+
+**Read by that rule: best days says "a lead" at most.** Twenty-two of the 24 cells are within the mark. Streaks in the
+persistent person are over it at day 180 (57 people of 1,000, the interval's top 7.31 in 100) and at day 365 (68 of
+1,000, top 8.53). Dealing the best-day labels out afresh inside a fortnight treats a good spell as so many separate
+good days, the same weakness the verdict's tuning found for with against without. A recount of the kept flags in
+another language agrees on all 24 cells. The app caps a condition that would stand at a steady pattern at a lead
+(`src/weekly.ts`, `capped`), with a break that turns its test red. Lifting the cap needs an answer to streaks for this
+question, settled on the tuning seeds and then read once on fresh seeds (580001 on).

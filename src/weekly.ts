@@ -2,14 +2,13 @@ import { BLOCKS, daysBetween, type Block } from './blocks'
 import { dayCaffeine, HABIT_DAYS, itemDays } from './caffeineRecord'
 import { families, hasMove, liveMoves, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn, DayContext, ForecastScore, Offer, Outcome } from './db'
+import { ratesBy, standings, type CellPoint, type Direction, type Standing } from './counted/compare'
+import { type CountedInput, type DayFacts, dayFactsOf, type Kind, kindsOf } from './counted/kinds'
+import { daysOf } from './counted/occasions'
 import { decayAfterStop, type Observation } from './observe'
 import { candidatesFor, reachableAnywhere, type Situation, type TodayState } from './offers'
 import type { ReadingId } from './readings'
 import { INGREDIENT_IDS, INGREDIENTS, readingOf, type Band } from './score'
-import { necessitiesMissed } from './necessities'
-import { chipShownAt } from './chips'
-import { NATURE_SINCE, natureMoveDays } from './nature'
-import { ownShownAt } from './ownChips'
 import type { OwnChip } from './settings'
 
 // The weekly view, pure: the scorecard, best-days, the gap as numbers, what moved this week,
@@ -86,10 +85,14 @@ export interface Difference {
   label: string
   /** The move a difference is about, when it is one done: what the review's facts file it under (stage 3, group 1). */
   moveId?: string
+  /** Over the days the record can speak for it: how many of the best days carried it, and how many of the others. */
   onBest: number
   ofBest: number
   onOthers: number
   ofOthers: number
+  /** Where it stands among every condition looked at, by the one standard (2026-11-12), and which way its rate on the best days reads against the others'. */
+  standing: Standing
+  direction: Direction
 }
 
 export interface BestDays {
@@ -97,97 +100,147 @@ export interface BestDays {
   threshold: number
   silent: boolean
   top: string[]
+  /** How many conditions had enough days to be compared: what the correction was made across, and the number said with a lead. */
+  family: number
+  /** In each list, up to four that stand at a lead, the largest difference first; none until one does. */
   controlled: Difference[]
   uncontrolled: Difference[]
   /** Your own chips (stage 3, item 5), each by its label over the days that showed it: for the weekly view on the phone alone, never the day's sheet. */
   own?: Difference[]
 }
 
+/** Every condition best days looked at, before any is picked. */
+export interface BestConditions {
+  days: number
+  top: string[]
+  family: number
+  controlled: Difference[]
+  uncontrolled: Difference[]
+  own: Difference[]
+}
+
 function share(d: Difference): number {
   return d.onBest / Math.max(1, d.ofBest) - d.onOthers / Math.max(1, d.ofOthers)
 }
 
+/** One condition best days looks at: its words, and where the record can speak for it. */
+interface Condition {
+  key: string
+  label: string
+  moveId?: string
+  known: (d: DayFacts) => boolean
+  has: (d: DayFacts) => boolean
+}
+
 /**
- * Your top tenth of days and what was different, split into what you control (moves done,
- * passive items, the chips, the necessities) and what you don't (the weekday, last night's
- * sleep, who was around). Silent under twenty days, and always says how many it rests on.
+ * A kind of the counted foundation as a condition of a day, so the rule for where the record can speak is kept in
+ * one place. A kind counted at a check-in is known on a day when one of the day's check-ins showed it, and held
+ * when one of those carried it.
  */
-export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set(), own: readonly OwnChip[] = []): BestDays {
+function conditionOf(kind: Kind, label: string = kind.label): Condition {
+  if (kind.unit === 'day') return { key: kind.id, label, known: (d) => kind.known(d), has: (d) => kind.happened(d) }
+  return { key: kind.id, label, known: (d) => d.occasions.some((o) => kind.known(o)), has: (d) => d.occasions.some((o) => kind.known(o) && kind.happened(o)) }
+}
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+
+/**
+ * The strongest standing best days says. Its check on the simulation's tuning seeds (stress/countedBest.ts,
+ * 2026-11-12) showed a steady pattern too often where a thing comes in streaks beside a state that carries over.
+ * Until that has an answer of its own, a condition that would stand at a pattern is said as a lead.
+ */
+const capped = (standing: Standing): Standing => (standing === 'pattern' ? 'lead' : standing)
+
+/**
+ * Every condition of best days with its counts and its standing (the one standard, 2026-11-12). The top tenth of
+ * days is set against the others, and each condition is one comparison: how often it was recorded on the best days
+ * against the other days, by the core's "when" question with one occasion a day, over the days the record can speak
+ * for it. A day it cannot speak for is in neither count. Every condition looked at is one family. Null under twenty
+ * days.
+ */
+export function bestConditions(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set(), own: readonly OwnChip[] = []): BestConditions | null {
   const readings = dayReadings(checkins, today)
-  if (readings.length < BEST_DAYS_MIN) return { days: readings.length, threshold: BEST_DAYS_MIN, silent: true, top: [], controlled: [], uncontrolled: [], own: [] }
+  if (readings.length < BEST_DAYS_MIN) return null
   const sorted = [...readings].sort((a, b) => b.value - a.value)
   const k = Math.max(2, Math.round(sorted.length * BEST_SHARE))
   const top = sorted.slice(0, k).map((d) => d.day)
-  const others = sorted.slice(k).map((d) => d.day)
-  const done = new Set(outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
-  const byDay = new Map<string, CheckIn[]>()
-  for (const c of checkins) byDay.set(c.day, [...(byDay.get(c.day) ?? []), c])
+  const best = new Set(top)
 
-  const count = (label: string, has: (day: string) => boolean): Difference => ({
-    label,
-    onBest: top.filter(has).length,
-    ofBest: top.length,
-    onOthers: others.filter(has).length,
-    ofOthers: others.length,
-  })
-  const controlled: Difference[] = []
-  const doneMoves = new Map<string, Set<string>>()
-  for (const o of offers) {
-    if (o.id === undefined || !done.has(o.id) || !hasMove(o.moveId)) continue
-    doneMoves.set(o.moveId, new Set([...(doneMoves.get(o.moveId) ?? []), o.day]))
+  // The record as it stood before today, read through the kinds list: one rule for where each thing is known.
+  const before = <T extends { day: string }>(list: readonly T[]): T[] => list.filter((x) => x.day < today)
+  const input: CountedInput = { checkins: before(checkins), contexts: before(contexts), items: [], chips: own, offers: before(offers), outcomes: before(outcomes), workoutDays: [...outside].filter((d) => d < today) }
+  const facts = dayFactsOf(input, daysOf(input.checkins))
+  const kinds = new Map(kindsOf(input).map((kind) => [kind.id, kind]))
+  const kind = (id: string, label?: string): Condition[] => {
+    const found = kinds.get(id)
+    return found ? [conditionOf(found, label)] : []
   }
-  for (const [moveId, days] of doneMoves) controlled.push({ ...count(moveById(moveId).name, (d) => days.has(d)), moveId })
-  const evening = (day: string) => byDay.get(day)?.find((c) => c.block === 'evening')
-  // Caffeine from reported bands (Part 22e), counted over the days the item recorded anything, so a
-  // day with nothing known is in neither count. The old yes/no rows stay until the item has 28 days.
-  const caffeineKnown = (d: string) => (byDay.get(d) ?? []).some((c) => c.extras?.caffeineIntake || c.extras?.caffeineShown)
-  const countOver = (known: (day: string) => boolean) => (label: string, has: (day: string) => boolean): Difference => ({
-    label,
-    onBest: top.filter((d) => known(d) && has(d)).length,
-    ofBest: top.filter(known).length,
-    onOthers: others.filter((d) => known(d) && has(d)).length,
-    ofOthers: others.filter(known).length,
-  })
-  const countKnown = countOver(caffeineKnown)
-  // A chip from stage 3, item 5, likewise counts only the days that showed it (Rule 2).
-  const countShown = (key: string, has: (day: string) => boolean, label: string) => countOver((d) => (byDay.get(d) ?? []).some((c) => chipShownAt(key, c)))(label, has)
+  const evening = (d: DayFacts): CheckIn | undefined => d.occasions.find((o) => o.block === 'evening')?.checkin
+
+  const controlled: Condition[] = []
+  // A move done at least once, over the days it was offered and answered.
+  const done = new Set(input.outcomes.filter((x) => x.outcome === 'done').map((x) => x.offerId))
+  const doneMoves = new Set(input.offers.filter((o) => o.id !== undefined && done.has(o.id) && hasMove(o.moveId)).map((o) => o.moveId))
+  for (const moveId of doneMoves) controlled.push(...kind(`move.${moveId}`).map((c) => ({ ...c, moveId })))
+  // Caffeine from reported bands (Part 22e), over the days the item recorded anything. The old yes/no rows stay until the item has 28 days.
   const legacyCaffeine = itemDays(checkins, today) < HABIT_DAYS
-  if (legacyCaffeine) controlled.push(count('caffeine after midday', (d) => Boolean(evening(d)?.extras?.caffeine)))
-  controlled.push(countKnown('at least 200 mg of caffeine reported', (d) => dayCaffeine(byDay.get(d) ?? [], d).floor >= 200))
-  controlled.push(countKnown('100 mg or more reported after the morning', (d) => dayCaffeine(byDay.get(d) ?? [], d).windows.some((w) => w.block !== 'morning' && w.band >= 2)))
-  controlled.push(count('a late or heavy dinner', (d) => Boolean(evening(d)?.extras?.dinner)))
-  controlled.push(count('nothing landed', (d) => Boolean(evening(d)?.extras?.nothingLanded)))
-  controlled.push(count('hard to see the point', (d) => Boolean(evening(d)?.extras?.hardToSeePoint)))
-  controlled.push(count('a nap', (d) => Boolean(evening(d)?.extras?.napped)))
-  // Time in nature (item 2 of 4): the evening's tap or a move in nature done, counted only on days from its start that showed the chip or carried the move.
-  const natureMoves = natureMoveDays(outcomes)
-  controlled.push(countOver((d) => d >= NATURE_SINCE && ((byDay.get(d) ?? []).some((c) => chipShownAt('nature', c)) || natureMoves.has(d)))('20+ minutes in nature', (d) => Boolean(evening(d)?.extras?.nature) || natureMoves.has(d)))
-  controlled.push(countShown('sweet', (d) => Boolean(byDay.get(d)?.some((c) => c.extras?.sweet)), 'something sweet'))
-  controlled.push(count('a necessity missed', (d) => necessitiesMissed(evening(d)?.extras).length > 0))
+  const caffeine = kind('caffeine.200')
+  if (legacyCaffeine) controlled.push({ key: 'caffeine.afterMidday', label: 'caffeine after midday', known: (d) => evening(d) !== undefined, has: (d) => Boolean(evening(d)?.extras?.caffeine) })
+  controlled.push(...caffeine)
+  controlled.push(...caffeine.map((c): Condition => ({ key: 'caffeine.later100', label: '100 mg or more reported after the morning', known: c.known, has: (d) => dayCaffeine(d.all, d.day).windows.some((w) => w.block !== 'morning' && w.band >= 2) })))
+  controlled.push(...kind('chip.dinner'), ...kind('chip.nothingLanded'), ...kind('chip.hardToSeePoint'), ...kind('chip.napped'))
+  // Time in nature (item 2 of 4) and the chips of stage 3, item 5: only over the days that showed them (Rule 2).
+  controlled.push(...kind('nature', '20+ minutes in nature'), ...kind('sweet'), ...kind('necessity.missed'))
+  if (legacyCaffeine) controlled.push({ key: 'caffeine.heavyMorning', label: 'heavy caffeine in the morning', known: (d) => d.checkin('morning') !== undefined, has: (d) => Boolean(d.checkin('morning')?.extras?.heavyCaffeine) })
 
-  const ctx = new Map(contexts.map((c) => [c.day, c]))
-  const morning = (day: string) => byDay.get(day)?.find((c) => c.block === 'morning')
-  if (legacyCaffeine) controlled.push(count('heavy caffeine in the morning', (d) => Boolean(morning(d)?.extras?.heavyCaffeine)))
-  const uncontrolled: Difference[] = []
-  for (let w = 0; w < 7; w++) uncontrolled.push(count(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][w], (d) => ctx.get(d)?.weekday === w || (!ctx.has(d) && new Date(`${d}T12:00:00`).getDay() === w)))
-  uncontrolled.push(count('slept seven hours or more', (d) => (morning(d)?.answers.sleepHours ?? 0) >= 4))
-  uncontrolled.push(count('sleep read sound or deep', (d) => (morning(d)?.answers.sleepQuality ?? 0) >= 4))
-  uncontrolled.push(count('she was away', (d) => ctx.get(d)?.withHer === false))
-  uncontrolled.push(count('a preferred study day', (d) => ctx.get(d)?.studyNight === true))
-  uncontrolled.push(count('the church day', (d) => ctx.get(d)?.churchDay === true))
-  uncontrolled.push(count('an office day', (d) => ctx.get(d)?.atOffice === true))
-  uncontrolled.push(count('a workout day', (d) => outside.has(d)))
+  const uncontrolled: Condition[] = []
+  for (let w = 0; w < 7; w++) uncontrolled.push({ key: `weekday.${w}`, label: WEEKDAY_NAMES[w], known: () => true, has: (d) => d.weekday === w })
+  uncontrolled.push(...kind('sleep.long'), ...kind('sleep.sound'))
+  // She was away: the other side of a day with her, known wherever that is.
+  uncontrolled.push(...kind('context.withHer').map((c): Condition => ({ key: 'context.away', label: 'she was away', known: c.known, has: (d) => c.known(d) && !c.has(d) })))
+  uncontrolled.push(...kind('context.studyNight'), ...kind('context.church'), ...kind('context.office'), ...kind('workout'))
 
-  const pick = (list: Difference[]) =>
+  // Your own chips, kept apart from the lists the day's sheet reads.
+  const ownChips = own.flatMap((chip) => kind(`own.${chip.id}`))
+
+  const all = [...controlled, ...uncontrolled, ...ownChips]
+  const cells = all.map((c) => {
+    const points: CellPoint[] = []
+    for (const r of readings) {
+      const d = facts.get(r.day)
+      if (!d || !c.known(d)) continue
+      points.push({ day: r.day, cell: best.has(r.day) ? 'best' : 'other', happened: c.has(d) })
+    }
+    return ratesBy(points, { id: `best.${c.key}`, within: 'stretch', cells: ['best'] })[0]
+  })
+  const stood = standings(cells)
+  const differences = all.map((c, i): Difference => ({ label: c.label, ...(c.moveId ? { moveId: c.moveId } : {}), onBest: cells[i].k, ofBest: cells[i].n, onOthers: cells[i].restK, ofOthers: cells[i].m, standing: capped(stood[i].standing), direction: stood[i].direction }))
+  return {
+    days: readings.length,
+    top,
+    family: stood[0]?.family ?? 0,
+    controlled: differences.slice(0, controlled.length),
+    uncontrolled: differences.slice(controlled.length, controlled.length + uncontrolled.length),
+    own: differences.slice(controlled.length + uncontrolled.length),
+  }
+}
+
+/**
+ * Your top tenth of days and what stood apart on them, split into what you control (moves done, the chips, the
+ * necessities), your own chips, and what you don't (the weekday, last night's sleep, who was around). Silent under
+ * twenty days. Each list shows up to four conditions that stand at a lead, the largest difference first, and none
+ * until one does.
+ */
+export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set(), own: readonly OwnChip[] = []): BestDays {
+  const all = bestConditions(checkins, offers, outcomes, contexts, today, outside, own)
+  if (!all) return { days: dayReadings(checkins, today).length, threshold: BEST_DAYS_MIN, silent: true, top: [], family: 0, controlled: [], uncontrolled: [], own: [] }
+  const rank = (d: Difference): number => (d.standing === 'pattern' ? 1 : 0)
+  const pick = (list: readonly Difference[]): Difference[] =>
     list
-      .filter((d) => d.onBest + d.onOthers > 0)
-      .sort((a, b) => Math.abs(share(b)) - Math.abs(share(a)))
+      .filter((d) => d.standing === 'lead' || d.standing === 'pattern')
+      .sort((a, b) => rank(b) - rank(a) || Math.abs(share(b)) - Math.abs(share(a)))
       .slice(0, 4)
-  // Your own chips, each over the evenings that showed it, kept apart from the lists the day's sheet reads.
-  const ownDiffs = own
-    .map((ch) => countOver((d) => (byDay.get(d) ?? []).some((c) => c.block === 'evening' && ownShownAt(ch.id, c)))(ch.label, (d) => Boolean(evening(d)?.extras?.own?.[ch.id])))
-    .filter((d) => d.ofBest + d.ofOthers > 0)
-  return { days: readings.length, threshold: BEST_DAYS_MIN, silent: false, top, controlled: pick(controlled), uncontrolled: pick(uncontrolled), own: ownDiffs }
+  return { days: all.days, threshold: BEST_DAYS_MIN, silent: false, top: all.top, family: all.family, controlled: pick(all.controlled), uncontrolled: pick(all.uncontrolled), own: pick(all.own) }
 }
 
 export interface Gap {

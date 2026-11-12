@@ -24,29 +24,36 @@ function answersAt(block: (typeof BLOCKS)[number], p: Position): Answers {
   return Object.fromEntries(blockReadings(block).map((id) => [id, (['stress', 'overwhelm', 'irritation'].includes(id) ? 6 - p : p) as Position]))
 }
 
-async function done(id: number, day: string, moveId: string, paths?: Offer['paths']): Promise<void> {
+async function done(id: number, day: string, moveId: string, paths?: Offer['paths'], outcome: 'done' | 'no' = 'done'): Promise<void> {
   const when = new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), 18).toISOString()
   await db.offers.add({ id, kind: paths ? 'step' : 'block', day, block: 'evening', at: when, situationKey: paths ? 'path:partner' : 'evening:mood', target: 'mood', stance: '', band: 'gettingBy', reading: 50, moveId, cardId: null, candidates: [moveId], coinFlip: false, passiveId: null, whyNot: null, skippedAt: null, closedAt: when, ...(paths ? { paths } : {}) })
-  await db.outcomes.add({ offerId: id, moveId, day, block: 'evening', at: when, outcome: 'done', why: null, passiveOutcome: null })
+  await db.outcomes.add({ offerId: id, moveId, day, block: 'evening', at: when, outcome, why: null, passiveOutcome: null })
 }
+
+/** The nine good days of the ninety, counted back from the day: no rhythm, and no weekday holds more than two. */
+const GOOD = [3, 12, 20, 29, 37, 46, 54, 65, 78]
 
 describe('the Brain’s memory and the weekly view on the day’s sheet', () => {
   beforeAll(async () => {
     await db.delete()
     await db.open()
     await ensureDayContext(DAY, await getSettings())
-    // Twenty-four days of record, every fourth one good; the Partner path's rep done on each good day.
-    for (let back = 24; back >= 1; back--) {
+    // Ninety days of record, nine of them good. Best days compares a step over the days it was offered and answered,
+    // and shows it only at a lead (the one standard, 2026-11-12), so each step here is offered every day: the Partner
+    // path's rep done on every good day and no other; four moves of the day's draw each done on eight good days and
+    // on other days of their own, every ninth, seventh, sixth and fifth.
+    for (let back = 90; back >= 1; back--) {
       const day = addDays(DAY, -back)
-      const p = (back % 4 === 0 ? 5 : 3) as Position
+      const good = GOOD.includes(back)
+      const p = (good ? 5 : 3) as Position
       for (const [k, block] of (['morning', 'evening'] as const).entries()) {
         const h = block === 'morning' ? 8 : 20
         const start = new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), h).toISOString()
         await db.checkins.add({ day, block, startedAt: start, completedAt: start, updatedAt: start, answers: answersAt(block, p), activeMs: 30_000 + k })
       }
-      if (p === 5) await done(1000 + back, day, PARTNER_REP, ['partner'])
-      // Four moves of the day's draw, done on days of their own: enough to fill best-days' four places.
-      for (const [base, every, move] of [[2000, 3, 'walk-ten'], [3000, 5, 'green-walk'], [4000, 2, 'after-dinner-walk'], [5000, 7, 'cyclic-sigh']] as const) if (back % every === 0) await done(base + back, day, move)
+      await done(1000 + back, day, PARTNER_REP, ['partner'], good ? 'done' : 'no')
+      // Four moves of the day's draw: enough to fill best-days' four places, each a smaller difference than the rep's.
+      for (const [base, every, skip, move] of [[2000, 9, 78, 'walk-ten'], [3000, 7, 65, 'green-walk'], [4000, 6, 54, 'after-dinner-walk'], [5000, 5, 46, 'cyclic-sigh']] as const) await done(base + back, day, move, undefined, (good ? back !== skip : back % every === 1) ? 'done' : 'no')
     }
     // A line seen on 2026-10-18 asking for a plan at the next check-in, the plan made, and a session that evening.
     await addLearning('Learn Veltish', 'A phrasebook', 'Ten words', 'I can read a little', new Date(2026, 8, 20, 9, 0))
