@@ -1,6 +1,6 @@
 import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { doneBySetting, pathName, pathToday, socialEnergyOn, stageWords } from './pathStage'
-import { afternoonAssociation, associationFor, morningAssociation, privateAssociations, type Association } from './associations'
+import { afternoonAssociation, associationFor, morningAssociation, privateAssociations, tierFor, type Association } from './associations'
 import { type Direction, type Standing, standings, type Stood, WORTH_POINTS } from './counted/compare'
 import { STANDING_WORDS, withWords } from './counted/words'
 import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, latestPlans, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
@@ -218,7 +218,7 @@ function stoodFor(a: Association, stood: ReadonlyMap<string, Stood>, higherIsGoo
   const standing: Standing = s?.standing ?? 'tooFew'
   const direction: Direction = s?.direction ?? 'none'
   const helpful = direction === 'none' ? null : (direction === 'higher') === higherIsGood
-  const tier = standing === 'tooFew' ? 'little' : (standing === 'lead' || standing === 'pattern') && helpful ? 'promising' : 'unclear'
+  const tier = tierFor(standing, helpful)
   const family = s?.family ?? 0
   return { standing, direction, helpful, tier, family, n: a.compared?.n ?? 0, m: a.compared?.m ?? 0, values: { standing, direction, helpful: helpful === null ? null : helpful ? 1 : 0, p: a.compared?.p ?? null, m: family } }
 }

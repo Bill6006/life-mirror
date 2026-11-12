@@ -1,10 +1,10 @@
 import { anchorSwapDue } from './audit'
-import { WORTH_POINTS, WORTH_STEPS } from './counted/compare'
+import { type Standing, standings, WORTH_POINTS, WORTH_STEPS } from './counted/compare'
 import { awayDays, homeDaysOnly } from './awayFlow'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
-import { associationBy, associationTier, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
+import { associationBy, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, tierFor, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, PASSIVE } from './catalogue'
-import { allCheckIns, db, getSettings, privateItems, setAside, updateSettings, type Card, type CheckIn, type Declaration, type Outcome } from './db'
+import { allCheckIns, db, getSettings, privateItems, setAside, updateSettings, type Card, type CheckIn, type Declaration, type Offer, type Outcome } from './db'
 import { NOTHING } from './offers'
 import { readings, setAnchorSwaps } from './readings'
 import { setLearnedWeights } from './score'
@@ -74,6 +74,8 @@ export async function loadAudits(): Promise<void> {
 export interface PassiveEvidence {
   card: Card
   association: Association
+  /** Where it stands among the screen's cards, by the one standard. */
+  standing: Standing
   tier: Tier
 }
 
@@ -100,18 +102,30 @@ export interface Evidence {
   weeks: number
 }
 
+/**
+ * The passive items' cards under the one standard (2026-11-12). Each is read like for like, as it always was, and now
+ * given its chance; the cards on the screen are one family, so each pays for the others. A card reads one reading the
+ * next morning, a scale of steps, so a lead is the most it says (stress/RESULTS-8.md). Its word is the old three:
+ * little for too few, promising only for a lead in the good direction, unclear otherwise.
+ */
+export function passiveEvidence(cards: readonly Card[], checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], today: string): PassiveEvidence[] {
+  const rode = cards.filter((c) => c.origin === 'passive').map((card) => ({ card, association: passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today, { id: `evidence.${card.moveId}`, worth: card.worthwhile * 25 }) }))
+  const stood = new Map(standings(rode.flatMap((x) => (x.association.compared ? [x.association.compared] : []))).map((s) => [s.id, s]))
+  return rode.map(({ card, association }) => {
+    const s = association.compared ? stood.get(association.compared.id) : undefined
+    const standing: Standing = !s ? 'tooFew' : s.standing === 'pattern' ? 'lead' : s.standing
+    // The target's points already run the good way up, whichever way the reading itself runs.
+    return { card, association, standing, tier: tierFor(standing, s && s.direction !== 'none' ? s.direction === 'higher' : null) }
+  })
+}
+
 /** Everything the Evidence screen shows, computed from the records at the moment of asking. */
 export async function evidence(today: string): Promise<Evidence> {
   const { checkins, offers, outcomes, cards, declarations } = await evidenceRecords()
   const settings = await getSettings()
   const items = await privateItems()
   // A passive item is assigned by rotation, never by a coin flip, so it is read like for like and capped at Promising.
-  const passives: PassiveEvidence[] = cards
-    .filter((c) => c.origin === 'passive')
-    .map((card) => {
-      const association = passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today, { id: `evidence.${card.moveId}`, worth: card.worthwhile * 25 })
-      return { card, association, tier: associationTier(association, card.worthwhile * 25) }
-    })
+  const passives = passiveEvidence(cards, checkins, offers, outcomes, today)
   const weightCards = cards.filter((c) => c.origin === 'weight').map((card) => ({ card, stats: weightStanding(card, checkins, declarations, today).stats }))
   const cooling = associationFor(checkins, today, (c) => Boolean(c.extras?.coolingOff), undefined, { id: 'assoc.coolingOff', worth: WORTH_POINTS })
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial), undefined, { id: 'assoc.bigSocial', worth: WORTH_POINTS })

@@ -1,6 +1,6 @@
 import { addDays, daysBetween, type Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
-import { compare, type Compared, difference, MIN_SIDE, type Point } from './counted/compare'
+import { compare, type Compared, difference, MIN_SIDE, type Point, type Standing } from './counted/compare'
 import type { CheckIn, Offer, Outcome } from './db'
 import { forecast, indexCheckIns, slotKey } from './observe'
 import { bandOf, pointsFor, readingOf, type Band } from './score'
@@ -175,6 +175,16 @@ export function dayAssociation(checkins: readonly CheckIn[], today: string, isEv
 }
 
 export type AssociationTier = 'little' | 'unclear' | 'promising'
+
+/**
+ * The old three-valued word, from a standing (the one standard, 2026-11-12): little for too few; promising only for a
+ * lead or a pattern in the good direction; unclear otherwise. "Promising" has always meant the good direction: it now
+ * needs eight matched occasions a side and a chance check as well.
+ */
+export function tierFor(standing: Standing, helpful: boolean | null): AssociationTier {
+  if (standing === 'tooFew') return 'little'
+  return (standing === 'lead' || standing === 'pattern') && helpful ? 'promising' : 'unclear'
+}
 
 /**
  * An observational association's standing: Little evidence under three events or with nothing

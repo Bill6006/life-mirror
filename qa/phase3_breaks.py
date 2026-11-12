@@ -22,6 +22,8 @@ NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 F = 'src/facts.ts'
 T = 'src/sheetStandings.test.ts'
 S = 'src/situations.ts'
+E = 'src/evidenceFlow.ts'
+PE = 'src/passiveEvidence.test.ts'
 ST = 'src/situations.test.ts'
 FG = 'src/firmGated.test.ts'
 SIM = 'src/counted/simulation.test.ts'
@@ -37,13 +39,13 @@ W = 'src/counted/words.ts'
 WT = 'src/counted/words.test.ts'
 
 TABLE = [
-    dict(id='promising-is-only-the-good-direction', file=F,
-         old="(standing === 'lead' || standing === 'pattern') && helpful ? 'promising' : 'unclear'",
-         new="standing === 'lead' || standing === 'pattern' ? 'promising' : 'unclear'",
+    dict(id='promising-is-only-the-good-direction', file=A,
+         old="return (standing === 'lead' || standing === 'pattern') && helpful ? 'promising' : 'unclear'",
+         new="return standing === 'lead' || standing === 'pattern' ? 'promising' : 'unclear'",
          tests=[T], pattern='used to say unclear'),
-    dict(id='too-few-is-little', file=F,
-         old="const tier = standing === 'tooFew' ? 'little' : ",
-         new="const tier = standing === 'tooFew' ? 'unclear' : ",
+    dict(id='too-few-is-little', file=A,
+         old="  if (standing === 'tooFew') return 'little'",
+         new="  if (standing === 'tooFew') return 'unclear'",
          tests=[T], pattern='tapped three times'),
     dict(id='the-sheet-is-one-family', file=F,
          old="  return new Map(standings(family).map((s) => [",
@@ -73,6 +75,14 @@ TABLE = [
          old="strength: f.values.standing === 'pattern' ? 0.8 : 0.55,",
          new="strength: f.values.standing !== 'pattern' ? 0.8 : 0.55,",
          tests=[FG], pattern='says every situation exactly as before'),
+    dict(id='a-card-says-a-lead-at-most', file=E,
+         old="const standing: Standing = !s ? 'tooFew' : s.standing === 'pattern' ? 'lead' : s.standing",
+         new="const standing: Standing = !s ? 'tooFew' : s.standing",
+         tests=[PE], pattern='a lead is the most a card says'),
+    dict(id='a-card-done-three-times-is-little', file=E,
+         old="return { card, association, standing, tier: tierFor(standing,",
+         new="return { card, association, standing, tier: association.times >= 3 && (association.diff ?? 0) >= 10 ? 'promising' : tierFor(standing,",
+         tests=[PE], pattern='done three times'),
 ]
 
 
