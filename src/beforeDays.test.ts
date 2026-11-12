@@ -20,6 +20,18 @@ function record(n: number, start = '2026-08-01'): CheckIn[] {
   return out
 }
 
+/** Four fortnights, stressed on each one's 1st, 2nd, 4th and 8th evenings, the morning after lower each time. */
+function streaky(): CheckIn[] {
+  const out: CheckIn[] = []
+  for (let i = 0; i < 56; i++) {
+    const day = addDays('2026-07-01', i)
+    const stressed = [0, 1, 3, 7].includes(i % 14)
+    out.push(ci(day, 'evening', 3, { stress: stressed ? 5 : 3 }))
+    out.push(ci(addDays(day, 1), 'morning', 3, stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {}))
+  }
+  return out
+}
+
 describe('what comes before your days', () => {
   const today = '2026-09-20'
 
@@ -79,14 +91,7 @@ describe('the pattern tonight matches (stage 3, group 3)', () => {
 
   it('gives each pair its standing among the sixteen, by the one standard', () => {
     // Four fortnights, stressed on each one's 1st, 2nd, 4th and 8th evenings: an arrangement a turn cannot mistake for itself.
-    const out: CheckIn[] = []
-    for (let i = 0; i < 56; i++) {
-      const day = addDays('2026-07-01', i)
-      const stressed = [0, 1, 3, 7].includes(i % 14)
-      out.push(ci(day, 'evening', 3, { stress: stressed ? 5 : 3 }))
-      out.push(ci(addDays(day, 1), 'morning', 3, stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {}))
-    }
-    const pairs = comesBefore(out, today, { resamples: 100 })
+    const pairs = comesBefore(streaky(), today, { resamples: 100 })
     const high = pairs.find((p) => p.reading === 'stress' && p.level === 'high')
     expect(high).toMatchObject({ withN: 16, withoutN: 40, standing: 'pattern', direction: 'lower', family: 1 })
     // No other reading was ever at its top two or lowest two phrases: nothing to compare, and nothing joins the family.
@@ -101,7 +106,10 @@ describe('the pattern tonight matches (stage 3, group 3)', () => {
   })
 
   it('after an evening with stress high, shows the stress-high pair, the largest the evening matches', () => {
-    const p = matchingPair(record(24), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })
+    const p = matchingPair(streaky(), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })
+    // A pair is shown beside tonight only at a lead or a pattern: one that reads as no clear pattern yet is not.
+    expect(p?.standing).toBe('pattern')
+    expect(matchingPair(record(24), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
     expect(p?.reading).toBe('stress')
     expect(p?.level).toBe('high')
     expect(p?.enough).toBe(true)

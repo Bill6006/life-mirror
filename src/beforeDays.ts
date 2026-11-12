@@ -120,7 +120,8 @@ export function comesBefore(checkins: readonly CheckIn[], today: string, opts: {
  */
 export function matchingPair(checkins: readonly CheckIn[], tonight: Pick<CheckIn, 'day' | 'block' | 'answers'>, opts: { min?: number; resamples?: number } = {}): BeforePair | null {
   if (tonight.block !== 'evening') return null
-  const ready = comesBefore(checkins, tonight.day, opts).filter((p) => p.enough && p.diff !== null)
+  // Only a pair that stands at a lead or a pattern is shown beside tonight's answers (the one standard, 2026-11-12).
+  const ready = comesBefore(checkins, tonight.day, opts).filter((p) => p.enough && p.diff !== null && (p.standing === 'lead' || p.standing === 'pattern'))
   const matched = ready.filter((p) => {
     const position = tonight.answers[p.reading]
     return position !== undefined && atLevel(position, p.level)

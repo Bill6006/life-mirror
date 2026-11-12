@@ -89,6 +89,10 @@ TABLE = [
          old="Object.assign(pairs[i], { standing: s.standing, direction: s.direction, family: s.family })",
          new="Object.assign(pairs[i], { direction: s.direction, family: s.family })",
          tests=[BT], pattern='its standing among the sixteen'),
+    dict(id='tonight-shows-only-a-lead-or-a-pattern', file=B,
+         old=" && (p.standing === 'lead' || p.standing === 'pattern'))",
+         new=")",
+         tests=[BT], pattern='after an evening with stress high'),
 ]
 
 
