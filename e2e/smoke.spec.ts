@@ -4065,7 +4065,10 @@ test('best-days under the one standard (Phase 3): too few to compare while the t
   await expect(card).toContainText('Your top tenth of days, 9 of 90')
   await expect(card.getByTestId('best-rule')).toContainText('8 compared. One shows here only at a lead, the most this list says.')
   await expect(card.getByTestId('best-line')).toHaveCount(1)
-  await expect(card.getByTestId('best-line')).toHaveText('a nap: 8 of 9 best days, 9 of 81 others · A lead, not yet a pattern · 8 looked at')
+  await expect(card.getByTestId('best-line')).toHaveText('a nap: 8 of 9 best days, 9 of 81 others A lead, not yet a pattern · 8 looked at')
+  // The standing sits on a line of its own under the counts.
+  await expect(card.getByTestId('best-standing')).toHaveText('A lead, not yet a pattern · 8 looked at')
+  expect(await card.getByTestId('best-standing').evaluate((el) => getComputedStyle(el).display)).toBe('block')
   await expect(card.getByTestId('best-control-none')).toHaveCount(0)
   // No weekday holds more than two of the nine: nothing outside your control is said.
   await expect(card.getByTestId('best-not-control-none')).toBeVisible()

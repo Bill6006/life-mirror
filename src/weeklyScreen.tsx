@@ -64,7 +64,11 @@ function BestLine({ d, family }: { d: Difference; family: number }) {
   return (
     <p class="calc-line" data-testid="best-line">
       {fill(copy.weekly.diffLine, { label: d.label, onBest: String(d.onBest), ofBest: String(d.ofBest), onOthers: String(d.onOthers), ofOthers: String(d.ofOthers) })}
-      <span data-testid="best-standing"> · {standingLine({ standing: d.standing, family })}</span>
+      {' '}
+      {/* Its standing on a line of its own, so the words are never broken across the counts (seen on the screen, 2026-11-12). */}
+      <span class="before-line best-standing" data-testid="best-standing">
+        {standingLine({ standing: d.standing, family })}
+      </span>
     </p>
   )
 }
