@@ -248,13 +248,14 @@ export const SITUATIONS: readonly Situation[] = [
       if (!f || (num(f, 'groups') ?? 0) < 2 || num(f, 'none') === 1) return null
       const minutes = num(f, 'minutes')
       const quality = num(f, 'quality')
-      const what =
-        minutes !== null && minutes <= -30
-          ? fill(copy.caffeine.shorterHours, { minutes: s(Math.abs(minutes)) })
-          : quality !== null && quality <= -0.5
-            ? fill(copy.caffeine.lowerQuality, { q: s(Math.abs(quality)) })
-            : null
-      return what ? { factIds: [f.id], strength: 0.8, vars: { what, low: s(str(f, 'low')), high: s(str(f, 'high')), n: s(num(f, 'n')), m: s(num(f, 'm')) } } : null
+      // The phone speaks of the difference only where it stands at a lead or a pattern, and says which (the one
+      // standard, 2026-11-12). Next-night sleep is read in steps, so a lead is the most it stands at, and a lead
+      // never raises a line's rank.
+      const stands = (key: string): string | null => (['lead', 'pattern'].includes(String(f.values[key])) ? String(f.values[key]) : null)
+      const [hoursAt, qualityAt] = [stands('hoursStanding'), stands('qualityStanding')]
+      const said = minutes !== null && minutes <= -30 && hoursAt ? { what: fill(copy.caffeine.shorterHours, { minutes: s(Math.abs(minutes)) }), standing: hoursAt } : quality !== null && quality <= -0.5 && qualityAt ? { what: fill(copy.caffeine.lowerQuality, { q: s(Math.abs(quality)) }), standing: qualityAt } : null
+      const words = said ? STANDING_WORDS[said.standing as Standing] : ''
+      return said ? { factIds: [f.id], strength: said.standing === 'pattern' ? 0.8 : 0.5, vars: { what: said.what, low: s(str(f, 'low')), high: s(str(f, 'high')), n: s(num(f, 'n')), m: s(num(f, 'm')), standing: `${words.charAt(0).toLowerCase()}${words.slice(1)}` } } : null
     },
   },
   {

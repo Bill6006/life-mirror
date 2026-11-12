@@ -52,7 +52,7 @@ const KEEP: Record<string, string[]> = {
   'fresh-start': ['people begin goals more often right after a fresh start', 'is the one to restart'],
   'direction-counts': ['your direction', 'counts, not a verdict'],
   'forecast-wide': ['a guess', 'your own reading at the check-in is the better guide today'],
-  'caffeine-sleep-even': ['no difference yet', 'self-reported sleep is known to miss caffeine’s effect'],
+  'caffeine-sleep-even': ['no clear pattern yet', 'self-reported sleep is known to miss caffeine’s effect'],
   'commitment-fading': ['3 sittings in the two weeks before, none in the last two', 'usually let go', 'the smallest sitting to a moment today'],
   'commitment-thinning': ['none in the last seven days, after 3 the week before', 'short sitting', 'to a moment today'],
   'cadence-dropping': ['check-ins went from about 12 a week to 4', 'before the record goes quiet', 'make it lighter', 'short depth asks three readings'],

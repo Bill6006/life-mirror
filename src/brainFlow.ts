@@ -15,7 +15,8 @@ import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayCont
 import { buildFactSheet, nightStanding, onTheSheet, sheetAssociations, type FactSheet, type NightStanding } from './facts'
 import { wasShown } from './shown'
 import { briefData, usualFor, weeklyAnalyses, type Brief } from './forecastFlow'
-import { evidence } from './evidenceFlow'
+import type { Stood } from './counted/compare'
+import { evidence, type Evidence } from './evidenceFlow'
 import { cardById, type ClaimCard } from './library'
 import { minutesOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
@@ -67,6 +68,17 @@ export async function briefForCard(day: string): Promise<BriefCard> {
   const key = brief.lastNight.key
   const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
   return { ...brief, night: family ? nightStanding(family, key) : null }
+}
+
+/**
+ * The Evidence screen's comparisons, with where each stands in the sheet's family (the one standard, 2026-11-12): the
+ * same family, gathered by the same function from the same record, so the screen and the sheet give one standing for
+ * one thing. `stood` is null when the comparisons failed.
+ */
+export async function evidenceWithStandings(day: string): Promise<{ ev: Evidence; stood: ReadonlyMap<string, Stood> | null }> {
+  const [ev, checkins, contexts, outcomes, items, settings, outside] = await Promise.all([evidence(day), allCheckIns(), db.days.toArray(), db.outcomes.toArray(), privateItems(), getSettings(), db.outside.toArray()])
+  const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
+  return { ev, stood: family ? family.stood : null }
 }
 
 export async function factSheet(day: string, now: Date = new Date(), coach: CoachMode = coachMode(), firm: FirmMode = firmMode()): Promise<FactSheet> {

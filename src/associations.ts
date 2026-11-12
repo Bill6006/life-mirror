@@ -1,6 +1,7 @@
 import { addDays, daysBetween, type Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
-import { compare, type Compared, difference, MIN_SIDE, type Point, type Standing } from './counted/compare'
+import { type Compared, difference, type Point, type Standing } from './counted/compare'
+import { namedComparison, type Named } from './counted/named'
 import type { CheckIn, Offer, Outcome } from './db'
 import { forecast, indexCheckIns, slotKey } from './observe'
 import { bandOf, pointsFor, readingOf, type Band } from './score'
@@ -21,11 +22,7 @@ export interface DayPoint {
   outcome: number | null
 }
 
-/** A comparison's own name and the size worth saying on its scale: with it, the comparison is given its chance. */
-export interface Named {
-  id: string
-  worth: number
-}
+export type { Named } from './counted/named'
 
 export interface Association {
   /** Evenings before today that carried the event. */
@@ -55,23 +52,6 @@ const BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firi
  * smaller side. The difference itself is the counted foundation's (2026-11-12): this hands it the occasions that have
  * a band and an outcome, band by band in the order it has always taken them, so every number is the one it always was.
  */
-/**
- * The chance check of a named comparison, kept by exactly what it was computed from (2026-11-12). The same occasions,
- * id and size give the same answer, so a family that two screens gather pays for its shuffles once. One entry for
- * each id; an entry is used only when every occasion matches.
- */
-const keptChance = new Map<string, { from: string; compared: Compared }>()
-const KEPT_MOST = 400
-function comparedOnce(occasions: readonly Point[], named: Named): Compared {
-  const from = `${named.worth}|${occasions.map((p) => `${p.day}${p.event ? '+' : '-'}${p.band ?? ''}:${p.outcome}`).join(';')}`
-  const kept = keptChance.get(named.id)
-  if (kept && kept.from === from) return kept.compared
-  const compared = compare(occasions, named)
-  if (keptChance.size >= KEPT_MOST) keptChance.clear()
-  keptChance.set(named.id, { from, compared })
-  return compared
-}
-
 export function likeForLike(points: readonly DayPoint[], named?: Named): Association {
   const withEvent = points.filter((p) => p.event)
   const without = points.filter((p) => !p.event)
@@ -83,13 +63,8 @@ export function likeForLike(points: readonly DayPoint[], named?: Named): Associa
   const occasions: Point[] = matched.flat().map((p) => ({ day: p.day, event: p.event, outcome: p.outcome as number, band: p.band as Band }))
   const diff = bands > 0 ? difference(occasions) : null
   const out: Association = { times: withEvent.length, withEvent: { mean: meanOf(withValues), n: withValues.length }, without: { mean: meanOf(withoutValues), n: withoutValues.length }, diff, bands }
-  if (named) {
-    // The occasions the difference rests on: those in a band both sides share. Eight of them a side, or nothing is tested.
-    const n = shared.flat().filter((p) => p.event).length
-    const m = shared.flat().length - n
-    const tested = n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null
-    out.compared = { id: named.id, n, m, diff, enough: tested !== null && tested.enough, p: tested?.p ?? null, worth: named.worth }
-  }
+  // The occasions the difference rests on are those in a band both sides share: eight of them a side, or nothing is tested (counted/named.ts).
+  if (named) out.compared = { ...namedComparison(occasions, named), diff }
   return out
 }
 

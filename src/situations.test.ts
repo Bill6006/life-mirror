@@ -97,17 +97,22 @@ describe('the judgment engine', () => {
   })
 
   it('speaks of caffeine from reported bands only: the next night like for like, the fixed null words, and a late window', () => {
-    const bands = (values: Fact['values']): Fact => ({ id: 'assoc.caffeine.bands', tags: [], text: '', values: { low: 'under 200 mg', high: '200 mg or more', n: 9, m: 6, groups: 2, minutes: -40, quality: -0.2, none: 0, ...values }, n: 15, tier: 'unclear' })
+    const bands = (values: Fact['values']): Fact => ({ id: 'assoc.caffeine.bands', tags: [], text: '', values: { low: 'under 200 mg', high: '200 mg or more', n: 20, m: 15, groups: 2, minutes: -40, quality: -0.2, none: 0, hoursStanding: 'lead', qualityStanding: 'noPattern', ...values }, n: 35, tier: 'unclear' })
     const shorter = chooseLine(sheetOf([bands({})]), [], [])
     expect(shorter?.situationId).toBe('caffeine-sleep-shorter')
-    expect(shorter?.text).toBe('After days with 200 mg or more of caffeine reported, sleep read about 40 minutes shorter the next night than after days with under 200 mg (6 and 9 days, like for like on the sleep the day began with). An association in your record, not a verdict.')
-    expect(chooseLine(sheetOf([bands({ minutes: -10, quality: -0.6 })]), [], [])?.text).toContain('sleep quality read 0.6 of a step lower the next night')
+    // It speaks only where the difference stands at a lead, and says so (the one standard, 2026-11-12).
+    expect(shorter?.text).toBe('After days with 200 mg or more of caffeine reported, sleep read about 40 minutes shorter the next night than after days with under 200 mg (15 and 20 days, like for like on the sleep the day began with): a lead, not yet a pattern. An association in your record, not a verdict.')
+    expect(chooseLine(sheetOf([bands({ minutes: -10, quality: -0.6, qualityStanding: 'lead' })]), [], [])?.text).toContain('sleep quality read 0.6 of a step lower the next night')
+    // The same forty minutes with no clear pattern, or too few to compare, is no line.
+    expect(chooseLine(sheetOf([bands({ hoursStanding: 'noPattern' })]), [], [])).toBeNull()
+    expect(chooseLine(sheetOf([bands({ hoursStanding: 'tooFew', qualityStanding: 'tooFew' })]), [], [])).toBeNull()
+    expect(chooseLine(sheetOf([bands({ minutes: -10, quality: -0.6 })]), [], [])).toBeNull()
     // A small difference is no line of its own, and one group is nothing to compare.
     expect(chooseLine(sheetOf([bands({ minutes: -10, quality: -0.2 })]), [], [])).toBeNull()
     expect(chooseLine(sheetOf([bands({ groups: 1 })]), [], [])).toBeNull()
     const even = chooseLine(sheetOf([bands({ none: 1, minutes: 5, quality: 0.1 })]), [], [])
     expect(even?.situationId).toBe('caffeine-sleep-even')
-    expect(even?.text).toBe('Next nights show no difference yet between days with under 200 mg and days with 200 mg or more of caffeine reported (9 and 6 days). Self-reported sleep is known to miss caffeine’s effect.')
+    expect(even?.text).toBe('Next nights show no clear pattern yet between days with under 200 mg and days with 200 mg or more of caffeine reported (20 and 15 days). Self-reported sleep is known to miss caffeine’s effect.')
     const late: Fact = { id: 'caffeine.late', tags: [], text: '', values: { day: '2026-09-17', when: 'yesterday', block: 'afternoon', band: '200–299 mg', time: '16:40', mg: 217, hours: 13.2 } }
     const l = chooseLine(sheetOf([late]), [], [])
     expect(l?.situationId).toBe('caffeine-late')

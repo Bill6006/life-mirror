@@ -17,6 +17,9 @@ error's name alone riding it.
 Firmness: an association is a pattern only at a steady pattern, and tentative below it, last night's line and a
 private item alike. Evidence explains the four words; the hard session's and the weather's facts say each standing.
 
+The caffeine comparisons: compared only from fifteen in each of the two groups across six weeks, a lead at most for
+next-night sleep, no reading while too few, members of the sheet's family, and the phone's line only at a lead.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -57,6 +60,9 @@ WFT = 'src/weeklyFacts.test.ts'
 C = 'src/counted/compare.ts'
 AWT = 'src/associationWords.test.ts'
 FM = 'src/firmness.ts'
+CR = 'src/caffeineRecord.ts'
+NM = 'src/counted/named.ts'
+CRT = 'src/caffeineRecord.test.ts'
 FMT = 'src/firmness.test.ts'
 BF = 'src/brainFlow.ts'
 KT2 = 'src/keptChance.test.ts'
@@ -84,8 +90,8 @@ TABLE = [
          new="  if (w.diff === null) return ",
          tests=[T], pattern='tapped three times'),
     dict(id='a-comparison-nobody-named-has-no-chance', file=A,
-         old="  if (named) {\n",
-         new="  if (named || points.length > 0) {\n    named = named ?? { id: 'unnamed', worth: 10 }\n",
+         old="  if (named) out.compared = { ...namedComparison(occasions, named), diff }",
+         new="  out.compared = { ...namedComparison(occasions, named ?? { id: 'unnamed', worth: 10 }), diff }",
          tests=[T], pattern='one of a family'),
     dict(id='a-line-speaks-only-at-a-lead-or-a-pattern', file=S,
          old="&& standings.includes(String(f.values.standing)) ? f : null",
@@ -171,11 +177,11 @@ TABLE = [
          old="      return f && stands && str(f, 'key') === 'churchDay'",
          new="      return f && str(f, 'key') === 'churchDay'",
          tests=[ST], pattern='only at a lead or a pattern'),
-    dict(id='the-chance-is-kept-only-for-the-same-occasions', file=A,
+    dict(id='the-chance-is-kept-only-for-the-same-occasions', file=NM,
          old="  if (kept && kept.from === from) return kept.compared",
          new="  if (kept) return kept.compared",
          tests=[KT2], pattern='worked out again'),
-    dict(id='the-chance-is-kept', file=A,
+    dict(id='the-chance-is-kept', file=NM,
          old="  keptChance.set(named.id, { from, compared })",
          new="",
          tests=[KT2], pattern='worked out once'),
@@ -215,6 +221,38 @@ TABLE = [
          old="none : said(diff, lower(STANDING_WORDS[s.standing])),",
          new="none : said(diff, 'unclear'),",
          tests=[T], pattern='the weather’s two comparisons'),
+    dict(id='caffeine-is-compared-from-fifteen-a-group-across-six-weeks', file=CR,
+         old="    const floor = groups[0].n >= STRONG_PER_GROUP && groups[groups.length - 1].n >= STRONG_PER_GROUP && weeks >= STRONG_WEEKS\n    compared = {",
+         new="    const floor = true\n    compared = {",
+         tests=[CRT], pattern='too few under fifteen a group or six weeks'),
+    dict(id='caffeine-word-is-promising-only-the-good-way', file=CR,
+         old="  return own.some((x) => x.stands === 'lead' && x.good) ? 'promising' : 'unclear'",
+         new="  return own.some((x) => x.stands === 'lead') ? 'promising' : 'unclear'",
+         tests=[CRT], pattern='too few under fifteen a group or six weeks'),
+    dict(id='caffeine-sleep-says-a-lead-at-most', file=F,
+         old=" || id.startsWith('assoc.caffeine.bands.') || id.startsWith('assoc.caffeine.latest.')",
+         new="",
+         tests=[CRT], pattern='a lead at most for next-night sleep'),
+    dict(id='caffeine-too-few-says-no-reading', file=F,
+         old="    const minutes = c.hoursDiff === null || hoursAt === 'tooFew' ? null : Math.round(c.hoursDiff * 60)",
+         new="    const minutes = c.hoursDiff === null ? null : Math.round(c.hoursDiff * 60)",
+         tests=[CRT], pattern='a lead at most for next-night sleep'),
+    dict(id='caffeine-joins-the-sheets-family', file=F,
+         old="caffeine.byMorningBand.compared, caffeine.reported.compared].map((compared) => ({ compared })),",
+         new="caffeine.byMorningBand.compared, caffeine.reported.compared].map(() => ({ compared: null })),",
+         tests=[CRT], pattern='joins the sheet’s family'),
+    dict(id='the-phone-speaks-of-caffeine-only-at-a-lead', file=S,
+         old="const said = minutes !== null && minutes <= -30 && hoursAt ? {",
+         new="const said = minutes !== null && minutes <= -30 ? {",
+         tests=[ST], pattern='speaks of caffeine from reported bands only'),
+    dict(id='a-lead-never-raises-the-caffeine-lines-rank', file=S,
+         old="strength: said.standing === 'pattern' ? 0.8 : 0.5, vars: { what: said.what,",
+         new="strength: 0.8, vars: { what: said.what,",
+         tests=[FG], pattern='says every situation exactly as before'),
+    dict(id='the-minimum-is-eight-matched-occasions-a-side', file=NM,
+         old="  const tested = floor && n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null",
+         new="  const tested = floor ? comparedOnce(occasions, named) : null",
+         tests=[LT], pattern='under eight matched evenings a side'),
 ]
 
 

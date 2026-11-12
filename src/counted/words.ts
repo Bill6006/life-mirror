@@ -24,6 +24,11 @@ export function standingLine(s: { standing: Standing; family: number }): string 
   return s.standing === 'lead' ? `${STANDING_WORDS.lead} · ${s.family} looked at` : STANDING_WORDS[s.standing]
 }
 
+/** A standing inside a sentence, in brackets after its number: "a lead, not yet a pattern; 31 looked at". */
+export function standingInline(s: { standing: Standing; family: number }): string {
+  return s.standing === 'lead' ? `${said('lead')}; ${s.family} looked at` : said(s.standing)
+}
+
 export interface BestWords {
   /** The condition, in the weekly view's own words: "a nap", "Saturday", "she was away". */
   thing: string

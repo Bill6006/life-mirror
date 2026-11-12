@@ -1,5 +1,7 @@
 import { addDays, blockIndex, BLOCKS, daysBetween, parseDay, type Block } from './blocks'
 import { copy } from './copy'
+import type { Compared, Point } from './counted/compare'
+import { namedComparison, standsAlone } from './counted/named'
 import { CAFFEINE_LAST, type CaffeineBand, type CaffeineLast, type CheckIn } from './db'
 import { fill } from './format'
 import { indexCheckIns, slotKey } from './observe'
@@ -208,10 +210,26 @@ function matched(a: readonly { stratum: string; value: number }[], b: readonly {
   return weight ? sum / weight : null
 }
 
-function standing(groups: readonly { n: number }[], diffs: readonly (number | null)[], worthwhile: number, weeks: number): Standing {
-  if (groups.length < 2 || diffs.every((d) => d === null)) return 'little'
-  const big = diffs.some((d) => d !== null && Math.abs(d) >= worthwhile)
-  return big && groups.every((g) => g.n >= STRONG_PER_GROUP) && weeks >= STRONG_WEEKS ? 'promising' : 'unclear'
+/**
+ * The old three-valued word, from where the comparisons stand on their own (the one standard, 2026-11-12): little while
+ * every one is too few to compare; promising only for at least a lead in the good direction, which here is more sleep
+ * or a higher reading; unclear otherwise. A lead or a steady pattern the other way keeps unclear in this old word, and
+ * the comparison's own standing says what it is.
+ */
+function wordFor(compared: readonly Compared[]): Standing {
+  const own = compared.map((c) => ({ stands: standsAlone(c), good: (c.diff ?? 0) > 0 }))
+  if (own.every((x) => x.stands === 'tooFew')) return 'little'
+  return own.some((x) => x.stands === 'lead' && x.good) ? 'promising' : 'unclear'
+}
+
+/**
+ * The last group against the first as the core takes it: the occasions of the two groups, the stratum as the band.
+ * The comparisons here keep their own stricter floor: fifteen in each of the two groups across six weeks, or nothing
+ * is tested and it is too few.
+ */
+function ends(id: string, worth: number, first: readonly { day: string; stratum: string; value: number }[], last: readonly { day: string; stratum: string; value: number }[], floor: boolean): Compared {
+  const occasions: Point[] = [...first.map((p): Point => ({ day: p.day, event: false, outcome: p.value, band: p.stratum })), ...last.map((p): Point => ({ day: p.day, event: true, outcome: p.value, band: p.stratum }))]
+  return namedComparison(occasions, { id, worth }, floor)
 }
 
 /** The sleep a day began with, as a stratum: under six hours, six to seven, seven or more. Null when the morning did not say. */
@@ -235,20 +253,23 @@ export interface SleepComparison<K> {
   hoursDiff: number | null
   qualityDiff: number | null
   standing: Standing
-  /** Two groups or more and no worthwhile difference: the fixed null wording applies. */
+  /** Enough to compare, and neither difference stands at a lead: the fixed null wording applies. */
   none: boolean
   /** Two groups or more that share no starting sleep: nothing is compared like for like yet. */
   unmatched: boolean
+  /** The two differences as the sheet's family reads them (the one standard, 2026-11-12); null with fewer than two groups. */
+  compared: { hours: Compared; quality: Compared } | null
 }
 
 interface SleepPoint<K> {
+  day: string
   key: K
   stratum: string
   hours: number | null
   quality: number | null
 }
 
-function sleepComparison<K>(points: readonly SleepPoint<K>[], order: readonly K[], side: (k: K) => number, weeks: number): SleepComparison<K> {
+function sleepComparison<K>(id: string, points: readonly SleepPoint<K>[], order: readonly K[], side: (k: K) => number, weeks: number): SleepComparison<K> {
   const cells = mergeCells(
     order.map((key) => ({ key, n: points.filter((p) => p.key === key).length })),
     side,
@@ -260,16 +281,19 @@ function sleepComparison<K>(points: readonly SleepPoint<K>[], order: readonly K[
   })
   let hoursDiff: number | null = null
   let qualityDiff: number | null = null
+  let compared: SleepComparison<K>['compared'] = null
   if (groups.length >= 2) {
     const first = points.filter((p) => groups[0].keys.includes(p.key))
     const last = points.filter((p) => groups[groups.length - 1].keys.includes(p.key))
-    const of = (ps: readonly SleepPoint<K>[], k: 'hours' | 'quality') => ps.flatMap((p) => (p[k] === null ? [] : [{ stratum: p.stratum, value: p[k] as number }]))
+    const of = (ps: readonly SleepPoint<K>[], k: 'hours' | 'quality') => ps.flatMap((p) => (p[k] === null ? [] : [{ day: p.day, stratum: p.stratum, value: p[k] as number }]))
     hoursDiff = matched(of(first, 'hours'), of(last, 'hours'))
     qualityDiff = matched(of(first, 'quality'), of(last, 'quality'))
+    const floor = groups[0].n >= STRONG_PER_GROUP && groups[groups.length - 1].n >= STRONG_PER_GROUP && weeks >= STRONG_WEEKS
+    compared = { hours: ends(`${id}.hours`, SLEEP_WORTHWHILE, of(first, 'hours'), of(last, 'hours'), floor), quality: ends(`${id}.quality`, SLEEP_WORTHWHILE, of(first, 'quality'), of(last, 'quality'), floor) }
   }
-  const st = standing(groups, [hoursDiff, qualityDiff], SLEEP_WORTHWHILE, weeks)
-  const none = groups.length >= 2 && [hoursDiff, qualityDiff].every((d) => d === null || Math.abs(d) < SLEEP_WORTHWHILE) && [hoursDiff, qualityDiff].some((d) => d !== null)
-  return { groups, hoursDiff, qualityDiff, standing: st, none, unmatched: groups.length >= 2 && hoursDiff === null && qualityDiff === null }
+  const both = compared ? [compared.hours, compared.quality] : []
+  const stands = both.map(standsAlone)
+  return { groups, hoursDiff, qualityDiff, standing: both.length ? wordFor(both) : 'little', none: stands.includes('noPattern') && !stands.includes('lead'), unmatched: groups.length >= 2 && hoursDiff === null && qualityDiff === null, compared }
 }
 
 /** The next morning's sleep answers, and the stratum of the sleep the day began with; null when either is missing. */
@@ -290,9 +314,9 @@ export function byDayBand(checkins: readonly CheckIn[], today: string, weeks: nu
   for (const day of days) {
     const band = dayCaffeine(checkins, day).band
     const night = band ? nextNight(byKey, day) : null
-    if (band && night) points.push({ key: band, ...night })
+    if (band && night) points.push({ day, key: band, ...night })
   }
-  return sleepComparison(points, [1, 2, 3, 4], bandSide, weeks)
+  return sleepComparison('assoc.caffeine.bands', points, [1, 2, 3, 4], bandSide, weeks)
 }
 
 /** Days before today grouped by the last window that reported 100 mg or more, against the next night's sleep. Days without one enter nothing. */
@@ -303,9 +327,9 @@ export function byLatestWindow(checkins: readonly CheckIn[], today: string, week
   for (const day of days) {
     const heavy = dayCaffeine(checkins, day).windows.filter((w) => w.band >= 2)
     const night = heavy.length ? nextNight(byKey, day) : null
-    if (night) points.push({ key: heavy[heavy.length - 1].block, ...night })
+    if (night) points.push({ day, key: heavy[heavy.length - 1].block, ...night })
   }
-  return sleepComparison(points, BLOCKS, () => 0, weeks)
+  return sleepComparison('assoc.caffeine.latest', points, BLOCKS, () => 0, weeks)
 }
 
 export interface ReadingGroup<K> extends Cell<K> {
@@ -318,34 +342,40 @@ export interface ReadingComparison<K> {
   /** Last group minus first, like for like, in points; null when there is nothing to compare. */
   diff: number | null
   standing: Standing
+  /** Enough to compare, and the difference does not stand at a lead. */
   none: boolean
   /** Two groups or more that share no stratum: nothing is compared like for like yet. */
   unmatched: boolean
+  /** The difference as the sheet's family reads it (the one standard, 2026-11-12); null with fewer than two groups. */
+  compared: Compared | null
 }
 
-function readingComparison<K>(points: readonly { key: K; stratum: string; value: number }[], order: readonly K[], side: (k: K) => number, weeks: number): ReadingComparison<K> {
+function readingComparison<K>(id: string, points: readonly { day: string; key: K; stratum: string; value: number }[], order: readonly K[], side: (k: K) => number, weeks: number): ReadingComparison<K> {
   const cells = mergeCells(
     order.map((key) => ({ key, n: points.filter((p) => p.key === key).length })),
     side,
   )
   const groups: ReadingGroup<K>[] = cells.map((cell) => ({ ...cell, value: cell.n >= CELL_MIN ? mean(points.filter((p) => cell.keys.includes(p.key)).map((p) => p.value)) : null }))
-  const diff = groups.length >= 2 ? matched(points.filter((p) => groups[0].keys.includes(p.key)), points.filter((p) => groups[groups.length - 1].keys.includes(p.key))) : null
-  const st = standing(groups, [diff], READING_WORTHWHILE, weeks)
-  return { groups, diff, standing: st, none: groups.length >= 2 && diff !== null && Math.abs(diff) < READING_WORTHWHILE, unmatched: groups.length >= 2 && diff === null }
+  const first = points.filter((p) => groups[0]?.keys.includes(p.key))
+  const last = points.filter((p) => groups[groups.length - 1]?.keys.includes(p.key))
+  const diff = groups.length >= 2 ? matched(first, last) : null
+  const floor = groups.length >= 2 && groups[0].n >= STRONG_PER_GROUP && groups[groups.length - 1].n >= STRONG_PER_GROUP && weeks >= STRONG_WEEKS
+  const compared = groups.length >= 2 ? ends(id, READING_WORTHWHILE, first, last, floor) : null
+  return { groups, diff, standing: compared ? wordFor([compared]) : 'little', none: compared !== null && standsAlone(compared) === 'noPattern', unmatched: groups.length >= 2 && diff === null, compared }
 }
 
 /** Mornings before today that reported a band, grouped by it, against that afternoon's reading, among mornings that began on the same sleep. */
 export function byMorningBand(checkins: readonly CheckIn[], today: string, weeks: number): ReadingComparison<CaffeineBand> {
   const byKey = indexCheckIns(checkins)
-  const points: { key: CaffeineBand; stratum: string; value: number }[] = []
+  const points: { day: string; key: CaffeineBand; stratum: string; value: number }[] = []
   for (const m of checkins) {
     if (m.block !== 'morning' || m.day >= today || !m.extras?.caffeineIntake) continue
     const stratum = sleepStratum(m)
     const a = byKey.get(slotKey(m.day, 'afternoon'))
     const r = a ? readingOf(a) : null
-    if (stratum !== null && r) points.push({ key: m.extras.caffeineIntake.band, stratum, value: r.value })
+    if (stratum !== null && r) points.push({ day: m.day, key: m.extras.caffeineIntake.band, stratum, value: r.value })
   }
-  return readingComparison(points, [1, 2, 3, 4], bandSide, weeks)
+  return readingComparison('assoc.caffeine.morning', points, [1, 2, 3, 4], bandSide, weeks)
 }
 
 // ---------- the secondary comparison: labelled for what it is ----------
@@ -364,7 +394,7 @@ export interface ReportedComparison extends ReadingComparison<'reported' | 'unta
  */
 export function reportedAgainstUntapped(checkins: readonly CheckIn[], today: string, weeks: number): ReportedComparison {
   const habitual = caffeineHabit(checkins, today).habitual
-  const points: { key: 'reported' | 'untapped'; stratum: string; value: number }[] = []
+  const points: { day: string; key: 'reported' | 'untapped'; stratum: string; value: number }[] = []
   let droppedMornings = 0
   for (const c of checkins) {
     if (c.day >= today) continue
@@ -375,9 +405,9 @@ export function reportedAgainstUntapped(checkins: readonly CheckIn[], today: str
       droppedMornings++
       continue
     }
-    points.push({ key: s, stratum: c.block, value: r.value })
+    points.push({ day: c.day, key: s, stratum: c.block, value: r.value })
   }
-  return { ...readingComparison(points, ['untapped', 'reported'], () => 0, weeks), droppedMornings, habitual }
+  return { ...readingComparison('assoc.caffeine.reported', points, ['untapped', 'reported'], () => 0, weeks), droppedMornings, habitual }
 }
 
 export interface CaffeineEvidence {

@@ -5,7 +5,8 @@ import { CaffeineEvidenceCard } from './caffeineEvidence'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { fill, formatDayShort, formatWhen } from './format'
-import { evidence, type PassiveEvidence } from './evidenceFlow'
+import { evidenceWithStandings } from './brainFlow'
+import type { PassiveEvidence } from './evidenceFlow'
 import { useLive } from './live'
 import { Disclosure } from './ui'
 import { NOTHING } from './offers'
@@ -201,7 +202,10 @@ function RepairFaultLine({ today }: { today: string }) {
 
 export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?: (about: AskAboutThis) => void }) {
   const today = blockAt(new Date()).day
-  const ev = useLive(() => evidence(today), [today])
+  // The comparisons and where each stands in the sheet's family: one standing for one thing, here and on the sheet.
+  const both = useLive(() => evidenceWithStandings(today), [today])
+  const ev = both?.ev
+  const stood = both?.stood ?? null
   const c = copy.evidence
   // The engine's tests by rung on the evidence ladder, with its track record. If it cannot read the record this session,
   // the screen says so in their place; nothing older shows instead.
@@ -329,7 +333,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
 
       <WeatherEvidence today={today} />
 
-      <CaffeineEvidenceCard ev={ev.caffeine} />
+      <CaffeineEvidenceCard ev={ev.caffeine} stood={stood} />
 
       <h2 class="section">{c.privates}</h2>
       <div class="card pad">

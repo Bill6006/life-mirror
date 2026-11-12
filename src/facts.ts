@@ -2,7 +2,7 @@ import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block }
 import { doneBySetting, pathName, pathToday, socialEnergyOn, stageWords } from './pathStage'
 import { afternoonAssociation, associationFor, morningAssociation, privateAssociations, tierFor, type Association, type PrivateAssociation } from './associations'
 import { lastNightAssociations, type LastNightKey } from './lastNight'
-import { type Direction, type Standing, standings, type Stood, WORTH_POINTS } from './counted/compare'
+import { type Compared, type Direction, type Standing, standings, type Stood, WORTH_POINTS } from './counted/compare'
 import { STANDING_WORDS, withWords } from './counted/words'
 import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, latestPlans, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
 import { dueOf, intervalOf, isFaithPractice, rhythmOf, scheduleOf } from './rhythm'
@@ -200,13 +200,13 @@ export function hardFact(h: { times: number; measures: Record<HardMeasure, Assoc
  * the 5 in 100 the standard aims for (stress/RESULTS-8.md), so until streaks are answered better for that scale it is
  * never called a steady pattern.
  */
-const stepScale = (id: string): boolean => id.startsWith('assoc.hardWorkout.') || id === 'assoc.eveningWorkout.sleep'
+const stepScale = (id: string): boolean => id.startsWith('assoc.hardWorkout.') || id === 'assoc.eveningWorkout.sleep' || id.startsWith('assoc.caffeine.bands.') || id.startsWith('assoc.caffeine.latest.')
 
 /**
  * Every association the sheet carries, given its standing as one family (the evidence standard, 2026-11-12): the
  * chance of each is corrected across all of them, so the sheet pays for every comparison it looked at.
  */
-export function sheetStandings(list: readonly (Association | null | undefined)[]): Map<string, Stood> {
+export function sheetStandings(list: readonly ({ compared?: Compared | null } | null | undefined)[]): Map<string, Stood> {
   // A comparison is one member of the family, however many surfaces read it: the first of an id is the one kept.
   const seen = new Set<string>()
   const family = list.flatMap((a) => (a?.compared && !seen.has(a.compared.id) && seen.add(a.compared.id) ? [a.compared] : []))
@@ -256,6 +256,7 @@ export function sheetAssociations(i: Pick<FactInput, 'checkins' | 'contexts' | '
   const nature = natureAssociations(i.checkins, i.outcomes, today, WORTH_POINTS)
   const privates = privateAssociations(true, i.items, i.checkins, today, WORTH_POINTS)
   const weather = i.weatherOn ? weatherEvidence(i.checkins, i.contexts, today, WORTH_POINTS) : null
+  const caffeine = i.evidence.caffeine
   const twelve = lastNightAssociations({ checkins: i.checkins, contexts: new Map(i.contexts.map((c) => [c.day, c])), eveningWorkouts: eveningWorkoutDays(i.outside), natureMoves: natureMoveDays(i.outcomes) }, today)
   const night: Record<LastNightKey, Association> = { ...twelve, napped, sweet: sweetEvening, nature: nature.morning, coolingOff: i.evidence.coolingOff?.association ?? twelve.coolingOff, bigSocial: i.evidence.bigSocial ?? twelve.bigSocial, workout: i.evidence.eveningWorkout?.morning ?? twelve.workout }
   const stood = sheetStandings([
@@ -276,6 +277,8 @@ export function sheetAssociations(i: Pick<FactInput, 'checkins' | 'contexts' | '
     weather?.rain,
     weather?.sun,
     ...Object.values(night),
+    // The caffeine comparisons: next-night sleep by the day's band and by the last heavy window (hours and quality), the afternoon by the morning's band, and reported against none reported.
+    ...[caffeine.byDayBand.compared?.hours, caffeine.byDayBand.compared?.quality, caffeine.byLatestWindow.compared?.hours, caffeine.byLatestWindow.compared?.quality, caffeine.byMorningBand.compared, caffeine.reported.compared].map((compared) => ({ compared })),
   ])
   return { napped, sweetAfternoon, sweetEvening, shortSleep, nature, privates, weather, night, stood }
 }
@@ -358,7 +361,7 @@ export function weatherFacts(checkins: readonly CheckIn[], contexts: readonly Da
  * naming what was reported and what was seen and left untapped. None reported is never a zero,
  * and every comparison is an association with its counts.
  */
-export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence, today: string): Fact[] {
+export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence, today: string, stood: ReadonlyMap<string, Stood> = new Map(), withComparisons = true): Fact[] {
   const out: Fact[] = []
   const band = (b: CaffeineBand) => lower(copy.caffeine.bands[b])
   const d = dayCaffeine(checkins, today)
@@ -384,23 +387,38 @@ export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence
   if (late) {
     out.push(fact('caffeine.late', ['caffeine', 'sleep', 'evening'], `On ${late.day}, ${band(late.band)} was reported at the ${late.block} check-in at ${late.time}. A meta-analysis put the point where about ${late.mg} mg stops shortening sleep at ${late.hours} hours before bed; counted from ${late.time}, that runs past midnight.`, { day: late.day, when: late.day === today ? 'today' : 'yesterday', block: late.block, band: band(late.band), time: late.time, mg: late.mg, hours: late.hours }))
   }
+  if (!withComparisons) return out
+  // The four comparisons (the one standard, 2026-11-12): each difference is said with where it stands in the sheet's
+  // family, and no reading while there is too little to compare. Next-night sleep is read in steps: a lead at most.
+  const at = (c: Compared | null | undefined): Stood | undefined => (c ? stood.get(c.id) : undefined)
+  const standingOf = (c: Compared | null | undefined): Standing => at(c)?.standing ?? 'tooFew'
+  const leads = (s: Standing): boolean => s === 'lead' || s === 'pattern'
+  const looked = (list: readonly (Compared | null | undefined)[]): string => {
+    const lead = list.find((c) => standingOf(c) === 'lead')
+    return lead ? `; ${at(lead)?.family ?? 0} comparisons were looked at` : ''
+  }
+  const FLOOR = 'too few to compare yet: a difference is compared from fifteen in each of the two groups across six weeks'
   const sleep = <K,>(id: string, by: string, c: SleepComparison<K>, label: (keys: K[]) => string, unit: [string, string]) => {
     if (!c.groups.length) return
     const low = lower(label(c.groups[0].keys))
     const high = lower(label(c.groups[c.groups.length - 1].keys))
     const groups = c.groups.map((g) => `${lower(label(g.keys))} ${g.n} ${g.n === 1 ? unit[0] : unit[1]}`).join(', ')
-    const minutes = c.hoursDiff === null ? null : Math.round(c.hoursDiff * 60)
-    const quality = c.qualityDiff === null ? null : Math.round(c.qualityDiff * 10) / 10
-    const read = [minutes === null ? null : `sleep ${signed(minutes)} minutes`, quality === null ? null : `quality ${signed(quality)} of a step`].filter(Boolean).join(' and ')
+    const [hoursAt, qualityAt] = [standingOf(c.compared?.hours), standingOf(c.compared?.quality)]
+    const minutes = c.hoursDiff === null || hoursAt === 'tooFew' ? null : Math.round(c.hoursDiff * 60)
+    const quality = c.qualityDiff === null || qualityAt === 'tooFew' ? null : Math.round(c.qualityDiff * 10) / 10
+    const read = [minutes === null ? null : `sleep ${signed(minutes)} minutes (${lower(STANDING_WORDS[hoursAt])})`, quality === null ? null : `quality ${signed(quality)} of a step (${lower(STANDING_WORDS[qualityAt])})`].filter(Boolean).join(' and ')
+    const none = read !== '' && !leads(hoursAt) && !leads(qualityAt)
     const body =
       c.groups.length < 2
         ? 'one group so far, and comparing needs two groups of five'
         : c.unmatched
           ? 'no day in one group began on the same sleep as a day in the other, so nothing is compared like for like yet'
-          : c.none
-            ? 'no difference is showing, and self-reported sleep is known to miss caffeine’s effect'
-            : `after ${high} ${unit[1]} the next night read ${read} against ${low} ${unit[1]}`
-    out.push(fact(id, ['caffeine', 'sleep'], `The next night's sleep ${by}, like for like on the sleep the day began with: ${groups}; ${body} (${c.standing}). Untapped windows (${h.untapped}) and days with nothing known are in no group.`, { low, high, n: c.groups[0].n, m: c.groups[c.groups.length - 1].n, groups: c.groups.length, minutes, quality, none: c.none ? 1 : 0, untapped: h.untapped }, { n: c.groups.reduce((t, g) => t + g.n, 0), tier: c.standing }))
+          : read === ''
+            ? FLOOR
+            : none
+              ? 'no clear pattern yet, and self-reported sleep is known to miss caffeine’s effect'
+              : `after ${high} ${unit[1]} the next night read ${read} against ${low} ${unit[1]}${looked([c.compared?.hours, c.compared?.quality])}`
+    out.push(fact(id, ['caffeine', 'sleep'], `The next night's sleep ${by}, like for like on the sleep the day began with: ${groups}; ${body}. Untapped windows (${h.untapped}) and days with nothing known are in no group.`, { low, high, n: c.groups[0].n, m: c.groups[c.groups.length - 1].n, groups: c.groups.length, minutes, quality, none: none ? 1 : 0, untapped: h.untapped, hoursStanding: hoursAt, qualityStanding: qualityAt, family: at(c.compared?.hours)?.family ?? at(c.compared?.quality)?.family ?? 0 }, { n: c.groups.reduce((t, g) => t + g.n, 0), tier: c.standing }))
   }
   sleep('assoc.caffeine.bands', 'by the day’s reported caffeine', ev.byDayBand, bandsLabel, ['day', 'days'])
   sleep('assoc.caffeine.latest', 'by the last window with 100 mg or more', ev.byLatestWindow, windowsLabel, ['day', 'days'])
@@ -409,32 +427,38 @@ export function caffeineFacts(checkins: readonly CheckIn[], ev: CaffeineEvidence
     const low = lower(bandsLabel(m.groups[0].keys))
     const high = lower(bandsLabel(m.groups[m.groups.length - 1].keys))
     const groups = m.groups.map((g) => `${lower(bandsLabel(g.keys))} ${g.n} ${g.n === 1 ? 'morning' : 'mornings'}`).join(', ')
-    const diff = m.diff === null ? null : Math.round(m.diff)
+    const standing = standingOf(m.compared)
+    const diff = m.diff === null || standing === 'tooFew' ? null : Math.round(m.diff)
     const body =
       m.groups.length < 2
         ? 'one group so far, and comparing needs two groups of five'
-        : diff === null
+        : m.diff === null
           ? 'no morning in one group began on the same sleep as one in the other, so nothing is compared like for like yet'
-          : m.none
-            ? 'no difference is showing'
-            : `after ${high} mornings the afternoon read ${signed(diff)} against ${low} mornings`
-    out.push(fact('assoc.caffeine.morning', ['caffeine', 'afternoon'], `That afternoon's reading by the morning's reported caffeine, like for like on the sleep the morning began with: ${groups}; ${body} (${m.standing}).`, { low, high, n: m.groups[0].n, m: m.groups[m.groups.length - 1].n, groups: m.groups.length, diff, none: m.none ? 1 : 0 }, { n: m.groups.reduce((t, g) => t + g.n, 0), tier: m.standing }))
+          : diff === null
+            ? FLOOR
+            : !leads(standing)
+              ? 'no clear pattern yet'
+              : `after ${high} mornings the afternoon read ${signed(diff)} against ${low} mornings (${lower(STANDING_WORDS[standing])}${looked([m.compared])})`
+    out.push(fact('assoc.caffeine.morning', ['caffeine', 'afternoon'], `That afternoon's reading by the morning's reported caffeine, like for like on the sleep the morning began with: ${groups}; ${body}.`, { low, high, n: m.groups[0].n, m: m.groups[m.groups.length - 1].n, groups: m.groups.length, diff, none: diff !== null && !leads(standing) ? 1 : 0, standing, family: at(m.compared)?.family ?? 0 }, { n: m.groups.reduce((t, g) => t + g.n, 0), tier: m.standing }))
   }
   const r = ev.reported
   if (r.groups.length) {
     const count = (k: 'reported' | 'untapped') => r.groups.filter((g) => g.keys.includes(k)).reduce((t, g) => t + g.n, 0)
-    const diff = r.diff === null ? null : Math.round(r.diff)
+    const standing = standingOf(r.compared)
+    const diff = r.diff === null || standing === 'tooFew' ? null : Math.round(r.diff)
     const body =
       r.groups.length < 2
         ? 'one group so far, and comparing needs two groups of five'
-        : diff === null
+        : r.diff === null
           ? 'the two groups share no time of day, so nothing is compared like for like yet'
-          : r.none
-            ? 'no difference is showing'
-            : `where it was reported the check-in read ${signed(diff)}`
+          : diff === null
+            ? FLOOR
+            : !leads(standing)
+              ? 'no clear pattern yet'
+              : `where it was reported the check-in read ${signed(diff)} (${lower(STANDING_WORDS[standing])}${looked([r.compared])})`
     const dropped = r.droppedMornings ? ` Untapped mornings left out: ${r.droppedMornings}, because caffeine was reported on most of the last ${HABIT_DAYS} days.` : ''
     const withdrawal = r.habitual ? ' Reported on most days, part of a same-check-in difference may be withdrawal on the check-ins without it, not a lift on the ones with it.' : ''
-    out.push(fact('assoc.caffeine.reported', ['caffeine', 'energy'], `The same check-in's reading where caffeine was reported, against where the item was shown and none reported, like for like by time of day: reported ${count('reported')}, none reported ${count('untapped')}; ${body} (${r.standing}).${dropped}${withdrawal}`, { reported: count('reported'), untapped: count('untapped'), groups: r.groups.length, diff, none: r.none ? 1 : 0, dropped: r.droppedMornings, habitual: r.habitual ? 1 : 0 }, { n: count('reported') + count('untapped'), tier: r.standing }))
+    out.push(fact('assoc.caffeine.reported', ['caffeine', 'energy'], `The same check-in's reading where caffeine was reported, against where the item was shown and none reported, like for like by time of day: reported ${count('reported')}, none reported ${count('untapped')}; ${body}.${dropped}${withdrawal}`, { reported: count('reported'), untapped: count('untapped'), groups: r.groups.length, diff, none: diff !== null && !leads(standing) ? 1 : 0, dropped: r.droppedMornings, habitual: r.habitual ? 1 : 0, standing, family: at(r.compared)?.family ?? 0 }, { n: count('reported') + count('untapped'), tier: r.standing }))
   }
   return out
 }
@@ -880,7 +904,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
   facts.push(fact('necessities.3d', ['necessities'], `Necessities marked missed over the last three evenings: ${misses}.`, { misses }, { n: 3 }))
 
   const morning = i.checkins.find((c) => c.day === today && c.block === 'morning')
-  facts.push(...caffeineFacts(i.checkins, i.evidence.caffeine, today))
+  // The day's caffeine, the habit and a late window are the record's own; the four comparisons are the family's, and none is written when it failed.
+  facts.push(...caffeineFacts(i.checkins, i.evidence.caffeine, today, stood, family !== null))
   // After a morning without it, the night's hours asked late at the afternoon check-in, and said so (stage 3, item 5).
   const afternoon = i.checkins.find((c) => c.day === today && c.block === 'afternoon')
   const lateSlept = afternoon && askedLate(afternoon).includes('sleepHours') ? afternoon.answers.sleepHours : undefined

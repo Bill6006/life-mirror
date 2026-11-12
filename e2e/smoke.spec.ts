@@ -1813,7 +1813,8 @@ test('caffeine on board sits beside the reading without moving it, and Evidence 
   await expect(card).toBeVisible()
   await expect(page.getByTestId('caffeine-habit')).toHaveText('Reported on 1 of the last 28 days. Usual morning band: 200–299 mg. Shown and left untapped: 0 windows, which is none reported, never a confirmed none.')
   await expect(page.getByTestId('caffeine-bands')).toContainText('Nothing reported yet.')
-  await expect(card).toContainText('capped at Promising')
+  // The one standard (Phase 3, 2026-11-12): the card's note says its own floor, and that next-night sleep says a lead at most.
+  await expect(card).toContainText('a difference is compared only from fifteen in each of the two groups across six weeks; next-night sleep is read in steps and says a lead at most.')
   await expect(card).not.toContainText(/caffeine-free|because of|\bcaus/i)
 })
 

@@ -21,7 +21,8 @@ import {
 import { copy } from './copy'
 import type { CaffeineBand, CheckIn, Extras } from './db'
 import type { FactSheet } from './factTypes'
-import { caffeineFacts } from './facts'
+import type { Evidence } from './evidenceFlow'
+import { caffeineFacts, sheetAssociations, sheetStandings } from './facts'
 import { lastNightKeys } from './forecastFlow'
 import { library } from './library'
 import { blockReadings, type Answers, type Position } from './readings'
@@ -169,7 +170,7 @@ describe('groups of five, merged like for like, and the cap', () => {
     expect(c.none).toBe(false)
   })
 
-  it('reads the next night like for like, and stays Unclear under fifteen a group or six weeks', () => {
+  it('reads the next night like for like through the one standard: too few under fifteen a group or six weeks, then by where it stands', () => {
     const six = pairs('2026-07-01', [...repeat<CaffeineBand>(1, 6), ...repeat<CaffeineBand>(3, 6)], short)
     const c = byDayBand(six, TODAY, 10)
     expect(c.groups.map((g) => [g.keys, g.n, g.hours, g.quality])).toEqual([
@@ -178,12 +179,58 @@ describe('groups of five, merged like for like, and the cap', () => {
     ])
     expect(c.hoursDiff).toBe(-1)
     expect(c.qualityDiff).toBe(-1)
-    expect(c.standing).toBe('unclear')
-    const fifteen = pairs('2026-06-01', [...repeat<CaffeineBand>(1, 15), ...repeat<CaffeineBand>(3, 15)], short)
-    expect(byDayBand(fifteen, TODAY, 5).standing).toBe('unclear')
-    expect(byDayBand(fifteen, TODAY, 6).standing).toBe('promising')
+    // Six a group is under the fifteen this comparison asks: nothing is tested, and it reads little where it read unclear.
+    expect(c.standing).toBe('little')
+    expect(c.compared?.hours).toMatchObject({ id: 'assoc.caffeine.bands.hours', n: 6, m: 6, enough: false, p: null })
+    // Fifteen heavier days and twenty lighter in no rhythm: three heavier days in each seven.
+    const bands = Array.from({ length: 5 }, (): CaffeineBand[] => [3, 3, 1, 3, 1, 1, 1]).flat()
+    const mixed = pairs('2026-06-01', bands, short)
+    expect(byDayBand(mixed, TODAY, 5).standing).toBe('little')
+    const tested = byDayBand(mixed, TODAY, 6)
+    expect(tested.compared?.hours).toMatchObject({ n: 15, m: 20, diff: -1, enough: true })
+    expect(tested.compared?.hours.p).toBeLessThan(0.05)
+    // An hour less sleep after the heavier days stands at a lead, and is not the good direction: the old word stays unclear.
+    expect(tested).toMatchObject({ standing: 'unclear', none: false })
+    // More sleep after them would be the good direction.
+    expect(byDayBand(pairs('2026-06-01', bands, (b) => (b >= 3 ? { hours: 4, quality: 4 } : { hours: 3, quality: 3 })), TODAY, 6).standing).toBe('promising')
+    // Every lighter day first and every heavier one after cannot be told from a drift over the weeks: no clear pattern.
+    const drift = pairs('2026-06-01', [...repeat<CaffeineBand>(1, 20), ...repeat<CaffeineBand>(3, 15)], short)
+    expect(byDayBand(drift, TODAY, 6)).toMatchObject({ standing: 'unclear', none: true })
     const fourteen = pairs('2026-06-01', [...repeat<CaffeineBand>(1, 14), ...repeat<CaffeineBand>(3, 15)], short)
-    expect(byDayBand(fourteen, TODAY, 12).standing).toBe('unclear')
+    expect(byDayBand(fourteen, TODAY, 12).standing).toBe('little')
+  })
+
+  it('joins the sheet’s family: the caffeine comparisons are corrected with every other the sheet says', () => {
+    const mixed = pairs('2026-06-01', Array.from({ length: 5 }, (): CaffeineBand[] => [3, 3, 1, 3, 1, 1, 1]).flat(), short)
+    const ev = caffeineEvidence(mixed, TODAY)
+    expect(ev.weeks).toBeGreaterThanOrEqual(6)
+    const none = { coolingOff: null, bigSocial: null, heavyCaffeine: null, workouts: null, eveningWorkout: null, hardWorkout: null }
+    const family = sheetAssociations({ checkins: mixed, contexts: [], outcomes: [], outside: [], items: [], evidence: { ...none, caffeine: ev } as unknown as Evidence }, TODAY)
+    expect(family.stood.get('assoc.caffeine.bands.hours')).toMatchObject({ standing: 'lead', direction: 'lower' })
+    expect(family.stood.get('assoc.caffeine.bands.quality')).toMatchObject({ standing: 'lead' })
+    // Every comparison tested here is a caffeine one, and each counts toward the family.
+    expect(family.stood.get('assoc.caffeine.bands.hours')?.family).toBeGreaterThanOrEqual(2)
+  })
+
+  it('writes the fact from where each difference stands in the family: a lead at most for next-night sleep, and no reading while too few', () => {
+    const bands = Array.from({ length: 5 }, (): CaffeineBand[] => [3, 3, 1, 3, 1, 1, 1]).flat()
+    const mixed = pairs('2026-06-01', bands, short)
+    const c = byDayBand(mixed, TODAY, 10)
+    const stood = sheetStandings([{ compared: c.compared?.hours }, { compared: c.compared?.quality }])
+    // Past chance even after the family's correction, and on a scale of steps: said as a lead.
+    expect(stood.get('assoc.caffeine.bands.hours')).toMatchObject({ standing: 'lead', direction: 'lower', family: 2 })
+    const f = caffeineFacts(mixed, { ...caffeineEvidence(mixed, TODAY), byDayBand: c }, TODAY, stood).find((x) => x.id === 'assoc.caffeine.bands')
+    expect(f?.text).toContain('days the next night read sleep -60 minutes (a lead, not yet a pattern) and quality -1 of a step (a lead, not yet a pattern) against ')
+    expect(f?.text).toContain(' days; 2 comparisons were looked at. Untapped windows')
+    expect(f?.values).toMatchObject({ minutes: -60, quality: -1, none: 0, hoursStanding: 'lead', qualityStanding: 'lead', family: 2, n: 20, m: 15 })
+    expect(f?.tier).toBe('unclear')
+    // Six a group: the groups and their counts, and no reading.
+    const six = pairs('2026-07-01', [...repeat<CaffeineBand>(1, 6), ...repeat<CaffeineBand>(3, 6)], short)
+    const few = byDayBand(six, TODAY, 10)
+    const g = caffeineFacts(six, { ...caffeineEvidence(six, TODAY), byDayBand: few }, TODAY, sheetStandings([{ compared: few.compared?.hours }, { compared: few.compared?.quality }])).find((x) => x.id === 'assoc.caffeine.bands')
+    expect(g?.text).toContain('too few to compare yet: a difference is compared from fifteen in each of the two groups across six weeks.')
+    expect(g?.values).toMatchObject({ minutes: null, quality: null, none: 0, hoursStanding: 'tooFew' })
+    expect(g?.tier).toBe('little')
   })
 
   it('compares nothing, and says so, when the groups share no starting sleep or no time of day', () => {
@@ -210,12 +257,14 @@ describe('groups of five, merged like for like, and the cap', () => {
   })
 
   it('says no difference in its fixed words when the groups read alike', () => {
-    const alike = pairs('2026-07-01', [...repeat<CaffeineBand>(1, 6), ...repeat<CaffeineBand>(3, 6)], () => ({ hours: 4, quality: 4 }))
+    // Enough to compare (fifteen and twenty days, in no rhythm), and the two groups read alike.
+    const alike = pairs('2026-06-01', Array.from({ length: 5 }, (): CaffeineBand[] => [3, 3, 1, 3, 1, 1, 1]).flat(), () => ({ hours: 4, quality: 4 }))
     const c = byDayBand(alike, TODAY, 10)
     expect(c.none).toBe(true)
-    const f = caffeineFacts(alike, { ...caffeineEvidence(alike, TODAY), byDayBand: c }, TODAY).find((x) => x.id === 'assoc.caffeine.bands')
-    expect(f?.text).toContain('no difference is showing, and self-reported sleep is known to miss caffeine’s effect')
-    expect(copy.caffeine.ev.none).toBe('No difference is showing; self-reported sleep is known to miss caffeine’s effect.')
+    const f = caffeineFacts(alike, { ...caffeineEvidence(alike, TODAY), byDayBand: c }, TODAY, sheetStandings([{ compared: c.compared?.hours }, { compared: c.compared?.quality }])).find((x) => x.id === 'assoc.caffeine.bands')
+    expect(f?.text).toContain('no clear pattern yet, and self-reported sleep is known to miss caffeine’s effect')
+    expect(f?.values).toMatchObject({ none: 1, hoursStanding: 'noPattern', qualityStanding: 'noPattern' })
+    expect(copy.caffeine.ev.none).toBe('No clear pattern yet; self-reported sleep is known to miss caffeine’s effect.')
   })
 
   it('groups days by the last window with 100 mg or more, and mornings by their band against that afternoon', () => {
