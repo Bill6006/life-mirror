@@ -36,16 +36,13 @@ TABLE = [
          old="  if (!likeForLikeMatched(a)) return fill(copy.extras.sweetUnmatched,",
          new="  if (a.without.mean === null) return fill(copy.extras.sweetUnmatched,",
          tests=[T], pattern=APART),
-    dict(id='tf-own', file=W,
-         old="  if (!likeForLikeMatched(a)) return fill(c.ownUnmatched,",
-         new="  if (a.without.mean === null) return fill(c.ownUnmatched,",
-         tests=[T], pattern=APART),
     dict(id='tf-passive', file=W,
          old="  if (!likeForLikeMatched(a) || standing === 'tooFew') return fill(c.passiveUnmatched,",
          new="  if (a.without.mean === null || standing === 'tooFew') return fill(c.passiveUnmatched,",
          tests=[T], pattern=APART),
     # Since Phase 3 (2026-11-12) cooling off, a big social day, heavy caffeine, workouts and a private item on Evidence
-    # share one guard, the clause that says where a comparison stands: this one entry undoes it for all five.
+    # share one guard, the clause that says where a comparison stands: this one entry undoes it for all five, and for
+    # your own chips' line, which reads the same clause.
     dict(id='tf-cooling', file=W,
          old="!likeForLikeMatched(a) || a.diff === null) return null",
          new="a.without.mean === null) return null",

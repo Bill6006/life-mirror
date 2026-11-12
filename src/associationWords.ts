@@ -48,14 +48,15 @@ export function sweetAnswerWords(a: Association): string {
   return fill(copy.extras.sweetTimes, { times: timesBefore(a.times), mean: pct(a.withEvent.mean), without: pct(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
 }
 
-/** One of your own chips on Evidence. */
-export function ownChipLine(label: string, a: Association): string {
+/** One of your own chips on Evidence: its comparison is said only where it stands past too few among your own chips, their own family. */
+export function ownChipLine(label: string, a: Association, stood: Stands, id: string): string {
   const c = copy.evidence
   const n = a.times === 1 ? c.oneEvening : fill(c.nEvenings, { n: String(a.times) })
   if (a.times === 0) return fill(c.ownNone, { label })
   if (a.withEvent.mean === null) return fill(c.ownNoNext, { label, n })
-  if (!likeForLikeMatched(a)) return fill(c.ownUnmatched, { label, n, with: pct(a.withEvent.mean), k: String(a.withEvent.n) })
-  return fill(c.ownLine, { label, n, with: pct(a.withEvent.mean), without: pct(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n) })
+  const standing = standingClause(stood, `own.${id}`, a)
+  if (standing === null) return fill(c.ownUnmatched, { label, n, with: pct(a.withEvent.mean), k: String(a.withEvent.n) })
+  return fill(c.ownLine, { label, n, with: pct(a.withEvent.mean), without: pct(a.without.mean), k: String(a.withEvent.n), m: String(a.without.n), standing })
 }
 
 /** A passive item's line on Evidence: the days it rode alongside and was done. Its card says where it stands; too few says no reading. */

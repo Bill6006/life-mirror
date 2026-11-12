@@ -278,6 +278,14 @@ TABLE = [
          old="  for (const p of pairs) if (p.standing === 'pattern' && (p.lo === null || p.hi === null || (p.lo <= 0 && p.hi >= 0))) p.standing = 'lead'\n",
          new="",
          tests=[BT], pattern='only where its own interval keeps to one side'),
+    dict(id='an-own-chip-says-a-reading-only-past-too-few', file=AW,
+         old="  const standing = standingClause(stood, `own.${id}`, a)\n  if (standing === null) return fill(c.ownUnmatched,",
+         new="  const standing = standingClause(stood, `own.${id}`, a) ?? ''\n  if (!likeForLikeMatched(a)) return fill(c.ownUnmatched,",
+         tests=['src/ownChips.test.ts'], pattern='a family of their own'),
+    dict(id='your-own-chips-are-named-in-their-own-family', file='src/ownChips.ts',
+         old="[ch.id, ownChipAnswer(all, ch.id, today, WORTH_POINTS)]",
+         new="[ch.id, ownChipAnswer(all, ch.id, today)]",
+         tests=['src/ownChips.test.ts'], pattern='a family of their own'),
 ]
 
 

@@ -5,7 +5,8 @@ import { addDays } from './blocks'
 import { factSheet } from './brainFlow'
 import { db, ensureDayContext, getSettings, updateSettings, type CheckIn } from './db'
 import { weeklyData } from './forecastFlow'
-import { ownChipAnswer, ownChipRetired, ownChipStates, ownShownKey } from './ownChips'
+import { ownChipLine } from './associationWords'
+import { ownChipAnswer, ownChipRetired, ownChipStandings, ownChipStates, ownShownKey } from './ownChips'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { allOwnChips, DEFAULT_SETTINGS, OWN_CHIP_LABEL_MAX, OWN_CHIPS_MAX, ownChipsOf, withOwnChipAdded, withOwnChipRemoved, type OwnChip } from './settings'
 
@@ -70,6 +71,27 @@ describe('your own chips, counted and compared only where shown (Rule 2)', () =>
     expect(a.without.n).toBe(3)
     // The probe that could have said yes: the earlier evenings read as shown join the side without.
     expect(ownChipAnswer(withMornings.map((c) => (c.block === 'evening' && !c.extras ? { ...c, extras: shown('a') } : c)), 'a', DAY).without.n).toBe(13)
+  })
+})
+
+describe('your own chips on Evidence, under the one standard', () => {
+  it('gives each chip its standing among your own chips, a family of their own, and says a reading only past too few', () => {
+    // Four fortnights of evenings that showed both chips. The first was tapped on each fortnight's 1st, 2nd, 4th and 8th evenings, and the
+    // morning after read better each time; the second was tapped three times.
+    const better = (c: CheckIn): CheckIn => ({ ...c, answers: { ...c.answers, mood: 4, energy: 4, focus: 4, stress: 2, overwhelm: 2, irritation: 2 } })
+    const both = { chipsShown: { [ownShownKey('a')]: true as const, [ownShownKey('b')]: true as const } }
+    const rows: CheckIn[] = []
+    for (let i = 0; i < 56; i++) {
+      const day = addDays(DAY, i - 57)
+      const first = [0, 1, 3, 7].includes(i % 14)
+      rows.push(ci(day, 'evening', 3, { ...both, own: { ...(first ? { a: true as const } : {}), ...(i < 3 ? { b: true as const } : {}) } }), first ? better(ci(addDays(day, 1), 'morning', 3)) : ci(addDays(day, 1), 'morning', 3))
+    }
+    const { answers, stood } = ownChipStandings(rows, [chip('a'), chip('b')], DAY)
+    expect(stood.get('own.a')).toMatchObject({ standing: 'pattern', direction: 'higher', family: 1 })
+    expect(stood.get('own.b')).toMatchObject({ standing: 'tooFew' })
+    expect(ownChipLine('Stand-in a', answers.get('a')!, stood, 'a')).toBe('Stand-in a: 16 evenings marked. The morning after read 75, against 50 after evenings that started the same (16 and 40). Like for like, 25 points higher: a steady pattern.')
+    // Three taps: its own reading, and nothing set against it, where two readings used to be said.
+    expect(ownChipLine('Stand-in b', answers.get('b')!, stood, 'b')).toMatch(/^Stand-in b: 3 evenings marked\. The morning after read \d+ \(3\); nothing yet to set it against\.$/)
   })
 })
 

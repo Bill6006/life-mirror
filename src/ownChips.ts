@@ -1,4 +1,5 @@
 import { associationFor, type Association } from './associations'
+import { standings, type Stood, WORTH_POINTS } from './counted/compare'
 import { CHIP_STRETCH } from './audit'
 import { compareSlots } from './blocks'
 import type { CheckIn } from './db'
@@ -15,6 +16,17 @@ export const ownShownKey = (id: string) => `own:${id}`
 /** Whether one of your chips was on screen at a check-in (Rule 2): tapped means shown, and the shown mark says the rest. */
 export function ownShownAt(id: string, c: CheckIn): boolean {
   return Boolean(c.extras?.chipsShown?.[ownShownKey(id)] || c.extras?.own?.[id])
+}
+
+/**
+ * Your own chips' answers with where each stands among them (the one standard, 2026-11-12). They are a family of their
+ * own: a label is your own words and never reaches the day's sheet, so its comparison never joins the sheet's family,
+ * and each chip pays for the others.
+ */
+export function ownChipStandings(all: readonly CheckIn[], chips: readonly { id: string }[], today: string): { answers: Map<string, Association>; stood: Map<string, Stood> } {
+  const answers = new Map(chips.map((ch) => [ch.id, ownChipAnswer(all, ch.id, today, WORTH_POINTS)]))
+  const stood = new Map(standings([...answers.values()].flatMap((a) => (a.compared ? [a.compared] : []))).map((s) => [s.id, s]))
+  return { answers, stood }
 }
 
 export interface OwnChipState {
@@ -44,6 +56,7 @@ export function ownChipRetired(id: string, states: readonly OwnChipState[]): boo
 }
 
 /** One of your chips answered from your own record, like for like, as the built-in chips are: only the evenings that showed it. */
-export function ownChipAnswer(all: readonly CheckIn[], id: string, today: string): Association {
-  return associationFor(all, today, (c) => Boolean(c.extras?.own?.[id]), (c) => ownShownAt(id, c))
+export function ownChipAnswer(all: readonly CheckIn[], id: string, today: string, worth?: number): Association {
+  // Named, with the size worth saying, where its standing is wanted (Evidence, since 2026-11-12): `own.<id>`, in your own chips' family.
+  return associationFor(all, today, (c) => Boolean(c.extras?.own?.[id]), (c) => ownShownAt(id, c), worth === undefined ? undefined : { id: `own.${id}`, worth })
 }

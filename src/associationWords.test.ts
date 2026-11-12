@@ -37,7 +37,7 @@ function everyLine(a: Association): string[] {
   return [
     chipAnswerWords(a),
     sweetAnswerWords(a),
-    ownChipLine('A stand-in chip', a),
+    ownChipLine('A stand-in chip', a, new Map([['own.c1', { id: 'own.c1', standing: 'lead' as const, direction: 'higher' as const, adjusted: null, family: 3 }]]), 'c1'),
     passiveLineWords(a, 'Stress', 'lead'),
     coolingLineWords(a, { blocks: 2, events: 3 }, LEAD),
     socialLineWords(a, LEAD),
@@ -62,7 +62,10 @@ describe('the record’s comparisons, said only when they hold', () => {
   it('lets a matched comparison say it, with both sides', () => {
     for (const line of everyLine(matched)) expect(line, line).toMatch(MATCHING)
     expect(chipAnswerWords(matched)).toBe('2 times before. The morning after read 72, against 61 after evenings that started the same (2 and 2).')
-    expect(ownChipLine('A stand-in chip', matched)).toBe('A stand-in chip: 2 evenings marked. The morning after read 72, against 61 after evenings that started the same (2 and 2).')
+    const chips = (standing: Standing): Stands => new Map([['own.c1', { id: 'own.c1', standing, direction: 'higher' as const, adjusted: null, family: 3 }]])
+    expect(ownChipLine('A stand-in chip', matched, chips('lead'), 'c1')).toBe('A stand-in chip: 2 evenings marked. The morning after read 72, against 61 after evenings that started the same (2 and 2). Like for like, 11 points higher: a lead, not yet a pattern; 3 looked at.')
+    // Too few among your own chips, or nothing worked out: its own reading, and nothing set against it.
+    for (const stood of [chips('tooFew'), null] as Stands[]) expect(ownChipLine('A stand-in chip', matched, stood, 'c1')).toBe('A stand-in chip: 2 evenings marked. The morning after read 72 (2); nothing yet to set it against.')
   })
 
   it('never says it when no band was shared, and never sets the other side’s average against it', () => {
@@ -81,7 +84,7 @@ describe('the record’s comparisons, said only when they hold', () => {
   it('keeps sparse evidence uncertain: the first time, or no morning after yet, never a comparison', () => {
     expect(chipAnswerWords(likeForLike([]))).toBe('First time recorded.')
     expect(chipAnswerWords(sparse)).toBe('Once before. No readings from the morning after yet.')
-    expect(ownChipLine('A stand-in chip', sparse)).toBe('A stand-in chip: 1 evening marked, with no morning after logged yet.')
+    expect(ownChipLine('A stand-in chip', sparse, LEAD, 'c1')).toBe('A stand-in chip: 1 evening marked, with no morning after logged yet.')
     for (const line of everyLine(sparse)) expect(line, line).not.toMatch(MATCHING)
   })
 

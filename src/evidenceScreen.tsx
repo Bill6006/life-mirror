@@ -9,11 +9,13 @@ import { evidenceWithStandings } from './brainFlow'
 import type { PassiveEvidence } from './evidenceFlow'
 import { useLive } from './live'
 import { Disclosure } from './ui'
+import type { Stood } from './counted/compare'
+import { standingInline } from './counted/words'
 import { NOTHING } from './offers'
 import { readingById } from './readings'
 import { HARD_MEASURES } from './workouts'
 import { allCheckIns, db, getSettings } from './db'
-import { ownChipAnswer } from './ownChips'
+import { ownChipStandings } from './ownChips'
 import { ownChipsOf } from './settings'
 import type { Association } from './associations'
 import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
@@ -119,14 +121,16 @@ function OwnChipsEvidence({ today }: { today: string }) {
   const own = ownChipsOf(settings)
   if (own.length === 0) return null
   const c = copy.evidence
+  // Your own chips are a family of their own (the one standard, 2026-11-12): they never join the sheet's, and each pays for the others.
+  const { answers, stood } = ownChipStandings(all, own, today)
   return (
     <>
       <h2 class="section">{c.ownTitle}</h2>
       <div class="card pad">
         <div class="calc">
           {own.map((ch) => {
-            const a = ownChipAnswer(all, ch.id, today)
-            const line = ownChipLine(ch.label, a)
+            const a = answers.get(ch.id) as Association
+            const line = ownChipLine(ch.label, a, stood, ch.id)
             return (
               <p key={ch.id} class="calc-line" data-testid="own-chip-evidence">
                 {line}
@@ -153,7 +157,7 @@ function diffWords(a: Association, other: string): string {
  * The weather (stage 3, item 6), while its switch is on and once 14 days hold it: rainy days against dry ones and sunnier
  * against greyer, each the evening's reading like for like on the morning's band, with Open-Meteo's credit beside it.
  */
-function WeatherEvidence({ today }: { today: string }) {
+function WeatherEvidence({ today, stood }: { today: string; stood: ReadonlyMap<string, Stood> | null }) {
   const settings = useLive(getSettings, [])
   const all = useLive(allCheckIns, [])
   const days = useLive(() => db.days.toArray(), [])
@@ -161,17 +165,21 @@ function WeatherEvidence({ today }: { today: string }) {
   const ev = weatherEvidence(all, days, today)
   if (!ev) return null
   const c = copy.evidence
-  const compared = (a: Association, other: string) => (a.diff === null ? c.weatherNotComparable : fill(c.weatherDiff, { diff: diffWords(a, other), k: String(a.withEvent.n), m: String(a.without.n) }))
+  // A difference is said only where it stands past too few in the sheet's family, with its standing (the one standard, 2026-11-12).
+  const compared = (a: Association, other: string, id: string) => {
+    const s = stood?.get(id)
+    return a.diff === null || !s || s.standing === 'tooFew' ? c.weatherNotComparable : fill(c.weatherDiff, { diff: diffWords(a, other), k: String(a.withEvent.n), m: String(a.without.n), standing: standingInline(s) })
+  }
   return (
     <>
       <h2 class="section">{c.weatherTitle}</h2>
       <div class="card pad">
         <div class="calc">
           <p class="calc-line" data-testid="weather-rain-line">
-            {fill(c.weatherRain, { n: String(ev.rainy), days: String(ev.days) })} {compared(ev.rain, c.otherDry)}
+            {fill(c.weatherRain, { n: String(ev.rainy), days: String(ev.days) })} {compared(ev.rain, c.otherDry, 'assoc.weather.rain')}
           </p>
           <p class="calc-line" data-testid="weather-sun-line">
-            {fill(c.weatherSun, { n: String(ev.sunnier), days: String(ev.shared) })} {compared(ev.sun, c.otherGrey)}
+            {fill(c.weatherSun, { n: String(ev.sunnier), days: String(ev.shared) })} {compared(ev.sun, c.otherGrey, 'assoc.weather.sun')}
           </p>
         </div>
         <p class="note faint no-gap">
@@ -331,7 +339,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
 
       <OwnChipsEvidence today={today} />
 
-      <WeatherEvidence today={today} />
+      <WeatherEvidence today={today} stood={stood} />
 
       <CaffeineEvidenceCard ev={ev.caffeine} stood={stood} />
 
