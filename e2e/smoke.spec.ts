@@ -4374,8 +4374,9 @@ test('weather on Evidence (stage 3, item 6): rainy days against dry ones and sun
   await page.reload()
   await page.getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Evidence/ }).click()
-  await expect(page.getByTestId('weather-rain-line')).toHaveText('Rainy days, 1 mm of rain or more: 5 of 16 days with weather. Like for like on the morning’s band, the evening read 50 points lower than on dry days (5 and 11 evenings).')
-  await expect(page.getByTestId('weather-sun-line')).toHaveText('Sunnier days, more of their daylight in sun than the middle day: 8 of 16. Like for like on the morning’s band, the evening read 6 points lower than on greyer days (8 and 8 evenings).')
+  // The one standard (Phase 3, 2026-11-12): five rainy days are too few to compare, so the line says its counts and no difference.
+  await expect(page.getByTestId('weather-rain-line')).toHaveText('Rainy days, 1 mm of rain or more: 5 of 16 days with weather. Like for like on the morning’s band, nothing can be compared yet.')
+  await expect(page.getByTestId('weather-sun-line')).toHaveText('Sunnier days, more of their daylight in sun than the middle day: 8 of 16. Like for like on the morning’s band, the evening read 6 points lower than on greyer days (8 and 8 evenings): no clear pattern yet.')
   await expect(page.getByTestId('weather-evidence-credit')).toHaveAttribute('href', 'https://open-meteo.com/')
   // Switched off: no words needed to stop, and the screen is as it was.
   await page.locator('.sub-head .back').or(page.getByRole('button', { name: 'Done', exact: true })).first().click()
