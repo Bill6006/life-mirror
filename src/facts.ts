@@ -223,7 +223,7 @@ function stoodFor(a: Association, stood: ReadonlyMap<string, Stood>, higherIsGoo
   return { standing, direction, helpful, tier, family, n: a.compared?.n ?? 0, m: a.compared?.m ?? 0, values: { standing, direction, helpful: helpful === null ? null : helpful ? 1 : 0, p: a.compared?.p ?? null, m: family } }
 }
 
-function assocFact(id: string, tags: string[], event: string, a: Association, after: string, stood: ReadonlyMap<string, Stood>): Fact | null {
+export function assocFact(id: string, tags: string[], event: string, a: Association, after: string, stood: ReadonlyMap<string, Stood>): Fact | null {
   if (a.times < 1) return null
   const s = stoodFor(a, stood, true)
   // With no band shared there is nothing to set against anything: said as it always was, by the days behind it.
