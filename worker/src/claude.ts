@@ -163,26 +163,47 @@ async function openTask(deps: Deps, task: unknown, day: unknown): Promise<{ ok: 
 interface Run {
   t: TaskRow
   b: LineBriefing
-  /** The sheet the briefing serves, kept with the task at its first serving (stage 1, item k). */
-  served: NonNullable<TaskRow['served']>
+  /** The sheet the briefing serves, kept at its first serving (stage 1, item k). */
+  served: ServedSheet
   access: Access
   catalogue: Catalogue
   /** Everything said lately, for the repeat check, whatever Claude may read. */
   said: Said[]
 }
 
-/**
- * The sheet a task is answered from (stage 1, item k): the one its briefing first served, kept with
- * the task, or, before any serving, the day's sheet as it stands now.
- */
-async function servedFacts(deps: Deps, t: TaskRow): Promise<{ sheet: FactSheet; updatedAt: string; coach?: CoachBlock } | null> {
-  if (t.served) return { sheet: t.served.sheet, updatedAt: t.served.factsUpdatedAt, ...(t.served.coach ? { coach: t.served.coach } : {}) }
-  return deps.store.readFacts(t.factsDay)
+/** The store of the Worker's own rows that keeps each task's sheet as its briefing served it (2026-11-12): one row a task, bound to that task's start. The phone never asks for it. */
+export const SERVED_STORE = 'served'
+export type Served = NonNullable<TaskRow['served']>
+/** A task's sheet as served, and whether it is kept already or is being served for the first time. */
+export interface ServedSheet {
+  served: Served
+  kept: boolean
 }
 
-function servedOf(deps: Deps, t: TaskRow, facts: { sheet: FactSheet; updatedAt: string; coach?: CoachBlock }): NonNullable<TaskRow['served']> {
-  return t.served ?? { at: deps.now.toISOString(), factsUpdatedAt: facts.updatedAt, sheet: facts.sheet, ...(facts.coach ? { coach: facts.coach } : {}) }
+/**
+ * The sheet a task is answered from (stage 1, item k): the one its briefing first served, or, before any serving,
+ * the day's sheet as it stands now. Since 2026-11-12 the served sheet is kept in a row of its own, never on the
+ * task's row, which the phone pulls; a task started before then carries it on its row and is read from there. A
+ * kept sheet belongs to one start of its task: a task started again is served afresh.
+ */
+export async function servedSheet(deps: Pick<Deps, 'store' | 'now'>, t: TaskRow, opts: { coach?: boolean } = {}): Promise<ServedSheet | null> {
+  if (t.served) return { served: t.served, kept: true }
+  const row = await deps.store.readBrainRow<Served & { taskAt?: string }>(SERVED_STORE, t.id)
+  if (row && row.taskAt === t.at) {
+    const { taskAt: _taskAt, ...served } = row
+    return { served, kept: true }
+  }
+  const facts = await deps.store.readFacts(t.factsDay)
+  return facts ? { served: { at: deps.now.toISOString(), factsUpdatedAt: facts.updatedAt, sheet: facts.sheet, ...(facts.coach && opts.coach !== false ? { coach: facts.coach } : {}) }, kept: false } : null
 }
+
+/** Keeps a sheet at its first serving, in its own row; once kept, nothing is written. */
+export async function keepServed(deps: Pick<Deps, 'store' | 'now'>, t: TaskRow, s: ServedSheet): Promise<void> {
+  if (!s.kept) await deps.store.writeBrainRow(SERVED_STORE, t.id, t.day, { taskAt: t.at, ...s.served }, deps.now.toISOString())
+}
+
+/** A served sheet as a run reads it. */
+const factsOf = (s: ServedSheet): { sheet: FactSheet; updatedAt: string; coach?: CoachBlock } => ({ sheet: s.served.sheet, updatedAt: s.served.factsUpdatedAt, ...(s.served.coach ? { coach: s.served.coach } : {}) })
 
 /** Journal nights, each once, in order: those a task was given before, and those given now. */
 export function nightsOf(...lists: (readonly (string | null)[] | undefined)[]): string[] {
@@ -230,8 +251,9 @@ export async function journalVerdict(store: Store, t: TaskRow, raw: unknown, tex
 
 /** The briefing for a task, built the same way for its GET and its POST, so a line is checked against exactly what was served. */
 async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } | { ok: false; reply: Reply }> {
-  const facts = await servedFacts(deps, t)
-  if (!facts) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is missing` }) }
+  const kept = await servedSheet(deps, t)
+  if (!kept) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is missing` }) }
+  const facts = factsOf(kept)
   if (deps.now.getTime() - Date.parse(facts.updatedAt) > MAX_FACTS_AGE_MS) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is stale (${facts.updatedAt})` }) }
   const [settings, prefs, catalogue, library] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher), loadLibrary(deps.env.LIBRARY_URL, deps.fetcher)])
   const access = accessFor(t.task === 'review' ? 'review' : 'line', gatesFrom(settings), readBrainPrefs(prefs))
@@ -240,13 +262,13 @@ async function buildRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: Run } 
   const task = t.task === 'review' ? 'review' : 'line'
   const built = lineBriefing({ task, writer: 'claude', sheet, forDay: t.day, cards: retrieve(library, sheet, task === 'review' ? 16 : 12), said: access.allowed('brainHistory') ? said : [], writerModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', gates: access.gates, firm: firmOf(deps, prefs) })
   if (!built.ok) return { ok: false, reply: reply(409, { error: built.reason }) }
-  return { ok: true, run: { t, b: built.briefing, access, catalogue, said, served: servedOf(deps, t, facts) } }
+  return { ok: true, run: { t, b: built.briefing, access, catalogue, said, served: kept } }
 }
 
 interface CoachRun {
   core: Partial<Record<CoachCoreKey, unknown>>
-  /** The sheet and coach block the briefing serves, kept with the task at its first serving (stage 1, item k). */
-  served: NonNullable<TaskRow['served']>
+  /** The sheet and coach block the briefing serves, kept at its first serving (stage 1, item k). */
+  served: ServedSheet
   row: { path: string; candidates: string[] }
   sheet: FactSheet
   access: Access
@@ -262,8 +284,9 @@ interface CoachRun {
  * task may read under the owner's switches and the governing rules.
  */
 async function coachRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: CoachRun } | { ok: false; reply: Reply }> {
-  const facts = await servedFacts(deps, t)
-  if (!facts?.coach) return { ok: false, reply: reply(409, { error: `no coach block for ${t.factsDay}` }) }
+  const kept = await servedSheet(deps, t)
+  const facts = kept ? factsOf(kept) : null
+  if (!kept || !facts?.coach) return { ok: false, reply: reply(409, { error: `no coach block for ${t.factsDay}` }) }
   if (deps.now.getTime() - Date.parse(facts.updatedAt) > MAX_FACTS_AGE_MS) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is stale (${facts.updatedAt})` }) }
   const core = coachCore(facts.coach)
   if (core.day !== t.day) return { ok: false, reply: reply(409, { error: `the coach block is for ${String(core.day)}, not ${t.day}` }) }
@@ -273,7 +296,7 @@ async function coachRun(deps: Deps, t: TaskRow): Promise<{ ok: true; run: CoachR
   const firm = firmOf(deps, prefs)
   const per = (Array.isArray(core.perRep) ? core.perRep : []) as { path: string; id: string; last: (string | null)[] }[]
   const firmByRep = firm ? Object.fromEntries(row.candidates.map((id) => [id, coachFirmness(firm, row.path, (per.find((r) => r.path === row.path && r.id === id)?.last ?? []).filter((x): x is string => typeof x === 'string'))])) : null
-  return { ok: true, run: { core, row, sheet: facts.sheet, access: accessFor('coach', gatesFrom(settings), readBrainPrefs(prefs)), catalogue, firm, firmByRep, served: servedOf(deps, t, facts) } }
+  return { ok: true, run: { core, row, sheet: facts.sheet, access: accessFor('coach', gatesFrom(settings), readBrainPrefs(prefs)), catalogue, firm, firmByRep, served: kept } }
 }
 
 async function coachBriefing(deps: Deps, t: TaskRow): Promise<Reply> {
@@ -282,7 +305,8 @@ async function coachBriefing(deps: Deps, t: TaskRow): Promise<Reply> {
   const { core, row, sheet, access, catalogue, firm, firmByRep, served } = built.run
   const ctx = await contextFor(deps.store, catalogue, access, t.day, t.id, deps.now, new Set(), row.path === 'partner' ? 'partner' : 'social', t.dry === true)
   const text = coachBriefingText(core, new Map([...catalogue].map(([id, m]) => [id, m.name])), ctx.text, sheet.showPrivate === true, firmByRep)
-  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served })
+  await keepServed(deps, t, served)
+  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
   return reply(200, {
     task: t.task,
     day: t.day,
@@ -332,7 +356,8 @@ export async function handleBriefing(deps: Deps, url: URL): Promise<Reply> {
   await logUsageOnSheet(deps.store, t.id, t.task === 'review' ? 'review' : 'line', t.day, b.sheet, deps.now, t.dry === true)
   const text = claudeBriefingText({ ...b, context: ctx.text })
   const journal = nightsOf(t.journal, ctx.journal)
-  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served: built.run.served, ...(journal.length ? { journal } : {}) })
+  await keepServed(deps, t, built.run.served)
+  await deps.store.writeTask({ ...t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), ...(journal.length ? { journal } : {}) })
   // Pass 2: How firm's field only once its gate is open.
   const firmField = b.firm ? { firmness: 'supportive, balanced or hardCoach, as HOW FIRM says' } : {}
   // Let it out: the nights drawn on, and the review's one follow-up question, only while the journal may be read.

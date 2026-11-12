@@ -256,22 +256,59 @@ describe('the line Claude posts back', () => {
     expect(await runBrief(env, store, freeRun, at('08:30'), { fetcher })).toMatchObject({ wrote: false, reason: 'written already' })
   })
 
-  it('checks the answer against the sheet its briefing served, kept with the task, never one the phone rewrote since (stage 1, item k)', async () => {
+  it('checks the answer against the sheet its briefing served, kept in a row of its own and never on the task’s, never one the phone rewrote since (stage 1, item k)', async () => {
     const store = withSheet()
     await fired(store)
     expect((await handleBriefing(deps(store, at('07:46')), url('/claude/briefing', { task: 'line', day: DAY }))).status).toBe(200)
-    const served = (await store.readTask(taskIdOf('line', DAY)))?.served
+    const kept = () => store.readBrainRow<{ taskAt: string; at: string; factsUpdatedAt: string; sheet: FactSheet }>('served', taskIdOf('line', DAY))
+    const served = await kept()
     expect(served?.sheet.facts.map((f) => f.id)).toContain('aim.1')
-    expect(served).toMatchObject({ at: at('07:46').toISOString(), factsUpdatedAt: '2026-09-18T11:41:00.000Z' })
+    expect(served).toMatchObject({ at: at('07:46').toISOString(), factsUpdatedAt: '2026-09-18T11:41:00.000Z', taskAt: (await store.readTask(taskIdOf('line', DAY)))?.at })
+    // The task's own row, which the phone pulls, carries no sheet (2026-11-12): not the field, and none of a fact's words.
+    const taskRow = store.rows.get(`${BRAIN_APP}|bridge|${taskIdOf('line', DAY)}`)?.body ?? ''
+    expect(JSON.parse(taskRow)).not.toHaveProperty('served')
+    expect(taskRow).not.toContain('after her bedtime started 1 of 4')
     // A tap on the phone rewrites the day's sheet between the briefing and the answer: the commitment's cue counts are gone from it.
     const rewritten = sheetFor(DAY)
     rewritten.facts = rewritten.facts.map((f) => (f.id === 'aim.1' ? { ...f, text: 'Veltish: planned for the next check-in.', values: { name: 'Veltish' } } : f))
     put(store, APP, 'facts', DAY, DAY, { day: DAY, builtAt: '2026-09-18T11:47:00.000Z', updatedAt: '2026-09-18T11:47:00.000Z', sheet: rewritten }, '2026-09-18T11:47:00.000Z')
     // A second serving is the same sheet, and the answer that was true of it is kept.
     await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'line', day: DAY }))
-    expect((await store.readTask(taskIdOf('line', DAY)))?.served).toEqual(served)
+    expect(await kept()).toEqual(served)
     expect(await post(store, at('07:48'), good)).toEqual({ status: 200, body: { ok: true } })
     expect(briefOf(store, `${DAY}:brief`)).toMatchObject({ writer: 'claude', text: good.text })
+    expect(JSON.parse(store.rows.get(`${BRAIN_APP}|bridge|${taskIdOf('line', DAY)}`)?.body ?? '{}')).not.toHaveProperty('served')
+  })
+
+  it('still checks an answer against the sheet an older task carries on its own row, and writes no second copy', async () => {
+    const store = withSheet()
+    await fired(store)
+    // A task started before 2026-11-12: its briefing kept the sheet on the task's row.
+    const t = (await store.readTask(taskIdOf('line', DAY))) as TaskRow
+    await store.writeTask({ ...t, served: { at: at('07:46').toISOString(), factsUpdatedAt: '2026-09-18T11:41:00.000Z', sheet: sheetFor(DAY) } })
+    // The phone rewrote the day's sheet since: the answer is still held to what was served.
+    const rewritten = sheetFor(DAY)
+    rewritten.facts = rewritten.facts.map((f) => (f.id === 'aim.1' ? { ...f, text: 'Veltish: planned for the next check-in.', values: { name: 'Veltish' } } : f))
+    put(store, APP, 'facts', DAY, DAY, { day: DAY, builtAt: '2026-09-18T11:47:00.000Z', updatedAt: '2026-09-18T11:47:00.000Z', sheet: rewritten }, '2026-09-18T11:47:00.000Z')
+    expect((await handleBriefing(deps(store, at('07:47')), url('/claude/briefing', { task: 'line', day: DAY }))).status).toBe(200)
+    expect(await post(store, at('07:48'), good)).toEqual({ status: 200, body: { ok: true } })
+    expect(await store.readBrainRow('served', taskIdOf('line', DAY))).toBeNull()
+  })
+
+  it('serves a task started again afresh, never the sheet kept for its earlier start', async () => {
+    const store = withSheet()
+    await fired(store)
+    expect((await handleBriefing(deps(store, at('07:46')), url('/claude/briefing', { task: 'line', day: DAY }))).status).toBe(200)
+    // The phone rewrites the sheet, and the day's task is started again by hand.
+    const rewritten = sheetFor(DAY)
+    rewritten.facts = rewritten.facts.map((f) => (f.id === 'aim.1' ? { ...f, text: 'Veltish: planned for the next check-in.', values: { name: 'Veltish' } } : f))
+    put(store, APP, 'facts', DAY, DAY, { day: DAY, builtAt: '2026-09-18T11:47:00.000Z', updatedAt: '2026-09-18T11:47:00.000Z', sheet: rewritten }, '2026-09-18T11:47:00.000Z')
+    await runBrief(env, store, freeRun, at('07:50'), { fetcher, fireFetcher: routine(store).f, force: true, writer: 'claude' })
+    const r = await handleBriefing(deps(store, at('07:51')), url('/claude/briefing', { task: 'line', day: DAY }))
+    expect(JSON.stringify(r.body)).toContain('Veltish: planned for the next check-in.')
+    expect(JSON.stringify(r.body)).not.toContain('after her bedtime started 1 of 4')
+    // The answer true of the first sheet alone is refused against the second.
+    expect(await post(store, at('07:52'), good)).toMatchObject({ status: 422, body: { ok: false } })
   })
 
   it('checks an answer posted with no briefing served against the sheet as it stands (stage 1, item k)', async () => {

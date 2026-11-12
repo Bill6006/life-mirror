@@ -162,7 +162,7 @@ export async function runCommitments(env: CommitmentsEnv, store: Store, now: Dat
   const day = localTime(now, env.TIMEZONE).day
   const asks = await openAsks(store, day)
   if (kind === 'setup' && !asks.some((a) => a.kind === 'setup')) return { ran: false, reason: 'nothing asked', day }
-  const today = (await Promise.all([...skillTaskIds(day), progressTaskId(day)].map((id) => store.readTask(id)))).filter((t): t is TaskRow => t !== null)
+  const today = await store.readTasks([...skillTaskIds(day), progressTaskId(day)])
   for (const t of today) {
     if (t.status !== 'firing' && t.status !== 'fired') continue
     const why = fallbackReason(t, now, timeoutMinutes(env))
@@ -203,7 +203,7 @@ async function openCoachTask(deps: CoachDeps, task: unknown, day: unknown): Prom
   if (task !== 'skill' && task !== 'progress') return { ok: false, reply: reply(400, { error: 'task must be skill or progress' }) }
   if (typeof day !== 'string' || !DAY_RE.test(day)) return { ok: false, reply: reply(400, { error: 'day must be YYYY-MM-DD' }) }
   const ids = task === 'skill' ? skillTaskIds(day) : [progressTaskId(day)]
-  const tasks = (await Promise.all(ids.map((id) => deps.store.readTask(id)))).filter((t): t is TaskRow => t !== null && (t.status === 'firing' || t.status === 'fired'))
+  const tasks = (await deps.store.readTasks(ids)).filter((t) => t.status === 'firing' || t.status === 'fired')
   const t = tasks.sort((a, b) => (a.at < b.at ? 1 : -1))[0]
   if (!t) return { ok: false, reply: reply(409, { error: `no ${task} run is open for ${day}` }) }
   if (t.posts >= MAX_POSTS) return { ok: false, reply: reply(409, { error: 'no attempts left' }) }

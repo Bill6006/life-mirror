@@ -1,12 +1,13 @@
 import { citedFacts, validateReview } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import { generateCandidates, generateValid, newUsage, neuronsOf, textOf, type Runner } from './ai'
-import { forFreeChain, lineBriefing, relabel } from './briefing'
+import { lineBriefing, relabel } from './briefing'
 import { firmFor, lineCheck, saidLately } from './checks'
 import { claudeOn, fallbackReason, rowIdOf, startTask, taskIdOf, timeoutMinutes, type ClaudeTask } from './claude'
 import type { Env } from './env'
 import { loadLibrary, retrieve } from './library'
 import { buildChoiceMessages, buildMessages, buildReviewMessages, parseOutput } from './prompt'
+import { freeAccess, sheetForFree } from './retrieval'
 import { addDays, localTime, minutesOf, type LocalTime } from './time'
 import type { BriefRow, Store, TaskRow } from './turso'
 
@@ -95,17 +96,21 @@ async function markFallback(store: Store, t: TaskRow | null, reason: string, now
 /** The free model chain's line: three candidates, one chosen; stored with who wrote it, and why it stood in for Claude when it did. */
 async function writeFreeLine(env: JobEnv, store: Store, run: Runner, now: Date, day: string, due: Due, opts: BriefOptions, started: number, fallback?: string): Promise<BriefResult> {
   // The free chain reads the fact sheet alone: never how Life Mirror is used (Follow-up F1), never where the day was spent (Part 43).
-  const sheet = forFreeChain(due.sheet)
+  // And of the sheet, only what Claude may read under the owner's switches and the faith rule (2026-11-12).
+  const [settings, prefs] = await Promise.all([store.readRecord('settings', '1'), store.readRecord('brainPrefs', 'prefs')])
+  const sheet = sheetForFree(due.sheet, 'line', settings, prefs)
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), sheet)
   // The one path to a prompt: the briefing, for today, relabelled when the sheet is yesterday's; refused when it cannot say what today holds.
   const firm = await firmFor(store, opts.howFirm)
-  const built = lineBriefing({ task: 'line', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet), firm })
+  // What was said lately is the Brain's history: the writer is told it only while that switch is on. The repeat check reads it either way, as it does for Claude.
+  const said = await saidLately(store, due.sheet)
+  const built = lineBriefing({ task: 'line', writer: 'free', sheet, forDay: day, cards, said: freeAccess('line', settings, prefs).allowed('brainHistory') ? said : [], firm })
   if (!built.ok) return { wrote: false, reason: built.reason, day, ...(fallback ? { fallback } : {}) }
   const b = built.briefing
 
   const attempts: string[] = []
   const usage = newUsage()
-  const generated = await generateCandidates(modelsOf(env), run, buildMessages(b), lineCheck(b), 4000, attempts, usage)
+  const generated = await generateCandidates(modelsOf(env), run, buildMessages(b), lineCheck(b, said), 4000, attempts, usage)
   if (!generated) return { wrote: false, reason: 'no model produced a line that passed', day, attempts, neurons: round1(usage.neurons), ...(fallback ? { fallback } : {}) }
 
   // Two or more passed: the same model chooses one for the day; an answer that names none keeps the first.
@@ -216,10 +221,12 @@ export async function runBrief(env: JobEnv, store: Store, run: Runner, now: Date
 /** The free model chain's review: three parts, each held to the rules of a line. */
 async function writeFreeReview(env: JobEnv, store: Store, run: Runner, now: Date, day: string, whole: FactSheet, trigger: Trigger, opts: BriefOptions, started: number, fallback?: string): Promise<BriefResult> {
   // The free chain reads the fact sheet alone: never how Life Mirror is used (Follow-up F1), never where the day was spent (Part 43).
-  const sheet = forFreeChain(whole)
+  // And of the sheet, only what Claude may read under the owner's switches and the faith rule (2026-11-12).
+  const [settings, prefs] = await Promise.all([store.readRecord('settings', '1'), store.readRecord('brainPrefs', 'prefs')])
+  const sheet = sheetForFree(whole, 'review', settings, prefs)
   const cards = retrieve(await loadLibrary(env.LIBRARY_URL, opts.fetcher), sheet, 16)
   const firm = await firmFor(store, opts.howFirm)
-  const built = lineBriefing({ task: 'review', writer: 'free', sheet, forDay: day, cards, said: await saidLately(store, sheet), firm })
+  const built = lineBriefing({ task: 'review', writer: 'free', sheet, forDay: day, cards, said: freeAccess('review', settings, prefs).allowed('brainHistory') ? await saidLately(store, whole) : [], firm })
   if (!built.ok) return { wrote: false, reason: built.reason, day, ...(fallback ? { fallback } : {}) }
   const b = built.briefing
   const attempts: string[] = []

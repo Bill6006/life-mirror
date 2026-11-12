@@ -131,7 +131,7 @@ export async function runPaths(env: PathsEnv, store: Store, now: Date, opts: Pat
   const lt = localTime(now, env.TIMEZONE)
   const day = lt.day
   // Yesterday's runs too: a run fired late in the evening is waited for, or let go, past midnight.
-  const all = (await Promise.all([day, addDays(day, -1)].flatMap((d) => [pathTaskIdOf(d, 'path'), pathTaskIdOf(d, 'pathRead')]).map((id) => store.readTask(id)))).filter(isTask)
+  const all = (await store.readTasks([day, addDays(day, -1)].flatMap((d) => [pathTaskIdOf(d, 'path'), pathTaskIdOf(d, 'pathRead')]))).filter(isTask)
   const runs = all.filter((t) => t.day === day)
   for (const t of all.filter(open)) {
     const limit = t.task === 'path' ? DRAFT_MINUTES : READ_MINUTES

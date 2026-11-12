@@ -30,8 +30,8 @@ export interface DeviceTouch {
 export interface CloudStore {
   /** Writes rows, replacing by primary key: the phone is the source of truth. */
   upsert(rows: readonly CloudRow[]): Promise<void>
-  /** Rows of one app synced after the watermark, oldest first, at most `limit`. */
-  pull(app: string, after: string, limit: number): Promise<CloudRow[]>
+  /** Rows of one app synced after the watermark, oldest first, at most `limit`; of the named stores alone when any are named (2026-11-12). */
+  pull(app: string, after: string, limit: number, stores?: readonly string[]): Promise<CloudRow[]>
   /**
    * When each of a few named rows of one app was last synced, by primary key alone, so each is one
    * row read: the look the skill coach's wait takes every 20 seconds (D7 as amended 2026-10-18). A row
@@ -71,8 +71,10 @@ export async function libsqlStore(token: string): Promise<CloudStore> {
       )
       return res.flatMap((r) => r.rows.map((row) => ({ store: String(row.store), id: String(row.id), synced_at: String(row.synced_at) })))
     },
-    async pull(app, after, limit) {
-      const res = await client.execute({ sql: `SELECT ${COLUMNS} FROM records WHERE app = ? AND synced_at > ? ORDER BY synced_at ASC LIMIT ?`, args: [app, after, limit] })
+    async pull(app, after, limit, stores) {
+      // With no stores named the statement is the one it always was.
+      const only = stores?.length ? ` AND store IN (${stores.map(() => '?').join(', ')})` : ''
+      const res = await client.execute({ sql: `SELECT ${COLUMNS} FROM records WHERE app = ? AND synced_at > ?${only} ORDER BY synced_at ASC LIMIT ?`, args: [app, after, ...(stores ?? []), limit] })
       return res.rows.map((row) => ({
         app: String(row.app),
         store: String(row.store),
@@ -139,11 +141,11 @@ export function memoryStore(): MemoryStore {
         return r ? [{ store: r.store, id: r.id, synced_at: r.synced_at }] : []
       })
     },
-    async pull(app, after, limit) {
+    async pull(app, after, limit, stores) {
       store.calls++
       if (store.failWith) throw store.failWith
       return [...store.rows.values()]
-        .filter((r) => r.app === app && r.synced_at > after)
+        .filter((r) => r.app === app && r.synced_at > after && (!stores?.length || stores.includes(r.store)))
         .sort((a, b) => (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : 0))
         .slice(0, limit)
         .map((r) => ({ ...r }))

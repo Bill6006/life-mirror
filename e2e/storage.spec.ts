@@ -99,11 +99,14 @@ class Cloud {
       this.seed({ ...r, deleted: Number(r.deleted) })
       return { cols: [], rows: [], affected: 1 }
     }
-    if (sql.startsWith(`SELECT ${COLUMNS.join(', ')} FROM records WHERE app = ? AND synced_at > ? ORDER BY synced_at ASC LIMIT ?`)) {
-      const [app, after, limit] = args as [string, string, number]
+    // The pull, of every store or (the Worker's rows, since 2026-11-12) of the stores it names.
+    if (/^ FROM records WHERE app = \? AND synced_at > \?( AND store IN \(\?(, \?)*\))? ORDER BY synced_at ASC LIMIT \?$/.test(sql.slice(`SELECT ${COLUMNS.join(', ')}`.length)) && sql.startsWith(`SELECT ${COLUMNS.join(', ')} FROM`)) {
+      const [app, after] = args as [string, string]
+      const limit = args[args.length - 1] as number
+      const stores = args.slice(2, -1) as string[]
       if (app === APP && this.held) await this.held
       if (app === BRAIN) this.brainPulls++
-      const out = [...this.rows.values()].filter((r) => r.app === app && r.synced_at > after).sort((a, b) => (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : 0)).slice(0, limit)
+      const out = [...this.rows.values()].filter((r) => r.app === app && r.synced_at > after && (!stores.length || stores.includes(r.store))).sort((a, b) => (a.synced_at < b.synced_at ? -1 : a.synced_at > b.synced_at ? 1 : 0)).slice(0, limit)
       return { cols: [...COLUMNS], rows: out.map((r) => COLUMNS.map((c) => r[c])), affected: 0 }
     }
     if (sql.startsWith('SELECT store, id, synced_at FROM records WHERE app = ? AND store = ? AND id = ?')) {

@@ -559,3 +559,53 @@ describe('Item 4: what the real failure showed', () => {
     expect(validateAsk(plain, thin, [], 220, undefined, 'What are you noticing that I might be missing?')).toMatchObject({ ok: true })
   })
 })
+
+describe('the sheet a run was served, kept apart from its task (2026-11-12)', () => {
+  async function opened(): Promise<{ store: Mem; turn: AskTurn & { id: number }; id: string }> {
+    const store = record()
+    const turn = asked(store, 'Does walking help my stress?')
+    await runAsks(env, store, at('12:00'), { ...OPEN, fireFetcher: routine().f })
+    return { store, turn, id: askTaskIds(DAY)[0] }
+  }
+  /** The phone rewrites the day's sheet: the walk's test is no longer on it. */
+  function rewrite(store: Mem): void {
+    const sh = sheet(DAY)
+    const thin = { ...sh, builtAt: `${DAY}T16:02:00.000Z`, facts: sh.facts.filter((f) => f.id !== WALK.id) }
+    put(store, 'facts', DAY, DAY, { day: DAY, builtAt: thin.builtAt, updatedAt: thin.builtAt, sheet: thin }, thin.builtAt)
+  }
+  const taskBody = (store: Mem, id: string) => store.rows.get(`${BRAIN_APP}|bridge|${id}`)?.body ?? ''
+
+  it('keeps the served sheet in a row of its own, never on the task’s row, and holds the answer to it', async () => {
+    const { store, turn, id } = await opened()
+    expect((await briefing(store, at('12:01'))).status).toBe(200)
+    const kept = await store.readBrainRow<{ taskAt: string; sheet: FactSheet; coach?: unknown }>('served', id)
+    expect(kept?.sheet.facts.map((f) => f.id)).toContain(WALK.id)
+    expect(kept?.taskAt).toBe((await taskOf(store, id))?.at)
+    expect(kept).not.toHaveProperty('coach')
+    // The task's own row, which the phone pulls, carries no sheet: not the field, and none of a fact's words.
+    expect(JSON.parse(taskBody(store, id))).not.toHaveProperty('served')
+    expect(taskBody(store, id)).not.toContain('A ten-minute walk')
+    rewrite(store)
+    expect(await post(store, at('12:03'), GOOD)).toMatchObject({ status: 200 })
+    expect(answerOf(store, turn.id)).toMatchObject({ status: 'answered' })
+    expect(JSON.parse(taskBody(store, id))).not.toHaveProperty('served')
+  })
+
+  it('still holds an answer to the sheet an older task carries on its own row, and writes no second copy', async () => {
+    const { store, turn, id } = await opened()
+    const t = (await taskOf(store, id)) as TaskRow
+    await store.writeTask({ ...t, served: { at: at('12:01').toISOString(), factsUpdatedAt: `${DAY}T11:41:00.000Z`, sheet: sheet(DAY) } })
+    rewrite(store)
+    expect(await post(store, at('12:03'), GOOD)).toMatchObject({ status: 200 })
+    expect(answerOf(store, turn.id)).toMatchObject({ status: 'answered' })
+    expect(await store.readBrainRow('served', id)).toBeNull()
+  })
+
+  it('holds an answer posted with nothing served to the sheet as it stands, and keeps that sheet for the retry', async () => {
+    const { store, id } = await opened()
+    rewrite(store)
+    expect(await post(store, at('12:03'), GOOD)).toMatchObject({ status: 422, body: { ok: false, retry: true } })
+    const kept = await store.readBrainRow<{ sheet: FactSheet }>('served', id)
+    expect(kept?.sheet.facts.map((f) => f.id)).not.toContain(WALK.id)
+  })
+})

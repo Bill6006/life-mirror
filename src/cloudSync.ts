@@ -80,6 +80,7 @@ export function resetCloudForTests(): void {
   retryTimer = null
   pushTimer = null
   live = 'idle'
+  lastLook.clear()
 }
 
 function setLive(s: SyncState): void {
@@ -109,6 +110,13 @@ const PROPOSALS_STORE = 'proposals'
 const BRIDGE_STORE = 'bridge'
 /** Ask Life Mirror's checked answers from Claude (stage A2): one per turn. None is written while its gate is closed. */
 const ASK_ANSWERS_STORE = 'askAnswers'
+/**
+ * The stores of the Worker's rows the phone keeps anything of (2026-11-12). It asks for these alone: the Worker's
+ * marks of pushes sent, its reports, the sheets it served and the generator's drafts are never downloaded.
+ */
+export const BRAIN_STORES: readonly string[] = [BRAIN_STORE, READS_STORE, COACH_STORE, PROPOSALS_STORE, BRIDGE_STORE, ASK_ANSWERS_STORE, PATH_JOBS_STORE, GENERATED_STORE]
+/** How far behind its watermark each pull of the Worker's rows starts. */
+export const BRAIN_OVERLAP_MS = 5 * 60_000
 
 const texts = (v: unknown, n: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null)
 const rhythmIn = (v: unknown): { perWeek: number; restDays: number } | null => {
@@ -642,13 +650,27 @@ export async function peekBrain(keys: readonly { store: string; id: string }[]):
     if (!token || !isOnline()) return false
     const seen = await (await factory(token)).peek(BRAIN_APP, keys)
     const { watermark } = await getBrainMeta()
-    if (!seen.some((r) => r.synced_at > watermark)) return false
+    // Changed: stamped after the last read of the brain, or (2026-11-12) not as the last look saw it. The Worker can land
+    // a row stamped a moment before one the phone has already read, and the watermark alone would never see that row.
+    let changed = false
+    for (const k of keys) {
+      const at = seen.find((r) => r.store === k.store && r.id === k.id)?.synced_at ?? ''
+      const before = lastLook.get(`${k.store}|${k.id}`)
+      if ((at && at > watermark) || (before !== undefined && before !== at)) changed = true
+      lastLook.set(`${k.store}|${k.id}`, at)
+    }
+    // A wait names a handful of rows; a memory far past that is let go, and the next look starts it again.
+    if (lastLook.size > 500) lastLook.clear()
+    if (!changed) return false
     await syncNow()
     return true
   } catch {
     return false
   }
 }
+
+/** What each looked-at row's stamp was at the last look, '' for one not there yet. Kept in memory alone. */
+const lastLook = new Map<string, string>()
 
 async function pullOutside(store: CloudStore): Promise<number> {
   let applied = 0
@@ -681,10 +703,17 @@ async function pullOutside(store: CloudStore): Promise<number> {
  */
 async function pullBrain(store: CloudStore): Promise<number> {
   let applied = 0
+  // Each pull starts a little behind the watermark (2026-11-12): the Worker stamps a row a moment before it lands,
+  // and one stamped earlier than a row already read would never be read. Every row below is applied by a put or a
+  // delete by its id, so reading one twice changes nothing.
+  const from = Date.parse((await getBrainMeta()).watermark) - BRAIN_OVERLAP_MS
+  let after = Number.isFinite(from) ? new Date(from).toISOString() : ''
   for (;;) {
-    const meta = await getBrainMeta()
-    const rows = await store.pull(BRAIN_APP, meta.watermark, PAGE)
-    if (!rows.length) break
+    const page = await store.pull(BRAIN_APP, after, PAGE, BRAIN_STORES)
+    if (!page.length) break
+    // A full page may end inside a run of rows stamped alike: the run is held back and read whole by the next page.
+    const rows = wholeRuns(page, PAGE)
+    after = rows[rows.length - 1].synced_at
     await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.askAnswers, db.askRuns, db.pathJobs, db.generatedPaths, db.cloudMeta], async () => {
       for (const row of rows) {
         // The generator's rows (P5): where each request stands, and each compiled version, checked again before anything shows it.
@@ -738,10 +767,12 @@ async function pullBrain(store: CloudStore): Promise<number> {
         if (line) await db.brainBriefs.put(line)
         else await db.brainBriefs.delete(row.id)
       }
-      await db.cloudMeta.put({ ...meta, key: 'brain', watermark: rows[rows.length - 1].synced_at })
+      // The watermark only ever moves forward: the rows read again from behind it are older than it.
+      const meta = await getBrainMeta()
+      if (after > meta.watermark) await db.cloudMeta.put({ ...meta, key: 'brain', watermark: after })
     })
     applied += rows.length
-    if (rows.length < PAGE) break
+    if (page.length < PAGE) break
   }
   return applied
 }

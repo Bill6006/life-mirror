@@ -24,7 +24,8 @@ const sheet: FactSheet = {
 }
 
 describe('the permission check', () => {
-  it('lets the free model chain read the fact sheet and nothing else, whatever the gates and switches say', () => {
+  // Since 2026-11-12 the free chain reads of the sheet only what Claude may read under the owner's switches and the faith rule (freeChain.test.ts); this check is the same as before.
+  it('lets the free model chain read nothing past the fact sheet, whatever the gates and switches say', () => {
     for (const task of ['line', 'review'] as const) {
       expect(permitted(task, 'free', 'factSheet', CLOSED_GATES)).toBe(true)
       for (const c of CATEGORIES.filter((x) => x !== 'factSheet')) expect(permitted(task, 'free', c, OPEN, { [c]: true }), `${task} ${c}`).toBe(false)

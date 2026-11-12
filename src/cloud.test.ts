@@ -803,3 +803,121 @@ describe('a day you changed, through a cleared database (2026-10-19)', () => {
     expect((await db.days.get(DAY))?.unwell).toBe(true)
   })
 })
+
+describe('the pull of the Worker’s rows, made safe (2026-11-12)', () => {
+  const line = (id: string, synced_at: string, text = 'One line.'): CloudRow => ({ app: BRAIN_APP, store: 'briefs', id, day: null, body: JSON.stringify({ day: id.slice(0, 10), kind: 'brief', text, mode: 'observation', factIds: ['record'], cardIds: [], model: 'm', at: synced_at }), updated_at: synced_at, deleted: 0, device_id: 'worker', synced_at })
+  const other = (store: string, id: string, synced_at: string): CloudRow => ({ app: BRAIN_APP, store, id, day: null, body: JSON.stringify({ at: synced_at, sheet: { facts: [{ id: 'aim.1', text: 'A fact as served.' }] } }), updated_at: synced_at, deleted: 0, device_id: 'worker', synced_at })
+
+  it('reads a row stamped before one it has already read, when that row lands later, and never moves its watermark back', async () => {
+    const store = memoryStore()
+    await store.upsert([line('2026-11-10:brief', '2026-11-10T12:00:05.000Z')])
+    await withToken(store)
+    await syncNow()
+    expect((await getBrainMeta()).watermark).toBe('2026-11-10T12:00:05.000Z')
+    // The Worker stamped this row three seconds before the other, and wrote it after the phone had read that one.
+    await store.upsert([line('2026-11-10:review', '2026-11-10T12:00:02.000Z', 'The week, late.')])
+    await syncNow()
+    expect((await db.brainBriefs.toArray()).map((r) => r.id).sort()).toEqual(['2026-11-10:brief', '2026-11-10:review'])
+    expect((await getBrainMeta()).watermark).toBe('2026-11-10T12:00:05.000Z')
+    // Five minutes behind, and no further: a row stamped a second inside that reach is read, and one stamped six minutes
+    // back, which the pulls before already had, is not asked for again.
+    await store.upsert([line('2026-11-08:brief', '2026-11-10T11:55:06.000Z', 'Just inside the reach.'), line('2026-11-09:brief', '2026-11-10T11:54:00.000Z', 'Older than the reach.')])
+    await syncNow()
+    expect(await db.brainBriefs.get('2026-11-08:brief')).toBeDefined()
+    expect(await db.brainBriefs.get('2026-11-09:brief')).toBeUndefined()
+  })
+
+  it('leaves its watermark where it was when a pull from behind it is cut short part way', async () => {
+    const store = memoryStore()
+    // Six hundred rows inside one minute: more than a page, all within the five minutes behind the newest.
+    const stamp = (i: number) => new Date(Date.UTC(2026, 10, 10, 12, 0, 0, 0) + i * 100).toISOString()
+    await store.upsert(Array.from({ length: 600 }, (_, i) => line(`a${i}`, stamp(i))))
+    await withToken(store)
+    await syncNow()
+    expect((await getBrainMeta()).watermark).toBe(stamp(599))
+    // The next sync reads the first page again from behind the watermark, and its second page fails.
+    const pull = store.pull.bind(store)
+    let pages = 0
+    store.pull = async (app, after, limit, stores) => {
+      if (app === BRAIN_APP && ++pages === 2) throw new Error('the network dropped')
+      return pull(app, after, limit, stores)
+    }
+    expect(await syncNow()).toBe('failed')
+    expect(pages).toBe(2)
+    expect((await getBrainMeta()).watermark).toBe(stamp(599))
+  })
+
+  it('reads every row of a run stamped alike that a full page ends inside', async () => {
+    const store = memoryStore()
+    const stamp = (i: number) => new Date(Date.UTC(2026, 10, 10, 12, 0, 0, 0) + i * 1000).toISOString()
+    const rows = Array.from({ length: PAGE - 1 }, (_, i) => line(`a${i}`, stamp(i)))
+    // Three rows share the stamp at the page's edge: two fall on the first page, one after it.
+    for (const id of ['run-1', 'run-2', 'run-3']) rows.push(line(id, stamp(PAGE)))
+    rows.push(line('last', stamp(PAGE + 1)))
+    await store.upsert(rows)
+    await withToken(store)
+    await syncNow()
+    expect(PAGE).toBe(500)
+    expect(await db.brainBriefs.count()).toBe(503)
+    expect(await db.brainBriefs.get('run-3')).toBeDefined()
+  })
+
+  it('asks only for the stores it keeps anything of, and downloads no served sheet, push mark or report', async () => {
+    const store = memoryStore()
+    await store.upsert([line('2026-11-10:brief', '2026-11-10T12:00:05.000Z'), other('served', 'task:2026-11-10:line', '2026-11-10T12:00:01.000Z'), other('pushes', 'ping:1', '2026-11-10T12:00:02.000Z'), other('reports', 'qualify:1', '2026-11-10T12:00:03.000Z')])
+    const asked: (readonly string[] | undefined)[] = []
+    const got: CloudRow[] = []
+    const pull = store.pull.bind(store)
+    store.pull = async (app, after, limit, stores) => {
+      const rows = await pull(app, after, limit, stores)
+      if (app === BRAIN_APP) {
+        asked.push(stores)
+        got.push(...rows)
+      }
+      return rows
+    }
+    await withToken(store)
+    await syncNow()
+    expect(asked).toEqual([['briefs', 'reads', 'coach', 'proposals', 'bridge', 'askAnswers', 'pathJobs', 'generated']])
+    expect(got.map((r) => r.store)).toEqual(['briefs'])
+    expect((await getBrainMeta()).watermark).toBe('2026-11-10T12:00:05.000Z')
+  })
+
+  it('changes nothing when it reads a row a second time', async () => {
+    const store = memoryStore()
+    await store.upsert([line('2026-11-10:brief', '2026-11-10T12:00:05.000Z'), line('2026-11-10:review', '2026-11-10T12:00:06.000Z', 'The week.')])
+    await withToken(store)
+    await syncNow()
+    const first = await db.brainBriefs.toArray()
+    let again = 0
+    const pull = store.pull.bind(store)
+    store.pull = async (app, after, limit, stores) => {
+      const rows = await pull(app, after, limit, stores)
+      if (app === BRAIN_APP) again += rows.length
+      return rows
+    }
+    await syncNow()
+    // Both rows sit inside the five minutes behind the watermark, so both were read again.
+    expect(again).toBe(2)
+    expect(await db.brainBriefs.toArray()).toEqual(first)
+    expect((await getBrainMeta()).watermark).toBe('2026-11-10T12:00:06.000Z')
+  })
+
+  it('syncs when a row it is waiting on is not as its last look saw it, even stamped behind the watermark', async () => {
+    const store = memoryStore()
+    await store.upsert([line('2026-11-10:brief', '2026-11-10T12:00:05.000Z')])
+    await withToken(store)
+    await syncNow()
+    const keys = [{ store: 'proposals', id: 'ask:7' }]
+    // The first look finds no such row, and nothing newer than the brain as last read.
+    expect(await peekBrain(keys)).toBe(false)
+    // The proposal lands stamped before the line the phone already read.
+    await store.upsert([{ app: BRAIN_APP, store: 'proposals', id: 'ask:7', day: '2026-11-10', body: JSON.stringify({ askId: 7, aimId: 1, kind: 'setup', revision: 'r', day: '2026-11-10', at: '2026-11-10T12:00:03.000Z', suggestion: { skill: 'Ten words', how: 'One page.', why: 'It sticks.' } }), updated_at: '2026-11-10T12:00:03.000Z', deleted: 0, device_id: 'worker', synced_at: '2026-11-10T12:00:03.000Z' }])
+    expect(await peekBrain(keys)).toBe(true)
+    expect(await db.coachProposals.get('ask:7')).toMatchObject({ askId: 7 })
+    // Seen as it is now, a further look asks for nothing more.
+    const before = store.calls
+    expect(await peekBrain(keys)).toBe(false)
+    expect(store.calls - before).toBe(1)
+  })
+})

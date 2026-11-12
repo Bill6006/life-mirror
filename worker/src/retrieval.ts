@@ -1,10 +1,10 @@
 import { churchWords } from '../../src/church'
-import { isWeeklyFact, LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
+import { isWeeklyFact, LOCATION_TO_CLAUDE, readBrainPrefs, USAGE_TO_CLAUDE, type BrainPrefsBody } from '../../src/brainShared'
 import type { Fact, FactSheet } from '../../src/factTypes'
 import { AWAY_FROM_HOME } from '../../src/postWindow'
 import { readingById } from '../../src/readings'
 import { isUsageFact, useEventText, USAGE_FOR, USAGE_SLICE } from '../../src/useShared'
-import { CATEGORIES, permitted, type Category, type Gates } from './briefing'
+import { CATEGORIES, forFreeChain, permitted, type Category, type Gates } from './briefing'
 import { addDays, localTime } from './time'
 import type { ReadRow, RecordRow, Store } from './turso'
 
@@ -144,6 +144,25 @@ export function sheetForClaude(sheet: FactSheet, a: Access): FactSheet {
     said: a.allowed('brainHistory') ? sheet.said : [],
     shortlist: (sheet.shortlist ?? []).filter((r) => r.factIds.every((id) => kept.has(id))),
   }
+}
+
+/**
+ * What Claude may read for a line or a review, from the phone's settings row and the Brain's row as stored: the
+ * measure the free chain is held to as well (2026-11-12). With no settings row the gates read closed, so faith is
+ * hidden; with no Brain row every switch reads on.
+ */
+export function freeAccess(task: 'line' | 'review', settings: unknown, prefs: unknown): Access {
+  return accessFor(task, gatesFrom(settings), readBrainPrefs(prefs))
+}
+
+/**
+ * The sheet as the free chain reads it (2026-11-12): what Claude may read of it under the owner's switches and the
+ * governing rules, less the families the free chain never reads. A fact a switch or the faith rule keeps from
+ * Claude is kept from a free model too. With every switch on and faith shown it is the sheet `forFreeChain` gives
+ * alone, fact for fact.
+ */
+export function sheetForFree(sheet: FactSheet, task: 'line' | 'review', settings: unknown, prefs: unknown): FactSheet {
+  return forFreeChain(sheetForClaude(sheet, freeAccess(task, settings, prefs)))
 }
 
 /** A query of the record: a date range, and optionally a path, a stage, a keyword and whether only acts done count. */

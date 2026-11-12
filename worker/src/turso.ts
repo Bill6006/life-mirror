@@ -267,6 +267,8 @@ export interface Store {
   markPushed(id: string, now: string): Promise<void>
   /** Claude's task for a day, and its update. */
   readTask(id: string): Promise<TaskRow | null>
+  /** Several tasks in one request (2026-11-12), those that exist, in the order asked: the minute's check reads the day's runs this way, not one request a run. */
+  readTasks(ids: readonly string[]): Promise<TaskRow[]>
   writeTask(row: TaskRow): Promise<void>
   /** A read logged, never its content. */
   writeRead(row: ReadRow): Promise<void>
@@ -326,6 +328,13 @@ const COLUMNS = 'app, store, id, day, body, updated_at, deleted, device_id, sync
 export function tursoStore(url: string, token: string): Store {
   const client = createClient({ url, authToken: token, intMode: 'number' })
   const rows = async (sql: string, args: (string | number)[]) => (await client.execute({ sql, args })).rows
+  /**
+   * One of the Worker's own rows written. `updated_at` is the time the caller hands in; `synced_at` is the moment of
+   * the write itself (2026-11-12), so a row whose words took a while to write is never stamped behind rows the phone
+   * has already pulled.
+   */
+  const write = (store: string, id: string, day: string, body: unknown, updatedAt: string) =>
+    client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, store, id, day, JSON.stringify(body), updatedAt, DEVICE, new Date().toISOString()] })
   return {
     async readFacts(day) {
       const r = await rows(`SELECT body, updated_at FROM records WHERE app = ? AND store = 'facts' AND id = ? AND deleted = 0`, [APP, day])
@@ -341,7 +350,7 @@ export function tursoStore(url: string, token: string): Store {
       return r.length > 0
     },
     async writeBrief(row, now) {
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'briefs', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('briefs', row.id, row.day, row, now)
     },
     async readSaid(limit) {
       const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = 'briefs' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
@@ -357,7 +366,7 @@ export function tursoStore(url: string, token: string): Store {
     },
     async writeBridge(row) {
       const now = new Date().toISOString()
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.at.slice(0, 10), JSON.stringify(row), now, DEVICE, now] })
+      await write('bridge', row.id, row.at.slice(0, 10), row, now)
     },
     async readBridgeRow(id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
@@ -372,27 +381,33 @@ export function tursoStore(url: string, token: string): Store {
       return r.length > 0
     },
     async markPushed(id, now) {
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'pushes', id, now.slice(0, 10), JSON.stringify({ at: now }), now, DEVICE, now] })
+      await write('pushes', id, now.slice(0, 10), { at: now }, now)
     },
     async readTask(id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'bridge' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
       const t = r[0] ? parse<TaskRow>(r[0].body) : null
       return t && t.kind === 'task' ? t : null
     },
+    async readTasks(ids) {
+      if (!ids.length) return []
+      const r = await rows(`SELECT id, body FROM records WHERE app = ? AND store = 'bridge' AND deleted = 0 AND id IN (${ids.map(() => '?').join(', ')})`, [BRAIN_APP, ...ids])
+      const found = new Map(r.map((x) => [String(x.id), parse<TaskRow>(x.body)]))
+      return ids.map((id) => found.get(id) ?? null).filter((t): t is TaskRow => t !== null && t.kind === 'task')
+    },
     async writeTask(row) {
       const now = new Date().toISOString()
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('bridge', row.id, row.day, row, now)
     },
     async writeRead(row) {
       const now = new Date().toISOString()
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'reads', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('reads', row.id, row.day, row, now)
     },
     async readReads(limit) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'reads' AND deleted = 0 ORDER BY synced_at DESC LIMIT ?`, [BRAIN_APP, limit])
       return r.map((row) => parse<ReadRow>(row.body)).filter((x): x is ReadRow => x !== null)
     },
     async writeCoach(row, now) {
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'coach', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('coach', row.id, row.day, row, now)
     },
     async hasCoach(id) {
       const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'coach' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
@@ -404,15 +419,15 @@ export function tursoStore(url: string, token: string): Store {
     },
     async withdrawCoach(id, now) {
       // The row stays, marked deleted with a new sync time: the phone's next pull drops the pick, and the record keeps what was chosen.
-      await client.execute({ sql: `UPDATE records SET deleted = 1, updated_at = ?, synced_at = ? WHERE app = ? AND store = 'coach' AND id = ?`, args: [now, now, BRAIN_APP, id] })
+      await client.execute({ sql: `UPDATE records SET deleted = 1, updated_at = ?, synced_at = ? WHERE app = ? AND store = 'coach' AND id = ?`, args: [now, new Date().toISOString(), BRAIN_APP, id] })
     },
     async writeSpot(row) {
       const now = new Date().toISOString()
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'bridge', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('bridge', row.id, row.day, row, now)
     },
     async writeReport(row) {
       const now = new Date().toISOString()
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'reports', row.id, row.to, JSON.stringify(row), now, DEVICE, now] })
+      await write('reports', row.id, row.to, row, now)
     },
     async readReport(id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = 'reports' AND id = ? AND deleted = 0`, [BRAIN_APP, id])
@@ -487,7 +502,7 @@ export function tursoStore(url: string, token: string): Store {
       return new Set(r.map((x) => String(x.id)))
     },
     async writeProposal(row, now) {
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'proposals', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('proposals', row.id, row.day, row, now)
     },
     async answerIds() {
       const r = await rows(`SELECT id FROM records WHERE app = ? AND store = 'askAnswers' AND deleted = 0`, [BRAIN_APP])
@@ -499,10 +514,10 @@ export function tursoStore(url: string, token: string): Store {
       return r.map((x) => parse<AskAnswer>(x.body)).filter((a): a is AskAnswer => a !== null)
     },
     async writeAnswer(row, now) {
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, 'askAnswers', row.id, row.day, JSON.stringify(row), now, DEVICE, now] })
+      await write('askAnswers', row.id, row.day, row, now)
     },
     async writeBrainRow(store, id, day, body, now) {
-      await client.execute({ sql: `INSERT OR REPLACE INTO records (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, args: [BRAIN_APP, store, id, day, JSON.stringify(body), now, DEVICE, now] })
+      await write(store, id, day, body, now)
     },
     async readBrainRow(store, id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = ? AND id = ? AND deleted = 0`, [BRAIN_APP, store, id])
@@ -531,6 +546,10 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
   const rows = new Map<string, MemoryRow>()
   const key = (app: string, store: string, id: string) => `${app}|${store}|${id}`
   const live = (app: string, store: string) => [...rows.values()].filter((r) => r.app === app && r.store === store && r.deleted === 0)
+  // As the live store does since 2026-11-12: a row's sync stamp is the moment it is written, never the time handed in,
+  // and each write lands a millisecond or more after the last.
+  let last = 0
+  const stamp = () => new Date((last = Math.max(Date.now(), last + 1))).toISOString()
   return {
     rows,
     put(row) {
@@ -552,7 +571,7 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
       return Boolean(r && !r.deleted)
     },
     async writeBrief(row, now) {
-      rows.set(key(BRAIN_APP, 'briefs', row.id), { app: BRAIN_APP, store: 'briefs', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+      rows.set(key(BRAIN_APP, 'briefs', row.id), { app: BRAIN_APP, store: 'briefs', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: stamp() })
     },
     async readSaid(limit) {
       return live(BRAIN_APP, 'briefs')
@@ -592,12 +611,20 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
       return Boolean(r && !r.deleted)
     },
     async markPushed(id, now) {
-      rows.set(key(BRAIN_APP, 'pushes', id), { app: BRAIN_APP, store: 'pushes', id, day: now.slice(0, 10), body: JSON.stringify({ at: now }), updated_at: now, deleted: 0, synced_at: now })
+      rows.set(key(BRAIN_APP, 'pushes', id), { app: BRAIN_APP, store: 'pushes', id, day: now.slice(0, 10), body: JSON.stringify({ at: now }), updated_at: now, deleted: 0, synced_at: stamp() })
     },
     async readTask(id) {
       const r = rows.get(key(BRAIN_APP, 'bridge', id))
       const t = r && !r.deleted ? parse<TaskRow>(r.body) : null
       return t && t.kind === 'task' ? t : null
+    },
+    async readTasks(ids) {
+      return ids
+        .map((id) => {
+          const r = rows.get(key(BRAIN_APP, 'bridge', id))
+          return r && !r.deleted ? parse<TaskRow>(r.body) : null
+        })
+        .filter((t): t is TaskRow => t !== null && t.kind === 'task')
     },
     async writeTask(row) {
       const now = new Date(Date.now() + rows.size).toISOString()
@@ -614,7 +641,7 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         .filter((x): x is ReadRow => x !== null)
     },
     async writeCoach(row, now) {
-      rows.set(key(BRAIN_APP, 'coach', row.id), { app: BRAIN_APP, store: 'coach', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+      rows.set(key(BRAIN_APP, 'coach', row.id), { app: BRAIN_APP, store: 'coach', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: stamp() })
     },
     async hasCoach(id) {
       const r = rows.get(key(BRAIN_APP, 'coach', id))
@@ -626,7 +653,7 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async withdrawCoach(id, now) {
       const r = rows.get(key(BRAIN_APP, 'coach', id))
-      if (r) rows.set(key(BRAIN_APP, 'coach', id), { ...r, deleted: 1, updated_at: now, synced_at: now })
+      if (r) rows.set(key(BRAIN_APP, 'coach', id), { ...r, deleted: 1, updated_at: now, synced_at: stamp() })
     },
     async writeSpot(row) {
       rows.set(key(BRAIN_APP, 'bridge', row.id), { app: BRAIN_APP, store: 'bridge', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: row.at, deleted: 0, synced_at: row.at })
@@ -682,7 +709,7 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
       return live(BRAIN_APP, 'proposals').map((r) => parse<CoachProposal>(r.body)).filter((p): p is CoachProposal => p !== null)
     },
     async writeProposal(row, now) {
-      rows.set(key(BRAIN_APP, 'proposals', row.id), { app: BRAIN_APP, store: 'proposals', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+      rows.set(key(BRAIN_APP, 'proposals', row.id), { app: BRAIN_APP, store: 'proposals', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: stamp() })
     },
     async answerIds() {
       return new Set(live(BRAIN_APP, 'askAnswers').map((r) => r.id))
@@ -694,10 +721,10 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         .filter((a): a is AskAnswer => a !== null)
     },
     async writeAnswer(row, now) {
-      rows.set(key(BRAIN_APP, 'askAnswers', row.id), { app: BRAIN_APP, store: 'askAnswers', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: now })
+      rows.set(key(BRAIN_APP, 'askAnswers', row.id), { app: BRAIN_APP, store: 'askAnswers', id: row.id, day: row.day, body: JSON.stringify(row), updated_at: now, deleted: 0, synced_at: stamp() })
     },
     async writeBrainRow(store, id, day, body, now) {
-      rows.set(key(BRAIN_APP, store, id), { app: BRAIN_APP, store, id, day, body: JSON.stringify(body), updated_at: now, deleted: 0, synced_at: now })
+      rows.set(key(BRAIN_APP, store, id), { app: BRAIN_APP, store, id, day, body: JSON.stringify(body), updated_at: now, deleted: 0, synced_at: stamp() })
     },
     async readBrainRow(store, id) {
       const r = rows.get(key(BRAIN_APP, store, id))

@@ -8,7 +8,7 @@ import { DEFAULT_FIRMNESS, HOW_FIRM, type FirmnessPref } from '../../src/firmnes
 import type { Fact, FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import { relabel, sheetLines } from './briefing'
-import { claudeOn, fallbackReason, fire, fireFailure, fireText, journalVerdict, MAX_POSTS, nightsOf, timeoutMinutes, type ClaudeEnv, type Deps, type Reply } from './claude'
+import { claudeOn, fallbackReason, fire, fireFailure, fireText, journalVerdict, keepServed, MAX_POSTS, nightsOf, servedSheet, timeoutMinutes, type ClaudeEnv, type Deps, type Reply, type ServedSheet } from './claude'
 import { cardLines, loadLibrary, retrieve } from './library'
 import { askInstructions, journalRules, sheetRules } from './prompt'
 import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, gatesFrom, loadCatalogue, parseContextQuery, privateNames, READABLE, readOnDemand, sheetForClaude, type Access } from './retrieval'
@@ -75,7 +75,7 @@ export function asRun(t: TaskRow): AskRun {
 
 /** The day's runs: the owner's slots and the builder's runs by hand, which count for nothing (item 1 of 2026-10-21). */
 async function todaysTasks(store: Store, day: string): Promise<TaskRow[]> {
-  return (await Promise.all([...askTaskIds(day), deepTaskId(day), ...handTaskIds(day)].map((id) => store.readTask(id)))).filter((t): t is TaskRow => t !== null)
+  return store.readTasks([...askTaskIds(day), deepTaskId(day), ...handTaskIds(day)])
 }
 
 /**
@@ -84,13 +84,15 @@ async function todaysTasks(store: Store, day: string): Promise<TaskRow[]> {
  * not yet written.
  */
 async function brainBusy(store: Store, day: string, now: Date, timeout: number): Promise<string | null> {
-  const rows = await Promise.all(['line', 'coach', 'review', 'progress'].map((k) => store.readTask(`task:${day}:${k}`)))
-  return rows.some((t) => t !== null && (t.status === 'firing' || t.status === 'fired') && !fallbackReason(t, now, timeout)) ? 'waiting for the Brain’s run under way' : null
+  const rows = await store.readTasks(['line', 'coach', 'review', 'progress'].map((k) => `task:${day}:${k}`))
+  return rows.some((t) => (t.status === 'firing' || t.status === 'fired') && !fallbackReason(t, now, timeout)) ? 'waiting for the Brain’s run under way' : null
 }
 
 /** The questions waiting for Claude within the days a question waits, oldest first: never cancelled, never answered. */
 async function waitingTurns(store: Store, day: string): Promise<(AskTurn & { id: number })[]> {
   const rows = await store.readRecords('askTurns', { from: addDays(day, -ASK_WAITS_DAYS), like: '"state":"waiting"' })
+  // Which turns are answered is asked only when one waits (2026-11-12): a quiet minute reads nothing more.
+  if (!rows.length) return []
   const answered = await store.answerIds()
   return rows
     .map((r) => turnOf(r.id, r.body))
@@ -217,7 +219,7 @@ async function openAskTask(deps: AskDeps, task: unknown, day: unknown): Promise<
   if (typeof day !== 'string' || !DAY_RE.test(day)) return { ok: false, reply: reply(400, { error: 'day must be YYYY-MM-DD' }) }
   // The owner's slots and the builder's runs by hand, which keep ids of their own (item 1 of 2026-10-21).
   const ids = [...(task === 'deep' ? [deepTaskId(day)] : askTaskIds(day)), ...handTaskIds(day)]
-  const open = (await Promise.all(ids.map((id) => deps.store.readTask(id)))).filter((t): t is TaskRow => t !== null && (t.task ?? 'ask') === task && (t.status === 'firing' || t.status === 'fired'))
+  const open = (await deps.store.readTasks(ids)).filter((t) => (t.task ?? 'ask') === task && (t.status === 'firing' || t.status === 'fired'))
   const t = open.sort((a, b) => (a.at < b.at ? 1 : -1))[0]
   if (!t) return { ok: false, reply: reply(409, { error: `no ${task} run is open for ${day}` }) }
   if ((deps.gate ?? ASK) !== 'open' && !(t.dry === true && typeof t.question === 'string')) return { ok: false, reply: reply(403, { error: 'Ask Life Mirror is not switched on' }) }
@@ -238,7 +240,7 @@ interface AskRunBuilt {
   earlier: Earlier[]
   /** The sheet the run reads, its facts the question names first; and as served, for every check of its answers. */
   sheet: FactSheet
-  served: NonNullable<TaskRow['served']>
+  served: ServedSheet
   cards: ClaimCard[]
   access: Access
   firm: FirmnessPref | null
@@ -275,8 +277,9 @@ async function threadSoFar(store: Store, turn: AskTurn & { id: number }): Promis
 
 /** The run's briefing, built the same way for its GET, its reads and its POST, so an answer is checked against exactly what was served. */
 async function askRun(deps: AskDeps, t: TaskRow): Promise<{ ok: true; run: AskRunBuilt } | { ok: false; reply: Reply }> {
-  const facts = t.served ? { sheet: t.served.sheet, updatedAt: t.served.factsUpdatedAt } : await deps.store.readFacts(t.factsDay)
-  if (!facts) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is missing` }) }
+  const served = await servedSheet(deps, t, { coach: false })
+  if (!served) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is missing` }) }
+  const facts = { sheet: served.served.sheet, updatedAt: served.served.factsUpdatedAt }
   if (deps.now.getTime() - Date.parse(facts.updatedAt) > MAX_FACTS_AGE_MS) return { ok: false, reply: reply(409, { error: `the sheet for ${t.factsDay} is stale (${facts.updatedAt})` }) }
   let turn: (AskTurn & { id: number }) | null = null
   let question = t.question ?? ''
@@ -292,7 +295,6 @@ async function askRun(deps: AskDeps, t: TaskRow): Promise<{ ok: true; run: AskRu
   const sheet = namedFirst(sheetForClaude(facts.sheet, access), question)
   const earlier = turn ? await threadSoFar(deps.store, turn) : []
   const firm = (deps.howFirm ?? HOW_FIRM) === 'open' ? (readBrainPrefs(prefs).firmness ?? DEFAULT_FIRMNESS) : null
-  const served = t.served ?? { at: deps.now.toISOString(), factsUpdatedAt: facts.updatedAt, sheet: facts.sheet }
   return { ok: true, run: { t, question, turn, earlier, sheet, served, cards: retrieve(library, sheet, task === 'deep' ? 16 : 12), access, firm, words: ASK_WORDS[task] } }
 }
 
@@ -346,7 +348,8 @@ export async function handleAskBriefing(deps: AskDeps, url: URL): Promise<Reply>
   if (!built.ok) return built.reply
   const run = built.run
   const text = askBriefingText(run)
-  await deps.store.writeTask({ ...run.t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text), served: run.served })
+  await keepServed(deps, run.t, run.served)
+  await deps.store.writeTask({ ...run.t, briefingAt: deps.now.toISOString(), briefingBytes: bytesOf(text) })
   return reply(200, {
     task: run.t.task,
     day: run.t.day,
@@ -414,7 +417,8 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   const posts = t.posts + 1
   if (!verdict.ok) {
     const spent = posts >= MAX_POSTS
-    await deps.store.writeTask({ ...t, posts, refusals: [...t.refusals, verdict.reason].slice(-10), ...(spent ? { status: 'refused' as const } : {}), served: built.run.served })
+    await keepServed(deps, t, built.run.served)
+    await deps.store.writeTask({ ...t, posts, refusals: [...t.refusals, verdict.reason].slice(-10), ...(spent ? { status: 'refused' as const } : {}) })
     if (spent && turn && !t.dry) await noAnswer(deps.store, turn, verdict.reason, deps.now, 'checks', [...t.refusals, verdict.reason])
     return reply(422, { ok: false, reason: verdict.reason, retry: !spent, ...(spent ? {} : { mend: ASK_MEND }) })
   }
@@ -427,7 +431,8 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
     const row: AskAnswer = { id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'answered', text: verdict.value.text, factIds: verdict.value.factIds, cardIds: verdict.value.cardIds, facts: citedFacts(sheet, verdict.value.factIds, (f) => relabel(f, sheet, t.day)), model: writtenModel, askedModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', ...(named && window ? { test: `${named.moveId}|${named.reading}|${window}` } : {}), ...(verdict.value.note && turn.kind === 'typed' ? { noteOffer: true } : {}) }
     await deps.store.writeAnswer(row, at)
   }
-  await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at), served: built.run.served })
+  await keepServed(deps, t, built.run.served)
+  await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel, subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at) })
   return reply(200, { ok: true, ...(t.dry ? { dry: true } : {}) })
 }
 
