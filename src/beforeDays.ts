@@ -111,6 +111,11 @@ export function comesBefore(checkins: readonly CheckIn[], today: string, opts: {
   }
   // The sixteen pairs are one family: each is given its standing among all of them.
   standings(compared).forEach((s, i) => Object.assign(pairs[i], { standing: s.standing, direction: s.direction, family: s.family }))
+  // A pair's row shows its interval beside its standing, so the two must not pull apart: a pair is called a steady
+  // pattern only where its own interval keeps to one side of nothing. One whose interval still reaches the other
+  // way, or that has no interval, is said as a lead (2026-11-12: "interval −22 to +2" had stood beside "A steady
+  // pattern" on a stand-in record). Stricter than the standard alone, never looser.
+  for (const p of pairs) if (p.standing === 'pattern' && (p.lo === null || p.hi === null || (p.lo <= 0 && p.hi >= 0))) p.standing = 'lead'
   const shown = pairs.filter((p) => p.enough).sort((p, q) => Math.abs(q.diff as number) - Math.abs(p.diff as number))
   const gathering = pairs.filter((p) => !p.enough).sort((p, q) => Math.min(q.withN, q.withoutN) - Math.min(p.withN, p.withoutN))
   return [...shown, ...gathering]

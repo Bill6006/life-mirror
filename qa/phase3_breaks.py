@@ -59,6 +59,7 @@ WF = 'src/weeklyFacts.ts'
 WFT = 'src/weeklyFacts.test.ts'
 C = 'src/counted/compare.ts'
 AWT = 'src/associationWords.test.ts'
+AW = 'src/associationWords.ts'
 FM = 'src/firmness.ts'
 CR = 'src/caffeineRecord.ts'
 NM = 'src/counted/named.ts'
@@ -257,6 +258,26 @@ TABLE = [
          old=", associations: newest?.sheet.assocFault ?? null }",
          new=", associations: null }",
          tests=['worker/src/engineReport.test.ts'], pattern='the comparisons’ own failures'),
+    dict(id='a-line-on-evidence-says-no-reading-when-too-few', file=AW,
+         old="  if (!s || s.standing === 'tooFew' || !likeForLikeMatched(a) || a.diff === null) return null",
+         new="  if (!s || !likeForLikeMatched(a) || a.diff === null) return null",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='a-line-on-evidence-says-no-reading-when-the-pass-failed', file=AW,
+         old="  if (!s || s.standing === 'tooFew' || !likeForLikeMatched(a) || a.diff === null) return null",
+         new="  if (s?.standing === 'tooFew' || !likeForLikeMatched(a) || a.diff === null) return null",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='a-passive-line-says-no-reading-when-too-few', file=AW,
+         old="  if (!likeForLikeMatched(a) || standing === 'tooFew') return fill(c.passiveUnmatched",
+         new="  if (!likeForLikeMatched(a)) return fill(c.passiveUnmatched",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='a-hard-reading-too-few-is-not-said', file=AW,
+         old="=> at(m) !== undefined && at(m)?.standing !== 'tooFew'",
+         new="=> at(m) !== undefined",
+         tests=[AWT], pattern='says hard sessions against mornings that ended the same'),
+    dict(id='a-pair-is-a-steady-pattern-only-with-its-interval-to-one-side', file=B,
+         old="  for (const p of pairs) if (p.standing === 'pattern' && (p.lo === null || p.hi === null || (p.lo <= 0 && p.hi >= 0))) p.standing = 'lead'\n",
+         new="",
+         tests=[BT], pattern='only where its own interval keeps to one side'),
 ]
 
 

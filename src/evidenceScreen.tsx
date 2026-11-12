@@ -51,7 +51,7 @@ function PassiveBlock({ e, children }: { e: PassiveEvidence; children?: Componen
       <div class="conclusion" data-testid="tier">
         <p class="calc-line ink">{c.tiers[e.tier]}</p>
         <p class="calc-line" data-testid="passive-association">
-          {passiveLineWords(association, target)}
+          {passiveLineWords(association, target, e.standing)}
         </p>
         <p class="calc-line">{c.associationNote}</p>
       </div>
@@ -293,34 +293,34 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
               {ev.coolingOff && (
                 <p class="calc-line" data-testid="cooling-off-line">
                   <span class="calc-key">{c.coolingTitle}</span> ·{' '}
-                  {coolingLineWords(ev.coolingOff.association, ev.coolingOff.duration)}
+                  {coolingLineWords(ev.coolingOff.association, ev.coolingOff.duration, stood)}
                 </p>
               )}
               {ev.bigSocial && (
                 <p class="calc-line" data-testid="big-social-line">
-                  <span class="calc-key">{c.socialTitle}</span> · {socialLineWords(ev.bigSocial)}
+                  <span class="calc-key">{c.socialTitle}</span> · {socialLineWords(ev.bigSocial, stood)}
                 </p>
               )}
               {ev.heavyCaffeine && (
                 <p class="calc-line" data-testid="caffeine-line">
-                  <span class="calc-key">{c.caffeineTitle}</span> · {caffeineLineWords(ev.heavyCaffeine)}
+                  <span class="calc-key">{c.caffeineTitle}</span> · {caffeineLineWords(ev.heavyCaffeine, stood)}
                 </p>
               )}
               {ev.workouts && (
                 <p class="calc-line" data-testid="workout-line">
-                  <span class="calc-key">{c.workoutTitle}</span> · {workoutLineWords(ev.workouts)}
+                  <span class="calc-key">{c.workoutTitle}</span> · {workoutLineWords(ev.workouts, stood)}
                 </p>
               )}
               {ev.eveningWorkout && (
                 <p class="calc-line" data-testid="evening-workout-line">
                   <span class="calc-key">{c.eveningWorkoutTitle}</span> ·{' '}
-                  {eveningWorkoutWords(ev.eveningWorkout.morning, ev.eveningWorkout.sleep)}
+                  {eveningWorkoutWords(ev.eveningWorkout.morning, ev.eveningWorkout.sleep, stood)}
                 </p>
               )}
               {ev.hardWorkout && (
                 <p class="calc-line" data-testid="hard-workout-line">
                   <span class="calc-key">{c.hardWorkoutTitle}</span> ·{' '}
-                  {hardWorkoutWords(ev.hardWorkout.times, HARD_MEASURES.map((id) => ({ reading: readingById(id).name.toLowerCase(), diff: ev.hardWorkout?.measures[id].diff ?? null })))}
+                  {hardWorkoutWords(ev.hardWorkout.times, HARD_MEASURES.map((id) => ({ id, reading: readingById(id).name.toLowerCase(), diff: ev.hardWorkout?.measures[id].diff ?? null })), stood)}
                 </p>
               )}
             </div>
@@ -343,7 +343,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
           <div class="calc">
             {ev.privates.map((p) => (
               <p key={`${p.itemId}|${p.block}`} class="calc-line" data-testid="private-association">
-                {privateLineWords(p, nameOf(p.alternativeId), namesShown)}
+                {privateLineWords(p, nameOf(p.alternativeId), namesShown, stood)}
               </p>
             ))}
             <p class="calc-line">{c.associationNote}</p>
