@@ -100,6 +100,7 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
   const [deleting, setDeleting] = useState(false)
   const [word, setWord] = useState('')
   const [cloudFailed, setCloudFailed] = useState(false)
+  const [tokenLeft, setTokenLeft] = useState(false)
   const records = useLive(async () => ({ offers: await db.offers.toArray(), outcomes: await db.outcomes.toArray(), cards: await db.cards.toArray(), declarations: await db.declarations.toArray(), forecasts: await db.forecasts.toArray(), forecastScores: await db.forecastScores.toArray(), anchorSwaps: await db.anchorSwaps.toArray(), herSkills: await db.herSkills.toArray(), moments: await db.moments.toArray(), outside: await db.outside.toArray(), brain: { log: await db.briefLog.toArray(), feedback: await db.briefFeedback.toArray(), briefs: await db.brainBriefs.toArray() }, pathMarks: await db.pathMarks.toArray(), reflections: await db.reflections.toArray(), monthlyChecks: await db.monthlyChecks.toArray(), useLog: await db.useLog.toArray(), days: await db.days.toArray(), places: await db.places.toArray(), journal: await db.journal.toArray(), claims: await db.claims.toArray(), ask: { threads: await db.askThreads.toArray(), turns: await db.askTurns.toArray(), answers: await db.askAnswers.toArray(), notes: await db.notes.toArray() }, pathAdaptations: await db.pathAdaptations.toArray(), pathTests: await db.pathTests.toArray(), pathTestDays: await db.pathTestDays.toArray() }), [])
   const use = useLive(() => useSummary(blockAt(new Date()).day), [])
   const given = useLive(() => usageFactsToday(blockAt(new Date()).day), [])
@@ -138,7 +139,12 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
     } catch {
       // The address may already be gone; the record goes regardless.
     }
-    await wipeEverything()
+    // The record is gone. If the phone's storage would not let go of the token's second copy, say so and stay here:
+    // a restart would find it and connect again.
+    if (!(await wipeEverything())) {
+      setTokenLeft(true)
+      return
+    }
     location.replace(import.meta.env.BASE_URL)
   }
 
@@ -177,6 +183,11 @@ export function DataScreen({ onClose }: { onClose: () => void }) {
       {cloudFailed && (
         <p class="note" data-testid="delete-cloud-failed">
           {copy.data.deleteCloudFailed}
+        </p>
+      )}
+      {tokenLeft && (
+        <p class="note" role="alert" data-testid="delete-token-left">
+          {copy.data.deleteTokenLeft}
         </p>
       )}
         {!deleting ? (

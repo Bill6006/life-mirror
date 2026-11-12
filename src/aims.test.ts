@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { skillsOf } from './ladder'
-import { becoming, blockedBy, cueCounts, cuesFor, EASE_UNUSED_RETIRES, easeRetired, followThrough, lastDoneDay, lastLine, lastPracticeDay, latestPlans, NO_SKILL, planFor, practiceOn, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
+import { becoming, blockedBy, cueCounts, cuedPlans, cuesFor, EASE_UNUSED_RETIRES, easeRetired, followThrough, lastDoneDay, lastLine, lastPracticeDay, latestPlans, NO_SKILL, planFor, practiceOn, stepChoices, stepFor, unblockFor, keyFor, keysOf } from './aims'
 import { dayKey } from './blocks'
 import { moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { Aim, Cue, Intention, Offer, Outcome, RungMark, Skill, StudyNight, Win } from './db'
@@ -168,11 +168,46 @@ describe('one tap says when', () => {
     ]
     expect(planFor(list, 1, '2026-09-07')?.id).toBe(2)
     expect(planFor(list, 1, '2026-09-10')).toBeNull()
-    expect(cueCounts(list, 1)).toEqual([
+    // Read on a later day: every planned day counts.
+    expect(cueCounts(list, 1, '2026-09-12')).toEqual([
       { cue: 'afterBedtime', n: 2, started: 1 },
       { cue: 'nextCheckIn', n: 1, started: 1 },
     ])
-    expect(cueCounts(list, 3)).toEqual([])
+    expect(cueCounts(list, 3, '2026-09-12')).toEqual([])
+  })
+
+  it('leaves today’s plan out of the counts while it is still open, and counts it once its step is started (2026-11-12)', () => {
+    const plan = (id: number, day: string, cue: Cue, setAt: string, offerId: number | null = null): Intention => ({ id, aimId: 1, day, cue, time: '20:00', setAt, offerId })
+    const earlier = [plan(1, '2026-09-07', 'afterBedtime', '2026-09-07T09:00:00Z', 5), plan(2, '2026-09-08', 'afterBedtime', '2026-09-08T09:00:00Z')]
+    // Made this morning, its moment still ahead: not a cue that failed to hold.
+    const open = [...earlier, plan(3, '2026-09-09', 'afterBedtime', '2026-09-09T09:00:00Z')]
+    expect(cueCounts(open, 1, '2026-09-09')).toEqual([{ cue: 'afterBedtime', n: 2, started: 1 }])
+    // The same plan read the day after, never started: it counts, as a day planned and not started.
+    expect(cueCounts(open, 1, '2026-09-10')).toEqual([{ cue: 'afterBedtime', n: 3, started: 1 }])
+    // Started today: it counts today.
+    const started = [...earlier, plan(3, '2026-09-09', 'afterBedtime', '2026-09-09T09:00:00Z', 9)]
+    expect(cueCounts(started, 1, '2026-09-09')).toEqual([{ cue: 'afterBedtime', n: 3, started: 2 }])
+  })
+
+  it('names in a cue only the plans whose own moment has come: the reminder’s time where the phone learned one, else the cue’s (2026-11-12)', () => {
+    const plan = (id: number, aimId: number, time: string, extra: Partial<Intention> = {}): Intention => ({ id, aimId, day: '2026-09-09', cue: 'afterBedtime', time, setAt: `2026-09-09T09:0${id}:00Z`, offerId: null, ...extra })
+    const held = plan(1, 1, '18:00', { remindAt: '19:30' })
+    const plain = plan(2, 2, '18:30')
+    const none = new Set<number>()
+    const at = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3))
+    // 18:30, the second plan's cue: the first is still being held back until 19:30, and is not named.
+    expect(cuedPlans([held, plain], at('18:30'), false, none).map((p) => p.id)).toEqual([2])
+    expect(cuedPlans([held, plain], at('19:29'), false, none).map((p) => p.id)).toEqual([2])
+    expect(cuedPlans([held, plain], at('19:30'), false, none).map((p) => p.id)).toEqual([1, 2])
+    // The follow-up, forty minutes on from each plan's own moment.
+    expect(cuedPlans([held, plain], at('19:10'), true, none).map((p) => p.id)).toEqual([2])
+    expect(cuedPlans([held, plain], at('20:09'), true, none).map((p) => p.id)).toEqual([2])
+    expect(cuedPlans([held, plain], at('20:10'), true, none).map((p) => p.id)).toEqual([1, 2])
+    // Never a started plan, a resting commitment's, or a plan replaced the same day.
+    expect(cuedPlans([{ ...held, offerId: 4 }, plain], at('21:00'), false, none).map((p) => p.id)).toEqual([2])
+    expect(cuedPlans([held, plain], at('21:00'), false, new Set([2])).map((p) => p.id)).toEqual([1])
+    const replaced = plan(3, 2, '21:30')
+    expect(cuedPlans([held, plain, replaced], at('21:00'), false, none).map((p) => p.id)).toEqual([1])
   })
 })
 

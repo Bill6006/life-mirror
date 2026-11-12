@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { addDays, blockAt, type Block } from './blocks'
 import { moveById } from './catalogue'
 import { copy } from './copy'
-import { updateSettings, type Offer, type Outcome } from './db'
+import { getSettings, updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatDayShort, formatTime } from './format'
 import { useLive } from './live'
 import { privateAssociationsToday } from './evidenceFlow'
@@ -68,6 +68,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   const homeShown = !nothing && homeOnlyOn() && needsHome(offer.moveId)
   // Pass 3: a private item's line on the card of the check-in it is placed in.
   const privates = useLive(() => privateAssociationsToday(offer.day).then((all) => all.filter((p) => p.block === offer.block)), [offer.day, offer.block])
+  // Rule 11: named on the card only while "Show private items by name outside this screen" is on (2026-11-12); until the setting is read, it is not.
+  const namesShown = useLive(() => getSettings().then((s) => s.showPrivate === true), []) === true
 
   // The outcome logged for this offer: from the card at the moment, or at the next check-in.
   const logged = useLive(() => outcomeFor(offer.id), [offer.id])
@@ -191,7 +193,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       {shownPrivates.map((p) => (
         <div key={p.itemId} class="ev">
           <span class="calc-line" data-testid="private-line">
-            {privateInlineWords(p, moveById(p.alternativeId).name)}
+            {privateInlineWords(p, moveById(p.alternativeId).name, namesShown)}
           </span>
         </div>
       ))}

@@ -24,6 +24,7 @@ import { installOutbox, markSilent, type CloudMeta, type CloudRowState, type Out
 import { installIdFloors } from './idFloors'
 import { clearPending, installPendingCopy } from './pendingCopy'
 import { clearChoicesCopy, installChoicesWatch } from './choicesWatch'
+import { clearTokenHomes } from './tokenVault'
 import { installFreshIds } from './freshIds'
 import { installStorageWatch } from './storageWatch'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
@@ -1690,9 +1691,14 @@ export async function setPrivateBlocks(id: number, blocks: readonly Block[]): Pr
   return true
 }
 
-/** Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back, the second copy of what was queued included. */
-export function wipeEverything(): Promise<void> {
-  return wipeTables().then(clearPending).then(clearChoicesCopy)
+/**
+ * Everything on this phone, gone; the cloud copy's rows are deleted first by the Data screen. Nothing comes back, the
+ * second copy of what was queued included. Since 2026-11-12 the token's own second copy goes too, with its mark, its
+ * log and the device id's copy: left behind, the next start found the token there and connected to the cloud again
+ * without a word. True when nothing of the token is left; false when the phone's storage would not let it go.
+ */
+export function wipeEverything(): Promise<boolean> {
+  return wipeTables().then(clearPending).then(clearChoicesCopy).then(clearTokenHomes)
 }
 
 function wipeTables(): Promise<void> {

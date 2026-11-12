@@ -1,5 +1,5 @@
 import { addDays, blockAt, dayKey, type Block } from './blocks'
-import { moveById, type PathId } from './catalogue'
+import { findPath, moveById, type PathId } from './catalogue'
 import { db, MONTHLY_PARTS, VALUES_PARTS, type Aim, type CoachPick, type Expectancy, type MonthlyCheck, type MonthlyPart, type Offer, type PartnerStep, type PathMark, type Reflection, type ReflectionKind, type ValuesPart } from './db'
 import { keysOf, planFor } from './aims'
 import { coachPickFor, pathById, pathKey, pathsHolding, peopleRowAll, seeded, type PathToday, type PeopleRow, type RepPick } from './pathStage'
@@ -44,9 +44,13 @@ export async function setPathPick(aimId: number, moveId: string, day: string, no
   await logUse('changePicked', undefined, now)
 }
 
-/** Whether a path is on: on the list and not paused. */
+/**
+ * Whether a path is on: on the list, not paused, and a Path this phone knows (2026-11-12). A generated Path is known
+ * only once its row has arrived and passed the phone's own check; until then its commitment runs nothing and shows
+ * no row, and it appears by itself once the Path is there.
+ */
 export function pathOn(a: Aim): boolean {
-  return a.kind === 'path' && a.archivedAt === null && !a.pausedAt
+  return a.kind === 'path' && a.archivedAt === null && !a.pausedAt && findPath(a.path as PathId) !== undefined
 }
 
 /**

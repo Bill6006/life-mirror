@@ -577,6 +577,9 @@ describe('the sheet a run was served, kept apart from its task (2026-11-12)', ()
 
   it('keeps the served sheet in a row of its own, never on the task’s row, and holds the answer to it', async () => {
     const { store, turn, id } = await opened()
+    // The day's facts row carries a coach block too, as the phone writes it: an Ask run is served the sheet alone.
+    const sh = sheet(DAY)
+    put(store, 'facts', DAY, DAY, { day: DAY, builtAt: sh.builtAt, updatedAt: sh.builtAt, sheet: sh, coach: { day: DAY, block: 'morning', eligible: [] } }, sh.builtAt)
     expect((await briefing(store, at('12:01'))).status).toBe(200)
     const kept = await store.readBrainRow<{ taskAt: string; sheet: FactSheet; coach?: unknown }>('served', id)
     expect(kept?.sheet.facts.map((f) => f.id)).toContain(WALK.id)

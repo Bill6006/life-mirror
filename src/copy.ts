@@ -79,6 +79,12 @@ export const copy = {
   },
   when: { today: 'today', yesterday: 'yesterday', daysAgo: '{n} days ago' },
   appName: 'Life Mirror',
+  /** A screen that could not be drawn (2026-11-12): said plainly, with a way to try again and, over the tabs, a way back. */
+  fault: {
+    line: 'This screen could not be shown just now.',
+    again: 'Try again',
+    leave: 'Close',
+  },
   tabs: {
     now: 'Now',
     mirror: 'Mirror',
@@ -839,6 +845,8 @@ export const copy = {
     /** The owner's requirement of 2026-10-20: the engine's failure, where the move would be. */
     engineFailed: 'No move this time: the learning engine could not read your record. Moves are never drawn any other way. It tries again the next time you open the app.',
     hidden: 'Moves stay hidden while Low-demand mode is on.',
+    /** In a private item's line while "Show private items by name outside this screen" is off (2026-11-12). */
+    privateUnnamed: 'a private item',
     privateInline: {
       morning: 'Your record: mornings with {name} logged, the afternoon after read {with} against {without} after mornings that started the same ({n} and {m}). An alternative: {alternative}.',
       afternoon: 'Your record: afternoons with {name} logged, the evening after read {with} against {without} after afternoons that started the same ({n} and {m}). An alternative: {alternative}.',
@@ -1060,7 +1068,10 @@ export const copy = {
     aheadLine: '{day}: {expected} ({lo} to {hi})',
     aheadNone: 'The week ahead appears once fourteen days each have a complete check-in.',
     aheadCaption: 'Daily expected value with range (lower–upper).',
-    model: 'Expected from {model}: of four ways to forecast, the one that came closest a day ahead over your last four weeks. Six in ten of the check-ins it forecast before landed inside a range this wide.',
+    model: 'Expected from {model}: of four ways to forecast, the one that came closest a day ahead over your last four weeks.',
+    /** What follows it (2026-11-12): how the range is built until twenty day-ahead forecasts are scored, and from then what was counted. Never a rate that was not measured. */
+    modelBuilt: 'Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it. How often its forecasts land is said here once twenty day-ahead forecasts are scored.',
+    modelMeasured: 'Of {n} day-ahead forecasts scored so far, {hits} landed inside their range ({rate} percent).',
     aheadAlike: 'It does not tell one weekday from another, so the days ahead come out alike.',
     aheadFlatBlind: 'No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around {level}.',
     aheadFlatNone: 'No meaningful difference between days detected. Your expected level this week is around {level}.',
@@ -1178,6 +1189,8 @@ export const copy = {
     otherGrey: 'greyer days',
     privates: 'Private items',
     privateOff: 'Private items enter selection only when you turn that on under Settings → Moves. Off, nothing here is computed.',
+    /** At the head of a private item's line while "Show private items by name outside this screen" is off (2026-11-12). */
+    privateUnnamed: 'A private item',
     privateLine: {
       morning: '{name}, logged in the morning: afternoons after read {with}, against {without} after mornings that started the same ({n} and {m}). An alternative: {alternative}.',
       afternoon: '{name}, logged in the afternoon: evenings after read {with}, against {without} after afternoons that started the same ({n} and {m}). An alternative: {alternative}.',
@@ -1934,6 +1947,8 @@ export const copy = {
     deleteNote: 'Every check-in, win, private item and setting on this phone, and this app’s rows in your cloud copy when a token is set. Nothing comes back.',
     deleteCloudFirst: 'The cloud copy is deleted first. If it cannot be reached, nothing is deleted.',
     deleteCloudFailed: 'The cloud copy could not be reached, so nothing was deleted. Try again online, or remove the token under Cloud copy first.',
+    /** The wipe went through, but the phone's storage kept the token's second copy (2026-11-12): said, never passed over. */
+    deleteTokenLeft: 'Your record was deleted here and in the cloud copy. This phone’s storage would not let go of the saved token, so the app will connect to the cloud again when it next opens. To remove it, open Settings, then Cloud copy, and remove the token.',
     deleteStart: 'Delete everything',
     deleteWord: 'delete',
     deletePrompt: 'Type {word} to confirm.',

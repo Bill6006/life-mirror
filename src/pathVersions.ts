@@ -71,10 +71,16 @@ export function offeredNow(path: Path, versions: readonly PathVersion[]): boolea
   return s.kind === 'builtIn' || s.kind === 'started'
 }
 
-/** Whether a commitment is offered today: one on a Path the catalogue adds only on a version you started that passes the compiler's checks (P1, P4); every other as ever. */
+/**
+ * Whether a commitment is offered today: one on a Path the catalogue adds only on a version you started that passes the
+ * compiler's checks (P1, P4); one on a Path this phone does not know, never (2026-11-12: a generated Path whose row has
+ * not arrived yet, or one the phone's own check refuses); every other as ever.
+ */
 export function aimOffered(aim: Pick<Aim, 'kind' | 'path'>, versions: readonly PathVersion[], compiled: (path: Path) => boolean = () => true): boolean {
-  const path = aim.kind === 'path' ? findPath(aim.path as PathId) : undefined
-  return !path || (offeredNow(path, versions) && (path.builtIn === true || compiled(path)))
+  if (aim.kind !== 'path') return true
+  const path = findPath(aim.path as PathId)
+  if (!path) return false
+  return offeredNow(path, versions) && (path.builtIn === true || compiled(path))
 }
 
 /** Your decision on the Path as it stands now: its version, its content's hash and the cards it rests on, each with its review day. */

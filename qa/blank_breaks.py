@@ -107,8 +107,8 @@ TABLE = [
          new="",
          tests=[ST], pattern=ROW),
     dict(id='worker-report', file='worker/src/engineReport.ts',
-         old=", storage: newest?.sheet.storageFault ?? null }",
-         new=", storage: null }",
+         old=", storage: newest?.sheet.storageFault ?? null,",
+         new=", storage: null,",
          tests=['worker/src/engineReport.test.ts'], pattern=REPORT),
     # ---- The id floors never hold an open ----------------------------------------------------------------------
     dict(id='floors-connection-gone', file=IF,

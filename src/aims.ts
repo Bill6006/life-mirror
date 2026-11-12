@@ -257,19 +257,35 @@ export function latestPlans<T extends Pick<Intention, 'aimId' | 'day' | 'setAt' 
   return [...latest.values()].sort((a, b) => (a.setAt < b.setAt ? -1 : a.setAt > b.setAt ? 1 : 0))
 }
 
+/**
+ * The plans a cue names on the phone (stage 1, items b and c): the latest plan of each commitment today, not yet started,
+ * whose moment has come, never a resting commitment's. The moment is the one the Worker cues at: the time the phone
+ * learned this commitment's steps really start, when it learned one, else the cue's own time. By its own time alone
+ * (until 2026-11-12) a plan still being held back was named by another plan's cue, and again at its own moment. A
+ * follow-up names those whose moment came forty minutes ago or more.
+ */
+export function cuedPlans<T extends Pick<Intention, 'aimId' | 'day' | 'setAt' | 'id' | 'offerId' | 'time' | 'remindAt'>>(todays: readonly T[], minute: number, followUp: boolean, resting: ReadonlySet<number>): T[] {
+  return latestPlans(todays).filter((p) => p.offerId === null && minutesOf(p.remindAt ?? p.time) <= minute - (followUp ? 40 : 0) && !resting.has(p.aimId))
+}
+
 export interface CueCount {
   cue: Cue
   n: number
   started: number
 }
 
-/** Per cue, how many days were planned under it and how many of those steps were started. Counts only; the latest plan of each day counts. */
-export function cueCounts(intentions: readonly Intention[], aimId: number): CueCount[] {
+/**
+ * Per cue, how many days were planned under it and how many of those steps were started. Counts only; the latest plan of
+ * each day counts. Today's plan counts once its step is started, and not while it is still open (2026-11-12): the day is
+ * not over, and a plan made this morning was read as a cue that did not hold.
+ */
+export function cueCounts(intentions: readonly Intention[], aimId: number, today: string): CueCount[] {
   const days = new Set(intentions.filter((i) => i.aimId === aimId).map((i) => i.day))
   const counts = new Map<Cue, CueCount>()
   for (const day of days) {
     const plan = planFor(intentions, aimId, day)
     if (!plan) continue
+    if (day === today && plan.offerId === null) continue
     const c = counts.get(plan.cue) ?? { cue: plan.cue, n: 0, started: 0 }
     c.n++
     if (plan.offerId !== null) c.started++

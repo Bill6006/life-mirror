@@ -248,7 +248,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
             key={aim.id}
             {...pathShared(aim, owns && people ? { ...pt, pick: people.pick } : pt, owns && people ? people.paths : [pt.path.id], elsewhere)}
             today={today}
-            counts={cueCounts(intentions, aim.id as number)}
+            counts={cueCounts(intentions, aim.id as number, today)}
             expect={expectancyCounts(pt.entries, records.outcomes)}
             due={aim.id === dueAimId}
             onPause={(paused) => void pausePath(aim.id as number, paused)}
@@ -316,7 +316,7 @@ export function AimCards({ onRemove, onChangeStep, onChangeRep, onPartnerNotes, 
           <AimCard
             key={aim.id}
             {...shared}
-            counts={cueCounts(intentions, aim.id as number)}
+            counts={cueCounts(intentions, aim.id as number, today)}
             onRemove={onRemove ? () => onRemove(aim) : undefined}
             onChangeStep={onChangeStep && !study && aim.kind !== 'person' ? () => onChangeStep(aim) : undefined}
             onConvert={aim.kind === 'person' && !socialOn ? () => void convertToSocial(aim.id as number) : undefined}

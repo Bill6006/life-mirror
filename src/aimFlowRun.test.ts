@@ -111,6 +111,6 @@ describe('one tap says when', () => {
     const offer = await resumeAim(aim, step, 'step', new Date(2026, 8, 7, 20, 10))
     expect(offer).toMatchObject({ moveId: 'skill:1', label: 'Understand spoken Veltish' })
     expect((await allIntentions()).find((i) => i.id === plan?.id)?.offerId).toBe(offer.id)
-    expect(cueCounts(await allIntentions(), aim.id as number)).toEqual([{ cue: 'afterBedtime', n: 1, started: 1 }])
+    expect(cueCounts(await allIntentions(), aim.id as number, '2026-09-07')).toEqual([{ cue: 'afterBedtime', n: 1, started: 1 }])
   })
 })

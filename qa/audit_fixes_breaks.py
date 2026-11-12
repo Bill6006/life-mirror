@@ -103,7 +103,7 @@ TABLE = [
          new="",
          tests=[CL], pattern='keeps a suggestion run'),
     dict(id='look-before-pull', file='src/cloudSync.ts',
-         old="    if (!seen.some((r) => r.synced_at > watermark)) return false\n",
+         old="    if (!changed) return false\n",
          new="",
          tests=[CL], pattern='looks at the few rows'),
     dict(id='look-every-20-seconds', file='src/aimsScreen.tsx',

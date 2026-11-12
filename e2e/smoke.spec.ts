@@ -1011,8 +1011,42 @@ test('the week ahead: a model blind to weekdays says the days come out alike and
   await expect(page.getByTestId('week-ahead-range')).toHaveText('Expected range: 75–75 each day.')
   await expect(page.getByTestId('weekly')).not.toContainText('widen')
   await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
+  // No day-ahead forecast is scored yet: the card says how its range is built, and no rate (2026-11-12).
+  await expect(page.getByTestId('week-ahead-model')).toContainText('Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it. How often its forecasts land is said here once twenty day-ahead forecasts are scored.')
+  await expect(page.getByTestId('week-ahead-model')).not.toContainText('landed inside')
   expect(new Set(await ahead.getByTestId('ahead-value').allTextContents())).toEqual(new Set(['75']))
   await expect(ahead.locator('.is-low')).toHaveCount(0)
+})
+
+test('the week ahead: once twenty day-ahead forecasts are scored, the card says how many landed inside their range, as counted (2026-11-12)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 0))
+  await page.goto('./')
+  await seedLevels(page, 35, [4, 4, 4, 4, 4, 4, 4])
+  // Twenty forecasts made a day ahead and scored since: thirteen landed inside their range.
+  await page.evaluate(async () => {
+    const dbx = await new Promise<IDBDatabase>((res, rej) => {
+      const r = indexedDB.open('life-mirror')
+      r.onsuccess = () => res(r.result)
+      r.onerror = () => rej(r.error)
+    })
+    const tx = dbx.transaction(['forecastScores'], 'readwrite')
+    for (let i = 0; i < 20; i++) {
+      const date = new Date(2026, 8, 29 - i)
+      const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      const hit = i < 13
+      tx.objectStore('forecastScores').add({ day, block: 'morning', horizon: 1, model: 'sameSlot', point: 75, lo: 70, hi: 80, actual: hit ? 75 : 60, error: hit ? 0 : -15, hit, scoredOn: day })
+    }
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+    })
+    dbx.close()
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  await expect(page.getByTestId('week-ahead-model')).toContainText('Of 20 day-ahead forecasts scored so far, 13 landed inside their range (65 percent).')
+  await expect(page.getByTestId('week-ahead-model')).not.toContainText('Its range is sized')
 })
 
 test('the week ahead: a Monday dip in the record is forecast, and the Monday alone is drawn as the lowest (truth audit, 2026-09-24)', async ({ page }) => {

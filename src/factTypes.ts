@@ -94,4 +94,10 @@ export interface FactSheet {
    * answered. No writer reads it; the Worker's report /run/engine shows it, as it does the engine's failures.
    */
   storageFault?: { count: number; first: string; last: string; name: string; waits?: number; waited?: string[] }
+  /**
+   * When a screen threw while it was drawn (2026-11-12): how many times, the first and last minute, the screen by the
+   * app's own name for it, and the error's name, never its message. No writer reads it; the Worker's report /run/engine
+   * shows it, as it does the engine's and the storage's failures.
+   */
+  screenFault?: { count: number; first: string; last: string; name: string; screen: string }
 }

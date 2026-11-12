@@ -208,6 +208,8 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
   const r = copy.repairEvidence
   // Requirement 13 (stage R7): when what goes missing follows how you were or the day, the estimates here say so.
   const missing = useLive(() => missingNow(today), [today])
+  // Rule 11: a private item is named here only while "Show private items by name outside this screen" is on (2026-11-12); until the setting is read, it is not.
+  const namesShown = useLive(() => getSettings().then((s) => s.showPrivate === true), []) === true
   if (!ev) return <section class="screen" />
 
   return (
@@ -322,7 +324,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
           <div class="calc">
             {ev.privates.map((p) => (
               <p key={`${p.itemId}|${p.block}`} class="calc-line" data-testid="private-association">
-                {privateLineWords(p, nameOf(p.alternativeId))}
+                {privateLineWords(p, nameOf(p.alternativeId), namesShown)}
               </p>
             ))}
             <p class="calc-line">{c.associationNote}</p>

@@ -113,6 +113,24 @@ export const readMirror = (): string | null => read(MIRROR_KEY)
 export const writeMirror = (token: string): boolean => write(MIRROR_KEY, token)
 export const clearMirror = (): void => remove(MIRROR_KEY)
 
+/**
+ * Every home of the token outside the app's database, emptied by name ("Delete everything", 2026-11-12): the second
+ * copy, its mark, its log and the device id's copy. Never the storage as a whole: every app at this address shares it.
+ * True when none of the four is left; false when the storage would not let one go, so the wipe never reports a success
+ * it did not have. Where there is no such storage, nothing was ever kept there.
+ */
+export function clearTokenHomes(): boolean {
+  const kv = tokenStorage()
+  if (!kv) return true
+  const keys = [MIRROR_KEY, MARK_KEY, LOG_KEY, DEVICE_KEY]
+  try {
+    for (const key of keys) kv.removeItem(key)
+    return keys.every((key) => kv.getItem(key) === null)
+  } catch {
+    return false
+  }
+}
+
 export const readDeviceMirror = (): string | null => read(DEVICE_KEY)
 export const writeDeviceMirror = (id: string): boolean => write(DEVICE_KEY, id)
 

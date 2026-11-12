@@ -5,10 +5,10 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute, type 
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { blockAt, type Block } from './blocks'
 import { copy } from './copy'
-import { latestPlans } from './aims'
+import { cuedPlans } from './aims'
 import { allCheckIns, db, getSettings, markReminded, updateSettings, type CheckIn } from './db'
 import { fill } from './format'
-import { hhmmOf, inQuietHours, minutesOf, pushDecision } from './settings'
+import { hhmmOf, inQuietHours, pushDecision } from './settings'
 import { logUse } from './useLog'
 import { VAPID_PUBLIC_KEY } from './vapid'
 import { NOTIFICATION_ICON } from './appIcon'
@@ -71,7 +71,7 @@ async function onCue(followUp: boolean): Promise<void> {
   const minute = now.getHours() * 60 + now.getMinutes()
   const [todays, settings, aims] = await Promise.all([db.intentions.where('day').equals(day).toArray(), getSettings(), db.aims.toArray()])
   const resting = new Set(aims.filter((a) => a.pausedAt || a.archivedAt !== null).map((a) => a.id as number))
-  const plans = latestPlans(todays).filter((p) => p.offerId === null && minutesOf(p.time) <= minute - (followUp ? 40 : 0) && !resting.has(p.aimId))
+  const plans = cuedPlans(todays, minute, followUp, resting)
   const lines = plans.map((p) => (p.step ? `${copy.aims.cues[p.cue]} · ${p.step}` : copy.aims.cues[p.cue]))
   if (!lines.length || inQuietHours(hhmmOf(now), settings)) return quiet()
   await self.registration.showNotification(copy.appName, { body: (followUp ? copy.reminders.stillOpen + ' · ' : '') + lines.join(' · '), tag: followUp ? 'cue2' : 'cue', icon: ICON, data: { url: BASE } })

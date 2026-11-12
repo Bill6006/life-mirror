@@ -11,7 +11,7 @@ import { useLive } from './live'
 import { WeekReviewCard } from './weekReview'
 import { Disclosure } from './ui'
 import { readingById } from './readings'
-import type { Moved } from './weekly'
+import type { Moved, Scorecard } from './weekly'
 import { missingLines, missLines, togetherLine } from './honesty/words'
 
 // Mirror → The weekly view (final UI polish, 2026-09-26): the week ahead (its line, the graph, always
@@ -42,6 +42,20 @@ export function aheadRangeLine(flat: Pick<FlatWeek, 'near' | 'far'>): string {
   return flat.near.lo === flat.far.lo && flat.near.hi === flat.far.hi
     ? fill(c.aheadFlatRangeSame, { lo: String(flat.near.lo), hi: String(flat.near.hi) })
     : fill(c.aheadFlatRange, { lo: String(flat.near.lo), hi: String(flat.near.hi), lo2: String(flat.far.lo), hi2: String(flat.far.hi) })
+}
+
+/** From how many scored day-ahead forecasts the week-ahead card says what was measured, and never before (2026-11-12). */
+export const MEASURED_FROM = 20
+
+/**
+ * What the week-ahead card says of its range (2026-11-12). Until twenty day-ahead forecasts are scored: how the range
+ * is built. From then: how many of the forecasts made before their check-ins landed inside their range, as counted.
+ * Never a rate that was not measured.
+ */
+export function rangeWords(sc: Pick<Scorecard, 'scored' | 'hitRate'>): string {
+  const c = copy.weekly
+  if (sc.scored < MEASURED_FROM || sc.hitRate === null) return c.modelBuilt
+  return fill(c.modelMeasured, { n: String(sc.scored), hits: String(Math.round(sc.hitRate * sc.scored)), rate: pct(sc.hitRate) })
 }
 
 export function WeeklyScreen({ onClose }: { onClose: () => void }) {
@@ -77,7 +91,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             </p>
             {w.model && (
               <p class="note faint no-gap" data-testid="week-ahead-model">
-                {fill(c.model, { model: copy.brief.models[w.model] })}
+                {fill(c.model, { model: copy.brief.models[w.model] })} {rangeWords(sc)}
               </p>
             )}
           </>
@@ -89,7 +103,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             <p class="note no-gap">{c.aheadCaption}</p>
             {w.model && (
               <p class="note faint no-gap" data-testid="week-ahead-model">
-                {fill(c.model, { model: copy.brief.models[w.model] })}
+                {fill(c.model, { model: copy.brief.models[w.model] })} {rangeWords(sc)}
                 {w.weekAheadAlike && ` ${c.aheadAlike}`}
               </p>
             )}

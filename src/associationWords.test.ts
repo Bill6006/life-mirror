@@ -37,7 +37,7 @@ function everyLine(a: Association): string[] {
     caffeineLineWords(a),
     workoutLineWords(a),
     eveningWorkoutWords(a, a),
-    ...(['morning', 'afternoon', 'evening'] as const).flatMap((b) => [privateLineWords(priv(a, b), 'A ten-minute walk, now'), privateInlineWords(priv(a, b), 'A ten-minute walk, now')]),
+    ...(['morning', 'afternoon', 'evening'] as const).flatMap((b) => [privateLineWords(priv(a, b), 'A ten-minute walk, now', true), privateInlineWords(priv(a, b), 'A ten-minute walk, now', true), privateLineWords(priv(a, b), 'A ten-minute walk, now', false), privateInlineWords(priv(a, b), 'A ten-minute walk, now', false)]),
   ]
 }
 
@@ -88,6 +88,23 @@ describe('the record’s comparisons, said only when they hold', () => {
     // Four evenings carried it, with no band shared: never "the first time", never "started the same".
     expect(lastNightWords({ key: 'napped', with: 82, without: 42, n: 4, matched: false })).toBe('Last night carried a nap; 4 evenings like it so far, nothing yet to set this morning against.')
     expect(lastNightWords({ key: 'napped', with: 72, without: 61, n: 4, matched: true })).toBe('Last night carried a nap. Mornings after evenings like it have read 72, against 61 after evenings that started the same (4).')
+  })
+
+  it('names a private item only while the name switch is on, on Evidence and on the move card alike (2026-11-12)', () => {
+    for (const a of [matched, apart, sparse]) {
+      for (const b of ['morning', 'afternoon', 'evening'] as const) {
+        const p = priv(a, b)
+        expect(privateLineWords(p, 'A ten-minute walk, now', true)).toContain('A stand-in item')
+        expect(privateInlineWords(p, 'A ten-minute walk, now', true)).toContain('A stand-in item')
+        const line = privateLineWords(p, 'A ten-minute walk, now', false)
+        const inline = privateInlineWords(p, 'A ten-minute walk, now', false)
+        expect(line, line).not.toContain('A stand-in item')
+        expect(inline, inline).not.toContain('A stand-in item')
+        expect(line.startsWith('A private item'), line).toBe(true)
+        expect(inline, inline).toContain('with a private item logged')
+      }
+    }
+    expect(privateLineWords(priv(matched, 'evening'), 'A ten-minute walk, now', false)).toBe('A private item: mornings after read 72, against 61 after evenings that started the same (2 and 2). An alternative: A ten-minute walk, now.')
   })
 
   it('reads as an association in every line, never a cause', () => {

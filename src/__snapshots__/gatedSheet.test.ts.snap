@@ -9,11 +9,9 @@ exports[`the sheet the monitored prompts are built from, as stage 1 left it (202
       "cue",
       "plan",
     ],
-    "text": "Learn Veltish (learning): the current skill is “Ten words” with A phrasebook; 5 sessions on it on 5 different days since 2026-09-20; last practised 3 days ago; rhythm 3 a week; planned today after her bedtime at 20:00, not started; cues: after her bedtime started 0 of 1.",
+    "text": "Learn Veltish (learning): the current skill is “Ten words” with A phrasebook; 5 sessions on it on 5 different days since 2026-09-20; last practised 3 days ago; rhythm 3 a week; planned today after her bedtime at 20:00, not started.",
     "values": {
       "blocked": null,
-      "cue_afterBedtime_n": 1,
-      "cue_afterBedtime_started": 0,
       "doneToday": 0,
       "due": "planned",
       "easy": 2,

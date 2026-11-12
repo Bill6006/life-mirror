@@ -1,4 +1,4 @@
-import { moveById, type PathId } from './catalogue'
+import { findPath, moveById, type PathId } from './catalogue'
 import { copy } from './copy'
 import { allCheckIns, db, getSettings } from './db'
 import { fill } from './format'
@@ -24,7 +24,8 @@ export function PathEvidence() {
   // A faith talk is not counted on screen while the faith family is hidden (Rule 10).
   const shown = (moveId: string) => !(settings.hideFaith && moveById(moveId).hiddenWith === 'faith')
   const pathAims = aims.filter((a) => a.kind === 'path' && a.path)
-  const ids = [...new Set(pathAims.map((a) => a.path as PathId))]
+  // A Path this phone does not know yet has nothing to show (2026-11-12); it appears once the Path arrives.
+  const ids = [...new Set(pathAims.map((a) => a.path as PathId))].filter((id) => findPath(id) !== undefined)
   if (!ids.length) return null
   const c = copy.evidence
   return (

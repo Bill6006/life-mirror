@@ -92,20 +92,25 @@ export function hardWorkoutWords(times: number, measures: readonly { reading: st
   return fill(c.hardWorkoutLine, { n, list })
 }
 
-/** A private item on Evidence. */
-export function privateLineWords(p: PrivateAssociation, alternative: string): string {
+/**
+ * A private item on Evidence. `named`: "Show private items by name outside this screen" is on (Rule 11); off, the
+ * line says "a private item" and never its name (2026-11-12). Every caller says which.
+ */
+export function privateLineWords(p: PrivateAssociation, alternative: string, named: boolean): string {
   const c = copy.evidence
   const a = p.association
-  if (!likeForLikeMatched(a)) return fill(c.privateUnmatched[p.block], { name: p.name, alternative })
-  return fill(c.privateLine[p.block], { name: p.name, with: pct(a.withEvent.mean), without: pct(a.without.mean), n: String(a.withEvent.n), m: String(a.without.n), alternative })
+  const name = named ? p.name : c.privateUnnamed
+  if (!likeForLikeMatched(a)) return fill(c.privateUnmatched[p.block], { name, alternative })
+  return fill(c.privateLine[p.block], { name, with: pct(a.withEvent.mean), without: pct(a.without.mean), n: String(a.withEvent.n), m: String(a.without.n), alternative })
 }
 
-/** A private item on the move card at the check-in it is placed in. */
-export function privateInlineWords(p: PrivateAssociation, alternative: string): string {
+/** A private item on the move card at the check-in it is placed in; named only while the name switch is on, as on Evidence. */
+export function privateInlineWords(p: PrivateAssociation, alternative: string, named: boolean): string {
   const c = copy.move
   const a = p.association
-  if (!likeForLikeMatched(a)) return fill(c.privateInlineUnmatched[p.block], { name: p.name, alternative })
-  return fill(c.privateInline[p.block], { name: p.name, with: pct(a.withEvent.mean), without: pct(a.without.mean), n: String(a.withEvent.n), m: String(a.without.n), alternative })
+  const name = named ? p.name : c.privateUnnamed
+  if (!likeForLikeMatched(a)) return fill(c.privateInlineUnmatched[p.block], { name, alternative })
+  return fill(c.privateInline[p.block], { name, with: pct(a.withEvent.mean), without: pct(a.without.mean), n: String(a.withEvent.n), m: String(a.without.n), alternative })
 }
 
 /** The morning's last-night line: like for like only when it is; the first time only when it is; else how many so far, nothing yet set against. */

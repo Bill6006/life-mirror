@@ -22,6 +22,7 @@ import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts 
 import { awayOn } from './postWindowFlow'
 import { guardRepairNow, repairFaults } from './repair/breaker'
 import { storageFaults } from './storageWatch'
+import { screenFaults } from './screenFaults'
 import { repairEvidenceFrom, trackSummary } from './repair/evidence'
 
 // The brain on the phone: the fact sheet built from the record, written as a row the Worker
@@ -79,6 +80,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // The storage interrupted under the app, the same way (2026-10-23, the blank Now).
   const storage = storageFaults()
   if (storage) sheet.storageFault = storage
+  // A screen that threw while drawing, the same way (2026-11-12).
+  const screens = screenFaults()
+  if (screens) sheet.screenFault = screens
   return sheet
 }
 
@@ -176,10 +180,10 @@ export async function writeFactsRow(day: string, now: Date = new Date()): Promis
   const sheet = await factSheet(day, now)
   const coach = await coachFor(day, now)
   const existing = await db.facts.get(day)
-  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn' | 'engineFault' | 'storageFault') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
+  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn' | 'engineFault' | 'storageFault' | 'screenFault') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
   const sameCoach = JSON.stringify(existing?.coach ?? null) === JSON.stringify(coach)
   // A failure kept since the last row is written too, so the Worker's report shows it with the facts unchanged (2026-10-23).
-  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && same('engineFault') && same('storageFault') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
+  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && same('engineFault') && same('storageFault') && same('screenFault') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
   await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet, ...(coach ? { coach } : {}) })
   return true
 }

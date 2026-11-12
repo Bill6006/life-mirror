@@ -591,7 +591,7 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const plan = planFor(i.intentions, id, today)
     const keys = keysOf(aim, studyAims)
     const open = openOffers.some((o) => keys.includes(o.situationKey) || studyOfferBelongs(o, aim, i.skills, studyAims))
-    const counts = cueCounts(i.intentions, id)
+    const counts = cueCounts(i.intentions, id, today)
     // Part 39: its own rhythm or fixed days, and what they make of today; a faith practice is never counted by the days between (Rule 10).
     const rhythm = rhythmOf(aim.rhythm)
     const schedule = scheduleOf(aim.schedule)

@@ -100,8 +100,8 @@ TABLE = [
          tests=['src/brainShared.test.ts'], pattern='speaks of her bedtime only on a day she is with you'),
     # k. Claude's answer checked against the sheet it was served
     dict(id='k-served-sheet', file='worker/src/claude.ts',
-         old="  if (t.served) return { sheet: t.served.sheet, updatedAt: t.served.factsUpdatedAt, ...(t.served.coach ? { coach: t.served.coach } : {}) }\n",
-         new="",
+         old="  if (row && row.taskAt === t.at) {\n",
+         new="  if (row && row.taskAt === t.at && false) {\n",
          tests=['worker/src/claude.test.ts'], pattern='checks the answer against the sheet its briefing served'),
     # l. Why shows the facts as they stood
     dict(id='l-why-as-said', file='src/brainFlow.ts',

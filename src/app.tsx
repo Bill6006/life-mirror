@@ -49,6 +49,7 @@ import { JournalScreen } from './journalScreen'
 import { WordsScreen } from './wordsScreen'
 import { MonthScreen } from './monthScreen'
 import { AskScreen, type AskOpen } from './ask/askScreen'
+import { ScreenGuard } from './screenGuard'
 
 type Tab = keyof typeof copy.tabs
 const order: Tab[] = ['now', 'mirror', 'moves', 'aims', 'settings']
@@ -394,7 +395,12 @@ export function App() {
 
   return (
     <div class="app">
-      <main id="main">{content()}</main>
+      <main id="main">
+        {/* A screen that throws while drawing says so (2026-11-12): keyed by the screen, so the next one starts clean. */}
+        <ScreenGuard key={view.kind === 'tabs' ? `tab.${tab}` : view.kind} screen={view.kind === 'tabs' ? tab : view.kind} onLeave={view.kind === 'tabs' ? undefined : closeAll}>
+          {content()}
+        </ScreenGuard>
+      </main>
       {view.kind === 'tabs' && (
         <nav class="tabs" aria-label="Sections">
           {/* A move still lower on Now, unseen: a cue above the bar (final UI polish, 2026-09-26). */}
