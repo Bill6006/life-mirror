@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALPHA, compare, difference, MIN_OCCURRENCES, MIN_SIDE, permutationP, ratesBy, SHUFFLES, standings, STRETCH_DAYS, stretchesOf, WORTH_POINTS, WORTH_RATE, WORTH_STEPS, type CellPoint, type Compared, type Point } from './compare'
+import { ALPHA, compare, difference, MIN_OCCURRENCES, MIN_SIDE, permutationP, ratesBy, scaledDifference, SHUFFLES, standings, STRETCH_DAYS, stretchesOf, WORTH_POINTS, WORTH_RATE, WORTH_STEPS, type CellPoint, type Compared, type Point } from './compare'
 
 // The comparison core, on hand-worked cases (the counted foundation, 2026-11-12; in shadow). Every number a rule
 // rests on is stated here as a literal, so a change to the rule's constant turns a test red.
@@ -67,10 +67,17 @@ describe('the chance check', () => {
 })
 
 describe('with against without', () => {
-  /** Eight occasions with and eight without, on the same eight days, each side at one level. */
+  /**
+   * Sixteen evenings over two fortnights, eight with the thing and eight without, each side at one level. In each
+   * fortnight the evenings with it are the 1st, 2nd, 4th and 8th days, and those without the 3rd, 6th, 10th and 13th:
+   * in order, with with without with without with without without. Turned round, only the arrangement as it fell
+   * sets all four against all four, so the two fortnights together do so once in sixty-four.
+   */
+  const WITH_DAYS = [0, 1, 3, 7, 14, 15, 17, 21]
+  const WITHOUT_DAYS = [2, 5, 9, 12, 16, 19, 23, 26]
   const sides = (withLevel: number, withoutLevel: number, n = 8, m = 8): Point[] => [
-    ...Array.from({ length: n }, (_, i) => ({ day: day(i), event: true, outcome: withLevel })),
-    ...Array.from({ length: m }, (_, i) => ({ day: day(i), event: false, outcome: withoutLevel })),
+    ...WITH_DAYS.slice(0, n).map((d) => ({ day: day(d), event: true, outcome: withLevel })),
+    ...WITHOUT_DAYS.slice(0, m).map((d) => ({ day: day(d), event: false, outcome: withoutLevel })),
   ]
 
   it('compares nothing under eight usable occasions on either side', () => {
@@ -78,10 +85,51 @@ describe('with against without', () => {
     expect(compare(sides(70, 50, 8, 7), { id: 'x', worth: 10 })).toMatchObject({ enough: false, p: null })
     const tested = compare(sides(70, 50), { id: 'x', worth: 10 })
     expect(tested).toMatchObject({ n: 8, m: 8, enough: true, diff: 20 })
-    expect(tested.p).toBeLessThan(0.002)
-    // Never a chance of nothing: the least 2,000 shuffles can say is one in 2,001.
-    expect(tested.p).toBeGreaterThanOrEqual(1 / 2001)
+    // One arrangement in sixty-four: 0.0156.
+    expect(tested.p).toBeGreaterThan(0.008)
+    expect(tested.p).toBeLessThan(0.03)
     expect(standings([compare(sides(70, 50, 7, 8), { id: 'x', worth: 10 })])[0]).toMatchObject({ standing: 'tooFew', family: 0 })
+  })
+
+  it('never gives a chance of nothing: the least 2,000 arrangements can say is one in 2,001', () => {
+    // Four fortnights, the thing on the 1st, 2nd, 4th and 8th day of each and twenty points higher there: one
+    // arrangement in 38,416 matches the real one, and none of these 2,000 does.
+    const points: Point[] = Array.from({ length: 56 }, (_, d) => ({ day: day(d), event: [0, 1, 3, 7].includes(d % 14), outcome: [0, 1, 3, 7].includes(d % 14) ? 70 : 50 }))
+    expect(compare(points, { id: 'x', worth: 10 })).toMatchObject({ n: 16, m: 40, diff: 20, p: 1 / 2001 })
+  })
+
+  it('turns a fortnight’s labels round, so a streak stays a streak: two streaks on two good weeks are two coincidences, not fourteen', () => {
+    // Two fortnights. In each, the first week had the thing every evening and read 60; the second week never, and read 40.
+    const points: Point[] = Array.from({ length: 28 }, (_, d) => ({ day: day(d), event: d % 14 < 7, outcome: d % 14 < 7 ? 60 : 40 }))
+    const c = compare(points, { id: 'x', worth: 10 })
+    expect(c).toMatchObject({ n: 14, m: 14, diff: 20 })
+    // Turned round, a fortnight shows the whole difference in two places of fourteen (as it fell, and seven days on,
+    // the other way up), so both fortnights agree in 2 arrangements of 196: 0.0102. Dealt out afresh, the same
+    // twenty-eight evenings would read as fourteen separate coincidences: about one in twenty million.
+    expect(c.p).toBeGreaterThan(0.005)
+    expect(c.p).toBeLessThan(0.02)
+  })
+
+  it('turns in the order of the days, however the occasions were listed', () => {
+    // Listed with every evening with the thing first, then every evening without; and the same sixteen listed day by day.
+    const listed = sides(70, 50)
+    const byDay = [...listed].sort((a, b) => a.day.localeCompare(b.day))
+    expect(compare(listed, { id: 'x', worth: 10 }).p).toBe(compare(byDay, { id: 'x', worth: 10 }).p)
+  })
+
+  it('ranks an arrangement by its difference against its own spread, so one that leans on a single evening counts for less', () => {
+    const band = (name: string, withThing: number[], without: number[], from: number): Point[] => [...withThing.map((outcome, i) => ({ day: day(from + i), event: true, outcome, band: name })), ...without.map((outcome, i) => ({ day: day(from + 10 + i), event: false, outcome, band: name }))]
+    // Ten points in each band: one evening against five in band a, three against three in band b.
+    const spreadOut = [...band('a', [60], [50, 50, 50, 50, 50], 0), ...band('b', [40, 40, 40], [30, 30, 30], 20)]
+    expect(difference(spreadOut)).toBe(10)
+    // (1 x 10 + 3 x 10) over the root of 1 x (1/1 + 1/5) + 9 x (1/3 + 1/3): 40 over the root of 7.2.
+    expect(scaledDifference(spreadOut)).toBeCloseTo(40 / Math.sqrt(7.2), 10)
+    // The same ten points resting on band a's one evening alone: 10 over the root of 1.2, and so ranked lower.
+    const leaning = [...band('a', [60], [50, 50, 50, 50, 50], 0), ...band('b', [], [30, 30, 30, 40, 40, 40], 20)]
+    expect(difference(leaning)).toBe(10)
+    expect(scaledDifference(leaning)).toBeCloseTo(10 / Math.sqrt(1.2), 10)
+    // Without bands: the two means' difference over the root of one over each side's count.
+    expect(scaledDifference([{ day: day(0), event: true, outcome: 60 }, { day: day(1), event: true, outcome: 60 }, ...[2, 3, 4, 5].map((d) => ({ day: day(d), event: false, outcome: 50 }))])).toBeCloseTo(10 / Math.sqrt(0.75), 10)
   })
 
   it('calls a difference a pattern only at a size worth saying: ten points, not nine', () => {
@@ -169,6 +217,28 @@ describe('when is it most likely', () => {
     const cells = ratesBy(points, { id: 'x', within: 'day', cells: ['morning', 'afternoon', 'evening'] })
     expect(cells[2]).toMatchObject({ k: 20, n: 20, diff: 1, enough: true, p: 1 })
     expect(standings(cells).map((s) => s.standing)).toEqual(['noPattern', 'noPattern', 'noPattern'])
+  })
+
+  /** Eight weeks from a Thursday, three check-ins a day; the thing at all three check-ins of the days numbered here. */
+  const threeADay = (onDays: readonly number[]): CellPoint[] => Array.from({ length: 56 }, (_, n) => [0, 1, 2].map(() => ({ day: day(n), cell: WEEKDAYS[n % 7], happened: onDays.includes(n) }))).flat()
+
+  it('moves whole days together: a thing that repeats within its day cannot pass for a weekday’s', () => {
+    // Four days carried it, one in each fortnight: two Mondays (days 4 and 32), a Wednesday (20) and a Thursday (42).
+    // By check-ins that reads 6 of 24 on Mondays against 6 of 144, which single check-ins shuffled about would call
+    // rare (about 4 in 1,000). By days it is two Mondays of four days: each fortnight's one day falls on one of its
+    // two Mondays with chance 2 in 14, and two or more of the four do so with chance 0.10.
+    const cells = ratesBy(threeADay([4, 20, 32, 42]), { id: 'x', within: 'stretch', cells: WEEKDAYS })
+    const monday = cells[4]
+    expect(monday).toMatchObject({ cell: 'Mon', k: 6, n: 24, restK: 6, m: 144, enough: true })
+    expect(monday.p).toBeGreaterThan(0.07)
+    expect(monday.p).toBeLessThan(0.14)
+    expect(standings(cells)[4].standing).toBe('noPattern')
+  })
+
+  it('refuses a day that carries two cells where whole days change places', () => {
+    const points = threeADay([4, 20, 32, 42])
+    points[1] = { ...points[1], cell: 'Mon' }
+    expect(() => ratesBy(points, { id: 'x', within: 'stretch', cells: WEEKDAYS })).toThrow('one cell for each day')
   })
 })
 

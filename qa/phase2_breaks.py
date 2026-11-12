@@ -5,7 +5,9 @@ The core compares nothing under eight usable occasions a side, or under eight in
 shuffles labels only inside a 14-day stretch, and the check-ins of a day among themselves; counts both directions; never
 gives a chance of nothing; stops early only once the chance is past 0.05; takes the like-for-like difference weighted by
 the smaller side; corrects across the family by Holm, counting every comparison that was tested; and calls a pattern only
-at a size worth saying.
+at a size worth saying. Since the simulation's tuning (2026-11-12): a label the whole day shares moves by whole days, one
+cell to a day; with against without turns a stretch's labels round in the order of their days, never deals them afresh;
+and an arrangement is ranked by its difference against its own spread.
 
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
@@ -41,16 +43,16 @@ TABLE = [
          new="    const big = true\n",
          tests=[T], pattern='ten points, not nine'),
     dict(id='inside-a-stretch', file=C,
-         old="  const strata = groups(stretchesOf(points.map((p) => p.day)))\n  const [p] = ",
-         new="  const strata = [points.map((_, i) => i)]\n  const [p] = ",
+         old="  const strata = groups(stretchesOf(points.map((p) => p.day)))\n  const number = ",
+         new="  const strata = [points.map((_, i) => i)]\n  const number = ",
          tests=[T], pattern='one fortnight against another as a pattern'),
     dict(id='fourteen-days', file=C,
          old="export const STRETCH_DAYS = 14\n",
          new="export const STRETCH_DAYS = 28\n",
          tests=[T], pattern='one fortnight against another as a pattern'),
     dict(id='check-ins-within-the-day', file=C,
-         old="groups(opts.within === 'day' ? points.map((p) => p.day) : stretchesOf(points.map((p) => p.day)))",
-         new="groups(stretchesOf(points.map((p) => p.day)))",
+         old="      const strata = groups(points.map((p) => p.day))\n",
+         new="      const strata = groups(stretchesOf(points.map((p) => p.day)))\n",
          tests=[T], pattern='never pass for a check-in'),
     dict(id='either-direction', file=C,
          old="      if (Math.abs(got[k]) >= real[k] - 1e-12) reached[k]++\n",
@@ -59,14 +61,14 @@ TABLE = [
     dict(id='never-a-chance-of-nothing', file=C,
          old="  return real.map((_, k) => (reached[k] + 1) / (done[k] + 1))\n",
          new="  return real.map((_, k) => reached[k] / Math.max(1, done[k]))\n",
-         tests=[T], pattern='under eight usable occasions'),
+         tests=[T], pattern='never gives a chance of nothing'),
     dict(id='early-stop-past-the-line', file=C,
-         old="stopAt: number = Math.floor(ALPHA * (shuffles + 1))): number[] {",
-         new="stopAt: number = 5): number[] {",
+         old="stopAt: number = Math.floor(ALPHA * (shuffles + 1)), how:",
+         new="stopAt: number = 5, how:",
          tests=[T], pattern='stops early only when'),
     dict(id='weighted-by-the-smaller-side', file=C,
-         old="      const w = Math.min(a.length, b.length)\n",
-         new="      const w = a.length + b.length\n",
+         old="      const w = Math.min(na[b], nb[b])\n",
+         new="      const w = na[b] + nb[b]\n",
          tests=[T], pattern='like for like where'),
     dict(id='corrected-across-the-family', file=C,
          old="  const adjusted = holmAdjusted(tested.map((c) => c.p as number))\n",
@@ -80,6 +82,26 @@ TABLE = [
          old="    const standing: Standing = !big || p > ALPHA ? 'noPattern' : adjusted[at] > ALPHA ? 'lead' : 'pattern'\n",
          new="    const standing: Standing = !big || p > 0.1 ? 'noPattern' : adjusted[at] > 0.1 ? 'lead' : 'pattern'\n",
          tests=[T], pattern='a chance over 0.05'),
+    dict(id='whole-days-change-places', file=C,
+         old="        let d = dayIndex.get(p.day)\n",
+         new="        let d = dayIndex.get(p.day + '|' + row)\n",
+         tests=[T], pattern='moves whole days together'),
+    dict(id='one-cell-a-day', file=C,
+         old="        } else if (dayCell[d] !== at[row]) throw new Error(",
+         new="        } else if (dayCell[d] === -2) throw new Error(",
+         tests=[T], pattern='refuses a day that carries two cells'),
+    dict(id='turned-not-dealt', file=C,
+         old="opts.shuffles, opts.stopAt, 'turn')",
+         new="opts.shuffles, opts.stopAt, 'shuffle')",
+         tests=[T], pattern='a streak stays a streak'),
+    dict(id='in-the-order-of-their-days', file=C,
+         old="  const inOrder = strata.map((rows) => [...rows].sort((a, b) => number[a] - number[b] || a - b))\n",
+         new="  const inOrder = strata\n",
+         tests=[T], pattern='in the order of the days'),
+    dict(id='the-spread-it-is-read-against', file=C,
+         old="      spread += w * w * (1 / na[b] + 1 / nb[b])\n",
+         new="      spread += w * (1 / na[b] + 1 / nb[b])\n",
+         tests=[T], pattern='against its own spread'),
 ]
 
 

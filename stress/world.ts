@@ -141,11 +141,12 @@ export class World {
   /** Every move done, for the truth and the realized benefit. */
   readonly doneLog: { moveId: string; d: number; block: Block; fraction: number }[] = []
 
-  constructor(seed: number, p: PersonParams, truth: Truth) {
+  /** `days` is the record's length: the stress test's own 180 unless the counted foundation's worlds ask for a year. */
+  constructor(seed: number, p: PersonParams, truth: Truth, days: number = DAYS) {
     this.p = p
     this.truth = truth
     const rng = stream(seed, 'world')
-    const n = DAYS * 3 + 30
+    const n = days * 3 + 30
     for (const r of INGREDIENT_READINGS) {
       this.base[r] = 0.4 * gauss(rng)
       this.drift[r] = new Float64Array(n)
@@ -165,7 +166,7 @@ export class World {
       }
     }
     const away = new Set(p.away)
-    for (let d = 0; d < DAYS + 10; d++) {
+    for (let d = 0; d < days + 10; d++) {
       const weekday = (1 + d) % 7 // START is a Monday: 1
       const weekend = weekday === 0 || weekday === 6
       const office = officeOn(weekday, d >= (p.officeDaysLater?.from ?? Infinity) ? (p.officeDaysLater?.days ?? p.officeDays) : p.officeDays)
@@ -265,6 +266,12 @@ export class World {
       const window = eff.window ?? windowOfMove(moveId, r)
       for (const [slot, share] of reach(d, b, window, eff.carry)) if (slot < this.added[r].length) this.added[r][slot] += e * share
     }
+  }
+
+  /** Lays a shift over one reading at one check-in, in steps in its good direction: a weekly rhythm, a season or a real difference in the counted foundation's worlds. */
+  add(r: ReadingId, d: number, b: Block, steps: number): void {
+    const t = slotOf(d, b)
+    if (this.added[r] && t >= 0 && t < this.added[r].length) this.added[r][t] += steps
   }
 
   /** The true effect of doing a move on a reading on a day, in steps: what every estimate is judged against. */
