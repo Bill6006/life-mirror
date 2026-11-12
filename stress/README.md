@@ -32,6 +32,11 @@ is the owner's decision.
 gates**, in `RESULTS-6.md`. The stress test has passed by the rule the owner chose, and the learning repair is built
 next.
 
+**Then a separate proof, the counted foundation's simulation (2026-11-12): PASS**, in `RESULTS-8.md`. It judges the
+comparison core in `src/counted/`, which will decide what counts as a pattern among the record's own associations. Its
+criteria were frozen before its first run, its method was tuned on seeds 1–1000, and its verdict was read once on fresh
+seeds 500001–502000.
+
 ## What is here
 
 | File | What it is |
@@ -43,6 +48,12 @@ next.
 | `RESULTS-6.md` | The verdict by requirement 14's rule after C2's correction, read once more on fresh seeds: PASS, both judges' output verbatim. |
 | `RESULTS-5.md` | The verdict by requirement 14's rule, read once on fresh seeds: both judges' output verbatim, why C2 failed, and the smallest correction. |
 | `RESULTS-4.md` | The design search on seeds 1–1000: every design tried on C1's full step, the probes with the right test from day one, the strongest design's full run with the judge's output verbatim, and why every remaining failure is speed. |
+| `RESULTS-8.md` | The counted foundation's verdict: what was judged, the judge's output verbatim, the recount, and the tuning that settled the chance check. |
+| `countedWorlds.ts` | The counted foundation's worlds: a simulated person a year long, things laid over the days, and three families of questions asked at three looks. |
+| `countedPool.ts`, `validate-counted.sh` | Many people through one of those worlds over worker threads; every world on one range of seeds, then the judge. |
+| `countedJudge.ts`, `countedBound.ts` | The judge of that simulation, and the bounds its two power marks are set against. |
+| `counted_recount.py` | An independent recount of that judge's counts and bounds, in another language. |
+| `countedTune.ts`, `counted-calib.mjs`, `counted-bound.mjs` | Its tuning tools: ways of shuffling compared on the tuning seeds; the chance itself read on a results folder; the power bound computed before the criteria were frozen. |
 | `world.ts` | A simulated person. Real-shaped weeks, three check-ins a day, six readings drifting from block to block (a low tends to rebound), a rhythm by block, the day's context, noise, answers as anchors 1–5. Every draw that does not depend on what an engine offers is made up front, so both engines meet the same person. |
 | `scenarios.ts` | The simulated people of the criteria's list, one scenario each. |
 | `engineA.ts` | Today's engine, replayed. The draw mirrors `offerFlow.ensureOffer` and the daily run mirrors `learningFlow.runLearning`, calling the committed functions in `src/`. |
