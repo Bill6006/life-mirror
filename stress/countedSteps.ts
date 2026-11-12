@@ -1,25 +1,41 @@
+import { existsSync, writeFileSync } from 'node:fs'
 import { compare, standings, type Point } from '../src/counted/compare'
 import { bandOf } from '../src/score'
 import { countedWorldById, EVENING_THINGS, LOOKS, recordOf } from './countedWorlds'
+import { wilson } from './stats'
 
-// Tuning only, on seeds 1 to 1000. The simulation judged with against without on the reading out of 100. Before a
-// comparison measured in steps on one reading moves onto the core (a hard session against the next morning's stress,
-// say, where 0.4 of a step is the size worth saying), this asks the same twelve evening things of the next morning's
-// own stress answer, an anchor from 1 to 5, like for like within the evening's band: how often a chance at or under
-// 0.05 turns up with nothing there, and how often a family of twelve shows a pattern. A reported check, never a verdict.
+// With against without on a scale of steps. The simulation's verdict judged the reading out of 100. Before a
+// comparison measured in steps on one reading may say "a steady pattern" (a hard session against the next morning's
+// stress, say, where 0.4 of a step is the size worth saying), this asks the same twelve evening things of the next
+// morning's own stress answer, an anchor from 1 to 5, like for like within the evening's band: how often a chance at
+// or under 0.05 turns up with nothing there, and how often a family of twelve shows a pattern.
 //
-// node stress/.out/countedSteps.mjs [toSeed]
+// node stress/.out/countedSteps.mjs <fromSeed> <toSeed> <world,world,...> [out.json]
+//
+// Seeds 1 to 1000 are tuning seeds. Seeds 560001 to 562000 are this family's own read, once, under the first
+// criterion's mark (the interval's upper bound at most 7 in 100); 562001 to 570000 are its second read.
 
 const WORTH_STEPS = 0.4
-const to = Number(process.argv[2] ?? 1000)
-if (to > 1000) throw new Error('tuning reads seeds 1 to 1000 only')
-console.log(`seeds 1 to ${to}; the next morning's stress answer in steps, a size worth saying of ${WORTH_STEPS}`)
-console.log('world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  lead-only%')
-for (const id of ['independent-30', 'runs-persistent', 'follows-band']) {
+const [fromArg, toArg, worldsArg, out] = process.argv.slice(2)
+const from = Number(fromArg ?? 1)
+const to = Number(toArg ?? 1000)
+const tuning = to <= 1000
+const own = from >= 560001 && to <= 570000
+if (!tuning && !own) throw new Error('this family reads seeds 1 to 1000 (tuning) or 560001 to 570000 (its own read)')
+if (out && existsSync(out)) throw new Error(`${out} is already there: a range is read once`)
+const worlds = (worldsArg ?? 'independent-30,runs-persistent,follows-band').split(',')
+const people = to - from + 1
+const kept: Record<string, { seed: number; pattern: number[]; lead: number[] }[]> = {}
+console.log(`seeds ${from} to ${to}; the next morning's stress answer in steps, a size worth saying of ${WORTH_STEPS}`)
+console.log('world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark')
+for (const id of worlds) {
   const spec = countedWorldById(id)
+  if (!spec.families.includes('B')) throw new Error(`${id} holds no evening things`)
   const tally = LOOKS.map(() => ({ tested: 0, c05: 0, c01: 0, pattern: 0, lead: 0 }))
-  for (let seed = 1; seed <= to; seed++) {
+  kept[id] = []
+  for (let seed = from; seed <= to; seed++) {
     const rec = recordOf(spec, seed)
+    const row = { seed, pattern: [] as number[], lead: [] as number[] }
     LOOKS.forEach((look, at) => {
       const family = Array.from({ length: EVENING_THINGS }, (_, j) => {
         const points: Point[] = []
@@ -39,13 +55,21 @@ for (const id of ['independent-30', 'runs-persistent', 'follows-band']) {
         if (c.p <= 0.01) t.c01++
       }
       const stood = standings(family)
-      if (stood.some((s) => s.standing === 'pattern')) t.pattern++
-      else if (stood.some((s) => s.standing === 'lead')) t.lead++
+      const pattern = stood.some((s) => s.standing === 'pattern')
+      const lead = !pattern && stood.some((s) => s.standing === 'lead')
+      if (pattern) t.pattern++
+      if (lead) t.lead++
+      row.pattern.push(pattern ? 1 : 0)
+      row.lead.push(lead ? 1 : 0)
     })
+    kept[id].push(row)
   }
   LOOKS.forEach((look, at) => {
     const t = tally[at]
     const pct = (a: number, b: number): string => (b ? ((100 * a) / b).toFixed(2) : '-').padStart(7)
-    console.log(`${id.padEnd(18)} ${String(look).padStart(4)}  ${String(t.tested).padStart(6)}  ${pct(t.c05, t.tested)}  ${pct(t.c01, t.tested)}  ${String(to).padStart(6)}  ${String(t.pattern).padStart(7)}  ${pct(t.pattern, to)}  ${pct(t.lead, to)}`)
+    const w = wilson(t.pattern, people)
+    const mark = people !== 2000 ? '' : w.hi <= 0.07 ? 'pass' : t.pattern / people >= 0.07 ? 'FAIL' : 'NOT DECIDED: a second read is needed'
+    console.log(`${id.padEnd(18)} ${String(look).padStart(4)}  ${String(t.tested).padStart(6)}  ${pct(t.c05, t.tested)}  ${pct(t.c01, t.tested)}  ${String(people).padStart(6)}  ${String(t.pattern).padStart(7)}  ${pct(t.pattern, people)}   ${(100 * w.hi).toFixed(2).padStart(6)}     ${pct(t.lead, people)}  ${mark}`)
   })
 }
+if (out) writeFileSync(out, JSON.stringify({ seeds: [from, to], worth: WORTH_STEPS, worlds: kept }))
