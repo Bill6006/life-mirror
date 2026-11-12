@@ -160,7 +160,7 @@ try {
     const card = page.locator('[data-path="social"]')
     await seen(card)
     await put(page, 'aims', [{ ...aimOn('gone-from-the-phone'), id: aimId }])
-    await card.getByTestId('path-change').first().click()
+    await card.getByTestId('path-change').first().click({ timeout: 5000 }).catch(() => {})
     const fault = page.getByTestId('screen-fault')
     check(`${theme}: a screen that throws says so in a plain line`, (await seen(fault)) && ((await text(fault)) ?? '').includes('This screen could not be shown just now.'))
     check(`${theme}: with Try again and, over the tabs, Close`, (await seen(page.getByTestId('screen-fault-again'), 2000)) && (await seen(page.getByTestId('screen-fault-leave'), 2000)))
@@ -168,7 +168,8 @@ try {
     check(`${theme}: the fault is kept by count, screen and the error’s name alone`, kept?.count === 1 && kept?.name === 'Error' && kept?.screen === 'pathChange' && !JSON.stringify(kept).includes('gone-from-the-phone'), JSON.stringify(kept))
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/fault-${theme}.png` })
     await put(page, 'aims', [{ ...aimOn('social'), id: aimId }])
-    await page.getByTestId('screen-fault-again').click()
+    // A build without the guard has no such button: its check fails, and the script goes on.
+    await page.getByTestId('screen-fault-again').click({ timeout: 3000 }).catch(() => {})
     check(`${theme}: Try again draws the screen once the fault is gone`, (await seen(page.getByTestId('path-change-screen'))) && (await fault.count()) === 0)
     await ctx.close()
   }
