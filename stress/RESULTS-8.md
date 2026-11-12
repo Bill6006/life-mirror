@@ -852,3 +852,80 @@ node stress/counted-calib.mjs stress/.out/counted-tune
   second read of an undecided cell, 502001 to 510000, unread; a change of method after this verdict is judged again
   whole on 520001 to 522000 (second read 522001 to 530000), then 540001 to 542000 (542001 to 550000).
 - On 12 threads the verdict's 14 worlds took about seven minutes.
+
+## Afterwards: the same comparison on a scale of steps (2026-11-12)
+
+The verdict above judged with against without on the reading out of 100. Some of the app's comparisons are measured on
+one reading in steps, where 0.4 of a step is the size worth saying. Before any of those may say "a steady pattern", the
+same twelve evening things were asked of the next morning's own stress answer, an anchor from 1 to 5, in the nine
+worlds with nothing there (`countedSteps.ts`).
+
+- **Its own read:** seeds 560001 to 562000, 2,000 people a world, once, under the first mark above. 26 of the 27 cells
+  passed on the first read. The one not decided, streaks in the person whose state carries over, at day 60 (118 people
+  of 2,000), passed its second read on seeds 562001 to 570000: 485 of all 10,000, 4.85 in 100, upper bound 5.29.
+- **The second read showed more than it was asked.** It ran that whole world on 8,000 further people. Over all 10,000,
+  the day-180 cell stands at 594 people: 5.94 in 100, with a 95% interval of 5.5 to 6.4. That cell had passed on 2,000
+  people, as the mark allows, and it is over the 5 in 100 the standard aims for.
+- **Why.** In that world a chance at or under 0.05 turns up 5.3 to 5.9 times in 100, and one at or under 0.01 turns up
+  1.0 to 1.3 times, where an honest check gives 5 and 1. Turning a fortnight's labels round removes most of what
+  streaks beside a strongly persistent state do, and not all of it. On the reading out of 100 the ten-point size rule
+  covers what is left: the verdict's own cells for that world are 4.1 in 100 at day 60 and 0.2 at day 180. On a scale
+  of steps the size worth saying is well inside chance for months, and nothing covers it.
+- **What follows.** A comparison on a scale of steps is capped: its strongest standing is a lead. Lifting the cap needs
+  a better answer to streaks for that scale, settled on tuning seeds and read on a fresh range (580001 on).
+
+The first read, verbatim (the columns are `countedTune.ts`'s, with the upper bound of the share's 95% interval):
+
+```text
+seeds 560001 to 562000; the next morning's stress answer in steps, a size worth saying of 0.4
+world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark
+independent-10       60    1900     4.84     1.21    2000       58     2.90     3.73        1.55  pass
+independent-10      180   23257     5.07     0.98    2000       99     4.95     5.99       37.30  pass
+independent-10      365   24000     4.98     1.03    2000       88     4.40     5.39        8.95  pass
+independent-30       60   23436     4.94     0.91    2000       83     4.15     5.12       39.35  pass
+independent-30      180   24000     5.06     0.96    2000       76     3.80     4.73        3.60  pass
+independent-30      365   24000     4.87     1.03    2000        2     0.10     0.36        0.00  pass
+independent-50       60   24000     5.05     1.02    2000       99     4.95     5.99       38.45  pass
+independent-50      180   24000     5.08     0.94    2000       42     2.10     2.83        1.15  pass
+independent-50      365   24000     5.02     1.07    2000        1     0.05     0.28        0.00  pass
+runs                 60   20985     4.97     0.86    2000       81     4.05     5.01       34.75  pass
+runs                180   24000     5.18     1.07    2000       69     3.45     4.34        6.95  pass
+runs                365   24000     5.16     1.07    2000        6     0.30     0.65        0.05  pass
+weekly-rhythm        60   23401     4.63     0.88    2000       75     3.75     4.68       37.50  pass
+weekly-rhythm       180   24000     4.88     0.94    2000       76     3.80     4.73        6.35  pass
+weekly-rhythm       365   24000     4.79     0.98    2000        2     0.10     0.36        0.00  pass
+missing-on-state     60    7672     4.87     0.78    2000       52     2.60     3.39       13.20  pass
+missing-on-state    180   23435     4.90     0.97    2000       84     4.20     5.17       29.75  pass
+missing-on-state    365   23987     4.99     1.08    2000       72     3.60     4.51        7.85  pass
+follows-band         60   23482     4.77     0.89    2000       85     4.25     5.23       37.40  pass
+follows-band        180   24000     5.06     1.00    2000       72     3.60     4.51        5.20  pass
+follows-band        365   24000     5.17     1.05    2000        7     0.35     0.72        0.00  pass
+runs-persistent      60   20939     5.65     1.19    2000      118     5.90     7.02       39.05  NOT DECIDED: a second read is needed
+runs-persistent     180   24000     5.83     1.27    2000      114     5.70     6.80       26.10  pass
+runs-persistent     365   24000     5.85     1.25    2000       46     2.30     3.05        2.20  pass
+season               60    4523     4.97     1.06    2000       84     4.20     5.17        6.30  pass
+season              180   24000     5.06     1.07    2000       91     4.55     5.55       26.15  pass
+season              365   24000     5.26     1.11    2000       71     3.55     4.45        4.85  pass
+```
+
+The second read of that one world, in four parts of 2,000 people (no mark is printed: the mark is read on all 10,000 together, as above):
+
+```text
+seeds 562001 to 564000; the next morning's stress answer in steps, a size worth saying of 0.4
+world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark
+runs-persistent      60   20837     5.26     1.06    2000       89     4.45     5.44       37.90  pass
+runs-persistent     180   24000     5.50     1.27    2000      121     6.05     7.18       23.75  NOT DECIDED: a second read is needed
+runs-persistent     365   24000     5.56     1.23    2000       41     2.05     2.77        2.10  pass
+world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark
+runs-persistent      60   20847     5.54     0.97    2000       93     4.65     5.66       39.60  pass
+runs-persistent     180   24000     5.56     1.21    2000      112     5.60     6.70       24.30  pass
+runs-persistent     365   24000     5.64     1.13    2000       40     2.00     2.71        1.45  pass
+world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark
+runs-persistent      60   20964     5.44     0.98    2000       84     4.20     5.17       38.85  pass
+runs-persistent     180   23999     5.56     1.19    2000      123     6.15     7.29       25.25  NOT DECIDED: a second read is needed
+runs-persistent     365   24000     5.69     1.28    2000       53     2.65     3.45        2.00  pass
+world              look  tested  p<=.05%  p<=.01%  people  pattern  share%  upper95%  lead-only%  mark
+runs-persistent      60   20820     5.54     1.20    2000      101     5.05     6.10       39.45  pass
+runs-persistent     180   24000     5.85     1.26    2000      124     6.20     7.34       23.65  NOT DECIDED: a second read is needed
+runs-persistent     365   24000     5.73     1.33    2000       50     2.50     3.28        1.55  pass
+```
