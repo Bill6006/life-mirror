@@ -253,6 +253,10 @@ TABLE = [
          old="  const tested = floor && n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null",
          new="  const tested = floor ? comparedOnce(occasions, named) : null",
          tests=[LT], pattern='under eight matched evenings a side'),
+    dict(id='the-workers-report-reads-the-comparisons-failures', file='worker/src/engineReport.ts',
+         old=", associations: newest?.sheet.assocFault ?? null }",
+         new=", associations: null }",
+         tests=['worker/src/engineReport.test.ts'], pattern='the comparisons’ own failures'),
 ]
 
 
