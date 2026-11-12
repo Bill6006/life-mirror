@@ -442,7 +442,8 @@ async function seedGapRecord(page: Page, days: number): Promise<void> {
         const done = new Date(new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours[block], 40).getTime() + 95_000).toISOString()
         tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
         const moveId = k % 2 ? 'walk-ten' : 'nothing'
-        const gap = block === 'evening' && d % 2 === 0
+        // Done on eight evenings over four weeks, none of them yesterday's (its morning after is not here yet): eight a side, in an arrangement the chance check can tell from itself turned round (the one standard, 2026-11-12).
+        const gap = block === 'evening' && [2, 3, 5, 9].includes(d % 14)
         const offerId = await new Promise<number>((res) => {
           const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: gap ? 'recovery-gap' : null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done })
           q.onsuccess = () => res(q.result as number)
@@ -463,13 +464,15 @@ async function seedGapRecord(page: Page, days: number): Promise<void> {
 test('a passive item’s association at Promising proposes a one-tap test, and the tap sets it (stage R4b)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
   await start(page)
-  await seedGapRecord(page, 14)
+  await seedGapRecord(page, 28)
   await page.reload()
   await page.locator('nav.tabs').getByRole('button', { name: 'Moves', exact: true }).click()
   await page.getByRole('button', { name: /^Evidence/ }).click()
   await expect(page.getByRole('heading', { name: 'Rode alongside', exact: true })).toBeVisible()
   const gap = page.getByTestId('evidence-card').filter({ hasText: 'Keep the evening after a big social day empty' })
   await expect(gap.getByTestId('tier')).toContainText('Promising')
+  // The caption under it also says the word, so the test holds the card to it: not the word for too few.
+  await expect(gap.getByTestId('tier')).not.toContainText('Little evidence')
   const offer = gap.getByTestId('passive-test-offer')
   await expect(offer).toContainText('Test it on Energy over the next morning')
   await offer.getByTestId('passive-test-start').click()

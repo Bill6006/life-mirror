@@ -1978,7 +1978,7 @@ async function seedGapRecord(page: Page): Promise<void> {
     const tx = dbx.transaction(['checkins', 'offers', 'outcomes', 'cards'], 'readwrite')
     let k = 0
     let gapYesterday = false
-    for (let d = 14; d >= 1; d--) {
+    for (let d = 28; d >= 1; d--) {
       const date = new Date(2026, 8, 24 - d)
       const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
       for (const block of Object.keys(blocks)) {
@@ -1989,7 +1989,8 @@ async function seedGapRecord(page: Page): Promise<void> {
         const done = new Date(new Date(2026, 8, 24 - d, hours[block], 40).getTime() + 95_000).toISOString()
         tx.objectStore('checkins').add({ day, block, asked: blocks[block], startedAt: done, completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
         const moveId = k % 2 ? 'walk-ten' : 'nothing'
-        const gap = block === 'evening' && d % 2 === 0
+        // Done on eight evenings over four weeks, none of them yesterday's (its morning after is not here yet): eight a side, in an arrangement the chance check can tell from itself turned round (the one standard, 2026-11-12).
+        const gap = block === 'evening' && [2, 3, 5, 9].includes(d % 14)
         const offerId = await new Promise<number>((res) => {
           const q = tx.objectStore('offers').add({ kind: 'block', day, block, at: done, situationKey: 'stress|low', target: 'stress', stance: '', band: 'low', reading: 2, moveId, cardId: null, candidates: ['walk-ten', 'nothing'], coinFlip: false, passiveId: gap ? 'recovery-gap' : null, whyNot: null, propensity: 0.5, propensities: { 'walk-ten': 0.5, nothing: 0.5 }, skippedAt: null, closedAt: done, seenAt: done })
           q.onsuccess = () => res(q.result as number)
