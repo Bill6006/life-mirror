@@ -14,6 +14,9 @@ last-night fact and the sheet's own fact give it one standing; too few says no r
 the very occasions it was computed from; and a failed pass leaves the sheet without association facts, with the
 error's name alone riding it.
 
+Firmness: an association is a pattern only at a steady pattern, and tentative below it, last night's line and a
+private item alike. Evidence explains the four words; the hard session's and the weather's facts say each standing.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -53,6 +56,8 @@ WF = 'src/weeklyFacts.ts'
 WFT = 'src/weeklyFacts.test.ts'
 C = 'src/counted/compare.ts'
 AWT = 'src/associationWords.test.ts'
+FM = 'src/firmness.ts'
+FMT = 'src/firmness.test.ts'
 BF = 'src/brainFlow.ts'
 KT2 = 'src/keptChance.test.ts'
 AFT = 'src/assocFault.test.ts'
@@ -186,6 +191,30 @@ TABLE = [
          old="  if (!night) return fill(c.lastNightOnly, { event })",
          new="  if (!night) return fill(c.lastNight, { event, n: String(ln.n), m: '0', standing: '', points: '0 points', dir: c.higher })",
          tests=[AFT], pattern='no reading'),
+    dict(id='an-association-is-a-pattern-only-at-a-steady-pattern', file=FM,
+         old="  if (isAssociationFact(f)) return v.standing === 'pattern'",
+         new="  if (isAssociationFact(f)) return v.standing === 'pattern' || v.standing === 'lead'",
+         tests=[FMT], pattern='only at a steady pattern'),
+    dict(id='an-association-stays-tentative-below-a-pattern', file=FM,
+         old="  if (isAssociationFact(f)) return !isPatternFact(f)",
+         new="  if (isAssociationFact(f)) return false",
+         tests=[FMT], pattern='only at a steady pattern'),
+    dict(id='last-night-and-a-private-item-are-associations', file=FM,
+         old="f.id.startsWith('assoc.') || f.id.startsWith('private.') || f.id === 'lastNight'",
+         new="f.id.startsWith('assoc.')",
+         tests=[FMT], pattern='a private item alike'),
+    dict(id='evidence-explains-the-four-words', file='src/copy.ts',
+         old="      'A steady pattern: past chance after that allowance too.',\n",
+         new="",
+         tests=[WT], pattern='explained on Evidence'),
+    dict(id='a-hard-session-says-each-standing', file=F,
+         old="steps (${lower(STANDING_WORDS[s.standing])})`}`)",
+         new="steps`}`)",
+         tests=[T], pattern='a hard session’s readings'),
+    dict(id='the-weather-says-its-standing', file=F,
+         old="none : said(diff, lower(STANDING_WORDS[s.standing])),",
+         new="none : said(diff, 'unclear'),",
+         tests=[T], pattern='the weather’s two comparisons'),
 ]
 
 

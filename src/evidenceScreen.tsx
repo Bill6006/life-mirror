@@ -7,6 +7,7 @@ import { copy } from './copy'
 import { fill, formatDayShort, formatWhen } from './format'
 import { evidence, type PassiveEvidence } from './evidenceFlow'
 import { useLive } from './live'
+import { Disclosure } from './ui'
 import { NOTHING } from './offers'
 import { readingById } from './readings'
 import { HARD_MEASURES } from './workouts'
@@ -235,6 +236,20 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
       ) : (
         <RepairTests today={today} onAsk={onAsk} />
       )}
+      {/* The one standard (2026-11-12): what each word means and the day the rule changed, closed until opened. */}
+      <Disclosure label={c.standardTitle} testid="evidence-standard">
+        <div class="card pad" data-testid="evidence-standard-words">
+          <p class="note">{c.standardSince}</p>
+          <div class="calc">
+            {c.standardWords.map((line) => (
+              <p key={line} class="calc-line">
+                {line}
+              </p>
+            ))}
+          </div>
+          <p class="note faint no-gap">{c.standardHere}</p>
+        </div>
+      </Disclosure>
       <AlongsideCards cards={ev.passives} today={today} />
 
       <PathEvidence />

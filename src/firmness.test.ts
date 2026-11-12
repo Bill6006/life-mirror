@@ -3,7 +3,7 @@ import { BANNED_WORDS, CAUSAL_WORDS, GRADE_PHRASES, MODES, numbersIn, validateOu
 import { copy } from './copy'
 import type { Fact } from './facts'
 import { firmMode, firmOn, firmPrefOf } from './firmFlow'
-import { adaptiveFirmness, allowedFirmness, CHOICE, coachFirmness, DEFAULT_FIRMNESS, deliver, deliverySignals, FIRM_FLOOR, FIRMNESS_PREFS, FIRMNESSES, firmnessRefusal, HOW_FIRM, isFirmness, isFirmnessPref, THERAPY_SPEAK, type DeliverySignals, type Firmness, type FirmnessPref } from './firmness'
+import { adaptiveFirmness, isPatternFact, allowedFirmness, CHOICE, coachFirmness, DEFAULT_FIRMNESS, deliver, deliverySignals, FIRM_FLOOR, FIRMNESS_PREFS, FIRMNESSES, firmnessRefusal, HOW_FIRM, isFirmness, isFirmnessPref, THERAPY_SPEAK, type DeliverySignals, type Firmness, type FirmnessPref } from './firmness'
 import { admitted, cardById } from './library'
 import { phoneReview, rankLines, SITUATIONS, type Choice } from './situations'
 import { sheetOf, SITUATION_SHEETS } from './situationFixtures'
@@ -329,5 +329,34 @@ describe('a model’s line, held to How firm once its gate is open', () => {
     expect(validateReview(review('hardCoach'), fadeSheet, cards, undefined, { pref: 'adaptive' })).toMatchObject({ ok: true, value: { firmness: 'hardCoach' } })
     expect(validateReview(review('balanced', 'You should know better. Orrish had 3 sittings three weeks ago.'), fadeSheet, cards, undefined, { pref: 'balanced' })).toMatchObject({ ok: false })
     expect(validateReview(review('hardCoach'), fadeSheet, cards)).toMatchObject({ ok: true })
+  })
+})
+
+// An association under the one standard (Phase 3, 2026-11-12): a pattern for firmness only at a steady pattern.
+describe('an association, read for firmness by where it stands', () => {
+  const nap = (standing?: string): Fact => ({ id: 'assoc.napped', tags: [], text: '', values: { times: 9, diff: -6, ...(standing ? { standing } : {}) }, tier: 'unclear' }) as Fact
+  const signals = (f: Fact) => deliverySignals('challenge', [f.id], [], sheetOf([f]))
+
+  it('counts as a pattern, and stops being tentative, only at a steady pattern', () => {
+    expect(isPatternFact(nap('pattern'))).toBe(true)
+    expect(signals(nap('pattern'))).toMatchObject({ pattern: true, uncertain: false, evidence: 'moderate' })
+    for (const standing of ['lead', 'noPattern', 'tooFew']) {
+      expect(isPatternFact(nap(standing)), standing).toBe(false)
+      expect(signals(nap(standing)), standing).toMatchObject({ pattern: false, uncertain: true, evidence: 'thin' })
+    }
+  })
+
+  it('stays tentative where the fact was written before standings, and for last night’s line and a private item alike', () => {
+    expect(signals(nap())).toMatchObject({ pattern: false, uncertain: true })
+    const lastNight = { id: 'lastNight', tags: [], text: '', values: { key: 'napped', n: 9, standing: 'lead' } } as Fact
+    expect(signals(lastNight)).toMatchObject({ pattern: false, uncertain: true })
+    expect(signals({ ...lastNight, values: { ...lastNight.values, standing: 'pattern' } })).toMatchObject({ pattern: true, uncertain: false })
+    const item = { id: 'private.3', tags: [], text: '', values: { times: 9, standing: 'pattern' } } as Fact
+    expect(signals(item)).toMatchObject({ pattern: true, uncertain: false })
+  })
+
+  it('lets Adaptive be firm about a steady pattern that matters, and never about a lead', () => {
+    expect(adaptiveFirmness(signals(nap('pattern')))).toBe('hardCoach')
+    expect(adaptiveFirmness(signals(nap('lead')))).toBe('balanced')
   })
 })

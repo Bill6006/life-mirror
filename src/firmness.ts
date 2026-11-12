@@ -63,9 +63,14 @@ const numberOf = (values: Record<string, unknown>, key: string): number | null =
 
 type SheetFact = FactSheet['facts'][number]
 
+/** An association, wherever the sheet says one: a chip's or a workout's, a private item's, last night's. */
+const isAssociationFact = (f: SheetFact): boolean => f.id.startsWith('assoc.') || f.id.startsWith('private.') || f.id === 'lastNight'
+
 /** Whether a fact shows a pattern over days, by its own values. */
 export function isPatternFact(f: SheetFact): boolean {
   const v = f.values as Record<string, unknown>
+  // An association is a pattern only where it stands at a steady pattern (the one standard, 2026-11-12): a lead never counts, nor a fact written before standings.
+  if (isAssociationFact(f)) return v.standing === 'pattern'
   if (f.id === 'stretch' || f.id.startsWith('necessities.')) return true
   if (f.id === 'offers.7d') return (numberOf(v, 'partly') ?? 0) >= 3
   if (f.id === 'cadence') {
@@ -88,7 +93,9 @@ function isSeriousFact(f: SheetFact): boolean {
 
 /** Whether a fact is too tentative to be firm about: an association, a forecast, one day set against others, a test not yet settled. */
 function isUncertainFact(f: SheetFact): boolean {
-  if (f.id.startsWith('assoc.') || f.id.startsWith('forecast.') || f.id === 'lastNight') return true
+  // An association is tentative until it stands at a steady pattern; a forecast always is.
+  if (isAssociationFact(f)) return !isPatternFact(f)
+  if (f.id.startsWith('forecast.')) return true
   if (f.id.startsWith('test.')) return !isPatternFact(f)
   return false
 }

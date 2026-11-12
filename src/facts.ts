@@ -180,7 +180,7 @@ const EFFORT_WORDS: Record<NonNullable<OutsideDay['effort']>, string> = { 'too-e
  * the same, like for like, each reading in anchor steps in its own direction (stress up is more
  * stress); each tier read in that reading's good direction. An association, never a cause.
  */
-function hardFact(h: { times: number; measures: Record<HardMeasure, Association> }, stood: ReadonlyMap<string, Stood>): Fact {
+export function hardFact(h: { times: number; measures: Record<HardMeasure, Association> }, stood: ReadonlyMap<string, Stood>): Fact {
   const parts: string[] = []
   const values: Record<string, number | string | null> = { times: h.times }
   for (const id of HARD_MEASURES) {

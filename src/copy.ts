@@ -1134,6 +1134,16 @@ export const copy = {
     against: '{move} against {alternative}',
     forTarget: 'for {target} over the {window}',
     tiers: { little: 'Little evidence', unclear: 'Unclear', promising: 'Promising', holdsUp: 'Holds up', unhelpful: 'Unhelpful here' },
+    // The one standard (2026-11-12), said once in plain words: what each word means, and the day the rule changed.
+    standardTitle: 'How comparisons are read',
+    standardSince: 'Since 12 November 2026 every comparison in Life Mirror is read by one rule. Before that day, three occasions could read Promising.',
+    standardWords: [
+      'Too few to compare yet: under eight occasions on a side.',
+      'No clear pattern yet: enough to compare, and the difference is small or within chance.',
+      'A lead, not yet a pattern: worth saying and past chance on its own, not yet once every comparison looked at is allowed for. It says how many were looked at.',
+      'A steady pattern: past chance after that allowance too.',
+    ],
+    standardHere: 'On this screen, Little evidence is too few to compare; Promising is a lead or a steady pattern in the good direction; Unclear is everything else. Each says what went with what, never why.',
     passiveLine: '{n} days it rode alongside and was done: {target} the next morning read {with}, against {without} after evenings that started the same ({k} and {m}).',
     passiveUnmatched: '{n} days it rode alongside and was done; nothing yet to set {target} the next morning against.',
     pathsTitle: 'Path reps',

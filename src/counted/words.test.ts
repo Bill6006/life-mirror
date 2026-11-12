@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CAUSAL_WORDS, RECORD_CAUSE } from '../brainShared'
 import type { Direction, Standing } from './compare'
+import { copy } from '../copy'
 import { bestFamilyWords, bestWords, standingLine, STANDING_WORDS, whenWords, withWords } from './words'
 
 // The words for a standing (the counted foundation, 2026-11-12; in shadow).
@@ -56,6 +57,15 @@ describe('the words for a standing', () => {
     expect(bestFamilyWords(9)).toBe('9 things have enough days to be compared, as one family, and a thing is said here only at a lead')
     expect(bestFamilyWords(1)).toContain('1 thing has enough days')
     expect(bestFamilyWords(0)).toBe('nothing has enough days to be compared yet (eight best days and eight others, with five occurrences)')
+  })
+
+  it('are explained on Evidence in the same four words, in their order, with the day the rule changed', () => {
+    expect(copy.evidence.standardWords.map((line) => line.split(':')[0])).toEqual([STANDING_WORDS.tooFew, STANDING_WORDS.noPattern, STANDING_WORDS.lead, STANDING_WORDS.pattern])
+    expect(copy.evidence.standardSince).toContain('Since 12 November 2026')
+    for (const line of [copy.evidence.standardSince, ...copy.evidence.standardWords, copy.evidence.standardHere]) {
+      expect(CAUSAL_WORDS.test(line), line).toBe(false)
+      expect(NEVER.test(line), line).toBe(false)
+    }
   })
 
   it('say a standing as one short line beside its numbers, a lead with how many were looked at', () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { associationTier, type DayPoint, likeForLike } from './associations'
-import { assocFact, sheetStandings } from './facts'
+import { assocFact, hardFact, sheetStandings, weatherFacts } from './facts'
+import type { HardMeasure } from './workouts'
 
 // The sheet's associations under the one standard (Phase 3, 2026-11-12): each fact is written from its standing among
 // every association the sheet carries. The two records of the phase's acceptance are here: a chip tapped three times,
@@ -62,5 +63,37 @@ describe('an association on the sheet', () => {
     const stood = sheetStandings([a])
     expect(stood.get('assoc.eveningWorkout.sleep')?.standing).toBe('lead')
     expect(assocFact('assoc.eveningWorkout.sleep', [], 'an evening workout', a, 'Sleep quality the mornings after', stood)?.text).toContain('A lead, not yet a pattern: sleep quality the mornings after an evening workout read 30 points higher')
+  })
+})
+
+// The hard session's four readings and the weather's two comparisons, each written from a standing supplied by the
+// family (Phase 3, 2026-11-12).
+describe('a hard session and the weather on the sheet', () => {
+  it('says each of a hard session’s readings with its standing, a lead at most, and too few with no number', () => {
+    const named = (id: HardMeasure, points: DayPoint[]) => likeForLike(points, { id: `assoc.hardWorkout.${id}`, worth: 0.4 })
+    const few: DayPoint[] = [...[0, 1, 3].map((d): DayPoint => ({ day: day(d), band: 'gettingBy', event: true, outcome: 4 })), ...Array.from({ length: 20 }, (_, i): DayPoint => ({ day: day(4 + i), band: 'gettingBy', event: false, outcome: 2 }))]
+    const measures: Record<HardMeasure, ReturnType<typeof likeForLike>> = { energy: named('energy', evenings(4, 2)), mood: named('mood', few), focus: named('focus', evenings(3, 3)), stress: named('stress', evenings(4, 2)) }
+    const fact = hardFact({ times: 16, measures }, sheetStandings(Object.values(measures)))
+    // Two steps on sixteen mornings a side would stand at a steady pattern; on a scale of steps it is said as a lead.
+    expect(fact.text).toContain('16 times: energy +2 steps (a lead, not yet a pattern), mood too few to compare yet, focus 0 steps (no clear pattern yet), stress +2 steps (a lead, not yet a pattern). An association, not a cause.')
+    expect(fact.values).toMatchObject({ times: 16, energy: 2, energyStanding: 'lead', energyTier: 'promising', mood: 2, moodStanding: 'tooFew', moodTier: 'little', focusStanding: 'noPattern', focusTier: 'unclear', stressStanding: 'lead' })
+    // More stress is not the good direction: the old field stays unclear.
+    expect(fact.values.stressTier).toBe('unclear')
+  })
+
+  it('says the weather’s two comparisons each with its standing, and the counts alone when there are too few', () => {
+    const rain = likeForLike(evenings(40, 60), { id: 'assoc.weather.rain', worth: 10 })
+    const sun = likeForLike(evenings(52, 50), { id: 'assoc.weather.sun', worth: 10 })
+    const stood = sheetStandings([rain, sun])
+    const facts = weatherFacts([], [], day(60), stood, { rain, sun, days: 32, rainy: 16, sunnier: 16, shared: 32 })
+    expect(facts.map((f) => f.id)).toEqual(['assoc.weather.rain', 'assoc.weather.sun'])
+    expect(facts[0].text).toBe('Evenings of rainy days (1 mm of rain or more) read -20 against evenings of dry days, like for like on the morning’s band, 16 rainy days of 32 with weather (a steady pattern).')
+    expect(facts[0].values).toMatchObject({ diff: -20, standing: 'pattern', direction: 'lower', helpful: 0, m: 2 })
+    expect(facts[0].tier).toBe('unclear')
+    expect(facts[1].text).toContain('read +2 against greyer ones')
+    expect(facts[1].text).toContain('(no clear pattern yet).')
+    // Without a standing supplied, nothing was tested: the counts, and no difference.
+    const bare = weatherFacts([], [], day(60), new Map(), { rain, sun, days: 32, rainy: 16, sunnier: 16, shared: 32 })
+    expect(bare[0].text).toBe('Rainy days (1 mm of rain or more): 16 rainy days of 32 with weather; nothing can be compared yet.')
   })
 })
