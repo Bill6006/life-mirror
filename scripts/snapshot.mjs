@@ -1,8 +1,10 @@
-// Takes a read-only snapshot of the remote libSQL (Turso) database into a
+// Takes a read-only snapshot of the remote libSQL (Turso) database, every table of it, into a
 // gzipped NDJSON file plus a manifest, then verifies the file by reading it back.
 // Usage: node scripts/snapshot.mjs [--out <folder>]
 // The token comes from the LM_SNAPSHOT_TOKEN environment variable, or from the
 // line starting "LM_SNAPSHOT_TOKEN=" in worker/.dev.vars. It is never printed.
+// LM_DEV_VARS names another file to read that line from; the tests point it at a
+// file that does not exist, so a test run can never reach the real token.
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -13,12 +15,13 @@ import readline from 'node:readline';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION = 'snapshot.mjs 1';
+export const VERSION = 'snapshot.mjs 2';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-export const DEV_VARS = path.join(ROOT, 'worker', '.dev.vars');
+export const DEV_VARS = process.env.LM_DEV_VARS ? path.resolve(process.env.LM_DEV_VARS) : path.join(ROOT, 'worker', '.dev.vars');
 export const WRANGLER_TOML = path.join(ROOT, 'worker', 'wrangler.toml');
 const PAGE = 50;
+const q = (id) => '"' + String(id).replace(/"/g, '""') + '"';
 
 export function defaultOutDir() {
   return path.join(os.homedir(), 'LifeMirrorSnapshots');
@@ -139,17 +142,29 @@ export async function takeSnapshot({ client, outDir, now = new Date(), address, 
       fileOut.on('finish', res); fileOut.on('error', rej); gz.on('error', rej);
     });
     finished.catch(() => {});
-    const put = async (obj) => {
-      if (!gz.write(JSON.stringify(obj, replacer) + '\n')) await once(gz, 'drain');
+    // One line per row: the table's name under "t", then the row's own columns.
+    const put = async (t, row) => {
+      if ('t' in row) throw new Error(`table ${t} has a column named "t", which the file format keeps for the table's name`);
+      if (!gz.write(JSON.stringify({ t, ...row }, replacer) + '\n')) await once(gz, 'drain');
     };
 
     const counts = async () => toObjects(await client.execute({ sql: 'SELECT app, COUNT(*) AS n, MAX(synced_at) AS newest FROM records GROUP BY app', args: [] }));
 
     log('reading schema');
     const schema = toObjects(await client.execute({ sql: "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name", args: [] }));
+    const tables = schema.filter((s) => s.type === 'table').map((s) => s.name);
+    if (!tables.includes('records')) throw new Error('the database has no records table');
+    // The database's own count of every table, asked before the read and again after it.
+    const tableCounts = async () => {
+      const out = {};
+      for (const t of tables) out[t] = Number(toObjects(await client.execute({ sql: `SELECT COUNT(*) AS n FROM ${q(t)}`, args: [] }))[0].n);
+      return out;
+    };
     const before = await counts();
+    const tablesBefore = await tableCounts();
 
-    const rows = { records: 0, devices: 0 };
+    const rows = {};
+    for (const t of tables) rows[t] = 0;
     const rowsPerAppStore = {}, deletedPerApp = {};
     let last = null;
     for (;;) {
@@ -158,7 +173,7 @@ export async function takeSnapshot({ client, outDir, now = new Date(), address, 
         : await client.execute({ sql: `SELECT * FROM records ORDER BY app, store, id LIMIT ${PAGE}`, args: [] });
       const page = toObjects(res);
       for (const r of page) {
-        await put({ t: 'records', ...r });
+        await put('records', r);
         rows.records++;
         const k = `${r.app}/${r.store}`;
         rowsPerAppStore[k] = (rowsPerAppStore[k] || 0) + 1;
@@ -170,12 +185,17 @@ export async function takeSnapshot({ client, outDir, now = new Date(), address, 
       last = [l.app, l.store, l.id];
     }
 
-    for (const r of toObjects(await client.execute({ sql: 'SELECT * FROM devices', args: [] }))) {
-      await put({ t: 'devices', ...r });
-      rows.devices++;
+    // Every other table is small, and is read whole.
+    for (const t of tables) {
+      if (t === 'records') continue;
+      for (const r of toObjects(await client.execute({ sql: `SELECT * FROM ${q(t)}`, args: [] }))) {
+        await put(t, r);
+        rows[t]++;
+      }
+      log(`${t} read: ${rows[t]}`);
     }
-    log(`devices read: ${rows.devices}`);
     const after = await counts();
+    const tablesAfter = await tableCounts();
 
     gz.end();
     await finished;
@@ -187,6 +207,7 @@ export async function takeSnapshot({ client, outDir, now = new Date(), address, 
       finishedAt: new Date().toISOString(),
       rows, rowsPerAppStore, deletedPerApp,
       countsBefore: before, countsAfter: after,
+      tableCountsBefore: tablesBefore, tableCountsAfter: tablesAfter,
       schema,
       file: name,
       bytes: scan1.bytes,
@@ -203,11 +224,22 @@ export async function takeSnapshot({ client, outDir, now = new Date(), address, 
       result.error = 'verification failed: ' + differs.join('; ').slice(0, 250);
       return result; // nothing deleted: the .partial files stay for inspection
     }
+    // The rows read must be the rows the database itself counts. A write that landed during the read may or
+    // may not be in the file, so a table whose count moved is held to the range between its two counts.
+    const short = [];
+    for (const t of tables) {
+      const lo = Math.min(tablesBefore[t], tablesAfter[t]), hi = Math.max(tablesBefore[t], tablesAfter[t]);
+      if (rows[t] < lo || rows[t] > hi) short.push(`${t}: read ${rows[t]}, the database counts ${lo === hi ? lo : `${lo} to ${hi}`}`);
+    }
+    if (short.length) {
+      result.error = 'verification failed: rows read differ from the count the database gives: ' + short.join('; ').slice(0, 250);
+      return result; // as above: the .partial files stay, and no file is left under the finished name
+    }
 
     await fsp.rename(manifestPartial, manifestPath);
     await fsp.rename(partial, dataPath);
     Object.assign(result, { ok: true, file: name, rows: { ...rows }, bytes: scan2.bytes });
-    log(`rows: records ${rows.records}, devices ${rows.devices}; ${scan2.bytes} bytes; sha256 ${scan2.sha256.slice(0, 12)}`);
+    log(`rows: ${tables.map((t) => `${t} ${rows[t]}`).join(', ')}; ${scan2.bytes} bytes; sha256 ${scan2.sha256.slice(0, 12)}`);
     if (JSON.stringify(before) !== JSON.stringify(after)) {
       log('note: per-app counts changed while reading (see countsBefore and countsAfter in the manifest)');
     }

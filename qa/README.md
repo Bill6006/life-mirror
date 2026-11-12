@@ -1,4 +1,4 @@
-# QA tools: deliberate breaks, live checks, snapshot pairing
+# QA tools: deliberate breaks, live checks, the backup, snapshot pairing
 
 Nothing here ships or is imported by the app. Each tool finds the repository root from its own place,
 so it runs from any clone. Outputs go to `qa/out/`, which is never committed.
@@ -27,6 +27,7 @@ red. Rules every runner keeps:
 | `stage3_item6_breaks.py` | stage 3, item 6 (weather as context): one request a day naming only the area to one decimal and two dates, with no referrer; nothing asked while off or without a place; a failure not tried again that day; only the units asked; a day missing anything unknown, never dry; the days' own records, none made up; rain this hour or the next keeping an outdoor move waiting, only while on; the comparisons at 14 days, a day without weather on neither side; the sheet only while on, values only; the Worker's filing, the free chain and Claude's rule; a cause refused; the switch on this phone alone; the export; the screens saying first, and wherever the area goes, what is sent | 45 of 46 first: one missed and its test made stronger, then caught, 46 of 46 |
 | `six_fixes_breaks.py` | the owner's six fixes (2026-10-19): Out among people on a scheduled office day (read as Yes and not asked unless Working from home; the day keeping that the week scheduled it, an older day gaining it once; the path's words; the chip row reading the day as made); both Motivation and Confidence every morning, a morning from before keeping its "not asked" in words for then; a day changed by hand stamped and never given to a copy only made from the week (the pull, the queue, its second copy, a new install's first read, a learning week's answer); a writer of the day reading it inside its own write (the trip, the place written for a part of the day); this phone's own choices in a second copy (Location Context, the weather, the places and their key put back, in one write; the copy following each change, each action keeping its own, written again at every start; a wipe taking it, Forget everything keeping the mark); naming a place (a rough reading followed, a late position ignored, said at once, the buttons waiting and looking it, how rough, a failure said); and "Out of town / traveling" on the trip's screen, row, line, History, the Brain's facts and the Worker's day words; then the two found at their live check (a day read where the phone is, never as the UTC date of a stamp; the move cue reading Now again when a slide or a fade on it ends) | 47 of 48 first: naming's own keep was hidden by the copy that follows every write, so its test now sets that copy aside; then the four keep entries, 4 of 4, and the waiting chips' look, added after reading the live check's captures, 1 of 1: 49 of 49, each from a green baseline. The two found at the live check: the cue's break missed first, since its test's control sat directly under Now, where the cue's own layout check sees a slide; nested in a still block, as the panel that made the themes audit flaky is, 3 of 3. With them, every older entry that breaks a file these fixes changed, re-run against their code: 100 of 100, after five restated (below); one baseline was red once, a one-off, its test passing alone four times, and the entry was then caught |
 | `polish_breaks.py` | the polish pass (2026-11-07): the sweets hint under the question on the afternoon's card and in the evening's list, in the owner's words, outside the button and in line with the question's words; Now's five effort figures in one row wherever five 48-pixel targets fit, three to a row where they do not, never one alone or past their room | 11 of 11 at a7a91aa, each from a green baseline (at dcf1787, 10 of 11: one baseline red from the race below). With them, the 55 earlier entries that break a file the pass changed or run a test it changed: 55 of 55, the one red baseline green after the race fix; and the hook's own entry (`stage3_item5_breaks.py` shown-marked) caught. The race fix (a7a91aa, `src/chipsSeen.ts`: a chip's shown mark lost when its screen drew after its record) has no table entry, since one run cannot show a race: with the old hook put back the sweets test failed 5 of 10 runs, with the fix it passed 20 of 20 |
+| `phase0_breaks.py` | the weekly copy of the cloud database and its way back (2026-11-12): the snapshot reading fifty records to a request, copying every table, held to the count the database itself gives, leaving nothing half-written behind a failed read, keeping the token out of what it writes, refusing a folder inside a repository; the check comparing the file with its manifest; the restore refusing a database that holds rows, a snapshot that fails its manifest, and the live database under either spelling of its address | 11 of 11 caught |
 
 Run all of a runner's breaks with `python qa/batch2b_breaks.py`, or name ids to run only those:
 `python qa/batch2b_breaks.py coach-limits-said`.
@@ -70,6 +71,26 @@ screen before it rendered.
 
 `LIVE_URL=<url>` points `live-ui-cleanups.mjs`, `live-polish.mjs`, the five `live-stage3*.mjs` scripts, `live-skillcoach.mjs`, `live-repair.mjs`, `live-six-fixes.mjs` and `live-honesty.mjs` at a local preview to prove
 the script itself, and `CHROMIUM_PATH=<path>` launches a browser where Playwright's own is not installed.
+
+## The cloud copy's backup (`scripts/snapshot*.mjs`, `restore-proof.mjs`)
+
+The record's one cloud copy is copied once a week, read-only, to a folder outside every repository.
+
+- `node scripts/snapshot.mjs` reads every table of the cloud database with a read-only token and writes a gzip file
+  and a manifest. It holds the rows it read to the count the database itself gives, reads the file back, and leaves
+  no file under the finished name unless all of that passed. The token is one line of `worker/.dev.vars`, never
+  printed.
+- `node scripts/snapshot-check.mjs` restores the newest snapshot into a temporary local database and compares counts
+  and content.
+- `node scripts/snapshot-restore.mjs --to <address>` writes a snapshot into an empty database. It refuses the live
+  database, a database that holds rows, and a snapshot that fails its manifest.
+- `node qa/restore-proof.mjs` is the new-phone proof: after `npm run build`, a snapshot's rows are served by a
+  stand-in for the cloud to the built app in a throwaway browser profile, which restores the way a new phone does.
+  It prints counts alone, reaches no host but the local preview, and writes nothing to the repository. Run it only
+  on the computer that holds the snapshot.
+
+The scripts' own tests (`src/snapshotScripts.test.ts`) run on a stand-in database and can reach no token and no
+network. A snapshot, its manifest and its counts belong in no repository.
 
 ## Snapshot pairing (`snappair.py`)
 
