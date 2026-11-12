@@ -88,6 +88,14 @@ describe('the judgment engine', () => {
     expect(chooseLine(sheetOf([nap('noPattern')]), [], [])).toBeNull()
   })
 
+  it('speaks of the morning after church only at a lead or a pattern, and says which', () => {
+    const church = (standing: string): Fact => ({ id: 'lastNight', tags: [], text: '', values: { key: 'churchDay', with: 48, without: 60, n: 9, standing }, n: 9 })
+    expect(chooseLine(sheetOf([church('lead')]), [], [])?.text).toContain('Mornings after church read 48 against 60 on other mornings, 9 times: a lead, not yet a pattern.')
+    expect(chooseLine(sheetOf([church('pattern')]), [], [])?.text).toContain('9 times: a steady pattern.')
+    expect(chooseLine(sheetOf([church('noPattern')]), [], [])).toBeNull()
+    expect(chooseLine(sheetOf([church('tooFew')]), [], [])).toBeNull()
+  })
+
   it('speaks of caffeine from reported bands only: the next night like for like, the fixed null words, and a late window', () => {
     const bands = (values: Fact['values']): Fact => ({ id: 'assoc.caffeine.bands', tags: [], text: '', values: { low: 'under 200 mg', high: '200 mg or more', n: 9, m: 6, groups: 2, minutes: -40, quality: -0.2, none: 0, ...values }, n: 15, tier: 'unclear' })
     const shorter = chooseLine(sheetOf([bands({})]), [], [])

@@ -1,5 +1,7 @@
 import { likeForLikeMatched, type Association, type PrivateAssociation } from './associations'
 import { copy } from './copy'
+import { standingLine } from './counted/words'
+import type { NightStanding } from './facts'
 import { fill } from './format'
 import type { LastNight } from './forecastFlow'
 
@@ -113,10 +115,19 @@ export function privateInlineWords(p: PrivateAssociation, alternative: string, n
   return fill(c.privateInline[p.block], { name, with: pct(a.withEvent.mean), without: pct(a.without.mean), n: String(a.withEvent.n), m: String(a.without.n), alternative })
 }
 
-/** The morning's last-night line: like for like only when it is; the first time only when it is; else how many so far, nothing yet set against. */
-export function lastNightWords(ln: LastNight): string {
+/**
+ * The morning's last-night line (the one standard, 2026-11-12). What last night carried; then, once there is enough
+ * to compare, how the mornings after evenings like it have read against the mornings after evenings that started the
+ * same: the like-for-like difference, the number its standing is about, with the evenings on both sides and the
+ * standing in the standard's own words. Too few, or the comparisons failed: how many evenings like it, and no reading.
+ */
+export function lastNightWords(ln: LastNight, night: NightStanding | null): string {
   const c = copy.brief
   const event = c.lastNightEvents[ln.key]
-  if (ln.with !== null && ln.without !== null && ln.matched) return fill(c.lastNight, { event, with: pct(ln.with), without: pct(ln.without), n: String(ln.n) })
-  return ln.n <= 1 ? fill(c.lastNightFirst, { event, n: String(ln.n) }) : fill(c.lastNightUnmatched, { event, n: String(ln.n) })
+  // The comparisons failed on this phone: what it carried, and nothing of a reading.
+  if (!night) return fill(c.lastNightOnly, { event })
+  if (night.standing === 'tooFew' || night.diff === null) return ln.n <= 1 ? fill(c.lastNightFirst, { event, n: String(ln.n) }) : fill(c.lastNightTooFew, { event, n: String(ln.n) })
+  const points = Math.round(Math.abs(night.diff))
+  const said = { event, n: String(night.n), m: String(night.m), standing: standingLine(night) }
+  return points === 0 ? fill(c.lastNightSame, said) : fill(c.lastNight, { ...said, points: `${points} ${points === 1 ? 'point' : 'points'}`, dir: night.diff > 0 ? c.higher : c.lower })
 }

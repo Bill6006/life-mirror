@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { likeForLike, likeForLikeMatched, type Association, type DayPoint, type PrivateAssociation } from './associations'
 import { caffeineLineWords, chipAnswerWords, coolingLineWords, eveningWorkoutWords, hardWorkoutWords, lastNightWords, ownChipLine, passiveLineWords, privateInlineWords, privateLineWords, socialLineWords, sweetAnswerWords, workoutLineWords } from './associationWords'
 import { addDays } from './blocks'
-import { factSheet } from './brainFlow'
+import { briefForCard, factSheet } from './brainFlow'
 import { db, type CheckIn } from './db'
-import { factById } from './facts'
+import { factById, type NightStanding } from './facts'
 import { briefData } from './forecastFlow'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -20,6 +20,8 @@ const matched = likeForLike([point(1, 'solid', true, 70), point(2, 'solid', true
 const apart = likeForLike([point(1, 'firing', true, 80), point(2, 'firing', true, 84), point(3, 'empty', false, 40), point(4, 'empty', false, 44)])
 /** One evening, no morning after it yet. */
 const sparse = likeForLike([point(1, 'solid', true, null)])
+/** Where last night's comparison stands in the sheet's family: a lead on nine evenings against forty unless said otherwise. */
+const night = (over: Partial<NightStanding> = {}): NightStanding => ({ standing: 'lead', direction: 'higher', family: 28, n: 9, m: 40, diff: 6.2, ...over })
 
 const MATCHING = /started the same|ended the same|like for like/i
 const CAUSE = /\b(?:caused|because|made|lifted|helped|led to|thanks to|due to)\b/i
@@ -83,11 +85,18 @@ describe('the record’s comparisons, said only when they hold', () => {
     expect(hardWorkoutWords(3, [{ reading: 'energy', diff: -0.4 }, { reading: 'mood', diff: null }])).toBe('3 days with a session rated too hard or taken close to failure. The next morning, against mornings after other days that ended the same: energy -0.4, mood not comparable yet, in anchor steps.')
   })
 
-  it('says last night’s first time only when it is, and like for like only when it is', () => {
-    expect(lastNightWords({ key: 'napped', with: null, without: null, n: 1, matched: false })).toBe('Last night carried a nap: the first time recorded, so nothing to set this morning against yet.')
-    // Four evenings carried it, with no band shared: never "the first time", never "started the same".
-    expect(lastNightWords({ key: 'napped', with: 82, without: 42, n: 4, matched: false })).toBe('Last night carried a nap; 4 evenings like it so far, nothing yet to set this morning against.')
-    expect(lastNightWords({ key: 'napped', with: 72, without: 61, n: 4, matched: true })).toBe('Last night carried a nap. Mornings after evenings like it have read 72, against 61 after evenings that started the same (4).')
+  it('says last night’s first time only when it is, a difference only with where it stands, and too few with no reading', () => {
+    expect(lastNightWords({ key: 'napped', with: null, without: null, n: 1, matched: false }, night({ standing: 'tooFew', direction: 'none', n: 0, m: 0, diff: null }))).toBe('Last night carried a nap: the first time recorded, so nothing to set this morning against yet.')
+    // Four evenings carried it: under eight a side, so the line says how many and no reading (the one standard, 2026-11-12).
+    expect(lastNightWords({ key: 'napped', with: 72, without: 61, n: 4, matched: true }, night({ standing: 'tooFew', n: 4, m: 20, diff: 11 }))).toBe('Last night carried a nap: 4 evenings like it so far, too few to compare yet.')
+    // With no band shared there is no difference at all: the same words.
+    expect(lastNightWords({ key: 'napped', with: 82, without: 42, n: 4, matched: false }, night({ standing: 'tooFew', n: 0, m: 0, diff: null }))).toBe('Last night carried a nap: 4 evenings like it so far, too few to compare yet.')
+    expect(lastNightWords({ key: 'napped', with: 72, without: 61, n: 9, matched: true }, night())).toBe('Last night carried a nap. Mornings after evenings like it have read 6 points higher than after evenings that started the same (9 against 40). A lead, not yet a pattern · 28 looked at.')
+    expect(lastNightWords({ key: 'napped', with: 50, without: 61, n: 9, matched: true }, night({ standing: 'pattern', direction: 'lower', diff: -11.4 }))).toBe('Last night carried a nap. Mornings after evenings like it have read 11 points lower than after evenings that started the same (9 against 40). A steady pattern.')
+    expect(lastNightWords({ key: 'napped', with: 60, without: 61, n: 9, matched: true }, night({ standing: 'noPattern', diff: -1.2 }))).toContain('have read 1 point lower than after evenings that started the same (9 against 40). No clear pattern yet.')
+    expect(lastNightWords({ key: 'napped', with: 60, without: 60, n: 9, matched: true }, night({ standing: 'noPattern', diff: 0.3 }))).toBe('Last night carried a nap. Mornings after evenings like it have read the same as after evenings that started the same (9 against 40). No clear pattern yet.')
+    // The comparisons failed on this phone: what last night carried, and nothing of a reading.
+    expect(lastNightWords({ key: 'napped', with: 72, without: 61, n: 9, matched: true }, null)).toBe('Last night carried a nap.')
   })
 
   it('names a private item only while the name switch is on, on Evidence and on the move card alike (2026-11-12)', () => {
@@ -109,7 +118,10 @@ describe('the record’s comparisons, said only when they hold', () => {
 
   it('reads as an association in every line, never a cause', () => {
     for (const a of [matched, apart, sparse]) for (const line of everyLine(a)) expect(line, line).not.toMatch(CAUSE)
-    for (const ln of [{ n: 1, matched: false }, { n: 4, matched: false }, { n: 4, matched: true }]) expect(lastNightWords({ key: 'napped', with: 70, without: 60, ...ln })).not.toMatch(CAUSE)
+    for (const ln of [{ n: 1, matched: false }, { n: 4, matched: false }, { n: 4, matched: true }]) {
+      for (const standing of ['tooFew', 'noPattern', 'lead', 'pattern'] as const) expect(lastNightWords({ key: 'napped', with: 70, without: 60, ...ln }, night({ standing }))).not.toMatch(CAUSE)
+      expect(lastNightWords({ key: 'napped', with: 70, without: 60, ...ln }, null)).not.toMatch(CAUSE)
+    }
   })
 })
 
@@ -142,17 +154,46 @@ describe('last night on the morning brief and the day’s sheet', () => {
     await db.checkins.bulkAdd([...sixEvenings(false), ci('2026-09-14', 'evening', 5, { napped: true })])
     const brief = await briefData('2026-09-15')
     expect(brief.lastNight).toMatchObject({ key: 'napped', n: 4, matched: false })
-    expect(lastNightWords(brief.lastNight!)).toBe('Last night carried a nap; 4 evenings like it so far, nothing yet to set this morning against.')
+    const card = await briefForCard('2026-09-15')
+    expect(card.night).toMatchObject({ standing: 'tooFew', diff: null })
+    expect(lastNightWords(card.lastNight!, card.night)).toBe('Last night carried a nap: 4 evenings like it so far, too few to compare yet.')
     const sheet = await factSheet('2026-09-15', new Date(2026, 8, 15, 8, 0))
     expect(factById(sheet, 'lastNight')?.text).toBe('Last night carried a nap; 4 evenings like it so far, nothing to compare yet.')
+    expect(factById(sheet, 'lastNight')?.values).toMatchObject({ key: 'napped', n: 4, with: null, without: null, diff: null, standing: 'tooFew' })
   })
 
   it('says the comparison once evenings like it and evenings without it started the same', async () => {
     await db.checkins.bulkAdd([...sixEvenings(true), ci('2026-09-14', 'evening', 3, { napped: true })])
     const brief = await briefData('2026-09-15')
     expect(brief.lastNight).toMatchObject({ key: 'napped', n: 4, matched: true })
-    expect(lastNightWords(brief.lastNight!)).toMatch(/^Last night carried a nap\. Mornings after evenings like it have read \d+, against \d+ after evenings that started the same \(4\)\.$/)
+    // Three evenings with a morning after against three: far under eight a side, so no reading is said where two used to be.
+    const card = await briefForCard('2026-09-15')
+    expect(card.night).toMatchObject({ standing: 'tooFew', n: 3, m: 3 })
+    expect(lastNightWords(card.lastNight!, card.night)).toBe('Last night carried a nap: 4 evenings like it so far, too few to compare yet.')
     const sheet = await factSheet('2026-09-15', new Date(2026, 8, 15, 8, 0))
-    expect(factById(sheet, 'lastNight')?.text).toMatch(/^Last night carried a nap; the mornings after evenings like it read \d+ against \d+ without, 4 evenings\.$/)
+    expect(factById(sheet, 'lastNight')?.text).toBe('Last night carried a nap. Too few to compare yet: mornings after a nap, 3 with it, 3 without.')
+    expect(factById(sheet, 'lastNight')?.values).toMatchObject({ with: null, without: null, diff: null, standing: 'tooFew' })
+  })
+
+  it('gives last night’s comparison one standing on the brief, in the sheet’s last-night fact and in the sheet’s own fact for the same thing', async () => {
+    // Four weeks of evenings that all started the same, a nap on eight of them in no rhythm and again last night; the mornings after a nap read 75, the others 25.
+    const rows: CheckIn[] = []
+    for (let back = 29; back >= 2; back--) {
+      const day = addDays('2026-09-30', -back)
+      const napped = [3, 4, 6, 10].includes((back - 1) % 14)
+      rows.push(ci(day, 'evening', 3, napped ? { napped: true } : undefined), ci(addDays(day, 1), 'morning', napped ? 4 : 2))
+    }
+    await db.checkins.bulkAdd([...rows, ci('2026-09-29', 'evening', 3, { napped: true })])
+    const card = await briefForCard('2026-09-30')
+    expect(card.lastNight).toMatchObject({ key: 'napped', n: 9 })
+    expect(card.night).toEqual({ standing: 'pattern', direction: 'higher', family: 1, n: 8, m: 20, diff: 50 })
+    expect(lastNightWords(card.lastNight!, card.night)).toBe('Last night carried a nap. Mornings after evenings like it have read 50 points higher than after evenings that started the same (8 against 20). A steady pattern.')
+    const sheet = await factSheet('2026-09-30', new Date(2026, 8, 30, 8, 0))
+    const said = 'A steady pattern: mornings after a nap read 50 points higher, the good direction, like for like (8 with it, 20 without).'
+    expect(factById(sheet, 'lastNight')?.text).toBe(`Last night carried a nap. ${said}`)
+    expect(factById(sheet, 'assoc.napped')?.text).toBe(said)
+    // One standing for one thing, wherever it is said.
+    expect(factById(sheet, 'lastNight')?.values).toMatchObject({ key: 'napped', n: 9, with: 75, without: 25, diff: 50, standing: 'pattern', direction: 'higher', m: 1 })
+    expect(factById(sheet, 'assoc.napped')?.values).toMatchObject({ standing: card.night?.standing, direction: card.night?.direction, m: card.night?.family })
   })
 })

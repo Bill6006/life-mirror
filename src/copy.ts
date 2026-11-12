@@ -1008,9 +1008,14 @@ export const copy = {
   brief: {
     title: 'Since last night',
     starts: 'The brief starts after seven days of record: {d} so far.',
-    lastNight: 'Last night carried {event}. Mornings after evenings like it have read {with}, against {without} after evenings that started the same ({n}).',
+    // The one standard (2026-11-12): the line says a difference only with where it stands, and nothing of one while there is too little to compare.
+    lastNight: 'Last night carried {event}. Mornings after evenings like it have read {points} {dir} than after evenings that started the same ({n} against {m}). {standing}.',
+    lastNightSame: 'Last night carried {event}. Mornings after evenings like it have read the same as after evenings that started the same ({n} against {m}). {standing}.',
+    higher: 'higher',
+    lower: 'lower',
     lastNightFirst: 'Last night carried {event}: the first time recorded, so nothing to set this morning against yet.',
-    lastNightUnmatched: 'Last night carried {event}; {n} evenings like it so far, nothing yet to set this morning against.',
+    lastNightTooFew: 'Last night carried {event}: {n} evenings like it so far, too few to compare yet.',
+    lastNightOnly: 'Last night carried {event}.',
     lastNightEvents: {
       dinner: 'a late or heavy dinner',
       caffeine: 'caffeine reported at the evening check-in',
@@ -2128,7 +2133,7 @@ export const copy = {
       'afternoon-walk': 'The afternoon usually reads {point} here. ⟨A ten-minute walk at midday is an easy lift: it raises mood at once, whatever you expect of it.|A ten-minute walk at midday lifts mood at once, whatever you expect of it.|Walk ten minutes at midday: it lifts mood at once, whatever you expect of it.⟩',
       'partly-honest': 'Partly, {n} times this week⟨, and each one is a start. The|. Partly is a start; the|. The⟩ smaller version is the honest size, and it is the one that gets kept.',
       'caffeine-late': '{when}, {band} was reported at the {block} check-in, {time}. A meta-analysis of trials put the point where about {mg} mg stops shortening sleep at {hours} hours before bed; counted from {time}, that runs past midnight.',
-      'church-morning': 'Mornings after church read {with} against {without} on other mornings, {n} times. The recovery gap is a fact of the day⟨, not of you|, not of you|⟩.',
+      'church-morning': 'Mornings after church read {with} against {without} on other mornings, {n} times: {standing}. The recovery gap is a fact of the day⟨, not of you|, not of you|⟩.',
       'steady-moving': 'Steady, {inside} of {of} blocks inside the usual, and {name} moved this week⟨: that is working||⟩. Progress that is recorded carries part of the effect by itself.',
       'fresh-start': 'A {weekday}. People begin goals more often right after a fresh start like this, and {name}, {d} days still, is the one to restart.',
       'direction-counts': 'Your direction: “{direction}”. So far {study}, {conversations}, {faith}, {her}. Counts, not a verdict.',

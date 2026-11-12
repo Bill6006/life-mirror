@@ -32,7 +32,7 @@ export const SITUATION_SHEETS: Readonly<Record<string, () => FactSheet>> = {
   'afternoon-walk': () => sheetOf([today(), fact('usual.afternoon', { point: 40 })]),
   'partly-honest': () => sheetOf([today(), fact('offers.7d', { partly: 3 })]),
   'caffeine-late': () => sheetOf([today(), fact('caffeine.late', { when: 'today', band: '200 mg or more', block: 'afternoon', time: '3:10 PM', mg: 400, hours: 6 })]),
-  'church-morning': () => sheetOf([today(), fact('lastNight', { key: 'churchDay', with: 48, without: 60, n: 4 })]),
+  'church-morning': () => sheetOf([today(), fact('lastNight', { key: 'churchDay', with: 48, without: 60, n: 9, standing: 'lead' })]),
   'steady-moving': () => sheetOf([today(), fact('steady', { inside: 5, of: 6 }), aim({ gapDays: 2 })]),
   'fresh-start': () => sheetOf([today('Monday'), aim({ gapDays: 6 })]),
   'direction-counts': () => sheetOf([today(), fact('direction', { direction: 'One line, mine' }), fact('becoming', { study: 4, conversations: 2, faith: 1, her: 5 })]),

@@ -9,6 +9,11 @@ lead or a pattern, say which, and take the higher strength only at a pattern.
 Best days: each condition is counted only over the days the record can speak for it, every condition is one family, a
 list shows up to four that stand at a lead, the largest difference first, and a lead is the most it says.
 
+The brief's last-night line: its comparison is a member of the sheet's family, counted once; the card, the sheet's
+last-night fact and the sheet's own fact give it one standing; too few says no reading; the chance is kept only for
+the very occasions it was computed from; and a failed pass leaves the sheet without association facts, with the
+error's name alone riding it.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -47,6 +52,10 @@ WKT = 'src/weekly.test.ts'
 WF = 'src/weeklyFacts.ts'
 WFT = 'src/weeklyFacts.test.ts'
 C = 'src/counted/compare.ts'
+AWT = 'src/associationWords.test.ts'
+BF = 'src/brainFlow.ts'
+KT2 = 'src/keptChance.test.ts'
+AFT = 'src/assocFault.test.ts'
 
 TABLE = [
     dict(id='promising-is-only-the-good-direction', file=A,
@@ -137,6 +146,46 @@ TABLE = [
          old="      return `${w.thing}: ${counts}, ${often} on the best days (${said('lead')})`",
          new="      return `${w.thing}: ${counts}`",
          tests=[WFT], pattern='a faith practice and a Social path rep'),
+    dict(id='a-comparison-is-one-member-of-the-family', file=F,
+         old="a?.compared && !seen.has(a.compared.id) && seen.add(a.compared.id) ? [a.compared] : []",
+         new="a?.compared ? [a.compared] : []",
+         tests=[AWT], pattern='one standing on the brief'),
+    dict(id='last-night-says-no-reading-when-too-few', file=F,
+         old="  const compared = s.standing !== 'tooFew' && a.diff !== null",
+         new="  const compared = a.diff !== null",
+         tests=[AWT], pattern='once evenings like it and evenings without it started the same'),
+    dict(id='last-night-fact-says-its-standing', file=F,
+         old="      : `Last night carried ${event}. ${withWords({ thing: event, after: 'Mornings after', unit: 'points', n: s.n, m: s.m, diff: a.diff, likeForLike: true, standing: s.standing,",
+         new="      : `Last night carried ${event}. ${withWords({ thing: event, after: 'Mornings after', unit: 'points', n: s.n, m: s.m, diff: a.diff, likeForLike: true, standing: 'noPattern',",
+         tests=[AWT], pattern='one standing on the brief'),
+    dict(id='last-night-line-reads-the-family', file=BF,
+         old="  return { ...brief, night: family ? nightStanding(family, key) : null }",
+         new="  return { ...brief, night: family ? { ...nightStanding(family, key), standing: 'lead' as const } : null }",
+         tests=[AWT], pattern='one standing on the brief'),
+    dict(id='church-morning-speaks-only-at-a-lead-or-a-pattern', file=S,
+         old="      return f && stands && str(f, 'key') === 'churchDay'",
+         new="      return f && str(f, 'key') === 'churchDay'",
+         tests=[ST], pattern='only at a lead or a pattern'),
+    dict(id='the-chance-is-kept-only-for-the-same-occasions', file=A,
+         old="  if (kept && kept.from === from) return kept.compared",
+         new="  if (kept) return kept.compared",
+         tests=[KT2], pattern='worked out again'),
+    dict(id='the-chance-is-kept', file=A,
+         old="  keptChance.set(named.id, { from, compared })",
+         new="",
+         tests=[KT2], pattern='worked out once'),
+    dict(id='a-failed-pass-rides-the-sheet', file=BF,
+         old="  if (assocFault) sheet.assocFault = assocFault\n",
+         new="",
+         tests=[AFT], pattern='rides it by its name alone'),
+    dict(id='a-failed-pass-keeps-the-name-alone', file=BF,
+         old="    const name = e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error'",
+         new="    const name = e instanceof Error ? e.message : 'Error'",
+         tests=[AFT], pattern='rides it by its name alone'),
+    dict(id='a-failed-pass-says-no-reading', file='src/associationWords.ts',
+         old="  if (!night) return fill(c.lastNightOnly, { event })",
+         new="  if (!night) return fill(c.lastNight, { event, n: String(ln.n), m: '0', standing: '', points: '0 points', dir: c.higher })",
+         tests=[AFT], pattern='no reading'),
 ]
 
 

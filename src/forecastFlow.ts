@@ -5,9 +5,8 @@ import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
 import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
 import { associationFor, likeForLikeMatched } from './associations'
-import { chipShownAt } from './chips'
-import { natureEvening, natureKnown, natureMoveDays } from './nature'
-import { churchIn } from './church'
+import { eventTest, knownTest, lastNightKeys, type LastNightKey } from './lastNight'
+import { natureMoveDays } from './nature'
 import type { AnchorSwap, Card, CheckIn, DayContext, Declaration, ForecastScore, Offer, Outcome } from './db'
 import { checksAsShown, honestyChecks, type HonestyChecks } from './honesty/checks'
 import { guardRepair } from './repair/breaker'
@@ -80,45 +79,7 @@ async function forecastOnce(today: string): Promise<void> {
   })
 }
 
-export type LastNightKey = 'dinner' | 'caffeine' | 'coolingOff' | 'bigSocial' | 'napped' | 'nature' | 'sweet' | 'nothingLanded' | 'hardToSeePoint' | 'necessity' | 'churchDay' | 'workout'
-
-/** What yesterday's evening carried that the record can set this morning against: its extras and chips, a necessity missed, the church day, a workout finished that evening. */
-export function lastNightKeys(evening: CheckIn | undefined, ctx: DayContext | undefined, workout: boolean, natureDay = false): LastNightKey[] {
-  const ex = evening?.extras ?? {}
-  const keys: LastNightKey[] = []
-  if (ex.dinner) keys.push('dinner')
-  if (ex.caffeine || ex.caffeineIntake) keys.push('caffeine')
-  if (ex.coolingOff) keys.push('coolingOff')
-  if (ex.bigSocial) keys.push('bigSocial')
-  if (ex.napped) keys.push('napped')
-  if (ex.nature || natureDay) keys.push('nature')
-  if (ex.sweet) keys.push('sweet')
-  if (ex.nothingLanded) keys.push('nothingLanded')
-  if (ex.hardToSeePoint) keys.push('hardToSeePoint')
-  if (necessitiesMissed(ex).length) keys.push('necessity')
-  // Item 3: a day with church on the schedule that evening, the Third Day's included; the schedule, never attendance.
-  if (ctx?.churchDay || churchIn(ctx, 'evening')) keys.push('churchDay')
-  if (workout) keys.push('workout')
-  return keys
-}
-
-/** The evening test for a key: what the evening record says, or what its day's context and the evening workouts say. */
-function eventTest(key: LastNightKey, ctxByDay: ReadonlyMap<string, DayContext>, outside: ReadonlySet<string>, natureMoves: ReadonlySet<string>): (c: CheckIn) => boolean {
-  switch (key) {
-    case 'nature':
-      return (c) => natureEvening(c, natureMoves)
-    case 'necessity':
-      return (c) => necessitiesMissed(c.extras).length > 0
-    case 'churchDay':
-      return (c) => Boolean(ctxByDay.get(c.day)?.churchDay) || churchIn(ctxByDay.get(c.day), 'evening')
-    case 'workout':
-      return (c) => outside.has(c.day)
-    case 'caffeine':
-      return (c) => Boolean(c.extras?.caffeine || c.extras?.caffeineIntake)
-    default:
-      return (c) => Boolean(c.extras?.[key])
-  }
-}
+export { lastNightKeys, type LastNightKey } from './lastNight'
 
 export interface LastNight {
   key: LastNightKey
@@ -180,11 +141,8 @@ export async function briefData(today: string): Promise<Brief> {
   const outside = eveningWorkoutDays(outsideRows)
   const natureMoves = natureMoveDays(outcomes)
   const eve = checkins.find((c) => c.day === yesterday && c.block === 'evening')
-  // Caffeine is set only against evenings where the item was seen and left: an evening nobody saw it enters neither side (Part 22).
-  const caffeineKnown = (c: CheckIn) => Boolean(c.extras?.caffeine || c.extras?.caffeineIntake || c.extras?.caffeineShown)
-  // A chip from stage 3, item 5, likewise: only evenings that showed it (Rule 2).
-  // Time in nature (item 2 of 4): from its start, where the chip was shown or a move in nature says the day.
-  const known = (key: LastNightKey) => (key === 'caffeine' ? caffeineKnown : key === 'nature' ? (c: CheckIn) => natureKnown(c, natureMoves) : key === 'sweet' ? (c: CheckIn) => chipShownAt(key, c) : undefined)
+  // Where the record can speak for each thing is kept with the twelve themselves (lastNight.ts): caffeine, time in nature and something sweet only where they were seen.
+  const known = (key: LastNightKey) => knownTest(key, natureMoves)
   const carried = lastNightKeys(eve, ctxByDay.get(yesterday), outside.has(yesterday), natureMoves.has(yesterday)).map((key) => ({ key, assoc: associationFor(checkins, today, eventTest(key, ctxByDay, outside, natureMoves), known(key)) }))
   const best = carried.filter((c) => c.assoc.diff !== null).sort((a, b) => b.assoc.times - a.assoc.times)[0] ?? carried[0] ?? null
   const lastNight: LastNight | null = best ? { key: best.key, with: best.assoc.withEvent.mean, without: best.assoc.without.mean, n: best.assoc.times, matched: likeForLikeMatched(best.assoc) } : null

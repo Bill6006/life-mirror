@@ -1,10 +1,11 @@
 import { lastNightWords } from './associationWords'
 import { useEffect, useState } from 'preact/hooks'
-import { applyLineAction, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefLine } from './brainFlow'
+import { applyLineAction, briefForCard, chooseAndLog, feedbackFor, lineActionState, lineTiming, markShown, recordFeedback, todaysLine, whyFor, writtenBy, type ActionState, type BriefCard as BriefData, type BriefLine } from './brainFlow'
 import { NOTHING } from './catalogue'
 import { copy } from './copy'
 import { clockTimes12, fill, formatDayShort, formatHHMM } from './format'
-import { briefData, type Brief as BriefData, type LastNight, type YesterdayMove } from './forecastFlow'
+import type { NightStanding } from './facts'
+import type { LastNight, YesterdayMove } from './forecastFlow'
 import { gradeWord } from './library'
 import { useLive } from './live'
 import { nameOf } from './offerFlow'
@@ -25,9 +26,9 @@ import type { AskAboutThis } from './ask/askScreen'
 // or for today; with no line it names the window the readings cover (owner, 2026-09-23).
 
 /** Line one: last night against the mornings after evenings like it; else yesterday beside what happened. */
-export function lastNightLine(b: { lastNight: LastNight | null; yesterday: { expected: number; actual: number; hit: boolean } | null }): string {
+export function lastNightLine(b: { lastNight: LastNight | null; night: NightStanding | null; yesterday: { expected: number; actual: number; hit: boolean } | null }): string {
   const c = copy.brief
-  if (b.lastNight) return lastNightWords(b.lastNight)
+  if (b.lastNight) return lastNightWords(b.lastNight, b.night)
   if (b.yesterday) return fill(c.yesterday, { expected: String(b.yesterday.expected), actual: String(b.yesterday.actual), result: b.yesterday.hit ? c.hit : c.miss })
   return c.yesterdayNone
 }
@@ -235,7 +236,7 @@ function BrainLine({ day, line, act, open, onToggle, primary }: { day: string; l
 
 /** The brief on Now. Its action carries the screen's one accent only when Now says it is the thing to do (primary). */
 export function Brief({ day, version = 0, tick = 0, primary = false, onAsk }: { day: string; version?: number; tick?: number; primary?: boolean; onAsk?: (about: AskAboutThis) => void }) {
-  const b = useLive(() => briefData(day), [day])
+  const b = useLive(() => briefForCard(day), [day])
   // Read again each minute: a line whose moment is gone is not the day's line (truth audit, 2026-09-24).
   const line = useLive(() => todaysLine(day), [day, tick])
   const act = useLive(() => (line ? lineActionState(day, line.action ?? null) : Promise.resolve(null)), [day, line?.key, JSON.stringify(line?.action ?? null), version])

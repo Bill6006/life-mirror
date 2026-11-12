@@ -13,10 +13,11 @@ describe('the brief', () => {
   })
 
   it('sets last night against the mornings after evenings like it, or falls back to yesterday beside what happened', () => {
-    expect(lastNightLine({ lastNight: { key: 'dinner', with: 55, without: 62, n: 9, matched: true }, yesterday: null })).toBe('Last night carried a late or heavy dinner. Mornings after evenings like it have read 55, against 62 after evenings that started the same (9).')
-    expect(lastNightLine({ lastNight: { key: 'workout', with: null, without: null, n: 1, matched: false }, yesterday: null })).toContain('the first time recorded')
-    expect(lastNightLine({ lastNight: null, yesterday: { expected: 60, actual: 64, hit: true } })).toBe('Yesterday: expected 60, read 64; within the range.')
-    expect(lastNightLine({ lastNight: null, yesterday: null })).toBe('Last night carried nothing the record can set this morning against.')
+    // The difference is said with where it stands in the sheet's family (the one standard, 2026-11-12).
+    expect(lastNightLine({ lastNight: { key: 'dinner', with: 55, without: 62, n: 9, matched: true }, night: { standing: 'lead', direction: 'lower', family: 28, n: 9, m: 31, diff: -7.2 }, yesterday: null })).toBe('Last night carried a late or heavy dinner. Mornings after evenings like it have read 7 points lower than after evenings that started the same (9 against 31). A lead, not yet a pattern · 28 looked at.')
+    expect(lastNightLine({ lastNight: { key: 'workout', with: null, without: null, n: 1, matched: false }, night: { standing: 'tooFew', direction: 'none', family: 28, n: 0, m: 0, diff: null }, yesterday: null })).toContain('the first time recorded')
+    expect(lastNightLine({ lastNight: null, night: null, yesterday: { expected: 60, actual: 64, hit: true } })).toBe('Yesterday: expected 60, read 64; within the range.')
+    expect(lastNightLine({ lastNight: null, night: null, yesterday: null })).toBe('Last night carried nothing the record can set this morning against.')
   })
 
   it('reads yesterday’s move this morning as one reading, never a finding', () => {

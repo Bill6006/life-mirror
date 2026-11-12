@@ -57,7 +57,8 @@ function run(world: World): { tested: number; eager: number; called: number } {
   return { tested, eager, called }
 }
 
-describe('the chance check, on three hundred seeded people', () => {
+// Each of these runs three hundred people through the chance check: a few seconds alone, more on a loaded machine.
+describe('the chance check, on three hundred seeded people', { timeout: 60_000 }, () => {
   it('with nothing there, gives a chance at or under 0.05 about five times in a hundred', () => {
     // 58 of 1,200 as built.
     const { tested, eager } = run('nothing')

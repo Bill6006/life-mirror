@@ -7,7 +7,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "caffeine-late": "{when}, {band} was reported at the {block} check-in, {time}. A meta-analysis of trials put the point where about {mg} mg stops shortening sleep at {hours} hours before bed; counted from {time}, that runs past midnight.",
   "caffeine-sleep-even": "Next nights show no difference yet between days with {low} and days with {high} of caffeine reported ({n} and {m} days). Self-reported sleep is known to miss caffeine’s effect.",
   "caffeine-sleep-shorter": "After days with {high} of caffeine reported, {what} the next night than after days with {low} ({m} and {n} days, like for like on the sleep the day began with). An association in your record, not a verdict.",
-  "church-morning": "Mornings after church read {with} against {without} on other mornings, {n} times. The recovery gap is a fact of the day, not of you.",
+  "church-morning": "Mornings after church read {with} against {without} on other mornings, {n} times: {standing}. The recovery gap is a fact of the day, not of you.",
   "commitment-fading": "{name}: {before} sittings in the two weeks before, none in the last two. This is where a commitment is usually let go, and it is the cue that goes first, not the will. Pin the smallest sitting to a moment today.",
   "commitment-thinning": "{name}: none in the last seven days, after {before} the week before. One short sitting keeps the thread; pin it to a moment today.",
   "cue-holds": "{cue} has held {started} of {n} times. Keep that cue; it is doing the work.",
@@ -115,7 +115,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "perspective",
     "score": 0.425,
-    "text": "Mornings after church read 48 against 60 on other mornings, 4 times. The recovery gap is a fact of the day, not of you.",
+    "text": "Mornings after church read 48 against 60 on other mornings, 9 times: a lead, not yet a pattern. The recovery gap is a fact of the day, not of you.",
   },
   "commitment-fading": {
     "action": {

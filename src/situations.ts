@@ -392,7 +392,9 @@ export const SITUATIONS: readonly Situation[] = [
     cooldownDays: 7,
     test: (sheet) => {
       const f = factById(sheet, 'lastNight')
-      return f && str(f, 'key') === 'churchDay' && num(f, 'with') !== null ? { factIds: [f.id], strength: 0.5, vars: { with: s(num(f, 'with')), without: s(num(f, 'without')), n: s(num(f, 'n')) } } : null
+      // The phone speaks of the difference only at a lead or a pattern, and says which (the one standard, 2026-11-12).
+      const stands = f !== undefined && ['lead', 'pattern'].includes(String(f.values.standing))
+      return f && stands && str(f, 'key') === 'churchDay' && num(f, 'with') !== null ? { factIds: [f.id], strength: 0.5, vars: { with: s(num(f, 'with')), without: s(num(f, 'without')), n: s(num(f, 'n')), standing: standingSaid(f) } } : null
     },
   },
   {

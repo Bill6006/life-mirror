@@ -55,6 +55,23 @@ const BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firi
  * smaller side. The difference itself is the counted foundation's (2026-11-12): this hands it the occasions that have
  * a band and an outcome, band by band in the order it has always taken them, so every number is the one it always was.
  */
+/**
+ * The chance check of a named comparison, kept by exactly what it was computed from (2026-11-12). The same occasions,
+ * id and size give the same answer, so a family that two screens gather pays for its shuffles once. One entry for
+ * each id; an entry is used only when every occasion matches.
+ */
+const keptChance = new Map<string, { from: string; compared: Compared }>()
+const KEPT_MOST = 400
+function comparedOnce(occasions: readonly Point[], named: Named): Compared {
+  const from = `${named.worth}|${occasions.map((p) => `${p.day}${p.event ? '+' : '-'}${p.band ?? ''}:${p.outcome}`).join(';')}`
+  const kept = keptChance.get(named.id)
+  if (kept && kept.from === from) return kept.compared
+  const compared = compare(occasions, named)
+  if (keptChance.size >= KEPT_MOST) keptChance.clear()
+  keptChance.set(named.id, { from, compared })
+  return compared
+}
+
 export function likeForLike(points: readonly DayPoint[], named?: Named): Association {
   const withEvent = points.filter((p) => p.event)
   const without = points.filter((p) => !p.event)
@@ -70,7 +87,7 @@ export function likeForLike(points: readonly DayPoint[], named?: Named): Associa
     // The occasions the difference rests on: those in a band both sides share. Eight of them a side, or nothing is tested.
     const n = shared.flat().filter((p) => p.event).length
     const m = shared.flat().length - n
-    const tested = n >= MIN_SIDE && m >= MIN_SIDE ? compare(occasions, named) : null
+    const tested = n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null
     out.compared = { id: named.id, n, m, diff, enough: tested !== null && tested.enough, p: tested?.p ?? null, worth: named.worth }
   }
   return out

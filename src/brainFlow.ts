@@ -12,9 +12,9 @@ import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
 import { firmMode, firmOn, firmPrefNow, firmPrefOf, type FirmMode } from './firmFlow'
 import type { Firmness } from './firmness'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathAdaptation, type PathMark } from './db'
-import { buildFactSheet, onTheSheet, type FactSheet } from './facts'
+import { buildFactSheet, nightStanding, onTheSheet, sheetAssociations, type FactSheet, type NightStanding } from './facts'
 import { wasShown } from './shown'
-import { briefData, usualFor, weeklyAnalyses } from './forecastFlow'
+import { briefData, usualFor, weeklyAnalyses, type Brief } from './forecastFlow'
 import { evidence } from './evidenceFlow'
 import { cardById, type ClaimCard } from './library'
 import { minutesOf, withDefaults } from './settings'
@@ -29,6 +29,45 @@ import { repairEvidenceFrom, trackSummary } from './repair/evidence'
 // reads; the phone's own line for the day, chosen once and logged; the tap that says how it
 // landed; the one tap that does what the line says; why it said it; and the week reviewed. The
 // Worker's line, when there is one, is read from the rows it wrote.
+
+/** The comparisons' own failures on this phone since the app started: how many, the first and last day, and the error's name, never its message. */
+let assocFault: { count: number; first: string; last: string; name: string } | null = null
+
+/**
+ * The association pass, wrapped as the engine is (2026-11-12): if it throws, the caller goes on without it (a sheet
+ * with no association facts, a last-night line with no comparison), and the failure is kept for the Worker's report.
+ */
+export function guardAssociations<T>(day: string, read: () => T): T | null {
+  try {
+    return read()
+  } catch (e) {
+    console.error(e)
+    const name = e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error'
+    assocFault = { count: (assocFault?.count ?? 0) + 1, first: assocFault?.first ?? day, last: day, name }
+    return null
+  }
+}
+
+/** For tests: the failures as a new start of the app finds them. */
+export function resetAssociationFaults(): void {
+  assocFault = null
+}
+
+/** The morning brief as the card shows it: its readings, and where last night's comparison stands in the sheet's family. */
+export type BriefCard = Brief & { night: NightStanding | null }
+
+/**
+ * The brief for the card on Now (2026-11-12). Last night's line says its comparison only with its standing, and the
+ * standing is the sheet's own: the same family, gathered by the same function from the same record. The shuffles are
+ * kept by what they were computed from, so the card and the sheet pay for them once.
+ */
+export async function briefForCard(day: string): Promise<BriefCard> {
+  const [brief, checkins, contexts, ev, outcomes, items, settings, outside] = await Promise.all([briefData(day), allCheckIns(), db.days.toArray(), evidence(day), db.outcomes.toArray(), privateItems(), getSettings(), db.outside.toArray()])
+  if (!brief.lastNight) return { ...brief, night: null }
+  const key = brief.lastNight.key
+  const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
+  return { ...brief, night: family ? nightStanding(family, key) : null }
+}
 
 export async function factSheet(day: string, now: Date = new Date(), coach: CoachMode = coachMode(), firm: FirmMode = firmMode()): Promise<FactSheet> {
   const [checkins, contexts, brief, ev, aims, skills, marks, records, intentions, wins, outside, items, settings, log, feedback, brainBriefs] = await Promise.all([
@@ -67,7 +106,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // Stage 3, group 1: the weekly view's analyses for the Sunday review, over the steps the sheet may count (Part 27); with
   // stage R7's honesty checks, and the scorecard's count the learning engine's own.
   const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers, repair: repair ? trackSummary(repair) : null }, day)
-  const sheet = buildFactSheet({ day, now, checkins, contexts, brief, evidence: ev, cards, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, adaptations, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
+  // The comparisons, gathered once under their own guard: if they throw, the sheet is built without association facts.
+  const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
+  const sheet = buildFactSheet({ day, now, family, checkins, contexts, brief, evidence: ev, cards, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, adaptations, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
   const said = log.filter((l) => l.situationId !== null && wasShown(l, brainBriefs)).map((l) => ({ day: l.day, situationId: l.situationId }))
@@ -77,6 +118,7 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // The engine's failures on this phone ride the sheet for the Worker's report alone (the owner's requirement of 2026-10-20).
   const fault = repairFaults()
   if (fault) sheet.engineFault = fault
+  if (assocFault) sheet.assocFault = assocFault
   // The storage interrupted under the app, the same way (2026-10-23, the blank Now).
   const storage = storageFaults()
   if (storage) sheet.storageFault = storage
@@ -180,10 +222,10 @@ export async function writeFactsRow(day: string, now: Date = new Date()): Promis
   const sheet = await factSheet(day, now)
   const coach = await coachFor(day, now)
   const existing = await db.facts.get(day)
-  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn' | 'engineFault' | 'storageFault' | 'screenFault') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
+  const same = (k: 'facts' | 'said' | 'shortlist' | 'checkedIn' | 'engineFault' | 'storageFault' | 'screenFault' | 'assocFault') => JSON.stringify(existing?.sheet[k] ?? null) === JSON.stringify(sheet[k] ?? null)
   const sameCoach = JSON.stringify(existing?.coach ?? null) === JSON.stringify(coach)
   // A failure kept since the last row is written too, so the Worker's report shows it with the facts unchanged (2026-10-23).
-  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && same('engineFault') && same('storageFault') && same('screenFault') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
+  if (existing && same('facts') && same('said') && same('shortlist') && same('checkedIn') && same('engineFault') && same('storageFault') && same('screenFault') && same('assocFault') && existing.sheet.showPrivate === sheet.showPrivate && sameCoach) return false
   await db.facts.put({ day, builtAt: sheet.builtAt, updatedAt: now.toISOString(), sheet, ...(coach ? { coach } : {}) })
   return true
 }

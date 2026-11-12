@@ -1,6 +1,7 @@
 import { addDays, BLOCKS, blockAt, blockIndex, dayKey, daysBetween, type Block } from './blocks'
 import { doneBySetting, pathName, pathToday, socialEnergyOn, stageWords } from './pathStage'
-import { afternoonAssociation, associationFor, morningAssociation, privateAssociations, tierFor, type Association } from './associations'
+import { afternoonAssociation, associationFor, morningAssociation, privateAssociations, tierFor, type Association, type PrivateAssociation } from './associations'
+import { lastNightAssociations, type LastNightKey } from './lastNight'
 import { type Direction, type Standing, standings, type Stood, WORTH_POINTS } from './counted/compare'
 import { STANDING_WORDS, withWords } from './counted/words'
 import { becoming, blockedBy, cueCounts, currentSkillOf, followThrough, keysOf, lastDoneDay, lastPracticeDay, latestPlans, planFor, practiceDaysOf, practiceOn, sessionsToday, skillsOfAim, stepFor, studyOfferBelongs } from './aims'
@@ -15,7 +16,7 @@ import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
 import { chipShownAt } from './chips'
 import { churchWords, timesWords } from './church'
-import { NATURE_EVENT, NATURE_MINUTES, natureAssociations } from './nature'
+import { NATURE_EVENT, NATURE_MINUTES, natureAssociations, natureMoveDays, type NatureAssociations } from './nature'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
 import { sittingOf } from './ladder'
@@ -27,7 +28,7 @@ import { usageFacts } from './usageFacts'
 import type { RepairEvidence } from './repair/evidence'
 import { repairFacts } from './repair/facts'
 import type { Where } from './location'
-import { HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
+import { eveningWorkoutDays, HARD_MEASURES, isHard, lastWorkout, sessionSlot, type HardMeasure } from './workouts'
 
 // The fact sheet: everything the app knows about the day, as facts with ids and values, built by
 // the same deterministic code that draws every screen. The brain, on the phone or in the Worker,
@@ -87,6 +88,8 @@ export interface FactInput {
   weekly?: WeeklyAnalyses
   /** Stage 3, item 6: the weather's switch is on. Absent, no weather fact is written and the sheet is as it was. */
   weatherOn?: boolean
+  /** The sheet's family, when the caller gathered it under its own guard: null when that failed, and the sheet then carries no association fact. Left out, it is gathered here. */
+  family?: SheetAssociations | null
   /** Stage R5: the learning engine's tests and track record. Absent when the engine failed: the sheet then carries no test facts. */
   repair?: RepairEvidence
 }
@@ -204,7 +207,9 @@ const stepScale = (id: string): boolean => id.startsWith('assoc.hardWorkout.') |
  * chance of each is corrected across all of them, so the sheet pays for every comparison it looked at.
  */
 export function sheetStandings(list: readonly (Association | null | undefined)[]): Map<string, Stood> {
-  const family = list.flatMap((a) => (a?.compared ? [a.compared] : []))
+  // A comparison is one member of the family, however many surfaces read it: the first of an id is the one kept.
+  const seen = new Set<string>()
+  const family = list.flatMap((a) => (a?.compared && !seen.has(a.compared.id) && seen.add(a.compared.id) ? [a.compared] : []))
   return new Map(standings(family).map((s) => [s.id, stepScale(s.id) && s.standing === 'pattern' ? { ...s, standing: 'lead' as const } : s]))
 }
 
@@ -221,6 +226,92 @@ function stoodFor(a: Association, stood: ReadonlyMap<string, Stood>, higherIsGoo
   const tier = tierFor(standing, helpful)
   const family = s?.family ?? 0
   return { standing, direction, helpful, tier, family, n: a.compared?.n ?? 0, m: a.compared?.m ?? 0, values: { standing, direction, helpful: helpful === null ? null : helpful ? 1 : 0, p: a.compared?.p ?? null, m: family } }
+}
+
+/** Every association the sheet's family holds, each gathered once, and their standings as one family. */
+export interface SheetAssociations {
+  napped: Association
+  sweetAfternoon: Association
+  sweetEvening: Association
+  shortSleep: Association
+  nature: NatureAssociations
+  privates: PrivateAssociation[]
+  weather: ReturnType<typeof weatherEvidence>
+  /** What an evening can carry, each set against the morning after: the brief's last-night line reads the one last night carried. */
+  night: Record<LastNightKey, Association>
+  stood: Map<string, Stood>
+}
+
+/**
+ * The sheet's family, gathered in one place (2026-11-12): the chips, the other app's workouts, time in nature, something
+ * sweet, short nights, the private items, the weather, and the twelve things an evening can carry. The sheet's facts
+ * and the brief's last-night line both read it, so one thing has one standing. A thing the sheet already compares is
+ * read for the last-night line from the sheet's own comparison.
+ */
+export function sheetAssociations(i: Pick<FactInput, 'checkins' | 'contexts' | 'outcomes' | 'outside' | 'items' | 'weatherOn' | 'evidence'>, today: string): SheetAssociations {
+  const napped = associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped), undefined, { id: 'assoc.napped', worth: WORTH_POINTS })
+  const sweetAfternoon = afternoonAssociation(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c), { id: 'assoc.sweet', worth: WORTH_POINTS })
+  const sweetEvening = associationFor(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c), { id: 'assoc.sweet.evening', worth: WORTH_POINTS })
+  const shortSleep = morningAssociation(i.checkins, today, (c) => (c.answers.sleepHours ?? 9) <= SHORT_SLEEP, { id: 'assoc.shortSleep', worth: WORTH_POINTS })
+  const nature = natureAssociations(i.checkins, i.outcomes, today, WORTH_POINTS)
+  const privates = privateAssociations(true, i.items, i.checkins, today, WORTH_POINTS)
+  const weather = i.weatherOn ? weatherEvidence(i.checkins, i.contexts, today, WORTH_POINTS) : null
+  const twelve = lastNightAssociations({ checkins: i.checkins, contexts: new Map(i.contexts.map((c) => [c.day, c])), eveningWorkouts: eveningWorkoutDays(i.outside), natureMoves: natureMoveDays(i.outcomes) }, today)
+  const night: Record<LastNightKey, Association> = { ...twelve, napped, sweet: sweetEvening, nature: nature.morning, coolingOff: i.evidence.coolingOff?.association ?? twelve.coolingOff, bigSocial: i.evidence.bigSocial ?? twelve.bigSocial, workout: i.evidence.eveningWorkout?.morning ?? twelve.workout }
+  const stood = sheetStandings([
+    i.evidence.coolingOff?.association,
+    i.evidence.bigSocial,
+    i.evidence.heavyCaffeine,
+    i.evidence.workouts,
+    i.evidence.eveningWorkout?.morning,
+    i.evidence.eveningWorkout?.sleep,
+    ...Object.values(i.evidence.hardWorkout?.measures ?? {}),
+    napped,
+    sweetAfternoon,
+    sweetEvening,
+    shortSleep,
+    nature.evening,
+    nature.morning,
+    ...privates.map((x) => x.association),
+    weather?.rain,
+    weather?.sun,
+    ...Object.values(night),
+  ])
+  return { napped, sweetAfternoon, sweetEvening, shortSleep, nature, privates, weather, night, stood }
+}
+
+/** Where one of the twelve stands in the sheet's family, with what the brief's line says beside it. */
+export interface NightStanding {
+  standing: Standing
+  direction: Direction
+  /** How many comparisons of the sheet's family were tested: the number said with a lead. */
+  family: number
+  /** Evenings with it and without it, among those that started the same. */
+  n: number
+  m: number
+  /** The like-for-like difference in the morning after, out of 100: the number the standing is about. */
+  diff: number | null
+}
+
+export function nightStanding(family: SheetAssociations, key: LastNightKey): NightStanding {
+  const a = family.night[key]
+  const s = stoodFor(a, family.stood, true)
+  return { standing: s.standing, direction: s.direction, family: s.family, n: s.n, m: s.m, diff: a.diff }
+}
+
+/** The last-night line's fact: what last night carried, and its comparison in the standard's own sentence. */
+function lastNightFact(key: LastNightKey, a: Association, stood: ReadonlyMap<string, Stood>): Fact {
+  const event = copy.brief.lastNightEvents[key]
+  const s = stoodFor(a, stood, true)
+  const tag = key === 'churchDay' ? 'church' : key === 'bigSocial' ? 'social-event' : key === 'napped' ? 'nap' : key === 'nature' ? 'nature' : key === 'workout' ? 'workout' : key === 'caffeine' ? 'caffeine' : 'evening'
+  // With no band shared there is nothing to set against anything: said as it always was, by the evenings behind it.
+  const text =
+    a.diff === null
+      ? `Last night carried ${event}; ${a.times} evenings like it so far, nothing to compare yet.`
+      : `Last night carried ${event}. ${withWords({ thing: event, after: 'Mornings after', unit: 'points', n: s.n, m: s.m, diff: a.diff, likeForLike: true, standing: s.standing, direction: s.direction, higherIsGood: true, family: s.family })}`
+  // The two readings ride the values only where something is compared: too few says no reading to stand on.
+  const compared = s.standing !== 'tooFew' && a.diff !== null
+  return fact('lastNight', ['evening', 'recovery', tag], text, { key, with: compared ? round(a.withEvent.mean) : null, without: compared ? round(a.without.mean) : null, n: a.times, diff: compared ? round(a.diff) : null, ...s.values }, { n: a.times })
 }
 
 export function assocFact(id: string, tags: string[], event: string, a: Association, after: string, stood: ReadonlyMap<string, Stood>): Fact | null {
@@ -399,6 +490,9 @@ export function tripFact(range: AwayRange | null, contexts: readonly DayContext[
 export function buildFactSheet(i: FactInput): FactSheet {
   const facts: Fact[] = []
   const today = i.day
+  // Every comparison the sheet says is gathered first and given its standing among all of them, as one family. Handed
+  // in by the caller that guards it; null when it failed, and the sheet then carries no association fact.
+  const family = i.family === undefined ? sheetAssociations(i, today) : i.family
   const yesterday = addDays(today, -1)
   const first = i.checkins.reduce<string | null>((f, c) => (f === null || c.day < f ? c.day : f), null)
   const days = first ? daysBetween(first, today) + 1 : 0
@@ -513,13 +607,8 @@ export function buildFactSheet(i: FactInput): FactSheet {
   }
   if (i.brief.whatIf !== null) facts.push(fact('whatIf', ['forecast', 'evening'], `Tonight's what-if: with nothing extra done, the evening usually reads about ${Math.round(i.brief.whatIf)}, the average over recent days with no move marked done in the evening; an assumption, never verified.`, { value: Math.round(i.brief.whatIf) }))
 
-  if (i.brief.lastNight) {
-    const ln = i.brief.lastNight
-    const event = copy.brief.lastNightEvents[ln.key]
-    facts.push(
-      fact('lastNight', ['evening', 'recovery', ln.key === 'churchDay' ? 'church' : ln.key === 'bigSocial' ? 'social-event' : ln.key === 'napped' ? 'nap' : ln.key === 'nature' ? 'nature' : ln.key === 'workout' ? 'workout' : ln.key === 'caffeine' ? 'caffeine' : 'evening'], ln.with === null || ln.without === null || !ln.matched ? `Last night carried ${event}; ${ln.n} evenings like it so far, nothing to compare yet.` : `Last night carried ${event}; the mornings after evenings like it read ${round(ln.with)} against ${round(ln.without)} without, ${ln.n} evenings.`, { key: ln.key, with: round(ln.with), without: round(ln.without), n: ln.n }, { n: ln.n }),
-    )
-  }
+  // Last night's line (the one standard, 2026-11-12): its comparison is the family's own, said with its standing.
+  if (i.brief.lastNight && family) facts.push(lastNightFact(i.brief.lastNight.key, family.night[i.brief.lastNight.key], family.stood))
   if (i.brief.warning?.warning) {
     const w = i.brief.warning
     facts.push(fact('stretch', ['mood', 'necessities'], `${w.under} of the last ${w.of} logged blocks read under their usual low; ${w.chips} evening chips and ${w.necessities} necessities missed in three days.`, { under: w.under, of: w.of, chips: w.chips, necessities: w.necessities }, { n: w.of }))
@@ -554,35 +643,13 @@ export function buildFactSheet(i: FactInput): FactSheet {
   // Item 4: no move suggested, the block lived as usual; nothing is asked of it, so nothing of it is kept or missed.
   if (nothing.offered) facts.push(fact('nothing', ['nothing'], `Nothing extra (no move suggested; the block lived as usual) was drawn ${nothing.offered} times, ${nothing.skipped} of them skipped for a move; every move's test compares the blocks where it was suggested with these.`, nothing, { n: nothing.offered }))
 
-  // Like-for-like associations: the chips, the other app's workouts, and the private items. Every one the sheet carries
-  // is gathered first and given its standing among all of them, as one family; then each fact is written.
-  const napped = associationFor(i.checkins, today, (c) => Boolean(c.extras?.napped), undefined, { id: 'assoc.napped', worth: WORTH_POINTS })
-  const sweetAfternoon = afternoonAssociation(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c), { id: 'assoc.sweet', worth: WORTH_POINTS })
-  const sweetEvening = associationFor(i.checkins, today, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c), { id: 'assoc.sweet.evening', worth: WORTH_POINTS })
-  const shortSleep = morningAssociation(i.checkins, today, (c) => (c.answers.sleepHours ?? 9) <= SHORT_SLEEP, { id: 'assoc.shortSleep', worth: WORTH_POINTS })
-  const nature = natureAssociations(i.checkins, i.outcomes, today, WORTH_POINTS)
-  const privates = privateAssociations(true, i.items, i.checkins, today, WORTH_POINTS)
-  const weather = i.weatherOn ? weatherEvidence(i.checkins, i.contexts, today, WORTH_POINTS) : null
-  const stood = sheetStandings([
-    i.evidence.coolingOff?.association,
-    i.evidence.bigSocial,
-    i.evidence.heavyCaffeine,
-    i.evidence.workouts,
-    i.evidence.eveningWorkout?.morning,
-    i.evidence.eveningWorkout?.sleep,
-    ...Object.values(i.evidence.hardWorkout?.measures ?? {}),
-    napped,
-    sweetAfternoon,
-    sweetEvening,
-    shortSleep,
-    nature.evening,
-    nature.morning,
-    ...privates.map((x) => x.association),
-    weather?.rain,
-    weather?.sun,
-  ])
-  const chip = (id: string, tags: string[], event: string, a: Association | null, after: string) => {
-    const f = a ? assocFact(id, tags, event, a, after, stood) : null
+  // Like-for-like associations: the chips, the other app's workouts, and the private items, each written from the
+  // family gathered above. With the family failed, none is written.
+  const stood: ReadonlyMap<string, Stood> = family?.stood ?? new Map()
+  const privates = family?.privates ?? []
+  const weather = family?.weather ?? null
+  const chip = (id: string, tags: string[], event: string, a: Association | null | undefined, after: string) => {
+    const f = a && family ? assocFact(id, tags, event, a, after, stood) : null
     if (f) facts.push(f)
   }
   chip('assoc.coolingOff', ['cooling-off', 'stress'], 'a cooling-off event', i.evidence.coolingOff?.association ?? null, 'Mornings after')
@@ -592,18 +659,18 @@ export function buildFactSheet(i: FactInput): FactSheet {
   // Part 35: an evening session against the night and the morning after; a hard session against the next morning's four readings.
   chip('assoc.eveningWorkout', ['workout', 'evening', 'sleep'], 'an evening workout', i.evidence.eveningWorkout?.morning ?? null, 'Mornings after')
   chip('assoc.eveningWorkout.sleep', ['workout', 'sleep'], 'an evening workout', i.evidence.eveningWorkout?.sleep ?? null, 'Sleep quality the mornings after')
-  if (i.evidence.hardWorkout) facts.push(hardFact(i.evidence.hardWorkout, stood))
-  chip('assoc.napped', ['nap', 'sleep'], 'a nap', napped, 'Mornings after')
+  if (i.evidence.hardWorkout && family) facts.push(hardFact(i.evidence.hardWorkout, stood))
+  chip('assoc.napped', ['nap', 'sleep'], 'a nap', family?.napped, 'Mornings after')
   // Time in nature (item 2 of 4, 2026-10-21): 20+ minutes in the day, in total, the tap or a move in nature done that reaches it. The
   // evening of (the evidence's same-day outcomes) and the morning after, from the definition's start and only where the record
   // knows the day (Rule 2), so the older Outside a while today is never read as time in nature. Tagged nature, the tag of the
   // library's nature-walk, nature-attention and green-exercise cards; the minutes ride in the values, so a writer may say them.
-  for (const f of [assocFact('assoc.nature', ['nature'], NATURE_EVENT, nature.evening, 'Evenings of', stood), assocFact('assoc.nature.morning', ['nature'], NATURE_EVENT, nature.morning, 'Mornings after', stood)]) if (f) facts.push({ ...f, values: { ...f.values, minutes: NATURE_MINUTES } })
+  for (const f of family ? [assocFact('assoc.nature', ['nature'], NATURE_EVENT, family.nature.evening, 'Evenings of', stood), assocFact('assoc.nature.morning', ['nature'], NATURE_EVENT, family.nature.morning, 'Mornings after', stood)] : []) if (f) facts.push({ ...f, values: { ...f.values, minutes: NATURE_MINUTES } })
   // Something sweet (stage 3, item 5), each against the next check-in. No tags: the library holds no card on it.
-  chip('assoc.sweet', [], 'something sweet in the afternoon', sweetAfternoon, 'Evenings after')
-  chip('assoc.sweet.evening', [], 'something sweet in the evening', sweetEvening, 'Mornings after')
+  chip('assoc.sweet', [], 'something sweet in the afternoon', family?.sweetAfternoon, 'Evenings after')
+  chip('assoc.sweet.evening', [], 'something sweet in the evening', family?.sweetEvening, 'Mornings after')
   // Sleep is answered every full morning and is the largest lever on the day: short nights set against the afternoons that follow, like for like.
-  chip('assoc.shortSleep', ['sleep', 'afternoon', 'energy'], 'a short night (under six hours)', shortSleep, 'Afternoons after')
+  chip('assoc.shortSleep', ['sleep', 'afternoon', 'energy'], 'a short night (under six hours)', family?.shortSleep, 'Afternoons after')
   // Pass 3: an item is compared at each check-in it is placed in, over that check-in's own window; the evening's fact keeps its id.
   for (const p of privates) {
     const at = PRIVATE_FACTS[p.block]

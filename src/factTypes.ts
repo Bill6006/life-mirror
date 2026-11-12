@@ -89,6 +89,12 @@ export interface FactSheet {
    */
   engineFault?: { count: number; first: string; last: string; name: string }
   /**
+   * When the comparisons could not be worked out on the phone (2026-11-12): how many times, the first and last day, and
+   * the error's name, never the record's content. The sheet is then built without association facts. No writer reads
+   * it; the Worker's report /run/engine shows it.
+   */
+  assocFault?: { count: number; first: string; last: string; name: string }
+  /**
    * When the phone's storage was interrupted under the app (2026-10-23, the blank Now): how many times, the first and last
    * minute, the error's name, never content; and how often Now waited past its limit, with the reads that had not
    * answered. No writer reads it; the Worker's report /run/engine shows it, as it does the engine's failures.

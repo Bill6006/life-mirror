@@ -236,7 +236,7 @@ describe('the Brain’s and Ask’s words: scheduled, never attended', () => {
     const brief = await briefData(WED)
     // The three Tuesday evenings with a service on the schedule, last night's among them; the others without.
     expect(brief.lastNight).toMatchObject({ key: 'churchDay', n: 3 })
-    expect(lastNightWords(brief.lastNight!)).toMatch(/^Last night carried a church day on the schedule/)
+    expect(lastNightWords(brief.lastNight!, null)).toBe('Last night carried a church day on the schedule.')
   })
 })
 
