@@ -131,6 +131,8 @@ export interface CountedRecord {
   reading: (number | null)[][]
   /** Each morning as it would have read without the first evening thing's effect. */
   morningWithout: (number | null)[]
+  /** Each morning's own answer for stress, as its anchor from 1 to 5; null where the morning was not answered. */
+  morningStress: (number | null)[]
   shortNight: (boolean | null)[]
   dayThing: boolean[]
   checkinThing: boolean[]
@@ -159,6 +161,7 @@ export function recordOf(spec: CountedWorld, seed: number): CountedRecord {
   // The record: which check-ins were answered, what each read out of 100, and whether the night before was short.
   const reading: (number | null)[][] = []
   const shortNight: (boolean | null)[] = []
+  const morningStress: (number | null)[] = []
   const read = (d: number, b: Block): number | null => {
     const c = world.checkin(d, b)
     return c ? (readingOutOf100(c.answers as Answers, INGREDIENT_READINGS)?.value ?? null) : null
@@ -167,6 +170,7 @@ export function recordOf(spec: CountedWorld, seed: number): CountedRecord {
     reading.push(BLOCKS.map((b) => read(d, b)))
     const morning = world.checkin(d, 'morning')
     shortNight.push(morning ? (morning.answers.sleepHours ?? 9) <= 2 : null)
+    morningStress.push(morning?.answers.stress ?? null)
   }
 
   // The things, each from a stream of its own, drawn for the whole year up front.
@@ -197,7 +201,7 @@ export function recordOf(spec: CountedWorld, seed: number): CountedRecord {
       reading[d + 1][MORNING] = read(d + 1, 'morning')
     }
   }
-  return { weekday, dayName, reading, morningWithout, shortNight, dayThing, checkinThing, eveningThings }
+  return { weekday, dayName, reading, morningWithout, morningStress, shortNight, dayThing, checkinThing, eveningThings }
 }
 
 /** One simulated person through one world: every family the world holds, at every look. */

@@ -46,6 +46,29 @@ function record(seed: number): DayPoint[] {
   }))
 }
 
+describe('the like-for-like comparison, named for the chance check', () => {
+  const evening = (n: number, band: Band, event: boolean, outcome: number): DayPoint => ({ day: `2031-0${1 + Math.floor(n / 28)}-${String(1 + (n % 28)).padStart(2, '0')}`, band, event, outcome })
+  /** Two fortnights: in each, evenings with the thing on its 1st, 2nd, 4th and 8th days and without on its 3rd, 6th, 10th and 13th, all in one band. */
+  const WITH = [0, 1, 3, 7, 14, 15, 17, 21]
+  const WITHOUT = [2, 5, 9, 12, 16, 19, 23, 26]
+
+  it('asks nothing beyond the numbers unless it is named', () => {
+    const points = [...WITH.map((n) => evening(n, 'solid', true, 70)), ...WITHOUT.map((n) => evening(n, 'solid', false, 50))]
+    expect(likeForLike(points).compared).toBeUndefined()
+    expect(likeForLike(points, { id: 'assoc.x', worth: 10 })).toMatchObject({ diff: 20, bands: 1, compared: { id: 'assoc.x', n: 8, m: 8, diff: 20, enough: true, worth: 10 } })
+    // One arrangement in sixty-four sets all eight against all eight: the core's own chance for these evenings.
+    const p = likeForLike(points, { id: 'assoc.x', worth: 10 }).compared?.p as number
+    expect(p).toBeGreaterThan(0.008)
+    expect(p).toBeLessThan(0.03)
+  })
+
+  it('tests nothing under eight matched evenings a side, however many unmatched evenings there are', () => {
+    // Ten evenings with the thing, all solid. Ten without: three solid, seven worn down, where no evening had it.
+    const points = [...Array.from({ length: 10 }, (_, i) => evening(i, 'solid', true, 70)), ...Array.from({ length: 3 }, (_, i) => evening(10 + i, 'solid', false, 50)), ...Array.from({ length: 7 }, (_, i) => evening(13 + i, 'wornDown', false, 30))]
+    expect(likeForLike(points, { id: 'assoc.x', worth: 10 })).toMatchObject({ diff: 20, bands: 1, compared: { n: 10, m: 3, enough: false, p: null } })
+  })
+})
+
 describe('the like-for-like comparison, through the counted foundation', () => {
   it('gives every number it always gave, on five hundred seeded records', () => {
     let compared = 0

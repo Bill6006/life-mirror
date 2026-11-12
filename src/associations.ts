@@ -1,6 +1,6 @@
 import { addDays, daysBetween, type Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
-import { difference } from './counted/compare'
+import { compare, type Compared, difference, MIN_SIDE, type Point } from './counted/compare'
 import type { CheckIn, Offer, Outcome } from './db'
 import { forecast, indexCheckIns, slotKey } from './observe'
 import { bandOf, pointsFor, readingOf, type Band } from './score'
@@ -30,6 +30,12 @@ export interface Association {
   diff: number | null
   /** How many matched bands the difference rests on; zero means an unmatched comparison. */
   bands: number
+  /**
+   * The same comparison as the counted foundation reads it (2026-11-12), when the caller named it: the matched occasions
+   * on each side, and the chance of a difference this large with nothing there. A family of these is given its standings
+   * together. Absent, nothing was asked beyond the numbers above.
+   */
+  compared?: Compared
 }
 
 function meanOf(values: readonly number[]): number | null {
@@ -43,15 +49,25 @@ const BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firi
  * smaller side. The difference itself is the counted foundation's (2026-11-12): this hands it the occasions that have
  * a band and an outcome, band by band in the order it has always taken them, so every number is the one it always was.
  */
-export function likeForLike(points: readonly DayPoint[]): Association {
+export function likeForLike(points: readonly DayPoint[], named?: { id: string; worth: number }): Association {
   const withEvent = points.filter((p) => p.event)
   const without = points.filter((p) => !p.event)
   const withValues = withEvent.map((p) => p.outcome).filter((v): v is number => v !== null)
   const withoutValues = without.map((p) => p.outcome).filter((v): v is number => v !== null)
   const matched = BANDS.map((band) => points.filter((p) => p.band === band && p.outcome !== null))
-  const bands = matched.filter((of) => of.some((p) => p.event) && of.some((p) => !p.event)).length
-  const diff = bands > 0 ? difference(matched.flat().map((p) => ({ day: p.day, event: p.event, outcome: p.outcome as number, band: p.band as Band }))) : null
-  return { times: withEvent.length, withEvent: { mean: meanOf(withValues), n: withValues.length }, without: { mean: meanOf(withoutValues), n: withoutValues.length }, diff, bands }
+  const shared = matched.filter((of) => of.some((p) => p.event) && of.some((p) => !p.event))
+  const bands = shared.length
+  const occasions: Point[] = matched.flat().map((p) => ({ day: p.day, event: p.event, outcome: p.outcome as number, band: p.band as Band }))
+  const diff = bands > 0 ? difference(occasions) : null
+  const out: Association = { times: withEvent.length, withEvent: { mean: meanOf(withValues), n: withValues.length }, without: { mean: meanOf(withoutValues), n: withoutValues.length }, diff, bands }
+  if (named) {
+    // The occasions the difference rests on: those in a band both sides share. Eight of them a side, or nothing is tested.
+    const n = shared.flat().filter((p) => p.event).length
+    const m = shared.flat().length - n
+    const tested = n >= MIN_SIDE && m >= MIN_SIDE ? compare(occasions, named) : null
+    out.compared = { id: named.id, n, m, diff, enough: tested !== null && tested.enough, p: tested?.p ?? null, worth: named.worth }
+  }
+  return out
 }
 
 /**
