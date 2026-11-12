@@ -3,7 +3,8 @@ the test that guards it must turn red. So far, the sheet's associations (the pha
 
 Every association the sheet carries is one family; a fact is written from its standing; too few is "little" in the old
 three-valued field and says no difference; "promising" there is only ever a lead or a pattern in the good direction; and
-a comparison on a scale of steps says a lead at most.
+a comparison on a scale of steps says a lead at most. The phone's own lines that state a difference speak only at a
+lead or a pattern, say which, and take the higher strength only at a pattern.
 
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
@@ -20,6 +21,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\',
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 F = 'src/facts.ts'
 T = 'src/sheetStandings.test.ts'
+S = 'src/situations.ts'
+ST = 'src/situations.test.ts'
+FG = 'src/firmGated.test.ts'
 SIM = 'src/counted/simulation.test.ts'
 O = 'src/counted/occasions.ts'
 OT = 'src/counted/occasions.test.ts'
@@ -57,6 +61,18 @@ TABLE = [
          old="  if (named) {\n",
          new="  if (named || points.length > 0) {\n    named = named ?? { id: 'unnamed', worth: 10 }\n",
          tests=[T], pattern='one of a family'),
+    dict(id='a-line-speaks-only-at-a-lead-or-a-pattern', file=S,
+         old="&& standings.includes(String(f.values.standing)) ? f : null",
+         new="? f : null",
+         tests=[ST], pattern='reads the chips like for like'),
+    dict(id='the-higher-strength-is-a-patterns', file=S,
+         old="strength: f.values.standing === 'pattern' ? 0.8 : 0.5,",
+         new="strength: 0.8,",
+         tests=[FG], pattern='says every situation exactly as before'),
+    dict(id='no-clear-pattern-says-no-direction-for-short-sleep', file=S,
+         old="strength: f.values.standing === 'pattern' ? 0.8 : 0.55,",
+         new="strength: f.values.standing !== 'pattern' ? 0.8 : 0.55,",
+         tests=[FG], pattern='says every situation exactly as before'),
 ]
 
 

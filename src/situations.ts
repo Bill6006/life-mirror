@@ -1,3 +1,5 @@
+import type { Standing } from './counted/compare'
+import { STANDING_WORDS } from './counted/words'
 import { mayNudge, shapeFor, type LineAction, type Mode } from './brainShared'
 import { blockStart, daysBetween } from './blocks'
 import { copy } from './copy'
@@ -157,9 +159,20 @@ function bestCue(f: Fact, sheet: FactSheet): Cue | null {
   return best ?? (['afterBedtime', 'nextCheckIn', 'afterPickup'] as const).find((c) => held.includes(c)) ?? null
 }
 
-const assoc = (sheet: FactSheet, id: string, min: number): Fact | null => {
+/**
+ * An association the phone may speak of in its own words (the one standard, 2026-11-12): its fact holds a difference
+ * and stands where the line's own claim needs it. A line that says a difference one way speaks only at a lead or a
+ * pattern; too few and no clear pattern say nothing of a direction.
+ */
+const assoc = (sheet: FactSheet, id: string, min: number, standings: readonly string[] = ['lead', 'pattern']): Fact | null => {
   const f = factById(sheet, id)
-  return f && (num(f, 'times') ?? 0) >= min && num(f, 'diff') !== null ? f : null
+  return f && (num(f, 'times') ?? 0) >= min && num(f, 'diff') !== null && standings.includes(String(f.values.standing)) ? f : null
+}
+
+/** A fact's standing as it is said inside a sentence: "a lead, not yet a pattern". */
+const standingSaid = (f: Fact): string => {
+  const words = STANDING_WORDS[f.values.standing as Standing] ?? ''
+  return `${words.charAt(0).toLowerCase()}${words.slice(1)}`
 }
 
 export const SITUATIONS: readonly Situation[] = [
@@ -267,7 +280,8 @@ export const SITUATIONS: readonly Situation[] = [
     cooldownDays: 14,
     test: (sheet) => {
       const f = assoc(sheet, 'assoc.napped', 4)
-      return f ? { factIds: [f.id], strength: f.tier === 'promising' ? 0.8 : 0.5, vars: { diff: signed(num(f, 'diff') as number), n: s(num(f, 'times')) } } : null
+      // The higher strength is a steady pattern's, whichever way it reads; a lead never raises a line's rank.
+      return f ? { factIds: [f.id], strength: f.values.standing === 'pattern' ? 0.8 : 0.5, vars: { diff: signed(num(f, 'diff') as number), n: s(num(f, 'times')), standing: standingSaid(f) } } : null
     },
   },
   {
@@ -278,7 +292,7 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const f = assoc(sheet, 'assoc.workouts', 3)
       const diff = f ? (num(f, 'diff') as number) : 0
-      return f && diff > 0 ? { factIds: [f.id], strength: 0.7, vars: { diff: signed(diff), n: s(num(f, 'times')) } } : null
+      return f && diff > 0 ? { factIds: [f.id], strength: 0.7, vars: { diff: signed(diff), n: s(num(f, 'times')), standing: standingSaid(f) } } : null
     },
   },
   {
@@ -287,9 +301,10 @@ export const SITUATIONS: readonly Situation[] = [
     cards: ['exercise-depression'],
     cooldownDays: 21,
     test: (sheet) => {
-      const f = assoc(sheet, 'assoc.workouts', 3)
+      // The record not showing it: no clear pattern yet, whichever way the difference leans, or a lead or a pattern the other way.
+      const f = assoc(sheet, 'assoc.workouts', 3, ['noPattern', 'lead', 'pattern'])
       const diff = f ? (num(f, 'diff') as number) : 1
-      return f && diff <= 0 ? { factIds: [f.id], strength: 0.4, vars: { diff: signed(diff), n: s(num(f, 'times')) } } : null
+      return f && (f.values.standing === 'noPattern' || diff <= 0) ? { factIds: [f.id], strength: 0.4, vars: { diff: signed(diff), n: s(num(f, 'times')), standing: standingSaid(f) } } : null
     },
   },
   {
@@ -300,7 +315,7 @@ export const SITUATIONS: readonly Situation[] = [
     test: (sheet) => {
       const f = assoc(sheet, 'assoc.bigSocial', 3)
       const diff = f ? (num(f, 'diff') as number) : 0
-      return f && diff < 0 ? { factIds: [f.id], strength: 0.7, vars: { diff: s(Math.abs(diff)), n: s(num(f, 'times')) } } : null
+      return f && diff < 0 ? { factIds: [f.id], strength: 0.7, vars: { diff: s(Math.abs(diff)), n: s(num(f, 'times')), standing: standingSaid(f) } } : null
     },
   },
   {
@@ -561,7 +576,7 @@ export const SITUATIONS: readonly Situation[] = [
     cooldownDays: 14,
     test: (sheet) => {
       const f = assoc(sheet, 'assoc.shortSleep', 4)
-      return f ? { factIds: [f.id], strength: f.tier === 'promising' ? 0.8 : 0.55, vars: { diff: signed(num(f, 'diff') as number), n: s(num(f, 'times')) } } : null
+      return f ? { factIds: [f.id], strength: f.values.standing === 'pattern' ? 0.8 : 0.55, vars: { diff: signed(num(f, 'diff') as number), n: s(num(f, 'times')), standing: standingSaid(f) } } : null
     },
   },
 ]

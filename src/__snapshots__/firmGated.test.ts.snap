@@ -20,18 +20,18 @@ exports[`the phone’s own lines, held fixed while How firm is gated > keeps eve
   "loop-closed": "Yesterday’s line was about {name}; since then the record shows {what}. That is the loop closing.",
   "loop-open": "Yesterday’s line was about {name}, and the record shows nothing on it since. If the suggestion was wrong, Not useful says so; if the step is too big, pin its smaller version to a moment today.",
   "loop-planned": "Yesterday’s line was about {name}: a plan was made, and its moment passed without a start. One plan says little about you and something about the moment; pin the step, or a smaller one, to a moment that has held before.",
-  "nap-read": "Mornings after a nap read {diff} against the mornings without, {n} naps. Short naps help the afternoon; long ones bring more grogginess after.",
+  "nap-read": "Mornings after a nap read {diff} against the mornings without, {n} naps: {standing}. Short naps help the afternoon; long ones bring more grogginess after.",
   "necessities-missed": "{n} necessities missed in three days. That can be an early sign of a stretch; the smallest one first, before any move.",
   "partly-honest": "Partly, {n} times this week. Partly is a start; the smaller version is the honest size, and it is the one that gets kept.",
   "say-when": "{name}: the step is {step}. Say when, one tap. A plan tied to a moment is kept more often than a wish is.",
   "short-night-today": "Sleep read “{word}” {when}. Short sleep lowers mood more than it lowers thinking, so read today’s numbers in that light; a nap under half an hour before mid-afternoon is the supported repair.",
-  "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
-  "social-recovery": "Mornings after a big social event read {diff} under the others, {n} times: an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
+  "short-sleep-afternoons": "Afternoons after short nights read {diff} against the others, {n} mornings: {standing}. In one large cohort, regular sleep times went with better health than long sleep did.",
+  "social-recovery": "Mornings after a big social event read {diff} under the others, {n} times: {standing}; an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
   "steady-moving": "Steady, {inside} of {of} blocks inside the usual, and {name} moved this week. Progress that is recorded carries part of the effect by itself.",
   "step-stalled": "{name}: no session recorded in {d} days. The smaller version today counts, and a gap does not undo what was built.",
   "stretch": "{under} of the last {of} blocks read under their usual low. A stretch is starting. One easy move a day, kept, is what turns these; the mood follows the doing.",
-  "workout-evenings": "Evenings of workout days read {diff} above the others so far, {n} days: an association in your record, not yet a finding. The evidence for exercise and mood is strong.",
-  "workout-flat": "Evenings of workout days read {diff} against the others, {n} days. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
+  "workout-evenings": "Evenings of workout days read {diff} above the others so far, {n} days: {standing}; an association in your record, not yet a finding. The evidence for exercise and mood is strong.",
+  "workout-flat": "Evenings of workout days read {diff} against the others, {n} days: {standing}. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
 }
 `;
 
@@ -300,8 +300,8 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
       "assoc.napped",
     ],
     "mode": "observation",
-    "score": 0.68,
-    "text": "Mornings after a nap read -6 against the mornings without, 5 naps. Short naps help the afternoon; long ones bring more grogginess after.",
+    "score": 0.425,
+    "text": "Mornings after a nap read -6 against the mornings without, 9 naps: a lead, not yet a pattern. Short naps help the afternoon; long ones bring more grogginess after.",
   },
   "necessities-missed": {
     "action": null,
@@ -370,7 +370,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "observation",
     "score": 0.55,
-    "text": "Afternoons after short nights read -5 against the others, 4 mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
+    "text": "Afternoons after short nights read -5 against the others, 9 mornings: a lead, not yet a pattern. In one large cohort, regular sleep times went with better health than long sleep did.",
   },
   "social-recovery": {
     "action": null,
@@ -382,7 +382,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "perspective",
     "score": 0.48999999999999994,
-    "text": "Mornings after a big social event read 5 under the others, 3 times: an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
+    "text": "Mornings after a big social event read 5 under the others, 9 times: a lead, not yet a pattern; an association, not a cause. A quieter day after a lot of company is common, not a flaw in you.",
   },
   "steady-moving": {
     "action": null,
@@ -437,7 +437,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "encouragement",
     "score": 0.7,
-    "text": "Evenings of workout days read +7 above the others so far, 4 days: an association in your record, not yet a finding. The evidence for exercise and mood is strong.",
+    "text": "Evenings of workout days read +7 above the others so far, 9 days: a lead, not yet a pattern; an association in your record, not yet a finding. The evidence for exercise and mood is strong.",
   },
   "workout-flat": {
     "action": null,
@@ -449,7 +449,7 @@ exports[`the phone’s own lines, held fixed while How firm is gated > says ever
     ],
     "mode": "observation",
     "score": 0.4,
-    "text": "Evenings of workout days read -2 against the others, 4 days. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
+    "text": "Evenings of workout days read -2 against the others, 9 days: no clear pattern yet. The evidence for exercise and mood is strong; the record here does not show it yet, and timing may be why.",
   },
 }
 `;

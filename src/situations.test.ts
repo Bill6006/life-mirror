@@ -79,8 +79,13 @@ describe('the judgment engine', () => {
   })
 
   it('reads the chips like for like, in words that say which way', () => {
-    const nap: Fact = { id: 'assoc.napped', tags: [], text: '', values: { diff: 6, with: 60, without: 54, times: 5, bands: 2 }, n: 5, tier: 'unclear' }
-    expect(chooseLine(sheetOf([nap]), [], [])?.text).toContain('read +6 against the mornings without, 5 naps')
+    // The phone speaks of a difference only at a lead or a pattern, and says which (the one standard, 2026-11-12).
+    const nap = (standing: string): Fact => ({ id: 'assoc.napped', tags: [], text: '', values: { diff: 6, with: 60, without: 54, times: 9, bands: 2, standing }, n: 9, tier: standing === 'tooFew' ? 'little' : 'unclear' })
+    expect(chooseLine(sheetOf([nap('lead')]), [], [])?.text).toContain('read +6 against the mornings without, 9 naps: a lead, not yet a pattern.')
+    expect(chooseLine(sheetOf([nap('pattern')]), [], [])?.text).toContain('9 naps: a steady pattern.')
+    // Too few, or no clear pattern yet: no line says a direction.
+    expect(chooseLine(sheetOf([nap('tooFew')]), [], [])).toBeNull()
+    expect(chooseLine(sheetOf([nap('noPattern')]), [], [])).toBeNull()
   })
 
   it('speaks of caffeine from reported bands only: the next night like for like, the fixed null words, and a late window', () => {
@@ -154,8 +159,9 @@ describe('what the engine sees early, and the one tap it offers', () => {
   it('reads a short night in its own light, and never proposes a test: the old engine’s test proposals were retired', () => {
     const short: Fact = { id: 'today.shortSleep', tags: [], text: '', values: { position: 1, word: 'Under 5 hours' } }
     expect(chooseLine(sheetOf([short]), [], [])?.text).toContain('Sleep read “Under 5 hours” this morning.')
-    const nights: Fact = { id: 'assoc.shortSleep', tags: [], text: '', values: { diff: -8, with: 48, without: 56, times: 6, bands: 2 }, n: 6, tier: 'unclear' }
-    expect(chooseLine(sheetOf([nights]), [], [])?.text).toContain('Afternoons after short nights read -8 against the others, 6 mornings.')
+    const nights: Fact = { id: 'assoc.shortSleep', tags: [], text: '', values: { diff: -8, with: 48, without: 56, times: 9, bands: 2, standing: 'pattern' }, n: 9, tier: 'unclear' }
+    expect(chooseLine(sheetOf([nights]), [], [])?.text).toContain('Afternoons after short nights read -8 against the others, 9 mornings: a steady pattern.')
+    expect(chooseLine(sheetOf([{ ...nights, values: { ...nights.values, standing: 'noPattern' } }]), [], [])).toBeNull()
     // A sheet from before that still held the old engine's "untested" fact gets no line about it, and no test tap.
     const untested: Fact = { id: 'untested', tags: [], text: '', values: { moves: 'walk-ten,cyclic-sigh', count: 2 } }
     expect(chooseLine(sheetOf([untested]), [], [])).toBeNull()

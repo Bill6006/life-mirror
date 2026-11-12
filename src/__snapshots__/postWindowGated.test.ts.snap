@@ -1067,20 +1067,6 @@ exports[`the record the monitored prompts are built from, held fixed with the po
     },
     {
       "cardIds": [
-        "sleep-loss-mood",
-        "sleep-regularity",
-      ],
-      "factIds": [
-        "assoc.shortSleep",
-      ],
-      "firmness": "balanced",
-      "mode": "observation",
-      "score": 0.55,
-      "situationId": "short-sleep-afternoons",
-      "text": "Afternoons after short nights read 0 against the others, 14 mornings. In one large cohort, regular sleep times went with better health than long sleep did.",
-    },
-    {
-      "cardIds": [
         "religious-attendance-and-health",
         "acting-extraverted-costs-later",
       ],
