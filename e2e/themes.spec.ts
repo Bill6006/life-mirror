@@ -1328,11 +1328,12 @@ async function seedInTheMoment(page: Page): Promise<void> {
       const done = new Date(at.getTime() + 95_000).toISOString()
       store.add({ day: key(date), block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
     }
-    // Evenings from Aug 27 to last night, Sep 19, each with its morning after up to yesterday's.
-    for (let i = 0; i < 24; i++) {
-      const stressed = i % 2 === 0
-      put(new Date(2026, 7, 27 + i), 'evening', stressed ? { stress: 5 } : {})
-      if (i < 23) put(new Date(2026, 7, 28 + i), 'morning', stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {})
+    // Four weeks of evenings to last night, Sep 19, each with its morning after up to yesterday's. Stress was high on a fortnight's 2nd,
+    // 3rd, 5th and 9th evenings counted back from today, with no rhythm, so the pair stands where the card may show it (a lead or a pattern).
+    for (let back = 28; back >= 1; back--) {
+      const stressed = [2, 3, 5, 9].includes(back % 14)
+      put(new Date(2026, 8, 20 - back), 'evening', stressed ? { stress: 5 } : {})
+      if (back > 1) put(new Date(2026, 8, 21 - back), 'morning', stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {})
     }
     // Today: last night was even on every reading, this morning's Mood two steps down, tonight Stress high.
     put(new Date(2026, 8, 20), 'morning', { mood: 1 })

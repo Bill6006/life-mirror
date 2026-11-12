@@ -3944,7 +3944,10 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
   await page.goto('./')
   await page.getByTestId('direction-input').fill('One line, mine')
   await page.getByRole('button', { name: 'Keep it', exact: true }).click()
-  // Twenty-four evenings, every other one with Stress at its top phrase and the morning after it reading lower; tonight with Stress high.
+  // Four weeks of evenings up to last night. Stress was at its top phrase on a fortnight's 2nd, 3rd, 5th and 9th evenings counted back from
+  // today, and the morning after each read lower; tonight Stress is high again. The evenings keep no rhythm on purpose: a pair is shown only
+  // at a lead or a pattern (the one standard, 2026-11-12), and a record that alternates evening by evening cannot be told from itself turned
+  // round, so it reads as no clear pattern yet.
   await page.evaluate(async () => {
     const blocks: Record<string, string[]> = {
       morning: ['mood', 'irritation', 'stress', 'overwhelm', 'motivation', 'confidence', 'focus', 'loneliness', 'socialEnergy', 'energy', 'hunger', 'sleepHours', 'sleepQuality'],
@@ -3965,11 +3968,10 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
       const done = new Date(at.getTime() + 95_000).toISOString()
       store.add({ day: key(date), block, asked: blocks[block], startedAt: at.toISOString(), completedAt: done, updatedAt: done, answers, activeMs: 60_000 })
     }
-    for (let i = 0; i < 24; i++) {
-      const evening = new Date(2026, 7, 27 + i)
-      const stressed = i % 2 === 0
-      put(evening, 'evening', stressed ? { stress: 5 } : {})
-      put(new Date(2026, 7, 28 + i), 'morning', stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {})
+    for (let back = 28; back >= 1; back--) {
+      const stressed = [2, 3, 5, 9].includes(back % 14)
+      put(new Date(2026, 8, 20 - back), 'evening', stressed ? { stress: 5 } : {})
+      put(new Date(2026, 8, 21 - back), 'morning', stressed ? { mood: 2, energy: 2, focus: 2, stress: 4, overwhelm: 4, irritation: 4 } : {})
     }
     put(new Date(2026, 8, 20), 'evening', { stress: 5 })
     await new Promise<void>((res, rej) => {
@@ -3984,6 +3986,8 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
   await expect(card).toContainText('Evenings like this one')
   await expect(card).toContainText('After an evening with stress high')
   await expect(card).toContainText('next morning’s reading · lower by')
+  // Its standing, in the standard's own words: eight such evenings against twenty, the only pair the record can test.
+  await expect(card.getByTestId('before-standing')).toHaveText('A steady pattern')
   await expect(card).toContainText('an association, never a cause')
   // The evening's own summary never asks Anything behind it?: its note stays in its extras.
   await expect(page.getByTestId('behind-it')).toHaveCount(0)
