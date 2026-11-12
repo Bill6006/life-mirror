@@ -908,7 +908,7 @@ season              180   24000     5.06     1.07    2000       91     4.55     
 season              365   24000     5.26     1.11    2000       71     3.55     4.45        4.85  pass
 ```
 
-The second read of that one world, in four parts of 2,000 people (no mark is printed: the mark is read on all 10,000 together, as above):
+The second read of that one world, in four parts of 2,000 people (each part prints the first read's mark for its own 2,000 people, which is not the second read's; that one is read on all 10,000 together, as above):
 
 ```text
 seeds 562001 to 564000; the next morning's stress answer in steps, a size worth saying of 0.4
