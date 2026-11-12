@@ -7,7 +7,10 @@ gives a chance of nothing; stops early only once the chance is past 0.05; takes 
 the smaller side; corrects across the family by Holm, counting every comparison that was tested; and calls a pattern only
 at a size worth saying. Since the simulation's tuning (2026-11-12): a label the whole day shares moves by whole days, one
 cell to a day; with against without turns a stretch's labels round in the order of their days, never deals them afresh;
-and an arrangement is ranked by its difference against its own spread.
+and an arrangement is ranked by its difference against its own spread. And step (f)'s modules: the
+day starts at four; what came before a day is never later than its start; no morning answer is unknown; a kind is counted
+only where the record could say either way; the table counts only days before today, leaves out what was not tested and
+shuffles check-ins within the day; and the words never say why.
 
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
@@ -24,6 +27,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\',
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 C = 'src/counted/compare.ts'
 T = 'src/counted/compare.test.ts'
+SIM = 'src/counted/simulation.test.ts'
+O = 'src/counted/occasions.ts'
+OT = 'src/counted/occasions.test.ts'
+K = 'src/counted/kinds.ts'
+KT = 'src/counted/kinds.test.ts'
+TB = 'src/counted/table.ts'
+TT = 'src/counted/table.test.ts'
+A = 'src/associations.ts'
+LT = 'src/counted/likeForLike.test.ts'
+W = 'src/counted/words.ts'
+WT = 'src/counted/words.test.ts'
 
 TABLE = [
     dict(id='eight-a-side', file=C,
@@ -102,6 +116,82 @@ TABLE = [
          old="      spread += w * w * (1 / na[b] + 1 / nb[b])\n",
          new="      spread += w * (1 / na[b] + 1 / nb[b])\n",
          tests=[T], pattern='against its own spread'),
+    dict(id='ranked-against-its-own-spread', file=C,
+         old="(events) => [measure(events, true) ?? 0]",
+         new="(events) => [measure(events, false) ?? 0]",
+         tests=[SIM], pattern='follows how the evening started'),
+    dict(id='turned-not-dealt-in-the-simulation', file=C,
+         old="opts.shuffles, opts.stopAt, 'turn')",
+         new="opts.shuffles, opts.stopAt, 'shuffle')",
+         tests=[SIM], pattern='comes in streaks'),
+    dict(id='the-day-starts-at-four', file=O,
+         old="export const DAY_START_HOUR = 4\n",
+         new="export const DAY_START_HOUR = 5\n",
+         tests=[OT], pattern='starts its day at four'),
+    dict(id='before-is-never-later-than-the-days-start', file=O,
+         old="  const inTime = evening !== undefined && evening.at <= dayStart(day)\n",
+         new="  const inTime = evening !== undefined\n",
+         tests=[OT], pattern='never later than the day'),
+    dict(id='no-morning-answer-is-unknown', file=O,
+         old="shortNight: slept === undefined ? null : slept <= SHORT_NIGHT",
+         new="shortNight: slept === undefined ? false : slept <= SHORT_NIGHT",
+         tests=[OT], pattern='unknown, never a no'),
+    dict(id='a-low-evening-is-under-forty', file=O,
+         old="export const LOW_READING = 40\n",
+         new="export const LOW_READING = 20\n",
+         tests=[OT], pattern='low when it read under 40'),
+    dict(id='a-window-from-the-check-in-before', file=O,
+         old="since: i > 0 ? (byTime[i - 1].completedAt as string) : start }",
+         new="since: start }",
+         tests=[OT], pattern='covers a window'),
+    dict(id='an-evening-chip-needs-its-evening', file=K,
+         old="known: (d) => evening(d) !== undefined, happened: (d) => has(evening(d) as CheckIn) }",
+         new="known: () => true, happened: (d) => evening(d) !== undefined && has(evening(d) as CheckIn) }",
+         tests=[KT], pattern='a day with no evening is unknown'),
+    dict(id='a-private-item-only-where-shown', file=K,
+         old="known: (o) => privateShownAt(item, o.checkin), happened:",
+         new="known: () => true, happened:",
+         tests=[KT], pattern='a day with no evening is unknown'),
+    dict(id='a-move-only-where-answered', file=K,
+         old="    const done = o.id === undefined ? undefined : answer.get(o.id)\n",
+         new="    const done = o.id === undefined ? undefined : (answer.get(o.id) ?? false)\n",
+         tests=[KT], pattern='never answered'),
+    dict(id='a-workout-only-since-the-first', file=K,
+         old="known: (d) => d.day >= firstWorkout, happened: (d) => d.workout })",
+         new="known: () => true, happened: (d) => d.workout })",
+         tests=[KT], pattern='before the first workout'),
+    dict(id='teeth-only-from-a-tap', file=K,
+         old="known: (d) => evening(d) !== undefined && teethOf(evening(d)?.extras) !== null, happened:",
+         new="known: (d) => evening(d) !== undefined, happened:",
+         tests=[KT], pattern='only from a tap'),
+    dict(id='only-days-before-today', file=TB,
+         old="  const input = asItStood(record, today)\n",
+         new="  const input = record\n",
+         tests=[TT], pattern='only the days before'),
+    dict(id='nothing-tested-is-left-out', file=TB,
+         old="    if (family === 0) continue\n",
+         new="",
+         tests=[TT], pattern='starts small'),
+    dict(id='a-short-night-is-no-split-of-sleep', file=TB,
+         old="...(kind.id.startsWith('sleep.') ? [] : tag('shortNight',",
+         new="...(kind.id.startsWith('never.') ? [] : tag('shortNight',",
+         tests=[TT], pattern='what came before the day'),
+    dict(id='check-ins-split-within-the-day', file=TB,
+         old="{ id: `${id}|checkin`, within: 'day', cells: BLOCKS }",
+         new="{ id: `${id}|checkin`, within: 'stretch', cells: BLOCKS }",
+         tests=[TT], pattern='by the check-in of the day'),
+    dict(id='a-lead-says-how-many-were-looked-at', file=W,
+         old="      return `${STANDING_WORDS.lead}: ${w.thing} was recorded ${often} ${w.where} (${counts}). ${looked(w.family)}.`\n",
+         new="      return `${STANDING_WORDS.lead}: ${w.thing} was recorded ${often} ${w.where} (${counts}).`\n",
+         tests=[WT], pattern='how many things were looked at'),
+    dict(id='a-pattern-never-says-why', file=W,
+         old="      return `${STANDING_WORDS.pattern}: ${w.thing} was recorded ${often} ${w.where} (${counts}).`\n",
+         new="      return `${STANDING_WORDS.pattern}: ${w.thing} was recorded ${often} ${w.where} because of it (${counts}).`\n",
+         tests=[WT], pattern='never say why'),
+    dict(id='the-wrapper-leaves-out-what-has-no-outcome', file=A,
+         old="const matched = BANDS.map((band) => points.filter((p) => p.band === band && p.outcome !== null))",
+         new="const matched = BANDS.map((band) => points.filter((p) => p.band === band))",
+         tests=[LT], pattern='every number it always gave'),
 ]
 
 

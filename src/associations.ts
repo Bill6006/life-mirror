@@ -1,5 +1,6 @@
 import { addDays, daysBetween, type Block } from './blocks'
 import { hasMove, moveById } from './catalogue'
+import { difference } from './counted/compare'
 import type { CheckIn, Offer, Outcome } from './db'
 import { forecast, indexCheckIns, slotKey } from './observe'
 import { bandOf, pointsFor, readingOf, type Band } from './score'
@@ -35,25 +36,21 @@ function meanOf(values: readonly number[]): number | null {
   return values.length ? values.reduce((s, v) => s + v, 0) / values.length : null
 }
 
-/** The like-for-like comparison: within each evening band present on both sides, with minus without, weighted by the smaller side. */
+const BANDS: readonly Band[] = ['empty', 'wornDown', 'gettingBy', 'solid', 'firing']
+
+/**
+ * The like-for-like comparison: within each evening band present on both sides, with minus without, weighted by the
+ * smaller side. The difference itself is the counted foundation's (2026-11-12): this hands it the occasions that have
+ * a band and an outcome, band by band in the order it has always taken them, so every number is the one it always was.
+ */
 export function likeForLike(points: readonly DayPoint[]): Association {
   const withEvent = points.filter((p) => p.event)
   const without = points.filter((p) => !p.event)
   const withValues = withEvent.map((p) => p.outcome).filter((v): v is number => v !== null)
   const withoutValues = without.map((p) => p.outcome).filter((v): v is number => v !== null)
-  let diffSum = 0
-  let weightSum = 0
-  let bands = 0
-  for (const band of ['empty', 'wornDown', 'gettingBy', 'solid', 'firing'] as Band[]) {
-    const a = withEvent.filter((p) => p.band === band && p.outcome !== null).map((p) => p.outcome as number)
-    const b = without.filter((p) => p.band === band && p.outcome !== null).map((p) => p.outcome as number)
-    if (!a.length || !b.length) continue
-    const w = Math.min(a.length, b.length)
-    diffSum += w * ((meanOf(a) as number) - (meanOf(b) as number))
-    weightSum += w
-    bands++
-  }
-  const diff = weightSum > 0 ? diffSum / weightSum : null
+  const matched = BANDS.map((band) => points.filter((p) => p.band === band && p.outcome !== null))
+  const bands = matched.filter((of) => of.some((p) => p.event) && of.some((p) => !p.event)).length
+  const diff = bands > 0 ? difference(matched.flat().map((p) => ({ day: p.day, event: p.event, outcome: p.outcome as number, band: p.band as Band }))) : null
   return { times: withEvent.length, withEvent: { mean: meanOf(withValues), n: withValues.length }, without: { mean: meanOf(withoutValues), n: withoutValues.length }, diff, bands }
 }
 
