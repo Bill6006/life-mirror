@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays } from './blocks'
-import { BEFORE_MIN, comesBefore, EVENING_READINGS, matchingPair, resampledInterval } from './beforeDays'
+import { BEFORE_MIN, comesBefore, EVENING_READINGS, matchingPair, resampledInterval, standingLine } from './beforeDays'
 import type { CheckIn } from './db'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
@@ -96,6 +96,13 @@ describe('the pattern tonight matches (stage 3, group 3)', () => {
     expect(high).toMatchObject({ withN: 16, withoutN: 40, standing: 'pattern', direction: 'lower', family: 1 })
     // No other reading was ever at its top two or lowest two phrases: nothing to compare, and nothing joins the family.
     expect(pairs.filter((p) => p !== high).every((p) => p.standing === 'tooFew' && p.family === 1)).toBe(true)
+  })
+
+  it('says a pair’s standing in the standard’s own words, and with a lead how many pairs were looked at', () => {
+    expect(standingLine({ standing: 'pattern', family: 4 })).toBe('A steady pattern')
+    expect(standingLine({ standing: 'lead', family: 4 })).toBe('A lead, not yet a pattern · 4 looked at')
+    expect(standingLine({ standing: 'noPattern', family: 4 })).toBe('No clear pattern yet')
+    expect(standingLine({ standing: 'tooFew', family: 0 })).toBe('Too few to compare yet')
   })
 
   it('reads a strictly alternating record as no clear pattern yet: turned round, every other day cannot be told from itself', () => {

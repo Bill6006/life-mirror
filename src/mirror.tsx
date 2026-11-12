@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { blockAt, BLOCKS } from './blocks'
-import { BEFORE_MIN, comesBefore, type BeforePair } from './beforeDays'
+import { BEFORE_MIN, comesBefore, standingLine, type BeforePair } from './beforeDays'
 import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
@@ -38,6 +38,9 @@ export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
         {dir ? fill(c.diff, { dir, points: round(Math.abs(p.diff)), n: String(p.withN), lo: signed(p.lo), hi: signed(p.hi) }) : fill(c.diffSame, { n: String(p.withN), lo: signed(p.lo), hi: signed(p.hi) })}
       </span>
       <IntervalBar lo={p.lo} hi={p.hi} est={p.diff} span={span} />
+      <span class="before-line" data-testid="before-standing">
+        {standingLine(p)}
+      </span>
     </li>
   )
 }
