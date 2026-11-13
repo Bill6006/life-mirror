@@ -5,6 +5,7 @@ import { storedPatterns } from './counted/patterns'
 import { PATTERNS_FORMAT, PATTERNS_ID, readPatterns, samePatterns } from './counted/stored'
 import { patternTableKept } from './counted/table'
 import { db, getSettings } from './db'
+import { countedNotices, noticedOf } from './noteEvents/join'
 import { allOwnChips } from './settings'
 
 // The pattern table on the phone (2026-11-13): built from the whole record with the counted core, kept as one record
@@ -21,10 +22,12 @@ export const PATTERNS_ASK_WAIT_MS = 4000
  */
 export const PATTERNS_AFTER_SHEET_MS = 1500
 
-/** The record as the counted core reads it, in one read: every check-in, day, private item, chip of your own, offer, answer and workout day. */
+/** The record as the counted core reads it, in one read: every check-in, day, private item, chip of your own, offer, answer and workout day, and what was noticed in notes. */
 export async function countedRecord(): Promise<CountedInput> {
-  const [checkins, contexts, items, settings, offers, outcomes, outside] = await Promise.all([db.checkins.toArray(), db.days.toArray(), db.privateItems.toArray(), getSettings(), db.offers.toArray(), db.outcomes.toArray(), db.outside.toArray()])
-  return { checkins, contexts, items, chips: allOwnChips(settings), offers, outcomes, workoutDays: [...new Set(outside.map((o) => o.day))].sort() }
+  const [checkins, contexts, items, settings, offers, outcomes, outside, events, marks, kept] = await Promise.all([db.checkins.toArray(), db.days.toArray(), db.privateItems.toArray(), getSettings(), db.offers.toArray(), db.outcomes.toArray(), db.outside.toArray(), db.noteEvents.toArray(), db.noteMarks.toArray(), db.notes.toArray()])
+  // What was noticed in notes counts only while it stands: joined to its note here, on the phone, at every build.
+  const noticed = countedNotices(noticedOf({ events, marks, checkins, kept }))
+  return { checkins, contexts, items, chips: allOwnChips(settings), offers, outcomes, workoutDays: [...new Set(outside.map((o) => o.day))].sort(), ...(noticed.length ? { noticed } : {}) }
 }
 
 /** The screen let through: the next kind is worked out on a later turn of the event loop. */

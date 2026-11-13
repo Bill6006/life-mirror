@@ -12,6 +12,7 @@ import { ownShownAt } from '../ownChips'
 import { readingById } from '../readings'
 import type { OwnChip } from '../settings'
 import { LEFT_OUT } from './leftOut'
+import type { CountedNotice } from '../noteEvents/join'
 import { type Days, HIGH_READING, LOW_READING, type Occasion, weekdayOf } from './occasions'
 
 // The one list of what the record can count (the counted foundation, 2026-11-12; in shadow: nothing reads it yet).
@@ -60,7 +61,12 @@ export interface CountedInput {
   outcomes: readonly Outcome[]
   /** The days another app wrote a finished workout for. */
   workoutDays: readonly string[]
+  /** What Claude noticed in check-in notes that still stands and is not marked wrong (2026-11-13), already joined to its note. */
+  noticed?: readonly CountedNotice[]
 }
+
+/** How many standing events a type needs before it is a kind: the comparison core's own minimum of occurrences. */
+export const NOTICED_MIN = 5
 
 /** One day as the kinds read it. */
 export interface DayFacts {
@@ -237,6 +243,27 @@ export function kindsOf(input: CountedInput): Kind[] {
     kinds.push({ id: `private.${key}`, label: item.name, unit: 'checkin', category: 'privateItems', private: true, known: (o) => privateShownAt(item, o.checkin), happened: (o) => Boolean(o.checkin.extras?.private?.[key]) })
   }
   for (const chip of input.chips) kinds.push({ id: `own.${chip.id}`, label: chip.label, unit: 'checkin', category: 'notes', private: false, known: (o) => ownShownAt(chip.id, o.checkin), happened: (o) => Boolean(o.checkin.extras?.own?.[chip.id]) })
+  // What Claude noticed in notes (2026-11-13): a type with enough standing events is a kind, private, read under the
+  // notes switch. It is known only at check-ins where a note was written: a check-in with no note is unknown, never
+  // "no", so what is said of it is a share of the noted times. Its label says so wherever the kind is named.
+  const types = new Map<string, { label: string; at: Set<number> }>()
+  for (const n of input.noticed ?? []) {
+    const type = types.get(n.type) ?? { label: n.label, at: new Set<number>() }
+    type.at.add(n.checkinId)
+    types.set(n.type, type)
+  }
+  for (const [type, { label, at }] of [...types].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    if (at.size < NOTICED_MIN) continue
+    kinds.push({
+      id: `noticed.${type}`,
+      label: `Claude noticed in a note: ${label} (counted among the check-ins where you wrote a note)`,
+      unit: 'checkin',
+      category: 'notes',
+      private: true,
+      known: (o) => typeof o.checkin.extras?.note === 'string' && o.checkin.extras.note.trim() !== '',
+      happened: (o) => o.checkin.id !== undefined && at.has(o.checkin.id),
+    })
+  }
   return kinds
 }
 

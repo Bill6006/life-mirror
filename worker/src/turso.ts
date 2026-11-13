@@ -289,6 +289,11 @@ export interface Store {
   readRecords(store: string, range?: { from?: string; to?: string; like?: string }, limit?: number): Promise<RecordRow[]>
   /** How many of the phone's own rows a store holds within a range: asked only when a read was cut, to say how many it left unread (2026-11-13). */
   countRecords(store: string, range?: { from?: string; to?: string; like?: string }): Promise<number>
+  /**
+   * Every check-in in a range of days that holds a note, as its id, its day and its check-in alone, newest day first
+   * (2026-11-13): when notes are written at all, read without downloading a note. A note of spaces alone is no note.
+   */
+  noteMoments(range: { from: string; to: string }, limit: number): Promise<{ id: string; day: string; block: string }[]>
   /** One of the phone's own rows by id, or null. */
   readRecord(store: string, id: string): Promise<unknown | null>
   /** The other app's finished workouts, newest written first, read-only: the final checklist's sanity report (item 4). */
@@ -509,6 +514,15 @@ export function tursoStore(url: string, token: string): Store {
       const r = await rows(`SELECT COUNT(*) AS n FROM records WHERE ${where.join(' AND ')}`, args)
       return Number(r[0]?.n ?? 0)
     },
+    async noteMoments(range, limit) {
+      // The note is read inside the database: a check-in's note is the text at extras.note, and one that is empty once
+      // its spaces, tabs and line breaks are taken off its ends is no note.
+      const r = await rows(
+        `SELECT id, day, json_extract(body, '$.block') AS block FROM records WHERE app = ? AND store = 'checkins' AND deleted = 0 AND day >= ? AND day <= ? AND trim(coalesce(json_extract(body, '$.extras.note'), ''), ' ' || char(9) || char(10) || char(13)) != '' ORDER BY day DESC, id DESC LIMIT ?`,
+        [APP, range.from, range.to, limit],
+      )
+      return r.map((row) => ({ id: String(row.id), day: String(row.day), block: String(row.block ?? '') }))
+    },
     async readRecord(store, id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = ? AND id = ? AND deleted = 0`, [APP, store, id])
       return r[0] ? parse<unknown>(r[0].body) : null
@@ -720,6 +734,16 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async countRecords(store, range = {}) {
       return live(APP, store).filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)) && (!range.like || (r.body ?? '').toLowerCase().includes(range.like.toLowerCase()))).length
+    },
+    async noteMoments(range, limit) {
+      // As the live store answers: the check-ins of the range whose note is more than spaces, tabs and line breaks.
+      return live(APP, 'checkins')
+        .filter((r) => r.day !== null && r.day >= range.from && r.day <= range.to)
+        .map((r) => ({ id: r.id, day: r.day as string, body: parse<{ block?: unknown; extras?: { note?: unknown } }>(r.body) }))
+        .filter((r) => typeof r.body?.extras?.note === 'string' && r.body.extras.note.replace(/^[ \t\n\r]+|[ \t\n\r]+$/g, '') !== '')
+        .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : a.id < b.id ? 1 : -1))
+        .slice(0, limit)
+        .map((r) => ({ id: r.id, day: r.day, block: typeof r.body?.block === 'string' ? r.body.block : '' }))
     },
     async readRecord(store, id) {
       const r = rows.get(key(APP, store, id))

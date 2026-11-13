@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { NOTICED_KEY, seedNoticed } from './noticedSeed'
 import { seedNote, seedRecord as seedAskRecord, seedThread, seedTurns } from './askSeed'
 
 // The three themes (Rule 15, revised 2026-09-24): each one checked on every major screen and the
@@ -757,6 +758,41 @@ for (const theme of THEMES) {
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
       await walk(page, theme, PING_STATES, width, found)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+// What was noticed in notes (Phase 5, 2026-11-13): the row on the Brain screen and its own sheet, on stand-in events,
+// one of them marked wrong so both of a card's states are read.
+const NOTICED_STATES: typeof STATES = [
+  { name: 'Brain, the row for what was noticed', tab: 'Settings', open: async (p) => {
+    await p.getByRole('button', { name: /^Brain/ }).click()
+    await p.getByTestId('brain-noticed').scrollIntoViewIfNeeded()
+  } },
+  { name: 'Noticed in your notes, one marked wrong', tab: 'Settings', open: async (p) => {
+    await p.getByRole('button', { name: /^Brain/ }).click()
+    await p.getByTestId('brain-noticed-open').click()
+    await p.getByTestId('noticed-marked').waitFor()
+  } },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: what was noticed in notes reads, fits and can be tapped, at three widths (2026-11-13)`, async ({ page }) => {
+    test.setTimeout(300_000)
+    await page.addInitScript(({ t, k }) => {
+      localStorage.setItem('life-mirror.theme', t)
+      localStorage.setItem(k, '1')
+    }, { t: theme, k: NOTICED_KEY })
+    await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+    await page.goto('./')
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedNoticed(page, { marked: true })
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, NOTICED_STATES, width, found)
     }
     expect(found, found.join('\n')).toEqual([])
   })

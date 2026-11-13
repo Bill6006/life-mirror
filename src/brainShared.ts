@@ -2,6 +2,7 @@ import type { Fact, FactSheet } from './factTypes'
 import { allowedFirmness, deliverySignals, firmnessRefusal, isFirmness, isFirmnessPref, isPatternFact, type DeliverySignals, type Firmness, type FirmnessPref } from './firmness'
 import type { ClaimCard, Grade } from './libraryTypes'
 import { clockTimesWritten, withoutClockTimes } from './format'
+import { holdsWords } from './noteWords'
 import { isUsageFact } from './useShared'
 
 // What the brain may say, checked the same way on the phone and in the Worker: one of the
@@ -304,7 +305,12 @@ export const RECORD_CAUSE = /\b(?:(?:made|kept|left|gave|cost|drained|sapped|lif
 
 /** The record's own comparisons, like for like and never randomised: an association, never a cause. The owner's test cards are randomised, and are not among them. */
 export function isAssociationFact(id: string): boolean {
-  return id.startsWith('assoc.') || id.startsWith('private.') || isTableFact(id)
+  return id.startsWith('assoc.') || id.startsWith('private.') || isTableFact(id) || isNoteWordsFact(id)
+}
+
+/** A search of the notes for whole words, as a lookup serves it to Ask (2026-11-13): counts of notes, an association like the rest. */
+export function isNoteWordsFact(id: string): boolean {
+  return id.startsWith('noteWords.')
 }
 
 /** The pattern table's facts, as a lookup serves them to Ask (2026-11-13): counted, never on the sheet, and an association like the rest. */
@@ -433,6 +439,38 @@ export function patternWordingRefusals(text: string, factIds: readonly string[],
   if (usual) out.push(`says ${usual} of a comparison with no clear pattern yet: say "no clear pattern yet", with the counts`)
   const ahead = found(AHEAD_WORDS, text, all)
   if (ahead) out.push(`says ${ahead} of a comparison with no clear pattern yet: the counts may be said, and that no clear pattern stands yet`)
+  return out
+}
+
+/**
+ * Every reason a text says more of a search of the notes than a count of notes can carry (2026-11-13), in order. A
+ * count of notes is a share of the times a note was written, never how often the thing happened. So: the answer names
+ * the words that were searched; the usual-case words are refused at any standing, and stay allowed only where a cited
+ * fact of the pattern table stands as a steady pattern; and one time is put ahead of another only on a cited cell
+ * that stands at a lead, said as a lead with how many comparisons were looked at, or at a steady pattern.
+ */
+export function noteWordsRefusals(text: string, factIds: readonly string[], sheet: Pick<FactSheet, 'facts'>, all = false): string[] {
+  const cited = sheet.facts.filter((f) => isNoteWordsFact(f.id) && factIds.includes(f.id))
+  if (!cited.length) return []
+  const out: string[] = []
+  const words = [...new Set(cited.flatMap((f) => String(f.values.words ?? '').split('|')).filter(Boolean))]
+  if (words.length && !words.some((w) => holdsWords(text, w))) out.push(`rests on a search of the notes without naming the words searched: name ${words.map((w) => `"${w}"`).join(' or ')}`)
+  const rank = (f: Fact) => STANDING_RANK[String(f.values.standing ?? '')] ?? 0
+  const table = Math.max(0, ...sheet.facts.filter((f) => isTableFact(f.id) && factIds.includes(f.id)).map(rank))
+  const usualSaid = found(USUAL_WORDS, text, all)
+  if (usualSaid && table < STANDING_RANK.pattern) out.push(`says ${usualSaid} of a count of notes: it is a share of the notes written, never how often a thing happens; say how many of the notes hold the words`)
+  const best = Math.max(0, ...cited.map(rank))
+  if (best >= STANDING_RANK.pattern || table >= STANDING_RANK.pattern) return out
+  if (best === STANDING_RANK.lead) {
+    if (!/\blead\b/i.test(text)) out.push('cites a count of notes that stands at a lead without saying so: say "a lead"')
+    const looked = [...new Set(cited.filter((f) => rank(f) === STANDING_RANK.lead).map((f) => f.values.family).filter((n): n is number => typeof n === 'number'))]
+    if (looked.length && !looked.some((n) => saysNumber(text, n))) out.push(`cites a lead without saying how many comparisons were looked at: ${looked[0]}`)
+    return out
+  }
+  // A cited table cell at a lead answers for those words under its own rule.
+  if (table >= STANDING_RANK.lead) return out
+  const aheadSaid = found(AHEAD_WORDS, text, all)
+  if (aheadSaid) out.push(`says ${aheadSaid} of a count of notes with no clear pattern yet: the counts may be said, and that no clear pattern stands yet`)
   return out
 }
 
@@ -598,6 +636,8 @@ function refusals(text: string, factIds: readonly string[], cardIds: readonly st
   if (factIds.some(isLadderFact)) out.push(...ladderWordingRefusals(text, factIds, sheet, all))
   // A counted pattern, served by a lookup (2026-11-13), is said no more firmly than its standing.
   if (factIds.some(isTableFact)) out.push(...patternWordingRefusals(text, factIds, sheet, all))
+  // A search of the notes (2026-11-13) is said as a share of the notes written, with the words searched named.
+  if (factIds.some(isNoteWordsFact)) out.push(...noteWordsRefusals(text, factIds, sheet, all))
   out.push(...numbersRefusals(text, sheet, factIds))
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
@@ -872,7 +912,7 @@ export function numberCount(text: string, sheet: FactSheet, factIds: readonly st
   const plain = rest.replace(ISO_DATE, ' ')
   // A count behind a rate, "7 of 26", is one reading (2026-11-13): where a counted pattern is cited the pair counts once
   // here, for the voice alone. Both of its numbers are still held to the cited facts.
-  const pairs = factIds.some(isTableFact) ? (plain.match(COUNT_PAIR) ?? []).length : 0
+  const pairs = factIds.some((id) => isTableFact(id) || isNoteWordsFact(id)) ? (plain.match(COUNT_PAIR) ?? []).length : 0
   return clockTimesWritten(named).length + (rest.match(ISO_DATE) ?? []).length + numbersIn(plain).length - pairs + [...plain.matchAll(COUNT_WORD)].length
 }
 

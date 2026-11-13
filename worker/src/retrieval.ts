@@ -22,7 +22,7 @@ export type ReadTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask
  * values, and each fact's id begins with its lookup's own name: these are fact heads no fact on the sheet carries (the
  * sheet's own forecast facts are headed "forecast", so the lookup of stored forecasts is named in the plural).
  */
-export const LOOKUPS = ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts'] as const
+export const LOOKUPS = ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts', 'noteWords'] as const
 export type Lookup = (typeof LOOKUPS)[number]
 /** What a lookup fact's category reads as when it names none the layer knows: no reader is permitted it. */
 const CLOSED = 'closed' as Category

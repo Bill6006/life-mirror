@@ -190,8 +190,8 @@ TABLE = [
          new="            ...(false ? {",
          tests=[FLOW], pattern='the log in your record'),
     dict(id='not-synced', file='src/cloudOutbox.ts',
-         old="'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays', 'patterns']",
-         new="'pathRequests', 'pathTests', 'pathTestDays', 'patterns']",
+         old="'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays', 'patterns', 'noteMarks']",
+         new="'pathRequests', 'pathTests', 'pathTestDays', 'patterns', 'noteMarks']",
          tests=[FLOW], pattern='the log in your record'),
     # The boundaries.
     dict(id='sheet-reads-log', file='src/facts.ts',

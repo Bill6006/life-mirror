@@ -92,12 +92,13 @@ const MONDAY = 'pattern.chip.dinner.weekday.1'
 const GOOD = { text: 'Late dinners cluster on Saturdays, and in your record that stands as a steady pattern.\n\nIt was recorded on 8 of 8 Saturdays, against 0 of 48 other days.', factIds: [SATURDAY], cardIds: [], test: null, note: false }
 
 describe('the briefing', () => {
-  it('lists the eight lookups a run may ask for, each with its parameters, beside the categories', async () => {
+  it('lists the nine lookups a run may ask for, each with its parameters, beside the categories', async () => {
     const { store } = await started()
     const b = (await briefing(store, at('09:02'))).body as { context: { lookups: string[]; categories: string[] }; instructions: string }
-    expect(b.context.lookups).toHaveLength(8)
+    expect(b.context.lookups).toHaveLength(9)
+    expect(b.context.lookups[8]).toBe('lookup=noteWords&q=<one to five words or phrases, separated by commas> (optional from=&to=): how many notes hold those whole words, when those notes were written set beside when notes are written at all, and each note that holds them')
     expect(b.context.lookups[0]).toBe('lookup=kinds (optional q, a keyword): what the record counts, each with its id; and what it deliberately does not count')
-    expect(b.context.lookups.map((l) => l.split(/[ &]/)[0])).toEqual(['lookup=kinds', 'lookup=pattern', 'lookup=day', 'lookup=moves', 'lookup=workouts', 'lookup=pathSteps', 'lookup=lines', 'lookup=forecasts'])
+    expect(b.context.lookups.map((l) => l.split(/[ &]/)[0])).toEqual(['lookup=kinds', 'lookup=pattern', 'lookup=day', 'lookup=moves', 'lookup=workouts', 'lookup=pathSteps', 'lookup=lines', 'lookup=forecasts', 'lookup=noteWords'])
     expect(b.context.categories).toContain('notes')
     // The briefing prints the day's sheet alone: nothing of the table is on it.
     expect(JSON.stringify(b)).not.toContain('pattern.chip')
@@ -111,6 +112,8 @@ describe('the briefing', () => {
       expect(text).toContain('is answered from the pattern table, never from a count of your own')
       expect(text).toContain('"Most likely", "most often", "usually" and "tends to" only when a cited cell stands as a steady pattern.')
       expect(text).toContain('A count written "7 of 26" counts as one number for the limits on numbers.')
+      // A search of the notes (2026-11-13), word for word.
+      expect(text).toContain(`- A question about something written in the notes ("out of all the times I've noted", a word, a phrase) is answered from lookup=noteWords and its q, never from a count of your own. Whole words are matched and nothing else: "yell" does not count "yelled", so ask for each form that would have been written, and name the words searched in the answer. What it gives is counts of notes: a share of the times a note was written, never how often the thing happens, and a note shows when it was written, not when the thing happened. With a noteWords.* fact cited, "most likely", "most often", "usually" and "tends to" are refused whatever its standing; one time may be put ahead of another only on a cited cell that stands at a lead (say "a lead" and how many comparisons were looked at) or as a steady pattern. A thing to be counted as a true rate needs a private item to tap, and the answer may say so.`)
     }
   })
 })
@@ -276,5 +279,62 @@ describe('an answer checked against the sheet and the lookups together', () => {
     expect(facts[0].text).toContain('Too few to compare yet: a comparison needs 8 occasions in a cell and 8 outside it, and 5 occurrences in all.')
     const said = { text: 'There is too little to compare yet.\n\nIt was recorded on 0 of 56 days; a comparison needs 8 occasions in a cell and 5 occurrences in all.', factIds: ['pattern.chip.nothingLanded.all'], cardIds: [], test: null, note: false }
     expect((await post(store, at('09:05'), said)).status).toBe(200)
+  })
+})
+
+describe('a search of the notes, through the bridge and the checker', () => {
+  const ALL = 'noteWords.all'
+  const NOTED = { text: 'The whole word "walked" is in 1 of the 1 notes you wrote at check-ins.\n\nThat counts notes, not walks: a note shows when it was written, not when the thing happened.', factIds: [ALL], cardIds: [], test: null, note: false }
+
+  it('answers with facts, is logged as its own kind of read, and an answer that names the word and says its counts passes', async () => {
+    const { store, turn } = await started('Out of all the times I have noted it, when did I walk home?')
+    const r = await read(store, at('09:03'), { lookup: 'noteWords', q: 'walked' })
+    expect(r.status).toBe(200)
+    const body = r.body as { lookup: string; facts: { id: string; text: string }[]; complete: boolean }
+    expect(body.lookup).toBe('noteWords')
+    expect(body.facts.map((f) => f.id)).toEqual([ALL, 'noteWords.weekday.2', 'noteWords.checkin.evening', 'noteWords.note.2026-11-10.1'])
+    expect(body.facts[0].text).toContain('were searched for the whole word “walked”: 1 of the 1 notes written at check-ins hold it.')
+    expect(body.facts[3].text).toBe('2026-11-10: at the evening check-in you wrote: “walked 17 blocks home”')
+    expect(servedOf(store).lookups.map((f: { id: string }) => f.id)).toContain(ALL)
+    expect((await store.readReads(5)).map((x) => x.category)).toContain('lookup.noteWords')
+    expect(await post(store, at('09:05'), NOTED)).toEqual({ status: 200, body: { ok: true } })
+    expect(answerOf(store, turn.id)).toMatchObject({ status: 'answered', factIds: [ALL] })
+    expect(answerOf(store, turn.id).facts[0].text).toContain('1 of the 1 notes written at check-ins hold it')
+  })
+
+  it('refuses an answer that does not name the word searched, and one that says how often the thing happens', async () => {
+    const { store } = await started('Out of all the times I have noted it, when did I walk home?')
+    await read(store, at('09:03'), { lookup: 'noteWords', q: 'walked' })
+    const unnamed = await post(store, at('09:05'), { ...NOTED, text: 'It is in 1 of the 1 notes you wrote at check-ins.\n\nThat counts notes: a note shows when it was written, not when the thing happened.' })
+    expect(unnamed.status).toBe(422)
+    expect(reason(unnamed)).toContain('rests on a search of the notes without naming the words searched: name "walked"')
+    const rate = await post(store, at('09:06'), { ...NOTED, text: 'You most likely walked home in the evening: "walked" is in 1 of the 1 notes.\n\nThat counts notes, not walks.' })
+    expect(rate.status).toBe(422)
+    expect(reason(rate)).toContain('says "most likely" of a count of notes: it is a share of the notes written, never how often a thing happens')
+  })
+
+  it('refuses a number the note holds and the cited count does not, and passes it once the note itself is cited', async () => {
+    const { store } = await started('Out of all the times I have noted it, when did I walk home?')
+    await read(store, at('09:03'), { lookup: 'noteWords', q: 'walked' })
+    const text = 'The whole word "walked" is in 1 of the 1 notes you wrote at check-ins.\n\nThat note says 17 blocks: it shows when it was written, not when the thing happened.'
+    const loose = await post(store, at('09:05'), { ...NOTED, text })
+    expect(loose.status).toBe(422)
+    expect(reason(loose)).toContain('17')
+    expect(await post(store, at('09:06'), { ...NOTED, text, factIds: [ALL, 'noteWords.note.2026-11-10.1'] })).toEqual({ status: 200, body: { ok: true } })
+  })
+
+  it('serves nothing with the notes switch off, and takes the facts away when it is turned off before the answer', async () => {
+    const off = record()
+    put(off, 'brainPrefs', 'prefs', null, { id: 'prefs', switches: { notes: false }, updatedAt: `${DAY}T12:00:00.000Z` })
+    asked(off, 'Out of all the times I have noted it, when did I walk home?')
+    expect(await runAsks(env, off, at('09:01'), { gate: 'open', fireFetcher: fetcher })).toMatchObject({ ran: true })
+    await briefing(off, at('09:02'))
+    expect(((await read(off, at('09:03'), { lookup: 'noteWords', q: 'walked' })).body as { facts: unknown[] }).facts).toEqual([])
+    // Served while the switch was on, then the switch turned off: the answer may no longer rest on it.
+    const { store } = await started('Out of all the times I have noted it, when did I walk home?')
+    await read(store, at('09:03'), { lookup: 'noteWords', q: 'walked' })
+    put(store, 'brainPrefs', 'prefs', null, { id: 'prefs', switches: { notes: false }, updatedAt: `${DAY}T14:04:00.000Z` }, `${DAY}T14:04:00.000Z`)
+    const late = await post(store, at('09:05'), NOTED)
+    expect(late.status).toBe(422)
   })
 })

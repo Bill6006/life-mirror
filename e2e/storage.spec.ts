@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page, type Route } from '@playwright/test'
+import { storeRows } from './askSeed'
 
 // Sync safety (2026-10-02), in the browser the phone runs. A phone's browser can clear the app's
 // database and leave its local storage standing: the token's second copy comes back, and so must
@@ -677,6 +678,30 @@ test('the skill coach with its cloud copy on (D7 as amended 2026-10-18: suggesti
   worker('bridge', `task:${ask.day}:skill.2`, run(`task:${ask.day}:skill.2`, taken, { status: 'written', firedAt: taken, fireStatus: 200, writer: 'claude', posts: 1, asks: [ask.id + 1000] }), taken)
   await page.clock.fastForward(20_000)
   await expect(card.getByTestId('coach-when')).toHaveText('Both of today’s two suggestions are used. This one comes after midnight.', { timeout: 10_000 })
+  expect(p.errors).toEqual([])
+  await p.context.close()
+})
+
+test('what was noticed in notes comes down with the Worker’s other rows and is kept read-only: a row, a row taken back, nothing sent back (2026-11-13)', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const cloud = new Cloud()
+  const event = { type: 'stand-in-one', note: { store: 'checkins', id: '1', day: '2026-03-07', block: 'evening' }, quote: 'a stand-in quote', noticedAt: '2026-03-08T12:00:00.000Z', method: 'stand-in' }
+  const worker = (id: string, deleted: 0 | 1, at: string) => cloud.seed({ app: BRAIN, store: 'noteEvents', id, day: null, body: deleted ? '{}' : JSON.stringify(event), updated_at: at, deleted, device_id: 'worker', synced_at: at } as never)
+  worker('e1', 0, '2026-03-08T12:00:00.000Z')
+  worker('e2', 0, '2026-03-08T12:00:01.000Z')
+  const p = await phone(browser, cloud, new Date(2026, 2, 8, 9, 5))
+  await connectPhone(p, cloud)
+  const held = () => storeRows<{ id: string }>(p.page, 'noteEvents')
+  await expect.poll(async () => (await held()).map((e) => e.id).sort()).toEqual(['e1', 'e2'])
+  // Kept as the Worker wrote it, under the row's own id.
+  expect((await held()).find((e) => e.id === 'e1')).toEqual({ id: 'e1', ...event })
+  // The Worker takes one back: it leaves the phone at the next pull.
+  worker('e1', 1, '2026-03-08T12:05:00.000Z')
+  await p.page.reload()
+  await expect.poll(async () => (await held()).map((e) => e.id)).toEqual(['e2'])
+  // Read-only: nothing of it was queued on the phone or written under the phone's own rows.
+  expect((await storeRows<{ store: string }>(p.page, 'outbox')).filter((r) => r.store === 'noteEvents')).toEqual([])
+  expect(cloud.live('noteEvents')).toEqual([])
   expect(p.errors).toEqual([])
   await p.context.close()
 })

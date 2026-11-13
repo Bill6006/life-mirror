@@ -1,4 +1,5 @@
 import type { PatternsRecord } from './counted/stored'
+import type { NoteEvent, NoteMark } from './noteEvents/shared'
 import type { BrainPrefsBody, CitedFact, Lacked, LineAction } from './brainShared'
 import type { DrawRecord, OutcomeReason } from './provenance'
 import type { OutsideSession } from './outsideRow'
@@ -967,6 +968,10 @@ class LifeMirrorDB extends Dexie {
   intentions!: Table<Intention, number>
   facts!: Table<FactsRow, string>
   patterns!: Table<PatternsRecord, string>
+  /** What Claude noticed in notes (2026-11-13): the Worker's rows, pulled and kept read-only. None is written until the month's read exists. */
+  noteEvents!: Table<NoteEvent, string>
+  /** The phone's own marks on them: an event marked wrong, and the moment up to which everything noticed is forgotten. Synced. */
+  noteMarks!: Table<NoteMark, string>
   briefLog!: Table<BriefLog, number>
   briefFeedback!: Table<BriefFeedback, number>
   brainBriefs!: Table<BrainBrief, string>
@@ -1248,6 +1253,12 @@ class LifeMirrorDB extends Dexie {
     // Worker to serve a kind at a time. Counts, standings and the app's own labels; in the export.
     this.version(28).stores({
       patterns: 'id',
+    })
+    // Version 29 (2026-11-13): a home for what is noticed in notes. Two new stores and nothing else: every row there
+    // was is kept as it was.
+    this.version(29).stores({
+      noteEvents: 'id',
+      noteMarks: 'id',
     })
     installOutbox(this)
     installPendingCopy(this)

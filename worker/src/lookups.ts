@@ -1,8 +1,10 @@
 import { churchWords } from '../../src/church'
+import { MIN_OCCURRENCES, MIN_SIDE, ratesBy, standings, type CellPoint, type CellRate } from '../../src/counted/compare'
 import { LEFT_OUT } from '../../src/counted/leftOut'
 import { LEVEL_BAND_WORDS, PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, TABLE_MIN_OCCURRENCES, TABLE_MIN_SIDE, type PatternsRecord, type StoredKind } from '../../src/counted/stored'
-import { cellWords, kindWords, levelWords, SPLIT_WORDS, whenWords } from '../../src/counted/words'
+import { cellWords, kindWords, levelWords, noteShareWords, SPLIT_WORDS, whenWords } from '../../src/counted/words'
 import type { Fact } from '../../src/factTypes'
+import { coarseOf, holdsWords, parseNoteWords } from '../../src/noteWords'
 import { outsideDayOf } from '../../src/outsideRow'
 import { GENERATED_STORE, type GeneratedPathRow } from '../../src/pathJob'
 import { AWAY_FROM_HOME } from '../../src/postWindow'
@@ -26,13 +28,14 @@ const REACH_DAYS = 366
 const FORECAST_AHEAD = 7
 
 /** Each lookup's own parameters; any other is refused. */
-export const LOOKUP_PARAMS: Readonly<Record<Lookup, readonly string[]>> = { kinds: ['q'], pattern: ['kind'], day: ['date'], moves: ['from', 'to', 'limit'], workouts: ['from', 'to'], pathSteps: ['from', 'to'], lines: ['from', 'to'], forecasts: ['date'] }
+export const LOOKUP_PARAMS: Readonly<Record<Lookup, readonly string[]>> = { kinds: ['q'], pattern: ['kind'], day: ['date'], moves: ['from', 'to', 'limit'], workouts: ['from', 'to'], pathSteps: ['from', 'to'], lines: ['from', 'to'], forecasts: ['date'], noteWords: ['q', 'from', 'to'] }
 
 export type LookupQuery =
   | { lookup: 'kinds'; q?: string }
   | { lookup: 'pattern'; kind: string }
   | { lookup: 'day' | 'forecasts'; date: string }
   | { lookup: 'moves' | 'workouts' | 'pathSteps' | 'lines'; from: string; to: string; limit: number }
+  | { lookup: 'noteWords'; words: string[]; from: string; to: string }
 
 /** What a run is told it may ask for, one line a lookup: the briefing's `context.lookups`. */
 export const LOOKUP_HELP: Readonly<Record<Lookup, string>> = {
@@ -44,6 +47,7 @@ export const LOOKUP_HELP: Readonly<Record<Lookup, string>> = {
   pathSteps: 'lookup=pathSteps&from=&to=: steps of the Speaking Path and of generated Paths that were done',
   lines: 'lookup=lines&from=&to=: the Brain’s own past lines and weekly reviews',
   forecasts: 'lookup=forecasts&date=YYYY-MM-DD: the forecasts stored for that day, how each scored, and how often a forecast’s range has held',
+  noteWords: 'lookup=noteWords&q=<one to five words or phrases, separated by commas> (optional from=&to=): how many notes hold those whole words, when those notes were written set beside when notes are written at all, and each note that holds them',
 }
 
 /** A lookup query read from the URL, or why it is refused. */
@@ -71,10 +75,15 @@ export function parseLookupQuery(url: URL, day: string): { ok: true; query: Look
     return { ok: true, query: { lookup, date } }
   }
   const to = url.searchParams.get('to') ?? day
-  const from = url.searchParams.get('from') ?? addDays(day, -30)
+  // A search of the notes reaches the whole year unless it is told otherwise: "all the times I've noted" is not a month.
+  const from = url.searchParams.get('from') ?? addDays(day, lookup === 'noteWords' ? -REACH_DAYS : -30)
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || from > to) return { ok: false, reason: 'from and to must be days, from before to' }
   if (to > day) return { ok: false, reason: 'to may not be after the task’s day' }
   if (from < addDays(day, -REACH_DAYS)) return { ok: false, reason: 'from may reach back a year at most' }
+  if (lookup === 'noteWords') {
+    const words = parseNoteWords(url.searchParams.get('q') ?? '')
+    return words.ok ? { ok: true, query: { lookup, words: words.words, from, to } } : { ok: false, reason: words.reason }
+  }
   const limitRaw = url.searchParams.get('limit')
   const limit = limitRaw === null ? 50 : Number(limitRaw)
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) return { ok: false, reason: 'limit must be from 1 to 100' }
@@ -510,7 +519,133 @@ async function forecastLookup(x: LookupCtx, q: { date: string }, tally: ReadTall
   return { facts: kept, complete: true, notRead: 0, ...(rows.length ? {} : { note: `no forecast is stored for ${q.date}` }) }
 }
 
+/** How many rows a page of the notes' search asks for, and how many pages it reads before it says it stopped short. */
+export const NOTE_PAGE = 200
+export const NOTE_PAGES = 10
+/** How many check-ins with a note one search counts among: more than three a day for a year. */
+export const NOTE_MOMENTS = 2000
+/** How many of the notes that hold the words are served as facts, the newest first. */
+export const NOTES_SERVED = 30
+/** How many notes a count names by day and check-in before it says how many more there are. */
+const NOTES_NAMED = 12
+const BLOCK_ORDER = ['morning', 'afternoon', 'evening']
+/** The weekday a day is filed under, 0 Sunday to 6 Saturday, by the calendar alone. */
+const weekdayOfDay = (day: string): number => new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)))).getUTCDay()
+
+/**
+ * The notes searched for whole words (2026-11-13): how many notes hold them, and when those notes were written, set
+ * beside when notes are written at all. The database finds the candidates, the reader confirms each on the note's own
+ * words, and the read goes on page by page until it is whole or says it is not. Each check-in note is one occasion of
+ * the comparison core, which the Worker runs here on this small table and nowhere else. The journal is never read.
+ */
+async function noteWordsLookup(x: LookupCtx, q: { words: string[]; from: string; to: string }, tally: ReadTally): Promise<LookupReply> {
+  const faith = x.a.allowed('faith')
+  if (!faith && q.words.some((w) => FAITH_WORDS.test(w))) return { facts: [], complete: true, notRead: 0, note: 'these words are not searched while faith is hidden' }
+  const said = q.words.map((w) => `“${w}”`).join(' or ')
+  const holds = (text: string): boolean => q.words.some((w) => holdsWords(text, w))
+  const moments = await x.store.noteMoments({ from: q.from, to: q.to }, NOTE_MOMENTS + 1)
+  let complete = moments.length <= NOTE_MOMENTS
+  const counted = moments.slice(0, NOTE_MOMENTS)
+  // The candidates: each word's plainest run of letters, asked of the database; with none, every check-in that has a note.
+  const tokens = [...new Set(q.words.map((w) => coarseOf(w) ?? '"note":"'))]
+  const found = new Map<string, { day: string; block: string; note: string }>()
+  for (const like of tokens) {
+    let to = q.to
+    for (let page = 0; ; page++) {
+      const rows = await x.store.readRecords('checkins', { from: q.from, to, like }, NOTE_PAGE + 1)
+      for (const r of rows.slice(0, NOTE_PAGE)) {
+        const b = obj(r.body)
+        const note = str(obj(b.extras).note).trim()
+        if (r.day && note && holds(note) && (faith || !FAITH_WORDS.test(note))) found.set(r.id, { day: r.day, block: str(b.block), note })
+      }
+      if (rows.length <= NOTE_PAGE) break
+      // More rows than the page: go on from the oldest day read, that day again, a note already kept kept once.
+      const oldest = rows[NOTE_PAGE - 1].day ?? ''
+      if (page + 1 >= NOTE_PAGES || !oldest || oldest === to) {
+        complete = false
+        tally.cuts.push({ store: 'checkins', range: { from: q.from, to, like }, limit: NOTE_PAGE })
+        break
+      }
+      to = oldest
+    }
+  }
+  const kept: { day: string; text: string }[] = []
+  for (const like of [...new Set(q.words.map((w) => coarseOf(w) ?? ''))]) {
+    for (const r of await recordsOf({ store: x.store, tally }, 'notes', { from: q.from, to: q.to, ...(like ? { like } : {}) }, NOTE_PAGE)) {
+      const text = str(obj(r.body).text).trim()
+      if (r.day && text && holds(text) && (faith || !FAITH_WORDS.test(text)) && !kept.some((k) => k.day === r.day && k.text === text)) kept.push({ day: r.day, text })
+    }
+  }
+  const holding = counted.filter((m) => found.has(m.id))
+  const K = holding.length
+  const N = counted.length
+  const splits: { split: string; within: 'stretch' | 'day'; cells: string[]; points: CellPoint[] }[] = [
+    { split: 'weekday', within: 'stretch', cells: ['0', '1', '2', '3', '4', '5', '6'], points: counted.map((m) => ({ day: m.day, cell: String(weekdayOfDay(m.day)), happened: found.has(m.id) })) },
+    { split: 'checkin', within: 'day', cells: BLOCK_ORDER, points: counted.filter((m) => BLOCK_ORDER.includes(m.block)).map((m) => ({ day: m.day, cell: m.block, happened: found.has(m.id) })) },
+  ]
+  const id = `noteWords|${q.words.join('|').toLowerCase()}|${q.from}|${q.to}`
+  const rates: { split: string; rate: CellRate }[] = splits.flatMap((s) => ratesBy(s.points, { id: `${id}|${s.split}`, within: s.within, cells: s.cells }).map((rate) => ({ split: s.split, rate })))
+  const stood = standings(rates.map((c) => c.rate))
+  const family = stood[0]?.family ?? 0
+  const words = q.words.join('|')
+  /** A count's notes, named by day and check-in: the count linked to its notes in the fact itself. */
+  const named = (rows: readonly { day: string; block: string }[]): string => {
+    if (!rows.length) return ''
+    const first = rows.slice(0, NOTES_NAMED).map((r) => `${r.day} ${r.block}`).join(', ')
+    return ` The notes: ${first}${rows.length > NOTES_NAMED ? `, and ${rows.length - NOTES_NAMED} more` : ''}.`
+  }
+  const tried = family === 0 ? `Too few to compare when they were written: a comparison needs at least ${MIN_OCCURRENCES} notes holding the words, and ${MIN_SIDE} notes on each side.` : `${family} ${family === 1 ? 'comparison of when they were written was' : 'comparisons of when they were written were'} looked at.`
+  const facts: Fact[] = [
+    fact(
+      'noteWords.all',
+      `Your notes from ${q.from} to ${q.to} were searched for the whole ${q.words.length === 1 ? 'word' : 'words'} ${said}: ${K} of the ${N} notes written at check-ins hold ${q.words.length === 1 ? 'it' : 'them'}${kept.length ? `, and ${kept.length} of the notes you kept from a question` : ''}. This counts notes, a share of the times you wrote one, never how often the thing happened: a note shows when it was written, not when the thing happened. ${K ? tried : ''}${named(holding)}`.trim(),
+      'notes',
+      { holding: K, notes: N, kept: kept.length, family, words, ...(family === 0 ? { minSide: MIN_SIDE, minOccurrences: MIN_OCCURRENCES } : {}), ...(holding.length > NOTES_NAMED ? { more: holding.length - NOTES_NAMED } : {}) },
+    ),
+  ]
+  if (K) {
+    rates.forEach(({ split, rate: c }, i) => {
+      const w = cellWords(split, c.cell)
+      if (!w || c.n === 0) return
+      const s = stood[i]
+      const mine = holding.filter((m) => (split === 'weekday' ? String(weekdayOfDay(m.day)) : m.block) === c.cell)
+      facts.push(
+        fact(`noteWords.${split}.${c.cell}`, `${noteShareWords({ words: said, where: w.where, elsewhere: w.elsewhere, k: c.k, n: c.n, restK: c.restK, m: c.m, standing: s.standing, direction: s.direction, family: s.family })}${named(mine)}`, 'notes', {
+          k: c.k,
+          n: c.n,
+          restK: c.restK,
+          m: c.m,
+          holding: c.k + c.restK,
+          notes: c.n + c.m,
+          family: s.family,
+          standing: s.standing,
+          direction: s.direction,
+          split,
+          cell: c.cell,
+          words,
+          ...(mine.length > NOTES_NAMED ? { more: mine.length - NOTES_NAMED } : {}),
+        }),
+      )
+    })
+  }
+  // Each note that holds the words, the newest first, in the words the notes category already uses.
+  const listed = [...found.values()].sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : BLOCK_ORDER.indexOf(b.block) - BLOCK_ORDER.indexOf(a.block)))
+  const noteFacts = numbered(
+    'noteWords.note',
+    listed.slice(0, NOTES_SERVED).map((r) => ({ day: r.day, text: `at the ${r.block} check-in you wrote: “${r.note}”`, category: 'notes', faith: FAITH_WORDS.test(r.note), values: { words, ...saidIn(r.note) } })),
+    x.a,
+  )
+  const keptFacts = numbered(
+    'noteWords.kept',
+    kept.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0)).slice(0, NOTES_SERVED).map((r) => ({ day: r.day, text: `you kept a note: “${r.text}”`, category: 'notes', faith: FAITH_WORDS.test(r.text), values: { words, ...saidIn(r.text) } })),
+    x.a,
+  )
+  const cut = listed.length > NOTES_SERVED || kept.length > NOTES_SERVED
+  return { facts: [...facts, ...noteFacts, ...keptFacts], complete: complete && !cut, notRead: 0, ...(!complete ? { note: 'the search stopped before every note was read' } : cut ? { note: `the newest ${NOTES_SERVED} of the notes that hold the words are listed; every one is counted` } : {}) }
+}
+
 function answer(x: LookupCtx, q: LookupQuery, tally: ReadTally): Promise<LookupReply> {
+  if (q.lookup === 'noteWords') return noteWordsLookup(x, q, tally)
   if (q.lookup === 'kinds') return kindsLookup(x, q)
   if (q.lookup === 'pattern') return patternLookup(x, q)
   if ('date' in q) return q.lookup === 'day' ? dayLookup(x, q, tally) : forecastLookup(x, q, tally)

@@ -97,6 +97,42 @@ export function whenWords(w: WhenWords): string {
   }
 }
 
+export interface NoteShareWords {
+  /** The words searched, as they are said: “yell” or “yelled”. */
+  words: string
+  where: string
+  elsewhere: string
+  /** Of the notes written in the cell, how many hold the words; and the cell's notes in all. */
+  k: number
+  n: number
+  /** The same for every other note. */
+  restK: number
+  m: number
+  standing: Standing
+  direction: Direction
+  family: number
+}
+
+/**
+ * One cell of a search of the notes (2026-11-13): a share of the notes written, set beside when notes are written at
+ * all, never how often the thing happened. Every number it says is one of its own counts.
+ */
+export function noteShareWords(w: NoteShareWords): string {
+  const counts = `of the ${w.k + w.restK} notes that hold ${w.words}, ${w.k} were written ${w.where}; of all ${w.n + w.m} notes, ${w.n} were written ${w.where}`
+  const share = `${w.k} of the ${w.n} notes written ${w.where} hold the words, against ${w.restK} of the ${w.m} written ${w.elsewhere}`
+  const often = w.direction === 'lower' ? 'less often' : 'more often'
+  switch (w.standing) {
+    case 'tooFew':
+      return `${STANDING_WORDS.tooFew}: ${counts}.`
+    case 'noPattern':
+      return `${STANDING_WORDS.noPattern}: ${counts}.`
+    case 'lead':
+      return `${STANDING_WORDS.lead}: notes written ${w.where} held the words ${often} than notes written ${w.elsewhere} (${share}). ${looked(w.family)}.`
+    case 'pattern':
+      return `${STANDING_WORDS.pattern}: notes written ${w.where} held the words ${often} than notes written ${w.elsewhere} (${share}).`
+  }
+}
+
 export interface WithWords {
   thing: string
   /** What was read, and where: "Mornings after", "Evenings of". */

@@ -133,7 +133,7 @@ try {
     const commit = (await page.getByTestId('build-commit').textContent())?.trim()
     check('the build stamp is the pushed commit', commit === want, `shows ${commit}`)
     const shape = await shapeOf(page, 'patterns')
-    check('the database holds the pattern table’s store, at version 28', shape.has && shape.version === 280, `version ${shape.version / 10}, store ${shape.has ? 'there' : 'missing'}`)
+    check('the database holds the pattern table’s store, at version 28 or later', shape.has && shape.version >= 280, `version ${shape.version / 10}, store ${shape.has ? 'there' : 'missing'}`)
 
     // A stand-in record, then the app opened again: the table follows the day's sheet on its own.
     await put(page, 'checkins', eightWeeks(NOW))

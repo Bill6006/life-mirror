@@ -65,8 +65,8 @@ function withTable(over: Partial<typeof TABLE> = {}): Mem {
 }
 
 describe('a lookup query', () => {
-  it('names one of eight lookups, and takes that lookup’s own parameters alone', () => {
-    expect(LOOKUPS).toEqual(['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts'])
+  it('names one of nine lookups, and takes that lookup’s own parameters alone', () => {
+    expect(LOOKUPS).toEqual(['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts', 'noteWords'])
     expect(Object.keys(LOOKUP_PARAMS).sort()).toEqual([...LOOKUPS].sort())
     expect(parse('lookup=kinds')).toEqual({ ok: true, query: { lookup: 'kinds' } })
     expect(parse('lookup=kinds&q=sleep')).toEqual({ ok: true, query: { lookup: 'kinds', q: 'sleep' } })
@@ -79,7 +79,7 @@ describe('a lookup query', () => {
 
   it('has a name on the phone for each lookup’s read, where what Claude read is listed', () => {
     const labels = copy.brainScreen.readLabels as Record<string, string>
-    expect(LOOKUPS.map((l) => labels[`lookup.${l}`])).toEqual(['Lookup: what is counted', 'Lookup: when a thing was recorded', 'Lookup: one day', 'Lookup: moves', 'Lookup: workouts', 'Lookup: Path steps done', 'Lookup: past lines', 'Lookup: forecasts'])
+    expect(LOOKUPS.map((l) => labels[`lookup.${l}`])).toEqual(['Lookup: what is counted', 'Lookup: when a thing was recorded', 'Lookup: one day', 'Lookup: moves', 'Lookup: workouts', 'Lookup: Path steps done', 'Lookup: past lines', 'Lookup: forecasts', 'Lookup: words in your notes'])
   })
 
   it('refuses an unknown lookup, an unknown parameter, another lookup’s parameter, and a category beside a lookup', () => {
@@ -524,7 +524,7 @@ describe('every lookup against every switch', () => {
     put(store, 'patterns', 'table', null, TABLE)
     // A line of the Brain's own, so its history has something to serve too.
     void store.writeBrief({ id: `${D}:brief`, day: D, kind: 'brief', text: 'A stand-in line.', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: `${D}T12:48:00.000Z`, factsDay: D, refusals: [], writer: 'claude' }, `${D}T12:48:00.000Z`)
-    const queries: LookupQuery[] = [{ lookup: 'kinds' }, { lookup: 'pattern', kind: 'private.7' }, { lookup: 'pattern', kind: 'chip.dinner' }, { lookup: 'day', date: D }, { lookup: 'moves', from: D, to: D, limit: 50 }, { lookup: 'workouts', from: D, to: D, limit: 50 }, { lookup: 'pathSteps', from: D, to: D, limit: 50 }, { lookup: 'lines', from: D, to: D, limit: 50 }, { lookup: 'forecasts', date: D }]
+    const queries: LookupQuery[] = [{ lookup: 'kinds' }, { lookup: 'pattern', kind: 'private.7' }, { lookup: 'pattern', kind: 'chip.dinner' }, { lookup: 'day', date: D }, { lookup: 'moves', from: D, to: D, limit: 50 }, { lookup: 'workouts', from: D, to: D, limit: 50 }, { lookup: 'pathSteps', from: D, to: D, limit: 50 }, { lookup: 'noteWords', words: ['thought', 'work'], from: D, to: D }, { lookup: 'lines', from: D, to: D, limit: 50 }, { lookup: 'forecasts', date: D }]
     // The probe that can say yes, first: with every switch on, the same lookups serve facts of these categories.
     const served = new Set((await Promise.all(queries.map((q) => run(store, q)))).flatMap((r) => r.facts.map((f) => String(f.values.category))))
     expect([...served].sort()).toEqual(['brainHistory', 'commitments', 'dayRecord', 'factSheet', 'faith', 'her', 'notes', 'privateItems', 'socialPath'])
@@ -540,7 +540,7 @@ describe('every lookup against every switch', () => {
       const still = new Set((await Promise.all(queries.map((q) => run(store, q, { a: access([off]) })))).flatMap((r) => r.facts.map((f) => String(f.values.category))))
       for (const c of served) if (c !== off && !(off === 'faith' && c === 'faith')) expect(still.has(c), `${c} with ${off} off`).toBe(true)
     }
-    expect(checked).toBe(14 * 9)
+    expect(checked).toBe(14 * 10)
     // And every fact a lookup serves names a category the layer knows.
     for (const q of queries) for (const f of (await run(store, q)).facts) expect((CATEGORIES as readonly string[]).includes(String(f.values.category)), f.id).toBe(true)
   })

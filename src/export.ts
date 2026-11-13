@@ -1,4 +1,6 @@
 import { readPatterns, type PatternsRecord } from './counted/stored'
+import { noticedOf } from './noteEvents/join'
+import type { NoteEvent, NoteMark } from './noteEvents/shared'
 import { compareSlots } from './blocks'
 import { type Aim, type AnchorSwap, askedOf, setAside, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathAdaptation, type PathMark, type PathTest, type PathTestDay, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
@@ -60,6 +62,19 @@ export interface RecordsData {
   pathTestDays?: readonly PathTestDay[]
   /** The pattern table (2026-11-13): what the record counts, and when each thing was recorded, as the phone last built it. */
   patterns?: PatternsRecord | null
+  /** What Claude noticed in notes (2026-11-13), and your own marks on it. */
+  noticed?: { events: readonly NoteEvent[]; marks: readonly NoteMark[] }
+}
+
+/**
+ * What was noticed in notes, for the export: each event that still stands, with your own words and its note's day,
+ * and whether you marked it wrong. One whose note is gone or changed is not here, as it is nowhere.
+ */
+export function noticedForExport(noticed: RecordsData['noticed'], checkins: readonly CheckIn[], kept: readonly KeptNote[]): { claudeNoticed?: unknown } {
+  if (!noticed) return {}
+  const all = noticedOf({ events: noticed.events, marks: noticed.marks, checkins, kept })
+  if (!all.length) return {}
+  return { claudeNoticed: all.map((n) => ({ what: n.type.label, day: n.event.note.day, checkIn: n.event.note.block ?? null, fromAKeptNote: n.checkinId === null, yourWords: n.event.quote, noticedAt: n.event.noticedAt, method: n.event.method, markedWrong: n.wrong })) }
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -206,6 +221,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         notes: 'Notes you kept from Ask, in your own words, each on its day: read as a check-in’s note is, never a reading or a finding.',
         // The pattern table's note, only beside the table itself: an export with no table reads as it always did.
         ...(readPatterns(records?.patterns) ? { patternTable: 'patternTable is the table Life Mirror builds from the whole record for questions about when something happens (2026-11-13): for each thing the record counts, how many occasions the record can speak for and how many carried it; and where there was enough to compare, each cell of each split (the weekday, the check-in of the day, a short night before, a low evening the day before) as k of n in the cell against restK of m elsewhere, with its standing: tooFew, noPattern, lead or pattern. family is how many comparisons were tested for that thing. level is the reading out of 100 in each cell as an average, with the check-ins in each band from Firing to Empty. It is counts and standings: an association, never a cause. A private item is in it only when private items are included; the Partner path’s steps only when the Partner path is.' } : {}),
+        // What was noticed in notes, only beside the list itself.
+        ...(records?.noticed?.events.length ? { claudeNoticed: 'claudeNoticed lists what Claude noticed in notes you wrote (2026-11-13): what it was, the day and check-in of the note, your own words quoted from it, when and by which method it was noticed, and whether you marked it wrong. One marked wrong counts nowhere. One whose note was deleted or no longer holds those words is not listed.' } : {}),
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
         ...(records?.pathAdaptations?.length || records?.pathTests?.length
           ? { pathAdaptations: 'pathAdaptations lists every change to how a Path runs for you (P6): what it does (kind and target), its origin (population evidence, a small test of yours, a pattern in your record, your preference, feasibility, safety, newly published research, your correction, a change to the Path’s design), why in the words shown then, with the counts, and its state: applied, a suggestion you declined, or undone, never deleted. A step’s pathWhy is a Path rep’s own reason after a No: noChance, cantYet, wrong (felt wrong or pointless), unsafe (felt unsafe or harmful). pathTests are the small tests you started, and pathTestDays the days a test’s version was on show with the chance it had. None of it is evidence for the learning engine or the Brain.' }
@@ -254,6 +271,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             ...((records.pathTests ?? []).some((x) => partner || x.path !== 'partner') ? { pathTests: (records.pathTests ?? []).filter((x) => partner || x.path !== 'partner').map((x) => ({ id: x.id, path: x.path, lever: x.lever, at: x.at, day: x.day, stoppedAt: x.stoppedAt ?? null })), pathTestDays: (records.pathTestDays ?? []).filter((d) => (records.pathTests ?? []).some((x) => x.id === d.test && (partner || x.path !== 'partner'))).map((d) => ({ test: d.test, day: d.day, version: d.version, chance: d.chance, at: d.at })) } : {}),
             forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
             ...patternsForExport(records.patterns, opts.includePrivate, partner),
+            ...noticedForExport(records.noticed, all, records.ask?.notes ?? []),
             forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
             her: {
               skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt, ...(s.rungs ? { rungs: s.rungs } : {}) })),
