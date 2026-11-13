@@ -908,6 +908,16 @@ test('aims: something to learn in its own words, held above the move, Start aske
 })
 
 test('learning: the two new chips answer from the record, and Evidence holds no card, tier or hypothesis of the retired engine (2026-10-20)', async ({ page }) => {
+  // The page's draws fixed (2026-11-12), as its clock is, so every run draws the same evening move. Unseeded, about four
+  // evenings in a hundred drew "Invite someone to something this week", the one move the recovery gap conflicts with: the
+  // app then rightly attaches no gap, and the note this test waits for never came (160 logged runs: 7 drew it, the 7 with no note).
+  await page.addInitScript((seed) => {
+    let x = seed
+    Math.random = () => {
+      x = (x * 16807) % 2147483647
+      return x / 2147483647
+    }
+  }, 7)
   await page.clock.setFixedTime(new Date(2026, 8, 7, 19, 5))
   await page.goto('./')
   await page.getByRole('button', { name: /Check in/ }).click()
@@ -3237,6 +3247,15 @@ test('the cue shows at the top of Now with no scroll first, and never covers the
 })
 
 test('a big social day is asked, never assumed: on a church day the chip asks; marked, the recovery gap joins this evening’s move; taken back, it comes off (the final checklist, item 1)', async ({ page }) => {
+  // The page's draws fixed (2026-11-12), as its clock is: unseeded, an evening that drew the one move the recovery gap
+  // conflicts with ("Invite someone to something this week") rightly got no gap, and the note this test waits for never came.
+  await page.addInitScript((seed) => {
+    let x = seed
+    Math.random = () => {
+      x = (x * 16807) % 2147483647
+      return x / 2147483647
+    }
+  }, 7)
   // A Saturday: the church day in a fresh week's shape.
   await page.clock.setFixedTime(new Date(2026, 8, 19, 19, 5))
   await page.goto('./')
