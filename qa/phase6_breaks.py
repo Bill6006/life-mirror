@@ -118,8 +118,8 @@ TABLE = [
 
     # A month's lines.
     dict(id='lines-as-the-exact-day-words-them', file=M,
-         old="    days.push({ day: d, inside, facts: dayFacts(x, d, rows) })\n",
-         new="    days.push({ day: d, inside, facts: dayFacts(x, d, rows).reverse() })\n",
+         old="    const facts = dayFacts(x, d, rows)\n",
+         new="    const facts = dayFacts(x, d, rows).reverse()\n",
          tests=[MT], pattern='exactly as the exact-day lookup words them'),
     dict(id='a-days-lines-from-its-own-rows', file=L,
          old="  const of = (list: readonly RecordRow[]): RecordRow[] => list.filter((r) => r.day === D)\n",

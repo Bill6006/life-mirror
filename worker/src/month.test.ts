@@ -133,7 +133,13 @@ describe('the record a note’s line came from', () => {
   it('is not kept for a note of another day that says the same words', async () => {
     const b = await built(standIn(() => 'The same words.'))
     const lines = b.parts.flatMap((p) => p.facts).filter((f) => f.text.includes('you wrote'))
-    for (const f of lines) expect(b.notes[f.id].day, f.id).toBe(f.id.split('.')[1])
+    expect(lines).toHaveLength(37)
+    // Each line's record is its own day's evening check-in: day n of the stand-in record holds check-ins 2n+1 and 2n+2.
+    for (const f of lines) {
+      const day = f.id.split('.')[1]
+      const n = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse('2026-09-25T00:00:00Z')) / 86_400_000)
+      expect(b.notes[f.id], f.id).toEqual({ store: 'checkins', id: String(2 * n + 2), day, block: 'evening' })
+    }
   })
 })
 
