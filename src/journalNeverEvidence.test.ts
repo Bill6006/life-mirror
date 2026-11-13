@@ -17,8 +17,8 @@ const READERS = [
   'worker/src/retrieval.ts',
 ]
 
-/** Reading the journal's words: its table on the phone, its module, or its rows in the Worker. */
-const READS = /\bdb\.journal\b|from '\.\/journal'|readRecords\('journal'/
+/** Reading the journal's words: its table on the phone, its module, or its rows in the Worker, read straight or through the readers' own wrapper (2026-11-13). */
+const READS = /\bdb\.journal\b|from '\.\/journal'|readRecords\('journal'|recordsOf\([^,()]+, 'journal'/
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (e.name === '__snapshots__' ? [] : sources(`${dir}/${e.name}`)) : /\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []))

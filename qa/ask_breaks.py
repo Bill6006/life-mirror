@@ -457,7 +457,7 @@ TABLE = [
          new='',
          tests=[WT], pattern='checks an answer as a line is'),
     dict(id='a2-answer-facts', file=WA,
-         old="facts: citedFacts(sheet, verdict.value.factIds, (f) => relabel(f, sheet, t.day)),",
+         old="facts: citedFacts(extended, verdict.value.factIds, (f) => relabel(f, sheet, t.day)),",
          new="facts: [],",
          tests=[WT], pattern='stores a checked answer'),
     dict(id='a2-day-before-sheet', file=WA,

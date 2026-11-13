@@ -304,7 +304,12 @@ export const RECORD_CAUSE = /\b(?:(?:made|kept|left|gave|cost|drained|sapped|lif
 
 /** The record's own comparisons, like for like and never randomised: an association, never a cause. The owner's test cards are randomised, and are not among them. */
 export function isAssociationFact(id: string): boolean {
-  return id.startsWith('assoc.') || id.startsWith('private.')
+  return id.startsWith('assoc.') || id.startsWith('private.') || isTableFact(id)
+}
+
+/** The pattern table's facts, as a lookup serves them to Ask (2026-11-13): counted, never on the sheet, and an association like the rest. */
+export function isTableFact(id: string): boolean {
+  return id.startsWith('pattern.')
 }
 
 const SIZE_RANK: Record<NonNullable<ClaimCard['size']>, number> = { medium: 1, large: 2 }
@@ -383,6 +388,51 @@ export function ladderWordingRefusals(text: string, factIds: readonly string[], 
   if (!helping.length) return [...out, `says ${help} of a test whose call does not say it helps`]
   const best = Math.max(...helping.map(rank))
   if (best < LADDER_RANK.established && !LADDER_HEDGE.test(text)) out.push(`says ${help} as settled of a test at ${best === 1 ? 'an early sign' : 'likely'}: say it as an early sign, or likely`)
+  return out
+}
+
+const STANDING_RANK: Record<string, number> = { tooFew: 0, noPattern: 1, lead: 2, pattern: 3 }
+/** Words that call a thing the usual case: only a comparison that stands as a steady pattern may be said under them. */
+export const USUAL_WORDS = /\b(most likely|most often|usually|tends? to|tended to)\b/i
+/** Words that put one time ahead of another: a lead at least. */
+export const AHEAD_WORDS = /\b((?:more|less) (?:often|likely)|lowest|highest)\b/i
+
+/** A whole number as it may be written in an answer: in digits, or as a word up to ninety-nine. */
+function saysNumber(text: string, n: number): boolean {
+  if (new RegExp(`(?<![\\d.,:])${n}(?![\\d:]|[.,]\\d)`).test(text)) return true
+  const whole = Object.entries(NUMBER_WORDS).find(([, v]) => v === n)?.[0]
+  const tens = Object.entries(NUMBER_WORDS).find(([, v]) => v === n - (n % 10) && v >= 20)?.[0]
+  const unit = Object.entries(UNIT_WORDS).find(([, v]) => v === n % 10)?.[0]
+  const word = n === 1 ? 'one' : (whole ?? (tens && unit ? `${tens}-${unit}` : null))
+  return word !== null && new RegExp(`\\b${word}\\b`, 'i').test(text)
+}
+
+/**
+ * Every reason a text speaks of a counted pattern more firmly than its standing allows (2026-11-13), in order. It reads
+ * only the cited pattern facts' own cells, by the strongest standing among them: a kind's whole-kind fact and the
+ * level's averages carry no standing, so they license nothing. A steady pattern cited: nothing more is asked. A lead
+ * at most: the usual-case words are refused, and the answer says "lead" and how many comparisons were looked at. No
+ * lead cited: those words and the words that put one time ahead of another are refused; "no clear pattern yet" is the
+ * honest answer. `all` names every offending word, not the first.
+ */
+export function patternWordingRefusals(text: string, factIds: readonly string[], sheet: Pick<FactSheet, 'facts'>, all = false): string[] {
+  const cited = sheet.facts.filter((f) => isTableFact(f.id) && factIds.includes(f.id))
+  if (!cited.length) return []
+  const rank = (f: Fact) => STANDING_RANK[String(f.values.standing ?? '')] ?? 0
+  const best = Math.max(...cited.map(rank))
+  if (best >= STANDING_RANK.pattern) return []
+  const out: string[] = []
+  const usual = found(USUAL_WORDS, text, all)
+  if (best === STANDING_RANK.lead) {
+    if (usual) out.push(`says ${usual} of a comparison that is a lead, not yet a pattern: only a steady pattern may be called the usual case, so say it as a lead, with its counts`)
+    if (!/\blead\b/i.test(text)) out.push('cites a comparison that stands at a lead without saying so: say "a lead"')
+    const families = [...new Set(cited.filter((f) => rank(f) === STANDING_RANK.lead).map((f) => f.values.family).filter((n): n is number => typeof n === 'number'))]
+    if (families.length && !families.some((n) => saysNumber(text, n))) out.push(`cites a lead without saying how many comparisons were looked at: ${families[0]}`)
+    return out
+  }
+  if (usual) out.push(`says ${usual} of a comparison with no clear pattern yet: say "no clear pattern yet", with the counts`)
+  const ahead = found(AHEAD_WORDS, text, all)
+  if (ahead) out.push(`says ${ahead} of a comparison with no clear pattern yet: the counts may be said, and that no clear pattern stands yet`)
   return out
 }
 
@@ -546,6 +596,8 @@ function refusals(text: string, factIds: readonly string[], cardIds: readonly st
   }
   // Stage R5: a line citing the learning repair's tests speaks of their effect no more firmly than their rungs allow.
   if (factIds.some(isLadderFact)) out.push(...ladderWordingRefusals(text, factIds, sheet, all))
+  // A counted pattern, served by a lookup (2026-11-13), is said no more firmly than its standing.
+  if (factIds.some(isTableFact)) out.push(...patternWordingRefusals(text, factIds, sheet, all))
   out.push(...numbersRefusals(text, sheet, factIds))
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
@@ -811,11 +863,17 @@ export const ASK_SHAPE = { ask: 6, deep: 10, firstSentence: 1, paragraphNumbers:
  * time, a decimal, either end of a range) and a count written as a word once, so spelling a number out neither hides it nor
  * dodges the cap. A cited fact's name (One 25-minute block) names and counts nothing.
  */
+/** A count behind a rate as written in digits: "7 of 26", "20 of the 150". */
+const COUNT_PAIR = /\b\d[\d,]*\s+of\s+(?:the\s+)?\d[\d,]*\b/g
+
 export function numberCount(text: string, sheet: FactSheet, factIds: readonly string[]): number {
   const named = withoutCitedNames(text, sheet, factIds)
   const rest = withoutClockTimes(named)
   const plain = rest.replace(ISO_DATE, ' ')
-  return clockTimesWritten(named).length + (rest.match(ISO_DATE) ?? []).length + numbersIn(plain).length + [...plain.matchAll(COUNT_WORD)].length
+  // A count behind a rate, "7 of 26", is one reading (2026-11-13): where a counted pattern is cited the pair counts once
+  // here, for the voice alone. Both of its numbers are still held to the cited facts.
+  const pairs = factIds.some(isTableFact) ? (plain.match(COUNT_PAIR) ?? []).length : 0
+  return clockTimesWritten(named).length + (rest.match(ISO_DATE) ?? []).length + numbersIn(plain).length - pairs + [...plain.matchAll(COUNT_WORD)].length
 }
 
 /** An answer's paragraphs as the Ask screen shows them, each line its own: the screen and the voice check read them alike. */

@@ -5,7 +5,7 @@ import type { CitedFact, LineAction } from '../../src/brainShared'
 import type { CoachProposal } from '../../src/coachShared'
 import type { AskAnswer } from '../../src/ask/shared'
 import type { Firmness } from '../../src/firmness'
-import type { CoachBlock, FactSheet } from '../../src/factTypes'
+import type { CoachBlock, Fact, FactSheet } from '../../src/factTypes'
 
 // The same database the phone syncs to, through the same generic `records` table. The Worker
 // reads the phone's rows (facts, plans, feedback, and through the retrieval layer the rest of the
@@ -131,7 +131,7 @@ export interface TaskRow {
    * included, is checked against exactly what Claude read, never a sheet the phone rewrote since.
    * Stored with the task in your own database; no report shows it.
    */
-  served?: { at: string; factsUpdatedAt: string; sheet: FactSheet; coach?: CoachBlock }
+  served?: { at: string; factsUpdatedAt: string; sheet: FactSheet; coach?: CoachBlock; lookups?: Fact[] }
   /**
    * The nights of the journal Claude was given, by the briefing and by its reads (Let it out): an answer
    * may draw only on these, and is checked against their words, read again at the check. Never the words.
@@ -287,6 +287,8 @@ export interface Store {
    * `like` keeps only rows whose stored body holds those characters, ASCII case aside: a coarse first cut the reader refines.
    */
   readRecords(store: string, range?: { from?: string; to?: string; like?: string }, limit?: number): Promise<RecordRow[]>
+  /** How many of the phone's own rows a store holds within a range: asked only when a read was cut, to say how many it left unread (2026-11-13). */
+  countRecords(store: string, range?: { from?: string; to?: string; like?: string }): Promise<number>
   /** One of the phone's own rows by id, or null. */
   readRecord(store: string, id: string): Promise<unknown | null>
   /** The other app's finished workouts, newest written first, read-only: the final checklist's sanity report (item 4). */
@@ -488,6 +490,24 @@ export function tursoStore(url: string, token: string): Store {
       args.push(limit)
       const r = await rows(`SELECT id, day, body FROM records WHERE ${where.join(' AND ')} ORDER BY day DESC LIMIT ?`, args)
       return r.map((row) => ({ id: String(row.id), day: row.day === null || row.day === undefined ? null : String(row.day), body: parse<unknown>(row.body) }))
+    },
+    async countRecords(store, range = {}) {
+      const where = ['app = ?', 'store = ?', 'deleted = 0']
+      const args: (string | number)[] = [APP, store]
+      if (range.from) {
+        where.push('day >= ?')
+        args.push(range.from)
+      }
+      if (range.to) {
+        where.push('day <= ?')
+        args.push(range.to)
+      }
+      if (range.like) {
+        where.push("body LIKE ? ESCAPE '\\'")
+        args.push(`%${range.like.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
+      }
+      const r = await rows(`SELECT COUNT(*) AS n FROM records WHERE ${where.join(' AND ')}`, args)
+      return Number(r[0]?.n ?? 0)
     },
     async readRecord(store, id) {
       const r = await rows(`SELECT body FROM records WHERE app = ? AND store = ? AND id = ? AND deleted = 0`, [APP, store, id])
@@ -697,6 +717,9 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         .sort((a, b) => ((a.day ?? '') < (b.day ?? '') ? 1 : (a.day ?? '') > (b.day ?? '') ? -1 : 0))
         .slice(0, limit)
         .map((r) => ({ id: r.id, day: r.day, body: parse<unknown>(r.body) }))
+    },
+    async countRecords(store, range = {}) {
+      return live(APP, store).filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)) && (!range.like || (r.body ?? '').toLowerCase().includes(range.like.toLowerCase()))).length
     },
     async readRecord(store, id) {
       const r = rows.get(key(APP, store, id))

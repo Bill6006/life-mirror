@@ -81,7 +81,7 @@ describe('the words for a standing', () => {
 
   it('say a kind as a whole: how often, up to when, its cut-off as the default, and what was looked at', () => {
     const w = { label: 'a short night (under six hours)', unit: 'day' as const, known: 120, occurrences: 31, splits: [SPLIT_WORDS.weekday, SPLIT_WORDS.lowEvening], cutoff: 'under six hours', upTo: '2026-11-12', minSide: 8, minOccurrences: 5 }
-    expect(kindWords({ ...w, family: 8, best: 'pattern' })).toBe('A short night (under six hours): recorded at 31 of 120 days the record can speak for, up to 2026-11-12. Cut-off: under six hours, the app’s own default; none of yours is set. 8 comparisons were looked at, by the weekday, a low evening the day before. At least one stands as a steady pattern.'.replace('’', "'"))
+    expect(kindWords({ ...w, family: 8, best: 'pattern' })).toBe("A short night (under six hours): recorded at 31 of 120 days the record can speak for, up to 2026-11-12. Cut-off: under six hours, the app's own default; none of yours is set. 8 comparisons were looked at, by the weekday, a low evening the day before. At least one stands as a steady pattern.")
     expect(kindWords({ ...w, family: 8, best: 'lead' })).toContain('None stands as a steady pattern; at least one is a lead.')
     expect(kindWords({ ...w, family: 8, best: 'noPattern' })).toContain('No clear pattern yet in any of them.')
     expect(kindWords({ ...w, family: 0, best: null })).toContain('Too few to compare yet: a comparison needs 8 occasions in a cell and 8 outside it, and 5 occurrences in all.')

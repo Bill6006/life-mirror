@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { copy } from '../copy'
-import { LEVEL_BAND_WORDS, LEVEL_BANDS, PATTERNS_FORMAT, PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, samePatterns, storedPatterns } from './stored'
+import { MIN_OCCURRENCES, MIN_SIDE } from './compare'
+import { storedPatterns } from './patterns'
+import { LEVEL_BAND_WORDS, LEVEL_BANDS, PATTERNS_FORMAT, PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, samePatterns, TABLE_MIN_OCCURRENCES, TABLE_MIN_SIDE } from './stored'
 import { patternTable } from './table'
 import { checkin, day, input } from './testing'
 
@@ -61,6 +63,9 @@ describe('the pattern table as it is kept', () => {
 
   it('goes stale at 48 hours, and names the five bands as the app does, Firing to Empty', () => {
     expect(PATTERNS_MAX_AGE_MS).toBe(172_800_000)
+    // The minimums the table's words say are the core's own: eight a side, five occurrences.
+    expect([TABLE_MIN_SIDE, TABLE_MIN_OCCURRENCES]).toEqual([8, 5])
+    expect([TABLE_MIN_SIDE, TABLE_MIN_OCCURRENCES]).toEqual([MIN_SIDE, MIN_OCCURRENCES])
     expect(LEVEL_BANDS).toEqual(['firing', 'solid', 'gettingBy', 'wornDown', 'empty'])
     expect(LEVEL_BAND_WORDS).toEqual(['Firing', 'Solid', 'Getting by', 'Worn down', 'Empty'])
     expect(LEVEL_BANDS.map((b) => copy.bands[b])).toEqual(LEVEL_BAND_WORDS)

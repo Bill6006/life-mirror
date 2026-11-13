@@ -217,7 +217,9 @@ export function kindsOf(input: CountedInput): Kind[] {
 
   const answered = new Set(input.outcomes.filter((x) => x.outcome !== null).map((x) => x.offerId))
   const offered = [...new Set(input.offers.filter((o) => o.id !== undefined && answered.has(o.id) && hasMove(o.moveId)).map((o) => o.moveId))].sort()
-  for (const moveId of offered) kinds.push({ id: `move.${moveId}`, label: moveById(moveId).name, unit: 'day', category: 'dayRecord', private: false, known: (d) => d.moves.has(moveId), happened: (d) => d.moves.get(moveId) === true })
+  // A faith practice is read under faith's own switch, as everywhere else (2026-11-13).
+  const faithMove = (moveId: string): boolean => moveById(moveId).family === 'faith' || moveById(moveId).hiddenWith === 'faith'
+  for (const moveId of offered) kinds.push({ id: `move.${moveId}`, label: moveById(moveId).name, unit: 'day', category: faithMove(moveId) ? 'faith' : 'dayRecord', private: false, known: (d) => d.moves.has(moveId), happened: (d) => d.moves.get(moveId) === true })
   for (const { path, label, category } of PATH_KINDS) {
     if (!input.offers.some((o) => o.paths?.includes(path as never))) continue
     kinds.push({ id: `path.${path}`, label, unit: 'day', category, private: false, known: (d) => d.paths.has(path), happened: (d) => d.paths.get(path) === true })

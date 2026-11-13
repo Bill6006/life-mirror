@@ -3,7 +3,9 @@ import { BRAIN_SWITCHES, type BrainSwitch } from '../../src/brainShared'
 import type { FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import { runBrief, runReview } from './brief'
+import { askTaskIds } from '../../src/ask/shared'
 import type { Message } from './prompt'
+import { factCategories, LOOKUPS } from './retrieval'
 import { APP, memoryStore } from './turso'
 
 // The free chain under the owner's switches and the faith rule (2026-11-12). A fact Claude may not read is not read
@@ -192,5 +194,31 @@ describe('what the free chain reads under the faith rule', () => {
   it('reads faith as hidden when no settings row can be read', async () => {
     const { ids } = await asked(record(null))
     expect(ids).toEqual(ALL_ON.filter((id) => !FAITH_HIDDEN.includes(id)))
+  })
+})
+
+describe('what a lookup served an Ask run', () => {
+  it('carries a fact head no fact on the sheet carries: the sheet of every family holds none of the eight', () => {
+    const heads = new Set(FACTS.map((f) => f.id.split('.')[0]))
+    for (const lookup of LOOKUPS) expect(heads.has(lookup), lookup).toBe(false)
+    // The probe that can say yes: a fact named as a lookup's would be read under the category it names, or closed.
+    expect(factCategories({ id: 'day.2026-10-04.1', tags: [], text: 'x', values: {} }, new Map())).toEqual(['closed'])
+    expect(factCategories({ id: 'today.shortSleep', tags: [], text: 'x', values: {} }, new Map())).toEqual(['dayRecord'])
+  })
+
+  it('reaches no free-model prompt: the lookups ride with the Ask run’s own served sheet, never on the day’s', async () => {
+    const lookup = { id: 'pattern.chip.dinner.weekday.6', tags: [], text: 'LOOKUP-MARKER: a late dinner, 8 of 8 on Saturdays.', values: { k: 8, n: 8, category: 'dayRecord', standing: 'pattern' } }
+    for (const kind of ['line', 'review'] as const) {
+      const { messages, ids } = await asked(record(), kind)
+      expect(ids).toEqual(ALL_ON)
+      const store = record()
+      await store.writeBrainRow('served', askTaskIds(DAY)[0], DAY, { taskAt: at('07:00').toISOString(), at: at('07:01').toISOString(), factsUpdatedAt: SHEET.builtAt, sheet: SHEET, lookups: [lookup] }, at('07:01').toISOString())
+      const again = await asked(store, kind)
+      expect(again.ids).toEqual(ALL_ON)
+      expect(JSON.stringify(again.messages)).not.toContain('LOOKUP-MARKER')
+      expect(JSON.stringify(again.messages)).not.toContain('pattern.chip')
+      // And the prompt is the one a store with no lookup gives, byte for byte.
+      expect(again.messages).toEqual(messages)
+    }
   })
 })

@@ -385,6 +385,8 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   if (!open.ok) return open.reply
   const t = open.t
   if (t.task === 'path' || t.task === 'pathRead') return reply(400, { error: 'the generator reads through its own context' })
+  // A lookup answers with facts for Ask's checker (2026-11-13): the line, the review and the coach stay on the sheet alone.
+  if (url.searchParams.has('lookup')) return reply(403, { error: `the ${t.task} task is served no lookup` })
   const q = parseContextQuery(url, t.day)
   if (!q.ok) return reply(400, { error: q.reason })
   const [settings, prefs] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs')])
@@ -399,7 +401,7 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   // Let it out: the nights read are kept with the task, so an answer is checked against them; their rules come with them.
   const journal = q.category === 'journal' ? nightsOf(t.journal, r.items.map((i) => i.day)) : []
   await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text), ...(journal.length ? { journal } : {}) })
-  return reply(200, { category: q.category, items: r.items, truncated: r.truncated, ...(q.category === 'journal' && (t.task === 'line' || t.task === 'review') ? { rules: journalRules(t.task) } : {}) })
+  return reply(200, { category: q.category, items: r.items, truncated: r.truncated, complete: r.complete, notRead: r.notRead, linesLeftOut: r.linesLeftOut, ...(q.category === 'journal' && (t.task === 'line' || t.task === 'review') ? { rules: journalRules(t.task) } : {}) })
 }
 
 type Verdict<T> = { ok: true; value: T } | { ok: false; reason: string }

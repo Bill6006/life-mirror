@@ -1,9 +1,7 @@
-import type { Direction, Standing } from './compare'
-import type { PatternTable } from './table'
 
 // The pattern table as it is kept and synced (2026-11-13): one record with a fixed id, built by the phone from the
 // whole record and served by the Worker a kind at a time. Types and plain functions only, with nothing of the app
-// behind them, so the Worker reads the very shape the phone writes. It holds counts, standings and the app's own
+// behind them and no import at all, so the Worker reads the very shape the phone writes. It holds counts, standings and the app's own
 // labels: never a note's words, the journal, or anything of a Path's research. A private item's name is in it as it
 // is in the private items' own records, in the owner's own database.
 
@@ -14,9 +12,17 @@ export const PATTERNS_FORMAT = 1
 /** A table older than this is not served: the same age a fact sheet may reach. */
 export const PATTERNS_MAX_AGE_MS = 48 * 3_600_000
 
+/** The least a comparison needs, as the table's own words say it: the core's minimums, stated here so the Worker need not carry the core. */
+export const TABLE_MIN_SIDE = 8
+export const TABLE_MIN_OCCURRENCES = 5
+
 /** The level's five bands as the Weekly View names them, Firing to Empty: the order every band count is kept in. */
 export const LEVEL_BANDS = ['firing', 'solid', 'gettingBy', 'wornDown', 'empty'] as const
 export const LEVEL_BAND_WORDS: readonly string[] = ['Firing', 'Solid', 'Getting by', 'Worn down', 'Empty']
+
+/** A comparison's standing and direction, as the core names them. */
+export type StoredStanding = 'tooFew' | 'noPattern' | 'lead' | 'pattern'
+export type StoredDirection = 'higher' | 'lower' | 'none'
 
 export type StoredSplit = 'weekday' | 'checkin' | 'shortNight' | 'lowEvening'
 const SPLITS: readonly string[] = ['weekday', 'checkin', 'shortNight', 'lowEvening']
@@ -32,8 +38,8 @@ export interface StoredCell {
   n: number
   restK: number
   m: number
-  standing: Standing
-  direction: Direction
+  standing: StoredStanding
+  direction: StoredDirection
 }
 
 /** One kind the record counts. */
@@ -81,18 +87,6 @@ export interface PatternsRecord {
   level: StoredLevel[]
 }
 
-/** The table as it is kept: every kind with its counts, its cells where anything was tested, and the level's averages. */
-export function storedPatterns(table: PatternTable, now: string): PatternsRecord {
-  const base = (k: PatternTable['untested'][number]): Omit<StoredKind, 'family' | 'cells'> => ({ id: k.kind, label: k.label, unit: k.unit, category: k.category, private: k.private, ...(k.since ? { since: k.since } : {}), ...(k.cutoff ? { cutoff: k.cutoff } : {}), known: k.known, occurrences: k.occurrences })
-  const tested = new Map(table.kinds.map((k) => [k.kind, k]))
-  const kinds: StoredKind[] = table.order.map((id): StoredKind => {
-    const t = tested.get(id)
-    if (t) return { ...base(t), family: t.family, cells: t.cells.map((c) => ({ split: c.split, cell: c.cell, k: c.k, n: c.n, restK: c.restK, m: c.m, standing: c.standing, direction: c.direction })) }
-    return { ...base(table.untested.find((u) => u.kind === id) as PatternTable['untested'][number]), family: 0 }
-  })
-  return { id: PATTERNS_ID, format: PATTERNS_FORMAT, builtFor: table.builtFor, builtAt: now, updatedAt: now, kinds, level: table.level.map((l) => ({ ...l, bands: [...l.bands] })) }
-}
-
 /** Whether two records hold the same table, whenever each was built: the record is rewritten only when this is false. */
 export function samePatterns(a: PatternsRecord | null | undefined, b: PatternsRecord): boolean {
   if (!a) return false
@@ -109,7 +103,7 @@ function cellOf(v: unknown): StoredCell | null {
   if (!c || typeof c.split !== 'string' || !SPLITS.includes(c.split) || typeof c.cell !== 'string' || !isCount(c.k) || !isCount(c.n) || !isCount(c.restK) || !isCount(c.m)) return null
   if (typeof c.standing !== 'string' || !STANDINGS.includes(c.standing) || typeof c.direction !== 'string' || !DIRECTIONS.includes(c.direction)) return null
   if (c.k > c.n || c.restK > c.m) return null
-  return { split: c.split as StoredSplit, cell: c.cell, k: c.k, n: c.n, restK: c.restK, m: c.m, standing: c.standing as Standing, direction: c.direction as Direction }
+  return { split: c.split as StoredSplit, cell: c.cell, k: c.k, n: c.n, restK: c.restK, m: c.m, standing: c.standing as StoredStanding, direction: c.direction as StoredDirection }
 }
 
 function kindOf(v: unknown): StoredKind | null {

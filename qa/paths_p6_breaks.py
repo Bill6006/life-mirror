@@ -199,8 +199,8 @@ TABLE = [
          new="    const name = pt ? pathName(pt.path) + (i.adaptations ?? []).map((r) => r.why).join('') : (aim.name ?? copy.aims.kinds[aim.kind])",
          tests=[BOUNDARY], pattern='the fact sheet'),
     dict(id='worker-reads-log', file='worker/src/retrieval.ts',
-         old="      const kept = (await x.store.readRecords('notes', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))\n        .map((r) => {\n          const text = str(obj(r.body).text).trim()",
-         new="      const kept = (await x.store.readRecords('pathAdaptations', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))\n        .map((r) => {\n          const text = str(obj(r.body).why).trim()",
+         old="      const kept = (await recordsOf(x, 'notes', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))\n        .map((r) => {\n          const text = str(obj(r.body).text).trim()",
+         new="      const kept = (await recordsOf(x, 'pathAdaptations', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))\n        .map((r) => {\n          const text = str(obj(r.body).why).trim()",
          tests=[RETRIEVAL], pattern='P6'),
     # The slow loop's calls.
     dict(id='promising-design-threshold', file=T,

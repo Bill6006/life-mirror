@@ -8,10 +8,11 @@ import { DEFAULT_FIRMNESS, HOW_FIRM, type FirmnessPref } from '../../src/firmnes
 import type { Fact, FactSheet } from '../../src/factTypes'
 import type { ClaimCard } from '../../src/libraryTypes'
 import { relabel, sheetLines } from './briefing'
-import { claudeOn, fallbackReason, fire, fireFailure, fireText, journalVerdict, keepServed, MAX_POSTS, nightsOf, servedSheet, timeoutMinutes, type ClaudeEnv, type Deps, type Reply, type ServedSheet } from './claude'
+import { claudeOn, fallbackReason, fire, fireFailure, fireText, journalVerdict, keepServed, MAX_POSTS, nightsOf, SERVED_STORE, servedSheet, timeoutMinutes, type ClaudeEnv, type Deps, type Reply, type ServedSheet } from './claude'
 import { cardLines, loadLibrary, retrieve } from './library'
+import { LOOKUP_HELP, mayRead, parseLookupQuery, runLookup } from './lookups'
 import { askInstructions, journalRules, sheetRules } from './prompt'
-import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, gatesFrom, loadCatalogue, parseContextQuery, privateNames, READABLE, readOnDemand, sheetForClaude, type Access } from './retrieval'
+import { accessFor, bytesOf, CONTEXT_BYTES, CONTEXT_CALLS, gatesFrom, loadCatalogue, LOOKUPS, parseContextQuery, privateNames, READABLE, readOnDemand, sheetForClaude, type Access } from './retrieval'
 import { DATING_WORDS, surfaceGuard } from './surface'
 import { addDays, localTime } from './time'
 import type { Store, TaskRow } from './turso'
@@ -240,6 +241,11 @@ interface AskRunBuilt {
   earlier: Earlier[]
   /** The sheet the run reads, its facts the question names first; and as served, for every check of its answers. */
   sheet: FactSheet
+  /**
+   * The sheet an answer is checked against (2026-11-13): the sheet's own facts, then the facts of every lookup the run
+   * was served, each read again under the run's access as it stands at the check. The briefing prints the sheet alone.
+   */
+  extended: FactSheet
   served: ServedSheet
   cards: ClaimCard[]
   access: Access
@@ -293,9 +299,12 @@ async function askRun(deps: AskDeps, t: TaskRow): Promise<{ ok: true; run: AskRu
   const task: AskTask = t.task === 'deep' ? 'deep' : 'ask'
   const access = accessFor(task, gatesFrom(settings), readBrainPrefs(prefs))
   const sheet = namedFirst(sheetForClaude(facts.sheet, access), question)
+  // A switch turned off since a lookup was served takes its facts away here, so an answer citing one is refused.
+  const lookups = (served.served.lookups ?? []).filter((f) => mayRead(f, access))
+  const extended: FactSheet = lookups.length ? { ...sheet, facts: [...sheet.facts, ...lookups] } : sheet
   const earlier = turn ? await threadSoFar(deps.store, turn) : []
   const firm = (deps.howFirm ?? HOW_FIRM) === 'open' ? (readBrainPrefs(prefs).firmness ?? DEFAULT_FIRMNESS) : null
-  return { ok: true, run: { t, question, turn, earlier, sheet, served, cards: retrieve(library, sheet, task === 'deep' ? 16 : 12), access, firm, words: ASK_WORDS[task] } }
+  return { ok: true, run: { t, question, turn, earlier, sheet, extended, served, cards: retrieve(library, sheet, task === 'deep' ? 16 : 12), access, firm, words: ASK_WORDS[task] } }
 }
 
 /** The findings an earlier answer cited that read differently now: a rung, a direction or a revised mark, or no longer on the sheet. */
@@ -358,7 +367,7 @@ export async function handleAskBriefing(deps: AskDeps, url: URL): Promise<Reply>
     briefing: text,
     answer: { text: `the answer, at most ${run.words} words`, factIds: ['ids from FACTS'], cardIds: ['ids from CARDS'], test: { moveId: 'the move of the one test the question asks about, from a fact ladder.<moveId>.<reading>, or null for none', reading: 'its reading' }, note: 'true when the question states something of the person’s life worth keeping in their own words, else false', ...(run.access.allowed('journal') ? { journal: ['the night (YYYY-MM-DD) of each journal entry you drew on, or none'] } : {}) },
     post: { path: '/claude/line', body: { task: run.t.task, day: run.t.day, answer: '<your JSON answer>', askedModel: run.t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
-    context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, tag, q, limit', categories: READABLE.filter((c) => run.access.allowed(c) && c !== 'usageEvents'), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: run.t.contextCalls, bytes: run.t.contextBytes } },
+    context: { path: '/claude/context', params: 'task, day, category, from, to, path, stage, tag, q, limit', categories: READABLE.filter((c) => run.access.allowed(c) && c !== 'usageEvents'), lookups: LOOKUPS.map((l) => LOOKUP_HELP[l]), maxCalls: CONTEXT_CALLS, maxBytes: CONTEXT_BYTES, used: { calls: run.t.contextCalls, bytes: run.t.contextBytes } },
     attemptsLeft: MAX_POSTS - run.t.posts,
   })
 }
@@ -368,6 +377,7 @@ export async function handleAskContext(deps: AskDeps, url: URL): Promise<Reply> 
   const open = await openAskTask(deps, url.searchParams.get('task'), url.searchParams.get('day'))
   if (!open.ok) return open.reply
   const t = open.t
+  if (url.searchParams.has('lookup')) return handleAskLookup(deps, t, url)
   const q = parseContextQuery(url, t.day)
   if (!q.ok) return reply(400, { error: q.reason })
   const [settings, prefs] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs')])
@@ -382,7 +392,43 @@ export async function handleAskContext(deps: AskDeps, url: URL): Promise<Reply> 
   // The journal's nights read are kept with the run, so its answer is checked against them; their rules come with them.
   const journal = q.category === 'journal' ? nightsOf(t.journal, r.items.map((i) => i.day)) : []
   await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytesOf(r.text), ...(journal.length ? { journal } : {}) })
-  return reply(200, { category: q.category, items: r.items, truncated: r.truncated, ...(q.category === 'journal' ? { rules: journalRules('line') } : {}) })
+  return reply(200, { category: q.category, items: r.items, truncated: r.truncated, complete: r.complete, notRead: r.notRead, linesLeftOut: r.linesLeftOut, ...(q.category === 'journal' ? { rules: journalRules('line') } : {}) })
+}
+
+/** The facts a run's lookups have served it so far, with a new lookup's added: an id served twice is kept once, the later one. */
+export function withLookups(kept: readonly Fact[], more: readonly Fact[]): Fact[] {
+  const ids = new Set(more.map((f) => f.id))
+  return [...kept.filter((f) => !ids.has(f.id)), ...more]
+}
+
+/**
+ * GET /claude/context?lookup= for an ask run (2026-11-13): one lookup, answered with facts the run may cite. It counts
+ * as one of the run's reads and its size against the run's same allowance. The facts are kept with the sheet the run
+ * was served, so its answer is checked against exactly what it read; the read is logged by count and size, never content.
+ */
+async function handleAskLookup(deps: AskDeps, t: TaskRow, url: URL): Promise<Reply> {
+  const q = parseLookupQuery(url, t.day)
+  if (!q.ok) return reply(400, { error: q.reason })
+  if (t.contextCalls >= CONTEXT_CALLS) return reply(429, { error: `at most ${CONTEXT_CALLS} reads a run` })
+  if (t.contextBytes >= CONTEXT_BYTES) return reply(429, { error: `at most ${CONTEXT_BYTES / 1024} KB a run` })
+  const served = await servedSheet(deps, t, { coach: false })
+  if (!served) return reply(409, { error: `the sheet for ${t.factsDay} is missing` })
+  const id = t.turns?.[0]
+  const [settings, prefs, catalogue, turn] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher), !t.dry && typeof id === 'number' ? deps.store.readRecord('askTurns', String(id)) : Promise.resolve(null)])
+  const access = accessFor(t.task === 'deep' ? 'deep' : 'ask', gatesFrom(settings), readBrainPrefs(prefs))
+  const question = t.dry ? (t.question ?? '') : (turnOf(String(id), turn)?.question ?? '')
+  const r = await runLookup({ store: deps.store, catalogue, a: access, day: t.day, now: deps.now, timeZone: deps.env.TIMEZONE ?? 'UTC', showPrivate: served.served.sheet.showPrivate === true, question }, q.query)
+  // Cut to what the run may still read, from the end; a lookup cut for size says so.
+  let facts = r.facts
+  const room = CONTEXT_BYTES - t.contextBytes
+  while (facts.length && bytesOf(JSON.stringify(facts)) > room) facts = facts.slice(0, -1)
+  const cut = r.facts.length - facts.length
+  const bytes = facts.length ? bytesOf(JSON.stringify(facts)) : 0
+  const at = deps.now.toISOString()
+  await deps.store.writeBrainRow(SERVED_STORE, t.id, t.day, { taskAt: t.at, ...served.served, lookups: withLookups(served.served.lookups ?? [], facts) }, at)
+  await deps.store.writeRead({ id: `read:${t.id}:${at}:${100 + t.contextCalls}`, day: t.day, at, task: t.task === 'deep' ? 'deep' : 'ask', category: `lookup.${q.query.lookup}`, count: facts.length, bytes, via: 'context', ...(t.dry === true ? { dry: true } : {}) })
+  await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytes })
+  return reply(200, { lookup: q.query.lookup, facts: facts.map((f) => ({ id: f.id, text: f.text })), complete: r.complete && cut === 0, notRead: r.notRead, ...(cut ? { cutForSize: cut } : {}), ...(r.note ? { note: r.note } : {}) })
 }
 
 /**
@@ -396,9 +442,10 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   if (!open.ok) return open.reply
   const built = await askRun(deps, open.t)
   if (!built.ok) return built.reply
-  const { t, turn, sheet, cards, access, words, question } = built.run
+  const { t, turn, sheet, extended, cards, access, words, question } = built.run
   const answer = typeof o.answer === 'string' ? safeJson(o.answer) : o.answer
-  let verdict: ReturnType<typeof validateAsk> = validateAsk(answer, sheet, cards, words, undefined, question, t.task === 'deep')
+  // Checked against the sheet and the lookups together (2026-11-13): one sheet, one checker.
+  let verdict: ReturnType<typeof validateAsk> = validateAsk(answer, extended, cards, words, undefined, question, t.task === 'deep')
   // The surface's rules too, on a draft the checks already refused: every reason at once, so the one retry mends them all (Item 4).
   const draft = answer && typeof answer === 'object' && typeof (answer as Record<string, unknown>).text === 'string' ? ((answer as Record<string, unknown>).text as string).trim() : ''
   if (verdict.ok || draft) {
@@ -406,7 +453,7 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
     const ids = verdict.ok ? verdict.value.factIds : Array.isArray((answer as Record<string, unknown>).factIds) ? ((answer as Record<string, unknown>).factIds as unknown[]).filter((x): x is string => typeof x === 'string') : []
     const names = sheet.showPrivate === true ? [] : await privateNames(deps.store)
     // The Partner path bears on an answer only when the question or a cited fact is about it.
-    const bears = access.allowed('partnerPath') && (DATING_WORDS.test(question) || ids.some((id) => id.startsWith('partner.') || (id.startsWith('path.') && sheet.facts.find((f) => f.id === id)?.values.path === 'partner')))
+    const bears = access.allowed('partnerPath') && (DATING_WORDS.test(question) || ids.some((id) => id.startsWith('partner.') || (id.startsWith('path.') && sheet.facts.find((f) => f.id === id)?.values.path === 'partner') || extended.facts.find((f) => f.id === id)?.values.category === 'partnerPath'))
     const g = surfaceGuard(text, { names, bears, usage: sheet.facts.some((f) => f.id.startsWith('usage.')) })
     if (g) verdict = verdict.ok ? { ok: false, reason: g } : { ok: false, reason: `${verdict.reason}; and ${g}` }
   }
@@ -428,7 +475,7 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
   if (turn && !t.dry) {
     const named = verdict.value.test
     const window = named ? String(sheet.facts.find((f) => f.id === `ladder.${named.moveId}.${named.reading}`)?.values.window ?? '') : ''
-    const row: AskAnswer = { id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'answered', text: verdict.value.text, factIds: verdict.value.factIds, cardIds: verdict.value.cardIds, facts: citedFacts(sheet, verdict.value.factIds, (f) => relabel(f, sheet, t.day)), model: writtenModel, askedModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', ...(named && window ? { test: `${named.moveId}|${named.reading}|${window}` } : {}), ...(verdict.value.note && turn.kind === 'typed' ? { noteOffer: true } : {}) }
+    const row: AskAnswer = { id: answerIdOf(turn.id), turnId: turn.id, threadId: turn.threadId, day: turn.day, at, status: 'answered', text: verdict.value.text, factIds: verdict.value.factIds, cardIds: verdict.value.cardIds, facts: citedFacts(extended, verdict.value.factIds, (f) => relabel(f, sheet, t.day)), model: writtenModel, askedModel: isWriterModel(t.askedModel) ? t.askedModel : 'opus', ...(named && window ? { test: `${named.moveId}|${named.reading}|${window}` } : {}), ...(verdict.value.note && turn.kind === 'typed' ? { noteOffer: true } : {}) }
     await deps.store.writeAnswer(row, at)
   }
   await keepServed(deps, t, built.run.served)

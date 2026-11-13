@@ -136,8 +136,8 @@ TABLE = [
          new="",
          tests=[ASK], pattern='keeps that sheet for the retry'),
     dict(id='ask-served-no-coach-block', file='worker/src/ask.ts',
-         old="  const served = await servedSheet(deps, t, { coach: false })\n",
-         new="  const served = await servedSheet(deps, t)\n",
+         old="  const served = await servedSheet(deps, t, { coach: false })\n  if (!served) return { ok: false, reply:",
+         new="  const served = await servedSheet(deps, t)\n  if (!served) return { ok: false, reply:",
          tests=[ASK], pattern='never on the task’s row'),
     # ---- A quiet minute ---------------------------------------------------------------------------------------------
     dict(id='minute-runs-in-one-request', file='worker/src/ask.ts',

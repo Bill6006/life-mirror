@@ -17,6 +17,15 @@ import type { ReadRow, RecordRow, Store } from './turso'
 
 export type ReadTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
 
+/**
+ * The lookups an Ask run may ask for (2026-11-13). A lookup answers with facts, each with an id and its numbers in its
+ * values, and each fact's id begins with its lookup's own name: these are fact heads no fact on the sheet carries.
+ */
+export const LOOKUPS = ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecast'] as const
+export type Lookup = (typeof LOOKUPS)[number]
+/** What a lookup fact's category reads as when it names none the layer knows: no reader is permitted it. */
+const CLOSED = 'closed' as Category
+
 /** A line of the record as Claude reads it: its day, and the words. */
 export interface Item {
   day: string | null
@@ -85,6 +94,13 @@ export function accessFor(task: ReadTask, gates: Gates, prefs: BrainPrefsBody): 
  */
 export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>): Category[] {
   const [head, rest] = [f.id.split('.')[0], f.id.split('.')[1]]
+  // A lookup's fact (2026-11-13) says its own category in its values, and its faith tag adds faith's, as on the sheet. A
+  // category that is missing, or not one the layer names, is closed: it never falls through to the day's record.
+  if ((LOOKUPS as readonly string[]).includes(head)) {
+    const c = f.values.category
+    const named: Category = typeof c === 'string' && (CATEGORIES as readonly string[]).includes(c) ? (c as Category) : CLOSED
+    return f.tags.includes('faith') && named !== 'faith' ? [named, 'faith'] : [named]
+  }
   // A commitment's own category: the Partner or Social path's when it is one, else the commitments'.
   const aimCategory = (id: string): Category => (pathOfAim.get(id) === 'partner' ? 'partnerPath' : pathOfAim.get(id) === 'social' ? 'socialPath' : 'commitments')
   const own: Category[] =
@@ -185,24 +201,51 @@ interface Ctx {
   a: Access
   /** The phone's zone, for the clock time of an event in a slice; UTC when not given. */
   timeZone?: string
+  /** Where an on-demand read notes what it left unread; a briefing's own reads keep none. */
+  tally?: ReadTally
 }
 
-const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
-const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+/** What one read left unread (2026-11-13): each read of the database that reached its limit, and the lines the reader's own limit dropped. */
+export interface ReadTally {
+  cuts: { store: string; range: { from?: string; to?: string; like?: string }; limit: number }[]
+  lines: number
+}
+export const newTally = (): ReadTally => ({ cuts: [], lines: 0 })
+
+/**
+ * The phone's rows of one store through a reader's own limit: one row more is asked for, so a read that was cut is
+ * known to be cut, never taken for the whole. The rows handed back are the ones the limit alone gave before.
+ */
+export async function recordsOf(x: { store: Store; tally?: ReadTally }, store: string, range: { from?: string; to?: string; like?: string } = {}, limit = 500): Promise<RecordRow[]> {
+  const got = await x.store.readRecords(store, range, limit + 1)
+  if (got.length <= limit) return got
+  x.tally?.cuts.push({ store, range, limit })
+  return got.slice(0, limit)
+}
+
+/** How many rows the cut reads did not read: asked of the database only when a read was cut. */
+export async function rowsNotRead(store: Store, tally: ReadTally): Promise<number> {
+  let n = 0
+  for (const c of tally.cuts) n += Math.max(0, (await store.countRecords(c.store, c.range)) - c.limit)
+  return n
+}
+
+export const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
+export const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 const CUES: Record<string, string> = { afterPickup: 'after pickup', afterBedtime: 'after her bedtime', nextCheckIn: 'at the next check-in' }
-const OUTCOMES: Record<string, string> = { done: 'done', partly: 'partly done', no: 'not done' }
+export const OUTCOMES: Record<string, string> = { done: 'done', partly: 'partly done', no: 'not done' }
 const STEPS: Record<string, string> = { exclusive: 'becoming exclusive', families: 'meeting each other’s families', child: 'introducing them to your child', movingIn: 'moving in', engagement: 'an engagement' }
 const PARTS: Record<string, string> = { nonNegotiables: 'a few true non-negotiables', preferences: 'preferences, held loosely', partnerIWantToBe: 'the partner you want to be', understood: 'a moment you felt understood or appreciated, or didn’t', disagreement: 'your last disagreement, and how it ended', ownPart: 'your own part, and whether it feels chosen by both of you' }
-const EXTRAS: Record<string, string> = { dinner: 'a late or heavy dinner', napped: 'a nap', coolingOff: 'something rattled you', bigSocial: 'a big social event', nothingLanded: 'nothing landed', hardToSeePoint: 'hard to see the point', heavyCaffeine: 'heavy caffeine' }
+export const EXTRAS: Record<string, string> = { dinner: 'a late or heavy dinner', napped: 'a nap', coolingOff: 'something rattled you', bigSocial: 'a big social event', nothingLanded: 'nothing landed', hardToSeePoint: 'hard to see the point', heavyCaffeine: 'heavy caffeine' }
 /** The four caffeine bands of the extras item (Part 21), by their stored number. */
-const CAFFEINE: Record<number, string> = { 1: 'under 100 mg', 2: '100 to 199 mg', 3: '200 to 299 mg', 4: '300 mg or more' }
+export const CAFFEINE: Record<number, string> = { 1: 'under 100 mg', 2: '100 to 199 mg', 3: '200 to 299 mg', 4: '300 mg or more' }
 
-function isFaithMove(c: Catalogue, moveId: string): boolean {
+export function isFaithMove(c: Catalogue, moveId: string): boolean {
   const m = c.get(moveId)
   return m !== undefined && (m.family === 'faith' || m.hiddenWith === 'faith')
 }
 
-const nameOf = (c: Catalogue, moveId: string) => c.get(moveId)?.name ?? moveId
+export const nameOf = (c: Catalogue, moveId: string) => c.get(moveId)?.name ?? moveId
 
 /** How a journal entry reads to Claude: the third source, what was written, apart from the readings and the findings. */
 export const JOURNAL_LABEL = 'in your journal that night you wrote'
@@ -211,7 +254,7 @@ export const JOURNAL_BRIEF_CHARS = 1200
 
 /** Check-ins in the range, for notes and the day's record. */
 async function checkins(x: Ctx, q: Query): Promise<RecordRow[]> {
-  return x.store.readRecords('checkins', { from: q.from, to: q.to })
+  return recordsOf(x, 'checkins', { from: q.from, to: q.to })
 }
 
 /** A path's own category, so a reflection or a mark is read only when its path is. */
@@ -219,7 +262,7 @@ const pathCategory = (path: string): Category => (path === 'partner' ? 'partnerP
 
 /** Offers on a path in the range, each with its answer, faith's left out unless faith may be read. */
 async function pathReps(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<Item[]> {
-  const [offers, outcomes] = await Promise.all([x.store.readRecords('offers', { from: q.from, to: q.to }), x.store.readRecords('outcomes', { from: q.from, to: q.to })])
+  const [offers, outcomes] = await Promise.all([recordsOf(x, 'offers', { from: q.from, to: q.to }), recordsOf(x, 'outcomes', { from: q.from, to: q.to })])
   const answer = new Map<number, string>()
   for (const o of outcomes) {
     const b = obj(o.body)
@@ -244,7 +287,7 @@ async function pathReps(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<I
 
 /** A path's own declarations: stages declared, dates by their day, milestones with their details. */
 async function pathMarks(x: Ctx, q: Query, path: 'social' | 'partner'): Promise<Item[]> {
-  const rows = await x.store.readRecords('pathMarks', { from: q.from, to: q.to })
+  const rows = await recordsOf(x, 'pathMarks', { from: q.from, to: q.to })
   const out: Item[] = []
   for (const r of rows) {
     const b = obj(r.body)
@@ -279,7 +322,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
         })
         .filter((i): i is Item => i !== null && (faith || !FAITH_WORDS.test(i.text)))
       // Ask Life Mirror (stage A3): a note you kept from a question, in your own words, read as a check-in's note is.
-      const kept = (await x.store.readRecords('notes', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))
+      const kept = (await recordsOf(x, 'notes', { from: q.from, to: q.to, ...(q.q ? { like: q.q } : {}) }, q.limit))
         .map((r) => {
           const text = str(obj(r.body).text).trim()
           return text ? { day: r.day, text: `you kept a note: “${text}”` } : null
@@ -289,7 +332,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       break
     }
     case 'dayRecord': {
-      const [cs, days] = await Promise.all([checkins(x, q), x.store.readRecords('days', { from: q.from, to: q.to })])
+      const [cs, days] = await Promise.all([checkins(x, q), recordsOf(x, 'days', { from: q.from, to: q.to })])
       items = []
       for (const d of days) {
         const b = obj(d.body)
@@ -322,14 +365,14 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       break
     }
     case 'privateItems': {
-      items = (await x.store.readRecords('privateItems'))
+      items = (await recordsOf(x, 'privateItems'))
         .map((r) => obj(r.body))
         .filter((b) => b.archived !== 1 && str(b.name))
         .map((b) => ({ day: null, text: `a private item: ${str(b.name)}` }))
       break
     }
     case 'commitments': {
-      const [aims, plans, skills] = await Promise.all([x.store.readRecords('aims'), x.store.readRecords('intentions', { from: q.from, to: q.to }), x.store.readRecords('skills')])
+      const [aims, plans, skills] = await Promise.all([recordsOf(x, 'aims'), recordsOf(x, 'intentions', { from: q.from, to: q.to }), recordsOf(x, 'skills')])
       // Something to learn names its one current skill and how it is practised (Workstream 6); the retired ladder is not read.
       const skillName = new Map(skills.map((r) => obj(r.body)).filter((b) => typeof b.id === 'number' && !b.archivedAt).map((b) => [b.id as number, { name: str(b.name), method: str(b.method) }]))
       const faithAim = new Set<number>()
@@ -363,7 +406,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       break
     }
     case 'reflections': {
-      const rows = await x.store.readRecords('reflections', { from: q.from, to: q.to })
+      const rows = await recordsOf(x, 'reflections', { from: q.from, to: q.to })
       items = []
       for (const r of rows) {
         const b = obj(r.body)
@@ -381,7 +424,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
     }
     case 'monthlyCheck': {
       const answer = (v: unknown) => (v === true ? 'yes' : v === false ? 'no' : 'not answered')
-      items = (await x.store.readRecords('monthlyChecks', { from: q.from, to: q.to })).map((r) => {
+      items = (await recordsOf(x, 'monthlyChecks', { from: q.from, to: q.to })).map((r) => {
         const b = obj(r.body)
         const a = obj(b.answers)
         return { day: r.day, text: `the monthly check for ${str(b.month)}: safety ${answer(a.safety)}, conduct ${answer(a.conduct)}, a doubt set aside ${answer(a.doubt)}` }
@@ -389,14 +432,14 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       break
     }
     case 'her': {
-      const rows = await x.store.readRecords('moments', { from: q.from, to: q.to })
+      const rows = await recordsOf(x, 'moments', { from: q.from, to: q.to })
       const perDay = new Map<string, number>()
       for (const r of rows) if (r.day) perDay.set(r.day, (perDay.get(r.day) ?? 0) + 1)
       items = [...perDay.entries()].map(([day, n]) => ({ day, text: `${n} ${n === 1 ? 'moment' : 'moments'} of her skills counted` }))
       break
     }
     case 'faith': {
-      const [offers, outcomes] = await Promise.all([x.store.readRecords('offers', { from: q.from, to: q.to }), x.store.readRecords('outcomes', { from: q.from, to: q.to })])
+      const [offers, outcomes] = await Promise.all([recordsOf(x, 'offers', { from: q.from, to: q.to }), recordsOf(x, 'outcomes', { from: q.from, to: q.to })])
       const answer = new Map<number, string>()
       for (const o of outcomes) {
         const b = obj(o.body)
@@ -412,7 +455,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       break
     }
     case 'brainHistory': {
-      const [log, feedback] = await Promise.all([x.store.readRecords('briefLog', { from: q.from, to: q.to }), x.store.readRecords('briefFeedback', { from: q.from, to: q.to })])
+      const [log, feedback] = await Promise.all([recordsOf(x, 'briefLog', { from: q.from, to: q.to }), recordsOf(x, 'briefFeedback', { from: q.from, to: q.to })])
       const landed = new Map<string, string>()
       for (const f of feedback) {
         const b = obj(f.body)
@@ -436,7 +479,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
     }
     case 'usageEvents': {
       // A short slice of events in order, for when the order matters: fixed words and a clock time, nothing another switch governs.
-      const rows = await x.store.readRecords('useLog', { from: q.from, to: q.to }, 2000)
+      const rows = await recordsOf(x, 'useLog', { from: q.from, to: q.to }, 2000)
       const zone = x.timeZone ?? 'UTC'
       items = rows
         .map((r) => ({ r, b: obj(r.body) }))
@@ -458,7 +501,7 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       // read, as a note is. A keyword searches the owner's words, not the label they are read under.
       const needle = q.q?.trim().toLowerCase()
       const like = likeOf(q.q)
-      items = (await x.store.readRecords('journal', { from: q.from, to: q.to, ...(like ? { like } : {}) }))
+      items = (await recordsOf(x, 'journal', { from: q.from, to: q.to, ...(like ? { like } : {}) }))
         .map((r) => ({ day: r.day, text: str(obj(r.body).text).trim() }))
         .filter((e) => e.text && (faith || !FAITH_WORDS.test(e.text)) && (!needle || e.text.toLowerCase().includes(needle)))
         .map((e) => ({ day: e.day, text: `${JOURNAL_LABEL}: “${e.text}”` }))
@@ -468,10 +511,10 @@ export async function readCategory(x: Ctx, category: Category, q: Query): Promis
       return null
   }
   const needle = q.q?.trim().toLowerCase()
-  return items
-    .filter((i) => !needle || i.text.toLowerCase().includes(needle))
-    .sort((a, b) => ((a.day ?? '') < (b.day ?? '') ? 1 : (a.day ?? '') > (b.day ?? '') ? -1 : 0))
-    .slice(0, q.limit)
+  const found = items.filter((i) => !needle || i.text.toLowerCase().includes(needle)).sort((a, b) => ((a.day ?? '') < (b.day ?? '') ? 1 : (a.day ?? '') > (b.day ?? '') ? -1 : 0))
+  // The reader's own limit: what it drops is noted, so the reply can say the read was not whole.
+  if (x.tally && found.length > q.limit) x.tally.lines += found.length - q.limit
+  return found.slice(0, q.limit)
 }
 
 const enc = new TextEncoder()
@@ -657,8 +700,9 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
  * One on-demand read, after its checks: the lines, cut to what the run may still read, then logged;
  * or null when the category has no reader. The review reads the Partner path as acts done only.
  */
-export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access, category: Category, q: Query, day: string, run: string, seq: number, now: Date, maxBytes: number, dry = false, timeZone?: string): Promise<{ items: Item[]; text: string; truncated: boolean } | null> {
-  const all = await readCategory({ store, catalogue, a, ...(timeZone ? { timeZone } : {}) }, category, a.task === 'review' && category === 'partnerPath' ? { ...q, doneOnly: true } : q)
+export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access, category: Category, q: Query, day: string, run: string, seq: number, now: Date, maxBytes: number, dry = false, timeZone?: string): Promise<{ items: Item[]; text: string; truncated: boolean; complete: boolean; notRead: number; linesLeftOut: number } | null> {
+  const tally = newTally()
+  const all = await readCategory({ store, catalogue, a, tally, ...(timeZone ? { timeZone } : {}) }, category, a.task === 'review' && category === 'partnerPath' ? { ...q, doneOnly: true } : q)
   if (all === null) return null
   let items = all
   let text = itemLines(items)
@@ -667,5 +711,8 @@ export async function readOnDemand(store: Store, catalogue: Catalogue, a: Access
     text = itemLines(items)
   }
   await logRead(store, run, seq, a.task, day, category, items, text, 'context', now, dry)
-  return { items, text, truncated: items.length < all.length }
+  // Every read says whether it is whole (2026-11-13): rows the database held past a reader's limit, and lines dropped by the limit or for size.
+  const notRead = await rowsNotRead(store, tally)
+  const linesLeftOut = tally.lines + (all.length - items.length)
+  return { items, text, truncated: items.length < all.length, complete: notRead === 0 && linesLeftOut === 0, notRead, linesLeftOut }
 }
