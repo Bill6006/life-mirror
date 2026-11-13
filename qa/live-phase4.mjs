@@ -154,7 +154,7 @@ try {
     check('the table is queued for the cloud as one row, like any record', first.length === 1 && first[0].key === 'table' && first[0].op === 'put', `${first.length} queued`)
     const sheet = (await rowsOf(page, 'facts')).find((r) => r.day === TODAY)?.sheet
     const heads = new Set((sheet?.facts ?? []).map((f) => String(f.id).split('.')[0]))
-    const onSheet = ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecast'].filter((h) => heads.has(h))
+    const onSheet = ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts'].filter((h) => heads.has(h))
     check('nothing of the table is on the day’s sheet', Boolean(sheet) && sheet.facts.length > 5 && onSheet.length === 0, sheet ? `${sheet.facts.length} facts, lookup heads on it: ${onSheet.join(', ') || 'none'}` : 'no sheet')
 
     // Opened again the same day: the same table, nothing written, nothing more queued.

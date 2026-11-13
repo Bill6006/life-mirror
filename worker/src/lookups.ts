@@ -26,12 +26,12 @@ const REACH_DAYS = 366
 const FORECAST_AHEAD = 7
 
 /** Each lookup's own parameters; any other is refused. */
-export const LOOKUP_PARAMS: Readonly<Record<Lookup, readonly string[]>> = { kinds: ['q'], pattern: ['kind'], day: ['date'], moves: ['from', 'to', 'limit'], workouts: ['from', 'to'], pathSteps: ['from', 'to'], lines: ['from', 'to'], forecast: ['date'] }
+export const LOOKUP_PARAMS: Readonly<Record<Lookup, readonly string[]>> = { kinds: ['q'], pattern: ['kind'], day: ['date'], moves: ['from', 'to', 'limit'], workouts: ['from', 'to'], pathSteps: ['from', 'to'], lines: ['from', 'to'], forecasts: ['date'] }
 
 export type LookupQuery =
   | { lookup: 'kinds'; q?: string }
   | { lookup: 'pattern'; kind: string }
-  | { lookup: 'day' | 'forecast'; date: string }
+  | { lookup: 'day' | 'forecasts'; date: string }
   | { lookup: 'moves' | 'workouts' | 'pathSteps' | 'lines'; from: string; to: string; limit: number }
 
 /** What a run is told it may ask for, one line a lookup: the briefing's `context.lookups`. */
@@ -43,7 +43,7 @@ export const LOOKUP_HELP: Readonly<Record<Lookup, string>> = {
   workouts: 'lookup=workouts&from=&to=: each finished workout and its date',
   pathSteps: 'lookup=pathSteps&from=&to=: steps of the Speaking Path and of generated Paths that were done',
   lines: 'lookup=lines&from=&to=: the Brain’s own past lines and weekly reviews',
-  forecast: 'lookup=forecast&date=YYYY-MM-DD: the forecasts stored for that day, how each scored, and how often a forecast’s range has held',
+  forecasts: 'lookup=forecasts&date=YYYY-MM-DD: the forecasts stored for that day, how each scored, and how often a forecast’s range has held',
 }
 
 /** A lookup query read from the URL, or why it is refused. */
@@ -63,11 +63,11 @@ export function parseLookupQuery(url: URL, day: string): { ok: true; query: Look
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(kind)) return { ok: false, reason: 'kind must be an id the lookup kinds gave' }
     return { ok: true, query: { lookup, kind } }
   }
-  if (lookup === 'day' || lookup === 'forecast') {
+  if (lookup === 'day' || lookup === 'forecasts') {
     const date = url.searchParams.get('date') ?? ''
     if (!DAY_RE.test(date)) return { ok: false, reason: 'date must be a day, YYYY-MM-DD' }
     if (lookup === 'day' && date > day) return { ok: false, reason: 'date may not be after the task’s day' }
-    if (lookup === 'forecast' && date > addDays(day, FORECAST_AHEAD)) return { ok: false, reason: `a forecast reaches ${FORECAST_AHEAD} days ahead at most` }
+    if (lookup === 'forecasts' && date > addDays(day, FORECAST_AHEAD)) return { ok: false, reason: `a forecast reaches ${FORECAST_AHEAD} days ahead at most` }
     return { ok: true, query: { lookup, date } }
   }
   const to = url.searchParams.get('to') ?? day
@@ -499,12 +499,12 @@ async function forecastLookup(x: LookupCtx, q: { date: string }, tally: ReadTall
     const s = score.get(key(b))
     const ahead = Number(b.horizon) === 0 ? 'the same day' : `${Number(b.horizon)} ${Number(b.horizon) === 1 ? 'day' : 'days'} ahead`
     const read100 = s && typeof s.actual === 'number' ? ` It then read ${Math.round(s.actual)}: ${s.hit === true ? 'inside' : 'outside'} the range.` : ''
-    return fact(`forecast.${q.date}.${str(b.block)}.${Number(b.horizon)}`, `A forecast for the ${str(b.block)} of ${q.date}, made on ${str(b.madeOn)} (${ahead}): expect about ${Math.round(Number(b.point))} out of 100, in a range of ${Math.round(Number(b.lo))} to ${Math.round(Number(b.hi))}.${read100} A forecast is a prediction, never a finding.`, 'dayRecord', { point: Math.round(Number(b.point)), lo: Math.round(Number(b.lo)), hi: Math.round(Number(b.hi)), horizon: Number(b.horizon), scale: 100, ...(s && typeof s.actual === 'number' ? { actual: Math.round(s.actual) } : {}) })
+    return fact(`forecasts.${q.date}.${str(b.block)}.${Number(b.horizon)}`, `A forecast for the ${str(b.block)} of ${q.date}, made on ${str(b.madeOn)} (${ahead}): expect about ${Math.round(Number(b.point))} out of 100, in a range of ${Math.round(Number(b.lo))} to ${Math.round(Number(b.hi))}.${read100} A forecast is a prediction, never a finding.`, 'dayRecord', { point: Math.round(Number(b.point)), lo: Math.round(Number(b.lo)), hi: Math.round(Number(b.hi)), horizon: Number(b.horizon), scale: 100, ...(s && typeof s.actual === 'number' ? { actual: Math.round(s.actual) } : {}) })
   })
   const scores = all.map((r) => obj(r.body)).filter((b) => typeof b.hit === 'boolean')
   if (scores.length) {
     const hits = scores.filter((b) => b.hit === true).length
-    facts.push(fact('forecast.scorecard', `Of ${scores.length} forecasts scored so far, the range held for ${hits} (${Math.round((100 * hits) / scores.length)} in 100).`, 'dayRecord', { scored: scores.length, hits, pct: Math.round((100 * hits) / scores.length), scale: 100 }))
+    facts.push(fact('forecasts.scorecard', `Of ${scores.length} forecasts scored so far, the range held for ${hits} (${Math.round((100 * hits) / scores.length)} in 100).`, 'dayRecord', { scored: scores.length, hits, pct: Math.round((100 * hits) / scores.length), scale: 100 }))
   }
   const kept = facts.filter((f) => mayRead(f, x.a))
   return { facts: kept, complete: true, notRead: 0, ...(rows.length ? {} : { note: `no forecast is stored for ${q.date}` }) }

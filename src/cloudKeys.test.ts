@@ -8,6 +8,7 @@ import { forgetKeptPatterns } from './counted/table'
 import { checkin, context, day } from './counted/testing'
 import { PATTERNS_ID, readPatterns } from './counted/stored'
 import { db, updateSettings, wipeEverything } from './db'
+import { memoryKeyValue, setTokenStorageForTests } from './tokenVault'
 import { writePatternsRow } from './patternsFlow'
 
 // Records keyed by a name, in the cloud copy (2026-11-13). A synced record's key on the phone is read from its store's
@@ -35,6 +36,7 @@ beforeEach(fresh)
 afterEach(() => {
   setStoreFactory(null)
   setOnlineCheck(null)
+  setTokenStorageForTests(null)
 })
 
 describe('a synced record’s key on the phone', () => {
@@ -129,6 +131,28 @@ describe('the pattern table in the cloud copy', () => {
     expect(await syncNow()).toBe('done')
     expect(await db.patterns.get(PATTERNS_ID)).toEqual(kept)
     expect(await db.outbox.count()).toBe(0)
+  })
+
+  it('gives way to the cloud’s on a new phone’s first read: a table built before the token was pasted is never sent over it', async () => {
+    const store = memoryStore()
+    await withToken(store)
+    await seed()
+    await writePatternsRow(day(A + 56), NOW, { pause: none })
+    expect(await syncNow()).toBe('done')
+    const kept = await db.patterns.get(PATTERNS_ID)
+    const stamp = store.rows.get(`${APP}|patterns|table`)?.synced_at
+    // A new install, on a phone that has never read this cloud, used before its token is pasted: it builds a table of
+    // its own, from an empty record.
+    await fresh()
+    setTokenStorageForTests(memoryKeyValue())
+    await writePatternsRow(day(A + 57), new Date(NOW.getTime() + 86_400_000), { pause: none })
+    expect(readPatterns(await db.patterns.get(PATTERNS_ID))?.kinds).toEqual([])
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    // The cloud's stands, on the phone and in the cloud, and nothing of the new install's table is queued or sent.
+    expect(await db.patterns.get(PATTERNS_ID)).toEqual(kept)
+    expect(store.rows.get(`${APP}|patterns|table`)?.synced_at).toBe(stamp)
+    expect((await db.outbox.toArray()).filter((r) => r.store === 'patterns')).toEqual([])
   })
 
   it('is gone after everything is deleted, on the phone and in the cloud copy', async () => {

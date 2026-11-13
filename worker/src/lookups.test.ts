@@ -66,13 +66,13 @@ function withTable(over: Partial<typeof TABLE> = {}): Mem {
 
 describe('a lookup query', () => {
   it('names one of eight lookups, and takes that lookup’s own parameters alone', () => {
-    expect(LOOKUPS).toEqual(['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecast'])
+    expect(LOOKUPS).toEqual(['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts'])
     expect(Object.keys(LOOKUP_PARAMS).sort()).toEqual([...LOOKUPS].sort())
     expect(parse('lookup=kinds')).toEqual({ ok: true, query: { lookup: 'kinds' } })
     expect(parse('lookup=kinds&q=sleep')).toEqual({ ok: true, query: { lookup: 'kinds', q: 'sleep' } })
     expect(parse('lookup=pattern&kind=sleep.short')).toEqual({ ok: true, query: { lookup: 'pattern', kind: 'sleep.short' } })
     expect(parse('lookup=day&date=2026-11-10')).toEqual({ ok: true, query: { lookup: 'day', date: '2026-11-10' } })
-    expect(parse('lookup=forecast&date=2026-11-13')).toEqual({ ok: true, query: { lookup: 'forecast', date: '2026-11-13' } })
+    expect(parse('lookup=forecasts&date=2026-11-13')).toEqual({ ok: true, query: { lookup: 'forecasts', date: '2026-11-13' } })
     expect(parse('lookup=moves&from=2026-11-01&to=2026-11-10&limit=20')).toEqual({ ok: true, query: { lookup: 'moves', from: '2026-11-01', to: '2026-11-10', limit: 20 } })
     expect(parse('lookup=lines')).toEqual({ ok: true, query: { lookup: 'lines', from: '2026-10-13', to: DAY, limit: 50 } })
   })
@@ -98,7 +98,7 @@ describe('a lookup query', () => {
     expect(refused('lookup=pattern&kind=a b')).toBe('kind must be an id the lookup kinds gave')
     expect(refused('lookup=day&date=tomorrow')).toBe('date must be a day, YYYY-MM-DD')
     expect(refused('lookup=day&date=2026-11-13')).toBe('date may not be after the task’s day')
-    expect(refused('lookup=forecast&date=2026-11-20')).toBe('a forecast reaches 7 days ahead at most')
+    expect(refused('lookup=forecasts&date=2026-11-20')).toBe('a forecast reaches 7 days ahead at most')
     expect(refused('lookup=moves&from=2026-11-10&to=2026-11-01')).toBe('from and to must be days, from before to')
     expect(refused('lookup=moves&to=2026-11-13')).toBe('to may not be after the task’s day')
     expect(refused('lookup=moves&from=2025-11-01')).toBe('from may reach back a year at most')
@@ -116,6 +116,14 @@ describe('the fact heads of the lookups', () => {
       expect(factCategories(f(`${head}.x`, 'dayRecord', ['faith']), new Map()), head).toEqual(['dayRecord', 'faith'])
       expect(factCategories(f(`${head}.x`, 'faith', ['faith']), new Map()), head).toEqual(['faith'])
     }
+  })
+
+  it('share no head with the day’s sheet: a forecast on the sheet stays the day’s record', () => {
+    // Every head the phone puts on a sheet, stated here: none of them is a lookup's name. The sheet's forecast facts are
+    // headed "forecast" (the first name this lookup had, caught by the browser test before it shipped).
+    const SHEET_HEADS = ['aim', 'assoc', 'becoming', 'cadence', 'caffeine', 'context', 'direction', 'follow', 'followup', 'forecast', 'ladder', 'lastNight', 'location', 'memory', 'move', 'necessities', 'note', 'notes', 'nothing', 'offers', 'outside', 'partner', 'path', 'people', 'private', 'reading', 'record', 'review', 'steady', 'stretch', 'study', 'test', 'today', 'track', 'trajectory', 'trend', 'trip', 'untested', 'usage', 'usual', 'weather', 'week', 'weekly', 'whatIf', 'workout', 'workoutDetail']
+    for (const head of SHEET_HEADS) expect((LOOKUPS as readonly string[]).includes(head), head).toBe(false)
+    for (const id of ['forecast.morning', 'move.walk-ten', 'workout.last', 'today.shortSleep']) expect(factCategories(f(id, undefined), new Map()), id).toEqual(['dayRecord'])
   })
 
   it('let the Brain’s own past lines through for the lines lookup alone, under its history’s switch', () => {
@@ -496,17 +504,17 @@ describe('the range lookups', () => {
     put(store, 'forecastScores', '3', D, { id: 3, day: D, block: 'evening', horizon: 1, model: 'weekday', point: 61.4, lo: 48, hi: 74, actual: 79, error: 17.6, hit: false, scoredOn: D })
     put(store, 'forecastScores', '4', '2026-11-08', { id: 4, day: '2026-11-08', block: 'evening', horizon: 1, model: 'weekday', point: 60, lo: 45, hi: 75, actual: 62, error: 2, hit: true, scoredOn: '2026-11-08' })
     put(store, 'forecastScores', '5', '2026-11-07', { id: 5, day: '2026-11-07', block: 'evening', horizon: 1, model: 'weekday', point: 60, lo: 45, hi: 75, actual: 50, error: 10, hit: true, scoredOn: '2026-11-07' })
-    const r = await run(store, { lookup: 'forecast', date: D })
+    const r = await run(store, { lookup: 'forecasts', date: D })
     expect(r.facts.map((x) => x.text)).toEqual([
       `A forecast for the morning of ${D}, made on ${D} (the same day): expect about 55 out of 100, in a range of 40 to 70. A forecast is a prediction, never a finding.`,
       `A forecast for the evening of ${D}, made on 2026-11-09 (1 day ahead): expect about 61 out of 100, in a range of 48 to 74. It then read 79: outside the range. A forecast is a prediction, never a finding.`,
       'Of 3 forecasts scored so far, the range held for 2 (67 in 100).',
     ])
-    expect(ids(r.facts)).toEqual([`forecast.${D}.morning.0`, `forecast.${D}.evening.1`, 'forecast.scorecard'])
+    expect(ids(r.facts)).toEqual([`forecasts.${D}.morning.0`, `forecasts.${D}.evening.1`, 'forecasts.scorecard'])
     expect(r.facts[1].values).toEqual({ point: 61, lo: 48, hi: 74, horizon: 1, scale: 100, actual: 79, category: 'dayRecord' })
     expect(r.facts[2].values).toEqual({ scored: 3, hits: 2, pct: 67, scale: 100, category: 'dayRecord' })
-    expect((await run(store, { lookup: 'forecast', date: '2026-11-11' })).note).toBe('no forecast is stored for 2026-11-11')
-    expect((await run(store, { lookup: 'forecast', date: D }, { a: access(['dayRecord']) })).facts).toEqual([])
+    expect((await run(store, { lookup: 'forecasts', date: '2026-11-11' })).note).toBe('no forecast is stored for 2026-11-11')
+    expect((await run(store, { lookup: 'forecasts', date: D }, { a: access(['dayRecord']) })).facts).toEqual([])
   })
 })
 
@@ -516,7 +524,7 @@ describe('every lookup against every switch', () => {
     put(store, 'patterns', 'table', null, TABLE)
     // A line of the Brain's own, so its history has something to serve too.
     void store.writeBrief({ id: `${D}:brief`, day: D, kind: 'brief', text: 'A stand-in line.', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: `${D}T12:48:00.000Z`, factsDay: D, refusals: [], writer: 'claude' }, `${D}T12:48:00.000Z`)
-    const queries: LookupQuery[] = [{ lookup: 'kinds' }, { lookup: 'pattern', kind: 'private.7' }, { lookup: 'pattern', kind: 'chip.dinner' }, { lookup: 'day', date: D }, { lookup: 'moves', from: D, to: D, limit: 50 }, { lookup: 'workouts', from: D, to: D, limit: 50 }, { lookup: 'pathSteps', from: D, to: D, limit: 50 }, { lookup: 'lines', from: D, to: D, limit: 50 }, { lookup: 'forecast', date: D }]
+    const queries: LookupQuery[] = [{ lookup: 'kinds' }, { lookup: 'pattern', kind: 'private.7' }, { lookup: 'pattern', kind: 'chip.dinner' }, { lookup: 'day', date: D }, { lookup: 'moves', from: D, to: D, limit: 50 }, { lookup: 'workouts', from: D, to: D, limit: 50 }, { lookup: 'pathSteps', from: D, to: D, limit: 50 }, { lookup: 'lines', from: D, to: D, limit: 50 }, { lookup: 'forecasts', date: D }]
     // The probe that can say yes, first: with every switch on, the same lookups serve facts of these categories.
     const served = new Set((await Promise.all(queries.map((q) => run(store, q)))).flatMap((r) => r.facts.map((f) => String(f.values.category))))
     expect([...served].sort()).toEqual(['brainHistory', 'commitments', 'dayRecord', 'factSheet', 'faith', 'her', 'notes', 'privateItems', 'socialPath'])

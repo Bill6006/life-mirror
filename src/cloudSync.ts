@@ -387,6 +387,9 @@ const FIRST_READ: Record<string, (local: Record<string, unknown>) => boolean> = 
   herSkills: () => true,
   brainPrefs: () => true,
   facts: () => false,
+  // The pattern table (2026-11-13), made again from the record like the day's sheet: the cloud's stands, and a table a
+  // new install built before it read the cloud is neither kept aside nor sent over the cloud's.
+  patterns: () => false,
 }
 
 /** A record of a fixed key that gave way on this storage's first read of the cloud: kept whole in the store nothing reads, under a key of its own. */

@@ -97,7 +97,7 @@ describe('the briefing', () => {
     const b = (await briefing(store, at('09:02'))).body as { context: { lookups: string[]; categories: string[] }; instructions: string }
     expect(b.context.lookups).toHaveLength(8)
     expect(b.context.lookups[0]).toBe('lookup=kinds (optional q, a keyword): what the record counts, each with its id; and what it deliberately does not count')
-    expect(b.context.lookups.map((l) => l.split(/[ &]/)[0])).toEqual(['lookup=kinds', 'lookup=pattern', 'lookup=day', 'lookup=moves', 'lookup=workouts', 'lookup=pathSteps', 'lookup=lines', 'lookup=forecast'])
+    expect(b.context.lookups.map((l) => l.split(/[ &]/)[0])).toEqual(['lookup=kinds', 'lookup=pattern', 'lookup=day', 'lookup=moves', 'lookup=workouts', 'lookup=pathSteps', 'lookup=lines', 'lookup=forecasts'])
     expect(b.context.categories).toContain('notes')
     // The briefing prints the day's sheet alone: nothing of the table is on it.
     expect(JSON.stringify(b)).not.toContain('pattern.chip')

@@ -11,7 +11,7 @@ import { patternsFromExport } from './patternsFlow.testing'
 import { askTyped } from './ask/flow'
 import { buildExport } from './export'
 import { DEFAULT_SETTINGS } from './settings'
-import { countedRecord, PATTERNS_ASK_WAIT_MS, patternsForAsk, patternsMostAtOnce, patternsSettled, refreshPatterns, writeDayRows, writePatternsRow } from './patternsFlow'
+import { countedRecord, PATTERNS_AFTER_SHEET_MS, PATTERNS_ASK_WAIT_MS, patternsBuilt, patternsForAsk, patternsMostAtOnce, patternsSettled, refreshPatterns, writeDayRows, writePatternsRow } from './patternsFlow'
 
 // The pattern table on the phone (2026-11-13), on stand-in records: built from the whole record, kept as one record,
 // rewritten only when its content changes, never on the day's sheet, and never in the way of a screen.
@@ -88,7 +88,7 @@ describe('the pattern table on the phone', () => {
     const sheet = (await db.facts.get(TODAY))?.sheet
     expect(sheet?.facts.length).toBeGreaterThan(5)
     const heads = new Set(sheet?.facts.map((f) => f.id.split('.')[0]))
-    for (const head of ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecast']) expect(heads.has(head), head).toBe(false)
+    for (const head of ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts']) expect(heads.has(head), head).toBe(false)
     // And writing the table leaves the sheet's row as it was.
     const before = JSON.stringify(await db.facts.get(TODAY))
     await writePatternsRow(day(A + SPAN + 1), NOW, { pause: none })
@@ -124,13 +124,23 @@ describe('the pattern table on the phone', () => {
     expect(await db.facts.get(TODAY)).toBeDefined()
     await patternsSettled()
     expect(await db.patterns.count()).toBe(1)
+    // The sheet written three times close together, as the app does when it opens: one build, a moment after the last.
+    const before = patternsBuilt()
+    await writeDayRows(TODAY, NOW)
+    await writeDayRows(TODAY, NOW)
+    await writeDayRows(TODAY, NOW)
+    expect(patternsBuilt() - before).toBe(0)
+    await new Promise((resolve) => setTimeout(resolve, PATTERNS_AFTER_SHEET_MS + 400))
+    await patternsSettled()
+    expect(patternsBuilt() - before).toBe(1)
+    expect(PATTERNS_AFTER_SHEET_MS).toBe(1500)
     // Two asked for at once are built one after the other, and the second finds nothing to write.
     const [first, second] = await Promise.all([refreshPatterns(day(A + SPAN + 1), NOW), refreshPatterns(day(A + SPAN + 1), NOW)])
     expect([first, second]).toEqual([true, false])
     // Never two under way at the same moment, however many were asked for at once.
     await Promise.all([refreshPatterns(day(A + SPAN + 2), NOW), refreshPatterns(day(A + SPAN + 3), NOW), refreshPatterns(day(A + SPAN + 4), NOW)])
     expect(patternsMostAtOnce()).toBe(1)
-  })
+  }, 30_000)
 
   it('lets a question go on after a short wait when the table is not ready, and still finishes the table', async () => {
     await seed()

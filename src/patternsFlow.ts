@@ -15,6 +15,11 @@ import { allOwnChips } from './settings'
 
 /** How long a question waits for a fresh table before it goes on without one. */
 export const PATTERNS_ASK_WAIT_MS = 4000
+/**
+ * How long the table waits after the day's sheet is written before it is built. The app writes the sheet at several
+ * moments close together when it opens: its own start comes first, and those moments make one build, not one each.
+ */
+export const PATTERNS_AFTER_SHEET_MS = 1500
 
 /** The record as the counted core reads it, in one read: every check-in, day, private item, chip of your own, offer, answer and workout day. */
 export async function countedRecord(): Promise<CountedInput> {
@@ -32,6 +37,7 @@ const letThrough = (): Promise<void> => new Promise((resolve) => setTimeout(reso
  */
 export async function writePatternsRow(day: string, now: Date = new Date(), opts: { pause?: () => Promise<void> } = {}): Promise<boolean> {
   building++
+  built++
   mostAtOnce = Math.max(mostAtOnce, building)
   try {
     const table = await patternTableKept(await countedRecord(), day, opts.pause ?? letThrough)
@@ -51,7 +57,10 @@ export async function writePatternsRow(day: string, now: Date = new Date(), opts
 }
 
 let building = 0
+let built = 0
 let mostAtOnce = 0
+/** For tests: how many builds have been started. */
+export const patternsBuilt = (): number => built
 /** For tests: the most builds that were ever under way at the same moment. Asked for one after another, it is one. */
 export const patternsMostAtOnce = (): number => mostAtOnce
 
@@ -64,15 +73,34 @@ export function refreshPatterns(day: string, now: Date = new Date()): Promise<bo
   return next
 }
 
-/** Every build asked for so far, finished: for a caller that must read the table after it, and for tests. */
+/** The build waiting for its moment after the day's sheet: one at most, the newest asked for. */
+let waiting: { day: string; now: Date; timer: ReturnType<typeof setTimeout> } | null = null
+
+/** Asks for a build a moment from now; one already waiting is replaced, so moments close together make one build. */
+function later(day: string, now: Date): void {
+  if (waiting) clearTimeout(waiting.timer)
+  const timer = setTimeout(() => {
+    waiting = null
+    void refreshPatterns(day, now)
+  }, PATTERNS_AFTER_SHEET_MS)
+  waiting = { day, now, timer }
+}
+
+/** Every build asked for so far, finished, a waiting one started at once: for a caller that must read the table after it, and for tests. */
 export function patternsSettled(): Promise<unknown> {
+  if (waiting) {
+    clearTimeout(waiting.timer)
+    const { day, now } = waiting
+    waiting = null
+    void refreshPatterns(day, now)
+  }
   return last
 }
 
 /** The day's sheet, and after it the pattern table, which no screen waits for. */
 export async function writeDayRows(day: string, now: Date = new Date()): Promise<boolean> {
   const wrote = await writeFactsRow(day, now)
-  void refreshPatterns(day, now)
+  later(day, now)
   return wrote
 }
 

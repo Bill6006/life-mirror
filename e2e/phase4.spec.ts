@@ -86,13 +86,13 @@ test('the phone builds the pattern table after the day’s sheet, as one record,
   expect((await queued()).map((r) => [r.key, r.op])).toEqual([['table', 'put']])
   await page.reload()
   await expect(page.getByRole('button', { name: 'Mirror', exact: true })).toBeVisible()
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(4000)
   expect(await queued()).toHaveLength(1)
   expect(await storeRows<StoredTable>(page, 'patterns')).toHaveLength(1)
   // The day's sheet holds nothing of the table: no fact with a lookup's head.
   const [facts] = (await storeRows<{ day: string; sheet: { facts: { id: string }[] } }>(page, 'facts')).filter((f) => f.day === '2026-09-24')
   const heads = new Set(facts.sheet.facts.map((f) => f.id.split('.')[0]))
-  for (const head of ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecast']) expect(heads.has(head), head).toBe(false)
+  for (const head of ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts']) expect(heads.has(head), head).toBe(false)
 })
 
 test('an answer that cited a lookup’s fact shows that fact’s own words under "What this rests on"', async ({ page }) => {

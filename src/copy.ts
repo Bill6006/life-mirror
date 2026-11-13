@@ -2232,7 +2232,7 @@ export const copy = {
       'lookup.workouts': 'Lookup: workouts',
       'lookup.pathSteps': 'Lookup: Path steps done',
       'lookup.lines': 'Lookup: past lines',
-      'lookup.forecast': 'Lookup: forecasts',
+      'lookup.forecasts': 'Lookup: forecasts',
     },
     faithHidden: 'Off while the faith family is hidden: Claude reads nothing about faith.',
     recent: 'Who wrote recent lines',
