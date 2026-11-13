@@ -18,11 +18,16 @@ export function guardComparisons<T>(day: string, read: () => T): T | null {
   try {
     return read()
   } catch (e) {
-    console.error(e)
-    const name = e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error'
-    fault = { count: (fault?.count ?? 0) + 1, first: fault?.first ?? day, last: day, name }
+    noteComparisonFault(day, e)
     return null
   }
+}
+
+/** A failure of the comparisons kept for the Worker's report: by a read under the guard, or by the pattern table's build (2026-11-13). */
+export function noteComparisonFault(day: string, e: unknown): void {
+  console.error(e)
+  const name = e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error'
+  fault = { count: (fault?.count ?? 0) + 1, first: fault?.first ?? day, last: day, name }
 }
 
 /** The failures since the app started, or null. */

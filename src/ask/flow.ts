@@ -1,5 +1,6 @@
 import { blockAt } from '../blocks'
 import { writeFactsRow } from '../brainFlow'
+import { patternsForAsk } from '../patternsFlow'
 import { reachedClaude } from '../coachShared'
 import { copy } from '../copy'
 import { db, getSettings } from '../db'
@@ -97,6 +98,9 @@ async function sheetNow(now: Date, opts: AskOptions): Promise<void> {
   } catch {
     // The run reads the sheet the phone wrote last.
   }
+  // The pattern table too (2026-11-13), waited for a short while at most: a question about when something happens is
+  // answered from it, and one the table was not ready for is answered from what the phone built last.
+  await patternsForAsk(blockAt(now).day, now)
 }
 
 /** A typed question: in a new thread, or in an open one as a follow-up; kept waiting for Claude. Null for an empty question. */

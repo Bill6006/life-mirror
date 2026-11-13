@@ -236,7 +236,7 @@ TABLE = [
          new="]",
          tests=[S], pattern=ON),
     dict(id='watched-while-on', file='src/app.tsx',
-         old="  useEffect(() => (weatherOn ? watchWeather(() => void writeFactsRow(blockAt(new Date()).day)) : undefined), [weatherOn])",
+         old="  useEffect(() => (weatherOn ? watchWeather(() => void writeDayRows(blockAt(new Date()).day)) : undefined), [weatherOn])",
          new="  useEffect(() => undefined, [weatherOn])",
          tests=[S], pattern=ON),
     dict(id='evidence-only-while-on', file='src/evidenceScreen.tsx',

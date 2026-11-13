@@ -1,3 +1,4 @@
+import { readPatterns, type PatternsRecord } from './counted/stored'
 import { compareSlots } from './blocks'
 import { type Aim, type AnchorSwap, askedOf, setAside, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathAdaptation, type PathMark, type PathTest, type PathTestDay, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
 import type { CoachAsk, CoachProposal } from './coachShared'
@@ -57,6 +58,8 @@ export interface RecordsData {
   pathAdaptations?: readonly PathAdaptation[]
   pathTests?: readonly PathTest[]
   pathTestDays?: readonly PathTestDay[]
+  /** The pattern table (2026-11-13): what the record counts, and when each thing was recorded, as the phone last built it. */
+  patterns?: PatternsRecord | null
 }
 
 // Everything recorded, as JSON and CSV. Private items are left out unless asked for by name.
@@ -105,6 +108,18 @@ function csvCell(s: string): string {
 
 function yesNo(v: boolean): string {
   return v ? 'yes' : ''
+}
+
+/**
+ * The pattern table as the export holds it: counts and standings as the phone last built them. A private item's kind is
+ * left out unless private items are included, and the Partner path's unless the Partner path is; a stored record that
+ * is not the table's shape is left out whole.
+ */
+export function patternsForExport(stored: unknown, includePrivate: boolean, partner: boolean): { patternTable?: unknown } {
+  const table = readPatterns(stored)
+  if (!table) return {}
+  const kinds = table.kinds.filter((k) => (includePrivate || !k.private) && (partner || k.category !== 'partnerPath'))
+  return { patternTable: { builtFor: table.builtFor, builtAt: table.builtAt, kinds: kinds.map((k) => ({ id: k.id, label: k.label, countedBy: k.unit, known: k.known, occurrences: k.occurrences, family: k.family, ...(k.cutoff ? { cutoff: k.cutoff } : {}), ...(k.since ? { since: k.since } : {}), ...(k.cells ? { cells: k.cells } : {}) })), level: table.level } }
 }
 
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {
@@ -189,6 +204,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         weather: 'weatherDays lists each day whose record holds weather from Open-Meteo for your area, read while its switch was on (Weather data by Open-Meteo.com, CC BY 4.0): rainMm is rain and showers over the day in millimetres, sunHours the hours of sunshine, highC the day’s high in °C, and readAt when it was read. Read on the day itself it is that day’s forecast; read the day after, the day as it was. A day not listed is unknown, never dry. The area is never kept. The check-in rows carry the same as day_rain_mm, day_sun_hours and day_high_c.',
         ask: 'Ask Life Mirror: each conversation (threads) and each question in it (turns). A quick answer is the app’s own layout of the tested findings at the time, with the findings it cited (each test’s key, its rung, direction, revised mark and size range); a typed question waits for Claude, and its checked answer (claude) is Claude’s words with the facts it cited, or that no checked answer came. Nothing here is evidence: the learning engine and the Brain never read it. A turn’s asked lists the tests you asked about and the days, the one thing the test queue reads, for priority alone.',
         notes: 'Notes you kept from Ask, in your own words, each on its day: read as a check-in’s note is, never a reading or a finding.',
+        // The pattern table's note, only beside the table itself: an export with no table reads as it always did.
+        ...(readPatterns(records?.patterns) ? { patternTable: 'patternTable is the table Life Mirror builds from the whole record for questions about when something happens (2026-11-13): for each thing the record counts, how many occasions the record can speak for and how many carried it; and where there was enough to compare, each cell of each split (the weekday, the check-in of the day, a short night before, a low evening the day before) as k of n in the cell against restK of m elsewhere, with its standing: tooFew, noPattern, lead or pattern. family is how many comparisons were tested for that thing. level is the reading out of 100 in each cell as an average, with the check-ins in each band from Firing to Empty. It is counts and standings: an association, never a cause. A private item is in it only when private items are included; the Partner path’s steps only when the Partner path is.' } : {}),
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
         ...(records?.pathAdaptations?.length || records?.pathTests?.length
           ? { pathAdaptations: 'pathAdaptations lists every change to how a Path runs for you (P6): what it does (kind and target), its origin (population evidence, a small test of yours, a pattern in your record, your preference, feasibility, safety, newly published research, your correction, a change to the Path’s design), why in the words shown then, with the counts, and its state: applied, a suggestion you declined, or undone, never deleted. A step’s pathWhy is a Path rep’s own reason after a No: noChance, cantYet, wrong (felt wrong or pointless), unsafe (felt unsafe or harmful). pathTests are the small tests you started, and pathTestDays the days a test’s version was on show with the chance it had. None of it is evidence for the learning engine or the Brain.' }
@@ -236,6 +253,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             ...((records.pathAdaptations ?? []).some((r) => partner || r.path !== 'partner') ? { pathAdaptations: (records.pathAdaptations ?? []).filter((r) => partner || r.path !== 'partner').map((r) => ({ path: r.path, version: r.version, at: r.at, day: r.day, kind: r.kind, rep: r.rep ?? null, strand: r.strand ?? null, stage: r.stage ?? null, setting: r.setting ?? null, every: r.every ?? null, after: r.after ?? null, lever: r.lever ?? null, choice: r.choice ?? null, origin: r.origin, why: r.why, state: r.state, stateAt: r.stateAt })) } : {}),
             ...((records.pathTests ?? []).some((x) => partner || x.path !== 'partner') ? { pathTests: (records.pathTests ?? []).filter((x) => partner || x.path !== 'partner').map((x) => ({ id: x.id, path: x.path, lever: x.lever, at: x.at, day: x.day, stoppedAt: x.stoppedAt ?? null })), pathTestDays: (records.pathTestDays ?? []).filter((d) => (records.pathTests ?? []).some((x) => x.id === d.test && (partner || x.path !== 'partner'))).map((d) => ({ test: d.test, day: d.day, version: d.version, chance: d.chance, at: d.at })) } : {}),
             forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
+            ...patternsForExport(records.patterns, opts.includePrivate, partner),
             forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
             her: {
               skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt, ...(s.rungs ? { rungs: s.rungs } : {}) })),

@@ -1,3 +1,4 @@
+import type { PatternsRecord } from './counted/stored'
 import type { BrainPrefsBody, CitedFact, Lacked, LineAction } from './brainShared'
 import type { DrawRecord, OutcomeReason } from './provenance'
 import type { OutsideSession } from './outsideRow'
@@ -965,6 +966,7 @@ class LifeMirrorDB extends Dexie {
   rungMarks!: Table<RungMark, number>
   intentions!: Table<Intention, number>
   facts!: Table<FactsRow, string>
+  patterns!: Table<PatternsRecord, string>
   briefLog!: Table<BriefLog, number>
   briefFeedback!: Table<BriefFeedback, number>
   brainBriefs!: Table<BrainBrief, string>
@@ -1241,6 +1243,11 @@ class LifeMirrorDB extends Dexie {
       pathAdaptations: '++id, path, at',
       pathTests: '++id, path, at',
       pathTestDays: '++id, test, day',
+    })
+    // The pattern table (2026-11-13): one record with a fixed id, built from the whole record and synced, for the
+    // Worker to serve a kind at a time. Counts, standings and the app's own labels; in the export.
+    this.version(28).stores({
+      patterns: 'id',
     })
     installOutbox(this)
     installPendingCopy(this)

@@ -156,8 +156,8 @@ TABLE = [
          new='      ...(prediction !== undefined ? { prediction } : {}),\n',
          tests=[FLOW], pattern='keeps the line written before Start'),
     dict(id='recordings-synced', file='src/cloudOutbox.ts',
-         old="'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays']",
-         new="'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays', 'recordings']",
+         old="'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays', 'patterns']",
+         new="'notes', 'pathVersions', 'pathRequests', 'pathAdaptations', 'pathTests', 'pathTestDays', 'patterns', 'recordings']",
          tests=[FLOW], pattern='stays on this phone'),
     # P4, offered only once started, and where it starts.
     dict(id='started-version-ignored', file='src/pathVersions.ts',

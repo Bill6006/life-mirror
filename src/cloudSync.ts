@@ -334,8 +334,14 @@ export async function resolveToken(): Promise<TokenResolution> {
   return { token: null, recover: false, notice }
 }
 
-function keyFor(store: string, id: string): string | number {
-  return store === 'days' || store === 'herSkills' || store === 'facts' ? id : Number(id)
+/**
+ * A synced record's key on this phone, from its id in the cloud. A store keyed by a counted id holds numbers, and so
+ * does the one settings record; every other synced store is keyed by a day or a name, and its id is that word itself.
+ * Read from the store's own schema (2026-11-13): until then a list named three such stores and left out the Brain
+ * settings, whose key "prefs" was read as a number that is none, and a lookup by it stopped the whole sync.
+ */
+export function keyFor(store: string, id: string): string | number {
+  return store === 'settings' || db.table(store).schema.primKey.auto ? Number(id) : id
 }
 
 /**

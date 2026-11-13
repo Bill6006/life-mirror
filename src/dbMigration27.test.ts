@@ -8,12 +8,13 @@ import { expect, it, vi } from 'vitest'
 // row of every store comes back exactly as it was, the three new stores start empty, and each Path computes the same
 // today as before the upgrade: nothing changes how a Path runs until you act.
 
-const NEW_STORES = ['pathAdaptations', 'pathTests', 'pathTestDays']
+// Since version 28 the app also holds the pattern table's store, new since 27 and tested in its own file: it too is no part of a version-26 record.
+const NEW_STORES = ['pathAdaptations', 'pathTests', 'pathTestDays', 'patterns']
 
-it('keeps a version-26 record whole when the app opens it at version 27, every Path running as before', async () => {
+it('keeps a version-26 record whole when the app opens it at the current version, every Path running as before', async () => {
   const { db: current } = await import('./db')
   await current.open()
-  expect(current.verno).toBe(27)
+  expect(current.verno).toBe(28)
   const specs = Object.fromEntries(current.tables.filter((t) => !NEW_STORES.includes(t.name)).map((t) => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map((i) => i.src)].join(', ')]))
   current.close()
 
@@ -48,7 +49,7 @@ it('keeps a version-26 record whole when the app opens it at version 27, every P
   vi.resetModules()
   const { db } = await import('./db')
   await db.open()
-  expect(db.verno).toBe(27)
+  expect(db.verno).toBe(28)
   for (const [store, rows] of Object.entries(seeded)) expect(await db.table(store).toArray(), store).toEqual(rows)
   for (const store of NEW_STORES) expect(await db.table(store).count(), store).toBe(0)
   const after = today(await db.aims.toArray(), await db.offers.toArray(), await db.outcomes.toArray()).map((v, k) => ({ ...v, aim: before[k].aim }))

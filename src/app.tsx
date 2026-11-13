@@ -17,7 +17,7 @@ import { EvidenceScreen } from './evidenceScreen'
 import { runForecasting } from './forecastFlow'
 import { WeeklyScreen } from './weeklyScreen'
 import { adoptCurrentSkills, adoptOrphanSubjects, alignLadders } from './aimFlow'
-import { writeFactsRow } from './brainFlow'
+import { writeDayRows } from './patternsFlow'
 import { reconcilePush } from './push'
 import { loadAudits, runAudits } from './evidenceFlow'
 import { ReadingsScreen } from './readingsScreen'
@@ -150,7 +150,7 @@ export function App() {
   useEffect(() => (locationOn ? watchLocation() : undefined), [locationOn])
   // Stage 3, item 6: the weather, at most once a day, only while the app is open and only once you turned it on; the day's sheet is written again when it comes.
   const weatherOn = settings?.weather.on === true
-  useEffect(() => (weatherOn ? watchWeather(() => void writeFactsRow(blockAt(new Date()).day)) : undefined), [weatherOn])
+  useEffect(() => (weatherOn ? watchWeather(() => void writeDayRows(blockAt(new Date()).day)) : undefined), [weatherOn])
   // Once a day, on open: the record's audits (the readings' anchor swaps and weights), then the forecasts and the facts row.
   useEffect(() => {
     const day = blockAt(new Date()).day
@@ -163,7 +163,7 @@ export function App() {
       .then(adoptCurrentSkills)
       .then(() => runAudits(day))
       .then(() => runForecasting(day))
-      .then(() => writeFactsRow(day))
+      .then(() => writeDayRows(day))
   }, [])
   // The ping's address kept alive (the owner's report of 2026-10-20): checked against the browser's own at start and each
   // time the app comes back to the front, made again when the browser lost it, and synced with the settings.
@@ -192,12 +192,12 @@ export function App() {
   const completed = all?.filter((c) => c.completedAt).length
   useEffect(() => {
     const day = blockAt(new Date()).day
-    void runForecasting(day).then(() => writeFactsRow(day))
+    void runForecasting(day).then(() => writeDayRows(day))
   }, [all?.length, completed])
   // Workstream 6: a session recorded today (Done, Did it already, an answer) changes what the day's line may say.
   const recorded = useLive(() => db.outcomes.where('day').equals(blockAt(new Date()).day).count(), [])
   useEffect(() => {
-    if (recorded !== undefined) void writeFactsRow(blockAt(new Date()).day)
+    if (recorded !== undefined) void writeDayRows(blockAt(new Date()).day)
   }, [recorded])
 
   useEffect(() => {
