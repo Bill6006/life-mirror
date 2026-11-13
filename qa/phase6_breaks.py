@@ -46,6 +46,12 @@ Which month is read next: the oldest first; from its fourth day after it ends; n
 the quiet hours, nor while the Brain is busy, nor while a month is being read; two a day, a failed read not counted
 as one; three tries a day.
 
+The month task: the month kept at its first serving, served again as kept, bound to one start of its task; a month
+not whole ends the task; the task's name, a month's first day, an open task, an attempt left; the briefing names the
+parts and the reads allowed; a part is ids and words alone, recorded once, kept across a second briefing, logged;
+the briefing first; a part in range; its own parameters alone; three lookups and no other; four other reads, each
+counted; the events marked wrong: marked, the month's own, named as today, handed to the read.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -90,6 +96,8 @@ J = 'src/writeups/join.ts'
 JT = 'src/writeups/join.test.ts'
 MP = 'worker/src/monthPrompt.ts'
 MS = 'worker/src/monthSchedule.ts'
+MTK = 'worker/src/monthTask.ts'
+MTT = 'worker/src/monthTask.test.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
 
@@ -659,6 +667,112 @@ TABLE = [
          old="failed(m) < MONTH_TRIES_A_DAY)",
          new="true)",
          tests=[MST], pattern='tries a failed read again'),
+
+    # The month task: its briefing and its parts.
+    dict(id='the-month-is-kept-at-its-first-serving', file=MTK,
+         old="    await deps.store.writeBrainRow(SERVED_STORE, t.id, t.day, kept, at)\n",
+         new="",
+         tests=[MTT], pattern='serves the kept month again, as it was first built'),
+    dict(id='the-kept-month-is-served-again', file=MTK,
+         old="  let kept = await keptMonth(deps.store, t)\n  if (!kept) {",
+         new="  let kept = null as KeptMonth | null\n  if (!kept) {",
+         tests=[MTT], pattern='serves the kept month again, as it was first built'),
+    dict(id='a-kept-month-is-one-starts-own', file=MTK,
+         old="  return row && row.taskAt === t.at && row.month ? row : null\n",
+         new="  return row && row.month ? row : null\n",
+         tests=[MTT], pattern='builds the month afresh for a task started again'),
+    dict(id='a-month-not-whole-ends-the-task', file=MTK,
+         old="      await deps.store.writeTask({ ...t, status: 'fallback', fallbackReason: built.reason })\n",
+         new="",
+         tests=[MTT], pattern='serves nothing of a month that was not read whole'),
+    dict(id='the-month-tasks-name', file=MTK,
+         old="  if (task !== 'month') return",
+         new="  if (false) return",
+         tests=[MTT], pattern='is refused for another task’s name'),
+    dict(id='a-months-first-day-names-the-task', file=MTK,
+         old="DAY_RE.test(day) ? monthSpan(day) : null",
+         new="DAY_RE.test(day) ? monthSpan(`${day.slice(0, 8)}01`) : null",
+         tests=[MTT], pattern='is refused for another task’s name'),
+    dict(id='an-open-month-task-alone', file=MTK,
+         old="(t.status !== 'firing' && t.status !== 'fired')",
+         new="false",
+         tests=[MTT], pattern='is refused for another task’s name'),
+    dict(id='an-attempt-is-left', file=MTK,
+         old="  if (t.posts >= MAX_POSTS) return",
+         new="  if (false) return",
+         tests=[MTT], pattern='is refused for another task’s name'),
+    dict(id='the-briefing-names-the-days-outside', file=MTK,
+         old="; outside the month: ${p.outside.join(', ')}",
+         new="",
+         tests=[MTT], pattern='serves the rules, the shape of the answer and the month’s parts'),
+    dict(id='the-reads-allowed-grow-with-the-parts', file=MTK,
+         old="maxCalls: m.parts.length + MONTH_OTHER_READS,",
+         new="maxCalls: MONTH_OTHER_READS,",
+         tests=[MTT], pattern='serves the rules, the shape of the answer and the month’s parts'),
+    dict(id='a-part-is-ids-and-words-alone', file=MTK,
+         old="facts.map((f) => ({ id: f.id, text: f.text }))",
+         new="facts.map((f) => ({ ...f }))",
+         tests=[MTT], pattern='is served as ids and words alone'),
+    dict(id='a-part-served-is-recorded', file=MTK,
+         old="served: [...new Set([...t.month.served, part.part])].sort((a, b) => a - b) } })",
+         new="served: t.month.served } })",
+         tests=[MTT], pattern='is served as ids and words alone'),
+    dict(id='a-part-served-twice-is-recorded-once', file=MTK,
+         old="[...new Set([...t.month.served, part.part])]",
+         new="[...t.month.served, part.part]",
+         tests=[MTT], pattern='served twice is recorded once'),
+    dict(id='a-part-read-is-logged', file=MTK,
+         old="    await logged('lookup.month', facts.length, bytes)\n",
+         new="",
+         tests=[MTT], pattern='is served as ids and words alone'),
+    dict(id='what-was-served-stays-across-a-briefing', file=MTK,
+         old="served: t.month?.served ?? [], other: t.month?.other ?? 0, lines: m.lines",
+         new="served: [], other: 0, lines: m.lines",
+         tests=[MTT], pattern='stays recorded when the briefing is fetched again'),
+    dict(id='the-briefing-comes-first', file=MTK,
+         old="  if (!kept || !t.month) return reply(409,",
+         new="  if (false) return reply(409,",
+         tests=[MTT], pattern='is refused before the briefing, out of range'),
+    dict(id='a-part-is-in-range', file=MTK,
+         old="    if (!part) return reply(400,",
+         new="    if (false) return reply(400,",
+         tests=[MTT], pattern='is refused before the briefing, out of range'),
+    dict(id='a-parts-own-parameters-alone', file=MTK,
+         old="if (k !== 'task' && k !== 'day' && k !== 'lookup' && k !== 'part') return",
+         new="if (false) return",
+         tests=[MTT], pattern='is refused before the briefing, out of range'),
+    dict(id='three-lookups-and-no-other', file=MTK,
+         old="  if (lookup !== 'month' && lookup !== 'kinds' && lookup !== 'pattern') return reply(403,",
+         new="  if (lookup === null) return reply(403,",
+         tests=[MTT], pattern='four reads at most, and no other lookup or category'),
+    dict(id='four-other-reads-at-most', file=MTK,
+         old="  if (t.month.other >= MONTH_OTHER_READS) return",
+         new="  if (false) return",
+         tests=[MTT], pattern='four reads at most, and no other lookup or category'),
+    dict(id='the-number-four-other-reads', file=MTK,
+         old="export const MONTH_OTHER_READS = 4",
+         new="export const MONTH_OTHER_READS = 5",
+         tests=[MTT], pattern='four reads at most, and no other lookup or category'),
+    dict(id='another-read-is-counted', file=MTK,
+         old="month: { ...t.month, other: t.month.other + 1 } })",
+         new="month: { ...t.month } })",
+         tests=[MTT], pattern='four reads at most, and no other lookup or category'),
+    dict(id='only-a-marked-event-is-handed-back', file=MTK,
+         old="e && marked.has(wrongIdOf(e.id)) && ",
+         new="e && ",
+         tests=[MTT], pattern='are the month’s own, each under its type’s name today'),
+    dict(id='only-the-months-own-marked-events', file=MTK,
+         old=" && e.note.day >= span.from && e.note.day <= span.to",
+         new="",
+         tests=[MTT], pattern='are the month’s own, each under its type’s name today'),
+    dict(id='a-marked-event-is-named-as-today', file=MTK,
+         old="eventTypeOf(e.type, types)?.id ?? e.type",
+         new="e.type",
+         tests=[MTT], pattern='are the month’s own, each under its type’s name today'),
+    dict(id='the-marked-events-reach-the-read', file=MTK,
+         old="wrong: await wrongEvents(deps.store, span, types) }),",
+         new="wrong: [] }),",
+         tests=[MTT], pattern='are handed to the read in its instructions'),
 ]
 
 

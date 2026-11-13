@@ -86,7 +86,7 @@ export interface BriefRow {
 export interface TaskRow {
   id: string
   kind: 'task'
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'path' | 'pathRead'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'path' | 'pathRead' | 'month'
   day: string
   at: string
   status: 'firing' | 'fired' | 'written' | 'refused' | 'fallback'
@@ -145,6 +145,8 @@ export interface TaskRow {
   turns?: number[]
   /** An ask run by hand with the run key (stage A2): the stand-in question it answers, in place of a turn. Never the owner's words. */
   question?: string
+  /** A month's read (2026-11-13): how many parts the month has, which were served, its other reads, and what it was built from. Never a line of it. */
+  month?: { parts: number; served: number[]; other: number; lines: number; fingerprint: string }
 }
 
 /** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
@@ -185,7 +187,7 @@ export interface ReadRow {
   id: string
   day: string
   at: string
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'month'
   category: string
   count: number
   bytes: number

@@ -26,7 +26,7 @@ import type { BriefRow, Store, TaskRow } from './turso'
 // the record.
 
 export const FIRE_BETA = 'experimental-cc-routine-2026-04-01'
-export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'path' | 'pathRead'
+export type ClaudeTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'path' | 'pathRead' | 'month'
 /** A line may be posted twice: the first, and one corrected retry after a refusal. */
 export const MAX_POSTS = 2
 /** No valid line within this many minutes, and the free chain writes (the plan's twenty). */
@@ -385,6 +385,8 @@ export async function handleContext(deps: Deps, url: URL): Promise<Reply> {
   if (!open.ok) return open.reply
   const t = open.t
   if (t.task === 'path' || t.task === 'pathRead') return reply(400, { error: 'the generator reads through its own context' })
+  // The month's read (2026-11-13) is served by its own handlers, part by part.
+  if (t.task === 'month') return reply(400, { error: 'the month task reads through its own context' })
   // A lookup answers with facts for Ask's checker (2026-11-13): the line, the review and the coach stay on the sheet alone.
   if (url.searchParams.has('lookup')) return reply(403, { error: `the ${t.task} task is served no lookup` })
   const q = parseContextQuery(url, t.day)
