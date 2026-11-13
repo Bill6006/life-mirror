@@ -12,13 +12,16 @@ import { coachMode, skillCoachOpen, type CoachMode } from './coachFlow'
 import { firmMode, firmOn, firmPrefNow, firmPrefOf, type FirmMode } from './firmFlow'
 import type { Firmness } from './firmness'
 import { allCheckIns, allWins, contextFromWeek, db, ensureDayContext, getDayContext, getSettings, privateItems, updateSettings, type Aim, type BrainBrief, type BriefFeedback, type BriefLog, type CheckIn, type DayContext, type Intention, type Offer, type Outcome, type PathAdaptation, type PathMark } from './db'
-import { buildFactSheet, nightStanding, onTheSheet, sheetAssociations, type FactSheet, type NightStanding } from './facts'
+import { buildFactSheet, nightStanding, onTheSheet, sheetAssociations, type FactSheet, type NightStanding, type SheetAssociations } from './facts'
+import type { PrivateAssociation } from './associations'
+import { comparisonFaults, guardComparisons, resetComparisonFaults } from './counted/fault'
+import { ownChipStandings } from './ownChips'
 import { wasShown } from './shown'
 import { briefData, usualFor, weeklyAnalyses, type Brief } from './forecastFlow'
 import type { Stood } from './counted/compare'
 import { evidence, type Evidence } from './evidenceFlow'
 import { cardById, type ClaimCard } from './library'
-import { minutesOf, withDefaults } from './settings'
+import { minutesOf, ownChipsOf, withDefaults } from './settings'
 import { lineFor, phoneReview, rankLines, type FeedbackBefore, type ReviewParts } from './situations'
 import { awayOn } from './postWindowFlow'
 import { guardRepairNow, repairFaults } from './repair/breaker'
@@ -31,27 +34,16 @@ import { repairEvidenceFrom, trackSummary } from './repair/evidence'
 // landed; the one tap that does what the line says; why it said it; and the week reviewed. The
 // Worker's line, when there is one, is read from the rows it wrote.
 
-/** The comparisons' own failures on this phone since the app started: how many, the first and last day, and the error's name, never its message. */
-let assocFault: { count: number; first: string; last: string; name: string } | null = null
-
 /**
  * The association pass, wrapped as the engine is (2026-11-12): if it throws, the caller goes on without it (a sheet
  * with no association facts, a last-night line with no comparison), and the failure is kept for the Worker's report.
+ * The guard and its record live beside the core (counted/fault.ts), where every surface that asks a chance reaches them.
  */
-export function guardAssociations<T>(day: string, read: () => T): T | null {
-  try {
-    return read()
-  } catch (e) {
-    console.error(e)
-    const name = e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error'
-    assocFault = { count: (assocFault?.count ?? 0) + 1, first: assocFault?.first ?? day, last: day, name }
-    return null
-  }
-}
+export { guardComparisons as guardAssociations, resetComparisonFaults as resetAssociationFaults }
 
-/** For tests: the failures as a new start of the app finds them. */
-export function resetAssociationFaults(): void {
-  assocFault = null
+/** The sheet's family, gathered under the guard; null when the comparisons failed, here or where the evidence was read. */
+function familyOf(day: string, ev: Evidence, r: Omit<Parameters<typeof sheetAssociations>[0], 'evidence'>): SheetAssociations | null {
+  return ev.failed ? null : guardComparisons(day, () => sheetAssociations({ ...r, evidence: ev }, day))
 }
 
 /** The morning brief as the card shows it: its readings, and where last night's comparison stands in the sheet's family. */
@@ -66,19 +58,45 @@ export async function briefForCard(day: string): Promise<BriefCard> {
   const [brief, checkins, contexts, ev, outcomes, items, settings, outside] = await Promise.all([briefData(day), allCheckIns(), db.days.toArray(), evidence(day), db.outcomes.toArray(), privateItems(), getSettings(), db.outside.toArray()])
   if (!brief.lastNight) return { ...brief, night: null }
   const key = brief.lastNight.key
-  const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
+  const family = familyOf(day, ev, { checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on })
   return { ...brief, night: family ? nightStanding(family, key) : null }
 }
 
+/** Your own chips' answers with where each stands among them: a family of their own (ownChips.ts). */
+export type OwnStandings = ReturnType<typeof ownChipStandings>
+
+/** What every surface that says a comparison reads (2026-11-12). */
+export interface EvidenceStandings {
+  ev: Evidence
+  /** Where each comparison stands in the sheet's family, by its id; null when the comparisons failed. */
+  stood: ReadonlyMap<string, Stood> | null
+  /** The family itself: the check-in's answers and the move card's line read their numbers from it, so a reading and its standing are one computation. */
+  family: SheetAssociations | null
+  /** Your own chips, every one not removed, a family of their own; null when the comparisons failed. */
+  own: OwnStandings | null
+}
+
 /**
- * The Evidence screen's comparisons, with where each stands in the sheet's family (the one standard, 2026-11-12): the
- * same family, gathered by the same function from the same record, so the screen and the sheet give one standing for
- * one thing. `stood` is null when the comparisons failed.
+ * The comparisons as the screens say them, with where each stands (the one standard, 2026-11-12): the same family,
+ * gathered by the same function from the same record, so Evidence, the check-in, the move card and the sheet give one
+ * standing for one thing. `stood`, `family` and `own` are null when the comparisons failed.
  */
-export async function evidenceWithStandings(day: string): Promise<{ ev: Evidence; stood: ReadonlyMap<string, Stood> | null }> {
+export async function evidenceWithStandings(day: string): Promise<EvidenceStandings> {
   const [ev, checkins, contexts, outcomes, items, settings, outside] = await Promise.all([evidence(day), allCheckIns(), db.days.toArray(), db.outcomes.toArray(), privateItems(), getSettings(), db.outside.toArray()])
-  const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
-  return { ev, stood: family ? family.stood : null }
+  const family = familyOf(day, ev, { checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on })
+  const own = ev.failed ? null : guardComparisons(day, () => ownChipStandings(checkins, ownChipsOf(settings), day))
+  return { ev, stood: family ? family.stood : null, family, own }
+}
+
+/**
+ * A private item's lines for the move card of one check-in (2026-11-12): only while private items are in selection,
+ * each read from the sheet's family with where it stands there. None when the comparisons failed.
+ */
+export async function privateLinesFor(day: string, block: Block): Promise<{ privates: PrivateAssociation[]; stood: ReadonlyMap<string, Stood> | null }> {
+  const settings = await getSettings()
+  if (!settings.privateInSelection) return { privates: [], stood: null }
+  const { family } = await evidenceWithStandings(day)
+  return family ? { privates: family.privates.filter((p) => p.block === block), stood: family.stood } : { privates: [], stood: null }
 }
 
 export async function factSheet(day: string, now: Date = new Date(), coach: CoachMode = coachMode(), firm: FirmMode = firmMode()): Promise<FactSheet> {
@@ -119,7 +137,7 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // stage R7's honesty checks, and the scorecard's count the learning engine's own.
   const weekly = weeklyAnalyses({ checkins, offers: offers.filter(onTheSheet), outcomes, cards, declarations, contexts, scores, outside, hideFaith: settings.hideFaith, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers, repair: repair ? trackSummary(repair) : null }, day)
   // The comparisons, gathered once under their own guard: if they throw, the sheet is built without association facts.
-  const family = guardAssociations(day, () => sheetAssociations({ checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on, evidence: ev }, day))
+  const family = familyOf(day, ev, { checkins, contexts, outcomes, outside, items, weatherOn: settings.weather.on })
   const sheet = buildFactSheet({ day, now, family, checkins, contexts, brief, evidence: ev, cards, aims, skills, marks, offers, outcomes, nights: records.nights, intentions, wins, outside, items, direction: settings.direction, usual, log, feedback, brainBriefs, depth: settings.depth, lowDemand: settings.lowDemand, tomorrow: tomorrowShape, showPrivate: settings.showPrivate, pathMarks, adaptations, use: { rows: useRows, coachPicks, allAims }, ...(reviews.size ? { reviews } : {}), ...(awayOn() ? { away: { range: settings.away ?? null } } : {}), weekly, ...(settings.weather.on ? { weatherOn: true } : {}), ...(repair ? { repair } : {}) })
   // The engine's own ranking rides the sheet (Part 28), so a writer reads what is true today, best first, before the pile.
   // A situation rests only after its line was seen (stage 1, item m).
@@ -130,7 +148,9 @@ export async function factSheet(day: string, now: Date = new Date(), coach: Coac
   // The engine's failures on this phone ride the sheet for the Worker's report alone (the owner's requirement of 2026-10-20).
   const fault = repairFaults()
   if (fault) sheet.engineFault = fault
-  if (assocFault) sheet.assocFault = assocFault
+  // The comparisons' failures, the same way (2026-11-12).
+  const compared = comparisonFaults()
+  if (compared) sheet.assocFault = compared
   // The storage interrupted under the app, the same way (2026-10-23, the blank Now).
   const storage = storageFaults()
   if (storage) sheet.storageFault = storage

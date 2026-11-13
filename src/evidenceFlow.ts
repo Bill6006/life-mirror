@@ -1,10 +1,12 @@
 import { anchorSwapDue } from './audit'
-import { type Standing, standings, WORTH_POINTS, WORTH_STEPS } from './counted/compare'
+import { type Standing, standings, type Stood, WORTH_POINTS, WORTH_STEPS } from './counted/compare'
+import { guardComparisons } from './counted/fault'
+import { chanceIsOff, withoutChance } from './counted/named'
 import { awayDays, homeDaysOnly } from './awayFlow'
 import { caffeineEvidence, HABIT_DAYS, type CaffeineEvidence } from './caffeineRecord'
 import { associationBy, coolingOffDuration, associationFor, dayAssociation, morningAssociation, passiveAssociation, privateAssociations, tierFor, whatBringsYouBack, type Association, type PrivateAssociation } from './associations'
 import { hasMove, PASSIVE } from './catalogue'
-import { allCheckIns, db, getSettings, privateItems, setAside, updateSettings, type Card, type CheckIn, type Declaration, type Offer, type Outcome } from './db'
+import { allCheckIns, db, getSettings, privateItems, setAside, updateSettings, type Card, type CheckIn, type Declaration, type Offer, type Outcome, type OutsideDay } from './db'
 import { NOTHING } from './offers'
 import { readings, setAnchorSwaps } from './readings'
 import { setLearnedWeights } from './score'
@@ -96,6 +98,8 @@ export interface Evidence {
   /** Part 35: a hard session's day against the next morning's energy, mood, focus and stress, each in anchor steps in its own direction, like for like. */
   hardWorkout: { times: number; measures: Record<HardMeasure, Association> } | null
   bringsYouBack: { moveId: string; n: number }[]
+  /** The comparisons' chance threw on this phone (2026-11-12): the numbers here were then read with none asked, nothing stands past too few, and every line says the comparison could not be worked out. */
+  failed?: true
   /** The null offer: how often it was offered, kept to, and skipped. */
   /** Nothing extra drawn, and skipped for a move: nothing is asked of it, so nothing of it is kept or done (Item 4). */
   nothing: { offered: number; skipped: number }
@@ -110,7 +114,8 @@ export interface Evidence {
  */
 export function passiveEvidence(cards: readonly Card[], checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], today: string): PassiveEvidence[] {
   const rode = cards.filter((c) => c.origin === 'passive').map((card) => ({ card, association: passiveAssociation(checkins, offers, outcomes, card.moveId, card.target, today, { id: `evidence.${card.moveId}`, worth: card.worthwhile * 25 }) }))
-  const stood = new Map(standings(rode.flatMap((x) => (x.association.compared ? [x.association.compared] : []))).map((s) => [s.id, s]))
+  // On the run after a failure no chance is asked, and no card stands past too few.
+  const stood = chanceIsOff() ? new Map<string, Stood>() : new Map(standings(rode.flatMap((x) => (x.association.compared ? [x.association.compared] : []))).map((s) => [s.id, s]))
   return rode.map(({ card, association }) => {
     const s = association.compared ? stood.get(association.compared.id) : undefined
     const standing: Standing = !s ? 'tooFew' : s.standing === 'pattern' ? 'lead' : s.standing
@@ -119,11 +124,22 @@ export function passiveEvidence(cards: readonly Card[], checkins: readonly Check
   })
 }
 
-/** Everything the Evidence screen shows, computed from the records at the moment of asking. */
+/** What the evidence reads from the record. */
+export type EvidenceRecord = Awaited<ReturnType<typeof evidenceRecords>> & { settings: Awaited<ReturnType<typeof getSettings>>; items: Awaited<ReturnType<typeof privateItems>>; sessions: OutsideDay[] }
+
+/**
+ * Everything the Evidence screen shows, computed from the records at the moment of asking. The comparisons' chance is
+ * new math (2026-11-12), so the arithmetic runs under their guard: if it throws, it runs again with no chance asked,
+ * as it ran before that day, and the evidence says its comparisons failed.
+ */
 export async function evidence(today: string): Promise<Evidence> {
-  const { checkins, offers, outcomes, cards, declarations } = await evidenceRecords()
-  const settings = await getSettings()
-  const items = await privateItems()
+  const [records, settings, items, sessions] = await Promise.all([evidenceRecords(), getSettings(), privateItems(), db.outside.toArray()])
+  const read = () => evidenceFrom({ ...records, settings, items, sessions }, today)
+  return guardComparisons(today, read) ?? { ...withoutChance(read), failed: true }
+}
+
+/** The evidence's arithmetic, from a record already read. */
+export function evidenceFrom({ checkins, offers, outcomes, cards, declarations, settings, items, sessions }: EvidenceRecord, today: string): Evidence {
   // A passive item is assigned by rotation, never by a coin flip, so it is read like for like and capped at Promising.
   const passives = passiveEvidence(cards, checkins, offers, outcomes, today)
   const weightCards = cards.filter((c) => c.origin === 'weight').map((card) => ({ card, stats: weightStanding(card, checkins, declarations, today).stats }))
@@ -131,7 +147,6 @@ export async function evidence(today: string): Promise<Evidence> {
   const social = associationFor(checkins, today, (c) => Boolean(c.extras?.bigSocial), undefined, { id: 'assoc.bigSocial', worth: WORTH_POINTS })
   const caffeine = morningAssociation(checkins, today, (c) => Boolean(c.extras?.heavyCaffeine), { id: 'assoc.heavyCaffeine', worth: WORTH_POINTS })
   const cafe = caffeineEvidence(checkins, today)
-  const sessions = await db.outside.toArray()
   const outsideDays = new Set(sessions.map((o) => o.day))
   const workouts = dayAssociation(checkins, today, (d) => outsideDays.has(d), undefined, { id: 'assoc.workouts', worth: WORTH_POINTS })
   // Part 35: evening sessions against the night and the morning after; hard sessions against the next morning's four readings.
@@ -177,14 +192,6 @@ export async function bigSocialToday(day: string): Promise<boolean> {
   if (!PASSIVE.has('recovery-gap')) return false
   const c = await db.checkins.where('[day+block]').equals([day, 'evening']).first()
   return Boolean(c?.extras?.bigSocial)
-}
-
-/** Private items in selection, for the evening card: only when you turned that on. */
-export async function privateAssociationsToday(today: string): Promise<PrivateAssociation[]> {
-  const settings = await getSettings()
-  if (!settings.privateInSelection) return []
-  const [items, checkins] = await Promise.all([privateItems(), allCheckIns()])
-  return privateAssociations(true, items, checkins, today)
 }
 
 export function outcomesOf(outcomes: readonly Outcome[], offerId: number): Outcome | undefined {

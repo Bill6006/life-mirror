@@ -3,6 +3,7 @@ import { dayCaffeine, HABIT_DAYS, itemDays } from './caffeineRecord'
 import { families, hasMove, liveMoves, moveById, OBSERVED_ONLY, PASSIVE } from './catalogue'
 import type { CheckIn, DayContext, ForecastScore, Offer, Outcome } from './db'
 import { ratesBy, standings, type CellPoint, type Direction, type Standing } from './counted/compare'
+import { guardComparisons } from './counted/fault'
 import { type CountedInput, type DayFacts, dayFactsOf, type Kind, kindsOf } from './counted/kinds'
 import { daysOf } from './counted/occasions'
 import { decayAfterStop, type Observation } from './observe'
@@ -99,6 +100,8 @@ export interface BestDays {
   days: number
   threshold: number
   silent: boolean
+  /** The comparison threw on this phone (2026-11-12): the view says so in one line, and the sheet carries no best-days fact. */
+  failed?: true
   top: string[]
   /** How many conditions had enough days to be compared: what the correction was made across, and the number said with a lead. */
   family: number
@@ -232,7 +235,10 @@ export function bestConditions(checkins: readonly CheckIn[], offers: readonly Of
  * until one does.
  */
 export function bestDays(checkins: readonly CheckIn[], offers: readonly Offer[], outcomes: readonly Outcome[], contexts: readonly DayContext[], today: string, outside: ReadonlySet<string> = new Set(), own: readonly OwnChip[] = []): BestDays {
-  const all = bestConditions(checkins, offers, outcomes, contexts, today, outside, own)
+  // The chance is new math: under the comparisons' guard, a throw leaves the view saying so and nothing else.
+  const read = guardComparisons(today, () => ({ all: bestConditions(checkins, offers, outcomes, contexts, today, outside, own) }))
+  if (!read) return { days: dayReadings(checkins, today).length, threshold: BEST_DAYS_MIN, silent: false, failed: true, top: [], family: 0, controlled: [], uncontrolled: [], own: [] }
+  const all = read.all
   if (!all) return { days: dayReadings(checkins, today).length, threshold: BEST_DAYS_MIN, silent: true, top: [], family: 0, controlled: [], uncontrolled: [], own: [] }
   const rank = (d: Difference): number => (d.standing === 'pattern' ? 1 : 0)
   const pick = (list: readonly Difference[]): Difference[] =>

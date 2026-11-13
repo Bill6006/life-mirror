@@ -90,8 +90,8 @@ describe('your own chips on Evidence, under the one standard', () => {
     expect(stood.get('own.a')).toMatchObject({ standing: 'pattern', direction: 'higher', family: 1 })
     expect(stood.get('own.b')).toMatchObject({ standing: 'tooFew' })
     expect(ownChipLine('Stand-in a', answers.get('a')!, stood, 'a')).toBe('Stand-in a: 16 evenings marked. The morning after read 75, against 50 after evenings that started the same (16 and 40). Like for like, 25 points higher: a steady pattern.')
-    // Three taps: its own reading, and nothing set against it, where two readings used to be said.
-    expect(ownChipLine('Stand-in b', answers.get('b')!, stood, 'b')).toMatch(/^Stand-in b: 3 evenings marked\. The morning after read \d+ \(3\); nothing yet to set it against\.$/)
+    // Three taps: how many, and no reading, where two readings used to be said.
+    expect(ownChipLine('Stand-in b', answers.get('b')!, stood, 'b')).toBe('Stand-in b: 3 evenings marked, too few to compare yet.')
   })
 })
 

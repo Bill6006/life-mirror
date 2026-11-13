@@ -6,7 +6,7 @@ import { copy } from './copy'
 import { getSettings, updateSettings, type Offer, type Outcome } from './db'
 import { fill, formatDayShort, formatTime } from './format'
 import { useLive } from './live'
-import { privateAssociationsToday } from './evidenceFlow'
+import { privateLinesFor } from './brainFlow'
 import { answerPassive, doneOpen, nameOf, offerCounts, outcomeFor, recordDoneNow, replacementsFor } from './offerFlow'
 import { NOTHING } from './offers'
 import { anchorFor, headword, readingById } from './readings'
@@ -67,7 +67,8 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
   // Post-window, gated: a move that needs the house says so, and Skip can say "Not home"; closed, the card is as it was.
   const homeShown = !nothing && homeOnlyOn() && needsHome(offer.moveId)
   // Pass 3: a private item's line on the card of the check-in it is placed in.
-  const privates = useLive(() => privateAssociationsToday(offer.day).then((all) => all.filter((p) => p.block === offer.block)), [offer.day, offer.block])
+  // Read from the sheet's family with where each comparison stands there (the one standard, 2026-11-12).
+  const privates = useLive(() => privateLinesFor(offer.day, offer.block), [offer.day, offer.block])
   // Rule 11: named on the card only while "Show private items by name outside this screen" is on (2026-11-12); until the setting is read, it is not.
   const namesShown = useLive(() => getSettings().then((s) => s.showPrivate === true), []) === true
 
@@ -132,7 +133,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       : nothing
         ? fill(INGREDIENTS[offer.target] === 'down' ? c.whyNothingDown : c.whyNothing, { target: target.name, phrase: headword(anchorFor(offer.target, Math.max(1, Math.min(5, offer.reading === 0 ? 3 : 3)) as 1)) })
         : fill(INGREDIENTS[offer.target] === 'down' ? c.whyLineDown : c.whyLine, { target: target.name, arrow, window: windowOf(windowOfMove(offer.moveId, offer.target)) })
-  const shownPrivates = (privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
+  const shownPrivates = (privates?.privates ?? []).filter((p) => p.association.withEvent.n >= 3 && p.association.without.n >= 3)
 
   const head = (
     <div class="move-head">
@@ -193,7 +194,7 @@ export function MoveCard({ offer, outcome, onSkip, compact = false, waiting = fa
       {shownPrivates.map((p) => (
         <div key={p.itemId} class="ev">
           <span class="calc-line" data-testid="private-line">
-            {privateInlineWords(p, moveById(p.alternativeId).name, namesShown)}
+            {privateInlineWords(p, moveById(p.alternativeId).name, namesShown, privates?.stood ?? null)}
           </span>
         </div>
       ))}

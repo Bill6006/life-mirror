@@ -1,9 +1,7 @@
 import { associationFor, dayAssociation, type Association } from './associations'
 import { moveById } from './catalogue'
 import { chipShownAt } from './chips'
-import { copy } from './copy'
 import type { CheckIn, Outcome } from './db'
-import { fill } from './format'
 
 // Time in nature (item 2 of 4, 2026-10-21): the evening's one tap, "20+ min in nature today, in total", defined from an
 // evidence review recorded in the plan. Nature, not generic time outdoors and not daylight: time spent in a natural place,
@@ -72,29 +70,6 @@ export function natureAssociations(checkins: readonly CheckIn[], outcomes: reado
     evening: dayAssociation(checkins, today, isDay, knownDay, worth === undefined ? undefined : { id: 'assoc.nature', worth }),
     morning: associationFor(checkins, today, (c) => natureEvening(c, moves), (c) => natureKnown(c, moves), worth === undefined ? undefined : { id: 'assoc.nature.morning', worth }),
   }
-}
-
-/** A count said as a sentence starts it: Once, or 3 times. */
-const timesBefore = (n: number) => (n === 1 ? copy.extras.timesOnce : fill(copy.extras.timesN, { n: String(n) }))
-
-/**
- * Time in nature's answer on the check-in: the evenings of its days, then the mornings after, each like for like on the band
- * before it, and said only where a matched band exists, as the sheet's facts say them; the first time, or nothing yet to
- * compare, said plainly. Associations, never a cause.
- */
-export function natureAnswerWords(n: NatureAssociations): string {
-  const round = (v: number | null) => (v === null ? '' : String(Math.round(v)))
-  const times = Math.max(n.evening.times, n.morning.times)
-  if (times === 0) return copy.extras.chipFirst
-  const e = n.evening
-  const first =
-    e.withEvent.mean === null
-      ? fill(copy.extras.natureNoEvening, { times: timesBefore(times) })
-      : e.without.mean === null || e.diff === null
-        ? fill(copy.extras.natureEveningUnmatched, { times: timesBefore(times), mean: round(e.withEvent.mean), k: String(e.withEvent.n) })
-        : fill(copy.extras.natureEvening, { times: timesBefore(times), mean: round(e.withEvent.mean), without: round(e.without.mean), k: String(e.withEvent.n), m: String(e.without.n) })
-  const m = n.morning
-  return m.withEvent.mean !== null && m.without.mean !== null && m.diff !== null ? `${first} ${fill(copy.extras.natureMorning, { mean: round(m.withEvent.mean), without: round(m.without.mean), k: String(m.withEvent.n), m: String(m.without.n) })}` : first
 }
 
 /** The name of the move in nature that makes today a nature day by itself, or null. */

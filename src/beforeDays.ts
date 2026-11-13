@@ -1,5 +1,6 @@
 import { eveningPoints, likeForLike, type DayPoint } from './associations'
 import { type Compared, type Direction, type Standing, standings, WORTH_POINTS } from './counted/compare'
+import { guardComparisons } from './counted/fault'
 import type { CheckIn } from './db'
 import type { ReadingId } from './readings'
 
@@ -89,6 +90,14 @@ export function resampledInterval(points: readonly DayPoint[], resamples: number
 }
 
 /** Every evening reading at each level, with its difference, its interval once it has enough mornings, and its counts. */
+/**
+ * The pairs for the Mirror's card, under the comparisons' guard (2026-11-12): their chance is new math, so a throw leaves
+ * the card saying they could not be worked out (null) and the failure kept for the Worker's report.
+ */
+export function comesBeforeGuarded(checkins: readonly CheckIn[], today: string): BeforePair[] | null {
+  return guardComparisons(today, () => comesBefore(checkins, today))
+}
+
 export function comesBefore(checkins: readonly CheckIn[], today: string, opts: { min?: number; resamples?: number } = {}): BeforePair[] {
   const min = opts.min ?? BEFORE_MIN
   const resamples = opts.resamples ?? 600

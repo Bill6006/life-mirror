@@ -15,6 +15,25 @@ export interface Named {
 const keptChance = new Map<string, { from: string; compared: Compared }>()
 const KEPT_MOST = 400
 
+/** Set only while a read runs again after its comparisons threw (counted/fault.ts): no chance is then asked of the core. */
+let chanceOff = false
+
+/** Whether this read asks no chance: nothing then stands past too few, and its caller says the comparisons failed. */
+export const chanceIsOff = (): boolean => chanceOff
+
+/**
+ * A read with no chance asked of the core, as the app read its record before 2026-11-12: for the run after a failure
+ * alone. The read is synchronous, so nothing else runs while the switch is set.
+ */
+export function withoutChance<T>(read: () => T): T {
+  chanceOff = true
+  try {
+    return read()
+  } finally {
+    chanceOff = false
+  }
+}
+
 /** The core's comparison, worked out once for the same occasions, id and size. */
 export function comparedOnce(occasions: readonly Point[], named: Named): Compared {
   const from = `${named.worth}|${occasions.map((p) => `${p.day}${p.event ? '+' : '-'}${p.band ?? ''}:${p.outcome}`).join(';')}`
@@ -36,7 +55,7 @@ export function namedComparison(occasions: readonly Point[], named: Named, floor
   const shared = occasions.filter((p) => withIt.has(p.band ?? '') && without.has(p.band ?? ''))
   const n = shared.filter((p) => p.event).length
   const m = shared.length - n
-  const tested = floor && n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null
+  const tested = !chanceOff && floor && n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null
   return { id: named.id, n, m, diff: shared.length ? difference(occasions) : null, enough: tested !== null && tested.enough, p: tested?.p ?? null, worth: named.worth }
 }
 
@@ -45,6 +64,7 @@ export function namedComparison(occasions: readonly Point[], named: Named, floor
  * lead. Whether it is a lead or a steady pattern is the family's to say; the old three-valued word needs only this.
  */
 export function standsAlone(c: Compared): 'tooFew' | 'noPattern' | 'lead' {
+  if (chanceOff) return 'tooFew'
   const own = standings([c])[0].standing
   return own === 'pattern' ? 'lead' : own
 }

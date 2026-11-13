@@ -180,7 +180,11 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
       </h2>
       <Disclosure label={c.best} testid="weekly-best">
         <div class="card pad" data-testid="best-days">
-          {w.best.silent ? (
+          {w.best.failed ? (
+            <p class="note no-gap" data-testid="best-failed">
+              {c.bestFailed}
+            </p>
+          ) : w.best.silent ? (
             <p class="note no-gap" data-testid="best-silent">
               {fill(c.bestSilent, { days: String(w.best.days) })}
             </p>

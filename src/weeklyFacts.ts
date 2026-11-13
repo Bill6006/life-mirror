@@ -107,6 +107,8 @@ function differences(list: readonly Difference[], prefix: string, values: Fact['
 }
 
 function bestFacts(b: BestDays): Fact[] {
+  // The comparison failed on this phone: nothing of best days is said, and the failure rides the sheet (counted/fault.ts).
+  if (b.failed) return []
   if (b.silent) return [{ id: 'weekly.best', tags: [], text: `Best-days, from the weekly view, stays silent until twenty days with two logged blocks: ${b.days} so far.`, values: { days: b.days, threshold: b.threshold } }]
   const by = (k: Kind) => b.controlled.filter((d) => kindOf(d.moveId) === k)
   const values: Fact['values'] = { days: b.days, top: b.top.length, family: b.family }

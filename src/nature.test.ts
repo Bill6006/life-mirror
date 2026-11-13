@@ -9,12 +9,13 @@ import { memoryStore } from './cloudStore'
 import { resetCloudForTests, setStoreFactory, syncNow } from './cloudSync'
 import { copy } from './copy'
 import { db, setExtra, updateSettings, type CheckIn, type Outcome } from './db'
-import { factById } from './facts'
+import { natureAnswerWords } from './associationWords'
+import { factById, sheetStandings } from './facts'
 import type { FactSheet } from './factTypes'
 import { briefData } from './forecastFlow'
 import library from './library.json'
 import type { ClaimCard } from './libraryTypes'
-import { NATURE_EVENT, NATURE_MINUTES, NATURE_MOVES, NATURE_SINCE, natureAnswerWords, natureAssociations, natureDay, natureEvening, natureMoveDays, natureMoveToday } from './nature'
+import { NATURE_EVENT, NATURE_MINUTES, NATURE_MOVES, NATURE_SINCE, natureAssociations, natureDay, natureEvening, natureMoveDays, natureMoveToday } from './nature'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 import { bestConditions } from './weekly'
 import { retrieve } from '../worker/src/library'
@@ -111,18 +112,35 @@ describe('time in nature, the definition (item 2 of 4, 2026-10-21)', () => {
 })
 
 describe('time in nature’s answer on the check-in', () => {
-  it('answers the tap with the evenings of its days, then the mornings after, like for like', () => {
-    expect(natureAnswerWords(natureAssociations([], [], '2026-11-20'))).toBe('First time recorded.')
-    // The evenings differ here, so the mornings after have nothing matched to set against: the evenings alone.
-    expect(natureAnswerWords(natureAssociations(sixShown(), [], '2026-11-20'))).toMatch(/^3 times before\. Those evenings read \d+, against \d+ on days that started the same \(3 and 3\)\.$/)
-    // Days whose mornings started apart have nothing matched to set against, whatever their evenings read: said plainly.
+  /** The answer as the check-in says it: the two comparisons as the sheet's family names them, with where each stands among them. */
+  const answer = (rows: CheckIn[], today = '2026-11-20') => {
+    const n = natureAssociations(rows, [], today, 10)
+    return natureAnswerWords(n, sheetStandings([n.evening, n.morning]))
+  }
+
+  it('answers the tap with how many times, and no reading while a comparison is too few (the one standard, 2026-11-12)', () => {
+    expect(answer([])).toBe('First time recorded.')
+    // Three evenings against three: under eight a side, so how many and no reading, where two readings used to be set side by side.
+    expect(answer(sixShown())).toBe('3 times before. Those evenings: too few to compare yet.')
+    // Days whose mornings started apart share no band: one kind of too few, and the same words.
     const tapped = new Set(['2026-11-02', '2026-11-06', '2026-11-10'])
     const left = new Set(['2026-11-04', '2026-11-08', '2026-11-12'])
     const apart = sixShown().map((c) => (c.block === 'morning' && tapped.has(c.day) ? ci(c.day, 'morning', 5) : c.block === 'morning' && left.has(c.day) ? ci(c.day, 'morning', 1) : c))
-    expect(natureAnswerWords(natureAssociations(apart, [], '2026-11-20'))).toMatch(/^3 times before\. Those evenings read \d+ \(3\); nothing yet to set them against\.$/)
-    // Evenings alike and mornings after apart: both said.
-    const level = sixShown().map((c) => (c.block === 'evening' ? { ...ci(c.day, 'evening', 3, c.extras) } : c))
-    expect(natureAnswerWords(natureAssociations(level, [], '2026-11-20'))).toMatch(/^3 times before\. Those evenings read \d+, against \d+ on days that started the same \(3 and 3\)\. The mornings after read \d+, against \d+ after evenings that started the same \(3 and 3\)\.$/)
+    expect(answer(apart)).toBe('3 times before. Those evenings: too few to compare yet.')
+    // The comparisons failed on this phone: the answer says that, never "too few".
+    expect(natureAnswerWords(natureAssociations(sixShown(), [], '2026-11-20', 10), null)).toBe('3 times before. Those evenings: the comparison could not be worked out on this phone just now.')
+  })
+
+  it('says the evenings of its days, then the mornings after, each with where its own comparison stands', () => {
+    // Four weeks from the definition's start, every evening shown the chip and reading the same; nature on eight days in no
+    // rhythm, the mornings after them high and the others low.
+    const rows: CheckIn[] = []
+    for (let back = 29; back >= 2; back--) {
+      const day = addDays('2026-11-20', -back)
+      const nature = [2, 3, 5, 9].includes(back % 14)
+      rows.push(ci(day, 'evening', 3, { chipsShown: { nature: true }, ...(nature ? { nature: true as const } : {}) }), ci(addDays(day, 1), 'morning', nature ? 4 : 2))
+    }
+    expect(answer(rows)).toMatch(/^8 times before\. Those evenings read (\d+), against \1 on days that started the same \(\d+ and \d+\)\. Like for like, the same: no clear pattern yet\. The mornings after read 75, against 25 after evenings that started the same \(8 and 20\)\. Like for like, 50 points higher: a steady pattern\.$/)
   })
 })
 

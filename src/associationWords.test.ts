@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { likeForLike, likeForLikeMatched, type Association, type DayPoint, type PrivateAssociation } from './associations'
-import { caffeineLineWords, chipAnswerWords, coolingLineWords, eveningWorkoutWords, hardWorkoutWords, lastNightWords, ownChipLine, passiveLineWords, privateInlineWords, privateLineWords, socialLineWords, sweetAnswerWords, workoutLineWords, type Stands } from './associationWords'
+import { caffeineLineWords, chipAnswerWords, coolingLineWords, eveningWorkoutWords, hardWorkoutWords, lastNightWords, natureAnswerWords, ownChipLine, passiveLineWords, privateInlineWords, privateLineWords, socialLineWords, sweetAnswerWords, workoutLineWords, type Stands } from './associationWords'
 import type { Standing } from './counted/compare'
 import { addDays } from './blocks'
 import { briefForCard, factSheet } from './brainFlow'
@@ -11,16 +11,22 @@ import { briefData } from './forecastFlow'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
 
 // The record's own comparisons, said truthfully (2026-10-21, the owner's request before Item 3): "started the same", "ended
-// the same" or "like for like" only when a band both sides share holds an outcome on each; otherwise what the record holds and
-// that nothing is set against it yet; sparse stays uncertain; and no line ever reads as a cause.
+// the same" or "like for like" only when a band both sides share holds an outcome on each; sparse stays uncertain; and no
+// line ever reads as a cause. Under the one standard (2026-11-12) a line says its readings only where the comparison stands
+// past too few, with the like-for-like difference and the standing's own words; otherwise how many, and why no reading is
+// said: too few to compare yet, or the comparison could not be worked out on this phone. Never one for the other.
 
 const point = (day: number, band: DayPoint['band'], event: boolean, outcome: number | null): DayPoint => ({ day: `2026-09-${String(day).padStart(2, '0')}`, band, event, outcome })
+/** A chip's own comparison in the sheet's family, as the check-in reads it. */
+const NAMED = { id: 'assoc.napped', worth: 10 }
+const FAILED = 'the comparison could not be worked out on this phone just now'
+const FOUR: DayPoint[] = [point(1, 'solid', true, 70), point(2, 'solid', true, 74), point(3, 'solid', false, 60), point(4, 'solid', false, 62)]
 /** Both sides observed in one band they share. */
-const matched = likeForLike([point(1, 'solid', true, 70), point(2, 'solid', true, 74), point(3, 'solid', false, 60), point(4, 'solid', false, 62)])
+const matched = likeForLike(FOUR, NAMED)
 /** Both sides observed, in bands they do not share: two averages, and nothing like for like. */
-const apart = likeForLike([point(1, 'firing', true, 80), point(2, 'firing', true, 84), point(3, 'empty', false, 40), point(4, 'empty', false, 44)])
+const apart = likeForLike([point(1, 'firing', true, 80), point(2, 'firing', true, 84), point(3, 'empty', false, 40), point(4, 'empty', false, 44)], NAMED)
 /** One evening, no morning after it yet. */
-const sparse = likeForLike([point(1, 'solid', true, null)])
+const sparse = likeForLike([point(1, 'solid', true, null)], NAMED)
 /** Where last night's comparison stands in the sheet's family: a lead on nine evenings against forty unless said otherwise. */
 const night = (over: Partial<NightStanding> = {}): NightStanding => ({ standing: 'lead', direction: 'higher', family: 28, n: 9, m: 40, diff: 6.2, ...over })
 
@@ -28,23 +34,24 @@ const MATCHING = /started the same|ended the same|like for like/i
 const CAUSE = /\b(?:caused|because|made|lifted|helped|led to|thanks to|due to)\b/i
 const priv = (a: Association, block: PrivateAssociation['block']): PrivateAssociation => ({ itemId: 1, name: 'A stand-in item', block, association: a, alternativeId: 'walk-ten' })
 /** Every comparison on Evidence at one standing in a family of thirty-one: the words are written from the standing they are handed. */
-const IDS = ['assoc.coolingOff', 'assoc.bigSocial', 'assoc.heavyCaffeine', 'assoc.workouts', 'assoc.eveningWorkout', 'assoc.eveningWorkout.sleep', 'assoc.hardWorkout.energy', 'assoc.hardWorkout.mood', 'private.1', 'private.1.morning', 'private.1.afternoon']
+const IDS = ['assoc.napped', 'assoc.nature', 'assoc.nature.morning', 'own.c1', 'assoc.coolingOff', 'assoc.bigSocial', 'assoc.heavyCaffeine', 'assoc.workouts', 'assoc.eveningWorkout', 'assoc.eveningWorkout.sleep', 'assoc.hardWorkout.energy', 'assoc.hardWorkout.mood', 'private.1', 'private.1.morning', 'private.1.afternoon']
 const at = (standing: Standing): Stands => new Map(IDS.map((id) => [id, { id, standing, direction: 'higher' as const, adjusted: null, family: 31 }]))
 const LEAD = at('lead')
 
 /** Every line the record's comparisons are said in, for one association. */
 function everyLine(a: Association): string[] {
   return [
-    chipAnswerWords(a),
-    sweetAnswerWords(a),
-    ownChipLine('A stand-in chip', a, new Map([['own.c1', { id: 'own.c1', standing: 'lead' as const, direction: 'higher' as const, adjusted: null, family: 3 }]]), 'c1'),
+    chipAnswerWords(a, LEAD),
+    sweetAnswerWords(a, LEAD),
+    natureAnswerWords({ evening: a, morning: a }, LEAD),
+    ownChipLine('A stand-in chip', a, LEAD, 'c1'),
     passiveLineWords(a, 'Stress', 'lead'),
     coolingLineWords(a, { blocks: 2, events: 3 }, LEAD),
     socialLineWords(a, LEAD),
     caffeineLineWords(a, LEAD),
     workoutLineWords(a, LEAD),
     eveningWorkoutWords(a, a, LEAD),
-    ...(['morning', 'afternoon', 'evening'] as const).flatMap((b) => [privateLineWords(priv(a, b), 'A ten-minute walk, now', true, LEAD), privateInlineWords(priv(a, b), 'A ten-minute walk, now', true), privateLineWords(priv(a, b), 'A ten-minute walk, now', false, LEAD), privateInlineWords(priv(a, b), 'A ten-minute walk, now', false)]),
+    ...(['morning', 'afternoon', 'evening'] as const).flatMap((b) => [privateLineWords(priv(a, b), 'A ten-minute walk, now', true, LEAD), privateInlineWords(priv(a, b), 'A ten-minute walk, now', true, LEAD), privateLineWords(priv(a, b), 'A ten-minute walk, now', false, LEAD), privateInlineWords(priv(a, b), 'A ten-minute walk, now', false, LEAD)]),
   ]
 }
 
@@ -61,39 +68,47 @@ describe('the record’s comparisons, said only when they hold', () => {
 
   it('lets a matched comparison say it, with both sides', () => {
     for (const line of everyLine(matched)) expect(line, line).toMatch(MATCHING)
-    expect(chipAnswerWords(matched)).toBe('2 times before. The morning after read 72, against 61 after evenings that started the same (2 and 2).')
+    expect(chipAnswerWords(matched, LEAD)).toBe('2 times before. The morning after read 72, against 61 after evenings that started the same (2 and 2). Like for like, 11 points higher: a lead, not yet a pattern; 31 looked at.')
     const chips = (standing: Standing): Stands => new Map([['own.c1', { id: 'own.c1', standing, direction: 'higher' as const, adjusted: null, family: 3 }]])
     expect(ownChipLine('A stand-in chip', matched, chips('lead'), 'c1')).toBe('A stand-in chip: 2 evenings marked. The morning after read 72, against 61 after evenings that started the same (2 and 2). Like for like, 11 points higher: a lead, not yet a pattern; 3 looked at.')
-    // Too few among your own chips, or nothing worked out: its own reading, and nothing set against it.
-    for (const stood of [chips('tooFew'), null] as Stands[]) expect(ownChipLine('A stand-in chip', matched, stood, 'c1')).toBe('A stand-in chip: 2 evenings marked. The morning after read 72 (2); nothing yet to set it against.')
+    // Too few among your own chips: how many, and no reading. Nothing worked out: it says so, never "too few".
+    expect(ownChipLine('A stand-in chip', matched, chips('tooFew'), 'c1')).toBe('A stand-in chip: 2 evenings marked, too few to compare yet.')
+    for (const stood of [null, new Map()] as Stands[]) expect(ownChipLine('A stand-in chip', matched, stood, 'c1')).toBe(`A stand-in chip: 2 evenings marked, ${FAILED}.`)
   })
 
   it('never says it when no band was shared, and never sets the other side’s average against it', () => {
     for (const line of everyLine(apart)) {
       expect(line, line).not.toMatch(MATCHING)
-      expect(line, line).toMatch(/nothing yet to set/)
+      // One kind of too few: no occasion on a side in a band both share. No reading of either side is said.
+      expect(line, line).toMatch(/too few to compare yet/)
       expect(line, line).not.toContain('42')
+      expect(line, line).not.toContain('82')
     }
-    expect(chipAnswerWords(apart)).toBe('2 times before. The morning after read 82 (2); nothing yet to set it against.')
-    expect(sweetAnswerWords(apart)).toBe('2 times before. The evening read 82 (2); nothing yet to set it against.')
-    expect(socialLineWords(apart, LEAD)).toBe('2 evenings marked; nothing yet to set the mornings after against. The recovery gap rides alongside the next evening’s move, and the evening after your church day.')
+    expect(chipAnswerWords(apart, LEAD)).toBe('2 times before: too few to compare yet.')
+    expect(sweetAnswerWords(apart, LEAD)).toBe('2 times before: too few to compare yet.')
+    expect(natureAnswerWords({ evening: apart, morning: apart }, LEAD)).toBe('2 times before. Those evenings: too few to compare yet.')
+    expect(socialLineWords(apart, LEAD)).toBe('2 evenings marked: too few to compare yet. The recovery gap rides alongside the next evening’s move, and the evening after your church day.')
     // An evening workout is said like for like only when both its morning and its sleep compare.
     expect(eveningWorkoutWords(matched, apart, LEAD)).not.toMatch(MATCHING)
   })
 
   it('keeps sparse evidence uncertain: the first time, or no morning after yet, never a comparison', () => {
-    expect(chipAnswerWords(likeForLike([]))).toBe('First time recorded.')
-    expect(chipAnswerWords(sparse)).toBe('Once before. No readings from the morning after yet.')
+    expect(chipAnswerWords(likeForLike([], NAMED), LEAD)).toBe('First time recorded.')
+    expect(chipAnswerWords(sparse, LEAD)).toBe('Once before. No readings from the morning after yet.')
+    // The first time and no morning after yet are said of the record itself, whatever became of the comparisons.
+    expect(chipAnswerWords(likeForLike([], NAMED), null)).toBe('First time recorded.')
+    expect(chipAnswerWords(sparse, null)).toBe('Once before. No readings from the morning after yet.')
     expect(ownChipLine('A stand-in chip', sparse, LEAD, 'c1')).toBe('A stand-in chip: 1 evening marked, with no morning after logged yet.')
     for (const line of everyLine(sparse)) expect(line, line).not.toMatch(MATCHING)
   })
 
   it('says hard sessions against mornings that ended the same only when one measure compared', () => {
-    expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: null }, { id: 'mood', reading: 'mood', diff: null }], LEAD)).toBe('3 days with a session rated too hard or taken close to failure; nothing yet to set the next mornings against.')
+    expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: null }, { id: 'mood', reading: 'mood', diff: null }], LEAD)).toBe('3 days with a session rated too hard or taken close to failure: too few to compare yet.')
     expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: -0.4 }, { id: 'mood', reading: 'mood', diff: null }], LEAD)).toBe('3 days with a session rated too hard or taken close to failure. The next morning, against mornings after other days that ended the same: energy -0.4 (a lead, not yet a pattern; 31 looked at), mood not comparable yet, in anchor steps.')
     // A reading that is too few to compare is not said, and with every reading too few nothing is set against anything.
     expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: -0.4 }, { id: 'mood', reading: 'mood', diff: 0.2 }], new Map([['assoc.hardWorkout.energy', { id: 'x', standing: 'tooFew', direction: 'lower', adjusted: null, family: 31 }], ['assoc.hardWorkout.mood', { id: 'y', standing: 'noPattern', direction: 'higher', adjusted: null, family: 31 }]]))).toContain('energy not comparable yet, mood +0.2 (no clear pattern yet), in anchor steps.')
-    expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: -0.4 }], at('tooFew'))).toBe('3 days with a session rated too hard or taken close to failure; nothing yet to set the next mornings against.')
+    expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: -0.4 }], at('tooFew'))).toBe('3 days with a session rated too hard or taken close to failure: too few to compare yet.')
+    expect(hardWorkoutWords(3, [{ id: 'energy', reading: 'energy', diff: -0.4 }], null)).toBe(`3 days with a session rated too hard or taken close to failure: ${FAILED}.`)
   })
 
   it('says a reading on Evidence only with where the comparison stands, and none while it is too few or the comparisons failed', () => {
@@ -103,18 +118,45 @@ describe('the record’s comparisons, said only when they hold', () => {
     expect(caffeineLineWords(matched, at('noPattern'))).toContain('Like for like, 11 points higher: no clear pattern yet.')
     expect(coolingLineWords(matched, { blocks: 2, events: 3 }, LEAD)).toContain('started the same. Like for like, 11 points higher: a lead, not yet a pattern; 31 looked at. Cooling off ran about 2 blocks (3 events).')
     expect(eveningWorkoutWords(matched, matched, LEAD)).toContain('out of 100. Like for like, 11 points higher: a lead, not yet a pattern; 31 looked at. Sleep quality, like for like, 11 points higher: a lead, not yet a pattern; 31 looked at.')
-    // Too few to compare, or the comparisons failed: how many, and no reading at all.
-    for (const stood of [at('tooFew'), null, new Map()] as Stands[]) {
-      expect(socialLineWords(matched, stood)).toBe('2 evenings marked; nothing yet to set the mornings after against. The recovery gap rides alongside the next evening’s move, and the evening after your church day.')
-      expect(coolingLineWords(matched, { blocks: 2, events: 3 }, stood)).not.toMatch(/read \d/)
-      expect(caffeineLineWords(matched, stood)).toBe('2 mornings marked; nothing yet to set the afternoons after against.')
-      expect(workoutLineWords(matched, stood)).not.toMatch(/read \d/)
-      expect(eveningWorkoutWords(matched, matched, stood)).not.toMatch(/read \d/)
-      expect(privateLineWords(priv(matched, 'evening'), 'A ten-minute walk, now', true, stood)).toBe('A stand-in item: nothing yet to set the mornings after against. An alternative: A ten-minute walk, now.')
+    // Too few to compare: how many, and no reading at all. The comparisons failed (no family, or the comparison not in it): the
+    // line says that instead, and never "too few". Here on Evidence, at the check-in and on the move card alike.
+    for (const [stood, why] of [[at('tooFew'), 'too few to compare yet'], [null, FAILED], [new Map(), FAILED]] as [Stands, string][]) {
+      expect(socialLineWords(matched, stood)).toBe(`2 evenings marked: ${why}. The recovery gap rides alongside the next evening’s move, and the evening after your church day.`)
+      expect(coolingLineWords(matched, { blocks: 2, events: 3 }, stood)).toBe(`2 evenings marked: ${why}. Cooling off ran about 2 blocks (3 events).`)
+      expect(caffeineLineWords(matched, stood)).toBe(`2 mornings marked: ${why}.`)
+      expect(workoutLineWords(matched, stood)).toBe(`2 days with a finished workout, read from your other app: ${why}.`)
+      expect(eveningWorkoutWords(matched, matched, stood)).toBe(`2 evenings with a session that ended after five: ${why}.`)
+      expect(privateLineWords(priv(matched, 'evening'), 'A ten-minute walk, now', true, stood)).toBe(`A stand-in item: ${why}. An alternative: A ten-minute walk, now.`)
+      expect(privateInlineWords(priv(matched, 'evening'), 'A ten-minute walk, now', true, stood)).toBe(`Your record: evenings with A stand-in item logged, ${why}. An alternative: A ten-minute walk, now.`)
+      expect(chipAnswerWords(matched, stood)).toBe(`2 times before: ${why}.`)
+      expect(sweetAnswerWords(matched, stood)).toBe(`2 times before: ${why}.`)
+      expect(natureAnswerWords({ evening: matched, morning: matched }, stood)).toBe(`2 times before. Those evenings: ${why}.`)
     }
-    // A passive item's card says its own word; its line says no reading while that word is too few.
-    expect(passiveLineWords(matched, 'Stress', 'tooFew')).toBe('2 days it rode alongside and was done; nothing yet to set Stress the next morning against.')
+    // One block and one event are said as one.
+    expect(coolingLineWords(matched, { blocks: 1, events: 1 }, at('tooFew'))).toBe('2 evenings marked: too few to compare yet. Cooling off ran about 1 block (1 event).')
+    // A passive item's card says its own word; its line says no reading while that word is too few, and says a failure as one.
+    expect(passiveLineWords(matched, 'Stress', 'tooFew')).toBe('2 days it rode alongside and was done: too few to compare yet.')
+    expect(passiveLineWords(matched, 'Stress', 'lead', true)).toBe(`2 days it rode alongside and was done: ${FAILED}.`)
     expect(passiveLineWords(matched, 'Stress', 'lead')).toContain('Stress the next morning read 72, against 61')
+  })
+
+  it('says an answer at the check-in and a private item’s line on the move card only with where the comparison stands', () => {
+    const said = '2 times before. The morning after read 72, against 61 after evenings that started the same (2 and 2). Like for like, 11 points higher: '
+    expect(chipAnswerWords(matched, at('noPattern'))).toBe(`${said}no clear pattern yet.`)
+    expect(chipAnswerWords(matched, LEAD)).toBe(`${said}a lead, not yet a pattern; 31 looked at.`)
+    expect(chipAnswerWords(matched, at('pattern'))).toBe(`${said}a steady pattern.`)
+    expect(sweetAnswerWords(matched, LEAD)).toBe('2 times before. The evening read 72, against 61 after afternoons that started the same (2 and 2). Like for like, 11 points higher: a lead, not yet a pattern; 31 looked at.')
+    expect(privateInlineWords(priv(matched, 'evening'), 'A ten-minute walk, now', true, LEAD)).toBe('Your record: evenings with A stand-in item logged, the morning after read 72 against 61 after evenings that started the same (2 and 2). Like for like, 11 points higher: a lead, not yet a pattern; 31 looked at. An alternative: A ten-minute walk, now.')
+    expect(privateInlineWords(priv(matched, 'morning'), 'A ten-minute walk, now', false, at('noPattern'))).toBe('Your record: mornings with a private item logged, the afternoon after read 72 against 61 after mornings that started the same (2 and 2). Like for like, 11 points higher: no clear pattern yet. An alternative: A ten-minute walk, now.')
+    // Time in nature has two comparisons, the evening of the day and the morning after: each is said on its own standing.
+    const nature = { evening: likeForLike(FOUR, { id: 'assoc.nature', worth: 10 }), morning: likeForLike(FOUR, { id: 'assoc.nature.morning', worth: 10 }) }
+    const stands = (evening: Standing, morning: Standing): Stands => new Map([['assoc.nature', { id: 'assoc.nature', standing: evening, direction: 'higher' as const, adjusted: null, family: 31 }], ['assoc.nature.morning', { id: 'assoc.nature.morning', standing: morning, direction: 'higher' as const, adjusted: null, family: 31 }]])
+    const evenings = '2 times before. Those evenings read 72, against 61 on days that started the same (2 and 2). Like for like, 11 points higher: a lead, not yet a pattern; 31 looked at.'
+    const mornings = 'The mornings after read 72, against 61 after evenings that started the same (2 and 2). Like for like, 11 points higher: no clear pattern yet.'
+    expect(natureAnswerWords(nature, stands('lead', 'noPattern'))).toBe(`${evenings} ${mornings}`)
+    expect(natureAnswerWords(nature, stands('lead', 'tooFew'))).toBe(evenings)
+    expect(natureAnswerWords(nature, stands('tooFew', 'noPattern'))).toBe(`2 times before. Those evenings: too few to compare yet. ${mornings}`)
+    expect(natureAnswerWords(nature, stands('tooFew', 'tooFew'))).toBe('2 times before. Those evenings: too few to compare yet.')
   })
 
   it('says last night’s first time only when it is, a difference only with where it stands, and too few with no reading', () => {
@@ -136,9 +178,9 @@ describe('the record’s comparisons, said only when they hold', () => {
       for (const b of ['morning', 'afternoon', 'evening'] as const) {
         const p = priv(a, b)
         expect(privateLineWords(p, 'A ten-minute walk, now', true, LEAD)).toContain('A stand-in item')
-        expect(privateInlineWords(p, 'A ten-minute walk, now', true)).toContain('A stand-in item')
+        expect(privateInlineWords(p, 'A ten-minute walk, now', true, LEAD)).toContain('A stand-in item')
         const line = privateLineWords(p, 'A ten-minute walk, now', false, LEAD)
-        const inline = privateInlineWords(p, 'A ten-minute walk, now', false)
+        const inline = privateInlineWords(p, 'A ten-minute walk, now', false, LEAD)
         expect(line, line).not.toContain('A stand-in item')
         expect(inline, inline).not.toContain('A stand-in item')
         expect(line.startsWith('A private item'), line).toBe(true)

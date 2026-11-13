@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { blockAt, BLOCKS } from './blocks'
-import { BEFORE_MIN, comesBefore, standingLine, type BeforePair } from './beforeDays'
+import { BEFORE_MIN, comesBeforeGuarded, standingLine, type BeforePair } from './beforeDays'
 import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
@@ -59,7 +59,9 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: {
   const overlay = overlayId ? contextTrace(all, today.day, overlayId) : null
   const week = weekSeries(all, today.day)
   const rows = heatmapRows(all, today.day)
-  const before = comesBefore(all, today.day)
+  // The pairs' chance is new math: under the comparisons' guard, a throw leaves the card saying so (2026-11-12).
+  const pairs = comesBeforeGuarded(all, today.day)
+  const before = pairs ?? []
   const shown = before.filter((p) => p.enough)
   const gathering = before.filter((p) => !p.enough)
   // Every interval on one axis, so the pairs can be read against each other.
@@ -152,7 +154,12 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: {
       </SectionLabel>
       <div class="card pad" data-testid="before-card">
         <p class="note together-note">{c.note}</p>
-        {shown.length === 0 && <p class="note faint">{fill(c.empty, { need: min })}</p>}
+        {pairs === null && (
+          <p class="note faint" data-testid="before-failed">
+            {c.failed}
+          </p>
+        )}
+        {pairs !== null && shown.length === 0 && <p class="note faint">{fill(c.empty, { need: min })}</p>}
         {shown.length > 0 && (
           <ul class="rows">
             {shown.map((p) => (

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { addDays, parseDay, type Block, type Slot } from './blocks'
-import { afternoonAssociation, coolingOffDuration } from './associations'
+import { coolingOffDuration } from './associations'
 import { chipRetired, chipStates } from './audit'
 import { CaffeineCard } from './caffeine'
 import { useSyncedText } from './controls'
-import { chipAnswer, chipShownAt, SHOWN_CHIPS, type ChipKey } from './chips'
+import { SHOWN_CHIPS, type ChipKey } from './chips'
 import { useChipsSeen } from './chipsSeen'
 import { RECOVERY_GAP } from './catalogue'
 import { copy } from './copy'
@@ -44,12 +44,13 @@ import { useLive } from './live'
 import { teethOf, TEETH_COUNTS, type TeethBrushed } from './necessities'
 import type { ReadingId } from './readings'
 import { askedReadings, ownChipsOf, type Weekday } from './settings'
-import { ownChipAnswer, ownChipRetired, ownChipStates, ownShownKey } from './ownChips'
+import { ownChipRetired, ownChipStates, ownShownKey } from './ownChips'
 import { journalFor, saveJournal } from './journal'
 import { Disclosure } from './ui'
 import { atOfficeToday } from './people'
-import { natureAnswerWords, natureAssociations, natureMoveToday } from './nature'
-import { chipAnswerWords, sweetAnswerWords } from './associationWords'
+import { natureMoveToday } from './nature'
+import { chipAnswerFrom, ownChipAnswerFrom, sweetAnswerFrom } from './checkinAnswers'
+import { evidenceWithStandings } from './brainFlow'
 import { sabbathOf } from './church'
 
 const OUTCOMES: readonly WinOutcome[] = ['done', 'partly', 'no']
@@ -98,6 +99,12 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
   const own = ownAll.filter((ch) => !ownChipRetired(ch.id, ownStates))
   const chipsRef = useRef<HTMLDivElement>(null)
   useChipsSeen(chipsRef, { day, block }, record && settings && all && contexts ? [...CHIPS.filter((k) => SHOWN_CHIPS.includes(k) && showing(k)), ...own.map((ch) => ownShownKey(ch.id))].filter((k) => !record.extras?.chipsShown?.[k]) : [])
+
+  // The one standard (2026-11-12): a marked chip's answer is read from the sheet's family, with where its comparison stands
+  // there, so the check-in, Evidence and the sheet say one thing. Read only while a chip is marked: an evening with none
+  // pays nothing, and the screen never waits on it.
+  const marked = Boolean(record && (CHIPS.some((k) => record.extras?.[k]) || Object.values(record.extras?.own ?? {}).some(Boolean))) || Boolean(outcomes && natureMoveToday(outcomes, day) !== null)
+  const answers = useLive(() => (marked ? evidenceWithStandings(day) : Promise.resolve(null)), [day, marked])
 
   if (record === undefined || !settings || !items || !all || !contexts || !outcomes || todayWin === undefined || tomorrowWin === undefined) return <section class="screen" />
 
@@ -163,7 +170,8 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
             // Time in nature: a move in nature done today that reaches the line counts the day by itself (item 2 of 4).
             const fromMove = key === 'nature' && !ex.nature ? natureMoveToday(outcomes, day) : null
             const on = Boolean(ex[key]) || fromMove !== null
-            const answer = key === 'nature' ? natureAnswerWords(natureAssociations(all, outcomes, day)) : chipAnswerWords(chipAnswer(all, key, day))
+            // Not read yet: no answer shows. The comparisons failed: it says so. Otherwise the family's own comparison, with where it stands.
+            const answer = chipAnswerFrom(answers, key)
             const cooling = key === 'coolingOff' && on ? coolingOffDuration(all, day) : null
             return (
               <li key={key} data-chip={key}>
@@ -186,7 +194,7 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
                     {copy.extras.churchAsk}
                   </p>
                 )}
-                {on && (
+                {on && answer !== null && (
                   <div class="calc chip-answer" data-testid="chip-answer">
                     <p class="calc-line">{answer}</p>
                     {cooling && <p class="calc-line">{fill(copy.extras.coolingAnswer, { blocks: cooling.blocks === 1 ? copy.extras.coolingBlocksOne : fill(copy.extras.coolingBlocksN, { n: String(cooling.blocks) }), events: cooling.events === 1 ? copy.extras.coolingEventsOne : fill(copy.extras.coolingEventsN, { n: String(cooling.events) }) })}</p>}
@@ -214,15 +222,17 @@ export function ExtrasScreen({ day, block, onDone, onAway }: { day: string; bloc
           {/* Stage 3, item 5: your own chips, by their labels, after the built-in ones. */}
           {own.map((ch) => {
             const on = Boolean(ex.own?.[ch.id])
+            // Your own chips are a family of their own, every chip not removed, as on Evidence.
+            const answer = ownChipAnswerFrom(answers, ch.id)
             return (
               <li key={ch.id} data-chip={ownShownKey(ch.id)}>
                 <button type="button" class={on ? 'row anchor is-picked' : 'row anchor'} aria-pressed={on} data-testid={`own-chip-${ch.id}`} onClick={() => void setOwnChip(slot, asked, ch.id, !on)}>
                   <span class="anchor-mark" aria-hidden="true" />
                   <span class="row-main">{ch.label}</span>
                 </button>
-                {on && (
+                {on && answer !== null && (
                   <div class="calc chip-answer" data-testid="chip-answer">
-                    <p class="calc-line">{chipAnswerWords(ownChipAnswer(all, ch.id, day))}</p>
+                    <p class="calc-line">{answer}</p>
                   </div>
                 )}
               </li>
@@ -392,10 +402,11 @@ export function SweetChip({ record }: { record: CheckIn }) {
   const shown = settings !== undefined && all !== undefined && !chipRetired('sweet', chipStates(all, [], settings.chipsBack, record.day))
   const cardRef = useRef<HTMLDivElement>(null)
   useChipsSeen(cardRef, { day: record.day, block: record.block }, shown && !record.extras?.chipsShown?.sweet ? ['sweet'] : [])
-  if (!shown || !all) return null
+  // The one standard (2026-11-12): its answer is the sheet's own comparison, with where it stands there; read only while marked.
   const on = Boolean(record.extras?.sweet)
-  const a = afternoonAssociation(all, record.day, (c) => Boolean(c.extras?.sweet), (c) => chipShownAt('sweet', c))
-  const answer = sweetAnswerWords(a)
+  const answers = useLive(() => (on ? evidenceWithStandings(record.day) : Promise.resolve(null)), [record.day, on])
+  if (!shown || !all) return null
+  const answer = sweetAnswerFrom(answers)
   return (
     <>
       <div class="card" ref={cardRef}>
@@ -408,7 +419,7 @@ export function SweetChip({ record }: { record: CheckIn }) {
             <p class="note faint no-gap sweet-hint" data-testid="sweet-hint">
               {copy.extras.sweetHint}
             </p>
-            {on && (
+            {on && answer !== null && (
               <div class="calc chip-answer" data-testid="chip-answer">
                 <p class="calc-line">{answer}</p>
               </div>

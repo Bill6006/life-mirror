@@ -5,7 +5,7 @@ import { CaffeineEvidenceCard } from './caffeineEvidence'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { fill, formatDayShort, formatWhen } from './format'
-import { evidenceWithStandings } from './brainFlow'
+import { evidenceWithStandings, type OwnStandings } from './brainFlow'
 import type { PassiveEvidence } from './evidenceFlow'
 import { useLive } from './live'
 import { Disclosure } from './ui'
@@ -15,7 +15,6 @@ import { NOTHING } from './offers'
 import { readingById } from './readings'
 import { HARD_MEASURES } from './workouts'
 import { allCheckIns, db, getSettings } from './db'
-import { ownChipStandings } from './ownChips'
 import { ownChipsOf } from './settings'
 import type { Association } from './associations'
 import { WEATHER_CREDIT_URL, weatherEvidence } from './weather'
@@ -41,7 +40,7 @@ function nameOf(id: string): string {
 }
 
 /** A passive item that rode alongside: its like-for-like association, in the word it allows, capped at Promising. */
-function PassiveBlock({ e, children }: { e: PassiveEvidence; children?: ComponentChildren }) {
+function PassiveBlock({ e, failed, children }: { e: PassiveEvidence; failed: boolean; children?: ComponentChildren }) {
   const c = copy.evidence
   const { card, association } = e
   const target = readingById(card.target).name
@@ -51,9 +50,10 @@ function PassiveBlock({ e, children }: { e: PassiveEvidence; children?: Componen
       <h3 class="move-name">{fill(c.against, { move: nameOf(card.moveId), alternative: nameOf(card.alternativeId) })}</h3>
       <p class="move-meta">{fill(c.forTarget, { target, window })}</p>
       <div class="conclusion" data-testid="tier">
-        <p class="calc-line ink">{c.tiers[e.tier]}</p>
+        {/* The comparisons failed on this phone: no word is said for it, and its line says so. */}
+        {!failed && <p class="calc-line ink">{c.tiers[e.tier]}</p>}
         <p class="calc-line" data-testid="passive-association">
-          {passiveLineWords(association, target, e.standing)}
+          {passiveLineWords(association, target, e.standing, failed)}
         </p>
         <p class="calc-line">{c.associationNote}</p>
       </div>
@@ -68,7 +68,7 @@ function PassiveBlock({ e, children }: { e: PassiveEvidence; children?: Componen
  * a test would do, with one tap to set it ("a one-tap test proposed when an association turns Promising", agreed
  * 2026-10-09); while one runs, the line says so.
  */
-function AlongsideCards({ cards, today }: { cards: readonly PassiveEvidence[]; today: string }) {
+function AlongsideCards({ cards, today, failed }: { cards: readonly PassiveEvidence[]; today: string; failed: boolean }) {
   const settings = useLive(getSettings, [])
   const ev = useLive(() => guardRepair(today, () => repairEvidence(today), null), [today])
   if (cards.length === 0 || !settings || !ev) return null
@@ -84,7 +84,7 @@ function AlongsideCards({ cards, today }: { cards: readonly PassiveEvidence[]; t
             const at = passiveTestReading(e.card.moveId)
             const offer = !runs && e.tier === 'promising' && testablePassive(e.card.moveId) && at !== null
             return (
-              <PassiveBlock key={e.card.id} e={e}>
+              <PassiveBlock key={e.card.id} e={e} failed={failed}>
                 {runs && since && (
                   <p class="note no-gap passive-test" data-testid="passive-test-running">
                     {fill(r.testRunning, { date: formatDayShort(since) })}
@@ -114,31 +114,36 @@ function AlongsideCards({ cards, today }: { cards: readonly PassiveEvidence[]; t
  * the mornings after evenings that showed it and carried it, against those that showed it and started the same. Read here
  * on the phone alone: nothing of it goes to the day's sheet.
  */
-function OwnChipsEvidence({ today }: { today: string }) {
+function OwnChipsEvidence({ own }: { own: OwnStandings | null }) {
   const settings = useLive(getSettings, [])
-  const all = useLive(allCheckIns, [])
-  if (!settings || !all) return null
-  const own = ownChipsOf(settings)
-  if (own.length === 0) return null
+  if (!settings) return null
+  const chips = ownChipsOf(settings)
+  if (chips.length === 0) return null
   const c = copy.evidence
-  // Your own chips are a family of their own (the one standard, 2026-11-12): they never join the sheet's, and each pays for the others.
-  const { answers, stood } = ownChipStandings(all, own, today)
+  // Your own chips are a family of their own (the one standard, 2026-11-12): they never join the sheet's, and each pays for
+  // the others. Gathered with the screen's other comparisons, under the same guard: null says they failed on this phone.
   return (
     <>
       <h2 class="section">{c.ownTitle}</h2>
       <div class="card pad">
         <div class="calc">
-          {own.map((ch) => {
-            const a = answers.get(ch.id) as Association
-            const line = ownChipLine(ch.label, a, stood, ch.id)
-            return (
-              <p key={ch.id} class="calc-line" data-testid="own-chip-evidence">
-                {line}
-              </p>
-            )
-          })}
+          {own === null ? (
+            <p class="calc-line" data-testid="own-chip-failed">
+              {c.comparisonsFailed}
+            </p>
+          ) : (
+            chips.map((ch) => {
+              // A chip added a moment ago is read at the next pass.
+              const a = own.answers.get(ch.id)
+              return a ? (
+                <p key={ch.id} class="calc-line" data-testid="own-chip-evidence">
+                  {ownChipLine(ch.label, a, own.stood, ch.id)}
+                </p>
+              ) : null
+            })
+          )}
         </div>
-        <p class="note faint no-gap">{c.associationNote}</p>
+        <p class="note faint no-gap">{c.associationPlain}</p>
       </div>
     </>
   )
@@ -168,6 +173,8 @@ function WeatherEvidence({ today, stood }: { today: string; stood: ReadonlyMap<s
   // A difference is said only where it stands past too few in the sheet's family, with its standing (the one standard, 2026-11-12).
   const compared = (a: Association, other: string, id: string) => {
     const s = stood?.get(id)
+    // The comparisons failed on this phone: the line says that, never that nothing can be compared yet.
+    if (stood === null) return c.weatherFailed
     return a.diff === null || !s || s.standing === 'tooFew' ? c.weatherNotComparable : fill(c.weatherDiff, { diff: diffWords(a, other), k: String(a.withEvent.n), m: String(a.without.n), standing: standingInline(s) })
   }
   return (
@@ -183,7 +190,7 @@ function WeatherEvidence({ today, stood }: { today: string; stood: ReadonlyMap<s
           </p>
         </div>
         <p class="note faint no-gap">
-          {c.associationNote}{' '}
+          {c.associationPlain}{' '}
           <a class="credit" href={WEATHER_CREDIT_URL} target="_blank" rel="noopener noreferrer" data-testid="weather-evidence-credit">
             {copy.weather.credit}
           </a>
@@ -262,7 +269,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
           <p class="note faint no-gap">{c.standardHere}</p>
         </div>
       </Disclosure>
-      <AlongsideCards cards={ev.passives} today={today} />
+      <AlongsideCards cards={ev.passives} today={today} failed={ev.failed === true} />
 
       <PathEvidence />
 
@@ -332,12 +339,12 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
                 </p>
               )}
             </div>
-            <p class="note faint no-gap">{c.associationNote}</p>
+            <p class="note faint no-gap">{c.associationPlain}</p>
           </div>
         </>
       )}
 
-      <OwnChipsEvidence today={today} />
+      <OwnChipsEvidence own={both?.own ?? null} />
 
       <WeatherEvidence today={today} stood={stood} />
 
@@ -354,7 +361,7 @@ export function EvidenceScreen({ onClose, onAsk }: { onClose: () => void; onAsk?
                 {privateLineWords(p, nameOf(p.alternativeId), namesShown, stood)}
               </p>
             ))}
-            <p class="calc-line">{c.associationNote}</p>
+            <p class="calc-line">{c.associationPlain}</p>
           </div>
         )}
       </div>
