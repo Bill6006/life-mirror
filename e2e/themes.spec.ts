@@ -676,6 +676,23 @@ async function settled(page: Page): Promise<void> {
 }
 
 /** Each state, reloaded, reached and audited at one width; what it breaks is added to found. */
+/**
+ * What was just opened is drawn: the tap has been handled and its screen laid out (two frames), and every entry
+ * animation that ends has ended. A panel fades in from nothing over 160 ms; one that appeared late, read at a fixed
+ * moment after the tap, was read at the start of its fade as text of no contrast at all (CI, 2026-11-13).
+ */
+async function drawn(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))
+    const until = performance.now() + 3000
+    for (;;) {
+      const running = document.getAnimations().filter((a) => a.playState === 'running' && Number.isFinite(Number(a.effect?.getComputedTiming().endTime)))
+      if (!running.length || performance.now() > until) return
+      await Promise.race([Promise.all(running.map((a) => a.finished.catch(() => undefined))), new Promise((r) => setTimeout(r, 250))])
+    }
+  })
+}
+
 async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typeof WIDTHS)[number], found: string[]): Promise<void> {
   for (const s of states) {
     await page.reload()
@@ -688,6 +705,7 @@ async function walk(page: Page, theme: Theme, states: typeof STATES, width: (typ
     await page.waitForTimeout(250)
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     if (await page.getByTestId('move-cue').count()) await settled(page)
+    await drawn(page)
     const issues = await page.evaluate(audit, { zoom: width.zoom })
     for (const i of issues) found.push(`${width.label} · ${s.name} · ${i}`)
   }
@@ -743,6 +761,22 @@ for (const theme of THEMES) {
     expect(found, found.join('\n')).toEqual([])
   })
 }
+
+test('the audit reads a panel once its entry animation has ended, never at the start of its fade (2026-11-13)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 844 })
+  const panel = '<style>@keyframes in { from { opacity: 0 } to { opacity: 1 } } .panel { animation: in 600ms linear }</style><main style="font: 16px/1.4 sans-serif; padding: 20px; background: #fff; color: #111"><h2>Aims</h2><div id="slot"></div></main>'
+  const open = () => page.evaluate(() => ((document.getElementById('slot') as HTMLElement).innerHTML = '<p class="panel">How often, and the rest days between sessions</p>'))
+  // Read the moment it appears, the panel's words have no contrast at all: the reading CI made once.
+  await page.setContent(panel)
+  await open()
+  const early = await page.evaluate(audit, { zoom: 1 })
+  expect(early.some((i) => /^contrast 1\.\d\d:1/.test(i))).toBe(true)
+  // Read once it is drawn, the same panel is clean.
+  await page.setContent(panel)
+  await open()
+  await drawn(page)
+  expect(await page.evaluate(audit, { zoom: 1 })).toEqual([])
+})
 
 test('the audit reads only what is shown: the lines of a closed fold-out are not set against what follows it (2026-10-19)', async ({ page }) => {
   await page.setViewportSize({ width: 300, height: 844 })
