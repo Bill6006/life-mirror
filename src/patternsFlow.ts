@@ -31,6 +31,8 @@ const letThrough = (): Promise<void> => new Promise((resolve) => setTimeout(reso
  * format, written by a newer version of the app, is not this version's to overwrite.
  */
 export async function writePatternsRow(day: string, now: Date = new Date(), opts: { pause?: () => Promise<void> } = {}): Promise<boolean> {
+  building++
+  mostAtOnce = Math.max(mostAtOnce, building)
   try {
     const table = await patternTableKept(await countedRecord(), day, opts.pause ?? letThrough)
     const next = storedPatterns(table, now.toISOString())
@@ -43,8 +45,15 @@ export async function writePatternsRow(day: string, now: Date = new Date(), opts
   } catch (e) {
     noteComparisonFault(day, e)
     return false
+  } finally {
+    building--
   }
 }
+
+let building = 0
+let mostAtOnce = 0
+/** For tests: the most builds that were ever under way at the same moment. Asked for one after another, it is one. */
+export const patternsMostAtOnce = (): number => mostAtOnce
 
 let last: Promise<unknown> = Promise.resolve()
 

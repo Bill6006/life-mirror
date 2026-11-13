@@ -11,7 +11,7 @@ import { patternsFromExport } from './patternsFlow.testing'
 import { askTyped } from './ask/flow'
 import { buildExport } from './export'
 import { DEFAULT_SETTINGS } from './settings'
-import { countedRecord, PATTERNS_ASK_WAIT_MS, patternsForAsk, patternsSettled, refreshPatterns, writeDayRows, writePatternsRow } from './patternsFlow'
+import { countedRecord, PATTERNS_ASK_WAIT_MS, patternsForAsk, patternsMostAtOnce, patternsSettled, refreshPatterns, writeDayRows, writePatternsRow } from './patternsFlow'
 
 // The pattern table on the phone (2026-11-13), on stand-in records: built from the whole record, kept as one record,
 // rewritten only when its content changes, never on the day's sheet, and never in the way of a screen.
@@ -127,6 +127,9 @@ describe('the pattern table on the phone', () => {
     // Two asked for at once are built one after the other, and the second finds nothing to write.
     const [first, second] = await Promise.all([refreshPatterns(day(A + SPAN + 1), NOW), refreshPatterns(day(A + SPAN + 1), NOW)])
     expect([first, second]).toEqual([true, false])
+    // Never two under way at the same moment, however many were asked for at once.
+    await Promise.all([refreshPatterns(day(A + SPAN + 2), NOW), refreshPatterns(day(A + SPAN + 3), NOW), refreshPatterns(day(A + SPAN + 4), NOW)])
+    expect(patternsMostAtOnce()).toBe(1)
   })
 
   it('lets a question go on after a short wait when the table is not ready, and still finishes the table', async () => {
@@ -164,11 +167,13 @@ describe('the pattern table on the phone', () => {
     expect(patternsFromExport({ id: 'table', format: 2 }, true, true)).toEqual({ kinds: [], level: [] })
     // The whole export holds the table with a note that says what it is; with no table, neither.
     const whole = (patterns: unknown) => JSON.parse(buildExport([], [], [], DEFAULT_SETTINGS as never, { includePrivate: false, includePartner: false }, undefined, { offers: [], outcomes: [], cards: [], declarations: [], patterns: patterns as never }).json) as Record<string, unknown>
-    const has = (o: unknown, key: string): boolean => JSON.stringify(o).includes(`"${key}":`)
-    expect(has(whole(stored), 'patternTable')).toBe(true)
+    // The table itself, an object that begins with the day it was built for; its note is a sentence under the same name.
+    const has = (o: unknown): boolean => JSON.stringify(o).includes('"patternTable":{"builtFor"')
+    expect(has(whole(stored))).toBe(true)
     expect(JSON.stringify(whole(stored))).toContain('patternTable is the table Life Mirror builds from the whole record')
     expect(JSON.stringify(whole(stored))).not.toContain('a private thing')
-    expect(has(whole(null), 'patternTable')).toBe(false)
+    expect(has(whole(null))).toBe(false)
+    expect(JSON.stringify(whole(null))).not.toContain('patternTable')
   })
 })
 
