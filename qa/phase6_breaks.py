@@ -37,6 +37,11 @@ alone, and an unreadable one forgets nothing; the newest month first; the newest
 beside it; a followed pattern marked wrong counts for nothing; the newest reading alone is followed, from the day it
 was written.
 
+What the month's read is told: every part read, and how many; the days beside never alone; an uncited observation
+refused; the number rule; the caps; the exact quote; the days listed for it; a hypothesis, never a fact; no cause;
+followed from the next day; each type's definition; nothing tagged with no type; what was marked wrong; what the read
+covers, and why each thing is left out; the surface rules; the shape shows follow.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -79,6 +84,8 @@ MC = 'worker/src/monthCheck.ts'
 MCT = 'worker/src/monthCheck.test.ts'
 J = 'src/writeups/join.ts'
 JT = 'src/writeups/join.test.ts'
+MP = 'worker/src/monthPrompt.ts'
+MPT = 'worker/src/monthPrompt.test.ts'
 
 TABLE = [
     # A month's days.
@@ -500,6 +507,80 @@ TABLE = [
          old="noticedOn: m.newest.day",
          new="noticedOn: m.month",
          tests=[JT], pattern='each with the day it was noticed'),
+
+    # What the month's read is told.
+    dict(id='told-every-part-is-read', file=MP,
+         old=" A write-up is kept only when every part was read; saying you read them is not enough.",
+         new="",
+         tests=[MPT], pattern='name the month and say every part is read'),
+    dict(id='told-how-many-parts', file=MP,
+         old="to lookup=month&part=${x.parts}.",
+         new="onward.",
+         tests=[MPT], pattern='name the month and say every part is read'),
+    dict(id='told-the-days-beside-never-alone', file=MP,
+         old="may be cited beside a line inside the month, never alone.",
+         new="may be cited freely.",
+         tests=[MPT], pattern='say the rules the answer is checked by'),
+    dict(id='told-an-uncited-observation-is-refused', file=MP,
+         old=" An observation that cites no served line is refused.",
+         new="",
+         tests=[MPT], pattern='say the rules the answer is checked by'),
+    dict(id='told-the-number-rule', file=MP,
+         old=" Any other number is refused.",
+         new="",
+         tests=[MPT], pattern='say the rules the answer is checked by'),
+    dict(id='told-the-caps', file=MP,
+         old="each at most ${OBSERVATION_WORDS} words.",
+         new="each short.",
+         tests=[MPT], pattern='say the rules the answer is checked by'),
+    dict(id='told-the-quote-is-exact', file=MP,
+         old="letter for letter, at most ${QUOTE_MOST} characters.",
+         new="roughly.",
+         tests=[MPT], pattern='say the rules the answer is checked by'),
+    dict(id='told-the-days-are-listed-for-it', file=MP,
+         old="the days are listed for the person from the lines you cite.",
+         new="the days are yours to list.",
+         tests=[MPT], pattern='say the rules the answer is checked by'),
+    dict(id='told-a-hypothesis-never-a-fact', file=MP,
+         old=" Each of those is a hypothesis, never a fact.",
+         new="",
+         tests=[MPT], pattern='is a hypothesis and that no cause is claimed'),
+    dict(id='told-no-cause', file=MP,
+         old="Say what went with what (",
+         new="Say (",
+         tests=[MPT], pattern='is a hypothesis and that no cause is claimed'),
+    dict(id='told-followed-from-the-next-day', file=MP,
+         old="It is then counted from the next day on, on what comes after alone.",
+         new="It is then counted.",
+         tests=[MPT], pattern='say how a pattern is followed'),
+    dict(id='told-each-types-definition', file=MP,
+         old="`- ${t.id}: ${t.label}. ${t.definition}`",
+         new="`- ${t.id}: ${t.label}.`",
+         tests=[MPT], pattern='list each event type by its id, its label and its definition'),
+    dict(id='told-to-tag-nothing-with-no-type', file=MP,
+         old='EVENT TYPES: none is listed yet. Write "events": [].',
+         new='EVENT TYPES: none.',
+         tests=[MPT], pattern='say to tag nothing while no type is listed'),
+    dict(id='told-what-was-marked-wrong', file=MP,
+         old="  const wrong = x.wrong.length ? [",
+         new="  const wrong = false ? [",
+         tests=[MPT], pattern='hand back the events the person marked wrong'),
+    dict(id='told-what-the-read-covers', file=MP,
+         old="    `WHAT THIS READ COVERS: ${MONTH_COVERED.join('; ')}.`,\n",
+         new="",
+         tests=[MPT], pattern='end with the written list'),
+    dict(id='told-why-each-is-left-out', file=MP,
+         old=" (${l.why})",
+         new="",
+         tests=[MPT], pattern='end with the written list'),
+    dict(id='told-the-surface-rules', file=MP,
+         old="never from what did not happen, never counting or rating anyone.",
+         new="as you see fit.",
+         tests=[MPT], pattern='hold the surface rules'),
+    dict(id='the-shape-shows-follow', file=MP,
+         old="follow: { kind: 'an id from lookup=kinds', split: 'a split from lookup=pattern', cell: 'a cell of that split' } }],",
+         new="}],",
+         tests=[MPT], pattern='shows the two lists and the events'),
 ]
 
 
