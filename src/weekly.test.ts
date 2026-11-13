@@ -134,6 +134,16 @@ describe('best-days under the one standard', () => {
     expect(b.own).toEqual([])
   })
 
+  it('never lists a private item in best days, even one tapped on every evening that carried the nap (the agreed fix 9, stated 2026-11-13)', () => {
+    // The same record, with a private item on screen every evening and tapped on exactly the evenings that carried the nap.
+    const checkins = ninety().map((c) => (c.block === 'evening' ? { ...c, extras: { ...(c.extras ?? {}), privateShown: { '7': true as const }, ...(c.extras?.napped ? { private: { '7': true as const } } : {}) } } : c))
+    expect(checkins.filter((c) => c.extras?.private?.['7']).length).toBeGreaterThan(8)
+    const b = bestDays(checkins, [], [], [], TODAY)
+    // The probe that can say yes: the nap, tapped on the same evenings, is listed. The private item is no condition at all.
+    expect(b.controlled.map((c) => c.label)).toEqual(['a nap'])
+    expect(JSON.stringify(b)).not.toContain('private')
+  })
+
   it('keeps a condition with the same rate on both sides, or too few days, off the list, and says where each stands', () => {
     const all = bestConditions(ninety(), [], [], [], TODAY)
     // Two of nine against eighteen of eighty-one: both 22 in 100.

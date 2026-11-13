@@ -118,6 +118,14 @@ describe('the fact heads of the lookups', () => {
     }
   })
 
+  it('let the Brain’s own past lines through for the lines lookup alone, under its history’s switch', () => {
+    const line = f('lines.2026-11-10.1', 'brainHistory')
+    expect(mayRead(line, access())).toBe(true)
+    expect(mayRead(line, access(['brainHistory']))).toBe(false)
+    // The same category on any other lookup's fact is not Ask's to read: its own profile leaves that category out.
+    for (const head of LOOKUPS.filter((l) => l !== 'lines')) expect(mayRead(f(`${head}.x`, 'brainHistory'), access()), head).toBe(false)
+  })
+
   it('read a category that is missing or unknown as closed, never as the day’s record', () => {
     for (const head of LOOKUPS) {
       for (const bad of [undefined, null, 7, 'everything', '']) {
@@ -497,16 +505,25 @@ describe('every lookup against every switch', () => {
   it('serves no fact of a category whose switch is off, whatever the lookup', async () => {
     const store = richDay()
     put(store, 'patterns', 'table', null, TABLE)
+    // A line of the Brain's own, so its history has something to serve too.
+    void store.writeBrief({ id: `${D}:brief`, day: D, kind: 'brief', text: 'A stand-in line.', mode: 'strategy', factIds: [], cardIds: [], model: 'm', at: `${D}T12:48:00.000Z`, factsDay: D, refusals: [], writer: 'claude' }, `${D}T12:48:00.000Z`)
     const queries: LookupQuery[] = [{ lookup: 'kinds' }, { lookup: 'pattern', kind: 'private.7' }, { lookup: 'pattern', kind: 'chip.dinner' }, { lookup: 'day', date: D }, { lookup: 'moves', from: D, to: D, limit: 50 }, { lookup: 'workouts', from: D, to: D, limit: 50 }, { lookup: 'pathSteps', from: D, to: D, limit: 50 }, { lookup: 'lines', from: D, to: D, limit: 50 }, { lookup: 'forecast', date: D }]
-    for (const off of BRAIN_SWITCHES.map((s) => s.key)) {
+    // The probe that can say yes, first: with every switch on, the same lookups serve facts of these categories.
+    const served = new Set((await Promise.all(queries.map((q) => run(store, q)))).flatMap((r) => r.facts.map((f) => String(f.values.category))))
+    expect([...served].sort()).toEqual(['brainHistory', 'commitments', 'dayRecord', 'factSheet', 'faith', 'her', 'notes', 'privateItems', 'socialPath'])
+    expect(BRAIN_SWITCHES).toHaveLength(14)
+    let checked = 0
+    for (const off of BRAIN_SWITCHES) {
       for (const q of queries) {
         const r = await run(store, q, { a: access([off]) })
         expect(r.facts.filter((f) => f.values.category === off), `${off} ${q.lookup}`).toEqual([])
+        checked++
       }
+      // And the switch took nothing it does not govern: every other category is still served.
+      const still = new Set((await Promise.all(queries.map((q) => run(store, q, { a: access([off]) })))).flatMap((r) => r.facts.map((f) => String(f.values.category))))
+      for (const c of served) if (c !== off && !(off === 'faith' && c === 'faith')) expect(still.has(c), `${c} with ${off} off`).toBe(true)
     }
-    // The probe that can say yes: with every switch on, the same lookups serve facts of these categories.
-    const served = new Set((await Promise.all(queries.map((q) => run(store, q)))).flatMap((r) => r.facts.map((f) => String(f.values.category))))
-    expect([...served].sort()).toEqual(['commitments', 'dayRecord', 'factSheet', 'faith', 'her', 'notes', 'privateItems', 'socialPath'])
+    expect(checked).toBe(14 * 9)
     // And every fact a lookup serves names a category the layer knows.
     for (const q of queries) for (const f of (await run(store, q)).facts) expect((CATEGORIES as readonly string[]).includes(String(f.values.category)), f.id).toBe(true)
   })

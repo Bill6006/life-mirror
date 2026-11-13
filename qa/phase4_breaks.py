@@ -311,7 +311,7 @@ TABLE = [
     dict(id='the-history-allowance-is-the-lines-lookups-alone', file=L,
          old="(c === 'brainHistory' && f.id.split('.')[0] === 'lines' && linesAllowed(a))",
          new="(c === 'brainHistory' && linesAllowed(a))",
-         tests=[LT], pattern='serves no fact of a category whose switch is off'),
+         tests=[LT], pattern='for the lines lookup alone'),
     dict(id='a-stale-table-is-refused', file=L,
          old="  if (!Number.isFinite(age) || age > PATTERNS_MAX_AGE_MS) return",
          new="  if (!Number.isFinite(age)) return",
