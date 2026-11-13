@@ -87,12 +87,42 @@ export interface MonthBuilt {
   lines: number
   /** A fingerprint of the month's own lines: a change in the record changes it. */
   fingerprint: string
+  /** Each note's line, by its id, with the record the note is in: an event noticed in a note is stored against that record. */
+  notes: Record<string, NoteSource>
+}
+
+/** The record a note's line came from: a check-in's note, or a note kept from a question. */
+export interface NoteSource {
+  store: 'checkins' | 'notes'
+  id: string
+  day: string
+  block?: string
 }
 
 export type MonthBuild = MonthBuilt | { ok: false; reason: string }
 
 /** The rows of a day's store, by the store's name. */
 const rowsOf = (rows: DayRows, store: (typeof DAY_STORES)[number]): readonly unknown[] => (store === 'pathMarks' ? rows.marks : rows[store])
+
+const rec = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
+const CHECKIN_NOTE = /at the (morning|afternoon|evening) check-in you wrote: “([\s\S]*)”$/
+const KEPT_NOTE = /you kept a note: “([\s\S]*)”$/
+
+/** The record a note's line came from, found among that day's own rows by the note's words and its check-in; null for a line that is no note. */
+export function noteSourceOf(f: Fact, day: string, rows: DayRows): NoteSource | null {
+  if (f.values.category !== 'notes') return null
+  const at = CHECKIN_NOTE.exec(f.text)
+  if (at) {
+    const row = rows.checkins.find((r) => r.day === day && rec(r.body).block === at[1] && String(rec(rec(r.body).extras).note ?? '').trim() === at[2])
+    return row ? { store: 'checkins', id: row.id, day, block: at[1] } : null
+  }
+  const kept = KEPT_NOTE.exec(f.text)
+  if (kept) {
+    const row = rows.notes.find((r) => r.day === day && String(rec(r.body).text ?? '').trim() === kept[1])
+    return row ? { store: 'notes', id: row.id, day } : null
+  }
+  return null
+}
 
 const hex = (b: ArrayBuffer): string => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('')
 const enc = new TextEncoder()
@@ -141,13 +171,19 @@ export async function buildMonth(x: LookupCtx, first: string): Promise<MonthBuil
   }
   if (rows.outside.length >= OUTSIDE_READ) return { ok: false, reason: `the month ${span.month} was not read whole: the workouts outran one read` }
   const days: { day: string; inside: boolean; facts: Fact[] }[] = []
+  const notes: Record<string, NoteSource> = {}
   for (let d = span.servedFrom; d <= span.servedTo; d = addDays(d, 1)) {
     const inside = d >= span.from && d <= span.to
     // A line's day is in its id, so whether it is inside the month is read from there: nothing is added to what a line says.
-    days.push({ day: d, inside, facts: dayFacts(x, d, rows) })
+    const facts = dayFacts(x, d, rows)
+    days.push({ day: d, inside, facts })
+    for (const f of facts) {
+      const source = noteSourceOf(f, d, rows)
+      if (source) notes[f.id] = source
+    }
   }
   const parts = partsOf(days)
   if (parts.length > MONTH_PARTS_MOST) return { ok: false, reason: `the month ${span.month} needs ${parts.length} parts, more than the ${MONTH_PARTS_MOST} a read may have` }
   const own = days.filter((d) => d.inside).flatMap((d) => d.facts)
-  return { ok: true, span, parts, counts, lines: own.length, fingerprint: await fingerprintOf(own) }
+  return { ok: true, span, parts, counts, lines: own.length, fingerprint: await fingerprintOf(own), notes }
 }

@@ -194,6 +194,24 @@ TABLE = [
          new="facts.map((f) => f.id)",
          tests=[MT], pattern='changes when a note in the month changes'),
 
+    # The record a note's line came from.
+    dict(id='a-notes-line-keeps-its-record', file=M,
+         old="      if (source) notes[f.id] = source\n",
+         new="",
+         tests=[MT], pattern='is kept for each note in the month’s lines'),
+    dict(id='a-kept-notes-line-keeps-its-record', file=M,
+         old="    return row ? { store: 'notes', id: row.id, day } : null\n",
+         new="    return null\n",
+         tests=[MT], pattern='is kept for each note in the month’s lines'),
+    dict(id='a-notes-record-is-its-check-ins', file=M,
+         old="rec(r.body).block === at[1] && ",
+         new="",
+         tests=[MT], pattern='tells two check-ins of one day apart'),
+    dict(id='a-notes-record-is-its-days', file=M,
+         old="rows.checkins.find((r) => r.day === day && ",
+         new="rows.checkins.find((r) => ",
+         tests=[MT], pattern='is not kept for a note of another day'),
+
     # A write-up's row.
     dict(id='a-row-is-read-from-its-words', file=SH,
          old="      b = JSON.parse(body)\n",

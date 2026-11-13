@@ -106,6 +106,37 @@ describe('a month’s lines', () => {
   })
 })
 
+describe('the record a note’s line came from', () => {
+  it('is kept for each note in the month’s lines: a check-in’s note by its check-in, a kept note by its own row', async () => {
+    const store = standIn()
+    put(store, 'notes', '700', '2026-10-10', { id: 700, day: '2026-10-10', at: '2026-10-10T15:00:00.000Z', text: 'A stand-in note kept from a question.' })
+    const b = await built(store)
+    const all = b.parts.flatMap((p) => p.facts)
+    const evening = all.find((f) => f.id.startsWith('day.2026-10-17.') && f.text.includes('you wrote')) as Fact
+    // 25 September is day 0, two check-ins a day from id 1: 17 October's evening check-in is id 46.
+    expect(b.notes[evening.id]).toEqual({ store: 'checkins', id: '46', day: '2026-10-17', block: 'evening' })
+    const kept = all.find((f) => f.text.includes('you kept a note')) as Fact
+    expect(b.notes[kept.id]).toEqual({ store: 'notes', id: '700', day: '2026-10-10' })
+    // Every note's line has its record, and no other line has one: 37 evenings and the one kept note.
+    expect(Object.keys(b.notes)).toHaveLength(38)
+    for (const id of Object.keys(b.notes)) expect(all.find((f) => f.id === id)?.values.category, id).toBe('notes')
+  })
+
+  it('tells two check-ins of one day apart, even when both notes say the same words', async () => {
+    const store = standIn(() => 'The same words.')
+    put(store, 'checkins', '900', '2026-10-17', { id: 900, day: '2026-10-17', block: 'afternoon', answers: {}, extras: { note: 'The same words.' }, completedAt: '2026-10-17T19:00:00.000Z' })
+    const b = await built(store)
+    const lines = b.parts.flatMap((p) => p.facts).filter((f) => f.id.startsWith('day.2026-10-17.') && f.text.includes('you wrote'))
+    expect(lines.map((f) => [b.notes[f.id].id, b.notes[f.id].block])).toEqual([['900', 'afternoon'], ['46', 'evening']])
+  })
+
+  it('is not kept for a note of another day that says the same words', async () => {
+    const b = await built(standIn(() => 'The same words.'))
+    const lines = b.parts.flatMap((p) => p.facts).filter((f) => f.text.includes('you wrote'))
+    for (const f of lines) expect(b.notes[f.id].day, f.id).toBe(f.id.split('.')[1])
+  })
+})
+
 describe('whole, or nothing', () => {
   it('builds nothing when a store’s read fell short of the database’s own count', async () => {
     const store = standIn()
