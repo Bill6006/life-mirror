@@ -42,6 +42,10 @@ refused; the number rule; the caps; the exact quote; the days listed for it; a h
 followed from the next day; each type's definition; nothing tagged with no type; what was marked wrong; what the read
 covers, and why each thing is left out; the surface rules; the shape shows follow.
 
+Which month is read next: the oldest first; from its fourth day after it ends; never one with a write-up; never in
+the quiet hours, nor while the Brain is busy, nor while a month is being read; two a day, a failed read not counted
+as one; three tries a day.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -85,6 +89,8 @@ MCT = 'worker/src/monthCheck.test.ts'
 J = 'src/writeups/join.ts'
 JT = 'src/writeups/join.test.ts'
 MP = 'worker/src/monthPrompt.ts'
+MS = 'worker/src/monthSchedule.ts'
+MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
 
 TABLE = [
@@ -150,8 +156,12 @@ TABLE = [
          new="  if (rows.outside.length > OUTSIDE_READ) return",
          tests=[MT], pattern='finished workouts outran their one read'),
     dict(id='the-days-after-have-passed', file=M,
-         old="  if (span.servedTo > x.day) return",
-         new="  if (span.to > x.day) return",
+         old="  if (span.servedTo >= x.day) return",
+         new="  if (span.to >= x.day) return",
+         tests=[MT], pattern='whose days after it have not all passed'),
+    dict(id='the-third-day-after-is-over', file=M,
+         old="  if (span.servedTo >= x.day) return",
+         new="  if (span.servedTo > x.day) return",
          tests=[MT], pattern='whose days after it have not all passed'),
     dict(id='sixteen-parts-at-most', file=M,
          old="  if (parts.length > MONTH_PARTS_MOST) return",
@@ -599,6 +609,56 @@ TABLE = [
          old="follow: { kind: 'an id from lookup=kinds', split: 'a split from lookup=pattern', cell: 'a cell of that split' } }],",
          new="}],",
          tests=[MPT], pattern='shows the two lists and the events'),
+
+    # Which month is read next, and when.
+    dict(id='the-oldest-month-first', file=MS,
+         old="!x.written.includes(m)).sort()",
+         new="!x.written.includes(m)).sort().reverse()",
+         tests=[MST], pattern='is the oldest month that holds records'),
+    dict(id='ready-once-its-days-after-passed', file=MS,
+         old="today > span.servedTo",
+         new="today > span.to",
+         tests=[MST], pattern='nor one whose three days after it have not all passed'),
+    dict(id='ready-from-the-fourth-day', file=MS,
+         old="today > span.servedTo",
+         new="today >= span.servedTo",
+         tests=[MST], pattern='nor one whose three days after it have not all passed'),
+    dict(id='never-a-month-with-a-write-up', file=MS,
+         old=" && !x.written.includes(m)",
+         new="",
+         tests=[MST], pattern='is not a month that has a write-up'),
+    dict(id='never-in-the-quiet-hours', file=MS,
+         old="  if (quietHours(x.hhmm)) return",
+         new="  if (false) return",
+         tests=[MST], pattern='is none between 9:00 and 11:30'),
+    dict(id='never-while-the-brain-is-busy', file=MS,
+         old="  if (x.busy) return",
+         new="  if (false) return",
+         tests=[MST], pattern='is none while the Brain’s own run'),
+    dict(id='one-month-at-a-time', file=MS,
+         old="  if (x.runs.some((r) => r.status === 'open')) return",
+         new="  if (false) return",
+         tests=[MST], pattern='is none while a month is being read'),
+    dict(id='the-number-two-a-day', file=MS,
+         old="export const MONTHS_A_DAY = 2",
+         new="export const MONTHS_A_DAY = 3",
+         tests=[MST], pattern='is none once two months were read today'),
+    dict(id='two-months-a-day', file=MS,
+         old=".length >= MONTHS_A_DAY) return",
+         new=".length > MONTHS_A_DAY) return",
+         tests=[MST], pattern='is none once two months were read today'),
+    dict(id='a-failed-read-is-not-a-month-read', file=MS,
+         old="x.runs.filter((r) => r.status === 'written').length",
+         new="x.runs.length",
+         tests=[MST], pattern='tries a failed read again'),
+    dict(id='the-number-three-tries', file=MS,
+         old="export const MONTH_TRIES_A_DAY = 3",
+         new="export const MONTH_TRIES_A_DAY = 4",
+         tests=[MST], pattern='tries a failed read again'),
+    dict(id='three-tries-a-day', file=MS,
+         old="failed(m) < MONTH_TRIES_A_DAY)",
+         new="true)",
+         tests=[MST], pattern='tries a failed read again'),
 ]
 
 

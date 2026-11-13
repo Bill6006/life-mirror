@@ -159,7 +159,8 @@ export function partsOf(days: readonly { day: string; inside: boolean; facts: Fa
 export async function buildMonth(x: LookupCtx, first: string): Promise<MonthBuild> {
   const span = monthSpan(first)
   if (!span) return { ok: false, reason: `${first} is not the first day of a month` }
-  if (span.servedTo > x.day) return { ok: false, reason: `the month ${span.month} is read once ${MONTH_MARGIN} days have passed after it` }
+  // The third day after the month must itself be over: the month is read from its fourth day after it ends.
+  if (span.servedTo >= x.day) return { ok: false, reason: `the month ${span.month} is read once ${MONTH_MARGIN} days have passed after it` }
   const range = { from: span.servedFrom, to: span.servedTo }
   const rows = await readDayRows(x, range, newTally(), MONTH_READ)
   const counts: Record<string, number> = {}

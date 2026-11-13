@@ -154,8 +154,9 @@ describe('whole, or nothing', () => {
 
   it('builds nothing for a month whose days after it have not all passed', async () => {
     const store = standIn()
-    expect(await buildMonth(ctx(store, { day: '2026-11-02' }), '2026-10-01')).toEqual({ ok: false, reason: 'the month 2026-10 is read once 3 days have passed after it' })
-    expect((await buildMonth(ctx(store, { day: '2026-11-03' }), '2026-10-01')).ok).toBe(true)
+    // The third day after October is 3 November: on that day it is not over yet.
+    expect(await buildMonth(ctx(store, { day: '2026-11-03' }), '2026-10-01')).toEqual({ ok: false, reason: 'the month 2026-10 is read once 3 days have passed after it' })
+    expect((await buildMonth(ctx(store, { day: '2026-11-04' }), '2026-10-01')).ok).toBe(true)
   })
 
   it('builds nothing for a day that is not a month’s first', async () => {
