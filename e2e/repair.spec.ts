@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { leaveApp } from './closedApp'
 
 // The learning repair in the browser. Built in its preview (only an automated browser holding the test key at 1 opened it);
 // open for everyone since stage R6, so the key at 1 changes nothing, and only an automated browser holding it at 0 sees it
@@ -169,7 +170,9 @@ test('the pickup-time move is drawn by the new engine, never nothing extra (2026
   // On a day with no move offered before it, so the day's rule leaves its candidates whole.
   await start(page)
   await seedRepairRecord(page, 10)
-  // The week given a pickup at five, today's shape made again from it, the clock inside the ninety minutes.
+  // The week given a pickup at five, today's shape made again from it, the clock inside the ninety minutes. The change
+  // is made with no app page open: an open page checks today's row itself, with the week as it read it before.
+  await leaveApp(page)
   await page.evaluate(async () => {
     const dbx = await new Promise<IDBDatabase>((res, rej) => {
       const r = indexedDB.open('life-mirror')
@@ -187,7 +190,7 @@ test('the pickup-time move is drawn by the new engine, never nothing extra (2026
     dbx.close()
   })
   await page.clock.setFixedTime(new Date(2026, 8, 24, 16, 0))
-  await page.reload()
+  await page.goto('./')
   const pickups = async () => (await offersOf(page, todayKey())).filter((o) => o.kind === 'pickup')
   await expect.poll(async () => (await pickups()).length).toBe(1)
   const [pickup] = await pickups()

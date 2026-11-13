@@ -344,6 +344,8 @@ try {
         dbx.close()
         return rows.filter((o) => o.day === today)
       })
+    // With no app page open: an open page checks today's row itself, with the week as it read it before the change.
+    await page.goto(new URL('icons/life-mirror-192.png', LIVE).href)
     await page.evaluate(async () => {
       const dbx = await new Promise((res, rej) => {
         const r = indexedDB.open('life-mirror')
@@ -361,7 +363,7 @@ try {
       dbx.close()
     })
     await page.clock.setFixedTime(new Date(2026, 8, 24, 16, 0))
-    await page.reload()
+    await page.goto(LIVE)
     let pickup = null
     for (let i = 0; i < 20 && !pickup; i++) {
       pickup = (await offersToday()).find((o) => o.kind === 'pickup') ?? null

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { leaveApp } from './closedApp'
 
 // The two features agreed for after the clean window, built behind gates (the owner's word,
 // 2026-10-04): home-only moves with Skip's "Not home", and Away from home. Open as they ship since
@@ -103,6 +104,8 @@ async function liveMoveIs(page: Page, moveId: string): Promise<void> {
 
 /** A trip stored as an open gate would store it, and today's record taken away so the app shapes the day again with it there. */
 async function storeTrip(page: Page): Promise<void> {
+  // With no app page open: an open page checks today's row itself, with the settings as it read them before the trip.
+  await leaveApp(page)
   await page.evaluate(async () => {
     const dbx = await new Promise<IDBDatabase>((res, rej) => {
       const q = indexedDB.open('life-mirror')
@@ -119,7 +122,7 @@ async function storeTrip(page: Page): Promise<void> {
     await new Promise<void>((res) => (tx.oncomplete = () => res()))
     dbx.close()
   })
-  await page.reload()
+  await page.goto('./')
 }
 
 test('open as both ship since stage 1 (2026-10-16), with no preview at all: the trip row, the house among a move’s needs, and Skip’s “Not home”', async ({ page }) => {
