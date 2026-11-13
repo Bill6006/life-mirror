@@ -16,6 +16,12 @@ days outside the month are named.
 
 The fingerprint: the month's own lines alone, their words as well as their ids.
 
+A write-up's row: read from its words; faith's tag only where the row sets it; a month that exists, a reading from
+one, a readable moment, a day, a method, a model; an id that is its month and its reading; counts that are counts;
+parts from one; a fingerprint of its shape; both parts lists; an unreadable observation unreads the row; an
+observation has words, days that are days, and kinds; a followed pattern reads whole, its counts within their totals;
+what was recorded is never followed; a mark names its part; the limits.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -52,6 +58,8 @@ NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 M = 'worker/src/month.ts'
 MT = 'worker/src/month.test.ts'
 L = 'worker/src/lookups.ts'
+SH = 'src/writeups/shared.ts'
+ST = 'src/writeups/shared.test.ts'
 
 TABLE = [
     # A month's days.
@@ -159,6 +167,100 @@ TABLE = [
          old="facts.map((f) => `${f.id}\\t${f.text}`)",
          new="facts.map((f) => f.id)",
          tests=[MT], pattern='changes when a note in the month changes'),
+
+    # A write-up's row.
+    dict(id='a-row-is-read-from-its-words', file=SH,
+         old="      b = JSON.parse(body)\n",
+         new="      b = null\n",
+         tests=[ST], pattern='is read whole, from the row’s words or from the object'),
+    dict(id='faith-only-where-the-row-sets-it', file=SH,
+         old="...(o.faith === true ? { faith: true as const } : {})",
+         new="...(o.faith ? { faith: true as const } : {})",
+         tests=[ST], pattern='carries faith’s tag on an observation only where the row sets it'),
+    dict(id='a-month-that-exists', file=SH,
+         old="const MONTH = /^\\d{4}-(0[1-9]|1[0-2])$/",
+         new="const MONTH = /^\\d{4}-\\d{2}$/",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='a-reading-from-one', file=SH,
+         old="  if (!month || !reading || !at",
+         new="  if (!month || reading === null || !at",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='when-it-was-written-is-readable', file=SH,
+         old=" || Number.isNaN(Date.parse(at)) || !day",
+         new=" || !day",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='the-day-is-a-day', file=SH,
+         old="typeof o.day === 'string' && DAY.test(o.day)",
+         new="typeof o.day === 'string'",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='a-method-is-named', file=SH,
+         old=" || !method || !model",
+         new=" || !model",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='a-model-is-named', file=SH,
+         old=" || !model || !from",
+         new=" || !from",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='the-id-is-the-month-and-the-reading', file=SH,
+         old="  if (id !== writeUpIdOf(month, reading)) return null\n",
+         new="",
+         tests=[ST], pattern='is not read under an id that is not its month and its reading'),
+    dict(id='the-counts-are-counts', file=SH,
+         old="  if (!Object.values(counts).every((n) => count(n) !== null)) return null\n",
+         new="",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='the-parts-are-counted-from-one', file=SH,
+         old="  if (!parts || lines === null || !fingerprint) return null\n",
+         new="  if (lines === null || !fingerprint) return null\n",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='the-fingerprint-has-its-shape', file=SH,
+         old="/^[0-9a-f]{64}$/.test(from.fingerprint)",
+         new="from.fingerprint.length > 0",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='both-parts-are-lists', file=SH,
+         old="  if (!Array.isArray(o.recorded) || !Array.isArray(o.noticed)) return null\n",
+         new="  if (!Array.isArray(o.recorded)) return null\n",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='an-unreadable-observation-unreads-the-row', file=SH,
+         old="  if (recorded.some((x) => x === null) || noticed.some((x) => x === null)) return null\n",
+         new="",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='an-observation-has-words', file=SH,
+         old="  if (!text || !days || !kinds) return null\n",
+         new="  if (!days || !kinds) return null\n",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='an-observation-has-days', file=SH,
+         old="Array.isArray(o.days) && o.days.length > 0 && ",
+         new="Array.isArray(o.days) && ",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='an-observations-day-is-a-day', file=SH,
+         old="typeof d === 'string' && DAY.test(d)",
+         new="typeof d === 'string'",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='an-observation-has-kinds', file=SH,
+         old="Array.isArray(o.kinds) && o.kinds.length > 0 && ",
+         new="Array.isArray(o.kinds) && ",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='a-followed-pattern-reads-whole', file=SH,
+         old="  if (followed === null) return null\n",
+         new="",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='a-followed-count-is-within-its-total', file=SH,
+         old=" || k > n || restK > m) return null",
+         new=") return null",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='what-was-recorded-is-never-followed', file=SH,
+         old="  if (recorded.some((x) => x?.followed)) return null\n",
+         new="",
+         tests=[ST], pattern='nothing half-read is shown'),
+    dict(id='a-mark-names-the-part', file=SH,
+         old="`obs:${writeUpId}:${part}:${place}`",
+         new="`obs:${writeUpId}:${place}`",
+         tests=[ST], pattern='name a month’s reading, and an observation'),
+    dict(id='eight-noticed-at-most', file=SH,
+         old="export const NOTICED_MOST = 8",
+         new="export const NOTICED_MOST = 10",
+         tests=[ST], pattern='are ten observations recorded and eight noticed'),
 ]
 
 
