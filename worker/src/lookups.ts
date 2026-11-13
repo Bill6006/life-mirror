@@ -12,7 +12,7 @@ import { readingById } from '../../src/readings'
 import { permitted } from './briefing'
 import { CAFFEINE, EXTRAS, factCategories, FAITH_WORDS, isFaithMove, LOOKUPS, newTally, obj, OUTCOMES, recordsOf, rowsNotRead, str, type Access, type Catalogue, type Lookup, type ReadTally } from './retrieval'
 import { addDays, localTime } from './time'
-import type { Store } from './turso'
+import type { RecordRow, Store } from './turso'
 
 // The lookups (2026-11-13): what an Ask run may ask of the record beyond the day's sheet, each answered with facts. A
 // fact has an id, its words, and every number its words say in its values, so the one checker that holds an answer
@@ -315,22 +315,48 @@ function offerLines(x: LookupCtx, offers: readonly { body: unknown }[], outcomes
   return out
 }
 
-async function dayLookup(x: LookupCtx, q: { date: string }, tally: ReadTally): Promise<LookupReply> {
-  const D = q.date
+/** The rows the lines of a day are built from (2026-11-13): read once for a range of days, so a month is read in one pass and never a day at a time. */
+export interface DayRows {
+  days: RecordRow[]
+  checkins: RecordRow[]
+  offers: RecordRow[]
+  outcomes: RecordRow[]
+  items: RecordRow[]
+  settings: unknown
+  notes: RecordRow[]
+  marks: RecordRow[]
+  outside: { id: string; body: string | null }[]
+  generated: { steps: Map<string, string>; paths: Map<string, string> }
+}
+
+/** The stores read by their days for a day's lines: the month's read counts each against the database's own count. */
+export const DAY_STORES = ['days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks'] as const
+/** How many finished workouts one read reaches; at that many the read says it is not whole. */
+export const OUTSIDE_READ = 1000
+
+/** Reads everything the lines of the days in a range are built from, each store through one read. */
+export async function readDayRows(x: Pick<LookupCtx, 'store'>, range: { from: string; to: string }, tally: ReadTally, limit = 500): Promise<DayRows> {
   const read = { store: x.store, tally }
-  const range = { from: D, to: D }
   const [days, checkins, offers, outcomes, items, settings, notes, marks, outside, generated] = await Promise.all([
-    recordsOf(read, 'days', range),
-    recordsOf(read, 'checkins', range),
-    recordsOf(read, 'offers', range),
-    recordsOf(read, 'outcomes', range),
+    recordsOf(read, 'days', range, limit),
+    recordsOf(read, 'checkins', range, limit),
+    recordsOf(read, 'offers', range, limit),
+    recordsOf(read, 'outcomes', range, limit),
     recordsOf(read, 'privateItems'),
     x.store.readRecord('settings', '1'),
-    recordsOf(read, 'notes', range),
-    recordsOf(read, 'pathMarks', range),
-    x.store.readOutsideWorkouts(1000),
+    recordsOf(read, 'notes', range, limit),
+    recordsOf(read, 'pathMarks', range, limit),
+    x.store.readOutsideWorkouts(OUTSIDE_READ),
     generatedNames(x.store),
   ])
+  return { days, checkins, offers, outcomes, items, settings, notes, marks, outside, generated }
+}
+
+/** One day's lines as facts, in the order of their clock times, from rows already read: that day's rows alone are used. */
+export function dayFacts(x: LookupCtx, D: string, rows: DayRows): Fact[] {
+  const of = (list: readonly RecordRow[]): RecordRow[] => list.filter((r) => r.day === D)
+  const [days, checkins, offers, outcomes, notes, marks] = [of(rows.days), of(rows.checkins), of(rows.offers), of(rows.outcomes), of(rows.notes), of(rows.marks)]
+  const { items, settings, outside, generated } = rows
   const dayRow = obj(days[0]?.body)
   const traveling = AWAY_FROM_HOME === 'open' && dayRow.awayFromHome === true
   const time = (at: string) => timeWords(at, D, x.timeZone, traveling)
@@ -410,7 +436,14 @@ async function dayLookup(x: LookupCtx, q: { date: string }, tally: ReadTally): P
     // Numbered after the check, so a line this run may not read leaves no gap to count.
     if (mayRead(made, x.a)) facts.push({ ...made, id: `day.${D}.${facts.length + 1}` })
   }
-  const whole = outside.length < 1000
+  return facts
+}
+
+async function dayLookup(x: LookupCtx, q: { date: string }, tally: ReadTally): Promise<LookupReply> {
+  const D = q.date
+  const rows = await readDayRows(x, { from: D, to: D }, tally)
+  const facts = dayFacts(x, D, rows)
+  const whole = rows.outside.length < OUTSIDE_READ
   return { facts, complete: whole, notRead: 0, ...(facts.length ? {} : { note: `nothing this run may read is recorded for ${D}` }) }
 }
 
