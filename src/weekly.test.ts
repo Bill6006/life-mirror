@@ -142,6 +142,9 @@ describe('best-days under the one standard', () => {
     // The probe that can say yes: the nap, tapped on the same evenings, is listed. The private item is no condition at all.
     expect(b.controlled.map((c) => c.label)).toEqual(['a nap'])
     expect(JSON.stringify(b)).not.toContain('private')
+    // Nor are the two kinds that count the level (2026-11-13): best days reads its conditions from the list by their ids, and the family is the nine it was.
+    expect(JSON.stringify(b)).not.toContain('a check-in that read')
+    expect(b.family).toBe(9)
   })
 
   it('keeps a condition with the same rate on both sides, or too few days, off the list, and says where each stands', () => {

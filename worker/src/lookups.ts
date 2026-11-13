@@ -440,7 +440,6 @@ async function movesLookup(x: LookupCtx, q: { from: string; to: string; limit: n
       return { day: o.day, text: `${x.catalogue.get(str(o.b.moveId))?.name ?? ''} offered${said ? `, ${OUTCOMES[said] ?? said}` : ', not answered'}`, category: 'dayRecord', faith: isFaithMove(x.catalogue, str(o.b.moveId)) }
     })
   const facts = numbered('moves', rows, x.a)
-  if (facts.length > q.limit) tally.lines += facts.length - q.limit
   return { facts: facts.slice(0, q.limit), complete: facts.length <= q.limit, notRead: 0 }
 }
 
@@ -453,7 +452,6 @@ async function pathStepsLookup(x: LookupCtx, q: { from: string; to: string; limi
     return paths.map((path) => ({ day: o.day, text: `a step on ${PATH_NAMES[path] ?? (generated.paths.get(path) ? `your Path “${generated.paths.get(path)}”` : 'a Path of yours')}: ${moveName(x, o.b, generated.steps)}, ${OUTCOMES[said] ?? said}`, category: 'commitments', faith: isFaithMove(x.catalogue, str(o.b.moveId)) }))
   })
   const facts = numbered('pathSteps', rows, x.a)
-  if (facts.length > q.limit) tally.lines += facts.length - q.limit
   return { facts: facts.slice(0, q.limit), complete: facts.length <= q.limit, notRead: 0 }
 }
 
@@ -528,5 +526,5 @@ export async function runLookup(x: LookupCtx, q: LookupQuery): Promise<LookupRep
   const made = await answer(x, q, tally)
   const facts = made.facts.filter((f) => mayRead(f, x.a))
   const notRead = await rowsNotRead(x.store, tally)
-  return { facts, complete: made.complete && notRead === 0 && tally.lines === 0, notRead, ...(made.note ? { note: made.note } : {}) }
+  return { facts, complete: made.complete && notRead === 0, notRead, ...(made.note ? { note: made.note } : {}) }
 }

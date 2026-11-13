@@ -462,9 +462,18 @@ describe('the range lookups', () => {
     // Finished at 23:30 in New York: the next day by the Worker's own clock, this day at home.
     put(store, 'workouts', 'w2', null, { completedAt: '2026-11-10T04:30:00.000Z', elapsedSeconds: 1800 }, OUTSIDE_APP)
     put(store, OUTSIDE_STORE, 'mine', null, { completedAt: `${D}T22:00:00.000Z`, title: 'NOT-THE-OTHER-APP' })
+    // One before the days asked for, and one after them: neither is listed.
+    put(store, 'workouts', 'w3', null, { completedAt: '2026-11-05T22:00:00.000Z', elapsedSeconds: 600, title: 'Before the range' }, OUTSIDE_APP)
+    put(store, 'workouts', 'w4', null, { completedAt: '2026-11-11T22:00:00.000Z', elapsedSeconds: 600, title: 'After the range' }, OUTSIDE_APP)
     const r = await run(store, { lookup: 'workouts', from: '2026-11-09', to: D, limit: 50 })
     expect(r.facts.map((x) => x.text)).toEqual([`${D}: a workout finished: Lower body, 45 minutes`, '2026-11-09: a workout finished, 30 minutes'])
     expect(r.facts[0].values).toEqual({ minutes: 45, category: 'dayRecord' })
+    expect(texts(r.facts)).not.toMatch(/the range|NOT-THE-OTHER-APP/)
+    // Steps of a Path of your own keep to the days asked for too, and say when their own limit left some out.
+    const steps = await run(richDay(), { lookup: 'pathSteps', from: D, to: D, limit: 1 })
+    expect(steps.facts).toHaveLength(1)
+    expect(steps.complete).toBe(false)
+    expect((await run(richDay(), { lookup: 'pathSteps', from: D, to: D, limit: 2 })).complete).toBe(true)
   })
 
   it('list the Brain’s own past lines and reviews under its history’s switch, their numbers grounding nothing', async () => {
