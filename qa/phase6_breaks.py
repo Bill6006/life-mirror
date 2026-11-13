@@ -30,6 +30,13 @@ only what Claude noticed is followed, naming all three; four thousand bytes in a
 named as today; its line is a note's, inside the month; its quote is exact, from the note itself, with words, three
 hundred characters at most; one event a note and type; every reason at once.
 
+What is shown of a write-up: a deleted day and a switch hide at once; hidden faith, by its kind and by a line's tag; a
+private name, as a whole word; one marked wrong stays in view; an observation keeps its place; the followed cell is
+carried; a write-up with nothing left is not listed; the forget moment, at the moment too, from the forget record
+alone, and an unreadable one forgets nothing; the newest month first; the newest reading shown, the earlier ones
+beside it; a followed pattern marked wrong counts for nothing; the newest reading alone is followed, from the day it
+was written.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -70,6 +77,8 @@ SH = 'src/writeups/shared.ts'
 ST = 'src/writeups/shared.test.ts'
 MC = 'worker/src/monthCheck.ts'
 MCT = 'worker/src/monthCheck.test.ts'
+J = 'src/writeups/join.ts'
+JT = 'src/writeups/join.test.ts'
 
 TABLE = [
     # A month's days.
@@ -409,6 +418,88 @@ TABLE = [
          old="reason: reasons.join('; and ') }",
          new="reason: reasons[0] }",
          tests=[MCT], pattern='is given at once, each with where it stands'),
+
+    # What of a write-up is shown, and what counts.
+    dict(id='a-deleted-day-hides-at-once', file=J,
+         old="  if (!o.days.every((d) => x.days.has(d))) return false\n",
+         new="",
+         tests=[JT], pattern='a day it cites holds no record any more'),
+    dict(id='a-switch-hides-at-once', file=J,
+         old="  if (!o.kinds.every((k) => x.kindOn(k))) return false\n",
+         new="",
+         tests=[JT], pattern='a kind of record it drew on is switched off'),
+    dict(id='hidden-faith-by-its-kind', file=J,
+         old="(o.faith === true || o.kinds.includes('faith'))",
+         new="(o.faith === true)",
+         tests=[JT], pattern='leaves out what drew on faith while faith is hidden'),
+    dict(id='hidden-faith-by-a-lines-tag', file=J,
+         old="(o.faith === true || o.kinds.includes('faith'))",
+         new="(o.kinds.includes('faith'))",
+         tests=[JT], pattern='leaves out what drew on faith while faith is hidden'),
+    dict(id='a-private-name-hides', file=J,
+         old="  return !x.hiddenNames.some((n) => holdsName(o.text, n))\n",
+         new="  return true\n",
+         tests=[JT], pattern='names a private item while names may not be shown'),
+    dict(id='a-name-is-a-whole-word', file=J,
+         old=", 'iu').test(text)",
+         new=", 'iu').test(text) || text.toLowerCase().includes(name.trim().toLowerCase())",
+         tests=[JT], pattern='names a private item while names may not be shown'),
+    dict(id='one-marked-wrong-stays-in-view', file=J,
+         old="wrong: wrong.has(markId), markId }]",
+         new="wrong: false, markId }]",
+         tests=[JT], pattern='keeps one marked wrong in view with its mark'),
+    dict(id='an-observation-keeps-its-place', file=J,
+         old="      const markId = obsMarkIdOf(w.id, name, i + 1)\n",
+         new="      const markId = obsMarkIdOf(w.id, name, 1)\n",
+         tests=[JT], pattern='a day it cites holds no record any more'),
+    dict(id='the-followed-cell-is-carried', file=J,
+         old="...(o.followed ? { followed: o.followed } : {}), ",
+         new="",
+         tests=[JT], pattern='is every observation, in its part and its place'),
+    dict(id='nothing-left-is-not-listed', file=J,
+         old="    if (s.recorded.length + s.noticed.length === 0) continue\n",
+         new="",
+         tests=[JT], pattern='does not list a write-up with nothing left to show'),
+    dict(id='the-forget-moment-hides', file=J,
+         old="    if (forgot !== null && Date.parse(w.at) <= Date.parse(forgot)) continue\n",
+         new="",
+         tests=[JT], pattern='hides every write-up written up to it'),
+    dict(id='written-at-the-moment-is-forgotten', file=J,
+         old="Date.parse(w.at) <= Date.parse(forgot)",
+         new="Date.parse(w.at) < Date.parse(forgot)",
+         tests=[JT], pattern='hides every write-up written up to it'),
+    dict(id='the-forget-record-alone', file=J,
+         old="x.id === FORGET_ID && x.kind === 'forget'",
+         new="x.id === FORGET_ID",
+         tests=[JT], pattern='is read from the forget record alone'),
+    dict(id='an-unreadable-moment-forgets-nothing', file=J,
+         old="  return m && !Number.isNaN(Date.parse(m.at)) ? m.at : null\n",
+         new="  return m ? m.at : null\n",
+         tests=[JT], pattern='is read from the forget record alone'),
+    dict(id='the-newest-month-first', file=J,
+         old=".sort((a, b) => (a[0] < b[0] ? 1 : -1))",
+         new=".sort((a, b) => (a[0] < b[0] ? -1 : 1))",
+         tests=[JT], pattern='are listed the newest first'),
+    dict(id='the-newest-reading-is-shown', file=J,
+         old="sort((a, b) => b.reading - a.reading)",
+         new="sort((a, b) => a.reading - b.reading)",
+         tests=[JT], pattern='show a month’s newest reading'),
+    dict(id='the-earlier-readings-stay-beside', file=J,
+         old="earlier: readings.slice(1) }",
+         new="earlier: [] }",
+         tests=[JT], pattern='show a month’s newest reading'),
+    dict(id='a-followed-pattern-marked-wrong-counts-for-nothing', file=J,
+         old="(o.followed && !o.wrong ? [",
+         new="(o.followed ? [",
+         tests=[JT], pattern='leave out one marked wrong, at once'),
+    dict(id='the-newest-reading-alone-is-followed', file=J,
+         old="months.flatMap((m) => m.newest.noticed.flatMap(",
+         new="months.flatMap((m) => [m.newest, ...m.earlier].flatMap((w) => w.noticed).flatMap(",
+         tests=[JT], pattern='are not taken from an earlier reading'),
+    dict(id='noticed-on-the-day-it-was-written', file=J,
+         old="noticedOn: m.newest.day",
+         new="noticedOn: m.month",
+         tests=[JT], pattern='each with the day it was noticed'),
 ]
 
 
