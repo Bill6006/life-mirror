@@ -137,7 +137,7 @@ async function startAskTask(env: AsksEnv, store: Store, now: Date, task: AskTask
  * The slot a run of this tier takes now, or why none is free: a refused fire's slot once its wait is over, else the next
  * unused one. A row a run by hand left in one of the owner's slots counts for nothing and leaves its slot free.
  */
-function slotFor(task: AskTask, tasks: readonly TaskRow[], day: string, now: Date): { id: string } | { reason: string } {
+export function slotFor(task: AskTask, tasks: readonly TaskRow[], day: string, now: Date): { id: string } | { reason: string } {
   const runs = tasks.map(asRun)
   if (!roomFor(task, runs)) return { reason: 'today’s answers are used; the rest wait for tomorrow' }
   const ids = task === 'deep' ? [deepTaskId(day)] : askTaskIds(day)

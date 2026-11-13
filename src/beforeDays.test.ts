@@ -158,13 +158,19 @@ describe('the pattern tonight matches (stage 3, group 3)', () => {
   })
 
   it('shows nothing when tonight matches no pair that shows, or before any pair has enough mornings', () => {
+    // Seen shown first, on the same record and evening (2026-11-13): under the one standard the alternating record
+    // shows no pair at all, so on it this test and the next could not fail. Stress high tonight matches the pair that stands.
+    expect(matchingPair(streaky(), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })).not.toBeNull()
     // Every reading in the middle tonight: no pair at either level matches.
-    expect(matchingPair(record(24), ci(today, 'evening', 3), { resamples: 200 })).toBeNull()
+    expect(matchingPair(streaky(), ci(today, 'evening', 3), { resamples: 200 })).toBeNull()
     // Stress high tonight, but too few mornings yet for its pair to show.
     expect(matchingPair(record(BEFORE_MIN + 2), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
   })
 
   it('belongs to the evening alone: a morning or an afternoon has no pattern', () => {
-    expect(matchingPair(record(24), ci(today, 'morning', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
+    // The same answers on the same record show the pair in the evening, and nothing in a morning or an afternoon.
+    expect(matchingPair(streaky(), ci(today, 'evening', 3, { stress: 5 }), { resamples: 200 })).not.toBeNull()
+    expect(matchingPair(streaky(), ci(today, 'morning', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
+    expect(matchingPair(streaky(), ci(today, 'afternoon', 3, { stress: 5 }), { resamples: 200 })).toBeNull()
   })
 })

@@ -3,7 +3,7 @@ import { askTestOf, HELP_FORMS, validateAsk, validateOutput } from '../../src/br
 import { answerIdOf, askQueue, askTaskIds, deepTaskId, handTaskIds, roomFor } from '../../src/ask/shared'
 import type { AskTurn } from '../../src/ask/types'
 import type { FactSheet } from '../../src/factTypes'
-import { ASK_MEND, askBriefingText, asRun, handleAskBriefing, handleAskContext, handleAskLine, namedFirst, runAsks } from './ask'
+import { ASK_MEND, askBriefingText, asRun, handleAskBriefing, handleAskContext, handleAskLine, namedFirst, runAsks, slotFor } from './ask'
 import { taskIdOf } from './claude'
 import { addDays } from './time'
 import { APP, BRAIN_APP, memoryStore, type Store, type TaskRow } from './turso'
@@ -222,6 +222,16 @@ describe('the runs (open, in these tests only)', () => {
     const empty = record()
     const deep = asked(empty, 'Coach me on everything', { tier: 'deep', kind: 'deep' })
     expect(await runAsks(env, empty, at('14:00'), { ...OPEN, fireFetcher: r.f })).toMatchObject({ ran: true, turn: deep.id, task: deepTaskId(DAY) })
+  })
+
+  it('gives the deep tier no slot once two answers are used: the slot’s own rule, asked directly (2026-11-13)', () => {
+    // Since 2026-10-21 the queue says the same before a slot is asked for, so through a run this guard cannot be seen.
+    const used = (n: number): TaskRow[] =>
+      askTaskIds(DAY)
+        .slice(0, n)
+        .map((id, i): TaskRow => ({ id, kind: 'task', task: 'ask', day: DAY, at: at(`1${i}:00`).toISOString(), status: 'written', trigger: 'ask', factsDay: DAY, askedModel: 'opus', firedAt: at(`1${i}:00`).toISOString(), contextCalls: 0, contextBytes: 0, posts: 1, refusals: [], turns: [i + 1] }))
+    expect(slotFor('deep', used(2), DAY, at('14:00'))).toEqual({ reason: 'today’s answers are used; the rest wait for tomorrow' })
+    expect(slotFor('deep', used(1), DAY, at('14:00'))).toEqual({ id: deepTaskId(DAY) })
   })
 
   it('runs the deep tier once a day, whatever the allowance', () => {

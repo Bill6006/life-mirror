@@ -395,10 +395,12 @@ TABLE = [
     dict(id='waits-for-the-brain-run', file='worker/src/ask.ts', tests=['worker/src/ask.test.ts'],
          old='    const busy = await brainBusy(store, day, now, timeoutMinutes(env))\n    if (busy) return { ran: false, reason: busy, day, turn: turn.id }\n',
          new='', pattern='waits only while'),
+    # Since 2026-10-21 the queue says the same before a slot is asked for, so a run cannot show this guard: the slot is
+    # asked directly (restated 2026-11-13, when the whole re-run found the entry missed).
     dict(id='a2-allowance', file=WA,
          old="  if (!roomFor(task, runs)) return { reason: 'today’s answers are used; the rest wait for tomorrow' }\n",
          new='',
-         tests=[WT], pattern='stays within the day'),
+         tests=[WT], pattern='no slot once two answers are used'),
     dict(id='a2-deep-once-a-day', file='src/ask/shared.ts', tests=['worker/src/ask.test.ts'],
          old=" && !runs.some((r) => r.task === 'deep' && counts(r))",
          new=''),
