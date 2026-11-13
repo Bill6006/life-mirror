@@ -27,6 +27,25 @@ import re
 import subprocess
 import sys
 
+import time
+
+
+def put_back(path, data):
+    """Writes a file whole. Windows can refuse the write for a moment while a scanner or a watcher holds the file
+    (OSError 22, seen 2026-11-12, when a failed restore left a break in the tree): tried again for ten seconds, and
+    never given up quietly."""
+    last = None
+    for _ in range(40):
+        try:
+            with io.open(path, 'wb') as f:
+                f.write(data)
+            return
+        except OSError as e:
+            last = e
+            time.sleep(0.25)
+    raise last
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + '/'
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 NPM = 'npm.cmd' if os.name == 'nt' else 'npm'
@@ -230,8 +249,8 @@ TABLE = [
          new="{privateLineWords(p, nameOf(p.alternativeId), true, stood)}",
          tests=[E2E], pattern='named on Evidence only while'),
     dict(id='card-reads-the-switch', file='src/moveCard.tsx',
-         old="{privateInlineWords(p, moveById(p.alternativeId).name, namesShown)}",
-         new="{privateInlineWords(p, moveById(p.alternativeId).name, true)}",
+         old="{privateInlineWords(p, moveById(p.alternativeId).name, namesShown, privates?.stood ?? null)}",
+         new="{privateInlineWords(p, moveById(p.alternativeId).name, true, privates?.stood ?? null)}",
          tests=[E2E], pattern='named on the move card only while'),
     # ---- The week-ahead card's sentence ----------------------------------------------------------------------------
     dict(id='measured-from-twenty', file='src/weeklyScreen.tsx',
@@ -314,7 +333,7 @@ def main(ids):
                 build()
             code2, failed2, passed2, out2 = run(t['tests'], t.get('pattern'))
         finally:
-            io.open(path, 'wb').write(original)
+            put_back(path, original)
             if browser(t['tests']):
                 build()
         assert io.open(path, 'rb').read() == original, 'restore failed: ' + t['file']

@@ -36,6 +36,25 @@ import re
 import subprocess
 import sys
 
+import time
+
+
+def put_back(path, data):
+    """Writes a file whole. Windows can refuse the write for a moment while a scanner or a watcher holds the file
+    (OSError 22, seen 2026-11-12, when a failed restore left a break in the tree): tried again for ten seconds, and
+    never given up quietly."""
+    last = None
+    for _ in range(40):
+        try:
+            with io.open(path, 'wb') as f:
+                f.write(data)
+            return
+        except OSError as e:
+            last = e
+            time.sleep(0.25)
+    raise last
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + '/'
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 NPM = 'npm.cmd' if os.name == 'nt' else 'npm'
@@ -343,7 +362,7 @@ TABLE = [
          old="const offer = !runs && e.tier === 'promising' && testablePassive(e.card.moveId) && at !== null",
          new='const offer = false'),
     dict(id='passive-cards-shown', file='src/evidenceScreen.tsx', tests=['e2e/repair.spec.ts'],
-         old='      <AlongsideCards cards={ev.passives} today={today} />\n',
+         old='      <AlongsideCards cards={ev.passives} today={today} failed={ev.failed === true} />\n',
          new=''),
     dict(id='passive-test-said-running', file=ES, tests=[RS],
          old="{runs && since && (",
@@ -552,7 +571,7 @@ def main(ids):
                 build()
             code2, failed2, passed2, out2 = run(t['tests'])
         finally:
-            io.open(path, 'wb').write(original)
+            put_back(path, original)
             if t['tests'] == [HARNESS]:
                 bundle()
             if browser(t['tests']):

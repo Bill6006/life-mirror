@@ -20,6 +20,25 @@ import re
 import subprocess
 import sys
 
+import time
+
+
+def put_back(path, data):
+    """Writes a file whole. Windows can refuse the write for a moment while a scanner or a watcher holds the file
+    (OSError 22, seen 2026-11-12, when a failed restore left a break in the tree): tried again for ten seconds, and
+    never given up quietly."""
+    last = None
+    for _ in range(40):
+        try:
+            with io.open(path, 'wb') as f:
+                f.write(data)
+            return
+        except OSError as e:
+            last = e
+            time.sleep(0.25)
+    raise last
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + '/'
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 NPM = 'npm.cmd' if os.name == 'nt' else 'npm'
@@ -164,7 +183,7 @@ def main(ids):
                 if os.path.exists(path):
                     os.remove(path)
             else:
-                io.open(path, 'wb').write(original)
+                put_back(path, original)
             icons_back(kept)
             build()
         if creating:

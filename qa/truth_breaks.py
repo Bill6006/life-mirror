@@ -17,6 +17,25 @@ import re
 import subprocess
 import sys
 
+import time
+
+
+def put_back(path, data):
+    """Writes a file whole. Windows can refuse the write for a moment while a scanner or a watcher holds the file
+    (OSError 22, seen 2026-11-12, when a failed restore left a break in the tree): tried again for ten seconds, and
+    never given up quietly."""
+    last = None
+    for _ in range(40):
+        try:
+            with io.open(path, 'wb') as f:
+                f.write(data)
+            return
+        except OSError as e:
+            last = e
+            time.sleep(0.25)
+    raise last
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + '/'
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 T = 'src/associationWords.test.ts'
@@ -28,37 +47,28 @@ TABLE = [
          old="  return a.bands > 0 && a.diff !== null\n",
          new="  return a.withEvent.mean !== null && a.without.mean !== null\n",
          tests=[T], pattern=APART),
-    dict(id='tf-chip', file=W,
-         old="  if (!likeForLikeMatched(a)) return fill(copy.extras.chipUnmatched,",
-         new="  if (a.without.mean === null) return fill(copy.extras.chipUnmatched,",
-         tests=[T], pattern=APART),
-    dict(id='tf-sweet', file=W,
-         old="  if (!likeForLikeMatched(a)) return fill(copy.extras.sweetUnmatched,",
-         new="  if (a.without.mean === null) return fill(copy.extras.sweetUnmatched,",
-         tests=[T], pattern=APART),
     dict(id='tf-passive', file=W,
-         old="  if (!likeForLikeMatched(a) || standing === 'tooFew') return fill(c.passiveUnmatched,",
-         new="  if (a.without.mean === null || standing === 'tooFew') return fill(c.passiveUnmatched,",
+         old="  if (failed || !likeForLikeMatched(a) || standing === 'tooFew') return fill(c.passiveUnmatched,",
+         new="  if (failed || a.without.mean === null || standing === 'tooFew') return fill(c.passiveUnmatched,",
          tests=[T], pattern=APART),
     # Since Phase 3 (2026-11-12) cooling off, a big social day, heavy caffeine, workouts and a private item on Evidence
     # share one guard, the clause that says where a comparison stands: this one entry undoes it for all five, and for
     # your own chips' line, which reads the same clause.
+    # Since the check-in's answers moved the same way (2026-11-12, later the same day) it also stands for the evening chips'
+    # answer, Something sweet's, time in nature's and a private item's line on the move card: tf-chip, tf-sweet and
+    # tf-private-inline are folded into it.
     dict(id='tf-cooling', file=W,
          old="!likeForLikeMatched(a) || a.diff === null) return null",
          new="a.without.mean === null) return null",
          tests=[T], pattern=APART),
     dict(id='tf-evening-workout-both', file=W,
-         old="  if (standing === null || slept === null) return fill(c.eveningWorkoutUnmatched, { n })",
-         new="  if (standing === null) return fill(c.eveningWorkoutUnmatched, { n })",
+         old="  if (standing === null || slept === null) return fill(c.eveningWorkoutUnmatched, { n, why: whyUnsaid(stood, 'assoc.eveningWorkout') })",
+         new="  if (standing === null) return fill(c.eveningWorkoutUnmatched, { n, why: whyUnsaid(stood, 'assoc.eveningWorkout') })",
          tests=[T], pattern=APART),
     dict(id='tf-hard', file=W,
-         old="  if (!measures.some(speaks)) return fill(c.hardWorkoutUnmatched, { n })\n",
+         old="  if (!measures.some(speaks)) return fill(c.hardWorkoutUnmatched, { n, why: stood === null ? c.unsaid.failed : c.unsaid.tooFew })\n",
          new="",
          tests=[T], pattern='says hard sessions'),
-    dict(id='tf-private-inline', file=W,
-         old="  if (!likeForLikeMatched(a)) return fill(c.privateInlineUnmatched[p.block],",
-         new="  if (a.without.mean === null) return fill(c.privateInlineUnmatched[p.block],",
-         tests=[T], pattern=APART),
     dict(id='tf-last-night-matched', file=W,
          old="  if (night.standing === 'tooFew' || night.diff === null) return",
          new="  if (night.diff === null) return",
@@ -112,7 +122,7 @@ def main(ids):
             io.open(path, 'wb').write(text.replace(t['old'], t['new']).encode('utf-8'))
             code2, failed2, passed2, out2 = run(t['tests'], t.get('pattern'))
         finally:
-            io.open(path, 'wb').write(original)
+            put_back(path, original)
         assert io.open(path, 'rb').read() == original, 'restore failed: ' + t['file']
         verdict = 'CAUGHT' if code2 != 0 and failed2 > 0 else f'MISSED (exit {code2}, {failed2} failed, {passed2} passed)'
         results.append((t['id'], f'{verdict}; baseline {passed} green'))

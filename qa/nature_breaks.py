@@ -22,6 +22,25 @@ import re
 import subprocess
 import sys
 
+import time
+
+
+def put_back(path, data):
+    """Writes a file whole. Windows can refuse the write for a moment while a scanner or a watcher holds the file
+    (OSError 22, seen 2026-11-12, when a failed restore left a break in the tree): tried again for ten seconds, and
+    never given up quietly."""
+    last = None
+    for _ in range(40):
+        try:
+            with io.open(path, 'wb') as f:
+                f.write(data)
+            return
+        except OSError as e:
+            last = e
+            time.sleep(0.25)
+    raise last
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + '/'
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 NPM = 'npm.cmd' if os.name == 'nt' else 'npm'
@@ -74,14 +93,10 @@ TABLE = [
          old="    byDay.set(x.day, [...(byDay.get(x.day) ?? []), minutesOf(x.moveId)])\n",
          new="    byDay.set(x.day, [minutesOf(x.moveId)])\n",
          tests=[N], pattern='counts Walk somewhere green done'),
-    dict(id='n-answer-evening-matched', file=NT,
-         old="      : e.without.mean === null || e.diff === null\n",
-         new="      : e.without.mean === null\n",
-         tests=[N], pattern='answers the tap'),
-    dict(id='n-answer-morning-matched', file=NT,
-         old="  return m.withEvent.mean !== null && m.without.mean !== null && m.diff !== null ? `${first}",
-         new="  return m.withEvent.mean !== null && m.without.mean !== null ? `${first}",
-         tests=[N], pattern='answers the tap'),
+    # Since 2026-11-12 the answer's words live with the other lines' (src/associationWords.ts) and say each part only where
+    # its own comparison stands past too few: the shared clause's guard is truth_breaks.py's tf-cooling, and each part on
+    # its own standing is phase3_breaks.py's the-nature-answer-says-each-part-on-its-own-standing. The two entries that
+    # undid the old matched checks here (n-answer-evening-matched, n-answer-morning-matched) are folded into those.
     dict(id='n-facts-evening', file='src/facts.ts',
          old="assocFact('assoc.nature', ['nature'], NATURE_EVENT, family.nature.evening, 'Evenings of', stood), ",
          new="",
@@ -210,7 +225,7 @@ def main(ids):
                 build()
             code2, failed2, passed2, out2 = run(t['tests'], t.get('pattern'))
         finally:
-            io.open(path, 'wb').write(original)
+            put_back(path, original)
             if browser(t['tests']):
                 build()
         assert io.open(path, 'rb').read() == original, 'restore failed: ' + t['file']

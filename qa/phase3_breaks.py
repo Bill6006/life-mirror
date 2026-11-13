@@ -20,6 +20,17 @@ private item alike. Evidence explains the four words; the hard session's and the
 The caffeine comparisons: compared only from fifteen in each of the two groups across six weeks, a lead at most for
 next-night sleep, no reading while too few, members of the sheet's family, and the phone's line only at a lead.
 
+The check-in's answers and the move card's private line: read from the sheet's own family, your own chips among your own
+chips, the afternoon's something sweet from the afternoons' comparison; a reading only past too few, each part of the
+nature answer on its own standing; too few said in the standard's own word, a failed read never called too few; the
+move card's line only while private items are in selection and only at its own check-in.
+
+The Worker's instructions: the day's line and the weekly review are told how a comparison stands and that a lead is
+tentative; Adaptive is Supportive only below a steady pattern, as the shared check allows; Ask's are left as they were.
+
+The comparisons' guard, completed: the evidence's arithmetic, best days, the sixteen pairs and your own chips each run
+under it; the read after a failure asks no chance; a failed evidence says so, leaves no family and no best-days fact.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -30,6 +41,25 @@ import os
 import re
 import subprocess
 import sys
+
+import time
+
+
+def put_back(path, data):
+    """Writes a file whole. Windows can refuse the write for a moment while a scanner or a watcher holds the file
+    (OSError 22, seen 2026-11-12, when a failed restore left a break in the tree): tried again for ten seconds, and
+    never given up quietly."""
+    last = None
+    for _ in range(40):
+        try:
+            with io.open(path, 'wb') as f:
+                f.write(data)
+            return
+        except OSError as e:
+            last = e
+            time.sleep(0.25)
+    raise last
+
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + '/'
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
@@ -68,6 +98,11 @@ FMT = 'src/firmness.test.ts'
 BF = 'src/brainFlow.ts'
 KT2 = 'src/keptChance.test.ts'
 AFT = 'src/assocFault.test.ts'
+FT = 'src/counted/fault.ts'
+CA = 'src/checkinAnswers.ts'
+CAT = 'src/checkinAnswers.test.ts'
+CG = 'src/comparisonGuard.test.ts'
+WST = 'worker/src/standings.test.ts'
 
 TABLE = [
     dict(id='promising-is-only-the-good-direction', file=A,
@@ -187,10 +222,10 @@ TABLE = [
          new="",
          tests=[KT2], pattern='worked out once'),
     dict(id='a-failed-pass-rides-the-sheet', file=BF,
-         old="  if (assocFault) sheet.assocFault = assocFault\n",
+         old="  if (compared) sheet.assocFault = compared\n",
          new="",
          tests=[AFT], pattern='rides it by its name alone'),
-    dict(id='a-failed-pass-keeps-the-name-alone', file=BF,
+    dict(id='a-failed-pass-keeps-the-name-alone', file=FT,
          old="    const name = e instanceof Error && /^[A-Za-z]{1,40}$/.test(e.name) ? e.name : 'Error'",
          new="    const name = e instanceof Error ? e.message : 'Error'",
          tests=[AFT], pattern='rides it by its name alone'),
@@ -251,8 +286,8 @@ TABLE = [
          new="strength: 0.8, vars: { what: said.what,",
          tests=[FG], pattern='says every situation exactly as before'),
     dict(id='the-minimum-is-eight-matched-occasions-a-side', file=NM,
-         old="  const tested = floor && n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null",
-         new="  const tested = floor ? comparedOnce(occasions, named) : null",
+         old="  const tested = !chanceOff && floor && n >= MIN_SIDE && m >= MIN_SIDE ? comparedOnce(occasions, named) : null",
+         new="  const tested = !chanceOff && floor ? comparedOnce(occasions, named) : null",
          tests=[LT], pattern='under eight matched evenings a side'),
     dict(id='the-workers-report-reads-the-comparisons-failures', file='worker/src/engineReport.ts',
          old=", associations: newest?.sheet.assocFault ?? null }",
@@ -267,8 +302,8 @@ TABLE = [
          new="  if (s?.standing === 'tooFew' || !likeForLikeMatched(a) || a.diff === null) return null",
          tests=[AWT], pattern='only with where the comparison stands'),
     dict(id='a-passive-line-says-no-reading-when-too-few', file=AW,
-         old="  if (!likeForLikeMatched(a) || standing === 'tooFew') return fill(c.passiveUnmatched",
-         new="  if (!likeForLikeMatched(a)) return fill(c.passiveUnmatched",
+         old="  if (failed || !likeForLikeMatched(a) || standing === 'tooFew') return fill(c.passiveUnmatched",
+         new="  if (failed || !likeForLikeMatched(a)) return fill(c.passiveUnmatched",
          tests=[AWT], pattern='only with where the comparison stands'),
     dict(id='a-hard-reading-too-few-is-not-said', file=AW,
          old="=> at(m) !== undefined && at(m)?.standing !== 'tooFew'",
@@ -286,6 +321,101 @@ TABLE = [
          old="[ch.id, ownChipAnswer(all, ch.id, today, WORTH_POINTS)]",
          new="[ch.id, ownChipAnswer(all, ch.id, today)]",
          tests=['src/ownChips.test.ts'], pattern='a family of their own'),
+    # ---- The check-in's answers, the move card's private line and the no-reading lines (2026-11-12, the evening) ------
+    dict(id='a-failed-read-is-never-called-too-few', file=AW,
+         old="  return stood === null || !stood.has(id) ? copy.evidence.unsaid.failed : copy.evidence.unsaid.tooFew",
+         new="  return copy.evidence.unsaid.tooFew",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='a-comparison-missing-from-the-family-is-a-failure', file=AW,
+         old="  return stood === null || !stood.has(id) ? copy.evidence.unsaid.failed",
+         new="  return stood === null ? copy.evidence.unsaid.failed",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='too-few-is-said-in-the-standards-own-word', file='src/copy.ts',
+         old="    unsaid: { tooFew: 'too few to compare yet',",
+         new="    unsaid: { tooFew: 'nothing yet to set it against',",
+         tests=[AWT], pattern='never says it when no band was shared'),
+    dict(id='a-chip-answer-with-too-few-says-no-reading', file='src/copy.ts',
+         old="    chipUnmatched: '{times} before: {why}.',\n",
+         new="    chipUnmatched: '{times} before. The morning after read 72 (3); {why}.',\n",
+         tests=[CAT], pattern='tapped three times'),
+    dict(id='the-nature-answer-says-each-part-on-its-own-standing', file=AW,
+         old="  return morning === null ? first : ",
+         new="  return m.diff === null ? first : ",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='cooling-off-says-one-block-as-one', file=AW,
+         old="(n === 1 ? one : fill(many, { n: String(n) }))",
+         new="fill(many, { n: String(n) })",
+         tests=[AWT], pattern='only with where the comparison stands'),
+    dict(id='the-check-in-says-a-failed-read', file=CA,
+         old="  if (!read.family) return copy.extras.chipFailed\n  return key === 'nature'",
+         new="  if (!read.family) return null\n  return key === 'nature'",
+         tests=[CG], pattern='reads the evidence again with no chance asked'),
+    dict(id='your-own-chip-is-answered-among-your-own-chips', file=CA,
+         old="  return a ? chipAnswerWords(a, read.own.stood) : null",
+         new="  return a ? chipAnswerWords(a, read.stood) : null",
+         tests=[CAT], pattern='among your own chips'),
+    dict(id='the-afternoon-sweet-reads-the-afternoons-comparison', file=CA,
+         old="sweetAnswerWords(read.family.sweetAfternoon, read.family.stood)",
+         new="sweetAnswerWords(read.family.sweetEvening, read.family.stood)",
+         tests=[CAT], pattern='something sweet from the sheet'),
+    dict(id='the-move-card-reads-privates-only-in-selection', file=BF,
+         old="  if (!settings.privateInSelection) return { privates: [], stood: null }\n",
+         new="",
+         tests=[CAT], pattern='only while private items are in selection'),
+    dict(id='the-move-card-shows-only-its-own-check-in', file=BF,
+         old="privates: family.privates.filter((p) => p.block === block), stood: family.stood }",
+         new="privates: family.privates, stood: family.stood }",
+         tests=[CAT], pattern='only at its own check-in'),
+    # ---- The comparisons' guard, completed (2026-11-12) --------------------------------------------------------------
+    dict(id='the-evidence-runs-under-the-guard', file=E,
+         old="  return guardComparisons(today, read) ?? { ...withoutChance(read), failed: true }\n",
+         new="  return read()\n",
+         tests=[CG], pattern='reads the evidence again with no chance asked'),
+    dict(id='a-failed-evidence-says-it-failed', file=E,
+         old="?? { ...withoutChance(read), failed: true }",
+         new="?? withoutChance(read)",
+         tests=[CG], pattern='reads the evidence again with no chance asked'),
+    dict(id='the-read-after-a-failure-asks-no-chance', file=NM,
+         old="  chanceOff = true\n  try {",
+         new="  chanceOff = false\n  try {",
+         tests=[CG], pattern='reads the evidence again with no chance asked'),
+    dict(id='a-failed-evidence-leaves-no-family', file=BF,
+         old="  return ev.failed ? null : guardComparisons(day, () => sheetAssociations({ ...r, evidence: ev }, day))",
+         new="  return guardComparisons(day, () => sheetAssociations({ ...r, evidence: ev }, day))",
+         tests=[CG], pattern='own arithmetic threw'),
+    dict(id='best-days-runs-under-the-guard', file=WK,
+         old="  const read = guardComparisons(today, () => ({ all: bestConditions(checkins, offers, outcomes, contexts, today, outside, own) }))\n",
+         new="  const read = { all: bestConditions(checkins, offers, outcomes, contexts, today, outside, own) } as { all: ReturnType<typeof bestConditions> } | null\n",
+         tests=[CG], pattern='leaves best days saying it failed'),
+    dict(id='a-failed-best-days-writes-no-fact', file=WF,
+         old="  if (b.failed) return []\n",
+         new="",
+         tests=[CG], pattern='leaves best days saying it failed'),
+    dict(id='the-pairs-run-under-the-guard', file=B,
+         old="  return guardComparisons(today, () => comesBefore(checkins, today))\n",
+         new="  return comesBefore(checkins, today)\n",
+         tests=[CG], pattern='sixteen pairs saying they failed'),
+    dict(id='your-own-chips-run-under-the-guard', file=BF,
+         old="  const own = ev.failed ? null : guardComparisons(day, () => ownChipStandings(checkins, ownChipsOf(settings), day))\n",
+         new="  const own = ev.failed ? null : ownChipStandings(checkins, ownChipsOf(settings), day)\n",
+         tests=[CG], pattern='only your own chips fail'),
+    # ---- The Worker's instructions for the standings (2026-11-12): the line and the review; Ask's left as they were -------
+    dict(id='the-writers-are-told-how-a-comparison-stands', file='worker/src/prompt.ts',
+         old="- A comparison in the record says where it stands, in its fact's own words: too few to compare yet, no clear pattern yet, a lead that is not yet a pattern, or a steady pattern. Say it no stronger than that: only a steady pattern is a pattern, a lead is tentative, and too few or no clear pattern is never a finding. It says what went with what, never why.\n",
+         new="",
+         tests=[WST], pattern='how a comparison stands'),
+    dict(id='a-lead-is-told-as-tentative', file='worker/src/prompt.ts',
+         old="only a steady pattern is a pattern, a lead is tentative, and too few",
+         new="a steady pattern and a lead are patterns, and too few",
+         tests=[WST], pattern='how a comparison stands'),
+    dict(id='adaptive-is-supportive-only-below-a-steady-pattern', file='worker/src/prompt.ts',
+         old="where it rests only on an association that is not a steady pattern, a forecast,",
+         new="where it rests only on an association, a forecast,",
+         tests=[WST], pattern='as the shared check allows'),
+    dict(id='asks-instructions-are-left-as-they-were', file='worker/src/prompt.ts',
+         old="where it rests only on an early sign, an association or a small count.",
+         new="where it rests only on an early sign, an association that is not a steady pattern or a small count.",
+         tests=[WST], pattern='leaves Ask'),
 ]
 
 
@@ -326,7 +456,7 @@ def main(ids):
             io.open(path, 'wb').write(text.replace(t['old'], t['new']).encode('utf-8'))
             code2, failed2, passed2, out2 = run(t['tests'], t.get('pattern'))
         finally:
-            io.open(path, 'wb').write(original)
+            put_back(path, original)
         assert io.open(path, 'rb').read() == original, 'restore failed: ' + t['file']
         verdict = 'CAUGHT' if code2 != 0 and failed2 > 0 else f'MISSED (exit {code2}, {failed2} failed, {passed2} passed)'
         results.append((t['id'], f'{verdict}; baseline {passed} green'))
