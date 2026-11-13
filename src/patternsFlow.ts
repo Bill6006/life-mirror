@@ -55,6 +55,11 @@ export function refreshPatterns(day: string, now: Date = new Date()): Promise<bo
   return next
 }
 
+/** Every build asked for so far, finished: for a caller that must read the table after it, and for tests. */
+export function patternsSettled(): Promise<unknown> {
+  return last
+}
+
 /** The day's sheet, and after it the pattern table, which no screen waits for. */
 export async function writeDayRows(day: string, now: Date = new Date()): Promise<boolean> {
   const wrote = await writeFactsRow(day, now)
@@ -63,6 +68,6 @@ export async function writeDayRows(day: string, now: Date = new Date()): Promise
 }
 
 /** A fresh table for a question just asked, waited for a short while at most: the question never waits on it longer. */
-export async function patternsForAsk(day: string, now: Date = new Date(), waitMs: number = PATTERNS_ASK_WAIT_MS): Promise<void> {
-  await Promise.race([refreshPatterns(day, now), new Promise<void>((resolve) => setTimeout(resolve, waitMs))])
+export async function patternsForAsk(day: string, now: Date = new Date(), waitMs: number = PATTERNS_ASK_WAIT_MS, build: (day: string, now: Date) => Promise<unknown> = refreshPatterns): Promise<void> {
+  await Promise.race([build(day, now), new Promise<void>((resolve) => setTimeout(resolve, waitMs))])
 }

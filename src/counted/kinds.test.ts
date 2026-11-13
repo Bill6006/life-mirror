@@ -143,6 +143,11 @@ describe('the kinds', () => {
     expect(kindsOf(base()).find((k) => k.id === 'chip.dinner')?.cutoff).toBeUndefined()
   })
 
+  it('file a faith practice’s kind under faith, and every other move under the day’s record', () => {
+    const kinds = kindsOf(input({ offers: [offer(1, A, 'five-minutes-prayer'), offer(2, A, 'one-verse'), offer(3, A, 'walk-ten')], outcomes: [outcome(1, A, 'five-minutes-prayer', 'done'), outcome(2, A, 'one-verse', 'no'), outcome(3, A, 'walk-ten', 'done')] }))
+    expect(Object.fromEntries(kinds.filter((k) => k.id.startsWith('move.')).map((k) => [k.id, k.category]))).toEqual({ 'move.five-minutes-prayer': 'faith', 'move.one-verse': 'faith', 'move.walk-ten': 'dayRecord' })
+  })
+
   it('are one list: no id twice, every private item marked private, every category one the retrieval layer names', () => {
     const kinds = kindsOf(base())
     const ids = kinds.map((k) => k.id)

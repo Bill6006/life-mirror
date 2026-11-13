@@ -8,7 +8,10 @@ import { forgetKeptPatterns } from './counted/table'
 import { at, checkin, context, day, offer, outcome } from './counted/testing'
 import { db, type CheckIn, type Offer, type Outcome } from './db'
 import { patternsFromExport } from './patternsFlow.testing'
-import { countedRecord, patternsForAsk, refreshPatterns, writeDayRows, writePatternsRow } from './patternsFlow'
+import { askTyped } from './ask/flow'
+import { buildExport } from './export'
+import { DEFAULT_SETTINGS } from './settings'
+import { countedRecord, PATTERNS_ASK_WAIT_MS, patternsForAsk, patternsSettled, refreshPatterns, writeDayRows, writePatternsRow } from './patternsFlow'
 
 // The pattern table on the phone (2026-11-13), on stand-in records: built from the whole record, kept as one record,
 // rewritten only when its content changes, never on the day's sheet, and never in the way of a screen.
@@ -116,10 +119,10 @@ describe('the pattern table on the phone', () => {
 
   it('is built after the day’s sheet with no screen waiting, one build after another', async () => {
     await seed()
-    // The sheet's own write answers before the table is there; the table follows on its own.
+    // The sheet's own write answers before the table is there; the table follows on its own, asked for by nothing else.
     await writeDayRows(TODAY, NOW)
     expect(await db.facts.get(TODAY)).toBeDefined()
-    await refreshPatterns(TODAY, NOW)
+    await patternsSettled()
     expect(await db.patterns.count()).toBe(1)
     // Two asked for at once are built one after the other, and the second finds nothing to write.
     const [first, second] = await Promise.all([refreshPatterns(day(A + SPAN + 1), NOW), refreshPatterns(day(A + SPAN + 1), NOW)])
@@ -128,11 +131,19 @@ describe('the pattern table on the phone', () => {
 
   it('lets a question go on after a short wait when the table is not ready, and still finishes the table', async () => {
     await seed()
+    // A build made to take a second: the question goes on after its short wait, and the build still finishes.
+    let finished = false
+    const slow = (): Promise<unknown> => new Promise((resolve) => setTimeout(() => resolve((finished = true)), 1000))
     const started = performance.now()
-    await patternsForAsk(TODAY, NOW, 1)
-    expect(performance.now() - started).toBeLessThan(2000)
-    await refreshPatterns(TODAY, NOW)
+    await patternsForAsk(TODAY, NOW, 20, slow)
+    expect(performance.now() - started).toBeLessThan(600)
+    expect(finished).toBe(false)
+    expect(PATTERNS_ASK_WAIT_MS).toBe(4000)
+    // And a question asked on the phone builds the table itself: a typed question, then the table is there.
+    await askTyped('When am I most likely to have a late dinner?', null, NOW)
+    await patternsSettled()
     expect(await db.patterns.count()).toBe(1)
+    expect(readPatterns(await db.patterns.get(PATTERNS_ID))?.builtFor).toBe(TODAY)
   })
 
   it('is in the export as counts and standings, a private item’s kind only when private items are included', async () => {
@@ -151,6 +162,13 @@ describe('the pattern table on the phone', () => {
     expect(withPrivate.level.length).toBeGreaterThan(0)
     // A stored record that is not the table's shape is left out whole.
     expect(patternsFromExport({ id: 'table', format: 2 }, true, true)).toEqual({ kinds: [], level: [] })
+    // The whole export holds the table with a note that says what it is; with no table, neither.
+    const whole = (patterns: unknown) => JSON.parse(buildExport([], [], [], DEFAULT_SETTINGS as never, { includePrivate: false, includePartner: false }, undefined, { offers: [], outcomes: [], cards: [], declarations: [], patterns: patterns as never }).json) as Record<string, unknown>
+    const has = (o: unknown, key: string): boolean => JSON.stringify(o).includes(`"${key}":`)
+    expect(has(whole(stored), 'patternTable')).toBe(true)
+    expect(JSON.stringify(whole(stored))).toContain('patternTable is the table Life Mirror builds from the whole record')
+    expect(JSON.stringify(whole(stored))).not.toContain('a private thing')
+    expect(has(whole(null), 'patternTable')).toBe(false)
   })
 })
 

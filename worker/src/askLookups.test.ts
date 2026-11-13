@@ -208,6 +208,8 @@ describe('an answer checked against the sheet and the lookups together', () => {
     const { store } = await started()
     const notes = await read(store, at('09:03'), { category: 'notes', from: '2026-11-01' })
     expect(JSON.stringify(notes.body)).toContain('walked 17 blocks home')
+    // A category's reply says whether its read was whole, as a lookup's does.
+    expect(notes.body).toMatchObject({ complete: true, notRead: 0, linesLeftOut: 0 })
     const r = await post(store, at('09:05'), { text: 'You walked 17 blocks home one evening, by your own note.', factIds: ['record'], cardIds: [], test: null, note: false })
     expect(r.status).toBe(422)
     expect(reason(r)).toContain('the number 17 is not in the cited facts')

@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import { BRAIN_SWITCHES, readBrainPrefs } from '../../src/brainShared'
+import { copy } from '../../src/copy'
 import catalogueJson from '../../src/catalogue.json'
 import { kindsOf, type CountedInput } from '../../src/counted/kinds'
 import { storedPatterns } from '../../src/counted/patterns'
@@ -74,6 +75,11 @@ describe('a lookup query', () => {
     expect(parse('lookup=forecast&date=2026-11-13')).toEqual({ ok: true, query: { lookup: 'forecast', date: '2026-11-13' } })
     expect(parse('lookup=moves&from=2026-11-01&to=2026-11-10&limit=20')).toEqual({ ok: true, query: { lookup: 'moves', from: '2026-11-01', to: '2026-11-10', limit: 20 } })
     expect(parse('lookup=lines')).toEqual({ ok: true, query: { lookup: 'lines', from: '2026-10-13', to: DAY, limit: 50 } })
+  })
+
+  it('has a name on the phone for each lookup’s read, where what Claude read is listed', () => {
+    const labels = copy.brainScreen.readLabels as Record<string, string>
+    expect(LOOKUPS.map((l) => labels[`lookup.${l}`])).toEqual(['Lookup: what is counted', 'Lookup: when a thing was recorded', 'Lookup: one day', 'Lookup: moves', 'Lookup: workouts', 'Lookup: Path steps done', 'Lookup: past lines', 'Lookup: forecasts'])
   })
 
   it('refuses an unknown lookup, an unknown parameter, another lookup’s parameter, and a category beside a lookup', () => {
