@@ -120,6 +120,29 @@ describe('the kinds', () => {
     expect(after['teeth.none']).toEqual([2, 1])
   })
 
+  it('count the level as two kinds by the Weekly View’s bands: under 40 is low, 80 or more is high (2026-11-13)', () => {
+    // Six readings, each worth 0, 25, 50, 75 or 100: three at 25 and three at 50 read 38 (37.5 rounded); two at 25 and four at 50 read 42.
+    const just = (n: number, level: number, mood: number, more: object = {}) => checkin(n, 'evening', { level, answers: { mood: mood as never, ...more } })
+    const low = input({ checkins: [checkin(A, 'evening', { level: 2, answers: { stress: 3, overwhelm: 3, irritation: 3 } }), checkin(A + 1, 'evening', { level: 3, answers: { mood: 2, energy: 2 } })] })
+    expect(daysOf(low.checkins).occasions.map((o) => o.reading)).toEqual([38, 42])
+    expect(counts(low)['level.low']).toEqual([2, 1])
+    expect(counts(low)['level.high']).toEqual([2, 0])
+    // Five at 75 and one at 100 read 79; four at 75 and two at 100 read 83.
+    const high = input({ checkins: [just(A, 4, 5), just(A + 1, 4, 5, { energy: 5 })] })
+    expect(daysOf(high.checkins).occasions.map((o) => o.reading)).toEqual([79, 83])
+    expect(counts(high)['level.high']).toEqual([2, 1])
+    expect(counts(high)['level.low']).toEqual([2, 0])
+    const kinds = kindsOf(high)
+    expect(kinds.find((k) => k.id === 'level.low')).toMatchObject({ unit: 'checkin', category: 'dayRecord', private: false, cutoff: 'under 40 out of 100' })
+    expect(kinds.find((k) => k.id === 'level.high')).toMatchObject({ unit: 'checkin', category: 'dayRecord', private: false, cutoff: '80 or more out of 100' })
+  })
+
+  it('say each kind’s cut-off in words, where it has one', () => {
+    const cutoffs = Object.fromEntries(kindsOf(base()).filter((k) => k.cutoff).map((k) => [k.id, k.cutoff]))
+    expect(cutoffs).toMatchObject({ 'sleep.short': 'under six hours', 'sleep.long': 'seven hours or more', 'sleep.sound': 'its top two phrases', 'evening.stress.high': 'its top two phrases', 'evening.stress.low': 'its lowest two phrases', 'caffeine.200': 'at least 200 mg' })
+    expect(kindsOf(base()).find((k) => k.id === 'chip.dinner')?.cutoff).toBeUndefined()
+  })
+
   it('are one list: no id twice, every private item marked private, every category one the retrieval layer names', () => {
     const kinds = kindsOf(base())
     const ids = kinds.map((k) => k.id)

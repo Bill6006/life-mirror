@@ -137,3 +137,67 @@ export function withWords(w: WithWords): string {
       return `${STANDING_WORDS.pattern}: ${read}.`
   }
 }
+
+// ─── The pattern table's own words (2026-11-13) ─────────────────────────────────────────────────
+
+const WEEKDAYS = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays']
+const CHECKINS: Readonly<Record<string, string>> = { morning: 'in the morning', afternoon: 'in the afternoon', evening: 'in the evening' }
+
+/** A split as it is named in a list of what was looked at. */
+export const SPLIT_WORDS: Readonly<Record<string, string>> = { weekday: 'the weekday', checkin: 'the check-in of the day', shortNight: 'a short night before', lowEvening: 'a low evening the day before' }
+
+/** One cell of the table as it reads after the thing, and the rest the same way; null for a cell the table does not name. */
+export function cellWords(split: string, cell: string): { where: string; elsewhere: string } | null {
+  if (split === 'weekday') return WEEKDAYS[Number(cell)] && /^[0-6]$/.test(cell) ? { where: `on ${WEEKDAYS[Number(cell)]}`, elsewhere: 'on other days' } : null
+  if (split === 'checkin') return CHECKINS[cell] ? { where: CHECKINS[cell], elsewhere: 'at the other check-ins' } : null
+  if (split === 'shortNight') return cell === 'yes' ? { where: 'after a short night (under six hours)', elsewhere: 'after other nights' } : null
+  if (split === 'lowEvening') return cell === 'yes' ? { where: 'after an evening that read under 40 out of 100', elsewhere: 'after other evenings' } : null
+  return null
+}
+
+export interface KindWords {
+  label: string
+  unit: 'day' | 'checkin'
+  known: number
+  occurrences: number
+  family: number
+  /** The splits looked at, as `SPLIT_WORDS` names them. */
+  splits: readonly string[]
+  cutoff?: string
+  since?: string
+  /** The last day counted. */
+  upTo: string
+  /** The strongest standing among its cells; null when nothing was tested. */
+  best: Standing | null
+  /** The minimums a comparison needs, said when there were too few. */
+  minSide: number
+  minOccurrences: number
+}
+
+/** A kind as a whole: how often it was recorded where the record can speak for it, its cut-off, and what was looked at. */
+export function kindWords(w: KindWords): string {
+  const head = `${w.label.charAt(0).toUpperCase()}${w.label.slice(1)}: recorded at ${w.occurrences} of ${w.known} ${w.unit === 'day' ? 'days' : 'check-ins'} the record can speak for, up to ${w.upTo}${w.since ? `, counted from ${w.since}` : ''}.`
+  const cutoff = w.cutoff ? ` Cut-off: ${w.cutoff}, the app's own default; none of yours is set.` : ''
+  if (w.family === 0 || w.best === null) return `${head}${cutoff} ${STANDING_WORDS.tooFew}: a comparison needs ${w.minSide} occasions in a cell and ${w.minSide} outside it, and ${w.minOccurrences} occurrences in all.`
+  const by = w.splits.length ? `, by ${w.splits.join(', ')}` : ''
+  const stands = w.best === 'pattern' ? 'At least one stands as a steady pattern.' : w.best === 'lead' ? 'None stands as a steady pattern; at least one is a lead.' : `${STANDING_WORDS.noPattern} in any of them.`
+  return `${head}${cutoff} ${looked(w.family).charAt(0).toUpperCase()}${looked(w.family).slice(1)}${by}. ${stands}`
+}
+
+export interface LevelWords {
+  where: string
+  elsewhere: string
+  n: number
+  mean: number
+  /** Check-ins in each band, in the order of `bandNames`. */
+  bands: readonly number[]
+  bandNames: readonly string[]
+  restN: number
+  restMean: number
+}
+
+/** The reading out of 100 in one cell, as an average with its spread across the bands: it describes, and compares nothing. */
+export function levelWords(w: LevelWords): string {
+  const spread = w.bands.map((n, i) => `${n} ${w.bandNames[i]}`).join(', ')
+  return `Check-ins ${w.where} read ${Math.round(w.mean)} out of 100 on average (${w.n} check-ins: ${spread}); ${w.elsewhere} they read ${Math.round(w.restMean)} (${w.restN} check-ins). An average describes and is no comparison: whether a difference stands is said by the two kinds "a check-in that read under 40" and "a check-in that read 80 or more".`
+}

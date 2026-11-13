@@ -12,6 +12,8 @@ import { bandOf, readingOf, type Band } from '../score'
 export const DAY_START_HOUR = 4
 /** An evening that read under this, out of 100, was a low evening. */
 export const LOW_READING = 40
+/** A check-in that read this or more, out of 100, read in the top band: Firing. */
+export const HIGH_READING = 80
 /** Sleep hours answered at this anchor or lower was a short night: under five hours, or five to six. */
 export const SHORT_NIGHT = 2
 

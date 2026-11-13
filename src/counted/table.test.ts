@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PrivateItem } from '../db'
-import { type PatternEntry, patternTable } from './table'
+import { forgetKeptPatterns, keptPatterns, type PatternEntry, patternTable, patternTableKept } from './table'
 import { at, checkin, day, input } from './testing'
 
 // The pattern table, on stand-in records (the counted foundation, 2026-11-12; in shadow).
@@ -29,6 +29,62 @@ describe('the pattern table', () => {
     const table = patternTable(input({ checkins: evenings((n) => (saturday(n) ? { dinner: true } : {})) }), TODAY)
     expect(table.kinds.map((k) => k.kind)).toEqual(['chip.dinner'])
     expect(table.builtFor).toBe(TODAY)
+    // A kind the record can speak for with too few to test keeps its counts alone, and the list keeps its own order.
+    expect(table.untested.find((k) => k.kind === 'chip.napped')).toEqual({ kind: 'chip.napped', unit: 'day', label: 'a nap', category: 'dayRecord', private: false, known: 56, occurrences: 0 })
+    expect(table.order.indexOf('chip.dinner')).toBeLessThan(table.order.indexOf('chip.napped'))
+    expect(table.order).toHaveLength(table.kinds.length + table.untested.length)
+  })
+
+  it('carries each kind as the app names it, with its switch and its cut-off', () => {
+    const mornings = Array.from({ length: SPAN }, (_, i) => checkin(A + i, 'morning', { answers: { sleepHours: saturday(A + i) ? 2 : 3 } }))
+    const short = entry(patternTable(input({ checkins: mornings }), TODAY).kinds, 'sleep.short')
+    expect(short).toMatchObject({ label: 'a short night (under six hours)', category: 'dayRecord', private: false, cutoff: 'under six hours' })
+  })
+
+  it('counts the level as two kinds, a check-in that read under 40 and one that read 80 or more', () => {
+    // Saturdays read 0 out of 100, every other evening 50: low on 8 of 8 Saturdays and on none of the 48 others.
+    const low = patternTable(input({ checkins: Array.from({ length: SPAN }, (_, i) => checkin(A + i, 'evening', { level: saturday(A + i) ? 1 : 3 })) }), TODAY)
+    expect(entry(low.kinds, 'level.low')).toMatchObject({ unit: 'checkin', known: 56, occurrences: 8, cutoff: 'under 40 out of 100' })
+    expect(entry(low.kinds, 'level.low').cells.find((c) => c.split === 'weekday' && c.cell === '6')).toMatchObject({ k: 8, n: 8, restK: 0, m: 48, standing: 'pattern', direction: 'higher' })
+    expect(low.untested.find((k) => k.kind === 'level.high')).toMatchObject({ known: 56, occurrences: 0 })
+    // Saturdays read 100, the others 75: high on the Saturdays alone, since 75 is under 80.
+    const high = patternTable(input({ checkins: Array.from({ length: SPAN }, (_, i) => checkin(A + i, 'evening', { level: saturday(A + i) ? 5 : 4 })) }), TODAY)
+    expect(entry(high.kinds, 'level.high')).toMatchObject({ occurrences: 8, cutoff: '80 or more out of 100' })
+    expect(high.untested.find((k) => k.kind === 'level.low')).toMatchObject({ occurrences: 0 })
+  })
+
+  it('gives the level in each cell as an average and as counts in the five bands, compared with nothing', () => {
+    const table = patternTable(input({ checkins: Array.from({ length: SPAN }, (_, i) => checkin(A + i, 'evening', { level: saturday(A + i) ? 1 : 3 })) }), TODAY)
+    // Firing, Solid, Getting by, Worn down, Empty: the eight Saturdays read 0, in Empty; the 48 others read 50, in Getting by.
+    expect(table.level.find((l) => l.split === 'weekday' && l.cell === '6')).toEqual({ split: 'weekday', cell: '6', n: 8, mean: 0, bands: [0, 0, 0, 0, 8], restN: 48, restMean: 50 })
+    expect(table.level.find((l) => l.split === 'weekday' && l.cell === '0')).toEqual({ split: 'weekday', cell: '0', n: 8, mean: 50, bands: [0, 0, 8, 0, 0], restN: 48, restMean: 41.7 })
+    expect(table.level.find((l) => l.split === 'checkin' && l.cell === 'evening')).toMatchObject({ n: 56, restN: 0 })
+    // No morning was answered, so last night is unknown at every check-in and that split holds no cell.
+    expect(table.level.some((l) => l.split === 'shortNight')).toBe(false)
+    expect(table.level.every((l) => !('p' in l) && !('standing' in l))).toBe(true)
+  })
+
+  it('built a kind at a time gives the same table, and works a kind out again only when its occasions changed', async () => {
+    forgetKeptPatterns()
+    const record = input({ checkins: evenings((n) => (saturday(n) ? { dinner: true } : {})) })
+    let pauses = 0
+    const pause = async () => void pauses++
+    const first = await patternTableKept(record, TODAY, pause)
+    expect(first).toEqual(patternTable(record, TODAY))
+    expect(pauses).toBeGreaterThan(10)
+    expect(keptPatterns()).toBe(1)
+    // The same record again: the kept comparisons are handed back, the very same cells.
+    const again = await patternTableKept(record, TODAY, pause)
+    expect(entry(again.kinds, 'chip.dinner').cells).toBe(entry(first.kinds, 'chip.dinner').cells)
+    // A check-in that showed nothing of the kind leaves it alone; one more dinner works it out again.
+    const beside = await patternTableKept(input({ checkins: [...record.checkins, checkin(A, 'morning')] }), TODAY, pause)
+    expect(entry(beside.kinds, 'chip.dinner').cells).toBe(entry(first.kinds, 'chip.dinner').cells)
+    const moved = input({ checkins: record.checkins.map((c) => (c.day === day(A) ? checkin(A, 'evening', { extras: { dinner: true } }) : c)) })
+    const changed = await patternTableKept(moved, TODAY, pause)
+    expect(entry(changed.kinds, 'chip.dinner').cells).not.toBe(entry(first.kinds, 'chip.dinner').cells)
+    expect(entry(changed.kinds, 'chip.dinner')).toMatchObject({ occurrences: 9 })
+    expect(changed).toEqual(patternTable(moved, TODAY))
+    forgetKeptPatterns()
   })
 
   it('is the same for the same record', () => {

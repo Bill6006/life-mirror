@@ -11,7 +11,8 @@ import { necessitiesMissed, teethOf } from '../necessities'
 import { ownShownAt } from '../ownChips'
 import { readingById } from '../readings'
 import type { OwnChip } from '../settings'
-import { type Days, type Occasion, weekdayOf } from './occasions'
+import { LEFT_OUT } from './leftOut'
+import { type Days, HIGH_READING, LOW_READING, type Occasion, weekdayOf } from './occasions'
 
 // The one list of what the record can count (the counted foundation, 2026-11-12; in shadow: nothing reads it yet).
 // A kind is a thing that did or did not happen at a check-in or on a day: a chip, a private item, a short night, a
@@ -30,6 +31,11 @@ interface KindBase {
   private: boolean
   /** The first day the record could hold it, for the words that say so. Where a kind is known is `known` alone. */
   since?: string
+  /**
+   * Its cut-off in words, where it has one (2026-11-13). No cut-off is the owner's to set anywhere in the app today, so
+   * each is the app's fixed default, and what is said of the kind says so.
+   */
+  cutoff?: string
 }
 export interface CheckinKind extends KindBase {
   unit: 'checkin'
@@ -140,18 +146,19 @@ const PATH_KINDS: readonly { path: string; label: string; category: KindCategory
 /** Every kind this record can count, in a fixed order. */
 export function kindsOf(input: CountedInput): Kind[] {
   const kinds: Kind[] = []
-  const sleep = (id: string, label: string, reading: 'sleepHours' | 'sleepQuality', has: (position: number) => boolean): DayKind => ({
+  const sleep = (id: string, label: string, cutoff: string, reading: 'sleepHours' | 'sleepQuality', has: (position: number) => boolean): DayKind => ({
     id,
     label,
     unit: 'day',
     category: 'dayRecord',
     private: false,
+    cutoff,
     known: (d) => d.checkin('morning')?.answers[reading] !== undefined,
     happened: (d) => has(d.checkin('morning')?.answers[reading] as number),
   })
-  kinds.push(sleep('sleep.short', 'a short night (under six hours)', 'sleepHours', (p) => p <= 2))
-  kinds.push(sleep('sleep.long', 'slept seven hours or more', 'sleepHours', (p) => p >= 4))
-  kinds.push(sleep('sleep.sound', 'sleep read sound or deep', 'sleepQuality', (p) => p >= 4))
+  kinds.push(sleep('sleep.short', 'a short night (under six hours)', 'under six hours', 'sleepHours', (p) => p <= 2))
+  kinds.push(sleep('sleep.long', 'slept seven hours or more', 'seven hours or more', 'sleepHours', (p) => p >= 4))
+  kinds.push(sleep('sleep.sound', 'sleep read sound or deep', 'its top two phrases', 'sleepQuality', (p) => p >= 4))
 
   for (const reading of EVENING_READINGS) {
     for (const level of ['high', 'low'] as const) {
@@ -161,6 +168,7 @@ export function kindsOf(input: CountedInput): Kind[] {
         unit: 'day',
         category: 'dayRecord',
         private: false,
+        cutoff: level === 'high' ? 'its top two phrases' : 'its lowest two phrases',
         known: (d) => d.checkin('evening')?.answers[reading] !== undefined,
         happened: (d) => (level === 'high' ? (d.checkin('evening')?.answers[reading] as number) >= 4 : (d.checkin('evening')?.answers[reading] as number) <= 2),
       })
@@ -194,6 +202,7 @@ export function kindsOf(input: CountedInput): Kind[] {
     unit: 'day',
     category: 'dayRecord',
     private: false,
+    cutoff: 'at least 200 mg',
     known: (d) => d.all.some((c) => c.extras?.caffeineIntake || c.extras?.caffeineShown),
     happened: (d) => dayCaffeine(d.all, d.day).floor >= 200,
   })
@@ -214,6 +223,10 @@ export function kindsOf(input: CountedInput): Kind[] {
     kinds.push({ id: `path.${path}`, label, unit: 'day', category, private: false, known: (d) => d.paths.has(path), happened: (d) => d.paths.get(path) === true })
   }
 
+  // The level itself, as two things that did or did not happen (2026-11-13): a question about when the level runs low or
+  // high goes through the same yes-or-no comparison as every other kind. The cut-offs are the Weekly View's bands.
+  kinds.push({ id: 'level.low', label: 'a check-in that read under 40 out of 100 (Worn down or Empty)', unit: 'checkin', category: 'dayRecord', private: false, cutoff: 'under 40 out of 100', known: () => true, happened: (o) => o.reading < LOW_READING })
+  kinds.push({ id: 'level.high', label: 'a check-in that read 80 or more out of 100 (Firing)', unit: 'checkin', category: 'dayRecord', private: false, cutoff: '80 or more out of 100', known: () => true, happened: (o) => o.reading >= HIGH_READING })
   kinds.push({ id: 'sweet', label: 'something sweet', unit: 'checkin', category: 'dayRecord', private: false, known: (o) => chipShownAt('sweet', o.checkin), happened: (o) => Boolean(o.checkin.extras?.sweet) })
   kinds.push({ id: 'caffeine.any', label: 'caffeine reported', unit: 'checkin', category: 'dayRecord', private: false, known: (o) => Boolean(o.checkin.extras?.caffeineIntake || o.checkin.extras?.caffeineShown), happened: (o) => Boolean(o.checkin.extras?.caffeineIntake) })
   for (const item of input.items) {
@@ -225,18 +238,4 @@ export function kindsOf(input: CountedInput): Kind[] {
   return kinds
 }
 
-/**
- * What the record holds that no kind counts, each with why: with the kinds above, the written list of every kind of
- * record, marked covered or deliberately left out.
- */
-export const LEFT_OUT: readonly { id: string; label: string; reason: string }[] = [
-  { id: 'journal', label: 'the nightly journal', reason: 'never evidence: a statement from it carries no number, level or cause' },
-  { id: 'voice', label: 'voice recordings', reason: 'they stay on the phone' },
-  { id: 'ask', label: 'past Ask conversations', reason: 'no lookup yet' },
-  { id: 'path.changes', label: 'the log of changes to a Path', reason: 'no lookup yet' },
-  { id: 'partner.monthly', label: 'the Partner Path monthly check', reason: 'no lookup yet' },
-  { id: 'path.other', label: 'steps of the Speaking Path and of generated Paths', reason: 'their lookup opens only what was done, and is decided with it' },
-  { id: 'chip.outside', label: 'the old "outside a while today" chip', reason: 'no longer asked; kept as it was recorded and never read as time in nature' },
-  { id: 'caffeine.old', label: 'the old caffeine yes-or-no chips', reason: 'amount unknown; replaced by the reported bands' },
-  { id: 'notes', label: 'words in notes', reason: 'counted by their own lookup, as words and never as events' },
-]
+export { LEFT_OUT }
