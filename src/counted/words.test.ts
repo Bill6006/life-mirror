@@ -61,7 +61,7 @@ describe('the words for a standing', () => {
 
   it('are explained on Evidence in the same four words, in their order, with the day the rule changed', () => {
     expect(copy.evidence.standardWords.map((line) => line.split(':')[0])).toEqual([STANDING_WORDS.tooFew, STANDING_WORDS.noPattern, STANDING_WORDS.lead, STANDING_WORDS.pattern])
-    expect(copy.evidence.standardSince).toContain('Since 12 November 2026')
+    expect(copy.evidence.standardSince).toContain('Since 13 November 2026')
     for (const line of [copy.evidence.standardSince, ...copy.evidence.standardWords, copy.evidence.standardHere]) {
       expect(CAUSAL_WORDS.test(line), line).toBe(false)
       expect(NEVER.test(line), line).toBe(false)

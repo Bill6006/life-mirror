@@ -157,7 +157,7 @@ try {
     // Evidence explains the four words, and names the day the rule changed.
     await page.getByTestId('evidence-standard').click()
     const words = (await text(page.getByTestId('evidence-standard-words'))) ?? ''
-    check('Evidence explains the four words and names the day the rule changed', ['Since 12 November 2026', 'Too few to compare yet', 'No clear pattern yet', 'A lead, not yet a pattern', 'A steady pattern'].every((w) => words.includes(w)), words.slice(0, 90))
+    check('Evidence explains the four words and names the day the rule changed', ['Since 13 November 2026', 'Too few to compare yet', 'No clear pattern yet', 'A lead, not yet a pattern', 'A steady pattern'].every((w) => words.includes(w)), words.slice(0, 90))
     await ctx.close()
   }
   {

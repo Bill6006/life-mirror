@@ -936,7 +936,7 @@ test('learning: the two new chips answer from the record, and Evidence holds no 
   await expect(page.getByTestId('evidence-standard')).toHaveAttribute('aria-expanded', 'false')
   await page.getByTestId('evidence-standard').click()
   const standard = page.getByTestId('evidence-standard-words')
-  await expect(standard).toContainText('Since 12 November 2026 every comparison in Life Mirror is read by one rule.')
+  await expect(standard).toContainText('Since 13 November 2026 every comparison in Life Mirror is read by one rule.')
   for (const said of ['Too few to compare yet: under eight occasions on a side.', 'No clear pattern yet:', 'A lead, not yet a pattern:', 'A steady pattern:', 'never why']) await expect(standard).toContainText(said)
   await expect(page.getByRole('heading', { name: 'Cards', exact: true })).toHaveCount(0)
   await expect(page.getByText('imported, to test')).toHaveCount(0)

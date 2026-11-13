@@ -1145,7 +1145,7 @@ export const copy = {
     tiers: { little: 'Little evidence', unclear: 'Unclear', promising: 'Promising', holdsUp: 'Holds up', unhelpful: 'Unhelpful here' },
     // The one standard (2026-11-12), said once in plain words: what each word means, and the day the rule changed.
     standardTitle: 'How comparisons are read',
-    standardSince: 'Since 12 November 2026 every comparison in Life Mirror is read by one rule. Before that day, three occasions could read Promising.',
+    standardSince: 'Since 13 November 2026 every comparison in Life Mirror is read by one rule. Before that day, three occasions could read Promising.',
     standardWords: [
       'Too few to compare yet: under eight occasions on a side.',
       'No clear pattern yet: enough to compare, and the difference is small or within chance.',
