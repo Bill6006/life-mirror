@@ -555,8 +555,15 @@ describe('a read that was cut says so', () => {
 
   it('a lookup whose read of the database was cut is not whole', async () => {
     const store = memoryStore()
-    for (let i = 0; i < 2001; i++) put(store, 'offers', String(i), D, { id: i, day: D, moveId: 'walk-ten', at: `${D}T13:00:00.000Z`, skippedAt: null })
+    // 2,001 offers on the day, fifty of them ordinary moves: the lookup's own limit of a hundred is not reached, and the
+    // read of the database is one row short of whole. Only that makes the answer not whole.
+    for (let i = 0; i < 2001; i++) put(store, 'offers', String(i), D, { id: i, day: D, moveId: i < 50 ? 'walk-ten' : 'nothing', at: `${D}T13:00:00.000Z`, skippedAt: null })
     const r = await run(store, { lookup: 'moves', from: D, to: D, limit: 100 })
+    expect(r.facts).toHaveLength(50)
     expect(r).toMatchObject({ complete: false, notRead: 1 })
+    // The probe that can say yes: one offer fewer, and the same answer is whole.
+    const whole = memoryStore()
+    for (let i = 0; i < 2000; i++) put(whole, 'offers', String(i), D, { id: i, day: D, moveId: i < 50 ? 'walk-ten' : 'nothing', at: `${D}T13:00:00.000Z`, skippedAt: null })
+    expect(await run(whole, { lookup: 'moves', from: D, to: D, limit: 100 })).toMatchObject({ complete: true, notRead: 0 })
   })
 })
