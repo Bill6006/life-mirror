@@ -59,6 +59,15 @@ describe('the challenger: an adjustment', () => {
     expect(runChallenger('sameBlock', values, dayName(21), [fromList('thing', thing)], CHALLENGER, flat).adjustmentFor(dayName(21), 'morning')).toEqual({ points: 0, by: [] })
     // With the minimum at seven the same record adjusts: the rule is what held it.
     expect(runChallenger('sameBlock', values, dayName(21), [fromList('thing', thing)], { ...CHALLENGER, minState: 7 }, flat).adjustmentFor(dayName(21), 'morning').points).toBeGreaterThan(5)
+    // The other half: seven days outside the state among twenty.
+    const mostly: boolean[] = []
+    const others = new Map<string, number>()
+    for (let d = 0; d <= 20; d++) mostly.push(!(d < 14 && d % 2 === 0))
+    for (let d = 1; d <= 20; d++) others.set(slotKey(dayName(d), 'morning'), mostly[d - 1] ? 50 + (d % 3) : 70)
+    mostly[20] = true
+    expect(mostly.slice(0, 20).filter((v) => !v)).toHaveLength(7)
+    expect(runChallenger('sameBlock', others, dayName(21), [fromList('thing', mostly)], CHALLENGER, flat).adjustmentFor(dayName(21), 'morning')).toEqual({ points: 0, by: [] })
+    expect(runChallenger('sameBlock', others, dayName(21), [fromList('thing', mostly)], { ...CHALLENGER, minState: 7 }, flat).adjustmentFor(dayName(21), 'morning').points).toBeLessThan(-3)
   })
 
   it('is nothing where the difference is within its own noise', () => {
@@ -87,6 +96,11 @@ describe('the challenger: an adjustment', () => {
     expect(runChallenger('sameBlock', values, dayName(21), [kind(thing)], CHALLENGER, flat).adjustmentFor(dayName(21), 'morning').points).toBeCloseTo(3.947, 3)
     expect(runChallenger('sameBlock', values, dayName(22), [kind([...thing, false])], CHALLENGER, flat).adjustmentFor(dayName(22), 'morning')).toEqual({ points: 0, by: [] })
     expect(runChallenger('sameBlock', values, dayName(21), [kind(thing)], CHALLENGER, flat).adjustmentFor(dayName(21), 'evening')).toEqual({ points: 0, by: [] })
+    // On a record whose evenings follow the thing as its mornings do, a condition of the morning alone still leaves the evening as it was; one of every check-in moves it.
+    const both = new Map(values)
+    for (let d = 1; d <= 20; d++) both.set(slotKey(dayName(d), 'evening'), thing[d - 1] ? 60 : 50)
+    expect(runChallenger('sameBlock', both, dayName(21), [kind(thing)], CHALLENGER, flat).adjustmentFor(dayName(21), 'evening')).toEqual({ points: 0, by: [] })
+    expect(runChallenger('sameBlock', both, dayName(21), [fromList('kind', thing, BLOCKS, (s) => s === 'yes')], CHALLENGER, flat).adjustmentFor(dayName(21), 'evening').points).toBeCloseTo(3.947, 3)
   })
 
   it('takes the conditions in order, each learning from what the one before it left', () => {
@@ -192,6 +206,16 @@ describe('the challenger: the pick', () => {
     const scored = BLOCKS.reduce((n, b) => n + Array.from({ length: BACKTEST_DAYS }, (_, i) => dayName(149 - i)).filter((day) => values.has(slotKey(day, b)) && predict('sameBlock', values, day, b) !== null).length, 0)
     expect(run.errors).toHaveLength(scored)
     expect(scored).toBeGreaterThan(60)
+    // They are its own misses, not the base way's: on the slots it adjusted the two differ.
+    const baseMisses: number[] = []
+    for (let back = BACKTEST_DAYS; back >= 1; back--)
+      for (const b of BLOCKS) {
+        const actual = values.get(slotKey(dayName(150 - back), b))
+        const p = predict('sameBlock', values, dayName(150 - back), b)
+        if (actual !== undefined && p !== null) baseMisses.push(actual - p)
+      }
+    expect(baseMisses).toHaveLength(scored)
+    expect(run.errors.filter((e, i) => Math.abs(e - baseMisses[i]) > 1).length).toBeGreaterThanOrEqual(3)
   })
 
   it('looks back over the window and no further', () => {
