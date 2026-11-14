@@ -11,8 +11,9 @@ import type { Fact, FactSheet } from '../../src/factTypes'
 import { obsMarkIdOf, WRITEUPS_STORE, type WriteUp } from '../../src/writeups/shared'
 import { handleAskBriefing, handleAskContext, handleAskLine, runAsks } from './ask'
 import { SERVED_STORE, taskIdOf } from './claude'
-import { DAYS_NAMED, DEEP_READ_TRIES, DEEP_SPARE_READS, deepReadsMost, lackingRefusal, monthName, monthsOf, monthsText, NOTICED_WORDS, parseDeepQuery } from './deepRead'
-import { mayRead, parseLookupQuery } from './lookups'
+import { DAYS_NAMED, DEEP_READ_TRIES, DEEP_SPARE_READS, deepReadsMost, lackingRefusal, monthName, monthsOf, monthsText, NOTICED_WORDS, parseDeepQuery, shownNow, writeUpFacts } from './deepRead'
+import { mayRead, parseLookupQuery, type LookupCtx } from './lookups'
+import { buildSoFar } from './month'
 import { askInstructions, DEEP_RULES } from './prompt'
 import { accessFor, DEEP_LOOKUPS, factCategories, gatesFrom, LOOKUPS, parseContextQuery } from './retrieval'
 import { APP, BRAIN_APP, memoryStore } from './turso'
@@ -93,7 +94,7 @@ function record(o: Opts = {}): Mem {
   put(store, 'facts', DAY, DAY, { day: DAY, builtAt: s.builtAt, updatedAt: s.builtAt, sheet: s }, s.builtAt)
   put(store, 'settings', '1', null, { id: 1, hideFaith: false, showPrivate: o.showPrivate === true, privateInSelection: false, ...o.settings })
   put(store, 'patterns', 'table', null, table(o.standing))
-  const days = ['2026-08-20', '2026-09-05', '2026-09-12', '2026-09-19', '2026-10-03', '2026-10-04', '2026-10-06', '2026-10-10', '2026-10-17', '2026-10-20', '2026-10-24', ...Array.from({ length: 12 }, (_, i) => `2026-11-${String(i + 1).padStart(2, '0')}`)]
+  const days = ['2026-08-20', '2026-09-05', '2026-09-12', '2026-09-19', '2026-10-03', '2026-10-04', '2026-10-06', '2026-10-10', '2026-10-17', '2026-10-20', '2026-10-24', ...Array.from({ length: 13 }, (_, i) => `2026-11-${String(i + 1).padStart(2, '0')}`)]
   for (const d of days) if (!o.without?.includes(d)) put(store, 'days', d, d, { day: d, atOffice: false })
   put(store, 'checkins', '900', '2026-11-10', { id: 900, day: '2026-11-10', block: 'evening', completedAt: '2026-11-11T01:00:00.000Z', answers: {}, extras: { note: 'walked 17 blocks home' } })
   put(store, 'checkins', '901', '2026-11-11', { id: 901, day: '2026-11-11', block: 'morning', completedAt: '2026-11-11T12:30:00.000Z', answers: {}, extras: {} })
@@ -359,6 +360,10 @@ describe('what Claude noticed is never repeated as fact', () => {
     for (const said of ['In May it held.', 'It holds.', 'A guest came.']) expect(GUESS_WORDS.test(said), said).toBe(false)
     expect(noticedRefusals('In May the dinners fell on Saturdays.', [N1])).toEqual(['cites what Claude noticed without saying it is a guess: say "Claude noticed", "a guess", "may", "might" or "not tested"'])
     expect(noticedRefusals('The dinners may fall on Saturdays.', [N1])).toEqual([])
+    // A counted comparison cited beside the guess answers for those words under its own rule.
+    expect(noticedRefusals('It may be so, and it usually is.', [N1, 'pattern.chip.dinner.weekday.6'])).toEqual([])
+    expect(noticedRefusals('It may be so, and it usually is.', [N1, 'noteWords.all'])).toEqual([])
+    expect(noticedRefusals('It may be so, and it usually is.', [N1])).toEqual(['says "usually" on what Claude noticed: a guess nobody tested is never the usual case'])
     // With no guess cited the rule says nothing.
     expect(noticedRefusals('The dinners usually fall on Saturdays.', [R1])).toEqual([])
     // Every usual-case word is named when all are asked for.
@@ -403,6 +408,14 @@ describe('a followed guess, with its count since', () => {
     const stale = record()
     put(stale, 'patterns', 'table', null, { ...table(), updatedAt: '2026-11-01T12:00:00.000Z' })
     expect(await served(stale)).toEqual(ALL.filter((id) => id !== SINCE))
+    // Nothing counted yet since it was noticed: no count is served.
+    const yet = record()
+    put(yet, 'patterns', 'table', null, { ...table(), followed: [{ ...followed()[0], k: 0, n: 0, restK: 0, m: 0 }] })
+    expect(await served(yet)).toEqual(ALL.filter((id) => id !== SINCE))
+    // Its kind gone from the table: no count, and nothing breaks.
+    const gone = record()
+    put(gone, 'patterns', 'table', null, { ...table(), kinds: table().kinds.filter((k) => k.id !== 'chip.dinner') })
+    expect(await served(gone)).toEqual(ALL.filter((id) => id !== SINCE))
   })
 })
 
@@ -459,6 +472,8 @@ describe('the month under way, raw, in parts', () => {
     const facts = factsOf(await read(store, at('09:03'), { lookup: 'monthSoFar', part: '1' }))
     const note = facts.find((f) => f.text.includes('walked 17 blocks home'))?.id as string
     const said = answer('This month one evening stands out in your own words.\n\nYou wrote that you walked 17 blocks home.', [note])
+    // Only the note's own numbers: the day's and the time's digits before the quote ground nothing.
+    expect(reason(await post(store, at('09:04'), { ...said, text: said.text.replace('17 blocks', '11 blocks') }))).toContain('the number 11 is not in the cited facts')
     expect(await post(store, at('09:05'), said)).toEqual({ status: 200, body: { ok: true } })
     // The same words with the line uncited rest on nothing the run read.
     const { store: other } = await started()
@@ -500,7 +515,10 @@ describe('no one-year limit for the deep tier', () => {
   })
 
   it('searches the notes from the record’s first day unless told otherwise; ordinary Ask from a year back', async () => {
-    const { store } = await started()
+    const withDeleted = record()
+    // A month whose only row was deleted holds nothing: the record's first day is in the first month that does.
+    withDeleted.put({ app: APP, store: 'days', id: '2026-06-01', day: '2026-06-01', body: '{}', updated_at: `${DAY}T12:00:00.000Z`, deleted: 1, synced_at: `${DAY}T12:00:00.000Z` })
+    const { store } = await started(withDeleted)
     expect(factsOf(await read(store, at('09:03'), { lookup: 'noteWords', q: 'walked' }))[0].text).toContain('Your notes from 2026-08-01 to 2026-11-12 were searched')
     const { store: ordinary } = await started(record(), 'standard')
     expect(factsOf(await read(ordinary, at('09:03'), { lookup: 'noteWords', q: 'walked' }, 'ask'))[0].text).toContain('Your notes from 2025-11-11 to 2026-11-12 were searched')
@@ -692,5 +710,105 @@ describe('privacy', () => {
     expect(JSON.stringify(all)).not.toContain('a private night')
     expect(servedOf(store).sheet.facts.map((f: Fact) => f.id)).toEqual(['week.today', 'record'])
     expect((JSON.parse(store.rows.get(`${APP}|facts|${DAY}`)?.body ?? 'null') as { sheet: FactSheet }).sheet.facts.map((f) => f.id)).toEqual(['week.today', 'record'])
+  })
+})
+
+describe('each guard on a write-up’s fact, with the other set aside', () => {
+  const settings = { hideFaith: false, privateInSelection: false }
+  const ctx = (store: Mem, over: { hideFaith?: boolean; switches?: Record<string, boolean> } = {}) => ({ store, now: at('09:03'), showPrivate: false, a: accessFor('deep', gatesFrom({ ...settings, hideFaith: over.hideFaith === true }), { writerModel: 'opus', switches: over.switches ?? {} } as never) })
+  /** A record whose October holds one reading: an observation resting on a line tagged faith, one on two kinds, one on the Partner Path. */
+  function mixed(): Mem {
+    const store = record()
+    const w = writeUp('2026-10', 2, {
+      at: '2026-11-08T04:00:00.000Z',
+      recorded: [
+        { text: 'A prayer walk was marked done twice.', days: ['2026-10-03', '2026-10-10'], kinds: ['dayRecord'], faith: true },
+        { text: 'A late dinner and a note fell together.', days: ['2026-10-03'], kinds: ['dayRecord', 'notes'] },
+        { text: 'A step was marked done.', days: ['2026-10-10'], kinds: ['dayRecord', 'partnerPath'] },
+      ],
+      noticed: [{ text: 'Late dinners seem to fall on Saturdays.', days: SATURDAYS, kinds: ['dayRecord'], followed: { kind: 'chip.dinner', split: 'weekday', cell: '6', k: 4, n: 4, restK: 0, m: 27 } }],
+    })
+    void store.writeBrainRow(WRITEUPS_STORE, w.id, w.day, w, w.at)
+    return store
+  }
+  const october = (months: { month: string; newest: { recorded: { place: number }[] } }[]) => months.find((m) => m.month === '2026-10')?.newest.recorded.map((o) => o.place)
+
+  it('the join: an observation resting on a line tagged faith is not shown while faith is hidden', async () => {
+    const store = mixed()
+    expect(october((await shownNow(ctx(store))).months)).toEqual([1, 2, 3])
+    expect(october((await shownNow(ctx(store, { hideFaith: true }))).months)).toEqual([2, 3])
+    // And one that drew on a kind switched off is not shown.
+    expect(october((await shownNow(ctx(store, { switches: { notes: false } }))).months)).toEqual([1, 3])
+  })
+
+  it('the fact: it carries faith’s tag from the line, every kind it drew on, and the Partner Path where it drew on it', async () => {
+    const store = mixed()
+    const open = ctx(store)
+    const now = await shownNow(open)
+    const facts = writeUpFacts(open, now, null).filter((f) => f.values.month === '2026-10')
+    expect(facts.map((f) => [f.id, f.tags, f.values.kinds, f.values.category])).toEqual([
+      ['writeups.2026-10.recorded.1', ['faith'], 'dayRecord', 'dayRecord'],
+      ['writeups.2026-10.recorded.2', [], 'dayRecord|notes', 'dayRecord'],
+      ['writeups.2026-10.recorded.3', [], 'dayRecord|partnerPath', 'partnerPath'],
+      ['writeups.2026-10.noticed.1', [], 'dayRecord', 'dayRecord'],
+    ])
+    // What was shown under an open access is held again by the fact's own check under a closed one: the join set aside.
+    const ids = (over: Parameters<typeof ctx>[1]) => writeUpFacts(ctx(store, over), now, null).filter((f) => f.values.month === '2026-10').map((f) => f.id.slice(17))
+    expect(ids({})).toEqual(['recorded.1', 'recorded.2', 'recorded.3', 'noticed.1'])
+    expect(ids({ hideFaith: true })).toEqual(['recorded.2', 'recorded.3', 'noticed.1'])
+    expect(ids({ switches: { notes: false } })).toEqual(['recorded.1', 'recorded.3', 'noticed.1'])
+    expect(ids({ switches: { partnerPath: false } })).toEqual(['recorded.1', 'recorded.2', 'noticed.1'])
+  })
+
+  it('the count since: the table’s own for that guess, read under its kind’s category as well as the observation’s', async () => {
+    const store = mixed()
+    const open = ctx(store)
+    const now = await shownNow(open)
+    const mine = { ...followed()[0], id: obsMarkIdOf('2026-10:2', 'noticed', 1), k: 2, n: 2, m: 9 }
+    const other = { ...followed()[0], id: obsMarkIdOf('2026-09:1', 'noticed', 1), k: 5, n: 5, m: 20 }
+    const base = table()
+    // The kind is read under the notes here, and the observation under the day's record: both must be readable.
+    const t = { ...base, kinds: base.kinds.map((k) => (k.id === 'chip.dinner' ? { ...k, category: 'notes' } : k)), followed: [other, mine] }
+    const since = writeUpFacts(open, now, t as never).find((f) => f.id === 'writeups.2026-10.noticed.1.since')
+    expect(since?.text).toBe('Counted since Claude noticed it on 2026-11-04, on the days after alone: Too few to compare yet: a late or heavy dinner, 2 of 2 on Saturdays, against 0 of 9 on other days.')
+    expect(since?.values).toMatchObject({ k: 2, n: 2, restK: 0, m: 9, pct: 100, restPct: 0, kinds: 'notes|dayRecord', category: 'notes', part: 'since' })
+    expect(writeUpFacts(ctx(store, { switches: { notes: false } }), now, t as never).some((f) => f.id.endsWith('.since'))).toBe(false)
+    // The guess itself, which drew on the day's record alone, is still served.
+    expect(writeUpFacts(ctx(store, { switches: { notes: false } }), now, t as never).some((f) => f.id === 'writeups.2026-10.noticed.1')).toBe(true)
+  })
+})
+
+describe('the month under way, built', () => {
+  const x = (store: Mem): LookupCtx => ({ store, catalogue: new Map() as never, a: accessFor('deep', gatesFrom({ hideFaith: false, privateInSelection: false }), { writerModel: 'opus', switches: {} } as never), day: DAY, now: at('09:03'), timeZone: TZ, showPrivate: false, question: '' })
+
+  it('is named by a day, and says what it read', async () => {
+    const store = record()
+    expect(await buildSoFar(x(store), '2026-11')).toEqual({ ok: false, reason: '2026-11 is not a day' })
+    const built = await buildSoFar(x(store), DAY)
+    expect(built).toMatchObject({ ok: true, month: '2026-11', from: '2026-11-01', to: DAY, counts: { days: 12, checkins: 2 } })
+    // One day alone, on the month's first.
+    expect(await buildSoFar(x(store), '2026-11-01')).toMatchObject({ ok: true, from: '2026-11-01', to: '2026-11-01', counts: { days: 1, checkins: 0 }, lines: 1 })
+  })
+
+  it('builds nothing when the finished workouts outran their one read', async () => {
+    const store = record()
+    store.readOutsideWorkouts = async () => Array.from({ length: 1000 }, (_, i) => ({ id: `w${i}`, body: null }))
+    expect(await buildSoFar(x(store), DAY)).toEqual({ ok: false, reason: 'the month under way was not read whole: the workouts outran one read' })
+    store.readOutsideWorkouts = async () => Array.from({ length: 999 }, (_, i) => ({ id: `w${i}`, body: null }))
+    expect((await buildSoFar(x(store), DAY)).ok).toBe(true)
+  })
+
+  it('builds nothing past sixteen parts', async () => {
+    const store = record()
+    // Seventeen days, each with a note larger than a part: a part a day.
+    for (let i = 1; i <= 17; i++) {
+      const d = `2026-11-${String(i).padStart(2, '0')}`
+      if (i > 13) put(store, 'days', d, d, { day: d, atOffice: false })
+      put(store, 'checkins', `big${i}`, d, { id: 5000 + i, day: d, block: 'afternoon', completedAt: `${d}T20:00:00.000Z`, answers: {}, extras: { note: 'x'.repeat(33 * 1024) } })
+    }
+    expect(await buildSoFar(x(store), '2026-11-17')).toEqual({ ok: false, reason: 'the month under way needs 17 parts, more than the 16 a read may have' })
+    const sixteen = await buildSoFar(x(store), '2026-11-16')
+    expect(sixteen).toMatchObject({ ok: true })
+    expect((sixteen as { parts: unknown[] }).parts).toHaveLength(16)
   })
 })

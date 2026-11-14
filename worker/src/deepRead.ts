@@ -5,7 +5,7 @@ import type { Fact } from '../../src/factTypes'
 import type { NoteMark } from '../../src/noteEvents/shared'
 import { shownWriteUps, type ShownMonth, type ShownObservation } from '../../src/writeups/join'
 import { writeUpOf, WRITEUPS_STORE, type WriteUp } from '../../src/writeups/shared'
-import { CATEGORIES, type Category } from './briefing'
+import type { Category } from './briefing'
 import { mayRead, saidIn, shownLabel, type LookupCtx } from './lookups'
 import { MONTH_PARTS_MOST } from './month'
 import { obj, privateNames, WRITEUP_HEAD, type DeepLookup } from './retrieval'
@@ -84,8 +84,8 @@ export async function shownNow(x: Pick<LookupCtx, 'store' | 'a' | 'showPrivate'>
     writeups,
     marks: noteMarks,
     days: new Set(held),
-    // A kind the layer does not name is closed, as everywhere on the Worker.
-    kindOn: (kind) => (CATEGORIES as readonly string[]).includes(kind) && x.a.allowed(kind as Category),
+    // The one check, as for every read: a kind the layer does not name is closed by it.
+    kindOn: (kind) => x.a.allowed(kind as Category),
     faithShown: x.a.allowed('faith'),
     hiddenNames: names,
   })

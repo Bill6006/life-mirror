@@ -579,7 +579,7 @@ export async function handleAskLine(deps: AskDeps, raw: unknown): Promise<Reply>
     const g = surfaceGuard(text, { names, bears, usage: sheet.facts.some((f) => f.id.startsWith('usage.')) })
     if (g) verdict = verdict.ok ? { ok: false, reason: g } : { ok: false, reason: `${verdict.reason}; and ${g}` }
     // "Coach me on everything" says which months it lacks (2026-11-14), where it cites a write-up: held by the month's name.
-    const lack = t.task === 'deep' ? lackingRefusal(text, ids, built.run.months?.lacking ?? []) : null
+    const lack = lackingRefusal(text, ids, built.run.months?.lacking ?? [])
     if (lack) verdict = verdict.ok ? { ok: false, reason: lack } : { ok: false, reason: `${verdict.reason}; and ${lack}` }
   }
   if (verdict.ok) {
