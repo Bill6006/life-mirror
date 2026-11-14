@@ -1,6 +1,9 @@
 import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { copy } from './copy'
+import { PATTERNS_ID, readPatterns, type StoredFollowed } from './counted/stored'
+import { standingLine } from './counted/words'
+import { db } from './db'
 import { fill, formatDayShort, formatMonth } from './format'
 import { useLive } from './live'
 import { forgetNoticed } from './noteEvents/flow'
@@ -49,7 +52,7 @@ function daysLine(days: readonly string[]): string {
   return days.length > DAYS_NAMED ? fill(c.fromMore, { days: named, n: String(days.length - DAYS_NAMED) }) : fill(c.from, { days: named })
 }
 
-function ObservationCard({ o, noticedOn }: { o: ShownObservation; noticedOn: string }) {
+function ObservationCard({ o, noticedOn, count }: { o: ShownObservation; noticedOn: string; count?: StoredFollowed }) {
   const c = copy.brainScreen.writeups
   // The counts follow the mark: the pattern table is built again, which no screen waits for.
   const mark = (wrong: boolean) => void markObservation(o.markId, wrong).then(() => refreshPatterns(blockAt(new Date()).day))
@@ -64,7 +67,8 @@ function ObservationCard({ o, noticedOn }: { o: ShownObservation; noticedOn: str
       </p>
       {o.followed && (
         <p class="note faint" data-testid="writeup-followed">
-          {fill(c.followed, { day: formatDayShort(noticedOn) })}
+          {/* Counted on what came after the day it was noticed; until a later occasion exists, it says from when it is counted. */}
+          {count && count.n + count.m > 0 ? `${fill(c.followedSince, { day: formatDayShort(noticedOn), k: String(count.k), n: String(count.n) })} ${standingLine(count)}.` : fill(c.followed, { day: formatDayShort(noticedOn) })}
         </p>
       )}
       {o.wrong ? (
@@ -84,7 +88,7 @@ function ObservationCard({ o, noticedOn }: { o: ShownObservation; noticedOn: str
 }
 
 /** One reading of a month: what was recorded, then what Claude noticed, each observation with the days it came from. */
-function Reading({ w }: { w: ShownWriteUp }) {
+function Reading({ w, counted }: { w: ShownWriteUp; counted: ReadonlyMap<string, StoredFollowed> }) {
   const c = copy.brainScreen.writeups
   return (
     <>
@@ -93,7 +97,7 @@ function Reading({ w }: { w: ShownWriteUp }) {
       </p>
       {w.recorded.length > 0 && <h2 class="section">{c.recorded}</h2>}
       {w.recorded.map((o) => (
-        <ObservationCard key={o.markId} o={o} noticedOn={w.day} />
+        <ObservationCard key={o.markId} o={o} noticedOn={w.day} count={counted.get(o.markId)} />
       ))}
       {w.noticed.length > 0 && (
         <>
@@ -102,7 +106,7 @@ function Reading({ w }: { w: ShownWriteUp }) {
         </>
       )}
       {w.noticed.map((o) => (
-        <ObservationCard key={o.markId} o={o} noticedOn={w.day} />
+        <ObservationCard key={o.markId} o={o} noticedOn={w.day} count={counted.get(o.markId)} />
       ))}
     </>
   )
@@ -116,6 +120,9 @@ function Reading({ w }: { w: ShownWriteUp }) {
  */
 export function WriteUpsScreen({ onClose }: { onClose: () => void }) {
   const months = useLive(writeUpsNow, [])
+  // The followed patterns' counts, as the pattern table last kept them.
+  const table = useLive(async () => readPatterns(await db.patterns.get(PATTERNS_ID)) ?? null, [])
+  const counted = new Map((table?.followed ?? []).map((f) => [f.id, f]))
   const [open, setOpen] = useState<string | null>(null)
   const [earlier, setEarlier] = useState<string | null>(null)
   const c = copy.brainScreen.writeups
@@ -129,7 +136,7 @@ export function WriteUpsScreen({ onClose }: { onClose: () => void }) {
         <header class="screen-head">
           <p class="eyebrow">{formatMonth(month.month)}</p>
         </header>
-        <Reading w={reading} />
+        <Reading w={reading} counted={counted} />
         {others.map((w) => (
           <button key={w.id} type="button" class="textbtn" data-testid="writeup-other" onClick={() => setEarlier(w.id === month.newest.id ? null : w.id)}>
             {fill(w.id === month.newest.id ? c.newest : c.earlier, { day: formatDayShort(w.day) })}

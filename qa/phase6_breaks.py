@@ -82,6 +82,10 @@ days that still hold a record; a mark kept and taken back; the owner's switch fo
 The export: the newest reading first, the earlier ones after it; whether each was marked wrong; a followed one's
 counts; private items' and the Partner path's observations only with them; a reading with nothing left not listed.
 
+The followed count: only the occasions after the day noticed, that day itself aside; the kind's own cell of its own
+split; one family across every followed pattern; a kind or a cell the record does not have counted nowhere; kept in
+the table's record, read back whole, and a change in it rewrites the record; the build counts what is followed now.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -143,6 +147,11 @@ WF = 'src/writeups/flow.ts'
 WFT = 'src/writeupsFlow.test.ts'
 M30 = 'src/dbMigration30.test.ts'
 EX = 'src/export.ts'
+TB = 'src/counted/table.ts'
+STO = 'src/counted/stored.ts'
+PAT = 'src/counted/patterns.ts'
+PF = 'src/patternsFlow.ts'
+FT = 'src/counted/followed.test.ts'
 BS = 'src/brainShared.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
@@ -1227,6 +1236,52 @@ TABLE = [
          old=" && r.task !== 'month')) return null",
          new=")) return null",
          tests=[WFT], pattern='is kept on the phone, and one of a task no list knows is not'),
+
+    # The followed count.
+    dict(id='only-what-came-after-counts', file=TB,
+         old="s.points.filter((point) => point.day > ask.noticedOn)",
+         new="s.points",
+         tests=[FT], pattern='counts only the occasions after the day it was noticed'),
+    dict(id='the-day-noticed-itself-does-not-count', file=TB,
+         old="s.points.filter((point) => point.day > ask.noticedOn)",
+         new="s.points.filter((point) => point.day >= ask.noticedOn)",
+         tests=[FT], pattern='leaves out the day it was noticed itself'),
+    dict(id='a-followed-cell-is-its-kinds-own', file=TB,
+         old="x.split === ask.split && x.cells.includes(ask.cell)",
+         new="x.split === ask.split",
+         tests=[FT], pattern='counts nowhere a kind the record does not count'),
+    dict(id='a-followed-split-is-its-kinds-own', file=TB,
+         old="x.split === ask.split && x.cells.includes(ask.cell)",
+         new="x.cells.includes(ask.cell)",
+         tests=[FT], pattern='counts nowhere a kind the record does not count'),
+    dict(id='one-family-across-the-followed', file=TB,
+         old="  const stood = standings(rated.map((r) => r.rate))\n  return rated.map(({ ask, split, rate }, i) =>",
+         new="  const stood = rated.map((r) => standings([r.rate])[0])\n  return rated.map(({ ask, split, rate }, i) =>",
+         tests=[FT], pattern='tests every followed pattern as one family'),
+    dict(id='the-followed-counts-are-kept', file=PAT,
+         old=", ...(followed.length ? { followed: followed.map((f) => ({ ...f })) } : {}) }",
+         new=" }",
+         tests=[FT], pattern='is kept in the table’s record and read back whole'),
+    dict(id='the-followed-counts-are-read-back', file=STO,
+         old=", ...(followed?.length ? { followed: followed as StoredFollowed[] } : {}) }",
+         new=" }",
+         tests=[FT], pattern='is kept in the table’s record and read back whole'),
+    dict(id='a-followed-count-reads-whole-or-not-at-all', file=STO,
+         old="  if (followed === null || followed?.some((f) => f === null)) return null\n",
+         new="",
+         tests=[FT], pattern='makes the record no table when one does not read whole'),
+    dict(id='a-change-in-the-followed-rewrites-the-record', file=STO,
+         old="kinds: r.kinds, level: r.level, followed: r.followed ?? [] })",
+         new="kinds: r.kinds, level: r.level })",
+         tests=[FT], pattern='is a change the record is rewritten for'),
+    dict(id='the-build-counts-what-is-followed-now', file=PF,
+         old="    const next = storedPatterns(table, now.toISOString(), followed)\n",
+         new="    const next = storedPatterns(table, now.toISOString())\n",
+         tests=[FT], pattern='is counted at every build of the table'),
+    dict(id='the-export-carries-the-counts-since', file=EX,
+         old="sinceThen: `${f.k} of ${f.n}`",
+         new="sinceThen: `${f.n}`",
+         tests=[FT], pattern='is in the export beside the table'),
 ]
 
 

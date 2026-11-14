@@ -3,10 +3,11 @@ import { noteComparisonFault } from './counted/fault'
 import type { CountedInput } from './counted/kinds'
 import { storedPatterns } from './counted/patterns'
 import { PATTERNS_FORMAT, PATTERNS_ID, readPatterns, samePatterns } from './counted/stored'
-import { patternTableKept } from './counted/table'
+import { followedCounts, patternTableKept } from './counted/table'
 import { db, getSettings } from './db'
 import { countedNotices, noticedOf } from './noteEvents/join'
 import { allOwnChips } from './settings'
+import { followedNow } from './writeups/flow'
 
 // The pattern table on the phone (2026-11-13): built from the whole record with the counted core, kept as one record
 // with a fixed id, and synced like every record, for the Worker to serve a kind at a time. It is built after the
@@ -43,8 +44,11 @@ export async function writePatternsRow(day: string, now: Date = new Date(), opts
   built++
   mostAtOnce = Math.max(mostAtOnce, building)
   try {
-    const table = await patternTableKept(await countedRecord(), day, opts.pause ?? letThrough)
-    const next = storedPatterns(table, now.toISOString())
+    const record = await countedRecord()
+    const table = await patternTableKept(record, day, opts.pause ?? letThrough)
+    // The followed patterns that count now, each counted on what came after the day it was noticed.
+    const followed = followedCounts(record, day, (await followedNow()).map((f) => ({ id: f.markId, kind: f.kind, split: f.split, cell: f.cell, noticedOn: f.noticedOn })))
+    const next = storedPatterns(table, now.toISOString(), followed)
     const raw = (await db.patterns.get(PATTERNS_ID)) as unknown
     const existing = readPatterns(raw)
     if (raw !== undefined && existing === null && (raw as { format?: unknown }).format !== PATTERNS_FORMAT) return false

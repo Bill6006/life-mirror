@@ -152,7 +152,7 @@ TABLE = [
          new="export const PATTERNS_MAX_AGE_MS = 72 * 3_600_000",
          tests=[SDT], pattern='goes stale at 48 hours'),
     dict(id='the-same-table-whenever-it-was-built', file=SD,
-         old="JSON.stringify({ format: r.format, builtFor: r.builtFor, kinds: r.kinds, level: r.level })",
+         old="JSON.stringify({ format: r.format, builtFor: r.builtFor, kinds: r.kinds, level: r.level, followed: r.followed ?? [] })",
          new="JSON.stringify(r)",
          tests=[SDT], pattern='is the same table whenever it was built'),
     dict(id='the-minimums-said-are-the-cores', file=SD,

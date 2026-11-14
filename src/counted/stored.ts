@@ -76,6 +76,23 @@ export interface StoredLevel {
   restMean: number
 }
 
+/** A followed pattern's count as it is kept: the cell a "Claude noticed" observation named, counted on what came after the day it was noticed. */
+export interface StoredFollowed {
+  /** The observation's own mark id: its write-up, its part and its place. */
+  id: string
+  kind: string
+  split: StoredSplit
+  cell: string
+  noticedOn: string
+  k: number
+  n: number
+  restK: number
+  m: number
+  standing: StoredStanding
+  direction: StoredDirection
+  family: number
+}
+
 export interface PatternsRecord {
   id: typeof PATTERNS_ID
   format: typeof PATTERNS_FORMAT
@@ -85,12 +102,14 @@ export interface PatternsRecord {
   updatedAt: string
   kinds: StoredKind[]
   level: StoredLevel[]
+  /** The followed patterns' counts (2026-11-13): there only while one is followed. A record without it reads as it always did. */
+  followed?: StoredFollowed[]
 }
 
 /** Whether two records hold the same table, whenever each was built: the record is rewritten only when this is false. */
 export function samePatterns(a: PatternsRecord | null | undefined, b: PatternsRecord): boolean {
   if (!a) return false
-  const body = (r: PatternsRecord) => JSON.stringify({ format: r.format, builtFor: r.builtFor, kinds: r.kinds, level: r.level })
+  const body = (r: PatternsRecord) => JSON.stringify({ format: r.format, builtFor: r.builtFor, kinds: r.kinds, level: r.level, followed: r.followed ?? [] })
   return body(a) === body(b)
 }
 
@@ -122,6 +141,13 @@ function levelOf(v: unknown): StoredLevel | null {
   return { split: l.split as StoredSplit, cell: l.cell, n: l.n, mean: l.mean, bands: l.bands as number[], restN: l.restN, restMean: l.restMean }
 }
 
+function followedOf(v: unknown): StoredFollowed | null {
+  const f = obj(v)
+  const c = cellOf(v)
+  if (!f || !c || typeof f.id !== 'string' || !f.id || typeof f.kind !== 'string' || !f.kind || !isDay(f.noticedOn) || !isCount(f.family)) return null
+  return { id: f.id, kind: f.kind, split: c.split, cell: c.cell, noticedOn: f.noticedOn, k: c.k, n: c.n, restK: c.restK, m: c.m, standing: c.standing, direction: c.direction, family: f.family }
+}
+
 /** A stored record read strictly: anything that is not this shape whole is no table, never a table half read. */
 export function readPatterns(body: unknown): PatternsRecord | null {
   const r = obj(body)
@@ -129,5 +155,8 @@ export function readPatterns(body: unknown): PatternsRecord | null {
   const kinds = r.kinds.map(kindOf)
   const level = r.level.map(levelOf)
   if (kinds.some((k) => k === null) || level.some((l) => l === null)) return null
-  return { id: PATTERNS_ID, format: PATTERNS_FORMAT, builtFor: r.builtFor, builtAt: r.builtAt, updatedAt: r.updatedAt, kinds: kinds as StoredKind[], level: level as StoredLevel[] }
+  // The followed patterns' counts are optional; where they are there, they read whole or the record is no table.
+  const followed = r.followed === undefined ? undefined : Array.isArray(r.followed) ? r.followed.map(followedOf) : null
+  if (followed === null || followed?.some((f) => f === null)) return null
+  return { id: PATTERNS_ID, format: PATTERNS_FORMAT, builtFor: r.builtFor, builtAt: r.builtAt, updatedAt: r.updatedAt, kinds: kinds as StoredKind[], level: level as StoredLevel[], ...(followed?.length ? { followed: followed as StoredFollowed[] } : {}) }
 }

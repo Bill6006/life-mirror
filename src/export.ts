@@ -152,7 +152,9 @@ export function patternsForExport(stored: unknown, includePrivate: boolean, part
   const table = readPatterns(stored)
   if (!table) return {}
   const kinds = table.kinds.filter((k) => (includePrivate || !k.private) && (partner || k.category !== 'partnerPath'))
-  return { patternTable: { builtFor: table.builtFor, builtAt: table.builtAt, kinds: kinds.map((k) => ({ id: k.id, label: k.label, countedBy: k.unit, known: k.known, occurrences: k.occurrences, family: k.family, ...(k.cutoff ? { cutoff: k.cutoff } : {}), ...(k.since ? { since: k.since } : {}), ...(k.cells ? { cells: k.cells } : {}) })), level: table.level } }
+  // The followed patterns' counts since each was noticed, for the kinds this export carries.
+  const followed = (table.followed ?? []).filter((f) => kinds.some((k) => k.id === f.kind))
+  return { patternTable: { builtFor: table.builtFor, builtAt: table.builtAt, ...(followed.length ? { followedSinceNoticed: followed.map((f) => ({ kind: f.kind, split: f.split, cell: f.cell, noticedOn: f.noticedOn, sinceThen: `${f.k} of ${f.n}`, elsewhereSinceThen: `${f.restK} of ${f.m}`, standing: f.standing, lookedAt: f.family })) } : {}), kinds: kinds.map((k) => ({ id: k.id, label: k.label, countedBy: k.unit, known: k.known, occurrences: k.occurrences, family: k.family, ...(k.cutoff ? { cutoff: k.cutoff } : {}), ...(k.since ? { since: k.since } : {}), ...(k.cells ? { cells: k.cells } : {}) })), level: table.level } }
 }
 
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {

@@ -242,3 +242,50 @@ export async function patternTableKept(record: CountedInput, today: string, paus
   }
   return tableOf(today, laid, entries)
 }
+
+/** A followed pattern as its count is asked for: the cell of one kind a "Claude noticed" observation named, and the day it was noticed. */
+export interface FollowedAsk {
+  id: string
+  kind: string
+  split: string
+  cell: string
+  noticedOn: string
+}
+
+/** A followed pattern as counted: k of n in its cell against the rest, on the occasions after the day it was noticed alone. */
+export interface FollowedCount {
+  id: string
+  kind: string
+  split: Split
+  cell: string
+  noticedOn: string
+  k: number
+  n: number
+  restK: number
+  m: number
+  standing: Standing
+  direction: Direction
+  /** How many followed patterns were tested together: the family the chance check paid for. */
+  family: number
+}
+
+/**
+ * Each followed pattern counted again on what came after the day it was noticed (2026-11-13): the days that suggested
+ * it cannot also prove it. The comparison core as it stands, on that one cell of that kind's own split, over the days
+ * before `today`; the family is every followed pattern together. One whose kind the record no longer counts, or whose
+ * cell that kind's split does not have, is counted nowhere.
+ */
+export function followedCounts(record: CountedInput, today: string, asks: readonly FollowedAsk[]): FollowedCount[] {
+  if (!asks.length) return []
+  const laid = layOut(record, today)
+  const rated: { ask: FollowedAsk; split: Split; rate: CellRate }[] = []
+  for (const ask of asks) {
+    const kind = laid.kinds.find((k) => k.id === ask.kind)
+    const s = kind ? occasionsFor(kind, laid)?.splits.find((x) => x.split === ask.split && x.cells.includes(ask.cell)) : undefined
+    if (!s) continue
+    const rate = ratesBy(s.points.filter((point) => point.day > ask.noticedOn), { id: `followed|${ask.id}`, within: s.within, cells: [ask.cell] })[0]
+    if (rate) rated.push({ ask, split: s.split, rate })
+  }
+  const stood = standings(rated.map((r) => r.rate))
+  return rated.map(({ ask, split, rate }, i) => ({ id: ask.id, kind: ask.kind, split, cell: rate.cell, noticedOn: ask.noticedOn, k: rate.k, n: rate.n, restK: rate.restK, m: rate.m, standing: stood[i].standing, direction: stood[i].direction, family: stood[i].family }))
+}

@@ -2278,6 +2278,7 @@ export const copy = {
       from: 'From {days}',
       fromMore: 'From {days} and {n} more days',
       followed: 'Claude noticed on {day}. Counted from the next day on.',
+      followedSince: 'Claude noticed on {day}; since then: {k} of {n}.',
       wrong: 'Mark wrong',
       marked: 'Marked wrong.',
       undo: 'Undo',
