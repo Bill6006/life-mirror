@@ -195,6 +195,20 @@ describe('the challenger: the pick', () => {
     expect(tried({ ...CHALLENGER, minClear: (run.clear as number) + 0.01 }).picked).toBe(false)
   })
 
+  it('reads its clearance as the gain over its own day-to-day spread, whatever the scale', () => {
+    const run = tried()
+    // On this seeded record: 37 slots, 4.22 points a slot, 5.6 of its own spread clear.
+    expect(run.slots).toBe(37)
+    expect(run.gain as number).toBeCloseTo(4.221, 2)
+    expect(run.clear as number).toBeCloseTo(5.615, 2)
+    // The same record with every reading twice as far from 50: every miss doubles, so the gain doubles and the clearance, a ratio, stays.
+    const doubled = new Map([...values].map(([key, v]) => [key, 50 + 2 * (v - 50)]))
+    const wide = runChallenger('sameBlock', doubled, dayName(150), conditions)
+    expect(wide.slots).toBe(37)
+    expect(wide.gain as number).toBeCloseTo(2 * (run.gain as number), 6)
+    expect(wide.clear as number).toBeCloseTo(run.clear as number, 6)
+  })
+
   it('is not picked on a record whose thing says nothing', () => {
     const quiet = seededRecord(22, 150, 0)
     const run = runChallenger('sameBlock', quiet.values, dayName(150), [fromList('sleep', quiet.sleep, BLOCKS), fromList('thing', quiet.thing, ['morning'], (s) => s === 'yes')])

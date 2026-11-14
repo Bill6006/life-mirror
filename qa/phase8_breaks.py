@@ -124,7 +124,7 @@ TABLE = [
     dict(id='the-clearance-is-over-its-spread', file=CH,
          old="clear = spread > 0 ? total / spread : null",
          new="clear = spread > 0 ? total : null",
-         tests=[ST], pattern=USELESS),
+         tests=[CT], pattern='whatever the scale'),
     dict(id='the-window', file=CH,
          old="for (let back = numbers.window; back >= 1; back--) {",
          new="for (let back = 365; back >= 1; back--) {",
