@@ -61,6 +61,13 @@ describe('a write-up’s row', () => {
     expect(writeUpOf(ID, body)).not.toBeNull()
   })
 
+  it('says when its lines were built where the row does, and is read without it where the row does not or says it unreadably', () => {
+    const built = '2026-11-13T21:55:00.000Z'
+    expect(writeUpOf(ID, { ...body, builtFrom: { ...body.builtFrom, builtAt: built } })?.builtFrom.builtAt).toBe(built)
+    expect(writeUpOf(ID, body)?.builtFrom).not.toHaveProperty('builtAt')
+    expect(writeUpOf(ID, { ...body, builtFrom: { ...body.builtFrom, builtAt: 'last night' } })?.builtFrom).not.toHaveProperty('builtAt')
+  })
+
   it('is not read under an id that is not its month and its reading', () => {
     expect(writeUpOf('', body)).toBeNull()
     expect(writeUpOf('2026-10:2', body)).toBeNull()

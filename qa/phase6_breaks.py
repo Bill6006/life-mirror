@@ -69,6 +69,12 @@ own, a stand-in month, marked as by hand, served past a closed gate, found by it
 newest one ready, with notes, and none for a day that is no month's first. The months that hold records: rows not
 deleted, of the stores a day's lines are built from.
 
+Reading a month again: a record changed after its lines were built; still for six hours; a change looked at once; an
+older method; the oldest month first; only once no first read is owed; never a forgotten month; never past the day's
+tries; a change that left the lines as they were starts nothing and is remembered; the plan names it and does
+nothing; a write-up says when its lines were built; what was marked wrong in an earlier reading is handed to the read:
+of this month, marked wrong, an observation's mark and no other.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -121,6 +127,8 @@ NET = 'src/noteEvents/noteEvents.test.ts'
 MRT = 'worker/src/monthRun.test.ts'
 MSI = 'worker/src/monthStandIn.ts'
 TU = 'worker/src/turso.ts'
+MRR = 'worker/src/monthReread.test.ts'
+MSC = 'worker/src/monthSchedule.ts'
 BS = 'src/brainShared.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
@@ -864,8 +872,8 @@ TABLE = [
          new="    const day = ctx.day\n",
          tests=[MPO], pattern='is filed under the app’s day'),
     dict(id='what-it-was-built-from-is-kept', file=MTK,
-         old="fingerprint: kept.month.fingerprint }, recorded, noticed }",
-         new="fingerprint: '' }, recorded, noticed }",
+         old="fingerprint: kept.month.fingerprint, builtAt:",
+         new="fingerprint: '', builtAt:",
          tests=[MPO], pattern='becomes the month’s write-up'),
     dict(id='a-run-by-hand-stores-nothing', file=MTK,
          old="  if (!t.dry) {\n    const [rows, marks, events]",
@@ -1028,13 +1036,103 @@ TABLE = [
          new="",
          tests=[MRT], pattern='is a record the month’s build reads whole'),
     dict(id='a-deleted-row-holds-no-month', file=TU,
-         old="r.app === APP && r.deleted === 0 && r.day !== null && held.includes(r.store)",
-         new="r.app === APP && r.day !== null && held.includes(r.store)",
-         tests=[MRT], pattern='are those of the stores a day’s lines are built from'),
+         old="held: m.held + (r.deleted === 0 ? 1 : 0)",
+         new="held: m.held + 1",
+         tests=[MRR], pattern='a deleted row holds nothing and still says when it changed'),
+    dict(id='a-deleted-row-still-says-when-it-changed', file=TU,
+         old="changed: r.synced_at > m.changed ? r.synced_at : m.changed })",
+         new="changed: r.deleted === 0 && r.synced_at > m.changed ? r.synced_at : m.changed })",
+         tests=[MRR], pattern='a deleted row holds nothing and still says when it changed'),
     dict(id='only-a-days-own-stores-hold-a-month', file=TU,
-         old="r.app === APP && r.deleted === 0 && r.day !== null && held.includes(r.store)",
-         new="r.app === APP && r.deleted === 0 && r.day !== null",
-         tests=[MRT], pattern='are those of the stores a day’s lines are built from'),
+         old="if (r.app !== APP || r.day === null || !stores.includes(r.store) || ",
+         new="if (r.app !== APP || r.day === null || ",
+         tests=[MRR], pattern='a deleted row holds nothing and still says when it changed'),
+    dict(id='a-month-of-deleted-rows-is-owed-no-read', file=MTK,
+         old="  const months = stamps.filter((s) => s.held > 0).map((s) => s.month)\n",
+         new="  const months = stamps.map((s) => s.month)\n",
+         tests=[MRR], pattern='a month that holds only deleted rows is owed no read'),
+
+    # Reading a month again.
+    dict(id='a-record-changed-after-its-lines-were-built', file=MSC,
+         old="    if (changed > Date.parse(m.builtAt) && x.now.getTime() - changed >= REREAD_QUIET_MS) return",
+         new="    if (x.now.getTime() - changed >= REREAD_QUIET_MS) return",
+         tests=[MRR], pattern='is none whose record last changed before its lines were built'),
+    dict(id='still-for-six-hours', file=MSC,
+         old=" && x.now.getTime() - changed >= REREAD_QUIET_MS) return",
+         new=") return",
+         tests=[MRR], pattern='once that record has been still for six hours'),
+    dict(id='the-number-six-hours', file=MSC,
+         old="export const REREAD_QUIET_MS = 6 * 3_600_000",
+         new="export const REREAD_QUIET_MS = 5 * 3_600_000",
+         tests=[MRR], pattern='once that record has been still for six hours'),
+    dict(id='a-change-is-looked-at-once', file=MSC,
+         old="    if (!m.changed || m.changed === m.checked) continue\n",
+         new="    if (!m.changed) continue\n",
+         tests=[MRR], pattern='is none whose record last changed before its lines were built'),
+    dict(id='an-older-method-is-read-again', file=MSC,
+         old="    if (m.method < x.method) return { month: m.month, why: 'method' }\n",
+         new="",
+         tests=[MRR], pattern='is one an older method wrote'),
+    dict(id='the-oldest-month-is-read-again-first', file=MSC,
+         old="for (const m of [...x.months].sort((a, b) => (a.month < b.month ? -1 : 1))) {\n    if (m.method",
+         new="for (const m of [...x.months].sort((a, b) => (a.month < b.month ? 1 : -1))) {\n    if (m.method",
+         tests=[MRR], pattern='is one an older method wrote'),
+    dict(id='a-first-read-comes-before-a-re-read', file=MTK,
+         old="  if ('first' in decision) return startMonth(env, store, now, decision.first, monthTaskIdOf(decision.first), false, opts)\n",
+         new="  if ('first' in decision && false) return startMonth(env, store, now, decision.first, monthTaskIdOf(decision.first), false, opts)\n",
+         tests=[MRR], pattern='only after every first read'),
+    dict(id='a-forgotten-month-is-not-read-again', file=MTK,
+         old="    .filter((w) => !(Date.parse(w.at) <= forgot))\n",
+         new="",
+         tests=[MRR], pattern='never a month whose newest write-up was forgotten'),
+    dict(id='a-re-read-keeps-to-the-days-tries', file=MTK,
+         old="    .filter((w) => runs.filter((r) => r.month === w.month && r.status === 'failed').length < MONTH_TRIES_A_DAY)\n",
+         new="",
+         tests=[MRR], pattern='never once that month’s three tries of the day are used'),
+    dict(id='unchanged-lines-start-nothing', file=MTK,
+         old="    if (built.fingerprint === again.fingerprint) {\n",
+         new="    if (false) {\n",
+         tests=[MRR], pattern='never when the change left the month’s lines as they were'),
+    dict(id='a-change-looked-at-is-remembered', file=MTK,
+         old="      await store.writeBrainRow(MONTH_CHECKS_STORE, again.month, today, { changed: again.changed, at: now.toISOString() }, now.toISOString())\n",
+         new="",
+         tests=[MRR], pattern='never when the change left the month’s lines as they were'),
+    dict(id='a-re-read-waits-for-the-plan', file=MTK,
+         old="  if (opts.plan) return { ran: false, reason: 'first' in decision ?",
+         new="  if (false) return { ran: false, reason: 'first' in decision ?",
+         tests=[MRR], pattern='the plan names it, with why, and does nothing'),
+    dict(id='a-write-up-says-when-its-lines-were-built', file=MTK,
+         old="fingerprint: kept.month.fingerprint, builtAt: kept.builtAt ?? t.at }, recorded, noticed }",
+         new="fingerprint: kept.month.fingerprint }, recorded, noticed }",
+         tests=[MPO], pattern='becomes the month’s write-up'),
+    dict(id='the-row-keeps-when-its-lines-were-built', file=SH,
+         old="...(builtAt ? { builtAt } : {}) }",
+         new="}",
+         tests=[ST], pattern='says when its lines were built where the row does'),
+    dict(id='an-unreadable-moment-is-dropped', file=SH,
+         old="typeof from.builtAt === 'string' && !Number.isNaN(Date.parse(from.builtAt)) ? from.builtAt : undefined",
+         new="typeof from.builtAt === 'string' ? from.builtAt : undefined",
+         tests=[ST], pattern='says when its lines were built where the row does'),
+    dict(id='a-wrong-observation-is-this-months', file=MTK,
+         old=".filter((x) => x.month === month).sort((a, b) => a.reading - b.reading)) {",
+         new=".sort((a, b) => a.reading - b.reading)) {",
+         tests=[MRR], pattern='is handed to the read in its own words'),
+    dict(id='a-wrong-observation-is-one-marked-wrong', file=MTK,
+         old="marks.filter((m) => obj(m.body).kind === 'wrong' && m.id.startsWith('obs:'))",
+         new="marks.filter((m) => m.id.startsWith('obs:'))",
+         tests=[MRR], pattern='is not an observation whose mark was taken back'),
+    dict(id='a-wrong-observation-is-said-once', file=MTK,
+         old="marked.has(obsMarkIdOf(w.id, part, i + 1)) && !out.includes(o.text) && out.push(o.text)",
+         new="marked.has(obsMarkIdOf(w.id, part, i + 1)) && out.push(o.text)",
+         tests=[MRR], pattern='is handed to the read in its own words'),
+    dict(id='the-wrong-observations-reach-the-read', file=MTK,
+         old="wrongObservations: t.dry === true ? [] : await wrongObservations(deps.store, span.month) }),",
+         new="wrongObservations: [] }),",
+         tests=[MRR], pattern='is handed to the read in its own words'),
+    dict(id='told-what-was-said-and-marked-wrong', file=MP,
+         old="    ...said,\n",
+         new="",
+         tests=[MPT], pattern='hand back what an earlier reading said'),
 ]
 
 

@@ -51,8 +51,8 @@ export interface WriteUp {
   /** The rules' version and the model that wrote it. */
   method: number
   model: string
-  /** What it was built from: each store's count of rows, the parts read, the month's own lines and their fingerprint. */
-  builtFrom: { counts: Record<string, number>; parts: number; lines: number; fingerprint: string }
+  /** What it was built from: each store's count of rows, the parts read, the month's own lines and their fingerprint, and when those lines were built: a record changed after that puts the month up for a re-read. */
+  builtFrom: { counts: Record<string, number>; parts: number; lines: number; fingerprint: string; builtAt?: string }
   /** The two labelled parts. */
   recorded: Observation[]
   noticed: Observation[]
@@ -124,5 +124,6 @@ export function writeUpOf(id: string, body: unknown): WriteUp | null {
   if (recorded.some((x) => x === null) || noticed.some((x) => x === null)) return null
   // Only a "Claude noticed" observation is followed: what was recorded is not a hypothesis.
   if (recorded.some((x) => x?.followed)) return null
-  return { id, month, reading, at, day, method, model, builtFrom: { counts: counts as Record<string, number>, parts, lines, fingerprint }, recorded: recorded as Observation[], noticed: noticed as Observation[] }
+  const builtAt = typeof from.builtAt === 'string' && !Number.isNaN(Date.parse(from.builtAt)) ? from.builtAt : undefined
+  return { id, month, reading, at, day, method, model, builtFrom: { counts: counts as Record<string, number>, parts, lines, fingerprint, ...(builtAt ? { builtAt } : {}) }, recorded: recorded as Observation[], noticed: noticed as Observation[] }
 }

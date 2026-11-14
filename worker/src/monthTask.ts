@@ -3,7 +3,7 @@ import { PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, type PatternsRecord } f
 import type { Fact } from '../../src/factTypes'
 import { NOTE_EVENTS_STORE, noteEventOf, wrongIdOf, type NoteEvent } from '../../src/noteEvents/shared'
 import { EVENT_TYPES, eventTypeOf, type EventType } from '../../src/noteEvents/types'
-import { MONTHLY_READ, WRITEUP_METHOD, writeUpIdOf, writeUpOf, WRITEUPS_STORE, type Followed, type Observation, type WriteUp } from '../../src/writeups/shared'
+import { MONTHLY_READ, obsMarkIdOf, WRITEUP_METHOD, writeUpIdOf, writeUpOf, WRITEUPS_STORE, type Followed, type Observation, type WriteUp } from '../../src/writeups/shared'
 import { askTaskIds, deepTaskId, handTaskIds } from '../../src/ask/shared'
 import { pathTaskIdOf } from '../../src/pathJob'
 import { claudeOn, fallbackReason, fire, fireFailure, fireText, MAX_POSTS, SERVED_STORE, timeoutMinutes, type ClaudeEnv, type Deps, type Reply } from './claude'
@@ -11,7 +11,7 @@ import { homeDay, LOOKUP_HELP, mayRead, parseLookupQuery, runLookup, type Lookup
 import { buildMonth, MONTH_PARTS_MOST, monthSpan, type MonthBuilt, type MonthSpan } from './month'
 import { checkMonth, noteWordsOfLine, type CheckedObservation } from './monthCheck'
 import { MONTH_ANSWER, monthInstructions, type WrongEvent } from './monthPrompt'
-import { monthToRead, type MonthRun } from './monthSchedule'
+import { MONTH_TRIES_A_DAY, monthToRead, monthToReread, type MonthRun } from './monthSchedule'
 import { standInFirst, standInStore } from './monthStandIn'
 import { accessFor, bytesOf, gatesFrom, loadCatalogue, obj, privateNames } from './retrieval'
 import { localTime } from './time'
@@ -38,6 +38,8 @@ export const MONTH_BODY_LIMIT = 60_000
 /** The month as kept at its first serving, bound to one start of its task. */
 export interface KeptMonth {
   taskAt: string
+  /** When the lines were built. */
+  builtAt?: string
   month: Omit<MonthBuilt, 'ok'>
 }
 
@@ -92,6 +94,17 @@ export async function wrongEvents(store: Store, span: MonthSpan, types: readonly
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
 }
 
+/** What earlier readings of a month said that the owner marked wrong, in their own words, to hand to a read so it is not said again. */
+export async function wrongObservations(store: Store, month: string): Promise<string[]> {
+  const [rows, marks] = await Promise.all([store.readBrainRows<unknown>(WRITEUPS_STORE, 500), store.readRecords('noteMarks', {}, 2000)])
+  const marked = new Set(marks.filter((m) => obj(m.body).kind === 'wrong' && m.id.startsWith('obs:')).map((m) => m.id))
+  const out: string[] = []
+  for (const w of rows.flatMap((r) => (writeUpOf(r.id, r.body) ? [writeUpOf(r.id, r.body) as WriteUp] : [])).filter((x) => x.month === month).sort((a, b) => a.reading - b.reading)) {
+    for (const part of ['recorded', 'noticed'] as const) w[part].forEach((o, i) => marked.has(obsMarkIdOf(w.id, part, i + 1)) && !out.includes(o.text) && out.push(o.text))
+  }
+  return out
+}
+
 /** The parts a month's run has not been served yet. */
 export function partsUnread(t: Pick<TaskRow, 'month'>): number[] {
   const m = t.month
@@ -114,7 +127,7 @@ export async function handleMonthBriefing(deps: MonthDeps, url: URL): Promise<Re
       return reply(409, { error: built.reason })
     }
     const { ok: _ok, ...month } = built
-    kept = { taskAt: t.at, month }
+    kept = { taskAt: t.at, builtAt: at, month }
     await deps.store.writeBrainRow(SERVED_STORE, t.id, t.day, kept, at)
   }
   const m = kept.month
@@ -125,7 +138,7 @@ export async function handleMonthBriefing(deps: MonthDeps, url: URL): Promise<Re
     task: 'month',
     day: t.day,
     askedModel: t.askedModel,
-    instructions: monthInstructions({ month: span.month, parts: m.parts.length, types, wrong: t.dry === true ? [] : await wrongEvents(deps.store, span, types) }),
+    instructions: monthInstructions({ month: span.month, parts: m.parts.length, types, wrong: t.dry === true ? [] : await wrongEvents(deps.store, span, types), wrongObservations: t.dry === true ? [] : await wrongObservations(deps.store, span.month) }),
     briefing: text,
     answer: MONTH_ANSWER,
     post: { path: '/claude/line', body: { task: 'month', day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
@@ -259,7 +272,7 @@ export async function handleMonthLine(deps: MonthDeps, raw: unknown): Promise<Re
     // A later reading is a new row beside the first, never over it.
     reading = Math.max(0, ...rows.flatMap((r) => (writeUpOf(r.id, r.body)?.month === span.month ? [writeUpOf(r.id, r.body)?.reading ?? 0] : []))) + 1
     const day = homeDay(at, ctx.timeZone) ?? ctx.day
-    const row: WriteUp = { id: writeUpIdOf(span.month, reading), month: span.month, reading, at, day, method: WRITEUP_METHOD, model: writtenModel, builtFrom: { counts: kept.month.counts, parts: kept.month.parts.length, lines: kept.month.lines, fingerprint: kept.month.fingerprint }, recorded, noticed }
+    const row: WriteUp = { id: writeUpIdOf(span.month, reading), month: span.month, reading, at, day, method: WRITEUP_METHOD, model: writtenModel, builtFrom: { counts: kept.month.counts, parts: kept.month.parts.length, lines: kept.month.lines, fingerprint: kept.month.fingerprint, builtAt: kept.builtAt ?? t.at }, recorded, noticed }
     await deps.store.writeBrainRow(WRITEUPS_STORE, row.id, day, row, at)
     const wrong = new Set(marks.filter((m) => obj(m.body).kind === 'wrong').map((m) => m.id))
     const known = new Map(events.flatMap((r) => (noteEventOf(r.id, r.body) ? [[r.id, noteEventOf(r.id, r.body) as NoteEvent] as const] : [])))
@@ -295,6 +308,8 @@ export interface MonthsOptions {
   /** By hand with the run key: what the schedule would do now, and nothing done. */
   plan?: boolean
   fireFetcher?: typeof fetch
+  /** For the tests: what fetches the catalogue when a month is built to see whether its lines changed. */
+  fetcher?: typeof fetch
   /** For the tests; the deployed Worker reads the shared gate. */
   gate?: 'gated' | 'open'
 }
@@ -304,10 +319,11 @@ export interface MonthsResult {
   reason: string
   day?: string
   task?: string
-  /** A plan's view: whether the read is switched on, the months that hold records, and those that have a write-up. Never a word of either. */
+  /** A plan's view: whether the read is switched on, the months that hold records, those that have a write-up, and a month that would be read again with why. Never a word of any. */
   switchedOn?: boolean
   months?: string[]
   written?: string[]
+  reread?: string
 }
 
 /** The store and the row of the Worker's own that hold whether the monthly read runs: set by hand with the run key, once the app that shows a write-up is verified live. */
@@ -372,7 +388,8 @@ export async function runMonths(env: MonthsEnv, store: Store, now: Date, opts: M
     if (!switchedOn) return { ran: false, reason: 'the monthly read is not switched on yet' }
     if (readBrainPrefs(prefs).monthlyRead === false) return { ran: false, reason: 'the monthly read is switched off in Settings' }
   }
-  const months = await store.monthsWithRecords()
+  const stamps = await store.monthStamps()
+  const months = stamps.filter((s) => s.held > 0).map((s) => s.month)
   const minutes = timeoutMinutes(env)
   const runs: MonthRun[] = []
   for (const t of await store.readTasks(months.map((m) => monthTaskIdOf(`${m}-01`)))) {
@@ -392,9 +409,45 @@ export async function runMonths(env: MonthsEnv, store: Store, now: Date, opts: M
     }
     if (t.month?.tries?.day === today) for (let i = 0; i < t.month.tries.n; i++) runs.push({ month, status: 'failed' })
   }
-  const written = [...new Set((await store.readBrainRows<unknown>(WRITEUPS_STORE, 500)).flatMap((r) => (writeUpOf(r.id, r.body) ? [(writeUpOf(r.id, r.body) as WriteUp).month] : [])))].sort()
+  const writeUps = (await store.readBrainRows<unknown>(WRITEUPS_STORE, 500)).flatMap((r) => (writeUpOf(r.id, r.body) ? [writeUpOf(r.id, r.body) as WriteUp] : []))
+  const written = [...new Set(writeUps.map((w) => w.month))].sort()
   const decision = monthToRead({ today, hhmm: `${String(local.hour).padStart(2, '0')}:${String(local.minute).padStart(2, '0')}`, months, written, runs, busy: await busyNow(store, today, now, minutes) })
-  if (opts.plan) return { ran: false, reason: 'first' in decision ? `would read ${decision.first.slice(0, 7)}` : decision.reason, day: today, switchedOn, months, written }
-  if (!('first' in decision)) return { ran: false, reason: decision.reason, day: today }
-  return startMonth(env, store, now, decision.first, monthTaskIdOf(decision.first), false, opts)
+  // No first read is owed and nothing stands in the way: a month whose record changed, or whose write-up an older method wrote, is read again.
+  const again = 'first' in decision || decision.reason !== 'no month is waiting to be read' ? null : await rereadOf(store, now, stamps, writeUps, runs)
+  if (opts.plan) return { ran: false, reason: 'first' in decision ? `would read ${decision.first.slice(0, 7)}` : decision.reason, day: today, switchedOn, months, written, ...(again ? { reread: `${again.month} (${again.why === 'method' ? 'an older method wrote it' : 'its record changed'})` } : {}) }
+  if ('first' in decision) return startMonth(env, store, now, decision.first, monthTaskIdOf(decision.first), false, opts)
+  if (!again) return { ran: false, reason: decision.reason, day: today }
+  const first = `${again.month}-01`
+  if (again.why === 'changed') {
+    // A change may leave the month's lines as they were (a row synced again, a day beside the month): the lines are built and compared before a run is spent.
+    const built = await buildMonth(await monthCtx({ env, store, now, ...(opts.fetcher ? { fetcher: opts.fetcher } : {}) }, { day: first }), first)
+    if (!built.ok) return { ran: false, reason: built.reason, day: first }
+    if (built.fingerprint === again.fingerprint) {
+      await store.writeBrainRow(MONTH_CHECKS_STORE, again.month, today, { changed: again.changed, at: now.toISOString() }, now.toISOString())
+      return { ran: false, reason: `the record of ${again.month} changed and its lines did not`, day: first }
+    }
+  }
+  return startMonth(env, store, now, first, monthTaskIdOf(first), false, opts)
+}
+
+/** The Worker's own store of changes already looked at: a month's change stamp that left its lines as they were. */
+export const MONTH_CHECKS_STORE = 'monthChecks'
+
+/**
+ * The month to read again, if any, with its newest write-up's fingerprint and the change that puts it up. A month
+ * whose newest write-up was forgotten is not read again by itself; nor one whose tries of the day are used.
+ */
+async function rereadOf(store: Store, now: Date, stamps: readonly { month: string; changed: string }[], writeUps: readonly WriteUp[], runs: readonly MonthRun[]): Promise<{ month: string; why: 'method' | 'changed'; fingerprint: string; changed: string | null } | null> {
+  const [forget, checks] = await Promise.all([store.readRecord('noteMarks', 'forget'), store.readBrainRows<{ changed?: unknown }>(MONTH_CHECKS_STORE, 200)])
+  const forgot = obj(forget).kind === 'forget' && typeof obj(forget).at === 'string' ? Date.parse(String(obj(forget).at)) : Number.NaN
+  const newest = new Map<string, WriteUp>()
+  for (const w of writeUps) if ((newest.get(w.month)?.reading ?? 0) < w.reading) newest.set(w.month, w)
+  const states = [...newest.values()]
+    .filter((w) => !(Date.parse(w.at) <= forgot))
+    .filter((w) => runs.filter((r) => r.month === w.month && r.status === 'failed').length < MONTH_TRIES_A_DAY)
+    .map((w) => ({ month: w.month, builtAt: w.builtFrom.builtAt ?? w.at, method: w.method, changed: stamps.find((s) => s.month === w.month)?.changed || null, checked: (typeof checks.find((c) => c.id === w.month)?.body.changed === 'string' ? String(checks.find((c) => c.id === w.month)?.body.changed) : null) as string | null }))
+  const pick = monthToReread({ now, method: WRITEUP_METHOD, months: states })
+  if (!pick) return null
+  const w = newest.get(pick.month) as WriteUp
+  return { ...pick, fingerprint: w.builtFrom.fingerprint, changed: states.find((s) => s.month === pick.month)?.changed ?? null }
 }

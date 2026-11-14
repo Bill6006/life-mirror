@@ -86,7 +86,7 @@ describe('a month’s answer that passes', () => {
     const [w] = await writeUps(store)
     const t = (await store.readTask(ID)) as TaskRow
     expect(w).toMatchObject({ id: '2026-10:1', month: '2026-10', reading: 1, at: NOW.toISOString(), day: '2026-11-13', method: 1, model: 'claude-stand-in' })
-    expect(w.builtFrom).toEqual({ counts: { days: 37, checkins: 74, offers: 0, outcomes: 0, notes: 0, pathMarks: 0 }, parts: 1, lines: 124, fingerprint: t.month?.fingerprint })
+    expect(w.builtFrom).toEqual({ counts: { days: 37, checkins: 74, offers: 0, outcomes: 0, notes: 0, pathMarks: 0 }, parts: 1, lines: 124, fingerprint: t.month?.fingerprint, builtAt: NOW.toISOString() })
     expect(w.recorded).toEqual([{ text: 'You wrote notes in the evening.', days: ['2026-10-03', '2026-10-09'], kinds: ['notes'] }])
     // The pattern to follow carries the table's own counts for that cell on this day: a late dinner on all eight Saturdays.
     expect(w.noticed).toEqual([{ text: 'A late dinner went with Saturdays.', days: ['2026-10-03'], kinds: ['dayRecord'], followed: { kind: 'chip.dinner', split: 'weekday', cell: '6', k: 8, n: 8, restK: 0, m: 48 } }])

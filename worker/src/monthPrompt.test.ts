@@ -64,6 +64,15 @@ describe('the month’s instructions', () => {
     expect(text()).not.toContain('MARKED WRONG')
   })
 
+  it('hand back what an earlier reading said that the person marked wrong, and say nothing of it when there is none', () => {
+    const t = lines(text({ wrongObservations: ['Short nights went with skipped plans.', 'A second one.'] }))
+    const at = t.indexOf('OBSERVATIONS MARKED WRONG by the person in an earlier reading of this month, not to be said again in these or other words:')
+    expect(at).toBeGreaterThan(0)
+    expect(t.slice(at + 1, at + 3)).toEqual(['- “Short nights went with skipped plans.”', '- “A second one.”'])
+    expect(text()).not.toContain('OBSERVATIONS MARKED WRONG')
+    expect(text({ wrongObservations: [] })).not.toContain('OBSERVATIONS MARKED WRONG')
+  })
+
   it('end with the written list: what the read covers, and what it leaves out with why', () => {
     const t = lines(text())
     expect(t.at(-2)).toMatch(/^WHAT THIS READ COVERS: the day’s own row: .*; finished workouts\.$/)

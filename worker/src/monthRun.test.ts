@@ -175,16 +175,6 @@ describe('the switch', () => {
   })
 })
 
-describe('the months that hold records', () => {
-  it('are those of the stores a day’s lines are built from, oldest first, a deleted row and any other store aside', async () => {
-    const store = record()
-    put(store, 'journal', '1', '2026-07-04', { id: 1, day: '2026-07-04', text: 'x' })
-    put(store, 'notes', '9', '2026-06-02', { id: 9, day: '2026-06-02', text: 'a kept note' })
-    put(store, 'offers', '5', '2026-05-02', { id: 5, day: '2026-05-02' }, 1)
-    expect(await store.monthsWithRecords()).toEqual(['2026-06', '2026-09', '2026-10', '2026-11'])
-  })
-})
-
 describe('a run by hand', () => {
   /** The run started by hand, its briefing fetched and every part read; the stand-in month's lines. */
   async function started(store: Mem): Promise<{ first: string; lines: { id: string; text: string }[] }> {

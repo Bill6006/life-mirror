@@ -49,3 +49,34 @@ export function monthToRead(x: MonthScheduleInput): { first: string } | { reason
   if (next) return { first: `${next}-01` }
   return { reason: waiting.length ? `today’s ${MONTH_TRIES_A_DAY} tries are used; the month is tried again tomorrow` : 'no month is waiting to be read' }
 }
+
+// ─── Read again ─────────────────────────────────────────────────────────────────────────────────
+
+/** A month's record must have been still this long before it is read again: long enough to gather several changes into one re-read, hours and never days. */
+export const REREAD_QUIET_MS = 6 * 3_600_000
+
+export interface RereadState {
+  month: string
+  /** When the lines its newest write-up rests on were built, and the method that wrote it. */
+  builtAt: string
+  method: number
+  /** When a row of the month was last written, a deleted one too; null when none is known. */
+  changed: string | null
+  /** A change already looked at and found to leave the month's lines as they were. */
+  checked: string | null
+}
+
+/**
+ * The month to read again, the oldest first, and why; or null. A write-up an older method wrote is read again, which
+ * happens only when the method's version is raised by hand after a real improvement. Else a month whose record changed
+ * after its lines were built, once that record has been still for six hours. Nothing here reads the usage meter.
+ */
+export function monthToReread(x: { now: Date; method: number; months: readonly RereadState[] }): { month: string; why: 'method' | 'changed' } | null {
+  for (const m of [...x.months].sort((a, b) => (a.month < b.month ? -1 : 1))) {
+    if (m.method < x.method) return { month: m.month, why: 'method' }
+    if (!m.changed || m.changed === m.checked) continue
+    const changed = Date.parse(m.changed)
+    if (changed > Date.parse(m.builtAt) && x.now.getTime() - changed >= REREAD_QUIET_MS) return { month: m.month, why: 'changed' }
+  }
+  return null
+}

@@ -291,8 +291,11 @@ export interface Store {
   readRecords(store: string, range?: { from?: string; to?: string; like?: string }, limit?: number): Promise<RecordRow[]>
   /** How many of the phone's own rows a store holds within a range: asked only when a read was cut, to say how many it left unread (2026-11-13). */
   countRecords(store: string, range?: { from?: string; to?: string; like?: string }): Promise<number>
-  /** The months, YYYY-MM, in which the stores a day's lines are built from hold a row, oldest first (2026-11-13): what the monthly read may be owed. */
-  monthsWithRecords(): Promise<string[]>
+  /**
+   * Each month, YYYY-MM, of the stores a day's lines are built from, oldest first (2026-11-13): how many rows it holds, and
+   * when a row of it was last written, a deleted one too. What the monthly read may be owed, and what may need reading again.
+   */
+  monthStamps(): Promise<{ month: string; held: number; changed: string }[]>
   /**
    * Every check-in in a range of days that holds a note, as its id, its day and its check-in alone, newest day first
    * (2026-11-13): when notes are written at all, read without downloading a note. A note of spaces alone is no note.
@@ -518,9 +521,9 @@ export function tursoStore(url: string, token: string): Store {
       const r = await rows(`SELECT COUNT(*) AS n FROM records WHERE ${where.join(' AND ')}`, args)
       return Number(r[0]?.n ?? 0)
     },
-    async monthsWithRecords() {
-      const r = await rows(`SELECT DISTINCT substr(day, 1, 7) AS month FROM records WHERE app = ? AND deleted = 0 AND day IS NOT NULL AND store IN ('days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks') ORDER BY month`, [APP])
-      return r.map((x) => String(x.month)).filter((m) => /^\d{4}-\d{2}$/.test(m))
+    async monthStamps() {
+      const r = await rows(`SELECT substr(day, 1, 7) AS month, SUM(CASE WHEN deleted = 0 THEN 1 ELSE 0 END) AS held, MAX(synced_at) AS changed FROM records WHERE app = ? AND day IS NOT NULL AND store IN ('days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks') GROUP BY month ORDER BY month`, [APP])
+      return r.map((x) => ({ month: String(x.month), held: Number(x.held), changed: String(x.changed) })).filter((m) => /^\d{4}-\d{2}$/.test(m.month))
     },
     async noteMoments(range, limit) {
       // The note is read inside the database: a check-in's note is the text at extras.note, and one that is empty once
@@ -743,10 +746,16 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     async countRecords(store, range = {}) {
       return live(APP, store).filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)) && (!range.like || (r.body ?? '').toLowerCase().includes(range.like.toLowerCase()))).length
     },
-    async monthsWithRecords() {
-      // As the live store answers: the stores a day's lines are built from, rows not deleted, by their day's month.
-      const held = ['days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks']
-      return [...new Set([...rows.values()].filter((r) => r.app === APP && r.deleted === 0 && r.day !== null && held.includes(r.store)).map((r) => (r.day as string).slice(0, 7)))].filter((m) => /^\d{4}-\d{2}$/.test(m)).sort()
+    async monthStamps() {
+      // As the live store answers: by the month of a row's day, over the stores a day's lines are built from; a deleted row holds nothing and still says when it changed.
+      const stores = ['days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks']
+      const by = new Map<string, { month: string; held: number; changed: string }>()
+      for (const r of rows.values()) {
+        if (r.app !== APP || r.day === null || !stores.includes(r.store) || !/^\d{4}-\d{2}-/.test(r.day)) continue
+        const m = by.get(r.day.slice(0, 7)) ?? { month: r.day.slice(0, 7), held: 0, changed: '' }
+        by.set(m.month, { month: m.month, held: m.held + (r.deleted === 0 ? 1 : 0), changed: r.synced_at > m.changed ? r.synced_at : m.changed })
+      }
+      return [...by.values()].sort((a, b) => (a.month < b.month ? -1 : 1))
     },
     async noteMoments(range, limit) {
       // As the live store answers: the check-ins of the range whose note is more than spaces, tabs and line breaks.

@@ -23,6 +23,8 @@ export interface MonthInstructionsInput {
   types: readonly EventType[]
   /** The month's events the owner marked wrong. */
   wrong: readonly WrongEvent[]
+  /** What an earlier reading of this month said that the owner marked wrong, in its own words. */
+  wrongObservations?: readonly string[]
 }
 
 /** The shape of the answer, as the briefing shows it. */
@@ -38,6 +40,7 @@ export function monthInstructions(x: MonthInstructionsInput): string {
     ? ['EVENT TYPES, each with what counts as one:', ...x.types.map((t) => `- ${t.id}: ${t.label}. ${t.definition}`)]
     : ['EVENT TYPES: none is listed yet. Write "events": [].']
   const wrong = x.wrong.length ? ['MARKED WRONG by the person, never to be tagged again:', ...x.wrong.map((w) => `- ${w.type} on ${w.day}: “${w.quote}”`)] : []
+  const said = x.wrongObservations?.length ? ['OBSERVATIONS MARKED WRONG by the person in an earlier reading of this month, not to be said again in these or other words:', ...x.wrongObservations.map((o) => `- “${o}”`)] : []
   return [
     `You are reading one whole month of one person's own record, ${x.month}, and writing down what stood out. Write to them as "you". Reply with JSON only, in the shape "answer" shows.`,
     `- Read every part before you write: lookup=month&part=1 to lookup=month&part=${x.parts}. A write-up is kept only when every part was read; saying you read them is not enough.`,
@@ -53,6 +56,7 @@ export function monthInstructions(x: MonthInstructionsInput): string {
     '- A private item is named only as its own lines name it. Speak of dating, a date or a partner only where the month\'s lines do, never from what did not happen, never counting or rating anyone.',
     ...types,
     ...wrong,
+    ...said,
     `WHAT THIS READ COVERS: ${MONTH_COVERED.join('; ')}.`,
     `WHAT IT LEAVES OUT: ${MONTH_LEFT_OUT.map((l) => `${l.what} (${l.why})`).join('; ')}.`,
   ].join('\n')
