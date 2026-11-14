@@ -7,7 +7,7 @@ import { noteEventOf } from '../../src/noteEvents/shared'
 import type { EventType } from '../../src/noteEvents/types'
 import { writeUpOf, type WriteUp } from '../../src/writeups/shared'
 import { eventIdOf, followedOf, handleMonthBriefing, handleMonthContext, handleMonthLine, monthTaskIdOf, type MonthDeps } from './monthTask'
-import { APP, memoryStore, type TaskRow } from './turso'
+import { APP, BRAIN_APP, memoryStore, type TaskRow } from './turso'
 
 // The month's post (2026-11-13), on a stand-in month: whole, or nothing saved; the answer checked against the kept
 // month; the write-up stored beside any earlier reading; each event stored against its note's record.
@@ -98,6 +98,16 @@ describe('a month’s answer that passes', () => {
     await post(store, answer(await ready(store)))
     expect(await events(store)).toEqual([{ id: 'checkins:18:raised-voice', type: 'raised-voice', note: { store: 'checkins', id: '18', day: '2026-10-03', block: 'evening' }, quote: 'I raised my voice at the dog again', noticedAt: NOW.toISOString(), method: 'month-1' }])
     expect(eventIdOf({ store: 'notes', id: '30' }, 'up-late')).toBe('notes:30:up-late')
+  })
+
+  it('writes only the Worker’s own rows for a month: nothing is put on a day’s sheet, so no free model reads any of it', async () => {
+    const store = standIn()
+    await post(store, answer(await ready(store)))
+    const stores = [...new Set([...store.rows.values()].filter((r) => r.app === BRAIN_APP).map((r) => r.store))].sort()
+    expect(stores).toEqual(['bridge', 'noteEvents', 'reads', 'served', 'writeups'])
+    // The phone's own rows are as they were seeded: none was written, and no sheet exists for any day.
+    expect([...store.rows.values()].filter((r) => r.app === APP && r.store === 'facts')).toEqual([])
+    expect([...new Set([...store.rows.values()].filter((r) => r.app === APP).map((r) => r.store))].sort()).toEqual(['checkins', 'days', 'patterns', 'settings'])
   })
 
   it('is taken as JSON written out, too', async () => {
