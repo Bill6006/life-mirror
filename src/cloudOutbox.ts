@@ -41,6 +41,8 @@ export interface CloudMeta {
   lastError: string | null
   /** For the other app's rows: which reading of them the rows here hold, so a richer reading re-reads them all once (Part 35). */
   detail?: number
+  /** For the Worker's rows (2026-11-14): the stores this phone has asked for, so one it starts asking for later is read once from its start. */
+  stores?: string[]
   /** How many times a record held twice under two ids was made one again on a pull (sync safety, 2026-10-02). */
   merged?: number
   /** The one-time repair pass already made: its whole history walked again under the safe merge. */

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { getBrainPrefs, setBrainSwitch, setMonthlyRead } from './brainPrefs'
 import { APP } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { askRunOf, BRAIN_APP, BRAIN_STORES, brainReadOf, coachRunOf, deleteCloudCopy, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { askRunOf, BRAIN_APP, BRAIN_STORES, BRAIN_STORES_FIRST, brainReadOf, coachRunOf, deleteCloudCopy, getBrainMeta, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
 import { checkin, context, day } from './counted/testing'
 import { db, updateSettings, wipeEverything } from './db'
 import { writeUpsForExport } from './export'
@@ -233,5 +233,88 @@ describe('a month task’s own row', () => {
     const row = JSON.stringify({ id: 'task:2026-10-01:month', kind: 'task', task: 'month', day: '2026-10-01', at: '2026-11-13T22:00:00.000Z', status: 'written', trigger: 'ask', factsDay: '2026-10-01', askedModel: 'opus', contextCalls: 3, contextBytes: 100, posts: 1, refusals: [], turns: [1], asks: [1] })
     expect(coachRunOf('task:2026-10-01:month', row)).toBeNull()
     expect(askRunOf('task:2026-10-01:month', row)).toBeNull()
+  })
+})
+
+describe('a store the phone starts asking for late', () => {
+  // The owner's phone on 2026-11-13: still on the app before the write-ups while October was being read, its watermark
+  // moved past September's write-up; the newer app then asked for write-ups from near that watermark, and September's never came.
+  const EARLY = '2026-11-14T04:32:37.020Z'
+  const LATE = '2026-11-14T04:48:21.030Z'
+  const read = (at: string): CloudRow => ({ app: BRAIN_APP, store: 'reads', id: `read:${at}`, day: '2026-11-13', body: JSON.stringify({ day: '2026-11-13', at, task: 'ask', category: 'notes', count: 1, bytes: 10, via: 'context' }), updated_at: at, deleted: 0, device_id: 'worker', synced_at: at })
+  /** A cloud that holds a write-up written early and another row written sixteen minutes later; every pull's stores and start are recorded. */
+  function cloud(): { store: MemoryStore; pulls: { after: string; stores: string[] }[] } {
+    const store = memoryStore()
+    const pulls: { after: string; stores: string[] }[] = []
+    const pull = store.pull.bind(store)
+    store.pull = async (app, after, limit, stores) => {
+      if (app === BRAIN_APP) pulls.push({ after, stores: [...(stores ?? [])] })
+      return pull(app, after, limit, stores)
+    }
+    return { store, pulls }
+  }
+  /** The phone as the older app left it: it has pulled up to the later row, and holds no record of the stores it asked for. */
+  const olderApp = () => db.cloudMeta.put({ key: 'brain', watermark: LATE, lastSyncAt: null, lastError: null })
+
+  it('reads that store once from its start, so a row written before the watermark is not lost', async () => {
+    expect(BRAIN_STORES_FIRST).toEqual(['briefs', 'reads', 'coach', 'proposals', 'bridge', 'askAnswers', 'pathJobs', 'generated'])
+    const { store, pulls } = cloud()
+    await store.upsert([brainRow(writeUp(), EARLY), read(LATE)])
+    await olderApp()
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    expect((await db.writeups.toArray()).map((w) => w.id)).toEqual(['2026-10:1'])
+    // The two stores that came later are asked for by name from the start; then the usual pull, from near the watermark.
+    expect(pulls[0]).toEqual({ after: '', stores: ['noteEvents', 'writeups'] })
+    expect(pulls.at(-1)?.stores).toEqual([...BRAIN_STORES])
+    expect(pulls.at(-1)?.after).toBe('2026-11-14T04:43:21.030Z')
+    // The watermark is where it was, and the phone remembers what it has asked for.
+    const meta = await getBrainMeta()
+    expect([meta.watermark, meta.stores]).toEqual([LATE, [...BRAIN_STORES]])
+    // Once: the next sync asks for nothing from the start.
+    pulls.length = 0
+    expect(await syncNow()).toBe('done')
+    expect(pulls.every((p) => p.after !== '')).toBe(true)
+  })
+
+  it('leaves the watermark where it was, so a row of another store written meanwhile is still read', async () => {
+    const { store } = cloud()
+    // A read logged ten minutes after the watermark, not yet pulled; and a write-up written ten minutes after that.
+    const between = '2026-11-14T04:58:21.030Z'
+    await store.upsert([read(LATE), read(between), brainRow(writeUp(), '2026-11-14T05:08:21.030Z')])
+    await olderApp()
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    expect(await db.writeups.count()).toBe(1)
+    expect((await db.brainReads.toArray()).map((r) => r.at)).toContain(between)
+  })
+
+  it('reads it again at the next sync when the first read was cut short', async () => {
+    const { store } = cloud()
+    await store.upsert([brainRow(writeUp(), EARLY), read(LATE)])
+    await olderApp()
+    await withToken(store)
+    const pull = store.pull.bind(store)
+    let fail = true
+    store.pull = async (app, after, limit, stores) => {
+      if (app === BRAIN_APP && after === '' && fail) throw new Error('offline')
+      return pull(app, after, limit, stores)
+    }
+    expect(await syncNow()).not.toBe('done')
+    expect(await db.writeups.count()).toBe(0)
+    expect((await getBrainMeta()).stores).toBeUndefined()
+    fail = false
+    expect(await syncNow()).toBe('done')
+    expect(await db.writeups.count()).toBe(1)
+  })
+
+  it('is no extra read on a new phone, which reads everything from the start and remembers what it asked for', async () => {
+    const { store, pulls } = cloud()
+    await store.upsert([brainRow(writeUp(), EARLY), read(LATE)])
+    await withToken(store)
+    expect(await syncNow()).toBe('done')
+    expect(await db.writeups.count()).toBe(1)
+    expect(pulls.map((p) => p.stores.length)).toEqual([BRAIN_STORES.length])
+    expect((await getBrainMeta()).stores).toEqual([...BRAIN_STORES])
   })
 })

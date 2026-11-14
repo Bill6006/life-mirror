@@ -117,6 +117,11 @@ const ASK_ANSWERS_STORE = 'askAnswers'
  * marks of pushes sent, its reports, the sheets it served and the generator's drafts are never downloaded.
  */
 export const BRAIN_STORES: readonly string[] = [BRAIN_STORE, READS_STORE, COACH_STORE, PROPOSALS_STORE, BRIDGE_STORE, ASK_ANSWERS_STORE, PATH_JOBS_STORE, GENERATED_STORE, NOTE_EVENTS_STORE, WRITEUPS_STORE]
+/**
+ * The stores a phone asked for before the list grew (2026-11-14). A phone that has pulled before and holds no record
+ * of the stores it has asked for asked for these alone: what was noticed in notes and the write-ups came later.
+ */
+export const BRAIN_STORES_FIRST: readonly string[] = [BRAIN_STORE, READS_STORE, COACH_STORE, PROPOSALS_STORE, BRIDGE_STORE, ASK_ANSWERS_STORE, PATH_JOBS_STORE, GENERATED_STORE]
 /** How far behind its watermark each pull of the Worker's rows starts. */
 export const BRAIN_OVERLAP_MS = 5 * 60_000
 
@@ -714,13 +719,28 @@ async function pullOutside(store: CloudStore): Promise<number> {
  */
 async function pullBrain(store: CloudStore): Promise<number> {
   let applied = 0
+  // A store this phone has never asked for (2026-11-14): every pull starts near the watermark, so its rows written
+  // before the watermark would never be read. They are read once, from the start, by that store's name alone, and the
+  // watermark is left where it is. Only once that read is whole does the phone record that it has asked: a read cut
+  // short is made again at the next sync, and reading a row twice changes nothing.
+  const first = await getBrainMeta()
+  const asked = first.stores ?? (first.watermark ? BRAIN_STORES_FIRST : BRAIN_STORES)
+  const late = BRAIN_STORES.filter((s) => !asked.includes(s))
+  if (late.length) applied += await pullBrainRows(store, '', late, false)
+  if (late.length || !first.stores) await db.cloudMeta.put({ ...(await getBrainMeta()), key: 'brain', stores: [...BRAIN_STORES] })
   // Each pull starts a little behind the watermark (2026-11-12): the Worker stamps a row a moment before it lands,
   // and one stamped earlier than a row already read would never be read. Every row below is applied by a put or a
   // delete by its id, so reading one twice changes nothing.
   const from = Date.parse((await getBrainMeta()).watermark) - BRAIN_OVERLAP_MS
-  let after = Number.isFinite(from) ? new Date(from).toISOString() : ''
+  return applied + (await pullBrainRows(store, Number.isFinite(from) ? new Date(from).toISOString() : '', BRAIN_STORES, true))
+}
+
+/** One read of the Worker's rows of the stores named, page by page from a moment on; the watermark moves with it only where `moves` says so. */
+async function pullBrainRows(store: CloudStore, start: string, stores: readonly string[], moves: boolean): Promise<number> {
+  let applied = 0
+  let after = start
   for (;;) {
-    const page = await store.pull(BRAIN_APP, after, PAGE, BRAIN_STORES)
+    const page = await store.pull(BRAIN_APP, after, PAGE, stores)
     if (!page.length) break
     // A full page may end inside a run of rows stamped alike: the run is held back and read whole by the next page.
     const rows = wholeRuns(page, PAGE)
@@ -794,7 +814,7 @@ async function pullBrain(store: CloudStore): Promise<number> {
       }
       // The watermark only ever moves forward: the rows read again from behind it are older than it.
       const meta = await getBrainMeta()
-      if (after > meta.watermark) await db.cloudMeta.put({ ...meta, key: 'brain', watermark: after })
+      if (moves && after > meta.watermark) await db.cloudMeta.put({ ...meta, key: 'brain', watermark: after })
     })
     applied += rows.length
     if (page.length < PAGE) break

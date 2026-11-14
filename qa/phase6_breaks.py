@@ -86,6 +86,10 @@ The followed count: only the occasions after the day noticed, that day itself as
 split; one family across every followed pattern; a kind or a cell the record does not have counted nowhere; kept in
 the table's record, read back whole, and a change in it rewrites the record; the build counts what is followed now.
 
+A store the phone starts asking for late (2026-11-14, found on the owner's phone: September's write-up never came):
+read once from its start; the watermark left where it was; recorded as asked only once the read is whole; a phone that
+pulled before asked for the first eight stores; a new phone makes no extra read.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -1286,6 +1290,32 @@ TABLE = [
          old="sinceThen: `${f.k} of ${f.n}`",
          new="sinceThen: `${f.n}`",
          tests=[FT], pattern='is in the export beside the table'),
+
+    # A store the phone starts asking for late.
+    dict(id='a-late-store-is-read-from-its-start', file=CS,
+         old="  if (late.length) applied += await pullBrainRows(store, '', late, false)\n",
+         new="",
+         tests=[WFT], pattern='reads that store once from its start'),
+    dict(id='a-late-read-leaves-the-watermark', file=CS,
+         old="pullBrainRows(store, '', late, false)",
+         new="pullBrainRows(store, '', late, true)",
+         tests=[WFT], pattern='leaves the watermark where it was'),
+    dict(id='asked-is-recorded-once-the-read-is-whole', file=CS,
+         old="  if (late.length) applied += await pullBrainRows(store, '', late, false)\n  if (late.length || !first.stores) await db.cloudMeta.put({ ...(await getBrainMeta()), key: 'brain', stores: [...BRAIN_STORES] })\n",
+         new="  if (late.length || !first.stores) await db.cloudMeta.put({ ...(await getBrainMeta()), key: 'brain', stores: [...BRAIN_STORES] })\n  if (late.length) applied += await pullBrainRows(store, '', late, false)\n",
+         tests=[WFT], pattern='reads it again at the next sync when the first read was cut short'),
+    dict(id='a-phone-that-pulled-before-asked-for-the-first-stores', file=CS,
+         old="first.stores ?? (first.watermark ? BRAIN_STORES_FIRST : BRAIN_STORES)",
+         new="first.stores ?? BRAIN_STORES",
+         tests=[WFT], pattern='reads that store once from its start'),
+    dict(id='a-new-phone-makes-no-extra-read', file=CS,
+         old="first.stores ?? (first.watermark ? BRAIN_STORES_FIRST : BRAIN_STORES)",
+         new="first.stores ?? BRAIN_STORES_FIRST",
+         tests=[WFT], pattern='is no extra read on a new phone'),
+    dict(id='the-first-stores-are-eight', file=CS,
+         old="ASK_ANSWERS_STORE, PATH_JOBS_STORE, GENERATED_STORE]\n/** How far behind",
+         new="ASK_ANSWERS_STORE, PATH_JOBS_STORE]\n/** How far behind",
+         tests=[WFT], pattern='reads that store once from its start'),
 ]
 
 
