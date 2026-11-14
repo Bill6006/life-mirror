@@ -4,6 +4,7 @@ import { fill, formatDayShort } from './format'
 import { useLive } from './live'
 import { markWrong, noticedNow } from './noteEvents/flow'
 import { refreshPatterns } from './patternsFlow'
+import { ForgetLearned } from './writeupsScreen'
 
 /**
  * Settings → Brain → Noticed in your notes (2026-11-13): each thing Claude noticed in a note, with the owner's own
@@ -55,6 +56,7 @@ export function NoticedScreen({ onClose }: { onClose: () => void }) {
           </div>
         )
       })}
+      {all.length > 0 && <ForgetLearned />}
       <div class="actions">
         <button type="button" class="textbtn" data-testid="noticed-done" onClick={onClose}>
           {c.done}

@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks'
 import { addDays, blockAt } from './blocks'
 import { BRAIN_SWITCHES, LOCATION_TO_CLAUDE, USAGE_TO_CLAUDE, WRITER_MODELS, type Lacked, type WriterModel } from './brainShared'
-import { getBrainPrefs, setBrainSwitch, setFirmness, setWriterModel } from './brainPrefs'
+import { getBrainPrefs, setBrainSwitch, setFirmness, setMonthlyRead, setWriterModel } from './brainPrefs'
 import { firmOn } from './firmFlow'
 import { DEFAULT_FIRMNESS, FIRMNESS_PREFS } from './firmness'
 import { hasMove, moveById } from './catalogue'
@@ -13,6 +13,8 @@ import { useLive } from './live'
 import { noticedNow } from './noteEvents/flow'
 import { NoticedScreen } from './noticedScreen'
 import { USE_WINDOW_DAYS } from './useLog'
+import { writeUpsNow } from './writeups/flow'
+import { WriteUpsScreen } from './writeupsScreen'
 
 /**
  * Settings → Brain (Part 30): who writes the day's line, one row of chips starting on Opus; what
@@ -65,7 +67,11 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
   // What Claude noticed in notes (2026-11-13): its own sheet, behind a row that shows only while there is one to show.
   const noticed = useLive(noticedNow, [])
   const [noticedOpen, setNoticedOpen] = useState(false)
+  // The monthly write-ups (2026-11-13): their own sheet, behind a row that shows only while there is one to show.
+  const months = useLive(writeUpsNow, [])
+  const [writeUpsOpen, setWriteUpsOpen] = useState(false)
   if (noticedOpen) return <NoticedScreen onClose={() => setNoticedOpen(false)} />
+  if (writeUpsOpen) return <WriteUpsScreen onClose={() => setWriteUpsOpen(false)} />
   if (!prefs || !settings || !lines || !reads || !coached) return <section class="screen" />
   const c = copy.brainScreen
   const labelOf = (category: string) => (c.switches as Record<string, { label: string }>)[category]?.label ?? (c.readLabels as Record<string, string>)[category] ?? category
@@ -153,6 +159,19 @@ export function BrainScreen({ onClose }: { onClose: () => void }) {
           {lacked && lacked.length ? lacked.map((l) => fill(c.lackedItem, { what: c.lackedLabels[l.id], n: String(l.n) })).join(' · ') : c.lackedNone}
         </p>
       </div>
+
+      <h2 class="section">{c.writeups.title}</h2>
+      <div class="card" data-testid="brain-writeups">
+        <SwitchRow label={c.writeups.switchLabel} note={c.writeups.switchNote} on={prefs.monthlyRead !== false} onChange={(on) => void setMonthlyRead(on)} testid="brain-monthly-read" />
+      </div>
+      {months !== undefined && months.length > 0 && (
+        <div class="card pad" data-testid="brain-writeups-row">
+          <p class="note faint">{c.writeups.rowNote}</p>
+          <button type="button" class="textbtn" data-testid="brain-writeups-open" onClick={() => setWriteUpsOpen(true)}>
+            {fill(c.writeups.open, { n: String(months.length) })}
+          </button>
+        </div>
+      )}
 
       {noticed !== undefined && noticed.length > 0 && (
         <>

@@ -3,9 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { getBrainPrefs, setBrainSwitch, setMonthlyRead } from './brainPrefs'
 import { APP } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { BRAIN_APP, BRAIN_STORES, deleteCloudCopy, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { BRAIN_APP, BRAIN_STORES, brainReadOf, deleteCloudCopy, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
 import { checkin, context, day } from './counted/testing'
 import { db, updateSettings, wipeEverything } from './db'
+import { writeUpsForExport } from './export'
 import { forgetNoticed } from './noteEvents/flow'
 import { setTokenStorageForTests } from './tokenVault'
 import { followedNow, markObservation, writeUpsNow } from './writeups/flow'
@@ -179,5 +180,50 @@ describe('the owner’s switch for the monthly read', () => {
     await setBrainSwitch('notes', false)
     await setMonthlyRead(false)
     expect((await getBrainPrefs()).switches).toEqual({ notes: false })
+  })
+})
+
+describe('the export', () => {
+  beforeEach(async () => {
+    await seedDays()
+    await db.writeups.bulkPut([writeUp(), writeUp(2, '2026-11-20T10:00:00.000Z')])
+    await db.privateItems.add({ name: 'Standin', createdAt: '2026-10-01T12:00:00.000Z', archived: 0 } as never)
+    await updateSettings((s) => ({ ...s, showPrivate: true }))
+  })
+
+  it('lists each month shown, its newest reading first, each observation with its days and whether you marked it wrong', async () => {
+    await markObservation(obsMarkIdOf('2026-10:2', 'noticed', 1), true, NOW)
+    const out = writeUpsForExport(await writeUpsNow(), true, true) as { monthlyWriteUps: { month: string; readings: { reading: number; readOn: string; youRecorded: unknown[]; claudeNoticed: unknown[] }[] }[] }
+    expect(out.monthlyWriteUps.map((m) => [m.month, m.readings.map((r) => [r.reading, r.readOn])])).toEqual([['2026-10', [[2, '2026-11-20'], [1, '2026-11-13']]]])
+    const newest = out.monthlyWriteUps[0].readings[0]
+    expect(newest.youRecorded[0]).toEqual({ said: 'You wrote a note on most evenings.', days: [day(A), day(A + 1)], markedWrong: false })
+    expect(newest.claudeNoticed[0]).toEqual({ said: 'A late dinner went with Saturdays.', days: [day(A + 3)], markedWrong: true, followed: { kind: 'chip.dinner', split: 'weekday', cell: '6', onTheDayNoticed: '4 of 9', elsewhere: '6 of 40' } })
+    // The mark is on the newer reading alone.
+    expect((out.monthlyWriteUps[0].readings[1].claudeNoticed[0] as { markedWrong: boolean }).markedWrong).toBe(false)
+  })
+
+  it('carries what drew on private items only with private items, and nothing at all when nothing is shown', async () => {
+    const months = await writeUpsNow()
+    const noticed = (includePrivate: boolean) => (writeUpsForExport(months, includePrivate, true) as { monthlyWriteUps: { readings: { claudeNoticed: unknown[] }[] }[] }).monthlyWriteUps[0].readings[0].claudeNoticed.length
+    expect([noticed(true), noticed(false)]).toEqual([2, 1])
+    expect(writeUpsForExport([], true, true)).toEqual({})
+    expect(writeUpsForExport(undefined, true, true)).toEqual({})
+  })
+
+  it('carries what drew on the Partner path only with it', async () => {
+    const w = writeUp(3, '2026-11-25T10:00:00.000Z')
+    await db.writeups.put({ ...w, recorded: [{ text: 'A stand-in step on the Partner path.', days: [day(A)], kinds: ['partnerPath'] }], noticed: [] })
+    const months = await writeUpsNow()
+    const newest = (partner: boolean) => (writeUpsForExport(months, true, partner) as { monthlyWriteUps: { readings: { reading: number }[] }[] }).monthlyWriteUps[0].readings.map((r) => r.reading)
+    // Without the Partner path the newest reading has nothing left to carry, and is not listed.
+    expect([newest(true), newest(false)]).toEqual([[3, 2, 1], [2, 1]])
+  })
+})
+
+describe('a read the monthly read logged', () => {
+  it('is kept on the phone, and one of a task no list knows is not', () => {
+    const row = { day: '2026-11-13', at: '2026-11-13T22:00:00.000Z', task: 'month', category: 'lookup.month', count: 148, bytes: 37888, via: 'context' }
+    expect(brainReadOf('read:1', JSON.stringify(row))).toEqual({ id: 'read:1', ...row })
+    expect(brainReadOf('read:2', JSON.stringify({ ...row, task: 'year' }))).toBeNull()
   })
 })

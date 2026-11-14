@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { NOTICED_KEY, seedNoticed } from './noticedSeed'
+import { seedWriteUps } from './writeupsSeed'
 import { seedNote, seedRecord as seedAskRecord, seedThread, seedTurns } from './askSeed'
 
 // The three themes (Rule 15, revised 2026-09-24): each one checked on every major screen and the
@@ -793,6 +794,45 @@ for (const theme of THEMES) {
     for (const width of WIDTHS) {
       await page.setViewportSize({ width: width.w, height: 844 })
       await walk(page, theme, NOTICED_STATES, width, found)
+    }
+    expect(found, found.join('\n')).toEqual([])
+  })
+}
+
+// The monthly write-ups (Phase 6, 2026-11-13): the switch and the row on the Brain screen, the months with the forget
+// control asking, and a month's sheet with one observation marked wrong and an earlier reading beside it.
+const WRITEUPS_STATES: typeof STATES = [
+  { name: 'Brain, the monthly read and the row for write-ups', tab: 'Settings', open: async (p) => {
+    await p.getByRole('button', { name: /^Brain/ }).click()
+    await p.getByTestId('brain-writeups-row').scrollIntoViewIfNeeded()
+  } },
+  { name: 'Monthly write-ups, the months and the forget control asking', tab: 'Settings', open: async (p) => {
+    await p.getByRole('button', { name: /^Brain/ }).click()
+    await p.getByTestId('brain-writeups-open').click()
+    await p.getByTestId('forget-learned-open').click()
+    await p.getByTestId('forget-learned-yes').waitFor()
+  } },
+  { name: 'A month’s write-up, one marked wrong', tab: 'Settings', open: async (p) => {
+    await p.getByRole('button', { name: /^Brain/ }).click()
+    await p.getByTestId('brain-writeups-open').click()
+    await p.getByTestId('writeups-month').first().click()
+    await p.getByTestId('writeup-marked').waitFor()
+  } },
+]
+
+for (const theme of THEMES) {
+  test(`${theme}: the monthly write-ups read, fit and can be tapped, at three widths (2026-11-13)`, async ({ page }) => {
+    test.setTimeout(300_000)
+    await page.addInitScript((t) => localStorage.setItem('life-mirror.theme', t), theme)
+    await page.clock.setFixedTime(new Date(2026, 8, 24, 13, 30))
+    await page.goto('./')
+    await page.getByTestId('direction-input').fill('One line, mine')
+    await page.getByRole('button', { name: 'Keep it', exact: true }).click()
+    await seedWriteUps(page, { earlier: true, marked: true })
+    const found: string[] = []
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width: width.w, height: 844 })
+      await walk(page, theme, WRITEUPS_STATES, width, found)
     }
     expect(found, found.join('\n')).toEqual([])
   })

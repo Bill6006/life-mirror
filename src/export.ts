@@ -1,5 +1,6 @@
 import { readPatterns, type PatternsRecord } from './counted/stored'
 import { noticedOf } from './noteEvents/join'
+import type { ShownMonth, ShownObservation, ShownWriteUp } from './writeups/join'
 import type { NoteEvent, NoteMark } from './noteEvents/shared'
 import { compareSlots } from './blocks'
 import { type Aim, type AnchorSwap, askedOf, setAside, type Claim, type JournalEntry, blocksOf, type BrainBrief, type BriefFeedback, type BriefLog, type Card, type CheckIn, type DayContext, type Declaration, type Forecast, type ForecastScore, type HerSkill, type Intention, type KnownPlace, type Moment, type MonthlyCheck, type Offer, type Outcome, type OutsideDay, type PathAdaptation, type PathMark, type PathTest, type PathTestDay, type PrivateItem, type Reflection, type RungMark, type Skill, type UseRow, type Win } from './db'
@@ -64,6 +65,23 @@ export interface RecordsData {
   patterns?: PatternsRecord | null
   /** What Claude noticed in notes (2026-11-13), and your own marks on it. */
   noticed?: { events: readonly NoteEvent[]; marks: readonly NoteMark[] }
+  /** The monthly write-ups as they are shown (2026-11-13): each month's readings, with your own marks. */
+  writeUps?: readonly ShownMonth[]
+}
+
+/**
+ * The monthly write-ups, for the export: each month that is shown, its newest reading first and any earlier one after
+ * it, each observation with the days it came from and whether you marked it wrong. What drew on private items is
+ * here only with private items, and what drew on the Partner path only with it, as everywhere in the export.
+ */
+export function writeUpsForExport(months: RecordsData['writeUps'], includePrivate: boolean, partner: boolean): { monthlyWriteUps?: unknown } {
+  const may = (o: ShownObservation) => (includePrivate || !o.kinds.includes('privateItems')) && (partner || !o.kinds.includes('partnerPath'))
+  const said = (o: ShownObservation) => ({ said: o.text, days: o.days, markedWrong: o.wrong, ...(o.followed ? { followed: { kind: o.followed.kind, split: o.followed.split, cell: o.followed.cell, onTheDayNoticed: `${o.followed.k} of ${o.followed.n}`, elsewhere: `${o.followed.restK} of ${o.followed.m}` } } : {}) })
+  const reading = (w: ShownWriteUp) => ({ reading: w.reading, readOn: w.day, youRecorded: w.recorded.filter(may).map(said), claudeNoticed: w.noticed.filter(may).map(said) })
+  const out = (months ?? [])
+    .map((m) => ({ month: m.month, readings: [m.newest, ...m.earlier].map(reading).filter((r) => r.youRecorded.length + r.claudeNoticed.length > 0) }))
+    .filter((m) => m.readings.length > 0)
+  return out.length ? { monthlyWriteUps: out } : {}
 }
 
 /**
@@ -221,6 +239,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         notes: 'Notes you kept from Ask, in your own words, each on its day: read as a check-in’s note is, never a reading or a finding.',
         // The pattern table's note, only beside the table itself: an export with no table reads as it always did.
         ...(readPatterns(records?.patterns) ? { patternTable: 'patternTable is the table Life Mirror builds from the whole record for questions about when something happens (2026-11-13): for each thing the record counts, how many occasions the record can speak for and how many carried it; and where there was enough to compare, each cell of each split (the weekday, the check-in of the day, a short night before, a low evening the day before) as k of n in the cell against restK of m elsewhere, with its standing: tooFew, noPattern, lead or pattern. family is how many comparisons were tested for that thing. level is the reading out of 100 in each cell as an average, with the check-ins in each band from Firing to Empty. It is counts and standings: an association, never a cause. A private item is in it only when private items are included; the Partner path’s steps only when the Partner path is.' } : {}),
+        // The monthly write-ups' note, only beside the list itself.
+        ...(records?.writeUps?.length ? { monthlyWriteUps: 'monthlyWriteUps lists each month Claude read in full (2026-11-13): its readings, the newest first, each with what you recorded and what Claude noticed, the days each came from, and whether you marked it wrong. What Claude noticed is a guess to watch, never a fact; a followed one says the cell of the pattern table it is counted in, and its counts on the day it was noticed.' } : {}),
         // What was noticed in notes, only beside the list itself.
         ...(records?.noticed?.events.length ? { claudeNoticed: 'claudeNoticed lists what Claude noticed in notes you wrote (2026-11-13): what it was, the day and check-in of the note, your own words quoted from it, when and by which method it was noticed, and whether you marked it wrong. One marked wrong counts nowhere. One whose note was deleted or no longer holds those words is not listed.' } : {}),
         location: 'Location Context (Part 43): where each part of a day was spent, as kinds of place only (home, work, church, regular, out, away), as Life Mirror saw them while it was open; and the places you named, by kind and your own word. No coordinate, address or trail is recorded; the fingerprints that recognise a place stay on the phone and are never exported.',
@@ -272,6 +292,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
             ...patternsForExport(records.patterns, opts.includePrivate, partner),
             ...noticedForExport(records.noticed, all, records.ask?.notes ?? []),
+            ...writeUpsForExport(records.writeUps, opts.includePrivate, partner),
             forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
             her: {
               skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt, ...(s.rungs ? { rungs: s.rungs } : {}) })),

@@ -79,6 +79,9 @@ The phone's store of write-ups: version 30 adds it; the Worker's rows asked for 
 whole not kept, a deleted one gone; what is shown follows the switches, the faith setting, the name setting and the
 days that still hold a record; a mark kept and taken back; the owner's switch for the monthly read kept only when off.
 
+The export: the newest reading first, the earlier ones after it; whether each was marked wrong; a followed one's
+counts; private items' and the Partner path's observations only with them; a reading with nothing left not listed.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -139,6 +142,7 @@ BP = 'src/brainPrefs.ts'
 WF = 'src/writeups/flow.ts'
 WFT = 'src/writeupsFlow.test.ts'
 M30 = 'src/dbMigration30.test.ts'
+EX = 'src/export.ts'
 BS = 'src/brainShared.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
@@ -1193,6 +1197,36 @@ TABLE = [
          old="...(on ? {} : { monthlyRead: false as const })",
          new="...(on ? { monthlyRead: true as never } : { monthlyRead: false as const })",
          tests=[WFT], pattern='is kept only when it is off'),
+
+    # The export.
+    dict(id='the-export-lists-the-earlier-readings', file=EX,
+         old="readings: [m.newest, ...m.earlier].map(reading)",
+         new="readings: [m.newest].map(reading)",
+         tests=[WFT], pattern='lists each month shown, its newest reading first'),
+    dict(id='the-export-says-what-was-marked-wrong', file=EX,
+         old="said: o.text, days: o.days, markedWrong: o.wrong,",
+         new="said: o.text, days: o.days, markedWrong: false,",
+         tests=[WFT], pattern='lists each month shown, its newest reading first'),
+    dict(id='the-export-carries-a-followed-cells-counts', file=EX,
+         old="onTheDayNoticed: `${o.followed.k} of ${o.followed.n}`",
+         new="onTheDayNoticed: `${o.followed.n}`",
+         tests=[WFT], pattern='lists each month shown, its newest reading first'),
+    dict(id='private-items-observations-only-with-them', file=EX,
+         old="(includePrivate || !o.kinds.includes('privateItems')) && ",
+         new="",
+         tests=[WFT], pattern='carries what drew on private items only with private items'),
+    dict(id='the-partner-paths-observations-only-with-it', file=EX,
+         old=" && (partner || !o.kinds.includes('partnerPath'))",
+         new="",
+         tests=[WFT], pattern='carries what drew on the Partner path only with it'),
+    dict(id='a-reading-with-nothing-left-is-not-listed', file=EX,
+         old=".filter((r) => r.youRecorded.length + r.claudeNoticed.length > 0) }))",
+         new=" }))",
+         tests=[WFT], pattern='carries what drew on the Partner path only with it'),
+    dict(id='a-months-read-is-kept-on-the-phone', file=CS,
+         old=" && r.task !== 'month')) return null",
+         new=")) return null",
+         tests=[WFT], pattern='is kept on the phone, and one of a task no list knows is not'),
 ]
 
 

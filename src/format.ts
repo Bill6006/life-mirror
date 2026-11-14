@@ -105,6 +105,12 @@ export function formatDayLong(day: string): string {
   return parseDay(day).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+/** A month as it is said: "October 2026" for 2026-10. */
+export function formatMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, (m || 1) - 1, 1)))
+}
+
 export function formatDayShort(day: string): string {
   return parseDay(day).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 }

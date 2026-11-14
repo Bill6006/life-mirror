@@ -160,7 +160,7 @@ export async function handleMonthContext(deps: MonthDeps, url: URL): Promise<Rep
   const kept = await keptMonth(deps.store, t)
   if (!kept || !t.month) return reply(409, { error: 'fetch the briefing first: the month is built when it is served' })
   const at = deps.now.toISOString()
-  const logged = (category: string, count: number, bytes: number) => deps.store.writeRead({ id: `read:${t.id}:${at}:${100 + t.contextCalls}`, day: t.day, at, task: 'month', category, count, bytes, via: 'context', ...(t.dry === true ? { dry: true } : {}) })
+  const logged = (category: string, count: number, bytes: number) => deps.store.writeRead({ id: `read:${t.id}:${at}:${100 + t.contextCalls}`, day: localTime(deps.now, deps.env.TIMEZONE ?? 'UTC').day, at, task: 'month', category, count, bytes, via: 'context', ...(t.dry === true ? { dry: true } : {}) })
   if (lookup === 'month') {
     for (const k of url.searchParams.keys()) if (k !== 'task' && k !== 'day' && k !== 'lookup' && k !== 'part') return reply(400, { error: `unknown parameter "${k}" for the lookup month` })
     const n = Number(url.searchParams.get('part') ?? '')

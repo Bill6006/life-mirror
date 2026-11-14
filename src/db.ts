@@ -816,7 +816,7 @@ export interface BrainRead {
   id: string
   day: string
   at: string
-  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep'
+  task: 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask' | 'deep' | 'month'
   category: string
   count: number
   bytes: number

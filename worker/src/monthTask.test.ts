@@ -139,7 +139,8 @@ describe('a part of the month', () => {
     expect(t.contextCalls).toBe(1)
     expect(t.contextBytes).toBeGreaterThan(1000)
     const [logged] = await store.readReads(5)
-    expect(logged).toMatchObject({ task: 'month', category: 'lookup.month', count: 148, bytes: t.contextBytes, via: 'context' })
+    // Logged under the day the read was made, never the month's first day.
+    expect(logged).toMatchObject({ day: '2026-11-13', task: 'month', category: 'lookup.month', count: 148, bytes: t.contextBytes, via: 'context' })
     expect(JSON.stringify(logged)).not.toContain('stand-in note')
   })
 
