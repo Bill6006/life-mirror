@@ -27,6 +27,7 @@ describe('the month’s instructions', () => {
     expect(t).toContain('- Every number you write must be in a line you cite, or be the count of the days or of the lines you cite. Any other number is refused.')
     expect(t).toContain('- At most 10 observations under "recorded" and 8 under "noticed", each at most 50 words. Plain words. Leave a list empty rather than fill it.')
     expect(t).toContain('letter for letter, at most 300 characters.')
+    expect(t).toContain('A count said in words is held the same way: write "two evenings" only where the observation cites exactly two days or two lines; otherwise say "several" or "often".')
     expect(t).toContain('- Write no dates and no weekday counts of your own: the days are listed for the person from the lines you cite. Write "day" for a calendar day, never "date".')
   })
 
