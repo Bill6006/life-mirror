@@ -107,15 +107,16 @@ test('a month’s write-up has its own sheet: what you recorded and what Claude 
   await expect(cards).toHaveCount(4)
   await expect(cards.nth(0).getByTestId('writeup-text')).toHaveText('You checked in every evening of the stretch.')
   await expect(cards.nth(0).getByTestId('writeup-days')).toContainText('From ')
-  // What was recorded carries no "Claude noticed"; what Claude noticed does, and the followed one says from when it is counted.
-  await expect(cards.nth(0)).not.toContainText('Claude noticed')
-  await expect(cards.nth(2)).toContainText('Claude noticed')
+  // The followed one says from when it is counted; its days are set apart, each said whole.
   await expect(cards.nth(2).getByTestId('writeup-followed')).toContainText('Counted from the next day on.')
+  await expect(cards.nth(0).getByTestId('writeup-days')).toContainText(' · ')
   await expect(cards.nth(3).getByTestId('writeup-followed')).toHaveCount(0)
 
   // Marked wrong: it says so, the phone's own record holds the mark, and the mark is queued for the cloud.
   await cards.nth(2).getByTestId('writeup-wrong').click()
   await expect(cards.nth(2).getByTestId('writeup-marked')).toContainText('Marked wrong.')
+  // Marked wrong, it counts for nothing, and says nothing of being counted.
+  await expect(cards.nth(2).getByTestId('writeup-followed')).toHaveCount(0)
   await expect.poll(async () => (await storeRows<{ id: string; kind: string }>(page, 'noteMarks')).map((m) => [m.id, m.kind])).toEqual([['obs:2026-09:1:noticed:1', 'wrong']])
   const queued = async () => (await storeRows<{ store: string; key: string; op: string }>(page, 'outbox')).filter((r) => r.store === 'noteMarks').map((r) => [r.key, r.op])
   await expect.poll(queued).toEqual([['obs:2026-09:1:noticed:1', 'put']])
@@ -125,6 +126,7 @@ test('a month’s write-up has its own sheet: what you recorded and what Claude 
   // Taken back: the control returns and the mark is gone.
   await cards.nth(2).getByTestId('writeup-undo').click()
   await expect(cards.nth(2).getByTestId('writeup-wrong')).toBeVisible()
+  await expect(cards.nth(2).getByTestId('writeup-followed')).toBeVisible()
   await expect.poll(async () => (await storeRows(page, 'noteMarks')).length).toBe(0)
 
   await page.getByTestId('writeup-back').click()

@@ -48,7 +48,8 @@ export function ForgetLearned() {
 /** The days an observation came from, the first few named and the rest counted. */
 function daysLine(days: readonly string[]): string {
   const c = copy.brainScreen.writeups
-  const named = days.slice(0, DAYS_NAMED).map(formatDayShort).join(', ')
+  // A day's own words hold a comma ("Mon, Sep 14"), so the days are set apart by a dot.
+  const named = days.slice(0, DAYS_NAMED).map(formatDayShort).join(' · ')
   return days.length > DAYS_NAMED ? fill(c.fromMore, { days: named, n: String(days.length - DAYS_NAMED) }) : fill(c.from, { days: named })
 }
 
@@ -58,14 +59,14 @@ function ObservationCard({ o, noticedOn, count }: { o: ShownObservation; noticed
   const mark = (wrong: boolean) => void markObservation(o.markId, wrong).then(() => refreshPatterns(blockAt(new Date()).day))
   return (
     <div class="card pad" data-testid="writeup-observation">
-      {o.part === 'noticed' && <p class="eyebrow small">{c.tag}</p>}
       <p class="note" data-testid="writeup-text">
         {o.text}
       </p>
       <p class="note faint" data-testid="writeup-days">
         {daysLine(o.days)}
       </p>
-      {o.followed && (
+      {/* One marked wrong counts for nothing, so it says nothing of being counted. */}
+      {o.followed && !o.wrong && (
         <p class="note faint" data-testid="writeup-followed">
           {/* Counted on what came after the day it was noticed; until a later occasion exists, it says from when it is counted. */}
           {count && count.n + count.m > 0 ? `${fill(c.followedSince, { day: formatDayShort(noticedOn), k: String(count.k), n: String(count.n) })} ${standingLine(count)}.` : fill(c.followed, { day: formatDayShort(noticedOn) })}
