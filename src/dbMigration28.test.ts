@@ -12,7 +12,7 @@ const NEW_STORES = ['patterns', 'noteEvents', 'noteMarks']
 it('keeps a version-27 record whole when the app opens it at the current version, and starts the pattern table empty', async () => {
   const { db: current } = await import('./db')
   await current.open()
-  expect(current.verno).toBe(29)
+  expect(current.verno).toBe(30)
   expect(current.tables.map((t) => t.name)).toContain('patterns')
   expect(current.table('patterns').schema.primKey.src).toBe('id')
   const specs = Object.fromEntries(current.tables.filter((t) => !NEW_STORES.includes(t.name)).map((t) => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map((i) => i.src)].join(', ')]))
@@ -48,7 +48,7 @@ it('keeps a version-27 record whole when the app opens it at the current version
   vi.resetModules()
   const { db } = await import('./db')
   await db.open()
-  expect(db.verno).toBe(29)
+  expect(db.verno).toBe(30)
   for (const [store, rows] of Object.entries(seeded)) expect(await db.table(store).toArray(), store).toEqual(rows)
   for (const store of NEW_STORES) expect(await db.table(store).count(), store).toBe(0)
   // Nothing was queued for the cloud by the step itself: the queue holds what it held.

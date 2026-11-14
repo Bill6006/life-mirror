@@ -15,7 +15,7 @@ const NEW_STORES = ['pathAdaptations', 'pathTests', 'pathTestDays', 'patterns', 
 it('keeps a version-26 record whole when the app opens it at the current version, every Path running as before', async () => {
   const { db: current } = await import('./db')
   await current.open()
-  expect(current.verno).toBe(29)
+  expect(current.verno).toBe(30)
   const specs = Object.fromEntries(current.tables.filter((t) => !NEW_STORES.includes(t.name)).map((t) => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map((i) => i.src)].join(', ')]))
   current.close()
 
@@ -50,7 +50,7 @@ it('keeps a version-26 record whole when the app opens it at the current version
   vi.resetModules()
   const { db } = await import('./db')
   await db.open()
-  expect(db.verno).toBe(29)
+  expect(db.verno).toBe(30)
   for (const [store, rows] of Object.entries(seeded)) expect(await db.table(store).toArray(), store).toEqual(rows)
   for (const store of NEW_STORES) expect(await db.table(store).count(), store).toBe(0)
   const after = today(await db.aims.toArray(), await db.offers.toArray(), await db.outcomes.toArray()).map((v, k) => ({ ...v, aim: before[k].aim }))

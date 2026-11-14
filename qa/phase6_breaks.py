@@ -75,6 +75,10 @@ tries; a change that left the lines as they were starts nothing and is remembere
 nothing; a write-up says when its lines were built; what was marked wrong in an earlier reading is handed to the read:
 of this month, marked wrong, an observation's mark and no other.
 
+The phone's store of write-ups: version 30 adds it; the Worker's rows asked for by name, kept as written, a row not
+whole not kept, a deleted one gone; what is shown follows the switches, the faith setting, the name setting and the
+days that still hold a record; a mark kept and taken back; the owner's switch for the monthly read kept only when off.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -129,6 +133,12 @@ MSI = 'worker/src/monthStandIn.ts'
 TU = 'worker/src/turso.ts'
 MRR = 'worker/src/monthReread.test.ts'
 MSC = 'worker/src/monthSchedule.ts'
+DB = 'src/db.ts'
+CS = 'src/cloudSync.ts'
+BP = 'src/brainPrefs.ts'
+WF = 'src/writeups/flow.ts'
+WFT = 'src/writeupsFlow.test.ts'
+M30 = 'src/dbMigration30.test.ts'
 BS = 'src/brainShared.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
@@ -1133,6 +1143,56 @@ TABLE = [
          old="    ...said,\n",
          new="",
          tests=[MPT], pattern='hand back what an earlier reading said'),
+
+    # The phone's store of write-ups.
+    dict(id='version-30-adds-the-store-of-write-ups', file=DB,
+         old="    this.version(30).stores({\n      writeups: 'id',\n    })\n",
+         new="",
+         tests=[M30], pattern='keeps a version-29 record whole'),
+    dict(id='the-write-ups-are-asked-for-by-name', file=CS,
+         old="NOTE_EVENTS_STORE, WRITEUPS_STORE]\n",
+         new="NOTE_EVENTS_STORE]\n",
+         tests=[WFT], pattern='are asked for by name with its other rows'),
+    dict(id='a-write-up-is-kept-as-the-worker-wrote-it', file=CS,
+         old="          if (writeUp) await db.writeups.put(writeUp)\n",
+         new="",
+         tests=[WFT], pattern='are asked for by name with its other rows'),
+    dict(id='a-row-not-whole-is-no-write-up', file=CS,
+         old="const writeUp = row.deleted || !row.body ? null : writeUpOf(row.id, row.body)",
+         new="const writeUp = row.deleted || !row.body ? null : ({ id: row.id } as never)",
+         tests=[WFT], pattern='are asked for by name with its other rows'),
+    dict(id='a-deleted-write-up-leaves-the-phone', file=CS,
+         old="          else await db.writeups.delete(row.id)\n",
+         new="",
+         tests=[WFT], pattern='are asked for by name with its other rows'),
+    dict(id='what-is-shown-follows-the-switches', file=WF,
+         old="kindOn: (kind) => switches[kind as BrainSwitch] !== false",
+         new="kindOn: () => true",
+         tests=[WFT], pattern='follows the Brain’s switches and the faith setting at once'),
+    dict(id='what-is-shown-follows-the-faith-setting', file=WF,
+         old="faithShown: settings.hideFaith !== true",
+         new="faithShown: true",
+         tests=[WFT], pattern='follows the Brain’s switches and the faith setting at once'),
+    dict(id='what-is-shown-follows-the-name-setting', file=WF,
+         old="hiddenNames: settings.showPrivate === true ? [] : items.map((i) => i.name)",
+         new="hiddenNames: []",
+         tests=[WFT], pattern='a private item’s name once names may be shown'),
+    dict(id='a-day-holds-a-record-while-its-rows-are-there', file=WF,
+         old="const held = new Set<string>([...days.map((d) => d.day), ...checkins.map((c) => c.day)])",
+         new="const held = new Set<string>(writeups.flatMap((w) => [...w.recorded, ...w.noticed].flatMap((o) => o.days)))",
+         tests=[WFT], pattern='leaves out an observation when a day it cites holds no record any more'),
+    dict(id='a-mark-on-an-observation-is-kept', file=WF,
+         old="  await db.noteMarks.put({ id: markId, kind: 'wrong', at, updatedAt: at })\n",
+         new="",
+         tests=[WFT], pattern='come back on a new phone with the marks made on them'),
+    dict(id='a-mark-on-an-observation-is-taken-back', file=WF,
+         old="    await db.noteMarks.delete(markId)\n",
+         new="",
+         tests=[WFT], pattern='come back on a new phone with the marks made on them'),
+    dict(id='the-owners-switch-is-kept-only-when-off', file=BP,
+         old="...(on ? {} : { monthlyRead: false as const })",
+         new="...(on ? { monthlyRead: true as never } : { monthlyRead: false as const })",
+         tests=[WFT], pattern='is kept only when it is off'),
 ]
 
 

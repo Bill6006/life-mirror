@@ -169,7 +169,7 @@ try {
     check('the build stamp is the pushed commit', commit === want, `shows ${commit}`)
     const events = await shapeOf(page, 'noteEvents')
     const marks = await shapeOf(page, 'noteMarks')
-    check('the database holds the two stores for what is noticed, at version 29', events.has && marks.has && events.version === 290, `version ${events.version / 10}, noteEvents ${events.has ? 'there' : 'missing'}, noteMarks ${marks.has ? 'there' : 'missing'}`)
+    check('the database holds the two stores for what is noticed, from version 29 on', events.has && marks.has && events.version >= 290, `version ${events.version / 10}, noteEvents ${events.has ? 'there' : 'missing'}, noteMarks ${marks.has ? 'there' : 'missing'}`)
     await ctx.close()
   }
   {

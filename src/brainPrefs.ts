@@ -31,6 +31,14 @@ export async function setFirmness(pref: string): Promise<boolean> {
   return true
 }
 
+/** Turns the monthly read on or off (2026-11-13): kept only when it is off, so a record that never set it reads a month. */
+export async function setMonthlyRead(on: boolean): Promise<void> {
+  await db.transaction('rw', db.brainPrefs, async () => {
+    const { monthlyRead: _was, ...cur } = await getBrainPrefs()
+    await db.brainPrefs.put({ ...cur, ...(on ? {} : { monthlyRead: false as const }), updatedAt: new Date().toISOString() })
+  })
+}
+
 /** Turns one category Claude may read on or off; only switches turned off are kept. */
 export async function setBrainSwitch(key: BrainSwitch, on: boolean): Promise<void> {
   await db.transaction('rw', db.brainPrefs, async () => {

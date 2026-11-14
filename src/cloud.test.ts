@@ -878,7 +878,7 @@ describe('the pull of the Worker’s rows, made safe (2026-11-12)', () => {
     }
     await withToken(store)
     await syncNow()
-    expect(asked).toEqual([['briefs', 'reads', 'coach', 'proposals', 'bridge', 'askAnswers', 'pathJobs', 'generated', 'noteEvents']])
+    expect(asked).toEqual([['briefs', 'reads', 'coach', 'proposals', 'bridge', 'askAnswers', 'pathJobs', 'generated', 'noteEvents', 'writeups']])
     expect(got.map((r) => r.store)).toEqual(['briefs'])
     expect((await getBrainMeta()).watermark).toBe('2026-11-10T12:00:05.000Z')
   })

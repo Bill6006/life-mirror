@@ -139,7 +139,7 @@ describe('the counts follow what stands', () => {
 
 describe('the Worker’s rows of what was noticed', () => {
   it('are asked for by name with its other rows, and applied by their ids: a row, a row again, a row deleted', async () => {
-    expect(BRAIN_STORES).toEqual(['briefs', 'reads', 'coach', 'proposals', 'bridge', 'askAnswers', 'pathJobs', 'generated', 'noteEvents'])
+    expect(BRAIN_STORES).toEqual(['briefs', 'reads', 'coach', 'proposals', 'bridge', 'askAnswers', 'pathJobs', 'generated', 'noteEvents', 'writeups'])
     await seedNotes()
     const store = memoryStore()
     const { id: _id, ...body } = event(1)

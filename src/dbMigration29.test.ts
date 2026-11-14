@@ -8,17 +8,19 @@ import { expect, it, vi } from 'vitest'
 // the two new stores start empty: the step moves no data.
 
 const NEW_STORES = ['noteEvents', 'noteMarks']
+/** A store a later version added: not in a version-28 record either. */
+const LATER_STORES = ['writeups']
 
 it('keeps a version-28 record whole when the app opens it at version 29, and starts the two stores for what is noticed empty', async () => {
   const { db: current } = await import('./db')
   await current.open()
-  expect(current.verno).toBe(29)
+  expect(current.verno).toBe(30)
   for (const store of NEW_STORES) {
     expect(current.tables.map((t) => t.name)).toContain(store)
     expect(current.table(store).schema.primKey.src).toBe('id')
     expect(current.table(store).schema.primKey.auto).toBe(false)
   }
-  const specs = Object.fromEntries(current.tables.filter((t) => !NEW_STORES.includes(t.name)).map((t) => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map((i) => i.src)].join(', ')]))
+  const specs = Object.fromEntries(current.tables.filter((t) => !NEW_STORES.includes(t.name) && !LATER_STORES.includes(t.name)).map((t) => [t.name, [t.schema.primKey.src, ...t.schema.indexes.map((i) => i.src)].join(', ')]))
   current.close()
 
   const factory = new IDBFactory()
@@ -53,7 +55,7 @@ it('keeps a version-28 record whole when the app opens it at version 29, and sta
   vi.resetModules()
   const { db } = await import('./db')
   await db.open()
-  expect(db.verno).toBe(29)
+  expect(db.verno).toBe(30)
   for (const [store, rows] of Object.entries(seeded)) expect(await db.table(store).toArray(), store).toEqual(rows)
   for (const store of NEW_STORES) expect(await db.table(store).count(), store).toBe(0)
   // Nothing was queued for the cloud by the step itself: the queue holds what it held.

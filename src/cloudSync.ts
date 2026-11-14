@@ -1,4 +1,5 @@
 import { NOTE_EVENTS_STORE, noteEventOf } from './noteEvents/shared'
+import { writeUpOf, WRITEUPS_STORE } from './writeups/shared'
 import { citedFactsOf, lackedOf } from './brainShared'
 import { journalDaysOf } from './journalCheck'
 import type { CoachProposal, CoachRun } from './coachShared'
@@ -115,7 +116,7 @@ const ASK_ANSWERS_STORE = 'askAnswers'
  * The stores of the Worker's rows the phone keeps anything of (2026-11-12). It asks for these alone: the Worker's
  * marks of pushes sent, its reports, the sheets it served and the generator's drafts are never downloaded.
  */
-export const BRAIN_STORES: readonly string[] = [BRAIN_STORE, READS_STORE, COACH_STORE, PROPOSALS_STORE, BRIDGE_STORE, ASK_ANSWERS_STORE, PATH_JOBS_STORE, GENERATED_STORE, NOTE_EVENTS_STORE]
+export const BRAIN_STORES: readonly string[] = [BRAIN_STORE, READS_STORE, COACH_STORE, PROPOSALS_STORE, BRIDGE_STORE, ASK_ANSWERS_STORE, PATH_JOBS_STORE, GENERATED_STORE, NOTE_EVENTS_STORE, WRITEUPS_STORE]
 /** How far behind its watermark each pull of the Worker's rows starts. */
 export const BRAIN_OVERLAP_MS = 5 * 60_000
 
@@ -724,7 +725,7 @@ async function pullBrain(store: CloudStore): Promise<number> {
     // A full page may end inside a run of rows stamped alike: the run is held back and read whole by the next page.
     const rows = wholeRuns(page, PAGE)
     after = rows[rows.length - 1].synced_at
-    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.askAnswers, db.askRuns, db.pathJobs, db.generatedPaths, db.noteEvents, db.cloudMeta], async () => {
+    await db.transaction('rw', [db.brainBriefs, db.brainReads, db.coachPicks, db.coachProposals, db.coachRuns, db.askAnswers, db.askRuns, db.pathJobs, db.generatedPaths, db.noteEvents, db.writeups, db.cloudMeta], async () => {
       for (const row of rows) {
         // The generator's rows (P5): where each request stands, and each compiled version, checked again before anything shows it.
         if (row.store === PATH_JOBS_STORE) {
@@ -738,6 +739,13 @@ async function pullBrain(store: CloudStore): Promise<number> {
           const event = row.deleted || !row.body ? null : noteEventOf(row.id, row.body)
           if (event) await db.noteEvents.put(event)
           else await db.noteEvents.delete(row.id)
+          continue
+        }
+        // A month's write-up (2026-11-13): kept as the Worker wrote it, read-only; a row that does not read whole is not kept.
+        if (row.store === WRITEUPS_STORE) {
+          const writeUp = row.deleted || !row.body ? null : writeUpOf(row.id, row.body)
+          if (writeUp) await db.writeups.put(writeUp)
+          else await db.writeups.delete(row.id)
           continue
         }
         if (row.store === GENERATED_STORE) {

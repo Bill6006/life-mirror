@@ -41,7 +41,7 @@ async function openBrain(page: Page): Promise<void> {
   await expect(page.getByTestId('brain-screen')).toBeVisible()
 }
 
-test('the database holds the two stores for what is noticed, keyed by a name, at version 29', async ({ page }) => {
+test('the database holds the two stores for what is noticed, keyed by a name, from version 29 on', async ({ page }) => {
   await start(page)
   const shape = await page.evaluate(async () => {
     const dbx = await new Promise<IDBDatabase>((res, rej) => {
@@ -55,7 +55,8 @@ test('the database holds the two stores for what is noticed, keyed by a name, at
     return out
   })
   // Dexie keeps its version times ten.
-  expect(shape).toEqual({ version: 290, stores: [['noteEvents', 'id', false], ['noteMarks', 'id', false]] })
+  expect(shape.stores).toEqual([['noteEvents', 'id', false], ['noteMarks', 'id', false]])
+  expect(shape.version).toBeGreaterThanOrEqual(290)
 })
 
 test('the Brain screen shows no row while nothing noticed stands: with no event, and with events of no type the list knows', async ({ page }) => {
