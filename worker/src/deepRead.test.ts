@@ -378,6 +378,8 @@ describe('what Claude noticed is never repeated as fact', () => {
     expect([R1, N1, SINCE].map(isAssociationFact)).toEqual([true, true, true])
     expect([R1, N1, SINCE].map(isTableFact)).toEqual([false, false, true])
     expect(isWriteUpFact('pattern.chip.dinner.all')).toBe(false)
+    // The head whole, to its dot: a longer or a shorter head is another fact's.
+    expect(['writeup.2026-10.recorded.1', 'writeupsold.2026-10.recorded.1', 'writeups'].map(isWriteUpFact)).toEqual([false, false, false])
   })
 })
 
