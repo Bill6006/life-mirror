@@ -187,6 +187,17 @@ function askVoice(task: 'ask' | 'deep'): string {
   ].join(' ')
 }
 
+/**
+ * "Coach me on everything" covers everything (2026-11-14): what it reads before it writes, and how what it reads is
+ * said. Said to the deep tier alone; ordinary Ask's instructions are as they were. Each rule is the Worker's check.
+ */
+export const DEEP_RULES: readonly string[] = [
+  `- Before you write, read the whole record as it is kept for you: every monthly write-up (lookup=writeups) and the month under way (lookup=monthSoFar&part=1, then each further part its reply names). These two do not count against your other reads. THE MONTHS in the briefing says which months have a write-up, which month is under way, and which months have none. Any exact day can be opened with lookup=day, and nothing limits how far back a read may reach.`,
+  `- A write-up's facts (writeups.*) are cited like any lookup's. One that says "you recorded" is that month's record. One that says "Claude noticed" is a guess Claude made on reading the month, which nobody tested: it is never a fact. With one cited, say it is a guess, in one of these words: "Claude noticed", "a guess", "may", "might" or "not tested"; never call it the usual case ("usually", "most often", "tends to"), and never a cause. A fact ending in .since is that guess counted on the days after it was noticed: say it at the standing its fact gives, as a pattern fact is said.`,
+  `- When you cite a write-up and THE MONTHS names months that have none, say in the answer that you had no write-up for each of them, naming the month by its name alone, with no year.`,
+  `- A read that fails costs nothing: ask it once more. If it fails again, go on without it, and say in the answer what you could not read.`,
+]
+
 function askSystem(task: 'ask' | 'deep', words: number): string {
   return [
     `You answer one question from one person about their own Life Mirror record, as Claude, through their own Worker.${task === 'deep' ? ' This is their "Coach me on everything": a coaching read of the whole record as it stands, at most once a day.' : ''} The learning engine has already computed every finding: you explain them, and never compute one of your own or state a number it did not produce. You get the question; on a follow-up, the thread so far; the day's fact sheet (each fact has an id in brackets; the findings the question names come first); what would settle a test; and a set of claim cards from an evidence library (each with an id and a grade). More of the record can be read on demand.`,
@@ -211,6 +222,7 @@ function askSystem(task: 'ask' | 'deep', words: number): string {
     `- A question about when something happens ("when am I most likely to", "which days", "what comes before") is answered from the pattern table, never from a count of your own: find the thing with lookup=kinds, read it with lookup=pattern and its id, and cite the facts you use. Say each comparison at the standing its fact gives, with its counts as "k of n", and never why. A question about one exact day is answered from lookup=day and its date.`,
     `- With a pattern.* fact cited, the validator reads the standing of the cells you cite. "Most likely", "most often", "usually" and "tends to" only when a cited cell stands as a steady pattern. When the strongest cited cell is a lead: say "a lead", and say how many comparisons were looked at, the number in its fact. With no lead cited, none of those, nor "more often", "less often", "more likely", "less likely", "lowest" or "highest": say "no clear pattern yet", with the counts. A count written "7 of 26" counts as one number for the limits on numbers.`,
     `- A question about something written in the notes ("out of all the times I've noted", a word, a phrase) is answered from lookup=noteWords and its q, never from a count of your own. Whole words are matched and nothing else: "yell" does not count "yelled", so ask for each form that would have been written, and name the words searched in the answer. What it gives is counts of notes: a share of the times a note was written, never how often the thing happens, and a note shows when it was written, not when the thing happened. With a noteWords.* fact cited, "most likely", "most often", "usually" and "tends to" are refused whatever its standing; one time may be put ahead of another only on a cited cell that stands at a lead (say "a lead" and how many comparisons were looked at) or as a steady pattern. A thing to be counted as a true rate needs a private item to tap, and the answer may say so. Write "day" for a calendar day, never "date": "no" or "not" beside "date" is read as dating and refused.`,
+    ...(task === 'deep' ? DEEP_RULES : []),
     LAST_RULE,
     '',
     `Answer with JSON only, nothing before or after: {"text": "...", "factIds": ["..."], "cardIds": ["..."], "test": null, "note": false}`,

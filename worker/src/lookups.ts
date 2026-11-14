@@ -50,8 +50,11 @@ export const LOOKUP_HELP: Readonly<Record<Lookup, string>> = {
   noteWords: 'lookup=noteWords&q=<one to five words or phrases, separated by commas> (optional from=&to=): how many notes hold those whole words, when those notes were written set beside when notes are written at all, and each note that holds them',
 }
 
-/** A lookup query read from the URL, or why it is refused. */
-export function parseLookupQuery(url: URL, day: string): { ok: true; query: LookupQuery } | { ok: false; reason: string } {
+/**
+ * A lookup query read from the URL, or why it is refused. `reach` is given for "Coach me on everything" alone
+ * (2026-11-14): it has no one-year limit on looking back, and its search of the notes starts at the record's first day.
+ */
+export function parseLookupQuery(url: URL, day: string, reach?: { first: string | null }): { ok: true; query: LookupQuery } | { ok: false; reason: string } {
   const name = url.searchParams.get('lookup') ?? ''
   if (!(LOOKUPS as readonly string[]).includes(name)) return { ok: false, reason: `lookup "${name}" is not one the layer names` }
   const lookup = name as Lookup
@@ -76,10 +79,10 @@ export function parseLookupQuery(url: URL, day: string): { ok: true; query: Look
   }
   const to = url.searchParams.get('to') ?? day
   // A search of the notes reaches the whole year unless it is told otherwise: "all the times I've noted" is not a month.
-  const from = url.searchParams.get('from') ?? addDays(day, lookup === 'noteWords' ? -REACH_DAYS : -30)
+  const from = url.searchParams.get('from') ?? (lookup === 'noteWords' && reach?.first ? reach.first : addDays(day, lookup === 'noteWords' ? -REACH_DAYS : -30))
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || from > to) return { ok: false, reason: 'from and to must be days, from before to' }
   if (to > day) return { ok: false, reason: 'to may not be after the task’s day' }
-  if (from < addDays(day, -REACH_DAYS)) return { ok: false, reason: 'from may reach back a year at most' }
+  if (!reach && from < addDays(day, -REACH_DAYS)) return { ok: false, reason: 'from may reach back a year at most' }
   if (lookup === 'noteWords') {
     const words = parseNoteWords(url.searchParams.get('q') ?? '')
     return words.ok ? { ok: true, query: { lookup, words: words.words, from, to } } : { ok: false, reason: words.reason }
@@ -137,14 +140,14 @@ function fact(id: string, text: string, category: string, values: Record<string,
 }
 
 /** Every number a label says, so an answer that repeats the label is held to it: "under 40 out of 100" says 40 and 100. */
-function saidIn(label: string): Record<string, number> {
+export function saidIn(label: string): Record<string, number> {
   const out: Record<string, number> = {}
   ;(label.match(/\d+/g) ?? []).forEach((n, i) => (out[`said${i + 1}`] = Number(n)))
   return out
 }
 
 /** The pattern table as the phone last built it, or why it cannot be served. */
-async function tableOf(x: LookupCtx): Promise<{ table: PatternsRecord } | { note: string }> {
+export async function tableOf(x: Pick<LookupCtx, 'store' | 'now'>): Promise<{ table: PatternsRecord } | { note: string }> {
   const body = await x.store.readRecord('patterns', PATTERNS_ID)
   if (body === null || body === undefined) return { note: 'no pattern table has been built yet: the phone builds it when the app is next opened' }
   const table = readPatterns(body)
@@ -155,7 +158,7 @@ async function tableOf(x: LookupCtx): Promise<{ table: PatternsRecord } | { note
 }
 
 /** A kind's name as this run may say it: a private item's own name only where names may be shown. */
-const shownLabel = (k: StoredKind, x: LookupCtx): string => (k.private && !x.showPrivate ? 'a private item' : k.label)
+export const shownLabel = (k: StoredKind, x: Pick<LookupCtx, 'showPrivate'>): string => (k.private && !x.showPrivate ? 'a private item' : k.label)
 
 /** Whether the question itself holds a private item's name, as a whole word: the one the person is asking about. */
 const namedByQuestion = (k: StoredKind, x: LookupCtx): boolean => k.private && !x.showPrivate && k.label.trim().length > 0 && new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(k.label.trim())}(?![\\p{L}\\p{N}])`, 'iu').test(x.question)
@@ -436,7 +439,9 @@ export function dayFacts(x: LookupCtx, D: string, rows: DayRows): Fact[] {
     // Numbered after the check, so a line this run may not read leaves no gap to count.
     if (mayRead(made, x.a)) facts.push({ ...made, id: `day.${D}.${facts.length + 1}` })
   }
-  return facts
+  // A line that quotes your own words (2026-11-14) holds every number those words say, as a lookup's fact must: an
+  // answer that cites the line may say them. Read from the quote alone, never from the day or the time before it.
+  return facts.map((f) => (f.values.category === 'notes' && f.text.includes('“') ? { ...f, values: { ...saidIn(f.text.slice(f.text.indexOf('“'))), ...f.values } } : f))
 }
 
 async function dayLookup(x: LookupCtx, q: { date: string }, tally: ReadTally): Promise<LookupReply> {

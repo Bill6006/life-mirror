@@ -131,7 +131,19 @@ export interface TaskRow {
    * included, is checked against exactly what Claude read, never a sheet the phone rewrote since.
    * Stored with the task in your own database; no report shows it.
    */
-  served?: { at: string; factsUpdatedAt: string; sheet: FactSheet; coach?: CoachBlock; lookups?: Fact[] }
+  served?: {
+    at: string
+    factsUpdatedAt: string
+    sheet: FactSheet
+    coach?: CoachBlock
+    lookups?: Fact[]
+    /**
+     * "Coach me on everything" alone (2026-11-14): the months it was told it has a write-up for, the month under way and
+     * the months it lacks, as its briefing first said them; and the month under way as it was built, once, so every
+     * part is served from one build and the answer is checked against what was read.
+     */
+    deep?: { months?: { have: string[]; underWay: string; lacking: string[] }; soFar?: { builtAt: string; month: string; counts: Record<string, number>; lines: number; parts: { part: number; days: string[]; outside: string[]; lines: number; bytes: number; facts: Fact[] }[] } }
+  }
   /**
    * The nights of the journal Claude was given, by the briefing and by its reads (Let it out): an answer
    * may draw only on these, and is checked against their words, read again at the check. Never the words.
@@ -147,6 +159,12 @@ export interface TaskRow {
   question?: string
   /** A month's read (2026-11-13): how many parts the month has, which were served, its other reads, and what it was built from. Never a line of it. */
   month?: { parts: number; served: number[]; other: number; lines: number; fingerprint: string; reading?: number; events?: number; dropped?: number; tries?: { day: string; n: number } }
+  /**
+   * "Coach me on everything" (2026-11-14): its reads of the monthly write-ups and of the month under way, which are
+   * counted here and not against the run's other reads: how many, their size, the parts of the month served, and each
+   * read that could not be served, by what it asked for. Never a word of any.
+   */
+  deep?: { reads: number; bytes: number; parts: number[]; failed?: Record<string, number> }
 }
 
 /** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
@@ -296,6 +314,8 @@ export interface Store {
    * when a row of it was last written, a deleted one too. What the monthly read may be owed, and what may need reading again.
    */
   monthStamps(): Promise<{ month: string; held: number; changed: string }[]>
+  /** Every day that still holds a record (2026-11-14): its own row or a check-in of it, as the phone reads it for a write-up's days. */
+  heldDays(): Promise<string[]>
   /**
    * Every check-in in a range of days that holds a note, as its id, its day and its check-in alone, newest day first
    * (2026-11-13): when notes are written at all, read without downloading a note. A note of spaces alone is no note.
@@ -524,6 +544,10 @@ export function tursoStore(url: string, token: string): Store {
     async monthStamps() {
       const r = await rows(`SELECT substr(day, 1, 7) AS month, SUM(CASE WHEN deleted = 0 THEN 1 ELSE 0 END) AS held, MAX(synced_at) AS changed FROM records WHERE app = ? AND day IS NOT NULL AND store IN ('days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks') GROUP BY month ORDER BY month`, [APP])
       return r.map((x) => ({ month: String(x.month), held: Number(x.held), changed: String(x.changed) })).filter((m) => /^\d{4}-\d{2}$/.test(m.month))
+    },
+    async heldDays() {
+      const r = await rows(`SELECT DISTINCT day FROM records WHERE app = ? AND store IN ('days', 'checkins') AND deleted = 0 AND day IS NOT NULL`, [APP])
+      return r.map((x) => String(x.day))
     },
     async noteMoments(range, limit) {
       // The note is read inside the database: a check-in's note is the text at extras.note, and one that is empty once
@@ -756,6 +780,9 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
         by.set(m.month, { month: m.month, held: m.held + (r.deleted === 0 ? 1 : 0), changed: r.synced_at > m.changed ? r.synced_at : m.changed })
       }
       return [...by.values()].sort((a, b) => (a.month < b.month ? -1 : 1))
+    },
+    async heldDays() {
+      return [...new Set([...live(APP, 'days'), ...live(APP, 'checkins')].flatMap((r) => (r.day === null ? [] : [r.day])))]
     },
     async noteMoments(range, limit) {
       // As the live store answers: the check-ins of the range whose note is more than spaces, tabs and line breaks.

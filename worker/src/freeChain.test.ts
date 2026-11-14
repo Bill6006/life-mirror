@@ -5,7 +5,7 @@ import type { ClaimCard } from '../../src/libraryTypes'
 import { runBrief, runReview } from './brief'
 import { askTaskIds } from '../../src/ask/shared'
 import type { Message } from './prompt'
-import { factCategories, LOOKUPS } from './retrieval'
+import { factCategories, LOOKUPS, WRITEUP_HEAD } from './retrieval'
 import { APP, memoryStore } from './turso'
 
 // The free chain under the owner's switches and the faith rule (2026-11-12). A fact Claude may not read is not read
@@ -201,6 +201,9 @@ describe('what a lookup served an Ask run', () => {
   it('carries a fact head no fact on the sheet carries: the sheet of every family holds none of the eight', () => {
     const heads = new Set(FACTS.map((f) => f.id.split('.')[0]))
     for (const lookup of LOOKUPS) expect(heads.has(lookup), lookup).toBe(false)
+    // Nor the head of a monthly write-up's facts (2026-11-14), served to "Coach me on everything" alone; the month under way is served under the exact-day lookup's own head.
+    expect(WRITEUP_HEAD).toBe('writeups')
+    expect(heads.has(WRITEUP_HEAD)).toBe(false)
     // The probe that can say yes: a fact named as a lookup's would be read under the category it names, or closed.
     expect(factCategories({ id: 'day.2026-10-04.1', tags: [], text: 'x', values: {} }, new Map())).toEqual(['closed'])
     expect(factCategories({ id: 'today.shortSleep', tags: [], text: 'x', values: {} }, new Map())).toEqual(['dayRecord'])

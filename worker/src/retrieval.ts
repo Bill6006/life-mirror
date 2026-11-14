@@ -24,6 +24,15 @@ export type ReadTask = 'line' | 'review' | 'coach' | 'skill' | 'progress' | 'ask
  */
 export const LOOKUPS = ['kinds', 'pattern', 'day', 'moves', 'workouts', 'pathSteps', 'lines', 'forecasts', 'noteWords'] as const
 export type Lookup = (typeof LOOKUPS)[number]
+/**
+ * The lookups served to "Coach me on everything" alone (2026-11-14): every monthly write-up it may read, and the month
+ * under way in parts. Ordinary Ask is refused both. A write-up's facts are headed `writeups`; the month under way is
+ * served as the exact-day lookup's own lines, headed `day`.
+ */
+export const DEEP_LOOKUPS = ['writeups', 'monthSoFar'] as const
+export type DeepLookup = (typeof DEEP_LOOKUPS)[number]
+/** The head of a write-up's facts. */
+export const WRITEUP_HEAD = 'writeups'
 /** What a lookup fact's category reads as when it names none the layer knows: no reader is permitted it. */
 const CLOSED = 'closed' as Category
 
@@ -97,6 +106,13 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
   const [head, rest] = [f.id.split('.')[0], f.id.split('.')[1]]
   // A lookup's fact (2026-11-13) says its own category in its values, and its faith tag adds faith's, as on the sheet. A
   // category that is missing, or not one the layer names, is closed: it never falls through to the day's record.
+  // A write-up's fact (2026-11-14) says every kind of record its observation drew on, and all of them must be readable:
+  // a kind that is missing, or not one the layer names, is closed.
+  if (head === WRITEUP_HEAD) {
+    const kinds = typeof f.values.kinds === 'string' && f.values.kinds ? f.values.kinds.split('|') : []
+    const named: Category[] = kinds.length ? kinds.map((k) => ((CATEGORIES as readonly string[]).includes(k) ? (k as Category) : CLOSED)) : [CLOSED]
+    return f.tags.includes('faith') && !named.includes('faith') ? [...named, 'faith'] : named
+  }
   if ((LOOKUPS as readonly string[]).includes(head)) {
     const c = f.values.category
     const named: Category = typeof c === 'string' && (CATEGORIES as readonly string[]).includes(c) ? (c as Category) : CLOSED
@@ -666,7 +682,7 @@ export const CONTEXT_BYTES = 64 * 1024
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
 /** A context query read from the URL, or why it is refused. */
-export function parseContextQuery(url: URL, day: string): { ok: true; category: Category; q: Query } | { ok: false; reason: string } {
+export function parseContextQuery(url: URL, day: string, noYear = false): { ok: true; category: Category; q: Query } | { ok: false; reason: string } {
   for (const k of url.searchParams.keys()) if (!(CONTEXT_PARAMS as readonly string[]).includes(k)) return { ok: false, reason: `unknown parameter "${k}"` }
   const category = url.searchParams.get('category') ?? ''
   if (!(CATEGORIES as readonly string[]).includes(category)) return { ok: false, reason: `category "${category}" is not one the layer names` }
@@ -676,7 +692,10 @@ export function parseContextQuery(url: URL, day: string): { ok: true; category: 
   if (!DAY_RE.test(from) || !DAY_RE.test(to) || from > to) return { ok: false, reason: 'from and to must be days, from before to' }
   if (to > day) return { ok: false, reason: 'to may not be after the task’s day' }
   // The journal reaches the whole record, so an entry can be found years later (adjustment 4, 2026-10-15), under the same caps per run.
-  if (from < addDays(day, -366) && category !== 'journal') return { ok: false, reason: 'from may reach back a year at most' }
+  // "Coach me on everything" has no one-year limit on looking back (2026-11-14): `noYear` is set for it alone.
+  if (!noYear) {
+    if (from < addDays(day, -366) && category !== 'journal') return { ok: false, reason: 'from may reach back a year at most' }
+  }
   // Follow-up F1: a slice of events is short and recent: a week at most, from the last fourteen days.
   if (slice && from < addDays(day, -(USAGE_SLICE.reachDays - 1))) return { ok: false, reason: `a slice of events reaches back ${USAGE_SLICE.reachDays} days at most` }
   if (slice && addDays(from, USAGE_SLICE.maxDays - 1) < to) return { ok: false, reason: `a slice of events covers ${USAGE_SLICE.maxDays} days at most` }

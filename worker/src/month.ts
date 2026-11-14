@@ -188,3 +188,43 @@ export async function buildMonth(x: LookupCtx, first: string): Promise<MonthBuil
   const own = days.filter((d) => d.inside).flatMap((d) => d.facts)
   return { ok: true, span, parts, counts, lines: own.length, fingerprint: await fingerprintOf(own), notes }
 }
+
+/** The month under way, as "Coach me on everything" reads it (2026-11-14): its days up to the task's day, in parts of whole days. */
+export interface SoFarBuilt {
+  ok: true
+  /** The month, YYYY-MM, and the days read: its first to the task's day. */
+  month: string
+  from: string
+  to: string
+  parts: MonthPart[]
+  /** How many rows of each store the lines were built from, each equal to the database's own count. */
+  counts: Record<string, number>
+  lines: number
+}
+
+const SO_FAR_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * The month under way, whole or not at all, from the month's own builder's pieces: one read a store, each counted
+ * against the database's own count for the same days, each day's lines as the exact-day lookup words them, in parts
+ * of whole days. A read that fell short builds nothing, and says so: the run may ask it again.
+ */
+export async function buildSoFar(x: LookupCtx, day: string): Promise<SoFarBuilt | { ok: false; reason: string }> {
+  if (!SO_FAR_DAY.test(day)) return { ok: false, reason: `${day} is not a day` }
+  const month = day.slice(0, 7)
+  const range = { from: `${month}-01`, to: day }
+  const got = await readDayRows(x, range, newTally(), MONTH_READ)
+  const tally: Record<string, number> = {}
+  for (const store of DAY_STORES) {
+    const inDatabase = await x.store.countRecords(store, range)
+    const inHand = rowsOf(got, store).length
+    if (inHand !== inDatabase) return { ok: false, reason: `the month under way was not read whole: ${inHand} of ${inDatabase} rows of ${store}` }
+    tally[store] = inHand
+  }
+  if (got.outside.length >= OUTSIDE_READ) return { ok: false, reason: 'the month under way was not read whole: the workouts outran one read' }
+  const days: { day: string; inside: boolean; facts: Fact[] }[] = []
+  for (let d = range.from; d <= range.to; d = addDays(d, 1)) days.push({ day: d, inside: true, facts: dayFacts(x, d, got) })
+  const built = partsOf(days)
+  if (built.length > MONTH_PARTS_MOST) return { ok: false, reason: `the month under way needs ${built.length} parts, more than the ${MONTH_PARTS_MOST} a read may have` }
+  return { ok: true, month, from: range.from, to: range.to, parts: built, counts: tally, lines: built.reduce((n, part) => n + part.lines, 0) }
+}

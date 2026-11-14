@@ -2235,6 +2235,8 @@ export const copy = {
       'lookup.forecasts': 'Lookup: forecasts',
       'lookup.noteWords': 'Lookup: words in your notes',
       'lookup.month': 'Lookup: a month of your record',
+      'lookup.writeups': 'Lookup: your monthly write-ups',
+      'lookup.monthSoFar': 'Lookup: this month so far',
     },
     faithHidden: 'Off while the faith family is hidden: Claude reads nothing about faith.',
     recent: 'Who wrote recent lines',

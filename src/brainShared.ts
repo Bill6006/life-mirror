@@ -307,7 +307,28 @@ export const RECORD_CAUSE = /\b(?:(?:made|kept|left|gave|cost|drained|sapped|lif
 
 /** The record's own comparisons, like for like and never randomised: an association, never a cause. The owner's test cards are randomised, and are not among them. */
 export function isAssociationFact(id: string): boolean {
+  // A monthly write-up's facts (2026-11-14) are read from the record like the rest.
+  if (isWriteUpFact(id)) return true
   return id.startsWith('assoc.') || id.startsWith('private.') || isTableFact(id) || isNoteWordsFact(id)
+}
+
+/**
+ * A monthly write-up's facts, as a lookup serves them to "Coach me on everything" alone (2026-11-14): what a month's
+ * reading recorded, what Claude noticed, and a noticed guess counted since. Read from the record, never randomised: an
+ * association like the rest, so no cause is said on one.
+ */
+export function isWriteUpFact(id: string): boolean {
+  return id.startsWith('writeups.')
+}
+
+/** What Claude noticed in a month: a guess made on reading it, which nobody tested. Never a fact, and never repeated as one. */
+export function isNoticedFact(id: string): boolean {
+  return /^writeups\.\d{4}-\d{2}\.noticed\.\d+$/.test(id)
+}
+
+/** A noticed guess counted on the days after it was noticed: the pattern table's own count, held to a pattern fact's rule. */
+export function isFollowedFact(id: string): boolean {
+  return /^writeups\.\d{4}-\d{2}\.noticed\.\d+\.since$/.test(id)
 }
 
 /** A search of the notes for whole words, as a lookup serves it to Ask (2026-11-13): counts of notes, an association like the rest. */
@@ -317,7 +338,7 @@ export function isNoteWordsFact(id: string): boolean {
 
 /** The pattern table's facts, as a lookup serves them to Ask (2026-11-13): counted, never on the sheet, and an association like the rest. */
 export function isTableFact(id: string): boolean {
-  return id.startsWith('pattern.')
+  return id.startsWith('pattern.') || isFollowedFact(id)
 }
 
 const SIZE_RANK: Record<NonNullable<ClaimCard['size']>, number> = { medium: 1, large: 2 }
@@ -609,6 +630,30 @@ function refusal(text: string, factIds: readonly string[], cardIds: readonly str
 }
 
 /**
+ * The words that say a thing is a guess: one of them stands in any answer that cites what Claude noticed. "may" and
+ * "might" are read in lower case alone, so the month of May is not one.
+ */
+export const GUESS_WORDS = /\b(?:[Cc]laude noticed|[Aa] guess|[Nn]ot tested)\b|\b(?:may|might)\b/
+
+/**
+ * Every reason a text repeats what Claude noticed as a fact (2026-11-14), in order. A "Claude noticed" observation is
+ * a guess made on reading a month, which nobody tested. So an answer that cites one says it is a guess, in one of the
+ * words the rule names; and it is never the usual case on a guess's strength: those words stay with a counted
+ * comparison, which answers for them under its own rule when one is cited. A cause is refused by the association
+ * rule, and a number by the numbers rule, as for any fact read from the record.
+ */
+export function noticedRefusals(text: string, factIds: readonly string[], all = false): string[] {
+  if (!factIds.some(isNoticedFact)) return []
+  const out: string[] = []
+  if (!GUESS_WORDS.test(text)) out.push('cites what Claude noticed without saying it is a guess: say "Claude noticed", "a guess", "may", "might" or "not tested"')
+  // A counted comparison cited beside the guess answers for those words under its own rule.
+  const counted = factIds.some(isTableFact) || factIds.some(isNoteWordsFact)
+  const calledUsual = counted ? null : found(USUAL_WORDS, text, all)
+  if (calledUsual) out.push(`says ${calledUsual} on what Claude noticed: a guess nobody tested is never the usual case`)
+  return out
+}
+
+/**
  * Every reason a text is refused, in the order they are checked, each rule's own words: the first is what `refusal` gives.
  * `all` names every offending word of a rule rather than its first (Ask, Item 4, 2026-10-23: a retry told one reason mended
  * it and met the next, so a real question ended with no checked answer).
@@ -640,6 +685,8 @@ function refusals(text: string, factIds: readonly string[], cardIds: readonly st
   if (factIds.some(isTableFact)) out.push(...patternWordingRefusals(text, factIds, sheet, all))
   // A search of the notes (2026-11-13) is said as a share of the notes written, with the words searched named.
   if (factIds.some(isNoteWordsFact)) out.push(...noteWordsRefusals(text, factIds, sheet, all))
+  // What Claude noticed in a month (2026-11-14) is a guess, said as one.
+  if (factIds.some(isNoticedFact)) out.push(...noticedRefusals(text, factIds, all))
   out.push(...numbersRefusals(text, sheet, factIds))
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {
