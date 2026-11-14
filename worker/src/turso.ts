@@ -146,7 +146,7 @@ export interface TaskRow {
   /** An ask run by hand with the run key (stage A2): the stand-in question it answers, in place of a turn. Never the owner's words. */
   question?: string
   /** A month's read (2026-11-13): how many parts the month has, which were served, its other reads, and what it was built from. Never a line of it. */
-  month?: { parts: number; served: number[]; other: number; lines: number; fingerprint: string; reading?: number; events?: number; dropped?: number }
+  month?: { parts: number; served: number[]; other: number; lines: number; fingerprint: string; reading?: number; events?: number; dropped?: number; tries?: { day: string; n: number } }
 }
 
 /** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
@@ -291,6 +291,8 @@ export interface Store {
   readRecords(store: string, range?: { from?: string; to?: string; like?: string }, limit?: number): Promise<RecordRow[]>
   /** How many of the phone's own rows a store holds within a range: asked only when a read was cut, to say how many it left unread (2026-11-13). */
   countRecords(store: string, range?: { from?: string; to?: string; like?: string }): Promise<number>
+  /** The months, YYYY-MM, in which the stores a day's lines are built from hold a row, oldest first (2026-11-13): what the monthly read may be owed. */
+  monthsWithRecords(): Promise<string[]>
   /**
    * Every check-in in a range of days that holds a note, as its id, its day and its check-in alone, newest day first
    * (2026-11-13): when notes are written at all, read without downloading a note. A note of spaces alone is no note.
@@ -516,6 +518,10 @@ export function tursoStore(url: string, token: string): Store {
       const r = await rows(`SELECT COUNT(*) AS n FROM records WHERE ${where.join(' AND ')}`, args)
       return Number(r[0]?.n ?? 0)
     },
+    async monthsWithRecords() {
+      const r = await rows(`SELECT DISTINCT substr(day, 1, 7) AS month FROM records WHERE app = ? AND deleted = 0 AND day IS NOT NULL AND store IN ('days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks') ORDER BY month`, [APP])
+      return r.map((x) => String(x.month)).filter((m) => /^\d{4}-\d{2}$/.test(m))
+    },
     async noteMoments(range, limit) {
       // The note is read inside the database: a check-in's note is the text at extras.note, and one that is empty once
       // its spaces, tabs and line breaks are taken off its ends is no note.
@@ -736,6 +742,11 @@ export function memoryStore(): Store & { rows: Map<string, MemoryRow>; put(row: 
     },
     async countRecords(store, range = {}) {
       return live(APP, store).filter((r) => (!range.from || (r.day !== null && r.day >= range.from)) && (!range.to || (r.day !== null && r.day <= range.to)) && (!range.like || (r.body ?? '').toLowerCase().includes(range.like.toLowerCase()))).length
+    },
+    async monthsWithRecords() {
+      // As the live store answers: the stores a day's lines are built from, rows not deleted, by their day's month.
+      const held = ['days', 'checkins', 'offers', 'outcomes', 'notes', 'pathMarks']
+      return [...new Set([...rows.values()].filter((r) => r.app === APP && r.deleted === 0 && r.day !== null && held.includes(r.store)).map((r) => (r.day as string).slice(0, 7)))].filter((m) => /^\d{4}-\d{2}$/.test(m)).sort()
     },
     async noteMoments(range, limit) {
       // As the live store answers: the check-ins of the range whose note is more than spaces, tabs and line breaks.

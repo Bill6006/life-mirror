@@ -263,20 +263,3 @@ describe('an event the owner marked wrong', () => {
     expect(await writeUps(store)).toHaveLength(1)
   })
 })
-
-describe('a run by hand', () => {
-  it('is checked like any, and stores nothing the phone reads', async () => {
-    const store = standIn()
-    const ids = await ready(store, { over: { dry: true } })
-    const r = await post(store, answer(ids))
-    expect([r.status, r.body]).toEqual([200, { ok: true, dry: true }])
-    expect(await writeUps(store)).toEqual([])
-    expect(await events(store)).toEqual([])
-    const t = (await store.readTask(ID)) as TaskRow
-    expect([t.status, t.month?.reading, t.month?.events]).toEqual(['written', undefined, 0])
-    // And a run by hand that fails the check is refused like any.
-    const again = standIn()
-    const bad = await ready(again, { over: { dry: true } })
-    expect((await post(again, answer(bad, { recorded: [{ text: 'You wrote notes on 12 evenings.', factIds: [bad.note03] }] }))).status).toBe(422)
-  })
-})

@@ -3,12 +3,16 @@ import { PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, type PatternsRecord } f
 import type { Fact } from '../../src/factTypes'
 import { NOTE_EVENTS_STORE, noteEventOf, wrongIdOf, type NoteEvent } from '../../src/noteEvents/shared'
 import { EVENT_TYPES, eventTypeOf, type EventType } from '../../src/noteEvents/types'
-import { WRITEUP_METHOD, writeUpIdOf, writeUpOf, WRITEUPS_STORE, type Followed, type Observation, type WriteUp } from '../../src/writeups/shared'
-import { MAX_POSTS, SERVED_STORE, type Deps, type Reply } from './claude'
+import { MONTHLY_READ, WRITEUP_METHOD, writeUpIdOf, writeUpOf, WRITEUPS_STORE, type Followed, type Observation, type WriteUp } from '../../src/writeups/shared'
+import { askTaskIds, deepTaskId, handTaskIds } from '../../src/ask/shared'
+import { pathTaskIdOf } from '../../src/pathJob'
+import { claudeOn, fallbackReason, fire, fireFailure, fireText, MAX_POSTS, SERVED_STORE, timeoutMinutes, type ClaudeEnv, type Deps, type Reply } from './claude'
 import { homeDay, LOOKUP_HELP, mayRead, parseLookupQuery, runLookup, type LookupCtx } from './lookups'
 import { buildMonth, MONTH_PARTS_MOST, monthSpan, type MonthBuilt, type MonthSpan } from './month'
 import { checkMonth, noteWordsOfLine, type CheckedObservation } from './monthCheck'
 import { MONTH_ANSWER, monthInstructions, type WrongEvent } from './monthPrompt'
+import { monthToRead, type MonthRun } from './monthSchedule'
+import { standInFirst, standInStore } from './monthStandIn'
 import { accessFor, bytesOf, gatesFrom, loadCatalogue, obj, privateNames } from './retrieval'
 import { localTime } from './time'
 import type { Store, TaskRow } from './turso'
@@ -26,6 +30,10 @@ export const MONTH_READS_MOST = MONTH_PARTS_MOST + MONTH_OTHER_READS
 
 /** The id of the task that reads the month beginning on a day. */
 export const monthTaskIdOf = (first: string): string => `task:${first}:month`
+/** The id of the builder's run by hand on a stand-in month: its own, never the schedule's. */
+export const monthHandIdOf = (first: string): string => `task:${first}:month.hand`
+/** The longest answer a month's post may carry, in characters. */
+export const MONTH_BODY_LIMIT = 60_000
 
 /** The month as kept at its first serving, bound to one start of its task. */
 export interface KeptMonth {
@@ -36,6 +44,8 @@ export interface KeptMonth {
 export type MonthDeps = Deps & {
   /** For the tests: the one list of event types; the deployed Worker reads the shared list. */
   types?: readonly EventType[]
+  /** For the tests; the deployed Worker reads the shared gate. */
+  gate?: 'gated' | 'open'
 }
 
 const reply = (status: number, body: unknown): Reply => ({ status, body })
@@ -46,8 +56,11 @@ async function openMonthTask(deps: MonthDeps, task: unknown, day: unknown): Prom
   if (task !== 'month') return { ok: false, reply: reply(400, { error: 'task must be month' }) }
   const span = typeof day === 'string' && DAY_RE.test(day) ? monthSpan(day) : null
   if (typeof day !== 'string' || !span) return { ok: false, reply: reply(400, { error: 'day must be the first day of a month, YYYY-MM-01' }) }
-  const t = await deps.store.readTask(monthTaskIdOf(day))
-  if (!t || t.task !== 'month' || (t.status !== 'firing' && t.status !== 'fired')) return { ok: false, reply: reply(409, { error: `no month task is open for ${span.month}` }) }
+  // The schedule's task for the month, or the builder's run by hand on a stand-in month, which keeps an id of its own.
+  const t = (await deps.store.readTasks([monthTaskIdOf(day), monthHandIdOf(day)])).filter((r) => r.task === 'month' && (r.status === 'firing' || r.status === 'fired')).sort((a, b) => (a.at < b.at ? 1 : -1))[0]
+  if (!t) return { ok: false, reply: reply(409, { error: `no month task is open for ${span.month}` }) }
+  // Closed, only a run by hand is served.
+  if ((deps.gate ?? MONTHLY_READ) !== 'open' && t.dry !== true) return { ok: false, reply: reply(403, { error: 'the monthly read is not switched on' }) }
   if (t.posts >= MAX_POSTS) return { ok: false, reply: reply(409, { error: 'no attempts left' }) }
   return { ok: true, t, span }
 }
@@ -59,10 +72,12 @@ export async function keptMonth(store: Store, t: TaskRow): Promise<KeptMonth | n
 }
 
 /** What the month's read is served under: the owner's switches and the faith rule, as Ask's broad read is. */
-async function monthCtx(deps: MonthDeps): Promise<LookupCtx> {
-  const [settings, prefs, catalogue] = await Promise.all([deps.store.readRecord('settings', '1'), deps.store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)])
+async function monthCtx(deps: MonthDeps, t: Pick<TaskRow, 'dry' | 'day'>): Promise<LookupCtx> {
+  // A run by hand reads a stand-in month and nothing of the owner's: its record, its settings and its switches are the stand-in's.
+  const store = t.dry === true ? standInStore(t.day) : deps.store
+  const [settings, prefs, catalogue] = await Promise.all([store.readRecord('settings', '1'), store.readRecord('brainPrefs', 'prefs'), loadCatalogue(deps.env.CATALOGUE_URL, deps.fetcher)])
   const timeZone = deps.env.TIMEZONE ?? 'UTC'
-  return { store: deps.store, catalogue, a: accessFor('deep', gatesFrom(settings), readBrainPrefs(prefs)), day: localTime(deps.now, timeZone).day, now: deps.now, timeZone, showPrivate: obj(settings).showPrivate === true, question: '' }
+  return { store, catalogue, a: accessFor('deep', gatesFrom(settings), readBrainPrefs(prefs)), day: localTime(deps.now, timeZone).day, now: deps.now, timeZone, showPrivate: obj(settings).showPrivate === true, question: '' }
 }
 
 /** The month's events the owner marked wrong, to hand to a read so they are not tagged again. */
@@ -92,7 +107,7 @@ export async function handleMonthBriefing(deps: MonthDeps, url: URL): Promise<Re
   const at = deps.now.toISOString()
   let kept = await keptMonth(deps.store, t)
   if (!kept) {
-    const built = await buildMonth(await monthCtx(deps), t.day)
+    const built = await buildMonth(await monthCtx(deps, t), t.day)
     // Not whole, or not ready: nothing is served, and the task ends saying why.
     if (!built.ok) {
       await deps.store.writeTask({ ...t, status: 'fallback', fallbackReason: built.reason })
@@ -105,12 +120,12 @@ export async function handleMonthBriefing(deps: MonthDeps, url: URL): Promise<Re
   const m = kept.month
   const types = deps.types ?? EVENT_TYPES
   const text = [`MONTH ${span.month}, in ${m.parts.length} ${m.parts.length === 1 ? 'part' : 'parts'}:`, ...m.parts.map((p) => `- part ${p.part}: ${p.days[0]} to ${p.days[p.days.length - 1]}, ${p.lines} lines${p.outside.length ? `; outside the month: ${p.outside.join(', ')}` : ''}`)].join('\n')
-  await deps.store.writeTask({ ...t, briefingAt: at, briefingBytes: bytesOf(text), month: { parts: m.parts.length, served: t.month?.served ?? [], other: t.month?.other ?? 0, lines: m.lines, fingerprint: m.fingerprint } })
+  await deps.store.writeTask({ ...t, briefingAt: at, briefingBytes: bytesOf(text), month: { ...t.month, parts: m.parts.length, served: t.month?.served ?? [], other: t.month?.other ?? 0, lines: m.lines, fingerprint: m.fingerprint } })
   return reply(200, {
     task: 'month',
     day: t.day,
     askedModel: t.askedModel,
-    instructions: monthInstructions({ month: span.month, parts: m.parts.length, types, wrong: await wrongEvents(deps.store, span, types) }),
+    instructions: monthInstructions({ month: span.month, parts: m.parts.length, types, wrong: t.dry === true ? [] : await wrongEvents(deps.store, span, types) }),
     briefing: text,
     answer: MONTH_ANSWER,
     post: { path: '/claude/line', body: { task: 'month', day: t.day, answer: '<your JSON answer>', askedModel: t.askedModel, writtenModel: '<the exact model id you are running as>', runnerModel: '<the routine’s own model id>', subagentError: null } },
@@ -146,7 +161,7 @@ export async function handleMonthContext(deps: MonthDeps, url: URL): Promise<Rep
     return reply(200, { lookup: 'month', part: part.part, parts: kept.month.parts.length, days: part.days, outside: part.outside, lines: part.lines, facts })
   }
   if (t.month.other >= MONTH_OTHER_READS) return reply(429, { error: `at most ${MONTH_OTHER_READS} reads beside the month's own parts` })
-  const ctx = await monthCtx(deps)
+  const ctx = await monthCtx(deps, t)
   const q = parseLookupQuery(url, ctx.day)
   if (!q.ok) return reply(400, { error: q.reason })
   const r = await runLookup(ctx, q.query)
@@ -213,16 +228,16 @@ export async function handleMonthLine(deps: MonthDeps, raw: unknown): Promise<Re
   // The Worker, not the run, says whether the whole month was read.
   const unread = partsUnread(t)
   if (unread.length) return refuse(`${unread.length === 1 ? 'part' : 'parts'} ${unread.join(', ')} of ${t.month.parts} ${unread.length === 1 ? 'was' : 'were'} not read: read every part, then post again`)
-  const ctx = await monthCtx(deps)
+  const ctx = await monthCtx(deps, t)
   const types = deps.types ?? EVENT_TYPES
   // A switch turned off since the month was served takes its lines away here, so an observation resting on one is refused.
   const facts = kept.month.parts.flatMap((p) => p.facts).filter((f) => mayRead(f, ctx.a))
-  const names = ctx.showPrivate ? [] : await privateNames(deps.store)
+  const names = ctx.showPrivate ? [] : await privateNames(ctx.store)
   const bears = ctx.a.allowed('partnerPath') && facts.some((f) => f.values.category === 'partnerPath')
   const verdict = checkMonth(typeof o.answer === 'string' ? safeJson(o.answer) : o.answer, { facts, span, surface: { names, bears }, types })
   if (!verdict.ok) return refuse(verdict.reason)
   // A pattern to follow is checked against the phone's own table, and stored with that cell's counts on this day.
-  const table = verdict.value.noticed.some((n) => n.follow) ? await tableNow(deps.store, deps.now) : null
+  const table = verdict.value.noticed.some((n) => n.follow) ? await tableNow(ctx.store, deps.now) : null
   const whys: string[] = []
   const observed = (list: readonly CheckedObservation[], part: 'recorded' | 'noticed'): Observation[] =>
     list.map((c, i) => {
@@ -268,4 +283,118 @@ export async function handleMonthLine(deps: MonthDeps, raw: unknown): Promise<Re
   }
   await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel: clip(o.runnerModel, 100), subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at), month: { ...t.month, ...(t.dry ? {} : { reading }), events: stored, dropped } })
   return reply(200, { ok: true, ...(t.dry ? { dry: true } : {}) })
+}
+
+// ─── The schedule ───────────────────────────────────────────────────────────────────────────────
+
+export type MonthsEnv = ClaudeEnv & { TIMEZONE: string }
+
+export interface MonthsOptions {
+  /** By hand with the run key: one run on a stand-in month, past the gate and the switch; nothing of the owner's is read, nothing stored where the phone reads. */
+  dry?: boolean
+  /** By hand with the run key: what the schedule would do now, and nothing done. */
+  plan?: boolean
+  fireFetcher?: typeof fetch
+  /** For the tests; the deployed Worker reads the shared gate. */
+  gate?: 'gated' | 'open'
+}
+
+export interface MonthsResult {
+  ran: boolean
+  reason: string
+  day?: string
+  task?: string
+  /** A plan's view: whether the read is switched on, the months that hold records, and those that have a write-up. Never a word of either. */
+  switchedOn?: boolean
+  months?: string[]
+  written?: string[]
+}
+
+/** The store and the row of the Worker's own that hold whether the monthly read runs: set by hand with the run key, once the app that shows a write-up is verified live. */
+export const SWITCHES_STORE = 'switches'
+export const MONTH_SWITCH_ID = 'monthlyRead'
+
+/** Whether the monthly read is switched on: off until it is set, so a deploy alone starts nothing. */
+export async function monthSwitchOn(store: Store): Promise<boolean> {
+  return (await store.readBrainRow<{ on?: unknown }>(SWITCHES_STORE, MONTH_SWITCH_ID))?.on === true
+}
+
+/** Sets the switch, with when. */
+export async function setMonthSwitch(store: Store, on: boolean, now: Date): Promise<void> {
+  const at = now.toISOString()
+  await store.writeBrainRow(SWITCHES_STORE, MONTH_SWITCH_ID, at.slice(0, 10), { on, at }, at)
+}
+
+/** A run of the routine under way: the Brain's own of the day, an answer to a question, or a Path being drafted or read. One run at a time. */
+async function busyNow(store: Store, day: string, now: Date, minutes: number): Promise<boolean> {
+  const ids = [...['line', 'coach', 'review', 'progress'].map((k) => `task:${day}:${k}`), ...askTaskIds(day), deepTaskId(day), ...handTaskIds(day), pathTaskIdOf(day, 'path'), pathTaskIdOf(day, 'pathRead')]
+  return (await store.readTasks(ids)).some((t) => (t.status === 'firing' || t.status === 'fired') && !fallbackReason(t, now, minutes))
+}
+
+/** Marks a month's run, then fires the routine with no personal text: the task, the month's first day and the model alias. The mark comes first, since a fire has no idempotency key. */
+async function startMonth(env: MonthsEnv, store: Store, now: Date, first: string, id: string, dry: boolean, opts: MonthsOptions): Promise<MonthsResult> {
+  const [prefsRow, prev] = await Promise.all([store.readRecord('brainPrefs', 'prefs'), store.readTask(id)])
+  const prefs = readBrainPrefs(prefsRow)
+  const at = now.toISOString()
+  const today = localTime(now, env.TIMEZONE).day
+  // How many times this month was tried today: a read that failed is tried again, three tries a day at most.
+  const tries = { day: today, n: prev?.month?.tries?.day === today ? prev.month.tries.n + 1 : 1 }
+  const row: TaskRow = { id, kind: 'task', task: 'month', day: first, at, status: 'firing', trigger: dry ? 'forced' : 'ask', factsDay: first, askedModel: prefs.writerModel, ...(dry ? { forced: true, dry: true } : {}), fires: (prev ? (prev.fires ?? 1) : 0) + 1, contextCalls: 0, contextBytes: 0, posts: 0, refusals: [], month: { parts: 0, served: [], other: 0, lines: 0, fingerprint: '', tries } }
+  await store.writeTask(row)
+  const f = await fire(env, fireText('month', first, prefs.writerModel), opts.fireFetcher)
+  if (f.ok) {
+    await store.writeTask({ ...row, status: 'fired', firedAt: at, fireStatus: f.status, sessionUrl: f.sessionUrl })
+    return { ran: true, reason: 'Claude is reading the month', day: first, task: id }
+  }
+  const why = fireFailure(f)
+  await store.writeTask({ ...row, status: 'fallback', fireStatus: f.status, retryAfter: f.retryAfter, error: f.error, fallbackReason: why })
+  return { ran: false, reason: why, day: first, task: id }
+}
+
+/**
+ * The monthly read's job, on the quarter-hour. Closed, or switched off, it starts nothing. Open: the oldest month that
+ * holds records, has had its days after it pass and has no write-up is read, one at a time, two a day at most, never
+ * between 9:00 and 11:30, never while another run of the routine is under way. A run that passed its time is let go and
+ * counted as a failed try. By hand: one run on a stand-in month, or the plan alone.
+ */
+export async function runMonths(env: MonthsEnv, store: Store, now: Date, opts: MonthsOptions = {}): Promise<MonthsResult> {
+  if ((opts.gate ?? MONTHLY_READ) !== 'open' && !opts.dry) return { ran: false, reason: 'gated' }
+  if (!claudeOn(env)) return { ran: false, reason: 'Claude is off' }
+  const local = localTime(now, env.TIMEZONE)
+  const today = local.day
+  if (opts.dry) {
+    // The builder's run: a stand-in month, an id of its own, counting against nothing.
+    const first = standInFirst(today)
+    return startMonth(env, store, now, first, monthHandIdOf(first), true, opts)
+  }
+  const [switchedOn, prefs] = await Promise.all([monthSwitchOn(store), store.readRecord('brainPrefs', 'prefs')])
+  if (!opts.plan) {
+    if (!switchedOn) return { ran: false, reason: 'the monthly read is not switched on yet' }
+    if (readBrainPrefs(prefs).monthlyRead === false) return { ran: false, reason: 'the monthly read is switched off in Settings' }
+  }
+  const months = await store.monthsWithRecords()
+  const minutes = timeoutMinutes(env)
+  const runs: MonthRun[] = []
+  for (const t of await store.readTasks(months.map((m) => monthTaskIdOf(`${m}-01`)))) {
+    const month = t.day.slice(0, 7)
+    if (t.status === 'firing' || t.status === 'fired') {
+      const why = fallbackReason(t, now, minutes)
+      if (!why) {
+        runs.push({ month, status: 'open' })
+        continue
+      }
+      // Past its time: let go, and counted with the day's failed tries below.
+      if (!opts.plan) await store.writeTask({ ...t, status: 'fallback', fallbackReason: why })
+    }
+    if (t.status === 'written') {
+      if (t.writtenAt && localTime(new Date(t.writtenAt), env.TIMEZONE).day === today) runs.push({ month, status: 'written' })
+      continue
+    }
+    if (t.month?.tries?.day === today) for (let i = 0; i < t.month.tries.n; i++) runs.push({ month, status: 'failed' })
+  }
+  const written = [...new Set((await store.readBrainRows<unknown>(WRITEUPS_STORE, 500)).flatMap((r) => (writeUpOf(r.id, r.body) ? [(writeUpOf(r.id, r.body) as WriteUp).month] : [])))].sort()
+  const decision = monthToRead({ today, hhmm: `${String(local.hour).padStart(2, '0')}:${String(local.minute).padStart(2, '0')}`, months, written, runs, busy: await busyNow(store, today, now, minutes) })
+  if (opts.plan) return { ran: false, reason: 'first' in decision ? `would read ${decision.first.slice(0, 7)}` : decision.reason, day: today, switchedOn, months, written }
+  if (!('first' in decision)) return { ran: false, reason: decision.reason, day: today }
+  return startMonth(env, store, now, decision.first, monthTaskIdOf(decision.first), false, opts)
 }

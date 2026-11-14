@@ -2,6 +2,8 @@
 // phone's own mark on one of its observations. The Worker's rows are pulled and kept read-only. A later reading of a
 // month is a new row beside the first, never over it. No import: the phone and the Worker both take this file.
 
+/** The monthly read's gate: open, the Worker reads a month once its own switch is set; closed, only a run by hand on a stand-in month runs. */
+export const MONTHLY_READ: 'gated' | 'open' = 'open'
 /** The Worker's store of monthly write-ups. */
 export const WRITEUPS_STORE = 'writeups'
 /** The version of the rules a write-up is written under. Raised by hand, and only after a real improvement: a raise re-reads the old months. */

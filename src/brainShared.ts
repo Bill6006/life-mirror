@@ -174,6 +174,8 @@ export interface BrainPrefsBody {
   switches: Partial<Record<BrainSwitch, false>>
   /** How firm (Pass 2): kept only once chosen; unset reads as Adaptive. Nothing reads it while its gate is closed. */
   firmness?: FirmnessPref
+  /** The monthly read (2026-11-13): kept only when it is turned off; unset, a month is read. */
+  monthlyRead?: false
 }
 
 /** The Brain settings read the same way on the phone and in the Worker: an unknown or missing model is Opus, a switch is off only when it says so, anything else is dropped. */
@@ -182,7 +184,7 @@ export function readBrainPrefs(raw: unknown): BrainPrefsBody {
   const s = o.switches && typeof o.switches === 'object' ? (o.switches as Record<string, unknown>) : {}
   const switches: Partial<Record<BrainSwitch, false>> = {}
   for (const k of BRAIN_SWITCHES) if (s[k] === false) switches[k] = false
-  return { writerModel: isWriterModel(o.writerModel) ? o.writerModel : 'opus', switches, ...(isFirmnessPref(o.firmness) ? { firmness: o.firmness } : {}) }
+  return { writerModel: isWriterModel(o.writerModel) ? o.writerModel : 'opus', switches, ...(isFirmnessPref(o.firmness) ? { firmness: o.firmness } : {}), ...(o.monthlyRead === false ? { monthlyRead: false as const } : {}) }
 }
 
 /**

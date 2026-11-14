@@ -14,6 +14,7 @@ import { coachToday, recordSpot, runCoach, watchNow } from './coach'
 import { handleCoachBriefing, handleCoachLine, runCommitments } from './skillCoach'
 import { handleAskBriefing, handleAskContext, handleAskLine, runAsks } from './ask'
 import { handlePathBriefing, handlePathContext, handlePathLine, PATH_BODY_LIMIT, runPaths } from './paths'
+import { handleMonthBriefing, handleMonthContext, handleMonthLine, MONTH_BODY_LIMIT, runMonths, setMonthSwitch } from './monthTask'
 import { engineReport } from './engineReport'
 import { SKILL_COACH } from '../../src/coachShared'
 import { addDays, localTime } from './time'
@@ -132,6 +133,15 @@ const handler: ExportedHandler<Env> = {
         } catch (e) {
           console.log(JSON.stringify({ job: 'paths', error: e instanceof Error ? e.message : String(e) }))
         }
+        // The monthly read (2026-11-13), on the quarter-hour: one month at a time, never between 9:00 and 11:30. Not switched on, it does nothing.
+        try {
+          if (env.TURSO_TOKEN) {
+            const r = await runMonths(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), now)
+            if (r.ran || r.task) console.log(JSON.stringify({ job: 'months', ...r }))
+          }
+        } catch (e) {
+          console.log(JSON.stringify({ job: 'months', error: e instanceof Error ? e.message : String(e) }))
+        }
         // The clean window's report (2026-10-02), after everything else and apart from it: it only reads the day's rows, and writes its own.
         try {
           if (env.TURSO_TOKEN) {
@@ -190,12 +200,12 @@ const handler: ExportedHandler<Env> = {
         if (url.pathname === '/claude/briefing' && request.method === 'GET') {
           // Parts 40 and 41: a skill coach run's briefing, refused while their gate is closed.
           const task = url.searchParams.get('task')
-          const r = task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : task === 'ask' || task === 'deep' ? await handleAskBriefing(deps, url) : task === 'path' || task === 'pathRead' ? await handlePathBriefing(deps, url) : await handleBriefing(deps, url)
+          const r = task === 'month' ? await handleMonthBriefing(deps, url) : task === 'skill' || task === 'progress' ? await handleCoachBriefing(deps, url) : task === 'ask' || task === 'deep' ? await handleAskBriefing(deps, url) : task === 'path' || task === 'pathRead' ? await handlePathBriefing(deps, url) : await handleBriefing(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/context' && request.method === 'GET') {
           const task = url.searchParams.get('task')
-          const r = task === 'ask' || task === 'deep' ? await handleAskContext(deps, url) : task === 'path' ? await handlePathContext(deps, url) : await handleContext(deps, url)
+          const r = task === 'month' ? await handleMonthContext(deps, url) : task === 'ask' || task === 'deep' ? await handleAskContext(deps, url) : task === 'path' ? await handlePathContext(deps, url) : await handleContext(deps, url)
           return json(r.body, r.status)
         }
         if (url.pathname === '/claude/line' && request.method === 'POST') {
@@ -209,8 +219,10 @@ const handler: ExportedHandler<Env> = {
             return json({ error: 'the body is not JSON' }, 400)
           }
           const task = body && typeof body === 'object' ? (body as { task?: unknown }).task : undefined
-          if (task !== 'path' && task !== 'pathRead' && text.length > 20_000) return json({ error: 'at most 20,000 characters' }, 413)
-          const r = task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : task === 'ask' || task === 'deep' ? await handleAskLine(deps, body) : task === 'path' || task === 'pathRead' ? await handlePathLine(deps, body) : await handleLine(deps, body)
+          // A month's answer holds up to eighteen observations and sixty events, each with the ids it rests on (2026-11-13).
+          if (task === 'month' && text.length > MONTH_BODY_LIMIT) return json({ error: 'at most 60,000 characters' }, 413)
+          if (task !== 'path' && task !== 'pathRead' && task !== 'month' && text.length > 20_000) return json({ error: 'at most 20,000 characters' }, 413)
+          const r = task === 'month' ? await handleMonthLine(deps, body) : task === 'skill' || task === 'progress' ? await handleCoachLine(deps, body) : task === 'ask' || task === 'deep' ? await handleAskLine(deps, body) : task === 'path' || task === 'pathRead' ? await handlePathLine(deps, body) : await handleLine(deps, body)
           return json(r.body, r.status)
         }
         return json({ error: 'not found' }, 404)
@@ -310,6 +322,17 @@ const handler: ExportedHandler<Env> = {
       const question = url.searchParams.get('q') ?? ''
       if (!question.trim()) return json({ reason: 'q: a stand-in question' }, 400)
       return json(await runAsks(env, tursoStore(env.TURSO_URL, env.TURSO_TOKEN), new Date(), { dry: true, question, deep: url.searchParams.get('deep') === '1' }))
+    }
+    // With the run key (2026-11-13): the monthly read. dry=1 runs it once on a stand-in month, the whole way, nothing of the
+    // owner's read and nothing stored where the phone reads; switch=on or off sets whether the schedule reads a month; with
+    // neither, what the schedule would do now, by months and states alone.
+    if (url.pathname === '/run/month' && env.RUN_KEY && url.searchParams.get('key') === env.RUN_KEY) {
+      if (!env.TURSO_TOKEN) return json({ reason: 'no database token' })
+      const store = tursoStore(env.TURSO_URL, env.TURSO_TOKEN)
+      const set = url.searchParams.get('switch')
+      if (set === 'on' || set === 'off') await setMonthSwitch(store, set === 'on', new Date())
+      else if (set !== null) return json({ reason: 'switch is on or off' }, 400)
+      return json(await runMonths(env, store, new Date(), url.searchParams.get('dry') === '1' ? { dry: true } : { plan: true }))
     }
     // With the run key (P5): a dry run of the generator on a stand-in goal, the whole way, its rows never where the phone reads;
     // and the jobs' states, never their words.
