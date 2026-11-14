@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { getBrainPrefs, setBrainSwitch, setMonthlyRead } from './brainPrefs'
 import { APP } from './cloudOutbox'
 import { memoryStore, type CloudRow, type MemoryStore } from './cloudStore'
-import { BRAIN_APP, BRAIN_STORES, brainReadOf, deleteCloudCopy, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
+import { askRunOf, BRAIN_APP, BRAIN_STORES, brainReadOf, coachRunOf, deleteCloudCopy, resetCloudForTests, setOnlineCheck, setStoreFactory, syncNow } from './cloudSync'
 import { checkin, context, day } from './counted/testing'
 import { db, updateSettings, wipeEverything } from './db'
 import { writeUpsForExport } from './export'
@@ -225,5 +225,13 @@ describe('a read the monthly read logged', () => {
     const row = { day: '2026-11-13', at: '2026-11-13T22:00:00.000Z', task: 'month', category: 'lookup.month', count: 148, bytes: 37888, via: 'context' }
     expect(brainReadOf('read:1', JSON.stringify(row))).toEqual({ id: 'read:1', ...row })
     expect(brainReadOf('read:2', JSON.stringify({ ...row, task: 'year' }))).toBeNull()
+  })
+})
+
+describe('a month task’s own row', () => {
+  it('is nothing the phone keeps: it is no run of the skill coach’s and no answer’s', () => {
+    const row = JSON.stringify({ id: 'task:2026-10-01:month', kind: 'task', task: 'month', day: '2026-10-01', at: '2026-11-13T22:00:00.000Z', status: 'written', trigger: 'ask', factsDay: '2026-10-01', askedModel: 'opus', contextCalls: 3, contextBytes: 100, posts: 1, refusals: [], turns: [1], asks: [1] })
+    expect(coachRunOf('task:2026-10-01:month', row)).toBeNull()
+    expect(askRunOf('task:2026-10-01:month', row)).toBeNull()
   })
 })
