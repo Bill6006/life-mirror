@@ -11,7 +11,7 @@
 import { chromium } from './common.mjs'
 
 const want = process.argv[2]
-/** The key an automated browser holds to read two stand-in event types beside the one list, which ships empty. */
+/** The key an automated browser holds to read two stand-in event types beside the one list, which does not hold them. */
 const KEY = 'life-mirror.preview.noticed'
 const LIVE = process.env.LIVE_URL ?? 'https://bill6006.github.io/life-mirror/'
 const SITE = new URL(LIVE).host
@@ -173,7 +173,7 @@ try {
     await ctx.close()
   }
   {
-    // No test key, as on every phone in a hand: the one list of event types is empty, so nothing noticed stands.
+    // No test key, as on every phone in a hand: the one list does not hold the stand-in types, so nothing of them stands.
     const NOW = new Date(2026, 10, 10, 19, 5)
     const { ctx, page } = await fresh(NOW)
     await start(page)
@@ -182,7 +182,7 @@ try {
     await openBrain(page)
     const stored = (await rowsOf(page, 'noteEvents')).length
     const row = await page.getByTestId('brain-noticed').count()
-    check('with no event type written yet nothing noticed stands: six stored events, and no row on the Brain screen', stored === 6 && row === 0, `${stored} stored, ${row} row`)
+    check('with no test key nothing of a stand-in type stands: six stored events, and no row on the Brain screen', stored === 6 && row === 0, `${stored} stored, ${row} row`)
     const table = await untilTable(page, (t) => Array.isArray(t.kinds) && t.kinds.length > 0)
     const noticed = (table?.kinds ?? []).filter((k) => String(k.id).startsWith('noticed.')).length
     check('and the pattern table holds no kind for it', table !== null && noticed === 0, table ? `${table.kinds.length} kinds, ${noticed} noticed` : 'no table')

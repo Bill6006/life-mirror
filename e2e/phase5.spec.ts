@@ -59,7 +59,7 @@ test('the database holds the two stores for what is noticed, keyed by a name, at
 })
 
 test('the Brain screen shows no row while nothing noticed stands: with no event, and with events of no type the list knows', async ({ page }) => {
-  // No test key here: the one list of event types is empty, as on every phone in a hand.
+  // No test key here, as on every phone in a hand: the one list does not hold the stand-in types.
   await start(page, { key: false })
   await openBrain(page)
   await expect(page.getByTestId('brain-reads')).toBeVisible()

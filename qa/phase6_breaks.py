@@ -59,6 +59,8 @@ its own month; filed under the app's day; what it was built from; a run by hand 
 marked-wrong event dropped and counted; an event found again stands, a lost quote replaced; the event's id and its
 method; the task ends written; an answer written out as JSON.
 
+The first event types: six, each with a definition that says what counts.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -106,6 +108,8 @@ MS = 'worker/src/monthSchedule.ts'
 MTK = 'worker/src/monthTask.ts'
 MTT = 'worker/src/monthTask.test.ts'
 MPO = 'worker/src/monthPost.test.ts'
+TY = 'src/noteEvents/types.ts'
+NET = 'src/noteEvents/noteEvents.test.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
 
@@ -891,6 +895,16 @@ TABLE = [
          old="typeof o.answer === 'string' ? safeJson(o.answer) : o.answer",
          new="o.answer",
          tests=[MPO], pattern='is taken as JSON written out, too'),
+
+    # The first event types.
+    dict(id='the-six-first-types', file=TY,
+         old="  { id: 'argument', label: 'An argument', definition: 'The note says you argued or fought with someone.' },\n",
+         new="",
+         tests=[NET], pattern='holds the six first types'),
+    dict(id='a-types-definition-says-what-counts', file=TY,
+         old="definition: 'The note says you were in pain or felt ill.' }",
+         new="definition: 'Pain.' }",
+         tests=[NET], pattern='holds the six first types'),
 ]
 
 

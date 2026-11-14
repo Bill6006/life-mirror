@@ -3,9 +3,9 @@
 // keeps the ids it was known by, so its events stay one count and never split in two. No import: the phone and the
 // Worker both take this file.
 //
-// The list ships empty. A type's definition is an instruction to the read that tags by it, and that read is the
-// month's, built after this; its first types are written there. Until then nothing is tagged, and every rule here
-// is held by tests on stand-in types.
+// The first six types (2026-11-13) came with the month's read, the read that tags by them. Each is a general
+// behaviour, never anything read from one person's notes; its definition is an instruction to that read. A type taken
+// out of the list counts for nothing from then on, and its events are not shown.
 
 export interface EventType {
   /** The id events are stored under from now on. */
@@ -18,7 +18,14 @@ export interface EventType {
   was?: readonly string[]
 }
 
-export const EVENT_TYPES: readonly EventType[] = []
+export const EVENT_TYPES: readonly EventType[] = [
+  { id: 'raised-voice', label: 'Raised my voice', definition: 'The note says you yelled, shouted or raised your voice at someone.' },
+  { id: 'argument', label: 'An argument', definition: 'The note says you argued or fought with someone.' },
+  { id: 'up-late', label: 'Up late', definition: 'The note says you stayed up later than you meant to.' },
+  { id: 'skipped-plan', label: 'Skipped a plan', definition: 'The note says you did not do something you had planned to do.' },
+  { id: 'gave-in', label: 'Gave in to an urge', definition: 'The note says you gave in to an urge you had meant to resist.' },
+  { id: 'pain-or-illness', label: 'Pain or illness', definition: 'The note says you were in pain or felt ill.' },
+]
 
 /** The key an automated browser holds to have two stand-in types beside the list, so the screens can be read before any type is written. */
 export const STAND_IN_TYPES_KEY = 'life-mirror.preview.noticed'

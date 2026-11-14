@@ -17,11 +17,22 @@ const TYPES: readonly EventType[] = [
 afterEach(() => setEventTypesForTests(null))
 
 describe('the one list of event types', () => {
-  it('ships empty and without a fault: the first types are written with the read that tags by them', () => {
-    expect(EVENT_TYPES).toEqual([])
+  it('holds the six first types, each a general behaviour with what counts as one, and no fault', () => {
+    expect(EVENT_TYPES.map((t) => [t.id, t.label])).toEqual([
+      ['raised-voice', 'Raised my voice'],
+      ['argument', 'An argument'],
+      ['up-late', 'Up late'],
+      ['skipped-plan', 'Skipped a plan'],
+      ['gave-in', 'Gave in to an urge'],
+      ['pain-or-illness', 'Pain or illness'],
+    ])
+    for (const t of EVENT_TYPES) expect(t.definition, t.id).toMatch(/^The note says you .+\.$/)
+    expect(eventTypeOf('raised-voice')?.definition).toBe('The note says you yelled, shouted or raised your voice at someone.')
     expect(eventTypeFaults()).toEqual([])
-    expect(eventTypes()).toEqual([])
-    expect(eventTypeOf('raised-voice')).toBeNull()
+    expect(eventTypes()).toEqual(EVENT_TYPES)
+    // No type has an earlier id yet, and an id no type knows is no type.
+    expect(EVENT_TYPES.some((t) => t.was?.length)).toBe(false)
+    expect(eventTypeOf('yelled')).toBeNull()
   })
 
   it('reads an event stored under an earlier id as the type it is today: a rename merges, never splits', () => {
@@ -54,14 +65,14 @@ describe('the one list of event types', () => {
     }
     try {
       set(true, '1')
-      expect(eventTypes().map((t) => t.id)).toEqual(['stand-in-one', 'stand-in-two'])
+      expect(eventTypes().map((t) => t.id)).toEqual(['raised-voice', 'argument', 'up-late', 'skipped-plan', 'gave-in', 'pain-or-illness', 'stand-in-one', 'stand-in-two'])
       // A browser in a hand is not automated: the key opens nothing there. Nor does an automated one without the key.
       set(false, '1')
-      expect(eventTypes()).toEqual([])
+      expect(eventTypes()).toEqual(EVENT_TYPES)
       set(true, null)
-      expect(eventTypes()).toEqual([])
+      expect(eventTypes()).toEqual(EVENT_TYPES)
       set(true, '0')
-      expect(eventTypes()).toEqual([])
+      expect(eventTypes()).toEqual(EVENT_TYPES)
       expect(STAND_IN_TYPES_KEY).toBe('life-mirror.preview.noticed')
     } finally {
       for (const name of ['navigator', 'localStorage'] as const) {
@@ -174,10 +185,14 @@ describe('what stands, of what was noticed', () => {
     expect(countedNotices(all).map((n) => n.type)).toEqual(['raised-voice', 'raised-voice'])
   })
 
-  it('reads the list it is given, or the one list: which is empty, so nothing stands yet', () => {
-    expect(noticedOf({ events: [E('a', 1, 'yelled at the dog')], marks: [], checkins: CHECKINS, kept: KEPT })).toEqual([])
+  it('reads the list it is given, or the one list: a type only the given list knows stands under it alone', () => {
+    const events = [E('a', 1, 'yelled at the dog', { type: 'late-screen' })]
+    expect(noticedOf({ events, marks: [], checkins: CHECKINS, kept: KEPT })).toEqual([])
     setEventTypesForTests(TYPES)
-    expect(noticedOf({ events: [E('a', 1, 'yelled at the dog')], marks: [], checkins: CHECKINS, kept: KEPT })).toHaveLength(1)
+    expect(noticedOf({ events, marks: [], checkins: CHECKINS, kept: KEPT })).toHaveLength(1)
+    // And a type the one list knows stands with no list given.
+    setEventTypesForTests(null)
+    expect(noticedOf({ events: [E('b', 1, 'yelled at the dog', { type: 'raised-voice' })], marks: [], checkins: CHECKINS, kept: KEPT })).toHaveLength(1)
   })
 })
 

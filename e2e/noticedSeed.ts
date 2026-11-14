@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test'
 import { seedRecord, storeRows } from './askSeed'
 
-// Stand-in events noticed in stand-in notes (Phase 5, 2026-11-13), for the browser tests. No event exists in a real
-// record yet and the one list of event types is empty, so an automated browser holds the test key that reads two
-// stand-in types beside the list, as the app's earlier previews were opened.
+// Stand-in events noticed in stand-in notes (Phase 5, 2026-11-13), for the browser tests. The events here are of
+// stand-in types the one list does not hold, so an automated browser holds the test key that reads two stand-in
+// types beside the list, as the app's earlier previews were opened.
 
 /** The key an automated browser holds to read the two stand-in event types. */
 export const NOTICED_KEY = 'life-mirror.preview.noticed'
