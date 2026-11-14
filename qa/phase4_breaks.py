@@ -486,7 +486,7 @@ TABLE = [
          new="facts: citedFacts(sheet, verdict.value.factIds,",
          tests=[AL], pattern='passes when it cites a lookup'),
     dict(id='the-briefing-lists-the-lookups', file=A,
-         old=" lookups: LOOKUPS.map((l) => LOOKUP_HELP[l]),",
+         old=" lookups: [...LOOKUPS.map((l) => LOOKUP_HELP[l]), ...(deep ? DEEP_LOOKUPS.map((l) => DEEP_LOOKUP_HELP[l]) : [])],",
          new="",
          tests=[AL], pattern='lists the nine lookups'),
     dict(id='a-categorys-reply-says-whether-it-is-whole', file=A,

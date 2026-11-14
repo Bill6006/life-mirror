@@ -572,12 +572,14 @@ describe('the deep tier’s budget', () => {
 describe('which months it lacks', () => {
   it('is told in its briefing which months have a write-up, which is under way and which have none; and that is kept with what it was served', async () => {
     const { store } = await started()
-    const b = (await briefing(store, at('09:02'))).body as { briefing: string; context: { besideThose: string[]; lookups: string[]; reach: string; failedRead: string } }
+    const b = (await briefing(store, at('09:02'))).body as { briefing: string; context: { lookups: string[]; reach: string; failedRead: string } }
     expect(b.briefing).toContain('THE MONTHS\nA write-up can be read for: September 2026, October 2026 (lookup=writeups).\nThe month under way, November 2026, has no write-up yet: its record is read raw (lookup=monthSoFar&part=1).\nNo write-up can be read for: August 2026. When you cite a write-up, say that you have none for this month, by the month’s name.')
     expect(servedOf(store).deep.months).toEqual({ have: ['2026-09', '2026-10'], underWay: '2026-11', lacking: ['2026-08'] })
-    // Its own two lookups are named beside the nine, with its reach and what a failed read costs.
-    expect(b.context.lookups).toHaveLength(9)
-    expect(b.context.besideThose.map((l) => l.split(/[ &]/)[0])).toEqual(['lookup=writeups', 'lookup=monthSoFar'])
+    // Its own two lookups are named after the nine, in the one list a run asks from, with its reach and what a failed read costs.
+    expect(b.context.lookups).toHaveLength(11)
+    expect(b.context.lookups.slice(9).map((l) => l.split(/[ &]/)[0])).toEqual(['lookup=writeups', 'lookup=monthSoFar'])
+    expect(b.context.lookups[9]).toBe('lookup=writeups (optional month=YYYY-MM): the monthly write-ups you may read, each month’s newest reading: what was recorded, what Claude noticed, and a noticed guess counted since. It does not count against maxCalls or maxBytes')
+    expect(b.context.lookups[10]).toBe('lookup=monthSoFar&part=<n>: the month under way, day by day up to today, every line with its id, in parts of whole days; start at part=1, and each reply says how many parts there are. It does not count against maxCalls or maxBytes')
     expect(b.context.reach).toBe('no limit: from may be any day, back to the record’s first')
     expect(b.context.failedRead).toBe('costs nothing: ask it once more, then go on without it and say so')
     // The briefing prints the day's sheet alone: nothing of a write-up is on it.
