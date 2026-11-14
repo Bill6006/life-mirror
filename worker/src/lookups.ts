@@ -238,7 +238,7 @@ function timeWords(at: string, filed: string, zone: string, traveling: boolean):
 }
 
 /** The day a moment is filed under, in the home zone: the app's day begins at four in the morning. */
-function homeDay(at: string, zone: string): string | null {
+export function homeDay(at: string, zone: string): string | null {
   const ms = Date.parse(at)
   if (!Number.isFinite(ms)) return null
   const t = localTime(new Date(ms), zone)

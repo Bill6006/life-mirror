@@ -52,6 +52,13 @@ parts and the reads allowed; a part is ids and words alone, recorded once, kept 
 the briefing first; a part in range; its own parameters alone; three lookups and no other; four other reads, each
 counted; the events marked wrong: marked, the month's own, named as today, handed to the read.
 
+The month's post: whole, or nothing saved; the briefing first; one retry, then the task ends refused; the check is
+kept; a kind switched off since the serving; a private name; a pattern to follow checked: its kind readable, its
+split and its cell, a table that can be read now, the cell's counts; a later reading beside the first, numbered in
+its own month; filed under the app's day; what it was built from; a run by hand stores nothing and says so; a
+marked-wrong event dropped and counted; an event found again stands, a lost quote replaced; the event's id and its
+method; the task ends written; an answer written out as JSON.
+
 Same rules as the other runners: a green baseline first, one exact replacement, the file always restored byte for byte,
 the table read as data, an empty test list refused, and an id that matches no entry refused.
 
@@ -98,6 +105,7 @@ MP = 'worker/src/monthPrompt.ts'
 MS = 'worker/src/monthSchedule.ts'
 MTK = 'worker/src/monthTask.ts'
 MTT = 'worker/src/monthTask.test.ts'
+MPO = 'worker/src/monthPost.test.ts'
 MST = 'worker/src/monthSchedule.test.ts'
 MPT = 'worker/src/monthPrompt.test.ts'
 
@@ -773,6 +781,116 @@ TABLE = [
          old="wrong: await wrongEvents(deps.store, span, types) }),",
          new="wrong: [] }),",
          tests=[MTT], pattern='are handed to the read in its instructions'),
+
+    # The month's post.
+    dict(id='whole-or-nothing-saved', file=MTK,
+         old="  if (unread.length) return refuse(",
+         new="  if (false) return refuse(",
+         tests=[MPO], pattern='refuses an answer while a part of the month was not read'),
+    dict(id='the-post-needs-the-briefing', file=MTK,
+         old="  if (!t.month || !kept) return reply(409,",
+         new="  if (false) return reply(409,",
+         tests=[MPO], pattern='is refused before the briefing was fetched'),
+    dict(id='one-retry-then-refused', file=MTK,
+         old="    const spent = posts >= MAX_POSTS\n",
+         new="    const spent = false\n",
+         tests=[MPO], pattern='after its one retry the task ends refused'),
+    dict(id='the-check-is-kept', file=MTK,
+         old="  if (!verdict.ok) return refuse(verdict.reason)\n",
+         new="",
+         tests=[MPO], pattern='after its one retry the task ends refused'),
+    dict(id='a-kind-switched-off-since-the-serving', file=MTK,
+         old=".flatMap((p) => p.facts).filter((f) => mayRead(f, ctx.a))",
+         new=".flatMap((p) => p.facts)",
+         tests=[MPO], pattern='refuses a line of a kind switched off since the month was served'),
+    dict(id='a-private-name-at-the-post', file=MTK,
+         old="  const names = ctx.showPrivate ? [] : await privateNames(deps.store)\n",
+         new="  const names: string[] = []\n",
+         tests=[MPO], pattern='refuse a private item named while names may not be shown'),
+    dict(id='a-pattern-to-follow-is-checked', file=MTK,
+         old="  if (whys.length) return refuse(whys.join('; and '))\n",
+         new="",
+         tests=[MPO], pattern='is refused when the table does not hold its kind'),
+    dict(id='a-followed-kind-is-one-the-run-may-read', file=MTK,
+         old="(k) => k.id === follow.kind && allowed(k.category)",
+         new="(k) => k.id === follow.kind",
+         tests=[MPO], pattern='is found by its kind, split and cell'),
+    dict(id='a-followed-cell-is-its-own', file=MTK,
+         old="(c) => c.split === follow.split && c.cell === follow.cell",
+         new="(c) => c.split === follow.split",
+         tests=[MPO], pattern='is found by its kind, split and cell'),
+    dict(id='a-followed-split-is-its-own', file=MTK,
+         old="(c) => c.split === follow.split && c.cell === follow.cell",
+         new="(c) => c.cell === follow.cell",
+         tests=[MPO], pattern='is found by its kind, split and cell'),
+    dict(id='a-stale-table-is-no-table', file=MTK,
+         old="  return Number.isFinite(age) && age <= PATTERNS_MAX_AGE_MS ? table : null\n",
+         new="  return table\n",
+         tests=[MPO], pattern='is refused when no pattern table can be read now'),
+    dict(id='no-table-no-pattern-to-follow', file=MTK,
+         old="  if (!table) return 'names a pattern to follow",
+         new="  if (false) return 'names a pattern to follow",
+         tests=[MPO], pattern='is refused when no pattern table can be read now'),
+    dict(id='the-cells-counts-on-the-day', file=MTK,
+         old="k: cell.k, n: cell.n, restK: cell.restK, m: cell.m }",
+         new="k: 0, n: 0, restK: 0, m: 0 }",
+         tests=[MPO], pattern='becomes the month’s write-up'),
+    dict(id='a-later-reading-beside-the-first', file=MTK,
+         old="?.reading ?? 0] : []))) + 1\n",
+         new="?.reading ?? 0] : []))) * 0 + 1\n",
+         tests=[MPO], pattern='is a new row beside the first, never over it'),
+    dict(id='a-reading-is-numbered-in-its-own-month', file=MTK,
+         old="(writeUpOf(r.id, r.body)?.month === span.month ? [",
+         new="(true ? [",
+         tests=[MPO], pattern='is numbered among its own month’s readings'),
+    dict(id='filed-under-the-apps-day', file=MTK,
+         old="    const day = homeDay(at, ctx.timeZone) ?? ctx.day\n",
+         new="    const day = ctx.day\n",
+         tests=[MPO], pattern='is filed under the app’s day'),
+    dict(id='what-it-was-built-from-is-kept', file=MTK,
+         old="fingerprint: kept.month.fingerprint }, recorded, noticed }",
+         new="fingerprint: '' }, recorded, noticed }",
+         tests=[MPO], pattern='becomes the month’s write-up'),
+    dict(id='a-run-by-hand-stores-nothing', file=MTK,
+         old="  if (!t.dry) {\n    const [rows, marks, events]",
+         new="  if (true) {\n    const [rows, marks, events]",
+         tests=[MPO], pattern='is checked like any, and stores nothing the phone reads'),
+    dict(id='a-run-by-hand-says-so', file=MTK,
+         old="  return reply(200, { ok: true, ...(t.dry ? { dry: true } : {}) })\n",
+         new="  return reply(200, { ok: true })\n",
+         tests=[MPO], pattern='is checked like any, and stores nothing the phone reads'),
+    dict(id='a-marked-wrong-event-does-not-return', file=MTK,
+         old="      if (wrong.has(wrongIdOf(id))) {\n        dropped++\n        continue\n      }\n",
+         new="",
+         tests=[MPO], pattern='does not return, whatever the run found'),
+    dict(id='a-dropped-event-is-counted', file=MTK,
+         old="        dropped++\n",
+         new="",
+         tests=[MPO], pattern='does not return, whatever the run found'),
+    dict(id='an-event-found-again-stands', file=MTK,
+         old="      if (before && words.includes(before.quote)) continue\n",
+         new="",
+         tests=[MPO], pattern='that finds an event again writes nothing new'),
+    dict(id='a-lost-quote-is-replaced', file=MTK,
+         old="      if (before && words.includes(before.quote)) continue\n",
+         new="      if (before) continue\n",
+         tests=[MPO], pattern='replaces an event’s quote'),
+    dict(id='an-events-id-is-its-note-and-type', file=MTK,
+         old="`${note.store}:${note.id}:${type}`",
+         new="`${note.id}:${type}`",
+         tests=[MPO], pattern='stores each event against its note’s record'),
+    dict(id='an-events-method-is-named', file=MTK,
+         old="method: `month-${WRITEUP_METHOD}` }, at)",
+         new="method: 'month' }, at)",
+         tests=[MPO], pattern='stores each event against its note’s record'),
+    dict(id='the-task-ends-written', file=MTK,
+         old="{ ...t, status: 'written', posts, writer: 'claude', writtenModel,",
+         new="{ ...t, status: 'fired', posts, writer: 'claude', writtenModel,",
+         tests=[MPO], pattern='becomes the month’s write-up'),
+    dict(id='an-answer-written-out-as-json', file=MTK,
+         old="typeof o.answer === 'string' ? safeJson(o.answer) : o.answer",
+         new="o.answer",
+         tests=[MPO], pattern='is taken as JSON written out, too'),
 ]
 
 

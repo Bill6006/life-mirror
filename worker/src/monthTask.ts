@@ -1,12 +1,15 @@
 import { readBrainPrefs } from '../../src/brainShared'
+import { PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, type PatternsRecord } from '../../src/counted/stored'
 import type { Fact } from '../../src/factTypes'
-import { NOTE_EVENTS_STORE, noteEventOf, wrongIdOf } from '../../src/noteEvents/shared'
+import { NOTE_EVENTS_STORE, noteEventOf, wrongIdOf, type NoteEvent } from '../../src/noteEvents/shared'
 import { EVENT_TYPES, eventTypeOf, type EventType } from '../../src/noteEvents/types'
+import { WRITEUP_METHOD, writeUpIdOf, writeUpOf, WRITEUPS_STORE, type Followed, type Observation, type WriteUp } from '../../src/writeups/shared'
 import { MAX_POSTS, SERVED_STORE, type Deps, type Reply } from './claude'
-import { LOOKUP_HELP, parseLookupQuery, runLookup, type LookupCtx } from './lookups'
+import { homeDay, LOOKUP_HELP, mayRead, parseLookupQuery, runLookup, type LookupCtx } from './lookups'
 import { buildMonth, MONTH_PARTS_MOST, monthSpan, type MonthBuilt, type MonthSpan } from './month'
+import { checkMonth, noteWordsOfLine, type CheckedObservation } from './monthCheck'
 import { MONTH_ANSWER, monthInstructions, type WrongEvent } from './monthPrompt'
-import { accessFor, bytesOf, gatesFrom, loadCatalogue, obj } from './retrieval'
+import { accessFor, bytesOf, gatesFrom, loadCatalogue, obj, privateNames } from './retrieval'
 import { localTime } from './time'
 import type { Store, TaskRow } from './turso'
 
@@ -152,4 +155,117 @@ export async function handleMonthContext(deps: MonthDeps, url: URL): Promise<Rep
   await logged(`lookup.${lookup}`, facts.length, bytes)
   await deps.store.writeTask({ ...t, contextCalls: t.contextCalls + 1, contextBytes: t.contextBytes + bytes, month: { ...t.month, other: t.month.other + 1 } })
   return reply(200, { lookup, facts, complete: r.complete, notRead: r.notRead, ...(r.note ? { note: r.note } : {}) })
+}
+
+// ─── The post ───────────────────────────────────────────────────────────────────────────────────
+
+const clip = (v: unknown, n: number): string | null => (typeof v === 'string' ? v.slice(0, n) : null)
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+/** The pattern table as the phone last built it, or null when none can be read now: missing, unreadable or stale. */
+async function tableNow(store: Store, now: Date): Promise<PatternsRecord | null> {
+  const table = readPatterns(await store.readRecord('patterns', PATTERNS_ID))
+  if (!table) return null
+  const age = now.getTime() - Date.parse(table.updatedAt)
+  return Number.isFinite(age) && age <= PATTERNS_MAX_AGE_MS ? table : null
+}
+
+/**
+ * The cell a "Claude noticed" observation asks to be followed in, with the table's counts for it on this day; or why
+ * it cannot be followed. A kind this run may not read is answered as one the table does not hold.
+ */
+export function followedOf(follow: NonNullable<CheckedObservation['follow']>, table: PatternsRecord | null, allowed: (category: string) => boolean): Followed | string {
+  if (!table) return 'names a pattern to follow, and no pattern table can be read now: leave "follow" out'
+  const kind = table.kinds.find((k) => k.id === follow.kind && allowed(k.category))
+  const cell = kind?.cells?.find((c) => c.split === follow.split && c.cell === follow.cell)
+  if (!kind || !cell) return `names a pattern the table does not hold (${follow.kind}, ${follow.split}, ${follow.cell}): take the three from lookup=kinds and lookup=pattern, or leave "follow" out`
+  return { kind: kind.id, split: cell.split, cell: cell.cell, k: cell.k, n: cell.n, restK: cell.restK, m: cell.m }
+}
+
+/** The id an event is stored under: its note's record and its type, so a second reading that finds it again writes nothing new. */
+export const eventIdOf = (note: { store: string; id: string }, type: string): string => `${note.store}:${note.id}:${type}`
+
+/**
+ * POST /claude/line for a month's read: whole, or nothing saved. An answer is refused unless every part was served;
+ * then it is checked against the kept copy of the month, every reason at once. A checked answer becomes the month's
+ * write-up, a new row beside any earlier reading, and each event is stored against its note's record, unless the
+ * owner marked that event wrong. A run by hand stores nothing the phone reads.
+ */
+export async function handleMonthLine(deps: MonthDeps, raw: unknown): Promise<Reply> {
+  const o = obj(raw)
+  const open = await openMonthTask(deps, o.task, o.day)
+  if (!open.ok) return open.reply
+  const { t, span } = open
+  const kept = await keptMonth(deps.store, t)
+  if (!t.month || !kept) return reply(409, { error: 'fetch the briefing first: the month is built when it is served' })
+  const posts = t.posts + 1
+  const refuse = async (reason: string): Promise<Reply> => {
+    const spent = posts >= MAX_POSTS
+    await deps.store.writeTask({ ...t, posts, refusals: [...t.refusals, reason].slice(-10), ...(spent ? { status: 'refused' as const } : {}) })
+    return reply(422, { ok: false, reason, retry: !spent })
+  }
+  // The Worker, not the run, says whether the whole month was read.
+  const unread = partsUnread(t)
+  if (unread.length) return refuse(`${unread.length === 1 ? 'part' : 'parts'} ${unread.join(', ')} of ${t.month.parts} ${unread.length === 1 ? 'was' : 'were'} not read: read every part, then post again`)
+  const ctx = await monthCtx(deps)
+  const types = deps.types ?? EVENT_TYPES
+  // A switch turned off since the month was served takes its lines away here, so an observation resting on one is refused.
+  const facts = kept.month.parts.flatMap((p) => p.facts).filter((f) => mayRead(f, ctx.a))
+  const names = ctx.showPrivate ? [] : await privateNames(deps.store)
+  const bears = ctx.a.allowed('partnerPath') && facts.some((f) => f.values.category === 'partnerPath')
+  const verdict = checkMonth(typeof o.answer === 'string' ? safeJson(o.answer) : o.answer, { facts, span, surface: { names, bears }, types })
+  if (!verdict.ok) return refuse(verdict.reason)
+  // A pattern to follow is checked against the phone's own table, and stored with that cell's counts on this day.
+  const table = verdict.value.noticed.some((n) => n.follow) ? await tableNow(deps.store, deps.now) : null
+  const whys: string[] = []
+  const observed = (list: readonly CheckedObservation[], part: 'recorded' | 'noticed'): Observation[] =>
+    list.map((c, i) => {
+      const followed = c.follow ? followedOf(c.follow, table, (category) => ctx.a.allowed(category as never)) : undefined
+      if (typeof followed === 'string') whys.push(`${part === 'recorded' ? 'you recorded' : 'Claude noticed'} ${i + 1}: ${followed}`)
+      return { text: c.text, days: c.days, kinds: c.kinds, ...(c.faith ? { faith: true as const } : {}), ...(followed && typeof followed !== 'string' ? { followed } : {}) }
+    })
+  const recorded = observed(verdict.value.recorded, 'recorded')
+  const noticed = observed(verdict.value.noticed, 'noticed')
+  if (whys.length) return refuse(whys.join('; and '))
+
+  const at = deps.now.toISOString()
+  const writtenModel = clip(o.writtenModel, 100) || clip(o.runnerModel, 100) || 'claude'
+  let reading = 0
+  let stored = 0
+  let dropped = 0
+  if (!t.dry) {
+    const [rows, marks, events] = await Promise.all([deps.store.readBrainRows<unknown>(WRITEUPS_STORE, 500), deps.store.readRecords('noteMarks', {}, 2000), deps.store.readBrainRows<unknown>(NOTE_EVENTS_STORE, 2000)])
+    // A later reading is a new row beside the first, never over it.
+    reading = Math.max(0, ...rows.flatMap((r) => (writeUpOf(r.id, r.body)?.month === span.month ? [writeUpOf(r.id, r.body)?.reading ?? 0] : []))) + 1
+    const day = homeDay(at, ctx.timeZone) ?? ctx.day
+    const row: WriteUp = { id: writeUpIdOf(span.month, reading), month: span.month, reading, at, day, method: WRITEUP_METHOD, model: writtenModel, builtFrom: { counts: kept.month.counts, parts: kept.month.parts.length, lines: kept.month.lines, fingerprint: kept.month.fingerprint }, recorded, noticed }
+    await deps.store.writeBrainRow(WRITEUPS_STORE, row.id, day, row, at)
+    const wrong = new Set(marks.filter((m) => obj(m.body).kind === 'wrong').map((m) => m.id))
+    const known = new Map(events.flatMap((r) => (noteEventOf(r.id, r.body) ? [[r.id, noteEventOf(r.id, r.body) as NoteEvent] as const] : [])))
+    const lines = new Map(kept.month.parts.flatMap((p) => p.facts).map((f) => [f.id, f]))
+    for (const e of verdict.value.events) {
+      const note = kept.month.notes[e.factId]
+      if (!note) continue
+      const id = eventIdOf(note, e.type)
+      // An event the owner marked wrong does not return, whatever the run found.
+      if (wrong.has(wrongIdOf(id))) {
+        dropped++
+        continue
+      }
+      // Found again: the first stands while its note still holds its quoted words; a quote the note has lost is replaced.
+      const before = known.get(id)
+      const words = noteWordsOfLine(lines.get(e.factId) as Fact) ?? ''
+      if (before && words.includes(before.quote)) continue
+      await deps.store.writeBrainRow(NOTE_EVENTS_STORE, id, note.day, { type: e.type, note, quote: e.quote, noticedAt: at, method: `month-${WRITEUP_METHOD}` }, at)
+      stored++
+    }
+  }
+  await deps.store.writeTask({ ...t, status: 'written', posts, writer: 'claude', writtenModel, runnerModel: clip(o.runnerModel, 100), subagentError: clip(o.subagentError, 300), writtenAt: at, latencyMs: deps.now.getTime() - Date.parse(t.firedAt ?? t.at), month: { ...t.month, ...(t.dry ? {} : { reading }), events: stored, dropped } })
+  return reply(200, { ok: true, ...(t.dry ? { dry: true } : {}) })
 }

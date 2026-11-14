@@ -146,7 +146,7 @@ export interface TaskRow {
   /** An ask run by hand with the run key (stage A2): the stand-in question it answers, in place of a turn. Never the owner's words. */
   question?: string
   /** A month's read (2026-11-13): how many parts the month has, which were served, its other reads, and what it was built from. Never a line of it. */
-  month?: { parts: number; served: number[]; other: number; lines: number; fingerprint: string }
+  month?: { parts: number; served: number[]; other: number; lines: number; fingerprint: string; reading?: number; events?: number; dropped?: number }
 }
 
 /** A day's task as the coach's gate and watch read it: whether it was fired by hand, how often, and the refusals on the way. */
