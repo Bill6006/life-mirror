@@ -1,6 +1,6 @@
 """Phase 8 of the next build (2026-11-14), the forecast's one challenger. Each rule undone once, and the test that
-guards it must turn red. The challenger is a pure module, switched off and wired to nothing; the entries for its
-wiring are added with the wiring.
+guards it must turn red. The challenger is switched off. The entries are added piece by piece as it is wired in:
+the pure module first, then its list read from the record and the writer's use of it.
 
 An adjustment: read from the day before alone, on the day forecast and in the back-test; a slot's own miss is never
 in its own size; a state's average miss less the average over every known day; cut by its own uncertainty; nothing
@@ -18,6 +18,17 @@ The numbers: switched off; the margin as the simulation set it.
 
 The forecast's leakage rules, against the store: no row for a slot already logged; a row once written is never
 touched; the hit-rate line counts day-ahead rows alone.
+
+The list read from the record: a short night is the lowest two anchors; no answer is unknown; the evening is the
+complete evening check-in, completed before the next day began; the standings come from the days before the day of
+the run; the church day is no candidate while faith is hidden; a thing joins only at a steady pattern; a thing never
+shown is unknown, and so is an evening not logged in full; a thing moves only the morning after it was present.
+
+The rows: the points are added to the base way's forecast; the range comes from the challenger's own misses; a row
+nothing speaks for is left as it was; the row says what was added and keeps the base way's name.
+
+The writer: nothing of it runs while the switch is off; rows are adjusted only when it is picked; on the wired
+writer nothing logged today moves today's forecast; an adjusted row is never touched.
 """
 import io
 import os
@@ -53,6 +64,10 @@ W = 'src/weekly.ts'
 CT = 'src/challenger.test.ts'
 ST = 'src/challengerSimulation.test.ts'
 LT = 'src/forecastLeakage.test.ts'
+CR = 'src/challengerRecord.ts'
+RT = 'src/challengerRecord.test.ts'
+WT = 'src/forecastChallenger.test.ts'
+UT = 'src/forecastWriterUnchanged.test.ts'
 
 SIZE = 'cut by its own uncertainty'
 USELESS = 'rarely picks it'
@@ -172,6 +187,89 @@ TABLE = [
          old="  const dayAhead = scores.filter((s) => s.horizon === 1)",
          new="  const dayAhead = scores",
          tests=[LT], pattern='counts in the hit rate only stored forecasts'),
+    # The list read from the record.
+    dict(id='a-short-night-is-the-lowest-two-anchors', file=CR,
+         old="return v === undefined ? null : v <= SHORT_NIGHT ? 'short' : 'not'",
+         new="return v === undefined ? null : v < SHORT_NIGHT ? 'short' : 'not'",
+         tests=[RT], pattern='reads a short night'),
+    dict(id='no-sleep-answer-is-unknown', file=CR,
+         old="return v === undefined ? null : v <= SHORT_NIGHT ? 'short' : 'not'",
+         new="return v === undefined ? 'not' : v <= SHORT_NIGHT ? 'short' : 'not'",
+         tests=[RT], pattern='reads a short night'),
+    dict(id='the-evening-completed-before-the-next-day', file=CR,
+         old="if (o.block === 'evening' && o.at <= dayStart(addDays(o.day, 1))) band.set(o.day, o.band)",
+         new="if (o.block === 'evening') band.set(o.day, o.band)",
+         tests=[RT], pattern='reads the evening by its band'),
+    dict(id='the-evening-is-the-evening-check-in', file=CR,
+         old="if (o.block === 'evening' && o.at <= dayStart(addDays(o.day, 1))) band.set(o.day, o.band)",
+         new="if (o.at <= dayStart(addDays(o.day, 1))) band.set(o.day, o.band)",
+         tests=[RT], pattern='reads the evening by its band'),
+    dict(id='the-standings-from-days-before-today', file=CR,
+         old="  const before = r.checkins.filter((c) => c.day < today)",
+         new="  const before = r.checkins",
+         tests=[RT], pattern='works the standings out from the days before'),
+    dict(id='no-church-day-while-faith-is-hidden', file=CR,
+         old="LAST_NIGHT_KEYS.filter((key) => !(r.hideFaith && key === 'churchDay')).flatMap(",
+         new="LAST_NIGHT_KEYS.flatMap(",
+         tests=[RT], pattern='never takes the church day'),
+    dict(id='a-thing-joins-only-at-a-pattern', file=CR,
+         old="...family.filter((f) => standing.has(f.compared.id)).map(",
+         new="...family.map(",
+         tests=[RT], pattern='puts a thing of last night on the list only when'),
+    dict(id='a-thing-never-shown-is-unknown', file=CR,
+         old="      if (!c || (known && !known(c))) return null",
+         new="      if (!c) return null",
+         tests=[RT], pattern='present, absent, or unknown'),
+    dict(id='an-evening-not-logged-in-full-is-unknown', file=CR,
+         old="if (c.block === 'evening' && readingOf(c) !== null) evenings.set(c.day, c)",
+         new="if (c.block === 'evening') evenings.set(c.day, c)",
+         tests=[RT], pattern='present, absent, or unknown'),
+    dict(id='a-thing-moves-only-when-present', file=CR,
+         old="    moves: (state) => state === 'yes',",
+         new="    moves: () => true,",
+         tests=[RT], pattern='present, absent, or unknown'),
+    dict(id='a-thing-moves-the-morning-alone', file=CR,
+         old="    blocks: ['morning'],",
+         new="    blocks: BLOCKS,",
+         tests=[RT], pattern='present, absent, or unknown'),
+    # The rows.
+    dict(id='the-points-are-added', file=CR,
+         old="    f.point = clamp(p + a.points)",
+         new="    f.point = clamp(p)",
+         tests=[RT], pattern='adds its points'),
+    dict(id='the-range-from-the-challengers-misses', file=CR,
+         old="    f.lo = clamp(p + a.points + band.lo)",
+         new="    f.lo = clamp(p + a.points)",
+         tests=[RT], pattern='adds its points'),
+    dict(id='a-row-nothing-speaks-for-is-left', file=CR,
+         old="    if (a.points === 0) continue\n",
+         new="",
+         tests=[RT], pattern='adds its points'),
+    dict(id='the-row-says-what-was-added', file=CR,
+         old="    f.adjBy = a.by\n",
+         new="",
+         tests=[RT], pattern='adds its points'),
+    dict(id='the-row-keeps-the-base-ways-name', file=CR,
+         old="    f.adjBy = a.by\n",
+         new="    f.adjBy = a.by\n    f.model = 'challenger'\n",
+         tests=[WT], pattern='under one of the four ways'),
+    # The writer.
+    dict(id='nothing-runs-while-switched-off', file=FF,
+         old="const tried = chosen && challengerOn() ? await",
+         new="const tried = chosen ? await",
+         tests=[UT], pattern='writes the rows it wrote before'),
+    dict(id='adjusted-only-when-picked', file=FF,
+         old="    if (tried?.picked) adjustRows(due, tried, values)",
+         new="    if (tried) adjustRows(due, tried, values)",
+         tests=[WT], pattern='tried and not picked'),
+    dict(id='the-wired-writer-reads-the-day-before', file=CH,
+         old="adjustmentFor: (day, block) => adjust(addDays(day, -1), block, null) }",
+         new="adjustmentFor: (day, block) => adjust(day, block, null) }",
+         tests=[WT], pattern='lets nothing logged today move'),
+    dict(id='an-adjusted-row-is-never-touched', file=FF,
+         old="    if (due.length) await db.forecasts.bulkAdd(due)",
+         new="    if (due.length) {\n      await db.forecasts.clear()\n      await db.forecasts.bulkAdd(due)\n    }",
+         tests=[WT], pattern='never rewrites an adjusted row'),
 ]
 
 

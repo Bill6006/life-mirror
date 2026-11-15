@@ -15,6 +15,14 @@ import { slotKey } from './observe'
 /** Switched off until its simulation has passed: while this is false nothing here is run by the app. */
 export const CHALLENGER_ON = false
 
+let forTests: boolean | null = null
+/** For tests: the switch as given, or the code's own again with null. */
+export function setChallengerForTests(on: boolean | null): void {
+  forTests = on
+}
+/** Whether the app runs the challenger. */
+export const challengerOn = (): boolean => forTests ?? CHALLENGER_ON
+
 /** The method's numbers. */
 export interface ChallengerNumbers {
   /** How many days before the day forecast are looked back over. */

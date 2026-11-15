@@ -1,0 +1,270 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the forecast writer, with the challenger switched off > writes the rows it wrote before the challenger existed 1`] = `
+"[
+ {
+  "day": "2026-09-18",
+  "block": "morning",
+  "horizon": 0,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 50,
+  "lo": 46,
+  "hi": 54,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-18",
+  "block": "afternoon",
+  "horizon": 0,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 47,
+  "hi": 55,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-18",
+  "block": "evening",
+  "horizon": 0,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 46,
+  "hi": 55,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-19",
+  "block": "morning",
+  "horizon": 1,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 49,
+  "lo": 45,
+  "hi": 53,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-19",
+  "block": "afternoon",
+  "horizon": 1,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 50,
+  "lo": 45,
+  "hi": 54,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-19",
+  "block": "evening",
+  "horizon": 1,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 49,
+  "lo": 45,
+  "hi": 53,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-20",
+  "block": "morning",
+  "horizon": 2,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 46,
+  "hi": 55,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-20",
+  "block": "afternoon",
+  "horizon": 2,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 52,
+  "lo": 47,
+  "hi": 56,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-20",
+  "block": "evening",
+  "horizon": 2,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 52,
+  "lo": 48,
+  "hi": 56,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-21",
+  "block": "morning",
+  "horizon": 3,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 49,
+  "lo": 45,
+  "hi": 53,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-21",
+  "block": "afternoon",
+  "horizon": 3,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 49,
+  "lo": 45,
+  "hi": 53,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-21",
+  "block": "evening",
+  "horizon": 3,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 50,
+  "lo": 45,
+  "hi": 54,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-22",
+  "block": "morning",
+  "horizon": 4,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 48,
+  "lo": 44,
+  "hi": 52,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-22",
+  "block": "afternoon",
+  "horizon": 4,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 48,
+  "lo": 43,
+  "hi": 52,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-22",
+  "block": "evening",
+  "horizon": 4,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 49,
+  "lo": 44,
+  "hi": 53,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-23",
+  "block": "morning",
+  "horizon": 5,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 47,
+  "hi": 55,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-23",
+  "block": "afternoon",
+  "horizon": 5,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 46,
+  "hi": 55,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-23",
+  "block": "evening",
+  "horizon": 5,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 47,
+  "hi": 55,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-24",
+  "block": "morning",
+  "horizon": 6,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 54,
+  "lo": 49,
+  "hi": 58,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-24",
+  "block": "afternoon",
+  "horizon": 6,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 54,
+  "lo": 49,
+  "hi": 58,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-24",
+  "block": "evening",
+  "horizon": 6,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 53,
+  "lo": 49,
+  "hi": 57,
+  "whatIf": 51
+ },
+ {
+  "day": "2026-09-25",
+  "block": "morning",
+  "horizon": 7,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 50,
+  "lo": 46,
+  "hi": 54,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-25",
+  "block": "afternoon",
+  "horizon": 7,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 51,
+  "lo": 46,
+  "hi": 55,
+  "whatIf": 50
+ },
+ {
+  "day": "2026-09-25",
+  "block": "evening",
+  "horizon": 7,
+  "madeOn": "2026-09-18",
+  "model": "weekdayBlock",
+  "point": 50,
+  "lo": 46,
+  "hi": 54,
+  "whatIf": 51
+ }
+]"
+`;

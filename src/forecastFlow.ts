@@ -19,6 +19,9 @@ import { baselineShift, type Shift } from './shift'
 import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type RepairTrack, type Scorecard } from './weekly'
 import { necessitiesMissed } from './necessities'
 import type { WeeklyAnalyses } from './weeklyFacts'
+import { challengerOn, runChallenger, type ChallengerRun } from './challenger'
+import { adjustRows, conditionsFor } from './challengerRecord'
+import { guardComparisons } from './counted/fault'
 import { awayDays, homeDaysOnly } from './awayFlow'
 import { ownChipsOf } from './settings'
 
@@ -70,13 +73,23 @@ async function forecastOnce(today: string): Promise<void> {
   const logged = checkins === all ? values : valuesByKey(all)
   const done = await doneSlots()
   const chosen = loggedDays(values) >= MIN_DAYS_TODAY ? chooseModel(values, today) : null
+  // The one challenger (2026-11-14), behind its switch: tried on the record before today. Where it is picked, the rows due are adjusted by what the record held the day before each.
+  const tried = chosen && challengerOn() ? await challengerFor(chosen.model, checkins, values, today) : null
   await db.transaction('rw', [db.forecasts, db.forecastScores], async () => {
     const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
     const due = chosen ? forecastsDue(chosen, values, existing, today, done, logged) : []
+    if (tried?.picked) adjustRows(due, tried, values)
     const scores = scoresDue(existing, values, scored, today)
     if (due.length) await db.forecasts.bulkAdd(due)
     if (scores.length) await db.forecastScores.bulkAdd(scores)
   })
+}
+
+/** The challenger's run for today, from the record the writer forecasts from. A failure in it leaves the rows the base way's, and is kept for the Worker's report. */
+async function challengerFor(model: ModelId, checkins: readonly CheckIn[], values: ReadonlyMap<string, number>, today: string): Promise<ChallengerRun | null> {
+  const [contexts, outsideRows, outcomes, settings] = await Promise.all([db.days.toArray(), db.outside.toArray(), db.outcomes.toArray(), getSettings()])
+  const record = { checkins, contexts: new Map(contexts.map((c) => [c.day, c])), eveningWorkouts: eveningWorkoutDays(outsideRows), natureMoves: natureMoveDays(outcomes), hideFaith: settings.hideFaith }
+  return guardComparisons(today, () => runChallenger(model, values, today, conditionsFor(record, today)))
 }
 
 export { lastNightKeys, type LastNightKey } from './lastNight'

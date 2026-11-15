@@ -450,6 +450,9 @@ export interface Forecast {
   hi: number
   /** "If you did nothing extra": an assumption the app has never verified. */
   whatIf: number | null
+  /** Where the challenger adjusted this row (2026-11-14): the points it added to the named way's forecast, and the conditions that added them. Absent on every other row. */
+  adj?: number
+  adjBy?: string[]
 }
 
 /** A forecast scored once its slot was logged; a slot never logged is never scored. */
