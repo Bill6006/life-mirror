@@ -157,6 +157,21 @@ export function patternsForExport(stored: unknown, includePrivate: boolean, part
   return { patternTable: { builtFor: table.builtFor, builtAt: table.builtAt, ...(followed.length ? { followedSinceNoticed: followed.map((f) => ({ kind: f.kind, split: f.split, cell: f.cell, noticedOn: f.noticedOn, sinceThen: `${f.k} of ${f.n}`, elsewhereSinceThen: `${f.restK} of ${f.m}`, standing: f.standing, lookedAt: f.family })) } : {}), kinds: kinds.map((k) => ({ id: k.id, label: k.label, countedBy: k.unit, known: k.known, occurrences: k.occurrences, family: k.family, ...(k.cutoff ? { cutoff: k.cutoff } : {}), ...(k.since ? { since: k.since } : {}), ...(k.cells ? { cells: k.cells } : {}) })), level: table.level } }
 }
 
+/**
+ * Where the forecast's challenger moved a row (2026-11-14): the points it added and the conditions that added them. A
+ * private item is here only with private items, by its name, as everywhere in the export; without them it is left out.
+ */
+export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[] } {
+  if (typeof f.adj !== 'number') return {}
+  const by = (f.adjBy ?? []).flatMap((id) => {
+    if (!id.startsWith('private.')) return [id]
+    if (!includePrivate) return []
+    const key = id.slice('private.'.length)
+    return [`private: ${names.get(key) ?? `item ${key}`}`]
+  })
+  return { adj: f.adj, adjBy: by }
+}
+
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {
   const exportedAt = new Date().toISOString()
   const names = new Map(items.map((it) => [String(it.id), it.name]))
@@ -291,7 +306,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             // P6: the adaptation log and the small tests, the Partner path's only when it is included.
             ...((records.pathAdaptations ?? []).some((r) => partner || r.path !== 'partner') ? { pathAdaptations: (records.pathAdaptations ?? []).filter((r) => partner || r.path !== 'partner').map((r) => ({ path: r.path, version: r.version, at: r.at, day: r.day, kind: r.kind, rep: r.rep ?? null, strand: r.strand ?? null, stage: r.stage ?? null, setting: r.setting ?? null, every: r.every ?? null, after: r.after ?? null, lever: r.lever ?? null, choice: r.choice ?? null, origin: r.origin, why: r.why, state: r.state, stateAt: r.stateAt })) } : {}),
             ...((records.pathTests ?? []).some((x) => partner || x.path !== 'partner') ? { pathTests: (records.pathTests ?? []).filter((x) => partner || x.path !== 'partner').map((x) => ({ id: x.id, path: x.path, lever: x.lever, at: x.at, day: x.day, stoppedAt: x.stoppedAt ?? null })), pathTestDays: (records.pathTestDays ?? []).filter((d) => (records.pathTests ?? []).some((x) => x.id === d.test && (partner || x.path !== 'partner'))).map((d) => ({ test: d.test, day: d.day, version: d.version, chance: d.chance, at: d.at })) } : {}),
-            forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf })),
+            forecasts: (records.forecasts ?? []).map((f) => ({ day: f.day, block: f.block, horizon: f.horizon, madeOn: f.madeOn, model: f.model, point: f.point, lo: f.lo, hi: f.hi, whatIf: f.whatIf, ...forecastAdjustment(f, names, opts.includePrivate) })),
             ...patternsForExport(records.patterns, opts.includePrivate, partner),
             ...noticedForExport(records.noticed, all, records.ask?.notes ?? []),
             ...writeUpsForExport(records.writeUps, opts.includePrivate, partner),

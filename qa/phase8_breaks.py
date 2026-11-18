@@ -27,6 +27,13 @@ shown is unknown, and so is an evening not logged in full; a thing moves only th
 The rows: the points are added to the base way's forecast; the range comes from the challenger's own misses; a row
 nothing speaks for is left as it was; the row says what was added and keeps the base way's name.
 
+Private items and note events: an evening counts only where it was completed before the next day began; a private
+item is unknown where it was not on screen, and compared only there; a type of note event is known only at an evening
+with a note, compared only there, present only with an event of its own type on that check-in's note, identified
+before the morning's day began, never one marked wrong; a type joins once five check-ins hold one, identified before
+the day of the run; each kind only while its Brain switch is on, the writer reading both switches and the marks; the
+list's order. The export carries the two fields, a private item only with private items and then by its name.
+
 The writer: nothing of it runs while the switch is off; rows are adjusted only when it is picked; on the wired
 writer nothing logged today moves today's forecast; an adjusted row is never touched.
 """
@@ -68,6 +75,9 @@ CR = 'src/challengerRecord.ts'
 RT = 'src/challengerRecord.test.ts'
 WT = 'src/forecastChallenger.test.ts'
 UT = 'src/forecastWriterUnchanged.test.ts'
+KT = 'src/challengerCandidates.test.ts'
+FC = 'src/forecastCandidates.test.ts'
+EX = 'src/export.ts'
 
 SIZE = 'cut by its own uncertainty'
 USELESS = 'rarely picks it'
@@ -205,8 +215,8 @@ TABLE = [
          new="if (o.at <= dayStart(addDays(o.day, 1))) band.set(o.day, o.band)",
          tests=[RT], pattern='reads the evening by its band'),
     dict(id='the-standings-from-days-before-today', file=CR,
-         old="  const before = r.checkins.filter((c) => c.day < today)",
-         new="  const before = r.checkins",
+         old="const beforeToday = (r: ChallengerRecord, today: string): CheckIn[] => r.checkins.filter((c) => c.day < today)",
+         new="const beforeToday = (r: ChallengerRecord, today: string): CheckIn[] => [...r.checkins]",
          tests=[RT], pattern='works the standings out from the days before'),
     dict(id='no-church-day-while-faith-is-hidden', file=CR,
          old="LAST_NIGHT_KEYS.filter((key) => !(r.hideFaith && key === 'churchDay')).flatMap(",
@@ -217,12 +227,12 @@ TABLE = [
          new="...family.map(",
          tests=[RT], pattern='puts a thing of last night on the list only when'),
     dict(id='a-thing-never-shown-is-unknown', file=CR,
-         old="      if (!c || (known && !known(c))) return null",
-         new="      if (!c) return null",
+         old="(c) => (known && !known(c) ? null : isEvent(c) ? 'yes' : 'no')",
+         new="(c) => (isEvent(c) ? 'yes' : 'no')",
          tests=[RT], pattern='present, absent, or unknown'),
     dict(id='an-evening-not-logged-in-full-is-unknown', file=CR,
-         old="if (c.block === 'evening' && readingOf(c) !== null) evenings.set(c.day, c)",
-         new="if (c.block === 'evening') evenings.set(c.day, c)",
+         old="    if (c.block !== 'evening' || readingOf(c) === null) continue\n",
+         new="    if (c.block !== 'evening') continue\n",
          tests=[RT], pattern='present, absent, or unknown'),
     dict(id='a-thing-moves-only-when-present', file=CR,
          old="    moves: (state) => state === 'yes',",
@@ -270,6 +280,95 @@ TABLE = [
          old="    if (due.length) await db.forecasts.bulkAdd(due)",
          new="    if (due.length) {\n      await db.forecasts.clear()\n      await db.forecasts.bulkAdd(due)\n    }",
          tests=[WT], pattern='never rewrites an adjusted row'),
+    # Piece 3: private items and note events as candidates, with their switches; the export's two fields.
+    dict(id='an-evening-completed-before-the-next-day-began', file=CR,
+         old="    if (at && Date.parse(at) <= Date.parse(dayStart(addDays(c.day, 1)))) out.set(c.day, c)",
+         new="    if (at) out.set(c.day, c)",
+         tests=[KT], pattern='completed before the next day began'),
+    dict(id='a-private-item-unknown-where-not-shown', file=CR,
+         old="(c) => (!privateShownAt(item, c) ? null : logged(c) ? 'yes' : 'no')",
+         new="(c) => (logged(c) ? 'yes' : 'no')",
+         tests=[KT], pattern='reads a private item as marked'),
+    dict(id='a-note-event-known-only-at-a-note', file=CR,
+         old="    if (!noteOf(c)) return null\n",
+         new="",
+         tests=[KT], pattern='only at an evening with a note'),
+    dict(id='a-note-event-identified-before-the-day', file=CR,
+         old="events.some((n) => n.checkinId === c.id && identifiedBefore(n, start))",
+         new="events.some((n) => n.checkinId === c.id)",
+         tests=[KT], pattern='only at an evening with a note'),
+    dict(id='before-the-mornings-own-day', file=CR,
+         old="    const start = dayStart(addDays(day, 1))\n",
+         new="    const start = dayStart(addDays(day, 2))\n",
+         tests=[KT], pattern='only at an evening with a note'),
+    dict(id='no-event-marked-wrong', file=CR,
+         old="(r.noticed ?? []).filter((n) => !n.wrong && n.checkinId !== null && n.type.id === type)",
+         new="(r.noticed ?? []).filter((n) => n.checkinId !== null && n.type.id === type)",
+         tests=[KT], pattern='only at an evening with a note'),
+    dict(id='an-event-on-a-check-ins-note', file=CR,
+         old="(r.noticed ?? []).filter((n) => !n.wrong && n.checkinId !== null && n.type.id === type)",
+         new="(r.noticed ?? []).filter((n) => !n.wrong && n.type.id === type)",
+         tests=[KT], pattern='once five check-ins hold one'),
+    dict(id='an-event-of-its-own-type', file=CR,
+         old="(r.noticed ?? []).filter((n) => !n.wrong && n.checkinId !== null && n.type.id === type)",
+         new="(r.noticed ?? []).filter((n) => !n.wrong && n.checkinId !== null)",
+         tests=[KT], pattern='once five check-ins hold one'),
+    dict(id='five-check-ins-hold-one', file=CR,
+         old=".map((n) => n.checkinId)).size >= NOTICED_MIN)",
+         new=".map((n) => n.checkinId)).size >= NOTICED_MIN - 1)",
+         tests=[KT], pattern='once five check-ins hold one'),
+    dict(id='the-five-identified-before-today', file=CR,
+         old="    .filter((type) => new Set(eventsOf(r, type).filter((n) => identifiedBefore(n, start)).map(",
+         new="    .filter((type) => new Set(eventsOf(r, type).map(",
+         tests=[KT], pattern='once five check-ins hold one'),
+    dict(id='note-types-only-while-notes-on', file=CR,
+         old="  if (!r.notesOn) return []\n",
+         new="",
+         tests=[KT], pattern='only while their Brain switches are on'),
+    dict(id='private-items-only-while-switched-on', file=CR,
+         old="  if (!r.privateOn) return []\n",
+         new="",
+         tests=[KT], pattern='only while their Brain switches are on'),
+    dict(id='a-private-item-compared-where-shown', file=CR,
+         old="privateIsLogged(item.id), (c) => privateShownAt(item, c), { id: privateId(item.id)",
+         new="privateIsLogged(item.id), () => true, { id: privateId(item.id)",
+         tests=[KT], pattern='compares a private item only at the evenings'),
+    dict(id='a-note-type-compared-where-a-note-was-written', file=CR,
+         old="on.has(c.id), (c) => noteOf(c) !== '', { id: noticedId(type)",
+         new="on.has(c.id), () => true, { id: noticedId(type)",
+         tests=[KT], pattern='compares a private item only at the evenings'),
+    dict(id='the-standing-counts-events-identified-before-today', file=CR,
+         old="    const on = new Set(eventsOf(r, type).filter((n) => identifiedBefore(n, start)).map((n) => n.checkinId))",
+         new="    const on = new Set(eventsOf(r, type).map((n) => n.checkinId))",
+         tests=[KT], pattern='compares a private item only at the evenings'),
+    dict(id='the-list-order', file=CR,
+         old="  return [...night, ...privateCandidates(r, today), ...noticedCandidates(r, today)]",
+         new="  return [...night, ...noticedCandidates(r, today), ...privateCandidates(r, today)]",
+         tests=[KT], pattern='only while their Brain switches are on'),
+    dict(id='the-writer-reads-the-private-switch', file=FF,
+         old="privateOn: prefs.switches.privateItems !== false,",
+         new="privateOn: true,",
+         tests=[FC], pattern='switch for private items is off'),
+    dict(id='the-writer-reads-the-notes-switch', file=FF,
+         old="notesOn: prefs.switches.notes !== false }",
+         new="notesOn: true }",
+         tests=[FC], pattern='switch for notes is off'),
+    dict(id='the-writer-reads-the-marks', file=FF,
+         old="  const noticed = noticedOf({ events, marks, checkins, kept })",
+         new="  const noticed = noticedOf({ events, marks: [], checkins, kept })",
+         tests=[FC], pattern='counts no event marked wrong'),
+    dict(id='the-export-leaves-a-private-item-out', file=EX,
+         old="    if (!includePrivate) return []\n",
+         new="",
+         tests=[KT], pattern='a private item only with private items'),
+    dict(id='the-export-names-a-private-item', file=EX,
+         old="    return [`private: ${names.get(key) ?? `item ${key}`}`]",
+         new="    return [id]",
+         tests=[KT], pattern='a private item only with private items'),
+    dict(id='the-export-carries-the-two-fields', file=EX,
+         old="whatIf: f.whatIf, ...forecastAdjustment(f, names, opts.includePrivate) })),",
+         new="whatIf: f.whatIf })),",
+         tests=[KT], pattern='a private item only with private items'),
 ]
 
 

@@ -22,6 +22,8 @@ import type { WeeklyAnalyses } from './weeklyFacts'
 import { challengerOn, runChallenger, type ChallengerRun } from './challenger'
 import { adjustRows, conditionsFor } from './challengerRecord'
 import { guardComparisons } from './counted/fault'
+import { getBrainPrefs } from './brainPrefs'
+import { noticedOf } from './noteEvents/join'
 import { awayDays, homeDaysOnly } from './awayFlow'
 import { ownChipsOf } from './settings'
 
@@ -87,8 +89,10 @@ async function forecastOnce(today: string): Promise<void> {
 
 /** The challenger's run for today, from the record the writer forecasts from. A failure in it leaves the rows the base way's, and is kept for the Worker's report. */
 async function challengerFor(model: ModelId, checkins: readonly CheckIn[], values: ReadonlyMap<string, number>, today: string): Promise<ChallengerRun | null> {
-  const [contexts, outsideRows, outcomes, settings] = await Promise.all([db.days.toArray(), db.outside.toArray(), db.outcomes.toArray(), getSettings()])
-  const record = { checkins, contexts: new Map(contexts.map((c) => [c.day, c])), eveningWorkouts: eveningWorkoutDays(outsideRows), natureMoves: natureMoveDays(outcomes), hideFaith: settings.hideFaith }
+  const [contexts, outsideRows, outcomes, settings, items, events, marks, kept, prefs] = await Promise.all([db.days.toArray(), db.outside.toArray(), db.outcomes.toArray(), getSettings(), db.privateItems.toArray(), db.noteEvents.toArray(), db.noteMarks.toArray(), db.notes.toArray(), getBrainPrefs()])
+  // What was noticed in notes counts only while it stands under the phone's own join, read afresh at every run; each kind of candidate only while its Brain switch is on.
+  const noticed = noticedOf({ events, marks, checkins, kept })
+  const record = { checkins, contexts: new Map(contexts.map((c) => [c.day, c])), eveningWorkouts: eveningWorkoutDays(outsideRows), natureMoves: natureMoveDays(outcomes), hideFaith: settings.hideFaith, items, noticed, privateOn: prefs.switches.privateItems !== false, notesOn: prefs.switches.notes !== false }
   return guardComparisons(today, () => runChallenger(model, values, today, conditionsFor(record, today)))
 }
 
