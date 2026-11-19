@@ -30,8 +30,8 @@ function twenty(): { values: Map<string, number>; thing: boolean[] } {
 }
 
 describe('the challenger: the numbers its simulation set', () => {
-  it('is switched off, and holds the numbers as they were set', () => {
-    expect(CHALLENGER_ON).toBe(false)
+  it('is switched on, and holds the numbers as they were set', () => {
+    expect(CHALLENGER_ON).toBe(true)
     expect(CHALLENGER).toEqual({ window: 180, minState: 8, shrink: 4, eachCheckin: true, minSlots: 20, minGain: 0.5, minClear: 2.4, maxKinds: 3 })
   })
 })

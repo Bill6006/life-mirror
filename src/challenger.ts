@@ -12,8 +12,11 @@ import { slotKey } from './observe'
 // over enough slots. The margin's numbers were set by an offline simulation in stress/, so that an input that says
 // nothing about the days ahead is rarely picked. A condition the record cannot speak for moves nothing.
 
-/** Switched off until its simulation has passed: while this is false nothing here is run by the app. */
-export const CHALLENGER_ON = false
+/**
+ * Switched on 2026-11-19, in a commit of its own: its simulation's verdict passed (stress/RESULTS-9.md), and items 9 to
+ * 19 of its design were built, tested and broken on purpose first. While this is false nothing here is run by the app.
+ */
+export const CHALLENGER_ON = true
 
 let forTests: boolean | null = null
 /** For tests: the switch as given, or the code's own again with null. */

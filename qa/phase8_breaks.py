@@ -1,5 +1,5 @@
 """Phase 8 of the next build (2026-11-14), the forecast's one challenger. Each rule undone once, and the test that
-guards it must turn red. The challenger is switched off. The entries are added piece by piece as it is wired in:
+guards it must turn red. The challenger was switched on 2026-11-19, in a commit of its own, once all of it was in. The entries were added piece by piece as it was wired in:
 the pure module first, then its list read from the record and the writer's use of it.
 
 An adjustment: read from the day before alone, on the day forecast and in the back-test; a slot's own miss is never
@@ -201,14 +201,14 @@ TABLE = [
          new="    .slice(0, 0)\n",
          tests=[ST], pattern='for a thing that lifts'),
     # The numbers.
-    dict(id='switched-off', file=CH,
-         old="export const CHALLENGER_ON = false",
-         new="export const CHALLENGER_ON = true",
-         tests=[CT], pattern='is switched off'),
+    dict(id='switched-on', file=CH,
+         old="export const CHALLENGER_ON = true",
+         new="export const CHALLENGER_ON = false",
+         tests=[CT], pattern='is switched on'),
     dict(id='the-margin-as-set', file=CH,
          old="minSlots: 20, minGain: 0.5, minClear: 2.4, maxKinds: 3 }",
          new="minSlots: 20, minGain: 0.5, minClear: 2.2, maxKinds: 3 }",
-         tests=[CT], pattern='is switched off'),
+         tests=[CT], pattern='is switched on'),
     # The forecast's leakage rules, against the store.
     dict(id='no-row-for-a-logged-slot', file=F,
          old="      if (logged.has(slotKey(day, block))) continue\n",
