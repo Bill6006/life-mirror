@@ -2,6 +2,7 @@ import type { Fact, FactSheet } from './factTypes'
 import { allowedFirmness, deliverySignals, firmnessRefusal, isFirmness, isFirmnessPref, isPatternFact, type DeliverySignals, type Firmness, type FirmnessPref } from './firmness'
 import type { ClaimCard, Grade } from './libraryTypes'
 import { clockTimesWritten, withoutClockTimes } from './format'
+import { DIFFER_WORDS, forecastDifferences } from './forecastConditions'
 import { holdsWords } from './noteWords'
 import { isUsageFact } from './useShared'
 
@@ -664,14 +665,18 @@ export const FORECAST_RECORD_IDS: readonly string[] = ['forecasts.dayAhead', 'fo
 /**
  * Every reason a text sets a stored forecast beside a counted comparison more firmly than a prediction allows
  * (2026-11-14), in order. Where the two are cited together, the forecast's own track record is cited too, and no
- * cause is given: a prediction is judged only by its record. Caffeine's own rule answers for a cause it names.
+ * cause is given: a prediction is judged only by its record. Caffeine's own rule answers for a cause it names. And
+ * where the two differ, read from their structured fields alone (forecastDifferences, 2026-11-18), the answer says so
+ * in one of the words the rule names.
  */
-export function forecastRefusals(text: string, factIds: readonly string[], all = false): string[] {
+export function forecastRefusals(text: string, factIds: readonly string[], all = false, sheet?: Pick<FactSheet, 'facts'>): string[] {
   if (!factIds.some(isStoredForecastFact) || !factIds.some(isAssociationFact)) return []
   const out: string[] = []
   if (!factIds.some((id) => FORECAST_RECORD_IDS.includes(id))) out.push('cites a stored forecast beside a counted comparison without the forecast’s own track record: cite forecasts.dayAhead too')
   const cause = CAFFEINE_WORDS.test(text) ? null : found(CAUSAL_WORDS, text, all)
   if (cause) out.push(`gives a cause (${cause}) beside a forecast: a prediction is judged only by its record, and says no cause`)
+  const differ = sheet ? forecastDifferences(sheet.facts.filter((f) => factIds.includes(f.id))) : []
+  if (differ.length && !DIFFER_WORDS.test(text)) out.push(`cites a stored forecast and a counted comparison that differ without saying so (${differ[0]}): say they differ, in one of these words: "differ", "disagree" or "does not match"`)
   return out
 }
 
@@ -710,7 +715,7 @@ function refusals(text: string, factIds: readonly string[], cardIds: readonly st
   // What Claude noticed in a month (2026-11-14) is a guess, said as one.
   if (factIds.some(isNoticedFact)) out.push(...noticedRefusals(text, factIds, all))
   // A stored forecast (2026-11-14) set beside a counted comparison is said with its own track record, and with no cause.
-  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all))
+  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all, sheet))
   out.push(...numbersRefusals(text, sheet, factIds))
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {

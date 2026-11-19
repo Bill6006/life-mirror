@@ -1,4 +1,5 @@
 import { copy } from './copy'
+import type { Fact } from './factTypes'
 import { eventTypeOf } from './noteEvents/types'
 
 // What a reader of a stored forecast needs to say of it (2026-11-14), shared by the phone and the Worker: each of the
@@ -47,3 +48,64 @@ export function conditionWords(id: string, privateName: (itemId: string) => stri
   const type = eventTypeOf(id.slice('noticed.'.length))
   return `the evening before’s note, which Claude noticed as “${type?.label ?? ''}”`
 }
+
+/** Each thing of last night's comparison on the day's sheet, by its key (lastNight.ts's LAST_NIGHT_IDS, which a test holds it to). */
+export const NIGHT_FACT_IDS: Readonly<Record<string, string>> = {
+  dinner: 'assoc.dinner',
+  caffeine: 'assoc.caffeine.evening',
+  coolingOff: 'assoc.coolingOff',
+  bigSocial: 'assoc.bigSocial',
+  napped: 'assoc.napped',
+  nature: 'assoc.nature.morning',
+  sweet: 'assoc.sweet.evening',
+  nothingLanded: 'assoc.nothingLanded',
+  hardToSeePoint: 'assoc.hardToSeePoint',
+  necessity: 'assoc.necessity',
+  churchDay: 'assoc.churchDay',
+  workout: 'assoc.eveningWorkout',
+}
+
+/** The day's sheet comparison of a condition for the next morning, or null where the sheet holds none: the first two conditions and a note event have none. */
+export function comparisonOf(condition: string): string | null {
+  if (condition.startsWith('night.')) return NIGHT_FACT_IDS[condition.slice('night.'.length)] ?? null
+  if (/^private\.\d+$/.test(condition)) return condition
+  return null
+}
+
+const STORED = /^forecasts\.(\d{4})-(\d{2})-(\d{2})\.(?:morning|afternoon|evening)\.\d+$/
+const MOVED = /^forecasts\.\d{4}-\d{2}-\d{2}\.(?:morning|afternoon|evening)\.\d+\.moved$/
+const LEVEL_WEEKDAY = /^pattern\.level\.(?:low|high)\.weekday\.([0-6])$/
+
+/**
+ * Where a stored forecast and a counted pattern or comparison that an answer cites point different ways (2026-11-18),
+ * decided from their structured fields alone, in two narrow cases, each said in words for the checker's reason. One: a
+ * cell of the reading's level on the forecast's own weekday (under 40, or 80 or more) stands at a steady pattern, and
+ * the forecast's way cannot tell one weekday from another. Two: a forecast was moved one way, and the day's sheet
+ * comparison of a condition that moved it stands at a steady pattern the other way. Nothing else is read as a difference.
+ */
+export function forecastDifferences(cited: readonly Fact[]): string[] {
+  const out: string[] = []
+  const steady = (f: Fact): boolean => f.values.standing === 'pattern'
+  for (const f of cited) {
+    const m = STORED.exec(f.id)
+    if (!m || typeof f.values.model !== 'string' || WEEKDAY_WAYS.includes(f.values.model)) continue
+    const weekday = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay()
+    for (const p of cited) {
+      const w = LEVEL_WEEKDAY.exec(p.id)
+      if (w && Number(w[1]) === weekday && steady(p)) out.push(`${p.id} stands at a steady pattern on the weekday of ${f.id}, whose way cannot tell one weekday from another`)
+    }
+  }
+  for (const f of cited) {
+    if (!MOVED.test(f.id) || (f.values.dir !== 'lower' && f.values.dir !== 'higher') || typeof f.values.by !== 'string') continue
+    const other = f.values.dir === 'lower' ? 'higher' : 'lower'
+    for (const condition of f.values.by.split('|')) {
+      const id = comparisonOf(condition)
+      const c = id ? cited.find((x) => x.id === id) : undefined
+      if (c && steady(c) && c.values.direction === other) out.push(`${f.id} was set ${f.values.dir}, and ${c.id} stands at a steady pattern ${other}`)
+    }
+  }
+  return out
+}
+
+/** The words that say a forecast and a pattern differ: one of them stands in an answer wherever they do. */
+export const DIFFER_WORDS = /\b(?:differ(?:s|ed)?|disagree(?:s|d)?|(?:does|do|did) not match|(?:doesn|don|didn)[’']t match)\b/i

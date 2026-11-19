@@ -43,7 +43,9 @@ describe('the stored forecasts, with what moved them', () => {
     expect(ids(r.facts)).toEqual([`forecasts.${D}.morning.0`, `forecasts.${D}.morning.0.moved`, `forecasts.${D}.evening.1`, 'forecasts.way'])
     const m = movedOf(r.facts) as Fact
     expect(m.text).toBe('This forecast was set about 3 points lower than its way gave on its own, for what the record held the day before: whether the last night reported before the day was short; Stand-in item marked the evening before; the evening before’s note, which Claude noticed as “Raised my voice”. A forecast is moved by what went with the mornings before, never by a cause.')
-    expect(m.values).toEqual({ points: 3, kinds: 'dayRecord|privateItems|notes', category: 'dayRecord' })
+    expect(m.values).toEqual({ points: 3, dir: 'lower', by: 'sleep.short|private.7|noticed.raised-voice', kinds: 'dayRecord|privateItems|notes', category: 'dayRecord' })
+    // The stored forecast itself carries its way, the field the check of a difference reads.
+    expect(r.facts[0].values.model).toBe('weekdayBlock')
     expect(factCategories(m, new Map())).toEqual(['dayRecord', 'privateItems', 'notes'])
     // The unmoved forecast has no such fact.
     expect(r.facts.some((f) => f.id === `forecasts.${D}.evening.1.moved`)).toBe(false)
@@ -78,6 +80,9 @@ describe('the stored forecasts, with what moved them', () => {
 
   it('tells both tiers of Ask the forecast’s one rule, once', () => {
     for (const tier of ['ask', 'deep'] as const) expect(prompt.askInstructions(tier, 450, null).split('\n').filter((line) => line === prompt.FORECAST_RULE)).toHaveLength(1)
+    // It names the words the checker reads where the two differ, and the two cases it reads them in.
+    expect(prompt.FORECAST_RULE).toContain('say so in one of these words: "differ", "disagree" or "does not match"')
+    expect(prompt.FORECAST_RULE).toContain('pattern.level.low.weekday.* or pattern.level.high.weekday.*')
   })
 
   it('serves nothing of a condition the forecast does not know, and nothing for a row nothing moved', async () => {

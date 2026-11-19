@@ -43,6 +43,13 @@ stored forecast by its day; the validator holds it; both tiers are told it. The 
 that tell weekdays apart; the church day under faith; an unknown thing, item or type read nowhere; a private item by
 its name where one is given.
 
+Where a forecast and a counted comparison differ (2026-11-18): only where the forecast's way cannot tell one weekday
+from another, on the forecast's own weekday read from its date, a steady cell, of the level alone; the stored forecast
+names its way; only moved the other way, against a steady comparison of a condition that moved it, a private item's
+own and the things of last night as the sheet names them; the moved fact says its direction; the words the rule
+names, and "different" not among them; the checker asks, reads the cited facts alone, and is handed them by the
+validator; the rule names the words.
+
 The writer: nothing of it runs while the switch is off; rows are adjusted only when it is picked; on the wired
 writer nothing logged today moves today's forecast; an adjusted row is never touched.
 """
@@ -95,6 +102,7 @@ FCS = 'src/forecastConditions.ts'
 WK = 'worker/src/forecastsLookup.test.ts'
 RF = 'src/forecastRefusals.test.ts'
 FCT = 'src/forecastConditions.test.ts'
+DT = 'src/forecastDifferences.test.ts'
 
 SIZE = 'cut by its own uncertainty'
 USELESS = 'rarely picks it'
@@ -396,8 +404,8 @@ TABLE = [
          new="  if (!by.length) return null",
          tests=[WK], pattern='makes no fact of a condition the forecast does not know'),
     dict(id='the-moved-fact-names-every-switch', file=L,
-         old="{ points, kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))",
-         new="{ points }, kinds.includes('faith'))",
+         old="by: by.join('|'), kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))",
+         new="by: by.join('|') }, kinds.includes('faith'))",
          tests=[WK], pattern='how far it was moved and for what'),
     dict(id='a-private-name-only-where-names-are-shown', file=L,
          old="  const namesPrivate = x.showPrivate && rows.some(",
@@ -453,7 +461,7 @@ TABLE = [
          new="export const FORECAST_RECORD_IDS: readonly string[] = ['forecasts.dayAhead']",
          tests=[RF], pattern='asks for the forecast’s own track record'),
     dict(id='the-validator-holds-the-forecast-rule', file=BS,
-         old="  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all))\n",
+         old="  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all, sheet))\n",
          new="",
          tests=[RF], pattern='is held by the validator on a whole answer'),
     dict(id='both-tiers-are-told-the-rule', file=P,
@@ -489,6 +497,79 @@ TABLE = [
          old="${privateName(id.slice('private.'.length)) ?? 'a private item'} marked the evening before",
          new="a private item marked the evening before",
          tests=[FCT], pattern='says each condition in words'),
+    # Piece 5: where a stored forecast and a counted comparison differ, read from their structured fields alone.
+    dict(id='a-weekday-the-way-cannot-see', file=FCS,
+         old="    if (!m || typeof f.values.model !== 'string' || WEEKDAY_WAYS.includes(f.values.model)) continue",
+         new="    if (!m || typeof f.values.model !== 'string') continue",
+         tests=[DT], pattern='finds none where the way can tell weekdays apart'),
+    dict(id='the-forecasts-own-weekday', file=FCS,
+         old="      if (w && Number(w[1]) === weekday && steady(p)) out.push(",
+         new="      if (w && steady(p)) out.push(",
+         tests=[DT], pattern='finds none where the way can tell weekdays apart'),
+    dict(id='the-weekday-from-the-date', file=FCS,
+         old="    const weekday = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay()",
+         new="    const weekday = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay() % 6",
+         tests=[DT], pattern='reads the forecast’s weekday from its own date'),
+    dict(id='a-steady-weekday-cell', file=FCS,
+         old="      if (w && Number(w[1]) === weekday && steady(p)) out.push(",
+         new="      if (w && Number(w[1]) === weekday) out.push(",
+         tests=[DT], pattern='finds none where the way can tell weekdays apart'),
+    dict(id='a-cell-of-the-level-alone', file=FCS,
+         old="const LEVEL_WEEKDAY = /^pattern\\.level\\.(?:low|high)\\.weekday\\.([0-6])$/",
+         new="const LEVEL_WEEKDAY = /^pattern\\..+\\.weekday\\.([0-6])$/",
+         tests=[DT], pattern='finds none where the way can tell weekdays apart'),
+    dict(id='a-stored-forecast-names-its-way', file=L,
+         old="horizon: Number(b.horizon), scale: 100, model: str(b.model),",
+         new="horizon: Number(b.horizon), scale: 100,",
+         tests=[WK], pattern='how far it was moved and for what'),
+    dict(id='moved-the-other-way', file=FCS,
+         old="      if (c && steady(c) && c.values.direction === other) out.push(",
+         new="      if (c && steady(c) && c.values.direction !== 'none') out.push(",
+         tests=[DT], pattern='finds none the same way'),
+    dict(id='a-steady-comparison', file=FCS,
+         old="      if (c && steady(c) && c.values.direction === other) out.push(",
+         new="      if (c && c.values.direction === other) out.push(",
+         tests=[DT], pattern='finds none the same way'),
+    dict(id='the-comparison-of-a-condition-that-moved-it', file=FCS,
+         old="      const c = id ? cited.find((x) => x.id === id) : undefined",
+         new="      const c = cited.find((x) => x.id.startsWith('assoc.') || x.id.startsWith('private.'))",
+         tests=[DT], pattern='finds none the same way'),
+    dict(id='a-private-items-own-comparison', file=FCS,
+         old="  if (/^private\\.\\d+$/.test(condition)) return condition\n  return null\n}",
+         new="  return null\n}",
+         tests=[DT], pattern='maps each condition to its own comparison'),
+    dict(id='the-things-of-last-night-as-the-sheet-names-them', file=FCS,
+         old="  nature: 'assoc.nature.morning',\n",
+         new="  nature: 'assoc.nature',\n",
+         tests=[DT], pattern='maps each condition to its own comparison'),
+    dict(id='a-moved-fact-says-its-direction', file=L,
+         old="{ points, dir: b.adj < 0 ? 'lower' : 'higher', by: by.join('|'),",
+         new="{ points, dir: 'lower', by: by.join('|'),",
+         tests=[WK], pattern='how far it was moved and for what'),
+    dict(id='the-words-that-say-they-differ', file=FCS,
+         old="export const DIFFER_WORDS = /\\b(?:differ(?:s|ed)?|disagree(?:s|d)?|(?:does|do|did) not match|(?:doesn|don|didn)[’']t match)\\b/i",
+         new="export const DIFFER_WORDS = /\\b(?:differ(?:s|ed)?|(?:does|do|did) not match|(?:doesn|don|didn)[’']t match)\\b/i",
+         tests=[DT], pattern='takes each of the words the rule names'),
+    dict(id='different-is-not-one-of-them', file=FCS,
+         old="export const DIFFER_WORDS = /\\b(?:differ(?:s|ed)?|disagree(?:s|d)?|(?:does|do|did) not match|(?:doesn|don|didn)[’']t match)\\b/i",
+         new="export const DIFFER_WORDS = /\\b(?:differ(?:s|ed|ent)?|disagree(?:s|d)?|(?:does|do|did) not match|(?:doesn|don|didn)[’']t match)\\b/i",
+         tests=[DT], pattern='takes each of the words the rule names'),
+    dict(id='the-checker-asks-where-they-differ', file=BS,
+         old="  if (differ.length && !DIFFER_WORDS.test(text)) out.push(",
+         new="  if (false) out.push(",
+         tests=[DT], pattern='takes each of the words the rule names'),
+    dict(id='the-checker-reads-the-cited-facts', file=BS,
+         old="  const differ = sheet ? forecastDifferences(sheet.facts.filter((f) => factIds.includes(f.id))) : []",
+         new="  const differ = sheet ? forecastDifferences(sheet.facts) : []",
+         tests=[DT], pattern='asks nothing where they do not differ'),
+    dict(id='the-validator-hands-the-check-its-facts', file=BS,
+         old="  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all, sheet))\n",
+         new="  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all))\n",
+         tests=[DT], pattern='is held by the validator on a whole answer'),
+    dict(id='the-rule-names-the-words', file=P,
+         old="Where the two differ, say so in one of these words: \"differ\", \"disagree\" or \"does not match\".",
+         new="Where the two differ, say so.",
+         tests=[WK], pattern='tells both tiers of Ask'),
 ]
 
 

@@ -512,7 +512,7 @@ describe('the range lookups', () => {
       'Of 3 day-ahead forecasts scored so far, 2 landed inside their range. The Weekly View says how often they land once 20 are scored, and until then how the range is sized. This is the forecast’s own track record, from forecasts written before their outcomes.',
     ])
     expect(ids(r.facts)).toEqual([`forecasts.${D}.morning.0`, `forecasts.${D}.evening.1`, 'forecasts.scorecard', 'forecasts.dayAhead'])
-    expect(r.facts[1].values).toEqual({ point: 61, lo: 48, hi: 74, horizon: 1, scale: 100, actual: 79, category: 'dayRecord' })
+    expect(r.facts[1].values).toEqual({ point: 61, lo: 48, hi: 74, horizon: 1, scale: 100, model: 'weekday', actual: 79, category: 'dayRecord' })
     expect(r.facts[2].values).toEqual({ scored: 3, hits: 2, pct: 67, scale: 100, category: 'dayRecord' })
     expect((await run(store, { lookup: 'forecasts', date: '2026-11-11' })).note).toBe('no forecast is stored for 2026-11-11')
     expect((await run(store, { lookup: 'forecasts', date: D }, { a: access(['dayRecord']) })).facts).toEqual([])

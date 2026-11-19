@@ -547,7 +547,7 @@ async function forecastLookup(x: LookupCtx, q: { date: string }, tally: ReadTall
     const s = score.get(key(b))
     const ahead = Number(b.horizon) === 0 ? 'the same day' : `${Number(b.horizon)} ${Number(b.horizon) === 1 ? 'day' : 'days'} ahead`
     const read100 = s && typeof s.actual === 'number' ? ` It then read ${Math.round(s.actual)}: ${s.hit === true ? 'inside' : 'outside'} the range.` : ''
-    return fact(`forecasts.${q.date}.${str(b.block)}.${Number(b.horizon)}`, `A forecast for the ${str(b.block)} of ${q.date}, made on ${str(b.madeOn)} (${ahead}): expect about ${Math.round(Number(b.point))} out of 100, in a range of ${Math.round(Number(b.lo))} to ${Math.round(Number(b.hi))}.${read100} A forecast is a prediction, never a finding.`, 'dayRecord', { point: Math.round(Number(b.point)), lo: Math.round(Number(b.lo)), hi: Math.round(Number(b.hi)), horizon: Number(b.horizon), scale: 100, ...(s && typeof s.actual === 'number' ? { actual: Math.round(s.actual) } : {}) })
+    return fact(`forecasts.${q.date}.${str(b.block)}.${Number(b.horizon)}`, `A forecast for the ${str(b.block)} of ${q.date}, made on ${str(b.madeOn)} (${ahead}): expect about ${Math.round(Number(b.point))} out of 100, in a range of ${Math.round(Number(b.lo))} to ${Math.round(Number(b.hi))}.${read100} A forecast is a prediction, never a finding.`, 'dayRecord', { point: Math.round(Number(b.point)), lo: Math.round(Number(b.lo)), hi: Math.round(Number(b.hi)), horizon: Number(b.horizon), scale: 100, model: str(b.model), ...(s && typeof s.actual === 'number' ? { actual: Math.round(s.actual) } : {}) })
   })
   // What the record held the day before moved (2026-11-14): beside each forecast it moved, read under the switch of every condition that moved it.
   const [latest, moved] = await Promise.all([recordsOf(read, 'forecasts', {}, 40), recordsOf(read, 'forecasts', { like: '"adj":' }, 2000)])
@@ -580,7 +580,7 @@ export function movedFact(id: string, b: Record<string, unknown>, privateName: (
   const words = by.map((c) => conditionWords(c, privateName) as string)
   const points = Math.round(Math.abs(b.adj))
   const how = points === 0 ? 'by less than a point' : `about ${points} ${points === 1 ? 'point' : 'points'} ${b.adj < 0 ? 'lower' : 'higher'}`
-  return fact(`${id}.moved`, `This forecast was set ${how} than its way gave on its own, for what the record held the day before: ${words.join('; ')}. A forecast is moved by what went with the mornings before, never by a cause.`, 'dayRecord', { points, kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))
+  return fact(`${id}.moved`, `This forecast was set ${how} than its way gave on its own, for what the record held the day before: ${words.join('; ')}. A forecast is moved by what went with the mornings before, never by a cause.`, 'dayRecord', { points, dir: b.adj < 0 ? 'lower' : 'higher', by: by.join('|'), kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))
 }
 
 /**
