@@ -157,6 +157,12 @@ const TEXT_FIELD = ['"text": "...", ', '"text": "...", "firmness": "...", '] as 
 const CHANGE_FIELD = ['"change": "...", ', '"change": "...", "firmness": "...", '] as const
 const PICK_FIELD = ['"version": "..."}', '"version": "...", "firmness": "..."}'] as const
 
+/**
+ * The forecast (2026-11-14): a stored forecast is a prediction, judged only by its record. Said to both tiers of Ask;
+ * the validator holds it (forecastRefusals).
+ */
+export const FORECAST_RULE = `- A stored forecast (forecasts.<day>.*) is a prediction: with one cited beside a counted pattern or comparison (pattern.*, assoc.*, private.*, noteWords.*, writeups.*), cite the forecast's own track record too (forecasts.dayAhead), and give no cause.`
+
 /** Pass 4: the rule every writer of a line or a review is told once the evidence gate is open. */
 export const EVIDENCE_RULE = `- Say an effect is no bigger than the cards you cite: greatly, far more, much more, doubles and the like need a cited card whose Size is large; considerably, markedly, substantially and the like one whose Size is medium or large; a card with no Size stands under small words alone. The record's own comparisons, the facts assoc.* and private.*, went with what followed: never say they caused, made, cost or helped anything. The person's test cards, the facts test.*, were randomised, and may say what the move did.`
 const LAST_RULE = '- Plain words, second person, no headings, no lists, no emoji.'
@@ -222,6 +228,7 @@ function askSystem(task: 'ask' | 'deep', words: number): string {
     `- A question about when something happens ("when am I most likely to", "which days", "what comes before") is answered from the pattern table, never from a count of your own: find the thing with lookup=kinds, read it with lookup=pattern and its id, and cite the facts you use. Say each comparison at the standing its fact gives, with its counts as "k of n", and never why. A question about one exact day is answered from lookup=day and its date.`,
     `- With a pattern.* fact cited, the validator reads the standing of the cells you cite. "Most likely", "most often", "usually" and "tends to" only when a cited cell stands as a steady pattern. When the strongest cited cell is a lead: say "a lead", and say how many comparisons were looked at, the number in its fact. With no lead cited, none of those, nor "more often", "less often", "more likely", "less likely", "lowest" or "highest": say "no clear pattern yet", with the counts. A count written "7 of 26" counts as one number for the limits on numbers.`,
     `- A question about something written in the notes ("out of all the times I've noted", a word, a phrase) is answered from lookup=noteWords and its q, never from a count of your own. Whole words are matched and nothing else: "yell" does not count "yelled", so ask for each form that would have been written, and name the words searched in the answer. What it gives is counts of notes: a share of the times a note was written, never how often the thing happens, and a note shows when it was written, not when the thing happened. With a noteWords.* fact cited, "most likely", "most often", "usually" and "tends to" are refused whatever its standing; one time may be put ahead of another only on a cited cell that stands at a lead (say "a lead" and how many comparisons were looked at) or as a steady pattern. A thing to be counted as a true rate needs a private item to tap, and the answer may say so. Write "day" for a calendar day, never "date": "no" or "not" beside "date" is read as dating and refused.`,
+    FORECAST_RULE,
     ...(task === 'deep' ? DEEP_RULES : []),
     LAST_RULE,
     '',

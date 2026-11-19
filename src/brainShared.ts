@@ -653,6 +653,28 @@ export function noticedRefusals(text: string, factIds: readonly string[], all = 
   return out
 }
 
+/** A forecast stored on the phone, as the lookup serves it, with what moved it (2026-11-14): a prediction, never a finding. */
+export function isStoredForecastFact(id: string): boolean {
+  return /^forecasts\.\d{4}-\d{2}-\d{2}\./.test(id)
+}
+
+/** The forecast's own track record, as the lookup serves it: every forecast scored, the day-ahead ones as the Weekly View counts them, and those the challenger moved. */
+export const FORECAST_RECORD_IDS: readonly string[] = ['forecasts.dayAhead', 'forecasts.scorecard', 'forecasts.movedRecord']
+
+/**
+ * Every reason a text sets a stored forecast beside a counted comparison more firmly than a prediction allows
+ * (2026-11-14), in order. Where the two are cited together, the forecast's own track record is cited too, and no
+ * cause is given: a prediction is judged only by its record. Caffeine's own rule answers for a cause it names.
+ */
+export function forecastRefusals(text: string, factIds: readonly string[], all = false): string[] {
+  if (!factIds.some(isStoredForecastFact) || !factIds.some(isAssociationFact)) return []
+  const out: string[] = []
+  if (!factIds.some((id) => FORECAST_RECORD_IDS.includes(id))) out.push('cites a stored forecast beside a counted comparison without the forecast’s own track record: cite forecasts.dayAhead too')
+  const cause = CAFFEINE_WORDS.test(text) ? null : found(CAUSAL_WORDS, text, all)
+  if (cause) out.push(`gives a cause (${cause}) beside a forecast: a prediction is judged only by its record, and says no cause`)
+  return out
+}
+
 /**
  * Every reason a text is refused, in the order they are checked, each rule's own words: the first is what `refusal` gives.
  * `all` names every offending word of a rule rather than its first (Ask, Item 4, 2026-10-23: a retry told one reason mended
@@ -687,6 +709,8 @@ function refusals(text: string, factIds: readonly string[], cardIds: readonly st
   if (factIds.some(isNoteWordsFact)) out.push(...noteWordsRefusals(text, factIds, sheet, all))
   // What Claude noticed in a month (2026-11-14) is a guess, said as one.
   if (factIds.some(isNoticedFact)) out.push(...noticedRefusals(text, factIds, all))
+  // A stored forecast (2026-11-14) set beside a counted comparison is said with its own track record, and with no cause.
+  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all))
   out.push(...numbersRefusals(text, sheet, factIds))
   const best = cardIds.reduce<number>((m, id) => Math.min(m, GRADE_ORDER[(admitted.get(id) as ClaimCard).grade]), 9)
   for (const [grade, phrase] of Object.entries(GRADE_PHRASES) as [Grade, string][]) {

@@ -34,6 +34,15 @@ before the morning's day began, never one marked wrong; a type joins once five c
 the day of the run; each kind only while its Brain switch is on, the writer reading both switches and the marks; the
 list's order. The export carries the two fields, a private item only with private items and then by its name.
 
+The Worker's side: a moved forecast's fact needs a move and a condition the forecast knows, and names the switch of
+every condition, each read; a private item by its name only where names may be shown; the way of the newest
+forecasts; the day-ahead record counts the day-ahead forecasts alone, and the moved forecasts' record those moved; a
+kind the read layer does not name is closed. The checker: the rule binds a stored forecast only beside a counted
+comparison; the track record is cited, any of the three; no cause, caffeine's own rule answering for its own; a
+stored forecast by its day; the validator holds it; both tiers are told it. The shared words: from twenty; the ways
+that tell weekdays apart; the church day under faith; an unknown thing, item or type read nowhere; a private item by
+its name where one is given.
+
 The writer: nothing of it runs while the switch is off; rows are adjusted only when it is picked; on the wired
 writer nothing logged today moves today's forecast; an adjusted row is never touched.
 """
@@ -78,6 +87,14 @@ UT = 'src/forecastWriterUnchanged.test.ts'
 KT = 'src/challengerCandidates.test.ts'
 FC = 'src/forecastCandidates.test.ts'
 EX = 'src/export.ts'
+L = 'worker/src/lookups.ts'
+R = 'worker/src/retrieval.ts'
+BS = 'src/brainShared.ts'
+P = 'worker/src/prompt.ts'
+FCS = 'src/forecastConditions.ts'
+WK = 'worker/src/forecastsLookup.test.ts'
+RF = 'src/forecastRefusals.test.ts'
+FCT = 'src/forecastConditions.test.ts'
 
 SIZE = 'cut by its own uncertainty'
 USELESS = 'rarely picks it'
@@ -369,6 +386,109 @@ TABLE = [
          old="whatIf: f.whatIf, ...forecastAdjustment(f, names, opts.includePrivate) })),",
          new="whatIf: f.whatIf })),",
          tests=[KT], pattern='a private item only with private items'),
+    # Piece 4: the Worker's side. What moved a stored forecast, read under every switch of its conditions.
+    dict(id='the-moved-fact-needs-a-move', file=L,
+         old="  if (typeof b.adj !== 'number' || !Number.isFinite(b.adj) || b.adj === 0 || !Array.isArray(b.adjBy)) return null",
+         new="  if (typeof b.adj !== 'number' || !Number.isFinite(b.adj) || !Array.isArray(b.adjBy)) return null",
+         tests=[WK], pattern='serves nothing of a condition the forecast does not know'),
+    dict(id='an-unknown-condition-is-read-nowhere', file=L,
+         old="  if (!by.length || kinds.some((k) => k === null)) return null",
+         new="  if (!by.length) return null",
+         tests=[WK], pattern='serves nothing of a condition the forecast does not know'),
+    dict(id='the-moved-fact-names-every-switch', file=L,
+         old="{ points, kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))",
+         new="{ points }, kinds.includes('faith'))",
+         tests=[WK], pattern='how far it was moved and for what'),
+    dict(id='a-private-name-only-where-names-are-shown', file=L,
+         old="  const namesPrivate = x.showPrivate && rows.some(",
+         new="  const namesPrivate = rows.some(",
+         tests=[WK], pattern='names a private item only where names may be shown'),
+    dict(id='the-way-of-the-newest-forecasts', file=L,
+         old="str(b.madeOn) > str(m.madeOn) ? b : m), null)",
+         new="str(b.madeOn) < str(m.madeOn) ? b : m), null)",
+         tests=[WK], pattern='which way the latest forecasts rest on'),
+    dict(id='the-day-ahead-record-counts-day-ahead', file=L,
+         old="  const ahead = scores.filter((b) => Number(b.horizon) === 1)",
+         new="  const ahead = scores",
+         tests=[WK], pattern='the day-ahead record exactly as the Weekly View counts it'),
+    dict(id='the-moved-record-counts-moved-forecasts', file=L,
+         old="  const movedScores = scores.filter((b) => movedSlots.has(slot(b)))",
+         new="  const movedScores = scores",
+         tests=[WK], pattern='the day-ahead record exactly as the Weekly View counts it'),
+    dict(id='a-moved-forecast-holds-a-number', file=L,
+         old=".filter((b) => typeof b.adj === 'number').map(slot))",
+         new=".map(slot))",
+         tests=[WK], pattern='the day-ahead record exactly as the Weekly View counts it'),
+    dict(id='the-read-layer-reads-every-kind', file=R,
+         old="    if (head === 'forecasts' && typeof f.values.kinds === 'string' && f.values.kinds) {",
+         new="    if (head === 'none' && typeof f.values.kinds === 'string' && f.values.kinds) {",
+         tests=[WK], pattern='how far it was moved and for what'),
+    dict(id='a-kind-the-layer-does-not-name-is-closed', file=R,
+         old="f.values.kinds.split('|').map((k) => ((CATEGORIES as readonly string[]).includes(k) ? (k as Category) : CLOSED))",
+         new="f.values.kinds.split('|').map((k) => k as Category)",
+         tests=[WK], pattern='closes a kind the read layer does not name'),
+    # The checker.
+    dict(id='the-rule-binds-only-beside-a-comparison', file=BS,
+         old="  if (!factIds.some(isStoredForecastFact) || !factIds.some(isAssociationFact)) return []",
+         new="  if (!factIds.some(isStoredForecastFact)) return []",
+         tests=[RF], pattern='asks for the forecast’s own track record'),
+    dict(id='the-track-record-is-cited', file=BS,
+         old="  if (!factIds.some((id) => FORECAST_RECORD_IDS.includes(id))) out.push(",
+         new="  if (false) out.push(",
+         tests=[RF], pattern='asks for the forecast’s own track record'),
+    dict(id='no-cause-beside-a-forecast', file=BS,
+         old="  const cause = CAFFEINE_WORDS.test(text) ? null : found(CAUSAL_WORDS, text, all)",
+         new="  const cause = CAFFEINE_WORDS.test(text) ? null : null",
+         tests=[RF], pattern='refuses a cause beside a forecast'),
+    dict(id='caffeines-own-rule-answers-for-it', file=BS,
+         old="  const cause = CAFFEINE_WORDS.test(text) ? null : found(CAUSAL_WORDS, text, all)",
+         new="  const cause = found(CAUSAL_WORDS, text, all)",
+         tests=[RF], pattern='refuses a cause beside a forecast'),
+    dict(id='a-stored-forecast-by-its-day', file=BS,
+         old="  return /^forecasts\\.\\d{4}-\\d{2}-\\d{2}\\./.test(id)",
+         new="  return /^forecasts\\./.test(id)",
+         tests=[RF], pattern='knows a stored forecast'),
+    dict(id='every-record-of-the-forecast', file=BS,
+         old="export const FORECAST_RECORD_IDS: readonly string[] = ['forecasts.dayAhead', 'forecasts.scorecard', 'forecasts.movedRecord']",
+         new="export const FORECAST_RECORD_IDS: readonly string[] = ['forecasts.dayAhead']",
+         tests=[RF], pattern='asks for the forecast’s own track record'),
+    dict(id='the-validator-holds-the-forecast-rule', file=BS,
+         old="  if (factIds.some(isStoredForecastFact)) out.push(...forecastRefusals(text, factIds, all))\n",
+         new="",
+         tests=[RF], pattern='is held by the validator on a whole answer'),
+    dict(id='both-tiers-are-told-the-rule', file=P,
+         old="    FORECAST_RULE,\n",
+         new="",
+         tests=[WK], pattern='tells both tiers of Ask'),
+    # The shared words.
+    dict(id='the-day-ahead-rate-from-twenty', file=FCS,
+         old="export const DAY_AHEAD_MEASURED_FROM = 20",
+         new="export const DAY_AHEAD_MEASURED_FROM = 19",
+         tests=[FCT], pattern='counts the day-ahead record from twenty'),
+    dict(id='the-ways-that-tell-weekdays-apart', file=FCS,
+         old="export const WEEKDAY_WAYS: readonly string[] = ['weekdayBlock', 'blend']",
+         new="export const WEEKDAY_WAYS: readonly string[] = ['weekdayBlock']",
+         tests=[FCT], pattern='names each way'),
+    dict(id='the-church-day-under-faith', file=FCS,
+         old="return typeof NIGHT[key] !== 'string' ? null : key === 'churchDay' ? 'faith' : 'dayRecord'",
+         new="return typeof NIGHT[key] !== 'string' ? null : 'dayRecord'",
+         tests=[FCT], pattern='reads each condition under its own switch'),
+    dict(id='an-unknown-thing-of-last-night', file=FCS,
+         old="return typeof NIGHT[key] !== 'string' ? null : key === 'churchDay' ? 'faith' : 'dayRecord'",
+         new="return key === 'churchDay' ? 'faith' : 'dayRecord'",
+         tests=[FCT], pattern='reads each condition under its own switch'),
+    dict(id='a-private-item-by-its-number', file=FCS,
+         old="  if (/^private\\.\\d+$/.test(id)) return 'privateItems'",
+         new="  if (/^private\\./.test(id)) return 'privateItems'",
+         tests=[FCT], pattern='reads each condition under its own switch'),
+    dict(id='a-note-event-of-a-known-type', file=FCS,
+         old="  if (id.startsWith('noticed.')) return eventTypeOf(id.slice('noticed.'.length)) ? 'notes' : null",
+         new="  if (id.startsWith('noticed.')) return 'notes'",
+         tests=[FCT], pattern='reads each condition under its own switch'),
+    dict(id='a-private-item-by-its-name-where-given', file=FCS,
+         old="${privateName(id.slice('private.'.length)) ?? 'a private item'} marked the evening before",
+         new="a private item marked the evening before",
+         tests=[FCT], pattern='says each condition in words'),
 ]
 
 

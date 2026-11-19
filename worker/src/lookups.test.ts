@@ -509,8 +509,9 @@ describe('the range lookups', () => {
       `A forecast for the morning of ${D}, made on ${D} (the same day): expect about 55 out of 100, in a range of 40 to 70. A forecast is a prediction, never a finding.`,
       `A forecast for the evening of ${D}, made on 2026-11-09 (1 day ahead): expect about 61 out of 100, in a range of 48 to 74. It then read 79: outside the range. A forecast is a prediction, never a finding.`,
       'Of 3 forecasts scored so far, the range held for 2 (67 in 100).',
+      'Of 3 day-ahead forecasts scored so far, 2 landed inside their range. The Weekly View says how often they land once 20 are scored, and until then how the range is sized. This is the forecast’s own track record, from forecasts written before their outcomes.',
     ])
-    expect(ids(r.facts)).toEqual([`forecasts.${D}.morning.0`, `forecasts.${D}.evening.1`, 'forecasts.scorecard'])
+    expect(ids(r.facts)).toEqual([`forecasts.${D}.morning.0`, `forecasts.${D}.evening.1`, 'forecasts.scorecard', 'forecasts.dayAhead'])
     expect(r.facts[1].values).toEqual({ point: 61, lo: 48, hi: 74, horizon: 1, scale: 100, actual: 79, category: 'dayRecord' })
     expect(r.facts[2].values).toEqual({ scored: 3, hits: 2, pct: 67, scale: 100, category: 'dayRecord' })
     expect((await run(store, { lookup: 'forecasts', date: '2026-11-11' })).note).toBe('no forecast is stored for 2026-11-11')

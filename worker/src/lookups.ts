@@ -5,6 +5,7 @@ import { LEVEL_BAND_WORDS, PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, TABLE
 import { cellWords, kindWords, levelWords, noteShareWords, SPLIT_WORDS, whenWords } from '../../src/counted/words'
 import type { Fact } from '../../src/factTypes'
 import { coarseOf, holdsWords, parseNoteWords } from '../../src/noteWords'
+import { conditionCategory, conditionWords, DAY_AHEAD_MEASURED_FROM, WEEKDAY_WAYS, wayWords } from '../../src/forecastConditions'
 import { outsideDayOf } from '../../src/outsideRow'
 import { GENERATED_STORE, type GeneratedPathRow } from '../../src/pathJob'
 import { AWAY_FROM_HOME } from '../../src/postWindow'
@@ -548,13 +549,72 @@ async function forecastLookup(x: LookupCtx, q: { date: string }, tally: ReadTall
     const read100 = s && typeof s.actual === 'number' ? ` It then read ${Math.round(s.actual)}: ${s.hit === true ? 'inside' : 'outside'} the range.` : ''
     return fact(`forecasts.${q.date}.${str(b.block)}.${Number(b.horizon)}`, `A forecast for the ${str(b.block)} of ${q.date}, made on ${str(b.madeOn)} (${ahead}): expect about ${Math.round(Number(b.point))} out of 100, in a range of ${Math.round(Number(b.lo))} to ${Math.round(Number(b.hi))}.${read100} A forecast is a prediction, never a finding.`, 'dayRecord', { point: Math.round(Number(b.point)), lo: Math.round(Number(b.lo)), hi: Math.round(Number(b.hi)), horizon: Number(b.horizon), scale: 100, ...(s && typeof s.actual === 'number' ? { actual: Math.round(s.actual) } : {}) })
   })
+  // What the record held the day before moved (2026-11-14): beside each forecast it moved, read under the switch of every condition that moved it.
+  const [latest, moved] = await Promise.all([recordsOf(read, 'forecasts', {}, 40), recordsOf(read, 'forecasts', { like: '"adj":' }, 2000)])
+  const namesPrivate = x.showPrivate && rows.some((b) => Array.isArray(b.adjBy) && (b.adjBy as unknown[]).some((v) => typeof v === 'string' && v.startsWith('private.')))
+  const names = namesPrivate ? new Map((await recordsOf(read, 'privateItems')).map((r) => [String(obj(r.body).id ?? r.id), str(obj(r.body).name)])) : new Map<string, string>()
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const m = movedFact(`forecasts.${q.date}.${str(rows[i].block)}.${Number(rows[i].horizon)}`, rows[i], (k) => names.get(k) || null)
+    if (m) facts.splice(i + 1, 0, m)
+  }
   const scores = all.map((r) => obj(r.body)).filter((b) => typeof b.hit === 'boolean')
   if (scores.length) {
     const hits = scores.filter((b) => b.hit === true).length
     facts.push(fact('forecasts.scorecard', `Of ${scores.length} forecasts scored so far, the range held for ${hits} (${Math.round((100 * hits) / scores.length)} in 100).`, 'dayRecord', { scored: scores.length, hits, pct: Math.round((100 * hits) / scores.length), scale: 100 }))
   }
+  facts.push(...forecastRecordFacts(latest, moved, scores))
   const kept = facts.filter((f) => mayRead(f, x.a))
   return { facts: kept, complete: true, notRead: 0, ...(rows.length ? {} : { note: `no forecast is stored for ${q.date}` }) }
+}
+
+/**
+ * What moved a stored forecast (2026-11-14): the points the challenger added and the conditions the record held the day
+ * before, each in words, a private item by its name only where names may be shown. Read under the switch of every one
+ * of those conditions; a condition the forecast does not know is read nowhere. Null for a row nothing moved.
+ */
+export function movedFact(id: string, b: Record<string, unknown>, privateName: (itemId: string) => string | null): Fact | null {
+  if (typeof b.adj !== 'number' || !Number.isFinite(b.adj) || b.adj === 0 || !Array.isArray(b.adjBy)) return null
+  const by = (b.adjBy as unknown[]).filter((v): v is string => typeof v === 'string')
+  const kinds = by.map(conditionCategory)
+  if (!by.length || kinds.some((k) => k === null)) return null
+  const words = by.map((c) => conditionWords(c, privateName) as string)
+  const points = Math.round(Math.abs(b.adj))
+  const how = points === 0 ? 'by less than a point' : `about ${points} ${points === 1 ? 'point' : 'points'} ${b.adj < 0 ? 'lower' : 'higher'}`
+  return fact(`${id}.moved`, `This forecast was set ${how} than its way gave on its own, for what the record held the day before: ${words.join('; ')}. A forecast is moved by what went with the mornings before, never by a cause.`, 'dayRecord', { points, kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))
+}
+
+/**
+ * The forecast's own track record beside the day's forecasts (2026-11-14): the way the latest forecasts rest on, in the
+ * Weekly View's own words, and whether it can tell one weekday from another; the day-ahead record exactly as the Weekly
+ * View's line counts it; and, once any is scored, the record of the forecasts the challenger moved.
+ */
+export function forecastRecordFacts(latest: readonly RecordRow[], moved: readonly RecordRow[], scores: readonly Record<string, unknown>[]): Fact[] {
+  const out: Fact[] = []
+  const newest = latest.map((r) => obj(r.body)).filter((b) => typeof b.madeOn === 'string' && typeof b.model === 'string').reduce<Record<string, unknown> | null>((m, b) => (m === null || str(b.madeOn) > str(m.madeOn) ? b : m), null)
+  const way = newest ? wayWords(str(newest.model)) : null
+  if (newest && way) {
+    const apart = WEEKDAY_WAYS.includes(str(newest.model)) ? 'That way can tell one weekday from another.' : 'That way cannot tell one weekday from another, so its days ahead come out alike.'
+    out.push(fact('forecasts.way', `The latest forecasts, made on ${str(newest.madeOn)}, rest on ${way}, as the Weekly View names the way. ${apart}`, 'dayRecord'))
+  }
+  const ahead = scores.filter((b) => Number(b.horizon) === 1)
+  if (ahead.length) {
+    const hits = ahead.filter((b) => b.hit === true).length
+    const pct = Math.round((100 * hits) / ahead.length)
+    const measured = ahead.length >= DAY_AHEAD_MEASURED_FROM
+    const many = `${ahead.length} day-ahead ${ahead.length === 1 ? 'forecast' : 'forecasts'}`
+    const text = measured
+      ? `As the Weekly View counts it: of ${many} scored so far, ${hits} landed inside their range (${pct} percent). This is the forecast’s own track record, from forecasts written before their outcomes.`
+      : `Of ${many} scored so far, ${hits} landed inside their range. The Weekly View says how often they land once ${DAY_AHEAD_MEASURED_FROM} are scored, and until then how the range is sized. This is the forecast’s own track record, from forecasts written before their outcomes.`
+    out.push(fact('forecasts.dayAhead', text, 'dayRecord', { scored: ahead.length, hits, ...(measured ? { pct, scale: 100 } : { from: DAY_AHEAD_MEASURED_FROM }) }))
+  }
+  const slot = (b: Record<string, unknown>) => `${str(b.day)}|${str(b.block)}|${String(b.horizon)}`
+  const movedSlots = new Set(moved.map((r) => obj(r.body)).filter((b) => typeof b.adj === 'number').map(slot))
+  const movedScores = scores.filter((b) => movedSlots.has(slot(b)))
+  if (movedScores.length) {
+    const hits = movedScores.filter((b) => b.hit === true).length
+    out.push(fact('forecasts.movedRecord', `Of ${movedScores.length} ${movedScores.length === 1 ? 'forecast' : 'forecasts'} moved by what the record held the day before and scored so far, the range held for ${hits} (${Math.round((100 * hits) / movedScores.length)} in 100).`, 'dayRecord', { scored: movedScores.length, hits, pct: Math.round((100 * hits) / movedScores.length), scale: 100 }))
+  }
+  return out
 }
 
 /** How many rows a page of the notes' search asks for, and how many pages it reads before it says it stopped short. */

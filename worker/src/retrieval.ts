@@ -116,6 +116,11 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
   if ((LOOKUPS as readonly string[]).includes(head)) {
     const c = f.values.category
     const named: Category = typeof c === 'string' && (CATEGORIES as readonly string[]).includes(c) ? (c as Category) : CLOSED
+    // A stored forecast's moved fact (2026-11-14) also names the switch of every condition that moved it: all must be readable, and one the layer does not name is closed.
+    if (head === 'forecasts' && typeof f.values.kinds === 'string' && f.values.kinds) {
+      const every = [...new Set([named, ...f.values.kinds.split('|').map((k) => ((CATEGORIES as readonly string[]).includes(k) ? (k as Category) : CLOSED))])]
+      return f.tags.includes('faith') && !every.includes('faith') ? [...every, 'faith'] : every
+    }
     return f.tags.includes('faith') && named !== 'faith' ? [named, 'faith'] : [named]
   }
   // A commitment's own category: the Partner or Social path's when it is one, else the commitments'.
