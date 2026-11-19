@@ -46,6 +46,10 @@ describe('the stored forecasts, with what moved them', () => {
     expect(m.values).toEqual({ points: 3, dir: 'lower', by: 'sleep.short|private.7|noticed.raised-voice', kinds: 'dayRecord|privateItems|notes', category: 'dayRecord' })
     // The stored forecast itself carries its way, the field the check of a difference reads.
     expect(r.facts[0].values.model).toBe('weekdayBlock')
+    // A forecast moved higher says so: the direction is read from the row's own sign.
+    const up = movedOf((await run(store({ adj: 2.4, adjBy: ['sleep.short'] }), Q)).facts) as Fact
+    expect(up.values).toEqual({ points: 2, dir: 'higher', by: 'sleep.short', kinds: 'dayRecord', category: 'dayRecord' })
+    expect(up.text).toContain('set about 2 points higher than its way gave')
     expect(factCategories(m, new Map())).toEqual(['dayRecord', 'privateItems', 'notes'])
     // The unmoved forecast has no such fact.
     expect(r.facts.some((f) => f.id === `forecasts.${D}.evening.1.moved`)).toBe(false)
