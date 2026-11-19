@@ -139,11 +139,15 @@ describe('the challenger: nothing on or after a day moves that day’s forecast'
       const conditions = (): Condition[] => [fromList('sleep', sleep, BLOCKS), fromList('thing', thing, ['morning'], (s) => s === 'yes')]
       for (const d of [45, 60, 75, 89]) {
         const day = dayName(d)
-        const read = (): unknown => ({
-          ways: MODELS.map((m) => BLOCKS.map((b) => predict(m, values, day, b))),
-          adjusted: BLOCKS.map((b) => runChallenger('sameBlock', values, day, conditions()).adjustmentFor(day, b)),
-          run: (({ slots, gain, clear, picked, errors }) => ({ slots, gain, clear, picked, errors }))(runChallenger('sameBlock', values, day, conditions())),
-        })
+        // One run a read: its adjustments and its record are the same run's.
+        const read = (): unknown => {
+          const run = runChallenger('sameBlock', values, day, conditions())
+          return {
+            ways: MODELS.map((m) => BLOCKS.map((b) => predict(m, values, day, b))),
+            adjusted: BLOCKS.map((b) => run.adjustmentFor(day, b)),
+            run: (({ slots, gain, clear, picked, errors }) => ({ slots, gain, clear, picked, errors }))(run),
+          }
+        }
         const before = JSON.stringify(read())
         // Every value on the day and after it is changed or taken away, and so is every condition's own record.
         const next = seeded(seed * 100 + d)
@@ -171,7 +175,8 @@ describe('the challenger: nothing on or after a day moves that day’s forecast'
       }
     }
     expect(movedByTheDayBefore).toBe(16)
-  })
+    // Sixteen days of a seeded record each read three times: under a whole suite's load this takes seconds, so it has its own time.
+  }, 30_000)
 })
 
 describe('the challenger: the pick', () => {

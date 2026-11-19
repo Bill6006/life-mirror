@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { readBrainPrefs } from '../../src/brainShared'
 import { copy } from '../../src/copy'
 import type { Fact } from '../../src/factTypes'
-import { runLookup, type LookupCtx, type LookupQuery } from './lookups'
+import { movedFact, runLookup, type LookupCtx, type LookupQuery } from './lookups'
 import * as prompt from './prompt'
 import { accessFor, factCategories, gatesFrom, type Catalogue } from './retrieval'
 import { APP, memoryStore } from './turso'
@@ -63,6 +63,12 @@ describe('the stored forecasts, with what moved them', () => {
     const church = movedOf((await run(store({ adj: 2, adjBy: ['night.churchDay'] }), Q)).facts) as Fact
     expect(factCategories(church, new Map())).toEqual(['dayRecord', 'faith'])
     expect(movedOf((await run(store({ adj: 2, adjBy: ['night.churchDay'] }), Q, { a: access(['faith']) })).facts)).toBeUndefined()
+  })
+
+  it('makes no fact of a condition the forecast does not know, with the read layer’s own closing set aside', () => {
+    // The read layer closes an unknown kind too; this is the lookup's own guard, asked directly.
+    expect(movedFact(`forecasts.${D}.morning.0`, { adj: -3, adjBy: ['sleep.short', 'night.unknown'] }, () => null)).toBeNull()
+    expect(movedFact(`forecasts.${D}.morning.0`, { adj: -3, adjBy: ['sleep.short'] }, () => null)?.id).toBe(`forecasts.${D}.morning.0.moved`)
   })
 
   it('closes a kind the read layer does not name', () => {

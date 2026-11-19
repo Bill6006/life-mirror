@@ -394,7 +394,7 @@ TABLE = [
     dict(id='an-unknown-condition-is-read-nowhere', file=L,
          old="  if (!by.length || kinds.some((k) => k === null)) return null",
          new="  if (!by.length) return null",
-         tests=[WK], pattern='serves nothing of a condition the forecast does not know'),
+         tests=[WK], pattern='makes no fact of a condition the forecast does not know'),
     dict(id='the-moved-fact-names-every-switch', file=L,
          old="{ points, kinds: [...new Set(kinds)].join('|') }, kinds.includes('faith'))",
          new="{ points }, kinds.includes('faith'))",
