@@ -1255,64 +1255,21 @@ button.ctx {
   stroke-width: 1;
 }
 
-/* The week-ahead strip. Its own names, so the trace and the heatmap keep theirs. The depth is all
-   flat translucent panes over the card, tinted by the theme: a pane over the plot, a fainter one per
-   band, a fainter one again on every other day. No gradient, no shadow, nothing but opacity and stroke. */
-.wa-pane {
+/* The week-ahead bars (the forecast follow-ups, item 8): a flat tint of the theme for each bar, the lowest in the
+   accent, over one hairline. Their own names, so the trace and the heatmap keep theirs. */
+.wa-bar {
   fill: rgb(var(--pane-rgb));
-  fill-opacity: 0.012;
+  fill-opacity: 0.2;
 }
 
-.wa-row {
-  fill: rgb(var(--pane-rgb));
-  fill-opacity: 0.024;
+.wa-bar.is-low {
+  fill: var(--accent);
+  fill-opacity: 1;
 }
 
-.wa-row.is-dim {
-  fill-opacity: 0.013;
-}
-
-.wa-col {
-  fill: rgb(var(--pane-rgb));
-  fill-opacity: 0.009;
-}
-
-.wa-grid {
-  stroke: var(--chart-grid);
-  stroke-width: 0.75;
-}
-
-.wa-step {
-  fill: none;
-  stroke: var(--chart-step);
-  stroke-width: 1.8;
-  stroke-linecap: butt;
-  stroke-linejoin: round;
-}
-
-.wa-step.is-low {
-  stroke: var(--accent);
-}
-
-.wa-whisker line {
-  stroke: var(--chart-whisker);
-  stroke-width: 0.9;
-  stroke-linecap: butt;
-}
-
-.wa-whisker.is-low line {
-  stroke: var(--accent);
-}
-
-.wa-tick {
-  font-family: var(--font-data);
-  font-size: 12px;
-  fill: var(--muted);
-}
-
-.wa-band {
-  font-size: 12px;
-  fill: var(--faint);
+.wa-base {
+  stroke: var(--hair);
+  stroke-width: 1;
 }
 
 .wa-day {
@@ -1321,18 +1278,10 @@ button.ctx {
   fill: var(--muted);
 }
 
-.wa-day.is-low {
-  fill: var(--ink);
-}
-
 .wa-val {
   font-family: var(--font-data);
   font-size: 12.5px;
   fill: var(--ink);
-}
-
-.wa-val.is-low {
-  fill: var(--accent);
 }
 
 .ch-dot {
@@ -1512,7 +1461,16 @@ button.chip.is-on {
 .week-chart + .note {
   margin-top: 6px;
   font-size: 12.5px;
-  color: var(--faint);
+  color: var(--muted);
+}
+
+/* The week's ranges and its way, under Details inside the card. */
+.week-ahead-details .calc {
+  margin: 0;
+}
+
+.week-ahead-details .calc-line:last-child {
+  margin-bottom: 0;
 }
 
 /* ---------- Check boxes, the catalogue, move lists ---------- */

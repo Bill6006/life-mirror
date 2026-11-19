@@ -1015,21 +1015,39 @@ test('the week ahead: a model blind to weekdays says the days come out alike and
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   const ahead = page.getByTestId('week-ahead')
-  // Seven alike days said as one level (the final checklist, item 3), and the graph shown with no tap: the line first,
-  // then the graph, then the week reviewed; the range in plain words, never said to widen (final UI polish, 2026-09-26).
+  // Seven alike days said as one level (the final checklist, item 3), and the graph shown with no tap.
   await expect(page.getByTestId('week-ahead-summary')).toHaveText('No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around 75.')
   await expect(ahead.getByTestId('ahead-value')).toHaveCount(7)
-  // The review is read on its own; measure the order only once it is drawn.
+  await expect(ahead.getByTestId('ahead-bar')).toHaveCount(7)
+  // The forecast follow-ups, item 8 (2026-11-19): the line, the graph, how often it lands, Details, then the week
+  // reviewed. The review is read on its own; measure the order only once it is drawn.
   await expect(page.getByTestId('week-review')).toBeVisible()
-  const tops = await page.evaluate(() => ['[data-testid="week-ahead-summary"]', '[data-testid="week-ahead"] .week-chart', '[data-testid="week-review"]'].map((s) => (document.querySelector(s) as HTMLElement).getBoundingClientRect().top))
-  expect(tops[0]).toBeLessThan(tops[1])
-  expect(tops[1]).toBeLessThan(tops[2])
+  const parts = ['[data-testid="week-ahead-summary"]', '[data-testid="week-ahead"] .week-chart', '[data-testid="week-ahead-rate"]', '[data-testid="week-ahead-details"]', '[data-testid="week-review"]']
+  const tops = await page.evaluate((list) => list.map((s) => (document.querySelector(s) as HTMLElement).getBoundingClientRect().top), parts)
+  for (let i = 1; i < tops.length; i++) expect(tops[i - 1], parts[i]).toBeLessThan(tops[i])
+  // No day-ahead forecast is scored yet: the line under the graph says when it will say how often they land, and no rate (2026-11-12).
+  await expect(page.getByTestId('week-ahead-rate')).toHaveText('How often its forecasts land is said here once twenty day-ahead forecasts are scored.')
+  // The graph holds the seven numbers and the seven days, nothing else: no range, no axis numbers, no band names; and no caption.
+  expect(await ahead.locator('svg.chart text').allTextContents()).toEqual([...Array(7).fill('75'), 'Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'])
+  await expect(ahead).not.toContainText('Daily expected value')
+  // The room over the highest number is cropped, never the number: each sits whole inside the graph.
+  const inside = await ahead.locator('svg.chart').evaluate((svg) => {
+    const box = (svg as SVGSVGElement).viewBox.baseVal
+    return [...svg.querySelectorAll<SVGTextElement>('text.wa-val')].every((t) => t.getBBox().y >= box.y)
+  })
+  expect(inside).toBe(true)
+  // Its ranges and its way are under Details, closed until opened.
+  await expect(page.getByTestId('week-ahead-details')).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByTestId('week-ahead-range')).toHaveCount(0)
+  await expect(page.getByTestId('week-ahead-model')).toHaveCount(0)
+  await page.getByTestId('week-ahead-details').click()
+  // The range in plain words, never said to widen (final UI polish, 2026-09-26).
   await expect(page.getByTestId('week-ahead-range')).toHaveText('Expected range: 75–75 each day.')
   await expect(page.getByTestId('weekly')).not.toContainText('widen')
   await expect(page.getByTestId('week-ahead-model')).toContainText('the one that came closest a day ahead over your last four weeks')
-  // No day-ahead forecast is scored yet: the card says how its range is built, and no rate (2026-11-12).
-  await expect(page.getByTestId('week-ahead-model')).toContainText('Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it. How often its forecasts land is said here once twenty day-ahead forecasts are scored.')
-  await expect(page.getByTestId('week-ahead-model')).not.toContainText('landed inside')
+  // Until twenty are scored, Details says how the range is built (2026-11-12), and the card says no rate.
+  await expect(page.getByTestId('week-ahead-sized')).toHaveText('Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it.')
+  await expect(ahead).not.toContainText('landed inside')
   expect(new Set(await ahead.getByTestId('ahead-value').allTextContents())).toEqual(new Set(['75']))
   await expect(ahead.locator('.is-low')).toHaveCount(0)
 })
@@ -1061,8 +1079,12 @@ test('the week ahead: once twenty day-ahead forecasts are scored, the card says 
   await page.reload()
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
-  await expect(page.getByTestId('week-ahead-model')).toContainText('Of 20 day-ahead forecasts scored so far, 13 landed inside their range (65 percent).')
-  await expect(page.getByTestId('week-ahead-model')).not.toContainText('Its range is sized')
+  // Said on the card's small line under the graph (item 8); under Details, the way and no word of how the range is built.
+  await expect(page.getByTestId('week-ahead-rate')).toHaveText('Of 20 day-ahead forecasts scored so far, 13 landed inside their range (65 percent).')
+  await page.getByTestId('week-ahead-details').click()
+  await expect(page.getByTestId('week-ahead-model')).toBeVisible()
+  await expect(page.getByTestId('week-ahead-sized')).toHaveCount(0)
+  await expect(page.getByTestId('week-ahead')).not.toContainText('Its range is sized')
 })
 
 test('the week ahead: a Monday dip in the record is forecast, and the Monday alone is drawn as the lowest (truth audit, 2026-09-24)', async ({ page }) => {
@@ -1078,8 +1100,41 @@ test('the week ahead: a Monday dip in the record is forecast, and the Monday alo
   expect(await ahead.getByTestId('ahead-value').allTextContents()).toEqual(['75', '75', '75', '75', '25', '75', '75'])
   await expect(ahead.locator('.wa-val.is-low')).toHaveCount(1)
   await expect(ahead.locator('.wa-val.is-low')).toHaveText('25')
+  // Its bar alone in the accent, and each bar as tall as its reading out of 100 (item 8): the Monday's a third of the others'.
+  await expect(ahead.locator('.wa-bar.is-low')).toHaveCount(1)
+  const heights = await ahead.getByTestId('ahead-bar').evaluateAll((bars) => bars.map((b) => (b as SVGGraphicsElement).getBBox().height))
+  expect(heights).toHaveLength(7)
+  expect(heights[0] / heights[4]).toBeGreaterThan(2.8)
+  expect(heights[0] / heights[4]).toBeLessThan(3.2)
+  for (const i of [1, 2, 3, 5, 6]) expect(Math.abs(heights[i] - heights[0])).toBeLessThan(0.5)
+  // The days differ, so the card opens on the graph, with no one level said.
+  await expect(page.getByTestId('week-ahead-summary')).toHaveCount(0)
+  await page.getByTestId('week-ahead-details').click()
   await expect(page.getByTestId('week-ahead-model')).toContainText('Expected from this weekday at this time of day')
   await expect(page.getByTestId('week-ahead-model')).not.toContainText('come out alike')
+  // The ranges leave the graph for Details (item 8), so they are said there when the days differ too.
+  await expect(page.getByTestId('week-ahead-range')).toHaveText(/^Expected range: \d+–\d+ (each day|tomorrow and \d+–\d+ a week out)\.$/)
+})
+
+test('the week ahead: its days are named in short where the names fit their columns, and by their initials where they would not (2026-10-19)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 8, 30, 12, 0))
+  await page.goto('./')
+  await seedLevels(page, 35, [4, 4, 4, 4, 4, 4, 4])
+  await page.reload()
+  await page.getByRole('button', { name: 'Mirror', exact: true }).click()
+  await page.getByRole('button', { name: /^The weekly view/ }).click()
+  const days = page.getByTestId('week-ahead').locator('text.wa-day')
+  await expect(days).toHaveText(['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'])
+  // A column narrower than a day's short name: the days are named by their initials, each inside its own column.
+  await page.setViewportSize({ width: 200, height: 844 })
+  await expect(days).toHaveText(['T', 'F', 'S', 'S', 'M', 'T', 'W'])
+  const fit = await page.getByTestId('week-ahead').locator('svg.chart').evaluate((svg) => {
+    const step = (svg as SVGSVGElement).viewBox.baseVal.width / 7
+    return [...svg.querySelectorAll<SVGTextElement>('text.wa-day')].every((t) => t.getComputedTextLength() <= step - 4)
+  })
+  expect(fit).toBe(true)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(days).toHaveText(['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'])
 })
 
 test('testing smarter: readings and chips are decided by you, no swap yet, the baseline steady line, the estimator named', async ({ page }) => {

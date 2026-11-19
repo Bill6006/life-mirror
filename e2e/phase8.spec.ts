@@ -70,6 +70,8 @@ test('the writer moves today’s morning by a private item and a note event, and
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   const weekly = page.getByTestId('weekly')
   await expect(weekly).toBeVisible()
+  // The way is under Details (the forecast follow-ups, item 8): opened, so what is read holds it.
+  await page.getByTestId('week-ahead-details').click()
   await expect(page.getByTestId('week-ahead-model')).toBeVisible()
   const shown = (await weekly.innerText()).toLowerCase()
   for (const never of [SEED_ITEM.name, SEED_TYPE_LABEL, SEED_TYPE, `private.${SEED_ITEM.id}`, 'noticed.']) expect(shown, never).not.toContain(never.toLowerCase())

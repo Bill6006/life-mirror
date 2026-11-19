@@ -16,7 +16,7 @@ import type { Difference, Moved, Scorecard } from './weekly'
 import { missingLines, missLines, togetherLine } from './honesty/words'
 
 // Mirror → The weekly view (final UI polish, 2026-09-26): the week ahead (its line, the graph, always
-// shown, and its range), the week reviewed, what moved this week, the baseline and the gap; then the
+// shown, how often it lands, and its ranges and way under Details), the week reviewed, what moved this week, the baseline and the gap; then the
 // deeper diagnostics, each closed until opened and nothing in it left out: best-days, the scorecard,
 // what lasts, catalogue health, people around, and the extension prompt. Counts and calculations,
 // each with what it rests on; best-days stays silent under its threshold and always says how many days it has.
@@ -49,14 +49,28 @@ export function aheadRangeLine(flat: Pick<FlatWeek, 'near' | 'far'>): string {
 export const MEASURED_FROM = 20
 
 /**
- * What the week-ahead card says of its range (2026-11-12). Until twenty day-ahead forecasts are scored: how the range
- * is built. From then: how many of the forecasts made before their check-ins landed inside their range, as counted.
- * Never a rate that was not measured.
+ * The small line under the week's graph (2026-11-12; item 8 of the forecast follow-ups, 2026-11-19). Until twenty
+ * day-ahead forecasts are scored: when it will say how often they land. From then: how many of the forecasts made before
+ * their check-ins landed inside their range, as counted. Never a rate that was not measured.
  */
 export function rangeWords(sc: Pick<Scorecard, 'scored' | 'hitRate'>): string {
   const c = copy.weekly
-  if (sc.scored < MEASURED_FROM || sc.hitRate === null) return c.modelBuilt
+  if (sc.scored < MEASURED_FROM || sc.hitRate === null) return c.modelPending
   return fill(c.modelMeasured, { n: String(sc.scored), hits: String(Math.round(sc.hitRate * sc.scored)), rate: pct(sc.hitRate) })
+}
+
+/** Under Details, until twenty day-ahead forecasts are scored: how the range is built. From then nothing: the line under the graph says what was counted. */
+export function sizedWords(sc: Pick<Scorecard, 'scored' | 'hitRate'>): string | null {
+  return sc.scored < MEASURED_FROM || sc.hitRate === null ? copy.weekly.modelBuilt : null
+}
+
+/** The week's range a day out and at its far end, from its own days: the first and the last with a forecast. */
+export function weekRanges(rows: readonly { expected: number | null; lo: number | null; hi: number | null }[]): Pick<FlatWeek, 'near' | 'far'> | null {
+  const known = rows.filter((r): r is { expected: number; lo: number; hi: number } => r.expected !== null && r.lo !== null && r.hi !== null)
+  if (!known.length) return null
+  const first = known[0]
+  const last = known[known.length - 1]
+  return { near: { lo: first.lo, hi: first.hi }, far: { lo: last.lo, hi: last.hi } }
 }
 
 /** One condition of best days: its counts on the best days and on the others, then where it stands, in the standard's own words. */
@@ -81,6 +95,8 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
   if (!w) return <section class="screen" />
   const sc = w.scorecard
   const flat = w.weekAheadReady ? flatWeek(w.weekAhead, w.model) : null
+  const ranges = weekRanges(w.weekAhead)
+  const sized = sizedWords(sc)
   const seconds = (ms: number | null) => (ms === null ? c.none : fill(c.seconds, { s: String(Math.round(ms / 1000)) }))
 
   return (
@@ -91,37 +107,44 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
 
       <h2 class="section">{c.ahead}</h2>
       <div class="card pad" data-testid="week-ahead">
-        {w.weekAheadReady && flat ? (
+        {w.weekAheadReady ? (
           <>
-            {/* Days with no meaningful difference: said as one level first (the final checklist, item 3), then the graph, always shown, then its range and the model. */}
-            <p class="ink no-gap" data-testid="week-ahead-summary">
-              {fill(flat.why === 'blind' ? c.aheadFlatBlind : c.aheadFlatNone, { level: String(flat.level) })}
-            </p>
+            {/* Days with no meaningful difference: said as one level first (the final checklist, item 3). Then the graph,
+                always shown, how often its forecasts land, and under Details, closed until opened, its ranges and its way
+                (the forecast follow-ups, item 8, 2026-11-19). */}
+            {flat && (
+              <p class="ink no-gap" data-testid="week-ahead-summary">
+                {fill(flat.why === 'blind' ? c.aheadFlatBlind : c.aheadFlatNone, { level: String(flat.level) })}
+              </p>
+            )}
             <div class="week-chart">
               <WeekAhead rows={w.weekAhead} low={w.weekAheadLow} />
             </div>
-            <p class="note">{c.aheadCaption}</p>
-            <p class="note" data-testid="week-ahead-range">
-              {aheadRangeLine(flat)}
-            </p>
             {w.model && (
-              <p class="note faint no-gap" data-testid="week-ahead-model">
-                {fill(c.model, { model: copy.brief.models[w.model] })} {rangeWords(sc)}
+              <p class="note no-gap" data-testid="week-ahead-rate">
+                {rangeWords(sc)}
               </p>
             )}
-          </>
-        ) : w.weekAheadReady ? (
-          <>
-            <div class="week-chart">
-              <WeekAhead rows={w.weekAhead} low={w.weekAheadLow} />
-            </div>
-            <p class="note no-gap">{c.aheadCaption}</p>
-            {w.model && (
-              <p class="note faint no-gap" data-testid="week-ahead-model">
-                {fill(c.model, { model: copy.brief.models[w.model] })} {rangeWords(sc)}
-                {w.weekAheadAlike && ` ${c.aheadAlike}`}
-              </p>
-            )}
+            <Disclosure label={copy.disclose.details} testid="week-ahead-details" class="week-ahead-details">
+              <div class="calc">
+                {ranges && (
+                  <p class="calc-line" data-testid="week-ahead-range">
+                    {aheadRangeLine(ranges)}
+                  </p>
+                )}
+                {w.model && (
+                  <p class="calc-line" data-testid="week-ahead-model">
+                    {fill(c.model, { model: copy.brief.models[w.model] })}
+                    {!flat && w.weekAheadAlike && ` ${c.aheadAlike}`}
+                  </p>
+                )}
+                {w.model && sized && (
+                  <p class="calc-line" data-testid="week-ahead-sized">
+                    {sized}
+                  </p>
+                )}
+              </div>
+            </Disclosure>
           </>
         ) : (
           <p class="note no-gap">{c.aheadNone}</p>

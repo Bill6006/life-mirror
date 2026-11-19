@@ -495,10 +495,12 @@ TABLE = [
     dict(id='checks-in-weekly-view', file=WS, tests=[HS, '-g', 'weekly view says'],
          old="              <span class=\"calc-key\">{copy.honesty.missingTitle}</span> · {missingLines(w.checks.missing).join(' ')}",
          new="              <span class=\"calc-key\">{copy.honesty.missingTitle}</span>"),
-    dict(id='chart-day-initials', file=CH, tests=[TH, '-g', 'stage R7'],
+    # Since the week-ahead graph lost its two gutters (the forecast follow-ups, item 8, 2026-11-19), the short names fit
+    # at every width the theme walk reads: the day names are asked about at a narrower width of their own.
+    dict(id='chart-day-initials', file=CH, tests=['e2e/smoke.spec.ts', '-g', 'by their initials where they would not'],
          old="{named ? weekdayInitial(d.day) : weekdayShort(d.day)}",
          new="{weekdayShort(d.day)}"),
-    dict(id='chart-names-measured', file=CH, tests=[TH, '-g', 'stage R7'],
+    dict(id='chart-names-measured', file=CH, tests=['e2e/smoke.spec.ts', '-g', 'by their initials where they would not'],
          old=".every((t) => t.getComputedTextLength() <= step - DAY_GAP)",
          new=".every(() => true)"),
     dict(id='test-tap-gone', file='src/brainFlow.ts', tests=['src/brainFlow.test.ts'],

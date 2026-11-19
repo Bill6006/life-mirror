@@ -567,7 +567,7 @@ const MORE: typeof STATES = [
     tab: 'Mirror',
     open: async (p) => {
       await p.getByRole('button', { name: /^The weekly view/ }).click()
-      for (const id of ['weekly-best', 'weekly-scorecard', 'weekly-lasts', 'weekly-health', 'weekly-people', 'weekly-extension']) await p.getByTestId(id).click()
+      for (const id of ['week-ahead-details', 'weekly-best', 'weekly-scorecard', 'weekly-lasts', 'weekly-health', 'weekly-people', 'weekly-extension']) await p.getByTestId(id).click()
       await expect(p.getByTestId('weekly-prompt')).toBeVisible()
       await expect(p.getByTestId('family-health').first()).toBeVisible()
     },

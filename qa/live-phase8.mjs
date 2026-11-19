@@ -140,6 +140,7 @@ try {
   await page.getByRole('button', { name: 'Mirror', exact: true }).click()
   await page.getByRole('button', { name: /^The weekly view/ }).click()
   await page.getByTestId('weekly').waitFor({ state: 'visible' })
+  await page.getByTestId('week-ahead-details').click()
   const shown = ((await page.getByTestId('weekly').innerText()) ?? '').toLowerCase()
   check('the Weekly View shows the forecast’s way', await page.getByTestId('week-ahead-model').isVisible())
   const named = [SEED_ITEM.name, SEED_TYPE_LABEL, SEED_TYPE, `private.${SEED_ITEM.id}`, 'noticed.'].filter((w) => shown.includes(w.toLowerCase()))

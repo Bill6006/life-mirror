@@ -231,7 +231,9 @@ try {
       await page.reload()
       await tab(page, 'Mirror')
       await page.getByRole('button', { name: /^The weekly view/ }).click()
-      return text(page.getByTestId('week-ahead-model'))
+      // The card's small line and, under Details, its way (the forecast follow-ups, item 8): the card read whole, opened.
+      await page.getByTestId('week-ahead-details').click()
+      return text(page.getByTestId('week-ahead'))
     }
     const built = await model()
     check('with no forecast scored, the card says how its range is built, and no rate', (built ?? '').includes('Its range is sized from its own misses over those weeks') && !(built ?? 'landed inside').includes('landed inside'), built ?? 'no line')

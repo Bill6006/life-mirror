@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aheadRangeLine, MEASURED_FROM, movedWords, rangeWords } from './weeklyScreen'
+import { aheadRangeLine, MEASURED_FROM, movedWords, rangeWords, sizedWords, weekRanges } from './weeklyScreen'
 
 // Final UI polish (2026-09-26): the week's range is said plainly, whichever way it runs from tomorrow
 // to a week out. A later range can be wider, narrower or only shifted; it is never said to widen.
@@ -25,14 +25,24 @@ describe('the week ahead’s range, in plain words', () => {
 })
 
 // 2026-11-12: the card said "Six in ten of the check-ins it forecast before landed inside a range this wide" as fixed
-// words. That is how the range is built, not what was measured. It now says how the range is built until twenty
-// day-ahead forecasts are scored, and from then the count itself.
+// words. That is how the range is built, not what was measured. It says how the range is built until twenty
+// day-ahead forecasts are scored, and from then the count itself. The forecast follow-ups, item 8 (2026-11-19): the
+// small line under the graph says when it will say how often they land, then the count; how the range is built moves
+// under Details, said there only until the count is.
 describe('what the week-ahead card says of its range', () => {
-  it('says how the range is built, and no measured rate, until twenty day-ahead forecasts are scored', () => {
-    const built = 'Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it. How often its forecasts land is said here once twenty day-ahead forecasts are scored.'
-    expect(rangeWords({ scored: 0, hitRate: null })).toBe(built)
-    expect(rangeWords({ scored: 19, hitRate: 18 / 19 })).toBe(built)
-    expect(built).not.toMatch(/percent|landed inside/)
+  it('says when it will say how often they land, and no measured rate, until twenty day-ahead forecasts are scored', () => {
+    const pending = 'How often its forecasts land is said here once twenty day-ahead forecasts are scored.'
+    expect(rangeWords({ scored: 0, hitRate: null })).toBe(pending)
+    expect(rangeWords({ scored: 19, hitRate: 18 / 19 })).toBe(pending)
+    expect(pending).not.toMatch(/percent|landed inside/)
+  })
+
+  it('says under Details how the range is built until twenty day-ahead forecasts are scored, and nothing there from then', () => {
+    const built = 'Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it.'
+    expect(sizedWords({ scored: 0, hitRate: null })).toBe(built)
+    expect(sizedWords({ scored: 19, hitRate: 18 / 19 })).toBe(built)
+    expect(sizedWords({ scored: 20, hitRate: 13 / 20 })).toBeNull()
+    expect(sizedWords({ scored: 41, hitRate: 20 / 41 })).toBeNull()
   })
 
   it('says what was counted from the twentieth on: how many landed inside their range, never a fixed six in ten', () => {
@@ -40,6 +50,25 @@ describe('what the week-ahead card says of its range', () => {
     expect(rangeWords({ scored: 20, hitRate: 13 / 20 })).toBe('Of 20 day-ahead forecasts scored so far, 13 landed inside their range (65 percent).')
     expect(rangeWords({ scored: 41, hitRate: 20 / 41 })).toBe('Of 41 day-ahead forecasts scored so far, 20 landed inside their range (49 percent).')
     expect(rangeWords({ scored: 30, hitRate: 0 })).toBe('Of 30 day-ahead forecasts scored so far, 0 landed inside their range (0 percent).')
+  })
+})
+
+// Item 8: the ranges leave the graph for Details, so they are said there whether or not the days differ.
+describe('the week’s ranges under Details, read from its own days (item 8)', () => {
+  it('reads a day out from the first day with a forecast, and the far end from the last', () => {
+    const rows = [
+      { expected: null, lo: null, hi: null },
+      { expected: 70, lo: 62, hi: 78 },
+      { expected: 66, lo: 58, hi: 76 },
+      { expected: 72, lo: 60, hi: 84 },
+      { expected: null, lo: null, hi: null },
+    ]
+    expect(weekRanges(rows)).toEqual({ near: { lo: 62, hi: 78 }, far: { lo: 60, hi: 84 } })
+    expect(aheadRangeLine(weekRanges(rows)!)).toBe('Expected range: 62–78 tomorrow and 60–84 a week out.')
+  })
+
+  it('has none when no day has a forecast', () => {
+    expect(weekRanges([{ expected: null, lo: null, hi: null }, { expected: 70, lo: null, hi: null }])).toBeNull()
   })
 })
 

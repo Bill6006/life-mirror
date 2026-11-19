@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { BLOCKS, type Block } from './blocks'
 import { copy } from './copy'
 import { formatDayTiny, formatTime, weekdayInitial, weekdayShort } from './format'
-import { valuePlacement, whiskerParts } from './chartGeometry'
 import type { ContextPoint, DayValues } from './series'
 
 // Hand-drawn SVG, hairlines throughout, the accent for now. Gaps stay gaps.
@@ -201,43 +200,22 @@ export interface AheadDay {
   hi: number | null
 }
 
-/** The five bands. The numbers mark the boundaries; the names sit at the middle of each band. */
-const BAND_ROWS: readonly { band: 'empty' | 'wornDown' | 'gettingBy' | 'solid' | 'firing'; at: number }[] = [
-  { band: 'empty', at: 10 },
-  { band: 'wornDown', at: 30 },
-  { band: 'gettingBy', at: 50 },
-  { band: 'solid', at: 70 },
-  { band: 'firing', at: 90 },
-]
-
-const AXIS_TICKS = [0, 20, 40, 60, 80, 100]
-
-/** Half a band, in reading points: a name sits at its middle and its shading spans this either side. */
-const BAND_HALF = 10
-
-/** Half the width of a whisker's end cap. */
-const CAP_HALF = 3.5
-
-/** How far a day's edge notch drops below the axis. */
-const NOTCH = 3.5
-
-/** Half the break the whisker leaves where the step crosses it, so the two never touch. */
-const WHISKER_GAP = 1.3
-
-/** The numbers' gutter and the band names' gutter, wide enough for their words at the floor size (Rule 15, 2026-09-24). */
-const TICK_GUTTER = 26
-const BAND_GUTTER = 68
+/** The room over a bar for its number, the air between a bar and its number, the space between two bars and a bar's rounded corner, in pixels. */
+const VALUE_ROOM = 20
+const VALUE_AIR = 6
+/** How far a number's digits stand above their baseline, with a hair of air. */
+const VALUE_HEIGHT = 10
+const BAR_GAP = 4
+const BAR_CORNER = 3
 
 /** The least space kept between two days' names, in pixels: closer, the days are named by their initials. */
 const DAY_GAP = 4
 
 /**
- * The week ahead, as a compact strip: a narrow gutter for the numbers, a second for the band
- * names, and the seven days across the rest. One flat step per day at the expected reading with
- * a vertical connector between days, a thin whisker for the range, and the lowest days in the
- * accent, none when no day reads lower than another. A day with no forecast is a gap, not a guess.
- * The plot is a few translucent panes laid over one another, tinted by the theme, so the cells
- * read without ever looking striped.
+ * The week ahead as seven bars (the forecast follow-ups, item 8, 2026-11-19, at the owner's word): one bar a day at
+ * its expected reading out of 100, its number over it and its day's name under it, and nothing more: no range, no axis
+ * numbers, no band names. The lowest days are drawn in the accent, none when no day reads lower than another. A day
+ * with no forecast is a gap, not a guess. The ranges and the way the week was forecast sit under the card's Details.
  */
 export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: readonly number[] }) {
   const [ref, W] = useWidth(320)
@@ -247,17 +225,15 @@ export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: reado
   const svg = useRef<SVGSVGElement>(null)
   const [initials, setInitials] = useState<{ width: number; on: boolean }>({ width: 0, on: false })
   const H = 136
-  const top = 10
+  const top = VALUE_ROOM
   const bottom = 114
-  const left = TICK_GUTTER
-  const right = W - 4
-  // The band names have a gutter of their own.
-  const x0 = left + BAND_GUTTER
-  const step = (right - x0) / rows.length
+  const step = W / rows.length
   const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
-  const startOf = (i: number) => x0 + i * step
-  const endOf = (i: number) => x0 + (i + 1) * step
-  const centreOf = (i: number) => x0 + (i + 0.5) * step
+  const startOf = (i: number) => i * step
+  const centreOf = (i: number) => (i + 0.5) * step
+  // The bars keep their 0 to 100 scale; only the empty room over the highest number is cropped, so the card does not open on a gap.
+  const values = rows.flatMap((d) => (d.expected === null ? [] : [d.expected]))
+  const crop = values.length ? Math.max(0, Math.floor(y(Math.max(...values)) - VALUE_AIR - VALUE_HEIGHT - 4)) : 0
   const named = initials.width === W ? initials.on : false
   useLayoutEffect(() => {
     if (initials.width === W || !svg.current) return
@@ -274,78 +250,24 @@ export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: reado
       live = false
     }
   }, [])
-  /** A value's baseline: just above its step, or just under it when the step is too near the top. */
-  const labelY = (v: number) => valuePlacement(y(v), top).y
   const isLow = (i: number) => low.includes(i)
-  // Every vertical the grid draws: the plot's own edges and each day's, plus a notch under each.
-  const dayEdges = rows.map((_, i) => startOf(i))
-  const verticals = [left, ...dayEdges, right]
-  const notches = [...dayEdges, right]
-  // One path for the whole step, so every corner is a join rather than two caps overlapping.
-  let stepPath = ''
-  let open = false
-  rows.forEach((d, i) => {
-    if (d.expected === null) {
-      open = false
-      return
-    }
-    if (!open) stepPath += `M${startOf(i)},${y(d.expected)}`
-    else stepPath += `V${y(d.expected)}`
-    stepPath += `H${endOf(i)}`
-    open = true
-  })
+  /** A day's bar, from the baseline up to its value, its two top corners rounded. */
+  const bar = (i: number, v: number) => {
+    const x0 = startOf(i) + BAR_GAP / 2
+    const x1 = startOf(i) + step - BAR_GAP / 2
+    const t = y(v)
+    const r = Math.max(0, Math.min(BAR_CORNER, (x1 - x0) / 2, bottom - t))
+    return `M${x0},${bottom}V${t + r}Q${x0},${t} ${x0 + r},${t}H${x1 - r}Q${x1},${t} ${x1},${t + r}V${bottom}Z`
+  }
 
   return (
     <div ref={ref} class="chart-box">
-      <svg ref={svg} class="chart" viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={copy.weekly.ahead}>
-        <rect class="wa-pane" x={left} y={top} width={right - left} height={bottom - top} />
-        {BAND_ROWS.map((b, i) => (
-          <rect key={b.band} class={i % 2 === 0 ? 'wa-row' : 'wa-row is-dim'} x={x0} y={y(b.at + BAND_HALF)} width={right - x0} height={y(b.at - BAND_HALF) - y(b.at + BAND_HALF)} />
-        ))}
-        {rows.map((d, i) => i % 2 === 1 && <rect key={`p${d.day}`} class="wa-col" x={startOf(i)} y={top} width={step} height={bottom - top} />)}
-
-        {AXIS_TICKS.map((v) => (
-          <line key={`h${v}`} class="wa-grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
-        ))}
-        {verticals.map((x) => (
-          <line key={`v${x}`} class="wa-grid" x1={x} x2={x} y1={top} y2={bottom} />
-        ))}
-        {notches.map((x) => (
-          <line key={`n${x}`} class="wa-grid" x1={x} x2={x} y1={bottom} y2={bottom + NOTCH} />
-        ))}
-
-        {AXIS_TICKS.map((v) => (
-          <text key={v} class="wa-tick" x={left - 4} y={y(v) + 4} text-anchor="end">
-            {v}
-          </text>
-        ))}
-        {BAND_ROWS.map((b) => (
-          <text key={b.band} class="wa-band" x={(left + x0) / 2} y={y(b.at) + 4} text-anchor="middle">
-            {copy.bands[b.band]}
-          </text>
-        ))}
-
-        {rows.map((d, i) => {
-          if (d.lo === null || d.hi === null) return null
-          const cx = centreOf(i)
-          const hi = y(d.hi)
-          const lo = y(d.lo)
-          const mid = d.expected === null ? null : y(d.expected)
-          // The whisker stops at its number and starts again past its step, so it runs through neither. With no step, it runs whole.
-          const parts: readonly (readonly [number, number])[] = whiskerParts(hi, lo, mid, top, WHISKER_GAP)
-          return (
-            <g key={`w${d.day}`} class={isLow(i) ? 'wa-whisker is-low' : 'wa-whisker'}>
-              {parts.map(([from, to]) => to > from && <line key={from} x1={cx} x2={cx} y1={from} y2={to} />)}
-              <line x1={cx - CAP_HALF} x2={cx + CAP_HALF} y1={hi} y2={hi} />
-              <line x1={cx - CAP_HALF} x2={cx + CAP_HALF} y1={lo} y2={lo} />
-            </g>
-          )
-        })}
-        <path class="wa-step" d={stepPath} />
-        {rows.map((d, i) => isLow(i) && d.expected !== null && <line key={`l${d.day}`} class="wa-step is-low" x1={startOf(i)} x2={endOf(i)} y1={y(d.expected)} y2={y(d.expected)} />)}
+      <svg ref={svg} class="chart" viewBox={`0 ${crop} ${W} ${H - crop}`} width={W} height={H - crop} role="img" aria-label={copy.weekly.ahead}>
+        {rows.map((d, i) => (d.expected === null ? null : <path key={`b${d.day}`} class={isLow(i) ? 'wa-bar is-low' : 'wa-bar'} d={bar(i, d.expected)} data-testid="ahead-bar" />))}
+        <line class="wa-base" x1={0} x2={W} y1={bottom} y2={bottom} />
         {rows.map((d, i) =>
           d.expected === null ? null : (
-            <text key={`v${d.day}`} class={isLow(i) ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={labelY(d.expected)} text-anchor="middle" data-testid="ahead-value">
+            <text key={`v${d.day}`} class={isLow(i) ? 'wa-val is-low' : 'wa-val'} x={centreOf(i)} y={y(d.expected) - VALUE_AIR} text-anchor="middle" data-testid="ahead-value">
               {Math.round(d.expected)}
             </text>
           ),

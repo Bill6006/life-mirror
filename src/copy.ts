@@ -1079,10 +1079,11 @@ export const copy = {
     ahead: 'The week ahead, as you usually are',
     aheadLine: '{day}: {expected} ({lo} to {hi})',
     aheadNone: 'The week ahead appears once fourteen days each have a complete check-in.',
-    aheadCaption: 'Daily expected value with range (lower–upper).',
     model: 'Expected from {model}: of four ways to forecast, the one that came closest a day ahead over your last four weeks.',
-    /** What follows it (2026-11-12): how the range is built until twenty day-ahead forecasts are scored, and from then what was counted. Never a rate that was not measured. */
-    modelBuilt: 'Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it. How often its forecasts land is said here once twenty day-ahead forecasts are scored.',
+    /** Under Details, after the way, until twenty day-ahead forecasts are scored (2026-11-12; moved there by the forecast follow-ups, item 8): how the range is built. */
+    modelBuilt: 'Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it.',
+    /** The small line under the graph (item 8): until twenty are scored, when it will say how often they land; from then what was counted. Never a rate that was not measured. */
+    modelPending: 'How often its forecasts land is said here once twenty day-ahead forecasts are scored.',
     modelMeasured: 'Of {n} day-ahead forecasts scored so far, {hits} landed inside their range ({rate} percent).',
     aheadAlike: 'It does not tell one weekday from another, so the days ahead come out alike.',
     aheadFlatBlind: 'No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around {level}.',
