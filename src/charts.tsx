@@ -224,9 +224,10 @@ export function WeekAhead({ rows, low }: { rows: readonly AheadDay[]; low: reado
   // in whichever face the theme gives them, before the first paint and again once the fonts have loaded.
   const svg = useRef<SVGSVGElement>(null)
   const [initials, setInitials] = useState<{ width: number; on: boolean }>({ width: 0, on: false })
-  const H = 136
   const top = VALUE_ROOM
-  const bottom = 114
+  // 0 to 100 over 130 pixels: the bars as tall as the approved frame draws them at a phone's width (item 8).
+  const bottom = top + 130
+  const H = bottom + 22
   const step = W / rows.length
   const y = (v: number) => bottom - ((bottom - top) / 100) * Math.max(0, Math.min(100, v))
   const startOf = (i: number) => i * step
