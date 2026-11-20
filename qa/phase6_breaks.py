@@ -620,10 +620,12 @@ TABLE = [
          old=" An observation that cites no served line is refused.",
          new="",
          tests=[MPT], pattern='say the rules the answer is checked by'),
+    # Restated 2026-11-20: the forecast follow-ups, item 4, moved the count rule's line, and this sentence with it, into
+    # a test of its own; the test named before no longer reads it, and the sweep after Batch 1 found the break missed.
     dict(id='told-the-number-rule', file=MP,
          old=" Any other number is refused.",
          new="",
-         tests=[MPT], pattern='say the rules the answer is checked by'),
+         tests=[MPT], pattern='count nothing itself'),
     # Restated 2026-11-20: the forecast follow-ups, item 4, gave the read's count rule words of its own and a test of its own.
     dict(id='told-a-count-in-words-is-held-too', file=MP,
          old=' and no count in words such as "two evenings", "three times" or "four of the notes",',
