@@ -119,7 +119,8 @@ async function summary(name, row, { names = false, evening = false } = {}) {
   await put(page, 'forecasts', [forecast(row)])
   if (names) await put(page, 'settings', [{ ...((await rowsOf(page, 'settings'))[0] ?? { id: 1 }), showPrivate: true }])
   await page.goto(LIVE)
-  await page.getByRole('button', { name: /Logged/ }).click()
+  // The morning's own row: where the evening before was done, it is listed as logged too.
+  await page.getByRole('button', { name: /^Morning Logged/ }).click()
   await page.getByTestId('usual-line').waitFor({ state: 'visible' })
   const usual = await text(page.getByTestId('usual-line'))
   const moved = (await page.getByTestId('adjusted-line').count()) ? await text(page.getByTestId('adjusted-line')) : null

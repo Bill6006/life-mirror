@@ -60,10 +60,10 @@ function checkin(day: string, block: 'morning' | 'evening', hour: number): Recor
 /** Today's morning forecast, as the challenger leaves a row it moved. */
 const moved = (over: Record<string, unknown> = {}) => ({ day: DAY, block: 'morning', horizon: 0, madeOn: DAY, model: 'sameBlock', point: 60, lo: 52, hi: 68, whatIf: null, adj: -6.2, adjBy: ['night.dinner'], ...over })
 
-/** Today's morning check-in, done, opened from Now. */
+/** Today's morning check-in, done, opened from Now: its own row, since the evening before is listed as logged too. */
 async function openMorning(page: Page): Promise<void> {
   await page.goto('./')
-  await page.getByRole('button', { name: /Logged/ }).click()
+  await page.getByRole('button', { name: /^Morning Logged/ }).click()
   await expect(page.getByTestId('summary')).toBeVisible()
 }
 
