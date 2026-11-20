@@ -144,6 +144,8 @@ async function why(name, row) {
   await card.getByTestId('brief-why').click()
   const panel = card.getByTestId('brief-why-panel')
   await panel.waitFor({ state: 'visible' })
+  // The line's grounds come by a live read a moment after the panel opens: wait for today's forecast before reading.
+  await panel.getByText("Today's morning is forecast", { exact: false }).waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
   const words = await text(panel)
   await shot(page, name, card)
   await ctx.close()
