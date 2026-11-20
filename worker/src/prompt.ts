@@ -174,6 +174,9 @@ const LAST_RULE = '- Plain words, second person, no headings, no lists, no emoji
  */
 export const LADDER_RULE = `- The facts ladder.* are the engine's own randomised tests, each on a rung of the evidence ladder: speak of a move's effect no more firmly than its rung. No call yet claims no effect; an early sign is said as an early sign, or with may or might; a likely call as likely; only an established call may be called reliable or proven; and a move whose call hurts or makes little difference is never said to help. The fact track says how its earlier calls have held.`
 
+/** The forecast follow-ups, item 1 (2026-11-20): beside a test with no call yet, a strength phrase is said of research, and the test's own call is said too. */
+export const STRENGTH_RULE = `- When you cite a fact ladder.* whose call is No call yet, use "strong evidence", "good evidence", "some evidence" or "thin evidence" only in a sentence that names research ("research", "studies" or "the library"), never of the person or of their own test; and then also say in the answer that their own test has "no call yet".`
+
 /**
  * Ask Life Mirror (stage A2; the agreed design's points 1, 9, 11 and 15): Claude answers one of the person's own questions
  * about their record. It explains what the engine computed and states no number the engine did not produce; every rule
@@ -218,6 +221,7 @@ function askSystem(task: 'ask' | 'deep', words: number): string {
     EVIDENCE_RULE,
     `- With a fact assoc.* or private.* cited, the validator refuses a past cause aimed at the person (gave you, made you, kept you, left you, cost you, lifted you, helped you and the like), "because you", "that is why", "made the difference" and "is what gets it done": say what went with what instead ("evenings after a walk read higher than evenings without one").`,
     LADDER_RULE,
+    STRENGTH_RULE,
     `- The validator reads each of these words, in every form listed and anywhere in the answer, as a claim that a move helps: ${HELP_FORMS.join(', ')}. Use them only while you cite a test whose call says it helps, and with likely, may, so far or an early sign unless that call is established; "not yet shown to help" is no claim. Of a test with no call yet, say only that there is no call yet. Reliable, proven, consistent or certainly only of an established test.`,
     `- Never use the words failed, bad, lazy, behind, weak, slipped again. No score of the person, no verdict on them, no false reassurance, no therapy-speak, no exclamation marks.`,
     `- Never cite the asking as support: not "as you suspected", "as you thought" or the like. That the person asked is never evidence.`,

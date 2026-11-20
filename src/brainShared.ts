@@ -421,6 +421,34 @@ export function ladderWordingRefusals(text: string, factIds: readonly string[], 
   return out
 }
 
+/** The research cards' grade phrases, any of them: a strength said of evidence. */
+const STRENGTH_WORDS = new RegExp(`\\b(${Object.values(GRADE_PHRASES).join('|')})\\b`, 'i')
+/** Words that name research: a strength phrase in a sentence that holds one is said of the research. */
+export const RESEARCH_WORDS = /\b(research|studies|the library)\b/i
+/** The words that say a test has made no call. */
+export const NO_CALL_WORDS = /\bno call yet\b/i
+/** An answer's sentences: split after a stop, a question mark or an exclamation mark, and at every line break. */
+const sentencesOf = (text: string): string[] => text.split(/(?<=[.!?])\s+|\n+/).filter((s) => s.trim() !== '')
+
+/**
+ * The forecast follow-ups, item 1 (2026-11-20, at the owner's word): where an Ask answer cites one of the person's own
+ * tests that has no call yet, "strong evidence", "good evidence", "some evidence" and "thin evidence" may stand only in
+ * a sentence that names research ("research", "studies" or "the library"), and the answer must then also say the test
+ * has "no call yet". Six answers from 21 October to 16 November said "strong evidence" beside such a test in a sentence
+ * that named no research: the strength was a grade-A card's, and it read as a claim about the person.
+ */
+export function strengthRefusals(text: string, factIds: readonly string[], sheet: Pick<FactSheet, 'facts'>): string[] {
+  const open = sheet.facts.some((f) => isLadderFact(f.id) && factIds.includes(f.id) && (f.values.level ?? 'none') === 'none')
+  if (!open) return []
+  const said = sentencesOf(text).filter((s) => STRENGTH_WORDS.test(s))
+  if (!said.length) return []
+  const out: string[] = []
+  const bare = [...new Set(said.filter((s) => !RESEARCH_WORDS.test(s)).map((s) => `"${(STRENGTH_WORDS.exec(s) as RegExpExecArray)[0].toLowerCase()}"`))]
+  if (bare.length) out.push(`says ${bare.join(', ')} beside a test with no call yet, in a sentence that names no research: say it of the research ("research", "studies" or "the library")`)
+  if (!NO_CALL_WORDS.test(text)) out.push('says how strong the evidence is beside a test with no call yet, and not that the test has "no call yet": say so')
+  return out
+}
+
 const STANDING_RANK: Record<string, number> = { tooFew: 0, noPattern: 1, lead: 2, pattern: 3 }
 /** Words that call a thing the usual case: only a comparison that stands as a steady pattern may be said under them. */
 export const USUAL_WORDS = /\b(most likely|most often|usually|tends? to|tended to)\b/i
@@ -708,6 +736,8 @@ function refusals(text: string, factIds: readonly string[], cardIds: readonly st
   }
   // Stage R5: a line citing the learning repair's tests speaks of their effect no more firmly than their rungs allow.
   if (factIds.some(isLadderFact)) out.push(...ladderWordingRefusals(text, factIds, sheet, all))
+  // The forecast follow-ups, item 1 (2026-11-20), Ask alone: beside a test with no call yet, a strength phrase is said of research, and the test's own call is said too.
+  if (ownTests && factIds.some(isLadderFact)) out.push(...strengthRefusals(text, factIds, sheet))
   // A counted pattern, served by a lookup (2026-11-13), is said no more firmly than its standing.
   if (factIds.some(isTableFact)) out.push(...patternWordingRefusals(text, factIds, sheet, all))
   // A search of the notes (2026-11-13) is said as a share of the notes written, with the words searched named.

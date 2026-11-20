@@ -43,8 +43,8 @@ const DEEP_RULES: readonly string[] = (prompt as { DEEP_RULES?: readonly string[
 
 describe('ordinary Ask, as it was before the deep tier covered everything', () => {
   it('is told exactly what it was told, with How firm and without', () => {
-    // The forecast's one rule (2026-11-14) set aside: everything else word for word.
-    const less = (text: string) => text.split('\n').filter((line) => line !== prompt.FORECAST_RULE).join('\n')
+    // The forecast's one rule (2026-11-14) and the strength rule (item 1, 2026-11-20) set aside: everything else word for word.
+    const less = (text: string) => text.split('\n').filter((line) => line !== prompt.FORECAST_RULE && line !== prompt.STRENGTH_RULE).join('\n')
     expect(less(prompt.askInstructions('ask', 220, null))).toMatchSnapshot()
     expect(less(prompt.askInstructions('ask', 220, 'adaptive'))).toMatchSnapshot()
   })
@@ -59,15 +59,17 @@ describe('ordinary Ask, as it was before the deep tier covered everything', () =
     expect(await runAsks(env, store, at('09:01'), { gate: 'open', fireFetcher: fetcher })).toMatchObject({ ran: true })
     const r = await handleAskBriefing({ env, store, now: at('09:02'), gate: 'open' as const, fetcher }, new URL(`https://w.test/claude/briefing?task=ask&day=${DAY}`))
     expect(r.status).toBe(200)
-    // The forecast's one rule (2026-11-14) set aside: everything else word for word.
+    // The forecast's one rule (2026-11-14) and the strength rule (item 1, 2026-11-20) set aside: everything else word for word.
     const json = JSON.stringify(r.body)
     const rule = JSON.stringify(`\n${prompt.FORECAST_RULE}`).slice(1, -1)
+    const strength = JSON.stringify(`\n${prompt.STRENGTH_RULE}`).slice(1, -1)
     expect(json.split(rule)).toHaveLength(2)
-    expect(JSON.parse(json.replace(rule, ''))).toMatchSnapshot()
+    expect(json.split(strength)).toHaveLength(2)
+    expect(JSON.parse(json.replace(rule, '').replace(strength, ''))).toMatchSnapshot()
   })
 
   it('leaves the deep tier told what it was told, once its new rules are set aside', () => {
-    const less = (text: string) => text.split('\n').filter((line) => !DEEP_RULES.includes(line) && line !== prompt.FORECAST_RULE).join('\n')
+    const less = (text: string) => text.split('\n').filter((line) => !DEEP_RULES.includes(line) && line !== prompt.FORECAST_RULE && line !== prompt.STRENGTH_RULE).join('\n')
     expect(less(prompt.askInstructions('deep', 450, null))).toMatchSnapshot()
     expect(less(prompt.askInstructions('deep', 450, 'adaptive'))).toMatchSnapshot()
   })
