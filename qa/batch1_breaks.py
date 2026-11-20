@@ -5,6 +5,15 @@ under the graph, how often its forecasts land, said only from twenty scored; und
 week's ranges from its first and last days, said when the days differ too, and how the range is built only until
 twenty are scored; no caption.
 
+Item 1, the strength phrases (2026-11-20): beside a cited test with no call yet alone; said only in a sentence that names
+research, by any of its three words; the answer says "no call yet"; every grade phrase; held by Ask's validator, and
+Ask's alone; Ask told the rule. Item 3, a check-in says when its forecast was moved: under one point "less than a
+point"; lower or higher; a private item by its name where one is given; the evening's band named; nothing unmoved; an
+unknown condition read nowhere; each condition's switch; the band of the evening before, by the forecast's own rule;
+on the sheet a private item never named, the switches named, faith tagged; the Worker reading them; on the check-in
+the line itself, names under the switch, the band from the evening before. Item 4: the month's read told to count
+nothing itself. Item 2: the move cue reads Now afresh while its tap area stands shorter than its own.
+
 python -B -I -X utf8 qa/batch1_breaks.py [id ...]   (every entry when none is named)
 """
 import io
@@ -37,6 +46,14 @@ CH = 'src/charts.tsx'
 WS = 'src/weeklyScreen.tsx'
 WT = 'src/weeklyScreen.test.ts'
 SMOKE = 'e2e/smoke.spec.ts'
+B1 = 'e2e/batch1.spec.ts'
+BS = 'src/brainShared.ts'
+EST = 'src/evidenceStrength.test.ts'
+FA = 'src/forecastAdjusted.ts'
+FAT = 'src/forecastAdjusted.test.ts'
+CR = 'src/challengerRecord.ts'
+FCTS = 'src/facts.ts'
+FF = 'src/forecastFlow.ts'
 ALIKE = 'blind to weekdays'
 DIP = 'a Monday dip'
 
@@ -76,6 +93,88 @@ TABLE = [
     dict(id='how-it-is-built-not-from-twenty', file=WS, tests=[SMOKE, '-g', 'once twenty day-ahead forecasts are scored'],
          old="                {w.model && sized && (\n",
          new="                {w.model && (sized || copy.weekly.modelBuilt) && (\n"),
+    # ---- Item 1: a strength phrase beside a test with no call yet ---------------------------------------------------
+    dict(id='strength-beside-no-call-yet-alone', file=BS, tests=[EST, '-t', 'binds only beside a cited test with no call yet'],
+         old="factIds.includes(f.id) && (f.values.level ?? 'none') === 'none')",
+         new="factIds.includes(f.id))"),
+    dict(id='strength-said-of-research', file=BS, tests=[EST, '-t', 'lets a strength phrase stand in a sentence that names research'],
+         old=".filter((s) => !RESEARCH_WORDS.test(s))",
+         new=".filter(() => true)"),
+    dict(id='research-named-three-ways', file=BS, tests=[EST, '-t', 'lets a strength phrase stand in a sentence that names research'],
+         old="(research|studies|the library)",
+         new="(research)"),
+    dict(id='strength-says-no-call-yet', file=BS, tests=[EST, '-t', 'asks the answer to say'],
+         old="  if (!NO_CALL_WORDS.test(text)) out.push(",
+         new="  if (false) out.push("),
+    dict(id='strength-every-grade-phrase', file=BS, tests=[EST, '-t', 'holds every grade phrase'],
+         old="Object.values(GRADE_PHRASES).join('|')",
+         new="'strong evidence'"),
+    dict(id='strength-in-the-validator', file=BS, tests=[EST, '-t', 'is held by the validator'],
+         old="  if (ownTests && factIds.some(isLadderFact)) out.push(...strengthRefusals(text, factIds, sheet))\n",
+         new=""),
+    dict(id='strength-for-ask-alone', file=BS, tests=[EST, '-t', 'is held by the validator'],
+         old="  if (ownTests && factIds.some(isLadderFact)) out.push(...strengthRefusals(",
+         new="  if (factIds.some(isLadderFact)) out.push(...strengthRefusals("),
+    dict(id='strength-rule-told', file='worker/src/prompt.ts', tests=['worker/src/strengthRule.test.ts'],
+         old="    LADDER_RULE,\n    STRENGTH_RULE,\n",
+         new="    LADDER_RULE,\n"),
+    # ---- Item 3: a check-in says when its forecast was moved -------------------------------------------------------
+    dict(id='adjusted-under-a-point', file=FA, tests=[FAT, '-t', 'less than a point'],
+         old="Math.abs(f.adj) < 1 ? c.adjustedUnder",
+         new="Math.abs(f.adj) < 0.5 ? c.adjustedUnder"),
+    dict(id='adjusted-lower-or-higher', file=FA, tests=[FAT, '-t', 'approved frames'],
+         old="f.adj < 0 ? c.adjustedLower : c.adjustedHigher",
+         new="c.adjustedLower"),
+    dict(id='adjusted-private-name-where-given', file=FA, tests=[FAT, '-t', 'approved frames'],
+         old="privateName(id.slice('private.'.length)) ?? c.adjustedPrivateUnnamed",
+         new="c.adjustedPrivateUnnamed"),
+    dict(id='adjusted-band-named', file=FA, tests=[FAT, '-t', 'approved frames'],
+         old="fill(c.adjustedBand, { band: BANDS[band] })",
+         new="c.adjustedBandUnread"),
+    dict(id='adjusted-nothing-unmoved', file=FA, tests=[FAT, '-t', 'says nothing of a forecast that was not moved'],
+         old="if (typeof f.adj !== 'number' || f.adj === 0) return null",
+         new="if (typeof f.adj !== 'number') return null"),
+    dict(id='adjusted-unknown-read-nowhere', file=FA, tests=[FAT, '-t', 'reads past an id'],
+         old="  if (conditionCategory(id) === null) return null\n  const c = copy.summary\n",
+         new="  const c = copy.summary\n"),
+    dict(id='adjusted-kinds-each-condition', file=FA, tests=[FAT, '-t', 'names the Brain switch'],
+         old="        const k = conditionCategory(id)\n        return k === null ? [] : [k]\n",
+         new="        return ['dayRecord']\n"),
+    dict(id='band-before-by-the-rule', file=CR, tests=[FAT, '-t', 'reads the band of the evening before'],
+         old="  return eveningCondition(checkins).stateOn(addDays(day, -1))\n",
+         new="  return eveningCondition(checkins).stateOn(day)\n"),
+    dict(id='sheet-private-always-unnamed', file=FCTS, tests=[FAT, '-t', 'never its name'],
+         old="const moved = adjustedWords(t.forecast, () => null, band)",
+         new="const moved = adjustedWords(t.forecast, () => 'Late snack', band)"),
+    dict(id='sheet-kinds-named', file=FCTS, tests=[FAT, '-t', 'never its name'],
+         old="...(moved && kinds.length ? { kinds: kinds.join('|') } : {})",
+         new="...({})"),
+    dict(id='sheet-faith-tag', file=FCTS, tests=[FAT, '-t', 'never its name'],
+         old="['forecast', t.block, ...(kinds.includes('faith') ? ['faith'] : [])]",
+         new="['forecast', t.block]"),
+    dict(id='worker-reads-the-kinds', file='worker/src/retrieval.ts', tests=['worker/src/forecastFactKinds.test.ts'],
+         old="  if (head === 'forecast' && typeof f.values.kinds === 'string' && f.values.kinds) {\n",
+         new="  if (false) {\n"),
+    dict(id='forecast-unnamed-kind-closed', file='worker/src/retrieval.ts', tests=['worker/src/forecastFactKinds.test.ts'],
+         old="map((k): Category => ((CATEGORIES as readonly string[]).includes(k) ? (k as Category) : CLOSED))",
+         new="map((k): Category => k as Category)"),
+    dict(id='check-in-adjusted-line', file='src/checkin.tsx', tests=[B1, '-g', 'under "Usually"'],
+         old='      {adjusted && (\n        <p class="note no-gap" data-testid="adjusted-line">\n',
+         new='      {false && (\n        <p class="note no-gap" data-testid="adjusted-line">\n'),
+    dict(id='check-in-names-under-the-switch', file=FF, tests=[B1, '-g', 'named on the check-in only while'],
+         old="(settings.showPrivate === true ? (names.get(id) ?? null) : null)",
+         new="(names.get(id) ?? null)"),
+    dict(id='check-in-band-from-the-evening-before', file=FF, tests=[B1, '-g', 'band is named as it read'],
+         old="bandBefore(before, day))\n",
+         new="null)\n"),
+    # ---- Item 4: the month's read counts nothing itself -------------------------------------------------------------
+    dict(id='month-counts-nothing', file='worker/src/monthPrompt.ts', tests=['worker/src/monthPrompt.test.ts', '-t', 'count nothing itself'],
+         old="'- Count nothing yourself: ",
+         new="'- Count what you like: "),
+    # ---- Item 2: the move cue keeps its full height -----------------------------------------------------------------
+    dict(id='cue-reads-afresh-while-shorter', file='src/moveCue.tsx', tests=[SMOKE, '-g', 'truly sits within its 48-point band'],
+         old="      if (at.current && at.current.h < tall && now - scrolledAt >= SETTLE_MS) page = null\n",
+         new=""),
 ]
 
 
