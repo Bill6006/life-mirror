@@ -39,8 +39,30 @@ async function fresh(when) {
   await page.goto(LIVE)
   return { ctx, page }
 }
-/** Away to a file of the site's own that runs no app code, so rows are written with no app page open. */
-const leave = (page) => page.goto(new URL('icons/life-mirror-192.png', LIVE).href)
+/**
+ * Away to a file of the site's own that runs no app code, so rows are written with no app page open; first, the app's
+ * database standing with its stores, since a fresh phone's first open makes them and a page sent away sooner leaves
+ * none. It looks at the list of databases first, so it never makes an empty one itself.
+ */
+async function leave(page) {
+  await page.waitForFunction(
+    async () => {
+      const known = await indexedDB.databases()
+      if (!known.some((d) => d.name === 'life-mirror' && (d.version ?? 0) > 1)) return false
+      const dbx = await new Promise((res, rej) => {
+        const r = indexedDB.open('life-mirror')
+        r.onsuccess = () => res(r.result)
+        r.onerror = () => rej(r.error)
+      })
+      const ok = ['checkins', 'forecasts', 'settings', 'privateItems', 'brainBriefs'].every((s) => dbx.objectStoreNames.contains(s))
+      dbx.close()
+      return ok
+    },
+    undefined,
+    { polling: 100 },
+  )
+  await page.goto(new URL('icons/life-mirror-192.png', LIVE).href)
+}
 const put = (page, store, rows) =>
   page.evaluate(
     async ({ name, list }) => {
