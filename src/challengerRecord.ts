@@ -64,6 +64,11 @@ export function eveningCondition(checkins: readonly CheckIn[]): Condition {
   return { id: EVENING_ID, blocks: BLOCKS, stateOn: (day) => band.get(day) ?? null, moves: () => true }
 }
 
+/** The band the evening before `day` read in, by the evening condition's own rule (its check-in complete, and completed before `day` began); null where that evening is not known (the forecast follow-ups, item 3). */
+export function bandBefore(checkins: readonly CheckIn[], day: string): string | null {
+  return eveningCondition(checkins).stateOn(addDays(day, -1))
+}
+
 /** Each day's evening check-in logged in full, where it was completed before the next day began. */
 function eveningsKnown(checkins: readonly CheckIn[]): Map<string, CheckIn> {
   const out = new Map<string, CheckIn>()

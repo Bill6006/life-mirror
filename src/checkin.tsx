@@ -30,7 +30,7 @@ import { CaffeineCard, caffeineWords } from './caffeine'
 import { LineInput, PrivateLog, SweetChip, TodayChips } from './extras'
 import { MoveCard } from './moveCard'
 import { closeNothingExtra, deferOutcome, isSession, offerForSlot, recordOutcome } from './offerFlow'
-import { usualFor } from './forecastFlow'
+import { adjustedFor, usualFor } from './forecastFlow'
 import { Glance, ReadingOfCheckIn } from './reading'
 import { anchorFor, description, headword, POSITIONS, readingById, type Answers, type Position, type ReadingId } from './readings'
 import { activeBlocks, askedReadings, SLEEP_READINGS, type Depth } from './settings'
@@ -453,14 +453,26 @@ function InTheMoment({ record, previous, all }: { record: CheckIn; previous: Che
   )
 }
 
-/** What is usual at this time, beside the reading just given: the slot's forecast, when one was made. */
+/**
+ * What is usual at this time, beside the reading just given: the slot's forecast, when one was made. On a day the
+ * challenger moved it, one line follows in the same small style, saying by about how much and for what (the forecast
+ * follow-ups, item 3).
+ */
 function UsualLine({ day, block }: { day: string; block: Block }) {
   const usual = useLive(() => usualFor(day, block), [day, block])
+  const adjusted = useLive(() => adjustedFor(day, block), [day, block])
   if (!usual) return null
   return (
-    <p class="note no-gap" data-testid="usual-line">
-      {fill(copy.summary.usual, { expected: String(usual.point), lo: String(usual.lo), hi: String(usual.hi) })}
-    </p>
+    <>
+      <p class="note no-gap" data-testid="usual-line">
+        {fill(copy.summary.usual, { expected: String(usual.point), lo: String(usual.lo), hi: String(usual.hi) })}
+      </p>
+      {adjusted && (
+        <p class="note no-gap" data-testid="adjusted-line">
+          {adjusted}
+        </p>
+      )}
+    </>
   )
 }
 

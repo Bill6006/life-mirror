@@ -11,7 +11,7 @@ import { copy } from './copy'
 import { heldBedtime, heldPickup } from './dayShape'
 import { carriedByContext, contextWords, type DayKind } from './people'
 import { bandsLabel, dayCaffeine, HABIT_DAYS, lateCaffeine, lower, windowsLabel, type CaffeineEvidence, type SleepComparison } from './caffeineRecord'
-import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, CheckIn, CoachPick, DayContext, Intention, Offer, Outcome, OutsideDay, PathAdaptation, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
+import type { Aim, BrainBrief, BriefFeedback, BriefLog, CaffeineBand, Card, CheckIn, CoachPick, DayContext, Forecast, Intention, Offer, Outcome, OutsideDay, PathAdaptation, PathMark, PrivateItem, RungMark, Skill, StudyNight, UseRow, Win } from './db'
 import { askedLate, setAside } from './db'
 import { wasShown, workerShown } from './shown'
 import { chipShownAt } from './chips'
@@ -19,6 +19,8 @@ import { churchWords, timesWords } from './church'
 import { NATURE_EVENT, NATURE_MINUTES, natureAssociations, natureMoveDays, type NatureAssociations } from './nature'
 import { fill, formatDayLong } from './format'
 import type { Brief } from './forecastFlow'
+import { adjustedKinds, adjustedWords } from './forecastAdjusted'
+import { bandBefore } from './challengerRecord'
 import { sittingOf } from './ladder'
 import type { Evidence } from './evidenceFlow'
 import { NOTHING } from './offers'
@@ -511,6 +513,18 @@ export function tripFact(range: AwayRange | null, contexts: readonly DayContext[
   return fact('trip', ['monitoring', 'habit'], text, { state, from: range && state !== 'past' ? range.from : null, to: range && state !== 'past' ? range.to : null, a3, a2, a1, a0 })
 }
 
+/**
+ * Today's forecast for a block. Where the challenger moved it (the forecast follow-ups, item 3, 2026-11-20), the words
+ * its check-in shows follow, a private item always as "a private item": the Brain's own fact is read beyond the phone.
+ * Its values then name the switch of every condition that moved it, each of which must be open for Claude to read it.
+ */
+export function forecastFact(t: { block: Block; forecast: Forecast; actual: number | null }, band: string | null): Fact {
+  const moved = adjustedWords(t.forecast, () => null, band)
+  const kinds = adjustedKinds(t.forecast)
+  const text = `Today's ${t.block} is forecast at ${Math.round(t.forecast.point)}, ${Math.round(t.forecast.lo)} to ${Math.round(t.forecast.hi)}${t.actual !== null ? `; it read ${t.actual}` : ''}.${moved ? ` ${moved}` : ''}`
+  return fact(`forecast.${t.block}`, ['forecast', t.block, ...(kinds.includes('faith') ? ['faith'] : [])], text, { block: t.block, point: Math.round(t.forecast.point), lo: Math.round(t.forecast.lo), hi: Math.round(t.forecast.hi), actual: t.actual, width: Math.round(t.forecast.hi - t.forecast.lo), ...(moved && kinds.length ? { kinds: kinds.join('|') } : {}) })
+}
+
 export function buildFactSheet(i: FactInput): FactSheet {
   const facts: Fact[] = []
   const today = i.day
@@ -625,9 +639,10 @@ export function buildFactSheet(i: FactInput): FactSheet {
     const u = i.usual[block]
     if (u) facts.push(fact(`usual.${block}`, ['forecast', block], `The ${block} usually reads ${Math.round(u.point)}, ${Math.round(u.lo)} to ${Math.round(u.hi)}.`, { block, point: Math.round(u.point), lo: Math.round(u.lo), hi: Math.round(u.hi) }))
   }
+  const band = bandBefore(i.checkins, today)
   for (const t of i.brief.today) {
     if (!t.forecast) continue
-    facts.push(fact(`forecast.${t.block}`, ['forecast', t.block], `Today's ${t.block} is forecast at ${Math.round(t.forecast.point)}, ${Math.round(t.forecast.lo)} to ${Math.round(t.forecast.hi)}${t.actual !== null ? `; it read ${t.actual}` : ''}.`, { block: t.block, point: Math.round(t.forecast.point), lo: Math.round(t.forecast.lo), hi: Math.round(t.forecast.hi), actual: t.actual, width: Math.round(t.forecast.hi - t.forecast.lo) }))
+    facts.push(forecastFact({ block: t.block, forecast: t.forecast, actual: t.actual }, band))
   }
   if (i.brief.whatIf !== null) facts.push(fact('whatIf', ['forecast', 'evening'], `Tonight's what-if: with nothing extra done, the evening usually reads about ${Math.round(i.brief.whatIf)}, the average over recent days with no move marked done in the evening; an assumption, never verified.`, { value: Math.round(i.brief.whatIf) }))
 

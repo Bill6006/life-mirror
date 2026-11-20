@@ -20,7 +20,8 @@ import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, moved
 import { necessitiesMissed } from './necessities'
 import type { WeeklyAnalyses } from './weeklyFacts'
 import { challengerOn, runChallenger, type ChallengerRun } from './challenger'
-import { adjustRows, conditionsFor } from './challengerRecord'
+import { adjustRows, bandBefore, conditionsFor } from './challengerRecord'
+import { adjustedWords } from './forecastAdjusted'
 import { guardComparisons } from './counted/fault'
 import { getBrainPrefs } from './brainPrefs'
 import { noticedOf } from './noteEvents/join'
@@ -186,6 +187,19 @@ export async function briefData(today: string): Promise<Brief> {
 }
 
 /** What is usual for a slot: its lowest-horizon forecast on record, or null. */
+/**
+ * The line under the usual one (the forecast follow-ups, item 3): the same slot's forecast, where the challenger moved it,
+ * in words; a private item by its name only while names are shown outside its screen, the evening's band read from
+ * the evening before by the forecast's own rule.
+ */
+export async function adjustedFor(day: string, block: Block): Promise<string | null> {
+  const [rows, settings, items, before] = await Promise.all([db.forecasts.where('day').equals(day).toArray(), getSettings(), db.privateItems.toArray(), db.checkins.where('day').equals(addDays(day, -1)).toArray()])
+  const f = rows.filter((r) => r.block === block).sort((a, b) => a.horizon - b.horizon)[0]
+  if (!f) return null
+  const names = new Map(items.map((it) => [String(it.id), it.name]))
+  return adjustedWords(f, (id) => (settings.showPrivate === true ? (names.get(id) ?? null) : null), bandBefore(before, day))
+}
+
 export async function usualFor(day: string, block: Block): Promise<{ point: number; lo: number; hi: number } | null> {
   const rows = (await db.forecasts.where('day').equals(day).toArray()).filter((f) => f.block === block).sort((a, b) => a.horizon - b.horizon)
   return rows[0] ? { point: rows[0].point, lo: rows[0].lo, hi: rows[0].hi } : null

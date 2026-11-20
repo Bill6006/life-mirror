@@ -542,6 +542,20 @@ export const copy = {
     delete: 'Delete this check-in',
     deleteConfirm: 'Tap again to delete it',
     usual: 'Usually {expected} ({lo} to {hi}) at this time.',
+    /** The forecast follow-ups, item 3 (2026-11-20, at the owner's word): the line under "Usually" on a day this block's forecast was moved, and the same words after today's forecast on the Brain's sheet. Never "because". */
+    adjusted: 'Adjusted {size} {way}, for {things}.',
+    adjustedBare: 'Adjusted {size} {way}.',
+    adjustedAbout: 'about {n}',
+    adjustedUnder: 'less than a point',
+    adjustedLower: 'lower',
+    adjustedHigher: 'higher',
+    adjustedShortNight: 'a short night reported yesterday',
+    adjustedBand: 'yesterday evening reading {band}',
+    adjustedBandUnread: "yesterday evening's reading",
+    adjustedNight: '{thing} last night',
+    adjustedPrivate: '{name} marked last night',
+    adjustedPrivateUnnamed: 'a private item',
+    adjustedNoticed: "something Claude noticed in last night's note",
     /** Stage 3, group 3: one optional line after a reading worsens by two steps, writing this check-in's note. The agreed "anything behind it?" would use "behind", a word Rule 4 bans. */
     behindIt: 'Anything behind it?',
     /** Stage 3, group 3: the one pattern tonight matches, from What comes before your days. */

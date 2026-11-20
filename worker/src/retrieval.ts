@@ -123,6 +123,13 @@ export function factCategories(f: Fact, pathOfAim: ReadonlyMap<string, string>):
     }
     return f.tags.includes('faith') && named !== 'faith' ? [named, 'faith'] : [named]
   }
+  // Today's forecast for a block, where the challenger moved it (the forecast follow-ups, item 3, 2026-11-20): its words
+  // name what moved it, so it is the day's record and the switch of every condition that did; one the layer does not name is closed.
+  if (head === 'forecast' && typeof f.values.kinds === 'string' && f.values.kinds) {
+    const kinds = f.values.kinds.split('|').map((k): Category => ((CATEGORIES as readonly string[]).includes(k) ? (k as Category) : CLOSED))
+    const every = [...new Set<Category>(['dayRecord', ...kinds])]
+    return f.tags.includes('faith') && !every.includes('faith') ? [...every, 'faith'] : every
+  }
   // A commitment's own category: the Partner or Social path's when it is one, else the commitments'.
   const aimCategory = (id: string): Category => (pathOfAim.get(id) === 'partner' ? 'partnerPath' : pathOfAim.get(id) === 'social' ? 'socialPath' : 'commitments')
   const own: Category[] =
