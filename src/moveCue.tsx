@@ -125,6 +125,12 @@ export function MoveCue() {
         layoutAt = now
         page = null
       }
+      const tall = Math.max(TAP, p.offsetHeight)
+      // The forecast follow-ups, item 2 (2026-11-20, at the owner's word): the tap area gives up height only while a control
+      // truly sits within its 48-point band, measured again at the moment it is placed. So while it stands shorter than its
+      // own, each check that places it, once Now holds still, reads Now afresh: a control that has moved away with nothing
+      // to say so (a style changed, no size, no class, no slide) gives its height back.
+      if (at.current && at.current.h < tall && now - scrolledAt >= SETTLE_MS) page = null
       if (!page) {
         page = guarded()
         read++
@@ -133,7 +139,6 @@ export function MoveCue() {
       const boxes = page.map((b) => ({ ...b, top: b.top - y, bottom: b.bottom - y }))
       // Its own place, before any move: centred above the tab bar, its foot where the stylesheet anchors it.
       const host = c.offsetParent.getBoundingClientRect()
-      const tall = Math.max(TAP, p.offsetHeight)
       const left = host.left + c.offsetLeft - c.offsetWidth / 2
       const foot = host.top + c.offsetTop + c.offsetHeight
       const button = { left, top: foot - tall, right: left + c.offsetWidth, bottom: foot }

@@ -3151,6 +3151,40 @@ test('the cue reads Now again when a slide on it ends, so it keeps clear of a co
   await expectCueClear(page)
 })
 
+test('the cue gives up height only while a control truly sits within its 48-point band, read again as it is placed (the forecast follow-ups, item 2)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 })
+  await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
+  await page.goto('./')
+  await page.getByRole('button', { name: /Check in/ }).click()
+  await tapThrough(page)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect(page.getByRole('button', { name: '1 move below', exact: true })).toBeVisible()
+  await expect.poll(async () => (await cueCovers(page)).tapTall).toBeGreaterThanOrEqual(47.5)
+  // A control just over the pill, inside its 48-point band and clear of the pill: the cue gives up height to keep clear of it.
+  const pill = await page.evaluate(() => {
+    const r = (document.querySelector('[data-testid="move-cue"] .move-cue-pill') as HTMLElement).getBoundingClientRect()
+    return { left: r.left, right: r.right, mid: (r.top + r.bottom) / 2 }
+  })
+  await page.evaluate((p) => {
+    const control = document.createElement('button')
+    control.type = 'button'
+    control.className = 'cue-test-near'
+    control.textContent = 'A control'
+    Object.assign(control.style, { position: 'fixed', left: `${p.left}px`, top: `${p.mid - 23.5 - 30}px`, width: `${p.right - p.left}px`, height: '30px', margin: '0', padding: '0', border: '0' })
+    const block = document.createElement('div')
+    block.append(control)
+    document.querySelector('section.screen.now')?.append(block)
+  }, pill)
+  await expect.poll(async () => (await cueCovers(page)).tapTall, { timeout: 4000 }).toBeLessThan(47.5)
+  await expect.poll(async () => (await cueCovers(page)).controls).toEqual([])
+  // It moves away with nothing the cue hears of (its own style alone: no class, no size, no slide). Read again, the cue takes back its 48.
+  await page.evaluate(() => {
+    ;(document.querySelector('.cue-test-near') as HTMLElement).style.top = '8px'
+  })
+  await expect.poll(async () => (await cueCovers(page)).tapTall, { timeout: 4000 }).toBeGreaterThanOrEqual(47.5)
+  await expectCueClear(page)
+})
+
 test('a move lower on Now is cued once: a tap goes to it and marks it seen, it is not cued again after a reload, and a new move later is (final UI polish, 2026-09-26)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 600 })
   await page.clock.setFixedTime(new Date(2026, 8, 7, 14, 0))
