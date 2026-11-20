@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { findPath, type Path, type PathId } from './catalogue'
 import { SYNCED_STORES } from './cloudOutbox'
 import { db, getSettings, type Aim, type Offer } from './db'
@@ -33,9 +33,20 @@ async function stepOf(moveId: string, day: string, path: PathId): Promise<Offer>
   return offer
 }
 
+// The clock pinned for the whole file (2026-11-20). An answer is stamped by the clock as it is recorded, so with the
+// real clock every answer became "newer" than a Not now said at NOW once the real clock passed NOW, and the declined
+// proposal came back. Pinned to the evening before NOW, every answer comes before the moments the tests pass in.
+const CLOCK = new Date(2026, 10, 19, 20, 0)
+
 beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(CLOCK)
   await db.delete()
   await db.open()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('your taps', () => {
