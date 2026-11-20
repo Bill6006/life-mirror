@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { EventType } from '../../src/noteEvents/types'
+import { numbersRefusals } from '../../src/brainShared'
+import type { Fact, FactSheet } from '../../src/factTypes'
 import { MONTH_CAUSE } from './monthCheck'
 import { MONTH_ANSWER, monthInstructions } from './monthPrompt'
 
@@ -24,11 +26,20 @@ describe('the month’s instructions', () => {
     const t = text()
     expect(t).toContain('- Each line has an id in brackets. The 3 days before the month and the 3 after are served with it and named as outside it: a line of theirs may be cited beside a line inside the month, never alone.')
     expect(t).toContain('- Each observation is its words and "factIds", the ids of every line it rests on, at least one of them inside the month, at most 40. An observation that cites no served line is refused.')
-    expect(t).toContain('- Every number you write must be in a line you cite, or be the count of the days or of the lines you cite. Any other number is refused.')
     expect(t).toContain('- At most 10 observations under "recorded" and 8 under "noticed", each at most 50 words. Plain words. Leave a list empty rather than fill it.')
     expect(t).toContain('letter for letter, at most 300 characters.')
-    expect(t).toContain('A count said in words is held the same way: write "two evenings" only where the observation cites exactly two days or two lines; otherwise say "several" or "often".')
     expect(t).toContain('- Write no dates and no weekday counts of your own: the days are listed for the person from the lines you cite. Write "day" for a calendar day, never "date".')
+  })
+
+  // The forecast follow-ups, item 4 (2026-11-20): every first answer so far was refused for a count of its own.
+  it('tell the read to count nothing itself, in words the check passes, warning of the very counts it refuses', () => {
+    const t = lines(text())
+    expect(t).toContain('- Count nothing yourself: write no number, and no count in words such as "two evenings", "three times" or "four of the notes", for days, evenings, times, notes or lines. Say "several", "often", "most" or "a few" instead. Write a number only where a line you cite says that very number. Any other number is refused.')
+    expect(t.some((l) => l.startsWith('- Every number you write'))).toBe(false)
+    const line: Fact = { id: 'month.2026-10-03.evening', tags: [], text: 'An evening note.', values: {} }
+    const sheet = { facts: [line] } as unknown as FactSheet
+    for (const said of ['several evenings', 'often', 'on most of the notes', 'a few days']) expect(numbersRefusals(`You wrote it ${said}.`, sheet, [line.id]), said).toEqual([])
+    for (const said of ['two evenings', 'three times', 'four of the notes']) expect(numbersRefusals(`You wrote it ${said}.`, sheet, [line.id]), said).not.toEqual([])
   })
 
   it('say that what Claude noticed is a hypothesis and that no cause is claimed, in words the check itself would pass', () => {
