@@ -14,6 +14,8 @@ import { readingById } from './readings'
 import { standingLine } from './counted/words'
 import type { Difference, Moved, Scorecard } from './weekly'
 import { missingLines, missLines, togetherLine } from './honesty/words'
+import { CHECK_LOOKS, CHECK_MIN_DAYS, type MovedCheck } from './movedCheck'
+import { dayAndMonth } from './heldPairs'
 
 // Mirror → The weekly view (final UI polish, 2026-09-26): the week ahead (its line, the graph, always
 // shown, how often it lands, and its ranges and way under Details), the week reviewed, what moved this week, the baseline and the gap; then the
@@ -43,6 +45,21 @@ export function aheadRangeLine(flat: Pick<FlatWeek, 'near' | 'far'>): string {
   return flat.near.lo === flat.far.lo && flat.near.hi === flat.far.hi
     ? fill(c.aheadFlatRangeSame, { lo: String(flat.near.lo), hi: String(flat.near.hi) })
     : fill(c.aheadFlatRange, { lo: String(flat.near.lo), hi: String(flat.near.hi), lo2: String(flat.far.lo), hi2: String(flat.far.hi) })
+}
+
+/**
+ * The moved forecasts beside the plain ones (Batch 3, 2026-11-21), under the Scorecard's hit rate, in the approved
+ * contract's words and shape: until the first look, how many are scored and when they are first read; from a look, the
+ * look's own counts, its two average misses, the verdict as written down beforehand, and what follows from it.
+ */
+export function movedCheckLines(m: MovedCheck): string[] {
+  const c = copy.weekly.movedCheck
+  const r = m.reading
+  if (!r || m.verdict === null) return [fill(c.scored, { n: String(m.scored) }), fill(c.pending, { first: String(CHECK_LOOKS[0]), days: String(CHECK_MIN_DAYS) })]
+  const n = String(r.n)
+  const day = dayAndMonth(r.readOn)
+  const after = m.verdict === 'watch' ? fill(c.watching, { day, next: String(m.next), now: String(m.scored) }) : m.verdict === 'keep' ? fill(c.kept, { day }) : fill(c.stopped, { day })
+  return [fill(c.scored, { n }), fill(c.held, { a: String(r.held), b: String(r.plainHeld), n }), fill(c.miss, { x: r.miss.toFixed(1), y: r.plainMiss.toFixed(1) }), fill(c.verdict, { verdict: c.verdicts[m.verdict] }), after]
 }
 
 /** From how many scored day-ahead forecasts the week-ahead card says what was measured, and never before (2026-11-12). */
@@ -260,6 +277,12 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
             <p class="calc-line" data-testid="hit-rate">
               {sc.scored ? fill(c.hitRate, { rate: pct(sc.hitRate), n: String(sc.scored), miss: num(sc.averageMiss, 1) }) : c.hitRateNone}
             </p>
+            {/* Batch 3 (2026-11-21): the forecasts the challenger moved, set beside the plain ones, read by the rule frozen beforehand. */}
+            {movedCheckLines(w.movedCheck).map((line) => (
+              <p key={line} class="calc-line" data-testid="moved-check">
+                {line}
+              </p>
+            ))}
             {/* The learning engine's own count (stage R7), or that it could not read the record. */}
             <p class="calc-line" data-testid="scorecard-tests">{sc.repair ? fill(c.declaredRepair, { underWay: String(sc.repair.underWay), resolved: String(sc.repair.resolved), held: String(sc.repair.held) }) : copy.repairEvidence.failedNow}</p>
             <p class="calc-line">{fill(c.gaveBack, { gaveBack: String(sc.gaveBack), all: String(sc.checkins) })}</p>

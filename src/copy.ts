@@ -1099,6 +1099,18 @@ export const copy = {
     /** The small line under the graph (item 8): until twenty are scored, when it will say how often they land; from then what was counted. Never a rate that was not measured. */
     modelPending: 'How often its forecasts land is said here once twenty day-ahead forecasts are scored.',
     modelMeasured: 'Of {n} day-ahead forecasts scored so far, {hits} landed inside their range ({rate} percent).',
+    // Batch 3 (2026-11-21): the moved forecasts set beside the plain ones, in the approved contract's words and shape, under the Scorecard's hit rate.
+    movedCheck: {
+      scored: 'Forecasts moved and scored: {n}',
+      pending: 'They are set beside the plain forecast once {first} are scored, on at least {days} days.',
+      held: 'Range held: {a} of {n} moved, {b} of {n} plain',
+      miss: 'Average miss: {x} moved, {y} plain',
+      verdict: 'Read as written down beforehand: {verdict}.',
+      verdicts: { keep: 'keep it', watch: 'keep watching', off: 'switch it off' },
+      watching: 'Read on {day}; read again once {next} are scored ({now} so far).',
+      kept: 'Read on {day}; it is not read again.',
+      stopped: 'Read on {day}: forecasts written from then on are not moved.',
+    },
     aheadAlike: 'It does not tell one weekday from another, so the days ahead come out alike.',
     aheadFlatBlind: 'No difference between the days to show: this forecast does not tell one weekday from another. Your expected level this week is around {level}.',
     aheadFlatNone: 'No meaningful difference between days detected. Your expected level this week is around {level}.',

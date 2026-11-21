@@ -290,8 +290,8 @@ TABLE = [
          tests=[WT], pattern='under one of the four ways'),
     # The writer.
     dict(id='nothing-runs-while-switched-off', file=FF,
-         old="const tried = chosen && challengerOn() ? await",
-         new="const tried = chosen ? await",
+         old="const tried = chosen && challengerOn() && !(await challengerSwitchedOff(today)) ? await",
+         new="const tried = chosen && !(await challengerSwitchedOff(today)) ? await",
          tests=[UT], pattern='writes the rows it wrote before'),
     dict(id='adjusted-only-when-picked', file=FF,
          old="    if (tried?.picked) adjustRows(due, tried, values)",

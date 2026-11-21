@@ -453,6 +453,12 @@ export interface Forecast {
   /** Where the challenger adjusted this row (2026-11-14): the points it added to the named way's forecast, and the conditions that added them. Absent on every other row. */
   adj?: number
   adjBy?: string[]
+  /**
+   * Where the challenger adjusted this row, from Batch 3 (2026-11-21): the plain forecast it was moved from, the named
+   * way's own point and range for the slot, number for number, written in the same run, so the moved forecast can be set
+   * beside it once the slot is scored (`movedCheck.ts`). Absent on every other row, and on rows moved before it was kept.
+   */
+  plain?: { point: number; lo: number; hi: number }
 }
 
 /** A forecast scored once its slot was logged; a slot never logged is never scored. */

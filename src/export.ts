@@ -160,8 +160,9 @@ export function patternsForExport(stored: unknown, includePrivate: boolean, part
 /**
  * Where the forecast's challenger moved a row (2026-11-14): the points it added and the conditions that added them. A
  * private item is here only with private items, by its name, as everywhere in the export; without them it is left out.
+ * From Batch 3 (2026-11-21), the plain forecast the row was moved from, where it carries one: numbers alone.
  */
-export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[] } {
+export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy' | 'plain'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[]; plain?: { point: number; lo: number; hi: number } } {
   if (typeof f.adj !== 'number') return {}
   const by = (f.adjBy ?? []).flatMap((id) => {
     if (!id.startsWith('private.')) return [id]
@@ -169,7 +170,8 @@ export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy'>, names: Re
     const key = id.slice('private.'.length)
     return [`private: ${names.get(key) ?? `item ${key}`}`]
   })
-  return { adj: f.adj, adjBy: by }
+  const p = f.plain
+  return { adj: f.adj, adjBy: by, ...(p ? { plain: { point: p.point, lo: p.lo, hi: p.hi } } : {}) }
 }
 
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {
@@ -310,7 +312,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
             ...patternsForExport(records.patterns, opts.includePrivate, partner),
             ...noticedForExport(records.noticed, all, records.ask?.notes ?? []),
             ...writeUpsForExport(records.writeUps, opts.includePrivate, partner),
-            forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit })),
+            // The day each was scored (Batch 3, 2026-11-21): the moved forecasts' check is cut by it, so a reading can be checked by hand from an export.
+            forecastScores: (records.forecastScores ?? []).map((s) => ({ day: s.day, block: s.block, horizon: s.horizon, point: s.point, lo: s.lo, hi: s.hi, actual: s.actual, error: s.error, hit: s.hit, scoredOn: s.scoredOn })),
             her: {
               skills: (records.herSkills ?? []).map((s) => ({ skill: s.skillId, rung: s.rung, addedAt: s.addedAt, rungAt: s.rungAt, removedAt: s.archivedAt, ...(s.rungs ? { rungs: s.rungs } : {}) })),
               moments: (records.moments ?? []).map((m) => ({ day: m.day, at: m.at, skill: m.skillId, help: m.help })),

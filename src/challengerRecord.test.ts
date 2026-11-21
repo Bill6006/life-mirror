@@ -103,7 +103,8 @@ describe('the rows the challenger adjusts', () => {
     const p = predict('sameBlock', values, TODAY, 'morning') as number
     const band = errorBand(run.errors)
     expect(band).toEqual({ lo: -3, hi: 2 })
-    expect(due[0]).toEqual({ ...row('morning', TODAY, 0), point: Math.round(p - 3.26), lo: Math.round(p - 3.26 - 3), hi: Math.round(p - 3.26 + 2), adj: -3.3, adjBy: [SLEEP_ID] })
+    // From Batch 3 (2026-11-21) the row also keeps the plain forecast it was moved from: the base way's row as it stood.
+    expect(due[0]).toEqual({ ...row('morning', TODAY, 0), point: Math.round(p - 3.26), lo: Math.round(p - 3.26 - 3), hi: Math.round(p - 3.26 + 2), adj: -3.3, adjBy: [SLEEP_ID], plain: { point: 42, lo: 40, hi: 44 } })
     expect(due[0].point).not.toBe(Math.round(p))
     expect(JSON.stringify(due.slice(1))).toBe(untouched)
   })

@@ -6,6 +6,9 @@ Live: https://bill6006.github.io/life-mirror/
 
 Built in numbered phases. The live build's About screen names the commit and links to the pipeline run that tested it; one job tests, builds and deploys a single folder.
 
+How the app checks, by itself, whether its adjusted forecasts beat the plain ones, and switches the adjustment off if
+they do not: [docs/forecast-check.md](docs/forecast-check.md).
+
     npm run dev        # local
     npm test           # unit tests
     npm run build      # dist/

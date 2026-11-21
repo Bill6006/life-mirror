@@ -201,7 +201,8 @@ const clamp = (v: number): number => Math.max(0, Math.min(100, Math.round(v)))
 /**
  * The rows due, adjusted in place where the record can speak: the base way's point plus the adjustment, in a range
  * taken from the challenger's own back-tested misses. A row no condition can speak for is left exactly as it was. The
- * row keeps the base way's name, and says the points added and the conditions that added them.
+ * row keeps the base way's name, and says the points added and the conditions that added them; and, from Batch 3
+ * (2026-11-21), the plain forecast it was moved from, the base way's row as it stood, so the two can be set side by side.
  */
 export function adjustRows(due: Forecast[], run: ChallengerRun, values: ReadonlyMap<string, number>): void {
   const band = errorBand(run.errors)
@@ -210,10 +211,12 @@ export function adjustRows(due: Forecast[], run: ChallengerRun, values: Readonly
     if (a.points === 0) continue
     const p = predict(run.base, values, f.day, f.block)
     if (p === null) continue
+    const plain = { point: f.point, lo: f.lo, hi: f.hi }
     f.point = clamp(p + a.points)
     f.lo = clamp(p + a.points + band.lo)
     f.hi = clamp(p + a.points + band.hi)
     f.adj = Math.round(a.points * 10) / 10
     f.adjBy = a.by
+    f.plain = plain
   }
 }

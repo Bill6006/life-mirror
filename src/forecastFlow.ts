@@ -22,6 +22,7 @@ import type { WeeklyAnalyses } from './weeklyFacts'
 import { challengerOn, runChallenger, type ChallengerRun } from './challenger'
 import { adjustRows, bandBefore, conditionsFor } from './challengerRecord'
 import { adjustedWords } from './forecastAdjusted'
+import { checkStopsChallenger, movedCheck, type MovedCheck } from './movedCheck'
 import { guardComparisons } from './counted/fault'
 import { getBrainPrefs } from './brainPrefs'
 import { noticedOf } from './noteEvents/join'
@@ -77,7 +78,8 @@ async function forecastOnce(today: string): Promise<void> {
   const done = await doneSlots()
   const chosen = loggedDays(values) >= MIN_DAYS_TODAY ? chooseModel(values, today) : null
   // The one challenger (2026-11-14), behind its switch: tried on the record before today. Where it is picked, the rows due are adjusted by what the record held the day before each.
-  const tried = chosen && challengerOn() ? await challengerFor(chosen.model, checkins, values, today) : null
+  // Batch 3 (2026-11-21): never again once its own check, read from the stored forecasts and their scores, says to switch it off.
+  const tried = chosen && challengerOn() && !(await challengerSwitchedOff(today)) ? await challengerFor(chosen.model, checkins, values, today) : null
   await db.transaction('rw', [db.forecasts, db.forecastScores], async () => {
     const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
     const due = chosen ? forecastsDue(chosen, values, existing, today, done, logged) : []
@@ -86,6 +88,12 @@ async function forecastOnce(today: string): Promise<void> {
     if (due.length) await db.forecasts.bulkAdd(due)
     if (scores.length) await db.forecastScores.bulkAdd(scores)
   })
+}
+
+/** Whether the moved forecasts' check (Batch 3, `movedCheck.ts`) has read "switch it off" by today: then the challenger is not tried, and the rows are the base way's. */
+async function challengerSwitchedOff(today: string): Promise<boolean> {
+  const [forecasts, scores] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
+  return checkStopsChallenger(movedCheck(forecasts, scores, today))
 }
 
 /** The challenger's run for today, from the record the writer forecasts from. A failure in it leaves the rows the base way's, and is kept for the Worker's report. */
@@ -228,6 +236,8 @@ export interface Weekly {
   shift: Shift | null
   /** The honesty checks the record runs on itself (stage R7). */
   checks: HonestyChecks
+  /** Batch 3: the moved forecasts set beside the plain ones, for the Scorecard, read exactly as the writer reads it. */
+  movedCheck: MovedCheck
 }
 
 /** The records the weekly view's analyses are computed from. */
@@ -310,6 +320,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     weekAheadAlike: model !== null && !tellsWeekdaysApart(model),
     shift: baselineShift(dayReadings(checkins, today), today),
     checks: checksAsShown(honestyChecks({ checkins, offers, outcomes, contexts, scores, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers }, today), settings.hideFaith),
+    movedCheck: movedCheck(forecasts, scores, today),
   }
 }
 
