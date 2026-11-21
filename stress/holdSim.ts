@@ -21,7 +21,8 @@ const YEAR = 365
 /** Day 15, the first day a pair is read as shown (0-based). */
 export const FIRST_SHOWN = 14
 export const BORROW_OFFSET = 5_000_000
-export const MAX_N = 30
+/** The longest hold the criteria read: 60 days, as frozen anew at the owner's word on 2026-11-20 (the first criteria stopped at 30). */
+export const MAX_N = 60
 
 type People = 'base' | 'persistent' | 'sparse'
 

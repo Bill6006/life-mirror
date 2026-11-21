@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { HOLD_WORLDS, MAX_N, PAIRS, shownAt, STRESS_HIGH, type HoldPerson, type Run } from './holdSim'
 
-// The steady pattern hold's judge (criteria frozen 2026-11-20 before the first run; the plan holds them). On the
-// tuning seeds it says the N the criteria choose: the smallest from 1 to 30 at which every useless world has at most
-// 30 of 1,000 people shown. On the verdict's seeds, given that N, it reads criterion 1 in every useless world (at most
+// The steady pattern hold's judge (criteria frozen 2026-11-20 before the first run, and frozen anew the same day at the
+// owner's word with the hold read up to 60 days, once none from 1 to 30 met their rule; the plan holds both). On the
+// tuning seeds it says the N the criteria choose: the smallest from 1 to 60 (MAX_N) at which every useless world has
+// at most 30 of 1,000 people shown. On the verdict's seeds, given that N, it reads criterion 1 in every useless world (at most
 // 80 of 2,000 passes at once, 100 or more fails at once, 81 to 99 is read again on 8,000 more, passing at 457 of
 // 10,000) and criterion 2 in `fifteen-points` (the stress pair shown by day 180 for at least two thirds as many people
 // as at N = 1). Everything else is reported.
@@ -46,7 +47,7 @@ if (tuning) {
   // The N the criteria choose, on the tuning seeds: every useless world at most 30 of 1,000.
   const size = useless.length ? (worlds.get(useless[0].id) as HoldPerson[]).length : 0
   chosen = ns.find((n) => useless.every((w) => (count(worlds.get(w.id) as HoldPerson[], n) * 1000) / size <= 30)) ?? null
-  console.log(`\nthe criteria's choice on these seeds: ${chosen === null ? 'NONE up to 30: the build stops for the owner' : `N = ${chosen}`} (every useless world at most 30 of 1,000)`)
+  console.log(`\nthe criteria's choice on these seeds: ${chosen === null ? `NONE up to ${MAX_N}: the build stops for the owner` : `N = ${chosen}`} (every useless world at most 30 of 1,000)`)
 }
 
 if (chosen !== null) {
