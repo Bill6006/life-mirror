@@ -1,6 +1,6 @@
 import { addDays, BLOCKS } from '../src/blocks'
 import { weekdayOf } from '../src/counted/occasions'
-import { predict } from '../src/forecast'
+import { BACKTEST_DAYS, errorBand, HORIZON, loggedDays, MIN_DAYS_TODAY, MIN_DAYS_WEEK, predict } from '../src/forecast'
 import { slotKey } from '../src/observe'
 
 // The week ahead's level-plus-weekday way (designed 2026-11-21 at the owner's word; its criteria were frozen that day,
@@ -217,6 +217,217 @@ export function trackerOf(numbers: WeekNumbers = WEEK): WeekTracker {
       let held = gate.open
       for (let back = 1; held && back <= numbers.hold; back++) held = day - back >= 0 && open[day - back]
       return stateFrom(gate, held)
+    },
+  }
+}
+
+// ---- The way's ranges and its rows (written 2026-11-21, after the ranges' criteria were frozen). ----
+//
+// The range of a row the way writes, as each of the four takes its own (horizonBand, src/forecast.ts): around its
+// point, the 20th to 80th band of the way's own misses at the row's distance over the 28 days before the day of
+// writing; today's rows and tomorrow's take its misses a day out. Each miss is as the way would have made that forecast
+// then: the reading, less the same-block way's forecast from the record as it stood that many days before the day, less
+// the shift the gate gave on that record for the day's weekday (nothing where the gate was closed on that record). With
+// fewer than five misses at a distance, the band of its misses a day out.
+
+/** A row as the app stores it: the point, the low and the high, each rounded and kept to 0 to 100. */
+export interface WeekRow {
+  point: number
+  lo: number
+  hi: number
+}
+
+/** As the app stores a number of a row (src/forecast.ts's clamp). */
+const clamp = (v: number): number => Math.max(0, Math.min(100, Math.round(v)))
+const rowKey = (day: string, block: string, horizon: number): string => `${day}|${block}|${horizon}`
+
+/** The record as it stood at the end of a day, without copying it: what src/forecast.ts's visibleBefore gives a forecast. */
+function upTo(values: ReadonlyMap<string, number>, lastDay: string): ReadonlyMap<string, number> {
+  return { get: (k: string) => (k.slice(0, 10) <= lastDay ? values.get(k) : undefined) } as unknown as ReadonlyMap<string, number>
+}
+
+/**
+ * Everything the way works out from the record for one day of writing, each past forecast made once: its state (the
+ * gate, the hold, the shifts) and the rows it writes when it is in use. This is the form the app would call.
+ */
+export function levelWeekdayReader(values: ReadonlyMap<string, number>, numbers: WeekNumbers = WEEK) {
+  const missMemo = new Map<string, number | null>()
+  /** The same-block way's miss on a past slot as it would have been forecast that many days out: the reading less the forecast. */
+  const flatMiss = (day: string, block: (typeof BLOCKS)[number], ahead: number): number | null => {
+    const key = `${day}|${block}|${ahead}`
+    if (!missMemo.has(key)) {
+      const actual = values.get(slotKey(day, block))
+      const p = actual === undefined ? null : predict('sameBlock', ahead <= 1 ? values : upTo(values, addDays(day, -ahead)), day, block)
+      missMemo.set(key, actual === undefined || p === null ? null : actual - p)
+    }
+    return missMemo.get(key) as number | null
+  }
+  const dayMemo = new Map<string, DayMiss | null>()
+  const missOfDay = (day: string): DayMiss | null => {
+    if (!dayMemo.has(day)) {
+      const got = BLOCKS.map((b) => flatMiss(day, b, 1)).filter((m): m is number => m !== null)
+      dayMemo.set(day, got.length ? { weekday: weekdayOf(day), miss: got.reduce((a, b) => a + b, 0) / got.length } : null)
+    }
+    return dayMemo.get(day) as DayMiss | null
+  }
+  const gateMemo = new Map<string, Gate>()
+  /** The gate for forecasts written on a day, from the days before it within the window. */
+  const gate = (day: string): Gate => {
+    let g = gateMemo.get(day)
+    if (!g) {
+      const days: DayMiss[] = []
+      for (let back = numbers.window; back >= 1; back--) {
+        const m = missOfDay(addDays(day, -back))
+        if (m) days.push(m)
+      }
+      g = gateOf(days, numbers)
+      gateMemo.set(day, g)
+    }
+    return g
+  }
+  const state = (today: string): WeekState => {
+    const g = gate(today)
+    let held = g.open
+    for (let back = 1; held && back <= numbers.hold; back++) held = gate(addDays(today, -back)).open
+    return stateFrom(g, held)
+  }
+  /** The way's misses at a distance over the 28 days before a day of writing, each as it would have been made then. */
+  const misses = (today: string, ahead: number): number[] => {
+    const out: number[] = []
+    for (let back = 1; back <= BACKTEST_DAYS; back++) {
+      const x = addDays(today, -back)
+      const shift = gate(addDays(x, -(Math.max(1, ahead) - 1))).shift[weekdayOf(x)]
+      for (const b of BLOCKS) {
+        const e = flatMiss(x, b, ahead)
+        if (e !== null) out.push(e - shift)
+      }
+    }
+    return out
+  }
+  const band = (today: string, ahead: number): { lo: number; hi: number } => {
+    if (ahead > 1) {
+      const far = misses(today, ahead)
+      if (far.length >= 5) return errorBand(far)
+    }
+    return errorBand(misses(today, 1))
+  }
+  /** The rows the way writes on a day: every slot of today and the next seven days the same-block way can forecast; null where the way is not in use. */
+  const rows = (today: string): Map<string, WeekRow> | null => {
+    const s = state(today)
+    if (!s.inUse) return null
+    const logged = loggedDays(values)
+    const maxHorizon = logged >= MIN_DAYS_WEEK ? HORIZON : logged >= MIN_DAYS_TODAY ? 0 : -1
+    const out = new Map<string, WeekRow>()
+    for (let h = 0; h <= maxHorizon; h++) {
+      const day = addDays(today, h)
+      const b = band(today, Math.max(1, h))
+      BLOCKS.forEach((block, i) => {
+        const flat = predict('sameBlock', values, day, block)
+        if (flat === null) return
+        const p = flat + s.shift[weekdayOf(day)][i]
+        out.set(rowKey(day, block, h), { point: clamp(p), lo: clamp(p + b.lo), hi: clamp(p + b.hi) })
+      })
+    }
+    return out
+  }
+  /**
+   * The way's forecast for a slot as the challenger reads its base: the same-block way's forecast, plus the day's
+   * weekday's shift where the way was in use on the day the forecast was written: the day itself for a day before
+   * today, and today for a day from today on. Where the way was not in use it is the same-block way's, number for
+   * number (the points' criterion 6 was simulated on exactly this rule, stress/weekSim.ts's predictOf).
+   */
+  const forecast = (today: string, day: string, block: (typeof BLOCKS)[number]): number | null => {
+    const flat = predict('sameBlock', values, day, block)
+    if (flat === null) return null
+    const s = state(day < today ? day : today)
+    return s.inUse ? flat + s.shift[weekdayOf(day)][BLOCKS.indexOf(block)] : flat
+  }
+  return { state, rows, gate, forecast }
+}
+
+/** The rows the way writes on a day, from the record alone; null where it is not in use. */
+export function levelWeekdayRows(values: ReadonlyMap<string, number>, today: string, numbers: WeekNumbers = WEEK): Map<string, WeekRow> | null {
+  return levelWeekdayReader(values, numbers).rows(today)
+}
+
+/** What the day-by-day tracker is given by the simulation, each past forecast made once. */
+export interface RangeInputs {
+  /** The reading at a check-in (0 morning) of a day (0 first), or null. */
+  reading(day: number, block: number): number | null
+  /** The same-block way's miss on a past slot as it would have been forecast that many days out (1: from the record before the day): the reading less the forecast; null where either is missing. */
+  flatMiss(day: number, block: number, ahead: number): number | null
+  /** The same-block way's forecast, written on day t from the record before it, for a slot on or after t; null where it has none. */
+  flatForecast(t: number, day: number, block: number): number | null
+  weekday(day: number): number
+  dayName(day: number): string
+}
+
+export interface RangeTracker {
+  stateOn(day: number): WeekState
+  rowsOn(day: number): Map<string, WeekRow>
+}
+
+/** The same state and rows kept day by day, for the simulation: the days are numbered from the record's first. */
+export function rangeTrackerOf(numbers: WeekNumbers, inputs: RangeInputs): RangeTracker {
+  const dayMiss: (DayMiss | null)[] = []
+  const gates: Gate[] = []
+  const missOfDay = (x: number): DayMiss | null => {
+    const got = BLOCKS.map((_, i) => inputs.flatMiss(x, i, 1)).filter((m): m is number => m !== null)
+    return got.length ? { weekday: inputs.weekday(x), miss: got.reduce((a, b) => a + b, 0) / got.length } : null
+  }
+  /** The gate for forecasts written on day k, from the days before it; closed before the record begins. */
+  const gateOn = (k: number): Gate => {
+    if (k < 0) return { open: false, f: null, chance: null, shift: NONE }
+    while (gates.length <= k) {
+      const d = gates.length
+      while (dayMiss.length < d) dayMiss.push(missOfDay(dayMiss.length))
+      gates.push(gateOf(dayMiss.slice(Math.max(0, d - numbers.window), d).filter((m): m is DayMiss => m !== null), numbers))
+    }
+    return gates[k]
+  }
+  const stateOn = (t: number): WeekState => {
+    const g = gateOn(t)
+    let held = g.open
+    for (let back = 1; held && back <= numbers.hold; back++) held = gateOn(t - back).open
+    return stateFrom(g, held)
+  }
+  const misses = (t: number, ahead: number): number[] => {
+    const out: number[] = []
+    for (let back = 1; back <= BACKTEST_DAYS; back++) {
+      const x = t - back
+      if (x < 0) continue
+      const shift = gateOn(x - (Math.max(1, ahead) - 1)).shift[inputs.weekday(x)]
+      for (let i = 0; i < BLOCKS.length; i++) {
+        const e = inputs.flatMiss(x, i, ahead)
+        if (e !== null) out.push(e - shift)
+      }
+    }
+    return out
+  }
+  const band = (t: number, ahead: number): { lo: number; hi: number } => {
+    if (ahead > 1) {
+      const far = misses(t, ahead)
+      if (far.length >= 5) return errorBand(far)
+    }
+    return errorBand(misses(t, 1))
+  }
+  return {
+    stateOn,
+    rowsOn(t) {
+      const s = stateOn(t)
+      const out = new Map<string, WeekRow>()
+      if (!s.inUse) return out
+      for (let h = 0; h <= HORIZON; h++) {
+        const d = t + h
+        const b = band(t, Math.max(1, h))
+        BLOCKS.forEach((block, i) => {
+          const flat = inputs.flatForecast(t, d, i)
+          if (flat === null) return
+          const p = flat + s.shift[inputs.weekday(d)][i]
+          out.set(rowKey(inputs.dayName(d), block, h), { point: clamp(p), lo: clamp(p + b.lo), hi: clamp(p + b.hi) })
+        })
+      }
+      return out
     },
   }
 }
