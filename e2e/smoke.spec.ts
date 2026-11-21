@@ -4101,8 +4101,12 @@ test('in the moment (stage 3, group 3): after an evening, the one pattern from W
   await expect(card).toContainText('Evenings like this one')
   await expect(card).toContainText('After an evening with stress high')
   await expect(card).toContainText('next morning’s reading · lower by')
-  // Its standing, in the standard's own words: eight such evenings against twenty, the only pair the record can test.
-  await expect(card.getByTestId('before-standing')).toHaveText('A steady pattern')
+  // Its standing, in the standard's own words: eight such evenings against twenty, the only pair the record can test. A
+  // steady pattern only two days running (Batch 2, item 6), so a lead until it has stood as one for 43; its Details say so.
+  await expect(card.getByTestId('before-details')).toBeVisible({ timeout: 30_000 })
+  await expect(card.getByTestId('before-standing')).toHaveText('A lead, not yet a pattern · 1 looked at')
+  await card.getByTestId('before-details').click()
+  await expect(card.getByTestId('before-details-line')).toHaveText('It has read as a steady pattern 2 days running; it is called one from 43.')
   await expect(card).toContainText('an association, never a cause')
   // The evening's own summary never asks Anything behind it?: its note stays in its extras.
   await expect(page.getByTestId('behind-it')).toHaveCount(0)

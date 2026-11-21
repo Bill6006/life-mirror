@@ -1425,6 +1425,16 @@ button.chip.is-on {
   color: var(--ink);
 }
 
+/* A pair's Details under the hold (Batch 2, item 6): the app's own fold inside the row, its one sentence in the
+   calculation register, as the week ahead's Details holds its lines. */
+.before-details .calc {
+  margin: 0;
+}
+
+.before-details .calc-line:last-child {
+  margin-bottom: 0;
+}
+
 .interval {
   display: block;
   width: 100%;

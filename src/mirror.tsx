@@ -1,6 +1,7 @@
-import { useState } from 'preact/hooks'
+import { useMemo, useState } from 'preact/hooks'
 import { blockAt, BLOCKS } from './blocks'
 import { BEFORE_MIN, comesBeforeGuarded, standingLine, type BeforePair } from './beforeDays'
+import { detailsLine, heldStanding, pairKey, useHeldPairs, type Hold } from './heldPairs'
 import { Heatmap, IntervalBar, MiniTrace, Trace } from './charts'
 import { NavRow } from './controls'
 import { copy } from './copy'
@@ -17,8 +18,12 @@ import { Disclosure, ScreenHead, SectionLabel } from './ui'
 const round = (v: number) => String(Math.round(v))
 const signed = (v: number) => (Math.round(v) > 0 ? '+' : Math.round(v) < 0 ? '−' : '') + String(Math.abs(Math.round(v)))
 
-/** One pair: the evening, then what the morning after read against like evenings, with its interval. */
-export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
+/**
+ * One pair: the evening, then what the morning after read against like evenings, with its interval. Its standing under
+ * the hold (Batch 2, item 6): a steady pattern only once held, and with no holds known yet a pattern reads as a lead; under
+ * it, where one applies, a Details fold with one sentence.
+ */
+export function BeforeRow({ p, span, held }: { p: BeforePair; span: number; held: ReadonlyMap<string, Hold> | null }) {
   const c = copy.beforeDays
   const event = fill(c.event, { reading: readingById(p.reading).name.toLowerCase(), level: c[p.level] })
   if (!p.enough || p.diff === null || p.lo === null || p.hi === null) {
@@ -30,6 +35,8 @@ export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
     )
   }
   const dir = Math.round(p.diff) > 0 ? c.higher : Math.round(p.diff) < 0 ? c.lower : null
+  const hold = held?.get(pairKey(p)) ?? null
+  const details = detailsLine(p, hold)
   return (
     <li class="before-row" data-testid="before-pair">
       <span class="before-event">{event}</span>
@@ -39,8 +46,17 @@ export function BeforeRow({ p, span }: { p: BeforePair; span: number }) {
       </span>
       <IntervalBar lo={p.lo} hi={p.hi} est={p.diff} span={span} />
       <span class="before-line" data-testid="before-standing">
-        {standingLine(p)}
+        {standingLine({ standing: heldStanding(p, hold), family: p.family })}
       </span>
+      {details && (
+        <Disclosure label={copy.disclose.details} testid="before-details" class="before-details">
+          <div class="calc">
+            <p class="calc-line" data-testid="before-details-line">
+              {details}
+            </p>
+          </div>
+        </Disclosure>
+      )}
     </li>
   )
 }
@@ -52,6 +68,11 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: {
   // Stage 3, group 4: the day a month back, shown only when the record holds something of it.
   const ago = useLive(() => monthAgoData(today.day), [today.day])
   const [overlayId, setOverlayId] = useState<ReadingId | null>(null)
+  // The pairs' chance is new math: under the comparisons' guard, a throw leaves the card saying so (2026-11-12). Worked
+  // out once for a record and a day, so the screen drawn again (a chip, the hold's days known) never works them out again.
+  const pairs = useMemo(() => (all ? comesBeforeGuarded(all, today.day) : null), [all, today.day])
+  // Batch 2, item 6: each pair's days at a steady pattern, worked out in slices and kept on this phone.
+  const held = useHeldPairs(all, today.day)
   if (!all) return <section class="screen" />
 
   const todayVals = dayValues(all, today.day)
@@ -59,8 +80,6 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: {
   const overlay = overlayId ? contextTrace(all, today.day, overlayId) : null
   const week = weekSeries(all, today.day)
   const rows = heatmapRows(all, today.day)
-  // The pairs' chance is new math: under the comparisons' guard, a throw leaves the card saying so (2026-11-12).
-  const pairs = comesBeforeGuarded(all, today.day)
   const before = pairs ?? []
   const shown = before.filter((p) => p.enough)
   const gathering = before.filter((p) => !p.enough)
@@ -163,7 +182,7 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: {
         {shown.length > 0 && (
           <ul class="rows">
             {shown.map((p) => (
-              <BeforeRow key={`${p.reading}-${p.level}`} p={p} span={span} />
+              <BeforeRow key={`${p.reading}-${p.level}`} p={p} span={span} held={held} />
             ))}
           </ul>
         )}
@@ -171,7 +190,7 @@ export function MirrorScreen({ onWeekly, onMonth, onWords, onJournal, onAsk }: {
           <Disclosure label={fill(c.moreTooFew, { n: String(gathering.length) })} testid="before-gathering-more">
             <ul class="rows">
               {gathering.map((p) => (
-                <BeforeRow key={`${p.reading}-${p.level}`} p={p} span={span} />
+                <BeforeRow key={`${p.reading}-${p.level}`} p={p} span={span} held={held} />
               ))}
             </ul>
           </Disclosure>

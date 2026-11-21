@@ -3,6 +3,7 @@ import { OutcomeAsk, type Answer } from './ask'
 import { addDays, blockAt, BLOCKS, type Block } from './blocks'
 import { changesInWords, worsenedReadings } from './change'
 import { matchingPair } from './beforeDays'
+import { useHeldPairs } from './heldPairs'
 import { BeforeRow } from './mirror'
 import { copy } from './copy'
 import {
@@ -430,6 +431,8 @@ export function SummaryScreen({
  */
 function InTheMoment({ record, previous, all }: { record: CheckIn; previous: CheckIn | null; all: readonly CheckIn[] }) {
   const pattern = useMemo(() => (record.block === 'evening' ? matchingPair(all, record) : null), [all, record])
+  // Batch 2, item 6: the pair's days at a steady pattern up to tonight's day, as Mirror holds them; only where a pair shows.
+  const held = useHeldPairs(pattern ? all : null, record.day)
   const behind = record.block !== 'evening' && worsenedReadings(record.answers, record.block, previous).length > 0
   const span = pattern && pattern.lo !== null && pattern.hi !== null ? Math.max(10, Math.abs(pattern.lo), Math.abs(pattern.hi)) : null
   return (
@@ -444,7 +447,7 @@ function InTheMoment({ record, previous, all }: { record: CheckIn; previous: Che
         <div class="card pad" data-testid="pattern-card">
           <p class="title-sm">{copy.summary.pattern}</p>
           <ul class="rows">
-            <BeforeRow p={pattern} span={span} />
+            <BeforeRow p={pattern} span={span} held={held} />
           </ul>
           <p class="note faint no-gap">{copy.summary.patternNote}</p>
         </div>

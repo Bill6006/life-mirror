@@ -131,6 +131,37 @@ export function comesBefore(checkins: readonly CheckIn[], today: string, opts: {
 }
 
 /**
+ * Which of the sixteen pairs `comesBefore` calls a steady pattern on a day, in its own order (each evening reading high,
+ * then low), for the hold (the forecast follow-ups, Batch 2, item 6). Worked out by its own parts: the comparison, the
+ * family of sixteen and the interval rule, the interval drawn only for a pair the family calls a pattern, the only one
+ * the rule can change. The simulation's shortcut (stress/holdSim.ts), tested against comesBefore itself.
+ */
+export function patternsOn(checkins: readonly CheckIn[], today: string, opts: { min?: number; resamples?: number } = {}): boolean[] {
+  const min = opts.min ?? BEFORE_MIN
+  const resamples = opts.resamples ?? 600
+  const compared: Compared[] = []
+  const drawn: { points: DayPoint[]; enough: boolean; seed: number }[] = []
+  for (const reading of EVENING_READINGS) {
+    for (const level of ['high', 'low'] as const) {
+      const points = eveningPoints(
+        checkins,
+        today,
+        (c) => atLevel(c.answers[reading] as number, level),
+        (c) => c.answers[reading] !== undefined,
+      )
+      const a = likeForLike(points, { id: `before.${reading}.${level}`, worth: WORTH_POINTS })
+      compared.push(a.compared as Compared)
+      drawn.push({ points, enough: a.withEvent.n >= min && a.without.n >= min && a.diff !== null, seed: seedOf(`${reading}:${level}:${points.length}`) })
+    }
+  }
+  return standings(compared).map((s, i) => {
+    if (s.standing !== 'pattern' || !drawn[i].enough) return false
+    const iv = resampledInterval(drawn[i].points, resamples, drawn[i].seed)
+    return iv !== null && !(iv.lo <= 0 && iv.hi >= 0)
+  })
+}
+
+/**
  * After an evening check-in (stage 3, group 3): the one pair tonight's answers match, a reading at
  * its top two phrases or its lowest two whose pair already shows, the largest difference first; or
  * none. Tonight itself has no morning after yet, so it is never part of its own pair.

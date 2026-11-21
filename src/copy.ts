@@ -2652,5 +2652,13 @@ export const copy = {
     moreTooFew: '{n} more still gathering',
     caption: 'Next morning’s reading out of 100 after evenings where a reading sat at its top two phrases (high) or its lowest two (low), against the other evenings that started in the same band. The interval is 95 percent, from resampling the mornings. At least {need} mornings on each side before a pair shows.',
     empty: 'Nothing to show yet: pairs need {need} mornings on each side.',
+    /**
+     * The forecast follow-ups, Batch 2, item 6: a pair's Details under the hold, in the approved contract's words
+     * (version 6). One day running is said in the singular, as the app says "one kind of setting".
+     */
+    notHeld: 'It has read as a steady pattern {k} days running; it is called one from {n}.',
+    notHeldOne: 'It has read as a steady pattern 1 day running; it is called one from {n}.',
+    held: 'A steady pattern since {date}, {k} days running.',
+    fell: 'It was a steady pattern for {k} days, until {date}.',
   },
 } as const
