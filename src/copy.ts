@@ -1718,6 +1718,7 @@ export const copy = {
       notThisReason: 'One optional line: why not?',
       declined: 'You chose Not this. It is offered nowhere, and Start is still yours.',
       setAside: 'Set aside for later: offered nowhere until you start it.',
+      started: 'A Path you started',
     },
     /** The start of a Path with strands (P4): two questions whose answers are not kept, the app’s own help on a yes, and where it starts. */
     start: {
@@ -1778,6 +1779,8 @@ export const copy = {
       states: { triaged: 'Not a Path', queued: 'Waiting for a draft.', drafting: 'Being drafted.', reading: 'Its new evidence is being read.', ready: 'Ready to read.', refused: 'Not made: the compiler refused the draft.', abstained: 'Not made: too little to build on.', failed: 'The draft did not finish.', withdrawn: 'Withdrawn.' } as Record<string, string>,
       reasons: 'Why',
       read: 'Read it',
+      /** A Path that came back, once you have decided on it: where it stands, with no Read it (2026-11-21). */
+      decided: { onAims: 'Started: it is on your Aims.', later: 'Set aside for later: Add still has it.', notThis: 'You chose Not this: Add still has it.', removed: 'Started, then removed from your Aims: Add still has it.' } as Record<string, string>,
       withdraw: 'Withdraw',
       again: 'Ask again when you like.',
       retry: 'Say it again',

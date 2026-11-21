@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { leaveApp } from './closedApp'
 
 // Asking for a Path and the Path that comes back (P5 of the AI-generated Paths design), driven as the owner would:
 // the intake under Add, the route the rules give it with the app's own words, the request listed with where its
@@ -193,4 +194,96 @@ test('a generated Path that came back: read on one screen, started and run; a st
   // Turned off again: Asking comes back, its stages kept.
   await asking.getByTestId('path-strand-on-together').click()
   await expect.poll(async () => (await rows(page, 'aims')).find((a) => a.path === ASKING.pathId)?.strands).toEqual(['asking'])
+})
+
+test('a request’s row once its Path is decided (2026-11-21): set aside, declined, started, removed from Aims and started again, each said with no Read it; a read screen left open while the Path is started elsewhere offers no second start', async ({ page, context }) => {
+  const when = new Date(2026, 10, 9, 19, 5)
+  await page.clock.setFixedTime(when)
+  await page.goto('./')
+  // The rows as the phone pulls them, written with no app page open: one request, its job ready, and its Path.
+  await leaveApp(page)
+  await putAll(page, 'pathRequests', [{ id: 1, at: '2026-11-07T03:00:00.000Z', goal: 'Grow vegetables in a small garden bed this summer', minutes: 120, route: 'fits', state: 'queued' }])
+  await putAll(page, 'pathJobs', [{ id: 'job:1', requestId: 1, state: 'ready', at: '2026-11-08T04:00:00.000Z', day: '2026-11-07', pathId: GARDEN.pathId, version: '1' }])
+  await putAll(page, 'generatedPaths', GENERATED)
+  await page.goto('./')
+  const row = page.getByTestId('path-request').filter({ hasText: 'Grow vegetables' })
+  const fromAdd = async (p: Page) => {
+    await tab(p, 'Aims')
+    await p.getByRole('button', { name: /^Add a commitment/ }).click()
+    await p.getByTestId(`aim-kind-path-${GARDEN.pathId}`).click()
+    await expect(p.getByTestId('path-read')).toBeVisible()
+  }
+  const decisions = async () => (await rows(page, 'pathVersions')).filter((v) => v.path === GARDEN.pathId).map((v) => v.decision)
+
+  // Still to decide: read from the row.
+  await tab(page, 'Aims')
+  await expect(row.getByTestId('path-request-state')).toHaveText('Ready to read.')
+  await row.getByTestId('path-request-read').click()
+  await page.getByTestId('path-read-later').click()
+  await tab(page, 'Aims')
+  await expect(row.getByTestId('path-request-state')).toHaveText('Set aside for later: Add still has it.')
+  await expect(row.getByTestId('path-request-read')).toHaveCount(0)
+
+  // Not this, from Add, which still has it.
+  await fromAdd(page)
+  await expect(page.getByTestId('path-read-set-aside')).toBeVisible()
+  await page.getByTestId('path-read-notthis').click()
+  await page.getByTestId('path-read-notthis-confirm').click()
+  await tab(page, 'Aims')
+  await expect(row.getByTestId('path-request-state')).toHaveText('You chose Not this: Add still has it.')
+  await expect(row.getByTestId('path-request-read')).toHaveCount(0)
+
+  // A second window of the app reads the Path from Add while this one starts it: its screen follows the start and
+  // offers no second start, and no Later or Not this.
+  const other = await context.newPage()
+  other.on('pageerror', (e) => pageErrors.push(String(e)))
+  await other.addInitScript(() => {
+    try {
+      localStorage.setItem('lm.inStep', '1')
+    } catch {
+      // A page without local storage counts as in step anyway.
+    }
+  })
+  await other.clock.setFixedTime(when)
+  await other.goto('./')
+  await fromAdd(other)
+  const open = other.getByTestId('path-read')
+  await expect(other.getByTestId('path-read-declined')).toBeVisible()
+  await expect(other.getByTestId('path-read-start')).toHaveText('Start')
+  await fromAdd(page)
+  await page.getByTestId('path-read-start').click()
+  await page.getByTestId('path-start-begin').click()
+  await expect(open.getByTestId('path-read-started')).toHaveText('Started: it is on your Aims.')
+  await expect(open.locator('.screen-head .eyebrow')).toHaveText('A Path you started')
+  for (const id of ['path-read-start', 'path-read-later', 'path-read-notthis']) await expect(open.getByTestId(id)).toHaveCount(0)
+  await open.getByTestId('path-read-close').click()
+  await expect(other.getByTestId('path-read')).toHaveCount(0)
+  await other.close()
+
+  // Started: on your Aims, said on the row with no Read it, and one start written.
+  await tab(page, 'Aims')
+  const garden = page.locator(`[data-path="${GARDEN.pathId}"][data-kind="path"]`)
+  await expect(garden).toHaveCount(1)
+  await expect(row.getByTestId('path-request-state')).toHaveText('Started: it is on your Aims.')
+  await expect(row.getByTestId('path-request-read')).toHaveCount(0)
+  expect(await decisions()).toEqual(['later', 'notThis', 'started'])
+
+  // Removed from Aims: the row says so, and Add's read screen starts it again.
+  const toggle = garden.getByTestId('path-details')
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+  await garden.getByRole('button', { name: 'Remove', exact: true }).click()
+  await expect(garden).toHaveCount(0)
+  await expect(row.getByTestId('path-request-state')).toHaveText('Started, then removed from your Aims: Add still has it.')
+  await expect(row.getByTestId('path-request-read')).toHaveCount(0)
+  await fromAdd(page)
+  await expect(page.getByTestId('path-read-started')).toHaveCount(0)
+  await expect(page.locator('[data-testid="path-read"] .screen-head .eyebrow')).toHaveText('A new Path to read')
+  await expect(page.getByTestId('path-read-later')).toBeVisible()
+  await page.getByTestId('path-read-start').click()
+  await page.getByTestId('path-start-begin').click()
+  await tab(page, 'Aims')
+  await expect(garden).toHaveCount(1)
+  await expect(row.getByTestId('path-request-state')).toHaveText('Started: it is on your Aims.')
+  await expect(row.getByTestId('path-request-read')).toHaveCount(0)
+  expect(await decisions()).toEqual(['later', 'notThis', 'started', 'started'])
 })

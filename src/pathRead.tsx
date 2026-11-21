@@ -12,7 +12,7 @@ import { setAsidePath, startPath } from './measureFlow'
 import { activeStrands } from './pathMeasure'
 import { WhyBuilt } from './pathMeasureUi'
 import { pathName } from './pathStage'
-import { standing } from './pathVersions'
+import { offersDecision, standing } from './pathVersions'
 import { Disclosure, Tag } from './ui'
 
 // A Path the catalogue adds, before it runs (P1 and P4 of the AI-generated Paths design, 2026-11-06):
@@ -103,25 +103,29 @@ export function minutesLine(path: Path): string {
 
 /** One screen to read before a Path the catalogue adds runs: what it is, what it asks, its strands, your week, what counts and never counts, what it leaves out, what it rests on; Start, Later or Not this. */
 export function PathReadScreen({ pathId, onStart, onClose }: { pathId: string; onStart: () => void; onClose: () => void }) {
-  const versions = useLive(() => db.pathVersions.toArray(), [])
+  // Your decisions and whether the Path is on your Aims, in one live read: a screen left open follows a start made elsewhere.
+  const decided = useLive(() => Promise.all([db.pathVersions.toArray(), db.aims.filter((a) => a.archivedAt === null && a.kind === 'path' && a.path === pathId).count()]), [pathId])
   const settings = useLive(getSettings, [])
   const [declining, setDeclining] = useState(false)
   const [reason, setReason] = useState('')
   const path = addedPaths().find((p) => p.id === pathId)
-  if (!versions || !settings) return <section class="screen" />
+  if (!decided || !settings) return <section class="screen" />
   if (!path || path.builtIn) {
     onClose()
     return <section class="screen" />
   }
   const c = copy.path.read
+  const [versions, onAims] = decided
   const st = standing(path, versions)
+  // A Path you started that is on your Aims is read here, never started, set aside or declined again (2026-11-21).
+  const offers = offersDecision(st, onAims > 0)
   const label = labelOf(path)
   const disputed = path.cards.filter((id) => pathCardById(id)?.status === 'disputed').length
   const least = path.decisions?.find((d) => d.element === 'structure')?.uncertainty
   return (
     <section class="screen" data-testid="path-read" data-path={path.id}>
       <header class="screen-head">
-        <p class="eyebrow">{st.kind === 'waiting' ? c.waiting : c.eyebrow}</p>
+        <p class="eyebrow">{!offers ? c.started : st.kind === 'waiting' ? c.waiting : c.eyebrow}</p>
       </header>
       <h1 class="title">{pathName(path)}</h1>
       {label && (
@@ -198,7 +202,18 @@ export function PathReadScreen({ pathId, onStart, onClose }: { pathId: string; o
           <WhyBuilt path={path} />
         </Disclosure>
       ) : null}
-      {declining ? (
+      {!offers ? (
+        <>
+          <p class="note" data-testid="path-read-started">
+            {copy.path.make.decided.onAims}
+          </p>
+          <div class="actions">
+            <button type="button" class="textbtn" data-testid="path-read-close" onClick={onClose}>
+              {copy.checkin.close}
+            </button>
+          </div>
+        </>
+      ) : declining ? (
         <>
           <p class="setting-label">{c.notThisReason}</p>
           <div class="add">

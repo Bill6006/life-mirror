@@ -83,6 +83,29 @@ export function aimOffered(aim: Pick<Aim, 'kind' | 'path'>, versions: readonly P
   return offeredNow(path, versions) && (path.builtIn === true || compiled(path))
 }
 
+/**
+ * Where a Path you asked for stands with you, for its request's row (2026-11-21): still to decide; started and on your
+ * Aims, a major change waiting included; set aside for later; Not this; or started and since removed from your Aims,
+ * which Add still offers. Removing a commitment writes no decision, so only your Aims tell the last apart from a start.
+ */
+export type RequestedPath = 'undecided' | 'onAims' | 'later' | 'notThis' | 'removed'
+
+export function requestedPath(path: Path, versions: readonly PathVersion[], onAims: boolean): RequestedPath {
+  const s = standing(path, versions)
+  if (s.kind === 'started' || s.kind === 'waiting') return onAims ? 'onAims' : 'removed'
+  if (s.kind === 'declined') return 'notThis'
+  return s.kind === 'proposed' && s.later ? 'later' : 'undecided'
+}
+
+/**
+ * Whether a Path's read screen offers Start, Later and Not this (2026-11-21): never for one started on its current
+ * version, as the app counts it, that is on your Aims. A major change waiting is read and continued there, and a Path
+ * removed from your Aims is started again from there.
+ */
+export function offersDecision(st: PathStanding, onAims: boolean): boolean {
+  return !(st.kind === 'started' && onAims)
+}
+
 /** Your decision on the Path as it stands now: its version, its content's hash and the cards it rests on, each with its review day. */
 export async function decide(path: Path, decision: PathVersion['decision'], cards: readonly { id: string; reviewed: string }[], reason?: string, now: Date = new Date()): Promise<void> {
   const text = reason?.trim()

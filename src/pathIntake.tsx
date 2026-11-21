@@ -1,12 +1,13 @@
 import { useState } from 'preact/hooks'
 import { findPath } from './catalogue'
 import { copy } from './copy'
-import { db, type PathRequest } from './db'
+import { db, type PathRequest, type PathVersion } from './db'
 import { fill } from './format'
 import { useLive } from './live'
 import { requestState } from './pathJob'
 import { MINUTES, requestPath, routeOf, WHERE, withdrawRequest } from './pathRequestFlow'
 import type { Triage } from './pathTriage'
+import { requestedPath } from './pathVersions'
 import { Disclosure } from './ui'
 
 // Asking for a Path (P5), on the phone: the goal in your words, why once, and four questions with defaults; the
@@ -117,11 +118,14 @@ export function MakePathScreen({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** On Aims: your requests of the last thirty days, newest first, each with where its job stands; a ready one is read from here. */
+/**
+ * On Aims: your requests of the last thirty days, newest first, each with where its job stands; a ready one is read from
+ * here until you decide on its Path, and then says where that Path stands with you (2026-11-21).
+ */
 export function PathRequestsCard({ onRead, today }: { onRead: (path: string) => void; today: string }) {
-  const rows = useLive(() => Promise.all([db.pathRequests.toArray(), db.pathJobs.toArray()]), [])
+  const rows = useLive(() => Promise.all([db.pathRequests.toArray(), db.pathJobs.toArray(), db.pathVersions.toArray(), db.aims.filter((a) => a.archivedAt === null && a.kind === 'path').toArray()]), [])
   if (!rows) return null
-  const [requests, jobs] = rows
+  const [requests, jobs, versions, aims] = rows
   const since = new Date(new Date(`${today}T12:00:00`).getTime() - 30 * 86_400_000).toISOString()
   const shown = requests.filter((r) => r.at >= since).sort((a, b) => (a.at < b.at ? 1 : -1))
   if (!shown.length) return null
@@ -130,22 +134,25 @@ export function PathRequestsCard({ onRead, today }: { onRead: (path: string) => 
     <div class="card pad" data-testid="path-requests">
       <p class="eyebrow">{c.requests}</p>
       {shown.map((r) => (
-        <RequestRow key={r.id} r={r} job={jobs.find((j) => j.requestId === r.id)} onRead={onRead} />
+        <RequestRow key={r.id} r={r} job={jobs.find((j) => j.requestId === r.id)} versions={versions} onAims={(id) => aims.some((a) => a.path === id)} onRead={onRead} />
       ))}
     </div>
   )
 }
 
-function RequestRow({ r, job, onRead }: { r: PathRequest; job: { state: string; pathId?: string; reasons?: string[] } | undefined; onRead: (path: string) => void }) {
+function RequestRow({ r, job, versions, onAims, onRead }: { r: PathRequest; job: { state: string; pathId?: string; reasons?: string[] } | undefined; versions: readonly PathVersion[]; onAims: (path: string) => boolean; onRead: (path: string) => void }) {
   const c = copy.path.make
   const state = requestState(r, job as never)
   // The rules are the same every time: the words shown at the intake, from the request's own words.
   const triage = routeOf({ goal: r.goal, why: r.why, offLimits: r.offLimits })
+  // A Path that came back is read from here until you decide on it; then the row says where it stands with you.
+  const path = state === 'ready' && job?.pathId ? findPath(job.pathId) : undefined
+  const where = path ? requestedPath(path, versions, onAims(path.id)) : null
   return (
-    <div class="ease" data-testid="path-request" data-state={state}>
+    <div class="ease" data-testid="path-request" data-state={state} data-path-standing={where ?? undefined}>
       <span class="sub ink">{r.goal}</span>
       <span class="sub" data-testid="path-request-state">
-        {state === 'triaged' ? routeWords(triage) : c.states[state]}
+        {state === 'triaged' ? routeWords(triage) : where && where !== 'undecided' ? c.decided[where] : c.states[state]}
         {state === 'failed' || state === 'refused' || state === 'abstained' ? ` ${c.again}` : ''}
       </span>
       {job?.reasons?.length ? (
@@ -160,8 +167,8 @@ function RequestRow({ r, job, onRead }: { r: PathRequest; job: { state: string; 
         </Disclosure>
       ) : null}
       <div class="actions">
-        {state === 'ready' && job?.pathId && findPath(job.pathId) ? (
-          <button type="button" class="pill-quiet" data-testid="path-request-read" onClick={() => onRead(job.pathId as string)}>
+        {path && where === 'undecided' ? (
+          <button type="button" class="pill-quiet" data-testid="path-request-read" onClick={() => onRead(path.id)}>
             {c.read}
           </button>
         ) : null}
