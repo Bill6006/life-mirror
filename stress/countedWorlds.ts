@@ -33,6 +33,8 @@ export interface CountedWorld {
   families: readonly Family[]
   /** A shift over each of the six readings at every check-in of a day, in steps in its good direction. */
   shift?: (d: number, weekday: number) => number
+  /** A shift at one check-in of a day rather than every one, in the same steps (the week ahead's level-plus-weekday simulation, 2026-11-21): a world without it is drawn exactly as before. */
+  shiftAt?: (d: number, weekday: number, block: Block) => number
   /** How a thing happens: independently with a chance at each occasion, or in runs. */
   things: { how: 'chance'; chance: (o: Occasion) => number } | { how: 'runs' }
   /** The first evening thing adds this many steps to each of the six readings the next morning. */
@@ -157,6 +159,7 @@ export function recordOf(spec: CountedWorld, seed: number): CountedRecord {
   const weekday = Array.from({ length: YEAR }, (_, d) => world.context(d).weekday)
   const dayName = Array.from({ length: YEAR }, (_, d) => world.dayString(d))
   if (spec.shift) for (let d = 0; d < YEAR; d++) for (const b of BLOCKS) for (const r of INGREDIENT_READINGS) world.add(r, d, b, spec.shift(d, weekday[d]))
+  if (spec.shiftAt) for (let d = 0; d < YEAR; d++) for (const b of BLOCKS) { const steps = spec.shiftAt(d, weekday[d], b); if (steps !== 0) for (const r of INGREDIENT_READINGS) world.add(r, d, b, steps) }
 
   // The record: which check-ins were answered, what each read out of 100, and whether the night before was short.
   const reading: (number | null)[][] = []
