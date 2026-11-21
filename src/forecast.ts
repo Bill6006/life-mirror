@@ -12,6 +12,15 @@ import { readingOf } from './score'
 export type ModelId = 'sameBlock' | 'weekdayBlock' | 'lastValue' | 'blend'
 export const MODELS: readonly ModelId[] = ['sameBlock', 'weekdayBlock', 'lastValue', 'blend']
 
+/**
+ * The week ahead's level-plus-weekday way (2026-11-21, its points' and ranges' verdicts in stress/RESULTS-13.md and
+ * RESULTS-14.md): never one of the four, never in their back-test or their pick. Its name is here, beside theirs, so that
+ * every reader of a stored row's way knows it; this file imports nothing of the way's own code.
+ */
+export const LEVEL_WEEKDAY = 'levelWeekday'
+/** The way a stored row names: one of the four, or the level-plus-weekday way. */
+export type WayId = ModelId | typeof LEVEL_WEEKDAY
+
 export const MIN_DAYS_TODAY = 7
 export const MIN_DAYS_WEEK = 14
 export const BACKTEST_DAYS = 28
@@ -248,10 +257,11 @@ export function weekAheadRows(forecasts: readonly Forecast[], today: string): Ah
 
 /**
  * Whether a model can tell one weekday from another. The same-block and last-value models have no
- * weekday term: every day ahead rests on the same recent record, so the week comes out alike.
+ * weekday term: every day ahead rests on the same recent record, so the week comes out alike. The
+ * level-plus-weekday way moves each day by its weekday's shift.
  */
-export function tellsWeekdaysApart(model: ModelId): boolean {
-  return model === 'weekdayBlock' || model === 'blend'
+export function tellsWeekdaysApart(model: WayId): boolean {
+  return model === 'weekdayBlock' || model === 'blend' || model === LEVEL_WEEKDAY
 }
 
 /** Days ahead within this many points of each other carry no meaningful difference: whole numbers already round a smaller one away. */
@@ -272,7 +282,7 @@ export interface FlatWeek {
  * Null when the days differ, so the day-by-day chart says what it knows. Nothing is invented: the
  * level is the mean of the days' own values, and the ranges are their own.
  */
-export function flatWeek(rows: readonly { expected: number | null; lo: number | null; hi: number | null }[], model: ModelId | null): FlatWeek | null {
+export function flatWeek(rows: readonly { expected: number | null; lo: number | null; hi: number | null }[], model: WayId | null): FlatWeek | null {
   const known = rows.filter((r): r is { expected: number; lo: number; hi: number } => r.expected !== null && r.lo !== null && r.hi !== null)
   if (model === null || known.length < 2) return null
   const values = known.map((r) => r.expected)
@@ -288,7 +298,7 @@ export function flatWeek(rows: readonly { expected: number | null; lo: number | 
  * reads lower than another, or when the model cannot tell weekdays apart, since then any difference
  * between its days is the edge of its window or rounding, not the day.
  */
-export function lowestAhead(rows: readonly { expected: number | null }[], model: ModelId | null): number[] {
+export function lowestAhead(rows: readonly { expected: number | null }[], model: WayId | null): number[] {
   if (model !== null && !tellsWeekdaysApart(model)) return []
   const values = rows.flatMap((r) => (r.expected === null ? [] : [r.expected]))
   if (!values.length) return []

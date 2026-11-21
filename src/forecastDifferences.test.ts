@@ -23,6 +23,14 @@ describe('where a stored forecast and a counted pattern differ: a weekday the fo
     expect(forecastDifferences([forecast('sameBlock'), cell('level.low', 6, 'pattern', 'lower')])).toHaveLength(1)
   })
 
+  it('never reads a forecast of the level-plus-weekday way as blind to weekdays (2026-11-21)', () => {
+    for (const kind of ['level.low', 'level.high']) {
+      // The probe that can say yes: the same cell beside a forecast of a way that cannot tell weekdays apart.
+      expect(forecastDifferences([forecast('sameBlock'), cell(kind, 6, 'pattern')])).toHaveLength(1)
+      expect(forecastDifferences([forecast('levelWeekday'), cell(kind, 6, 'pattern')])).toEqual([])
+    }
+  })
+
   it('finds none where the way can tell weekdays apart, the weekday is another, the cell is short of a steady pattern, or it is not the level’s', () => {
     for (const model of ['weekdayBlock', 'blend']) expect(forecastDifferences([forecast(model), cell('level.low', 6, 'pattern')])).toEqual([])
     for (const weekday of [0, 1, 2, 3, 4, 5]) expect(forecastDifferences([forecast('sameBlock'), cell('level.low', weekday, 'pattern')])).toEqual([])

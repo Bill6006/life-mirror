@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { contextWords } from './people'
 import { WeekAhead } from './charts'
-import { flatWeek, type FlatWeek } from './forecast'
+import { flatWeek, LEVEL_WEEKDAY, type FlatWeek, type WayId } from './forecast'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { daysAgoWords, fill, formatDayShort } from './format'
@@ -81,6 +81,14 @@ export function sizedWords(sc: Pick<Scorecard, 'scored' | 'hitRate'>): string | 
   return sc.scored < MEASURED_FROM || sc.hitRate === null ? copy.weekly.modelBuilt : null
 }
 
+/**
+ * The way under Details (the forecast follow-ups, item 8): the four's sentence, or, where the latest rows' way is the
+ * level-plus-weekday way, its own sentence, approved by the owner word for word (2026-11-21).
+ */
+export function wayLine(model: WayId): string {
+  return fill(model === LEVEL_WEEKDAY ? copy.weekly.modelWeekdays : copy.weekly.model, { model: copy.brief.models[model] })
+}
+
 /** The week's range a day out and at its far end, from its own days: the first and the last with a forecast. */
 export function weekRanges(rows: readonly { expected: number | null; lo: number | null; hi: number | null }[]): Pick<FlatWeek, 'near' | 'far'> | null {
   const known = rows.filter((r): r is { expected: number; lo: number; hi: number } => r.expected !== null && r.lo !== null && r.hi !== null)
@@ -151,7 +159,7 @@ export function WeeklyScreen({ onClose }: { onClose: () => void }) {
                 )}
                 {w.model && (
                   <p class="calc-line" data-testid="week-ahead-model">
-                    {fill(c.model, { model: copy.brief.models[w.model] })}
+                    {wayLine(w.model)}
                     {!flat && w.weekAheadAlike && ` ${c.aheadAlike}`}
                   </p>
                 )}

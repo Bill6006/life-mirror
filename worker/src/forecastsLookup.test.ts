@@ -105,6 +105,17 @@ describe('the stored forecasts, with what moved them', () => {
     expect(((await run(s, Q)).facts.find((f) => f.id === 'forecasts.way') as Fact).text).toContain(`rest on ${copy.brief.models.blend}, as the Weekly View names the way. That way can tell one weekday from another.`)
   })
 
+  it('names the level-plus-weekday way in its approved words, and says it can tell one weekday from another (2026-11-21)', async () => {
+    const s = store()
+    put(s, 'forecasts', '9', '2026-11-19', { ...row(9, 'evening', 7), day: '2026-11-19', madeOn: '2026-11-12', model: 'sameBlock' })
+    // First the probe that can say "cannot": the newest rows rest on the same-block way.
+    expect(((await run(s, Q)).facts.find((f) => f.id === 'forecasts.way') as Fact).text).toContain('That way cannot tell one weekday from another')
+    put(s, 'forecasts', '11', '2026-11-20', { ...row(11, 'evening', 7), day: '2026-11-20', madeOn: '2026-11-13', model: 'levelWeekday' })
+    const way = (await run(s, Q)).facts.find((f) => f.id === 'forecasts.way') as Fact
+    expect(way.text).toBe('The latest forecasts, made on 2026-11-13, rest on your usual level at this time of day and how this weekday usually differs, as the Weekly View names the way. That way can tell one weekday from another.')
+    expect(way.values.category).toBe('dayRecord')
+  })
+
   it('gives the day-ahead record exactly as the Weekly View counts it, and the moved forecasts’ own once one is scored', async () => {
     const s = store()
     const score = (i: number, horizon: number, hit: boolean, day = `2026-10-${String(10 + i).padStart(2, '0')}`) => put(s, 'forecastScores', `s${horizon}.${i}`, day, { day, block: 'morning', horizon, model: 'weekdayBlock', point: 50, lo: 40, hi: 60, actual: hit ? 50 : 70, error: hit ? 0 : 20, hit, scoredOn: day })

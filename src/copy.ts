@@ -1060,7 +1060,7 @@ export const copy = {
     moveNothing: 'Yesterday you kept to nothing extra, on purpose. {target} read {steps} of a step {dir} your usual this morning. One reading, not a finding.',
     above: 'above',
     under: 'under',
-    models: { sameBlock: 'this time of day over the last four weeks, the latest days counting most', weekdayBlock: 'this weekday at this time of day', lastValue: 'the last time you logged this time of day', blend: 'this time of day and this weekday, blended' },
+    models: { sameBlock: 'this time of day over the last four weeks, the latest days counting most', weekdayBlock: 'this weekday at this time of day', lastValue: 'the last time you logged this time of day', blend: 'this time of day and this weekday, blended', levelWeekday: 'your usual level at this time of day and how this weekday usually differs' },
     warning: 'A stretch may be starting: {under} of the last {of} blocks read under the expected range. The two evening chips: {chips} of the last three evenings. Necessities missed: {necessities} in three days.',
     whatIf: 'If you did nothing extra this evening: about {v}. An assumption the app has never verified.',
   },
@@ -1094,6 +1094,8 @@ export const copy = {
     aheadLine: '{day}: {expected} ({lo} to {hi})',
     aheadNone: 'The week ahead appears once fourteen days each have a complete check-in.',
     model: 'Expected from {model}: of four ways to forecast, the one that came closest a day ahead over your last four weeks.',
+    /** Under Details in place of `model` when the latest rows' way is the level-plus-weekday way (approved by the owner word for word, 2026-11-21). */
+    modelWeekdays: 'Expected from {model}. This way is used only after clear weekday differences have held for four weeks.',
     /** Under Details, after the way, until twenty day-ahead forecasts are scored (2026-11-12; moved there by the forecast follow-ups, item 8): how the range is built. */
     modelBuilt: 'Its range is sized from its own misses over those weeks, so that six in ten of them fall inside it.',
     /** The small line under the graph (item 8): until twenty are scored, when it will say how often they land; from then what was counted. Never a rate that was not measured. */

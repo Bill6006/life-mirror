@@ -19,8 +19,16 @@ describe('what a reader of a stored forecast says of it', () => {
       expect(wayWords(m)).toBe(copy.brief.models[m])
       expect(WEEKDAY_WAYS.includes(m)).toBe(tellsWeekdaysApart(m))
     }
-    expect(WEEKDAY_WAYS).toEqual(['weekdayBlock', 'blend'])
+    expect(WEEKDAY_WAYS).toEqual(['weekdayBlock', 'blend', 'levelWeekday'])
     expect(wayWords('challenger')).toBeNull()
+  })
+
+  it('names the level-plus-weekday way in its approved words, and counts it among the ways that tell weekdays apart (2026-11-21)', () => {
+    expect(wayWords('levelWeekday')).toBe('your usual level at this time of day and how this weekday usually differs')
+    expect(WEEKDAY_WAYS.includes('levelWeekday')).toBe(true)
+    expect(tellsWeekdaysApart('levelWeekday')).toBe(true)
+    // It is not one of the four: they still compete alone.
+    expect((MODELS as readonly string[]).includes('levelWeekday')).toBe(false)
   })
 
   it('reads each condition under its own switch, and one it does not know nowhere', () => {

@@ -3,7 +3,7 @@ import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
-import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning } from './forecast'
+import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning, type WayId } from './forecast'
 import { associationFor, likeForLikeMatched } from './associations'
 import { eventTest, knownTest, lastNightKeys, type LastNightKey } from './lastNight'
 import { natureMoveDays } from './nature'
@@ -127,7 +127,7 @@ export interface YesterdayMove {
 export interface Brief {
   days: number
   ready: boolean
-  model: ModelId | null
+  model: WayId | null
   today: { block: Block; forecast: Forecast | null; actual: number | null }[]
   yesterday: ReturnType<typeof dayBeside>
   warning: (Warning & { chips: number; necessities: number }) | null
@@ -185,7 +185,7 @@ export async function briefData(today: string): Promise<Brief> {
     move,
     days,
     ready,
-    model: (todays.find((t) => t.forecast)?.forecast?.model as ModelId | undefined) ?? null,
+    model: (todays.find((t) => t.forecast)?.forecast?.model as WayId | undefined) ?? null,
     today: todays,
     yesterday: dayBeside(forecasts, values, addDays(today, -1)),
     warning: ready ? { ...w, chips, necessities } : null,
@@ -215,7 +215,7 @@ export async function usualFor(day: string, block: Block): Promise<{ point: numb
 
 export interface Weekly {
   /** The model behind the latest forecasts, named on the weekly view. */
-  model: ModelId | null
+  model: WayId | null
   scorecard: Scorecard
   best: BestDays
   gap: Gap
@@ -301,7 +301,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
   const people = uncoveredContexts(carriedByContext(offers, outcomes, contexts, today), week)
   const weekAhead = weekAheadRows(forecasts, today)
   const latest = forecasts.reduce<Forecast | null>((m, f) => (m === null || f.madeOn > m.madeOn ? f : m), null)
-  const model = (latest?.model as ModelId | undefined) ?? null
+  const model = (latest?.model as WayId | undefined) ?? null
   return {
     model,
     scorecard: scorecard(scores, checkins, repair),
