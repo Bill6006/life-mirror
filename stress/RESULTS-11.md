@@ -5,8 +5,11 @@ frozen before any of this code was written. The criteria are kept in the private
 `1dc703b64bbf8f325d0bb46cc4099dcec4777c5369774c828675c4bf671d15ad`. This file describes the public code and what
 it counted.
 
-The fifth way is still switched off (`FIFTH_ON` in `src/weekdayPattern.ts`), and nothing in the app imports it: the
-week ahead is forecast as before. The verdict's seeds were not read.
+The fifth way was switched off (`FIFTH_ON` in `src/weekdayPattern.ts` at 709cb16), and nothing in the app imported
+it: the week ahead is forecast as before. The verdict's seeds were not read.
+
+**Closed on 2026-11-20 at the owner's word, and never built.** Its code now lives beside its simulation, in
+`stress/weekdayPattern.ts`, and nothing in the app has it.
 
 ## What was run
 

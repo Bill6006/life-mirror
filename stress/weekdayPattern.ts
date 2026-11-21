@@ -1,12 +1,14 @@
-import { addDays, BLOCKS, type Block } from './blocks'
-import { compare, difference, standings, WORTH_POINTS, type Compared, type Point } from './counted/compare'
-import { weekdayOf } from './counted/occasions'
-import { BACKTEST_DAYS, chooseModel, predict, type Chosen, type ModelId } from './forecast'
-import { slotKey } from './observe'
+import { addDays, BLOCKS, type Block } from '../src/blocks'
+import { compare, difference, standings, WORTH_POINTS, type Compared, type Point } from '../src/counted/compare'
+import { weekdayOf } from '../src/counted/occasions'
+import { BACKTEST_DAYS, chooseModel, predict, type Chosen, type ModelId } from '../src/forecast'
+import { slotKey } from '../src/observe'
 
 // The week ahead's fifth way (the forecast follow-ups, Batch 2, item 5: designed, and its criteria frozen, 2026-11-20,
-// in the private plan). Switched off and wired to nothing: nothing in the app imports this file yet. It is written here
-// so that its simulation runs the app's own code, as the challenger's did before it was wired.
+// in the private plan). CLOSED 2026-11-20 at the owner's word, and never built: its tuning found no numbers that meet
+// its criteria (stress/RESULTS-11.md). This is the code its simulation ran. It was written in src/ (at 709cb16) so that
+// the simulation would run the app's own code, as the challenger's did before it was wired, and was moved here, beside
+// the simulation, once the item was closed. Nothing in the app has it.
 //
 // Its forecast for a slot is the same-block way's, plus the offset of that day's weekday at that check-in where the
 // weekday's comparison at that check-in is a steady pattern: the reading at the check-in on that weekday against the
@@ -16,9 +18,6 @@ import { slotKey } from './observe'
 
 export const FIFTH_WAY = 'weekdayPattern'
 export type WayId = ModelId | typeof FIFTH_WAY
-
-/** While this is false nothing here is run by the app. It is turned on only after its simulation's verdict passes. */
-export const FIFTH_ON = false
 
 /** The method's numbers, set on the simulation's tuning seeds. */
 export interface FifthNumbers {

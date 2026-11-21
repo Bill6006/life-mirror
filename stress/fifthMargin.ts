@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { type FifthNumbers } from '../src/weekdayPattern'
+import { type FifthNumbers } from './weekdayPattern'
 import { DAYS } from './forecastSim'
 import { MEASURE_FROM, type AltDay, type FifthDay, type FifthPerson } from './fifthSim'
 

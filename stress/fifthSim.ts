@@ -4,7 +4,7 @@ import { compare, difference, WORTH_POINTS } from '../src/counted/compare'
 import { BACKTEST_DAYS, chooseModel, loggedDays, MIN_DAYS_TODAY, MODELS, predict, type Backtest, type ModelId } from '../src/forecast'
 import { slotKey } from '../src/observe'
 import { bandOf } from '../src/score'
-import { chooseOfFive, FIFTH, FIFTH_WAY, fifthWayOf, type FifthNumbers, type WayId } from '../src/weekdayPattern'
+import { chooseOfFive, FIFTH, FIFTH_WAY, fifthWayOf, type FifthNumbers, type WayId } from './weekdayPattern'
 import { EVENING_THINGS, eveningPoints, recordOf, type CountedRecord } from './countedWorlds'
 import { BORROW_OFFSET, DAYS, FIRST_DAY, forecastWorldById, type ForecastWorld } from './forecastSim'
 

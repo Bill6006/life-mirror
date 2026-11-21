@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads'
 import { fileURLToPath } from 'node:url'
 import { CHALLENGER } from '../src/challenger'
-import { FIFTH, type FifthNumbers } from '../src/weekdayPattern'
+import { FIFTH, type FifthNumbers } from './weekdayPattern'
 import { fifthWorldById, runFifth, type FifthPerson } from './fifthSim'
 
 // A range of simulated people through one of the fifth way's worlds, spread over worker threads, written as one JSON
