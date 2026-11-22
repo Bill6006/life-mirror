@@ -25,6 +25,8 @@ import { cRecordOf, cTruthOf, cWorldById, DAYS, MEASURES, READINGS, type CTruth 
 // node stress/.out/stageCSim.mjs run <world> <fromSeed> <toSeed> <out.json> [threads] [settings as a JSON list | "none"] [challenger]
 // "none" leaves Stage C out: today's system, the Stage B system and the told forecast alone, read before the criteria
 // were frozen. With "challenger" (one setting only) the app's challenger is also run each day on the way in use.
+// A last word "today" (after the mode, "-" for none) has today's system's rows, not the Stage B system's, written on a
+// day Stage C is not in use: the design's own arrangement, judged apart by criteria of its own (frozen 2026-11-22).
 
 export const STRETCHES = [
   [28, 89],
@@ -59,8 +61,8 @@ export interface CSetting {
 
 export interface CPerson {
   seed: number
-  /** By stretch, every row (today's and the week ahead's): how many; the stored point's summed miss for today's system, the Stage B system and the told forecast; Stage B's ranges: inside, width, score. */
-  base: [n: number, missToday: number, missB: number, missTold: number, hitB: number, widthB: number, scoreB: number][]
+  /** By stretch, every row (today's and the week ahead's): how many; the stored point's summed miss for today's system, the Stage B system and the told forecast; Stage B's ranges: inside, width, score; and today's system's summed range score. */
+  base: [n: number, missToday: number, missB: number, missTold: number, hitB: number, widthB: number, scoreB: number, scoreToday: number][]
   /** The Stage B way in use: the first day or -1, the days in use (before day 29, then each stretch), the times it went out again. */
   b: { first: number; days: number[]; offs: number }
   c: CSetting[]
@@ -70,7 +72,7 @@ export interface CPerson {
 }
 
 /** One simulated person through one world: every day's rows by each system. */
-export function runStageC(worldId: string, seed: number, settings: readonly StageCNumbers[], truth: CTruth, withChallenger = false): CPerson {
+export function runStageC(worldId: string, seed: number, settings: readonly StageCNumbers[], truth: CTruth, withChallenger = false, beneath: 'stageB' | 'today' = 'stageB'): CPerson {
   if (withChallenger && settings.length !== 1) throw new Error('the challenger is run for one setting at a time')
   const t0 = performance.now()
   const world = cWorldById(worldId)
@@ -171,7 +173,7 @@ export function runStageC(worldId: string, seed: number, settings: readonly Stag
   const stageB = rangeTrackerOf(WEEK, inputs)
   const trackers = settings.map((numbers) => stageCTrackerOf(numbers, inputs))
 
-  const base: CPerson['base'] = STRETCHES.map(() => [0, 0, 0, 0, 0, 0, 0])
+  const base: CPerson['base'] = STRETCHES.map(() => [0, 0, 0, 0, 0, 0, 0, 0])
   const b = { first: -1, days: [0, 0, 0, 0], offs: 0 }
   let bWas = false
   const c: CSetting[] = settings.map(() => ({ s: STRETCHES.map(() => [0, 0, 0, 0]), diff: STRETCHES.map(() => [0, 0, 0]), first: -1, days: [0, 0, 0, 0], offs: 0, ever: [0, 0, ...MEASURES.map(() => 0), 0], kinds: rec.events.map(() => 0), alone: 0, ahead: Array.from({ length: 8 }, () => [0, 0, 0]) }))
@@ -315,8 +317,11 @@ export function runStageC(worldId: string, seed: number, settings: readonly Stag
       if (actual >= rb.lo && actual <= rb.hi) row[4]++
       row[5] += rb.hi - rb.lo
       row[6] += score(rb.lo, rb.hi, actual)
+      row[7] += score(f.lo, f.hi, actual)
+      /** What is written where Stage C has no row: the Stage B system's, or (the design's own arrangement) today's system's. */
+      const under = beneath === 'today' ? f : rb
       rowsC.forEach((own, k) => {
-        const rc = own ? (own.get(key) ?? rb) : rb
+        const rc = own ? (own.get(key) ?? under) : under
         const me = c[k]
         const s = me.s[st]
         s[0] += Math.abs(actual - rc.point)
@@ -370,14 +375,16 @@ interface Job {
   settings: StageCNumbers[]
   truth: CTruth
   challenger: boolean
+  beneath: 'stageB' | 'today'
 }
 
 if (!isMainThread) {
   const job = workerData as Job
-  for (const seed of job.seeds) parentPort?.postMessage(runStageC(job.world, seed, job.settings, job.truth, job.challenger))
+  for (const seed of job.seeds) parentPort?.postMessage(runStageC(job.world, seed, job.settings, job.truth, job.challenger, job.beneath))
   parentPort?.postMessage('done')
 } else if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1] && /stageCSim\.mjs$/.test(process.argv[1])) {
-  const [what, world, from, to, out, threadsArg, settingsArg, mode] = process.argv.slice(2)
+  const [what, world, from, to, out, threadsArg, settingsArg, mode, under] = process.argv.slice(2)
+  const beneath = under === 'today' ? 'today' : 'stageB'
   if (what !== 'run' || !world || !from || !to || !out) throw new Error('usage: stageCSim.mjs run <world> <fromSeed> <toSeed> <out.json> [threads] [settings as a JSON list | "none"] [challenger]')
   cWorldById(world)
   if (existsSync(out)) throw new Error(`${out} is already there: a range is read once`)
@@ -393,7 +400,7 @@ if (!isMainThread) {
   await new Promise<void>((resolve, reject) => {
     for (let i = 0; i < threads; i++) {
       const mine = seeds.filter((_, k) => k % threads === i)
-      const w = new Worker(fileURLToPath(import.meta.url), { workerData: { world, seeds: mine, settings, truth, challenger } satisfies Job })
+      const w = new Worker(fileURLToPath(import.meta.url), { workerData: { world, seeds: mine, settings, truth, challenger, beneath } satisfies Job })
       w.on('message', (m: CPerson | 'done') => {
         if (m === 'done') {
           if (++finished === threads) resolve()
@@ -406,6 +413,6 @@ if (!isMainThread) {
   })
   results.sort((a, b) => a.seed - b.seed)
   if (results.length !== seeds.length) throw new Error(`${world}: ${results.length} results for ${seeds.length} seeds`)
-  writeFileSync(out, JSON.stringify({ world, seeds: [Number(from), Number(to)], settings, challenger, truth, ms: Date.now() - t0, results }))
+  writeFileSync(out, JSON.stringify({ world, seeds: [Number(from), Number(to)], settings, challenger, beneath, truth, ms: Date.now() - t0, results }))
   process.stderr.write(`${world}: ${results.length} people in ${Math.round((Date.now() - t0) / 1000)} s -> ${out}\n`)
 }

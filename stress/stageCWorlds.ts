@@ -122,6 +122,8 @@ export const C_WORLDS: readonly CWorld[] = [
   { id: 'kind-idle', people: 'base', steps: every((_d, w) => RHYTHM[w]), kind: (d, w) => (d >= TURN && (w === 1 || w === 6) ? 1 : 0) },
   // Both at once: the weekday in two readings and the sunshine.
   { id: 'all', people: 'base', steps: energyAndMood(1.5), sun: 0.1 },
+  // Rhythm exactly, with the scheduled kind of Monday and of Saturday changing back and forth every 30 days from day 61 and nothing else changing: built against the changed-schedule rule, for the study of what is written beneath Stage C.
+  { id: 'kind-flip', people: 'base', steps: every((_d, w) => RHYTHM[w]), kind: (d, w) => ((w === 1 || w === 6) && d >= 60 && Math.floor((d - 60) / 30) % 2 === 0 ? 1 : 0) },
   // A structured event logged at the afternoon check-in, mostly on Wednesdays, that lowers the evening after it by 0.6 step; and a weaker one, less tied to its weekday.
   { id: 'event', people: 'base', events: [{ block: 1, rate: WEDNESDAY, effect: -0.6 }] },
   { id: 'event-weak', people: 'base', events: [{ block: 1, rate: one(3, 0.6, 0.15), effect: -0.2 }] },

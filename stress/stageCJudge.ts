@@ -9,6 +9,7 @@ import type { CPerson } from './stageCSim'
 // node stress/.out/stageCJudge.mjs baseline <results folder>
 // node stress/.out/stageCJudge.mjs tuning <results folder>            every setting in the files, one line each
 // node stress/.out/stageCJudge.mjs judge <results folder> [setting] [folder of further people]
+// node stress/.out/stageCJudge.mjs beneath <results folder>           the study of what is written beneath Stage C
 
 export const IDS = ['plain', 'streaks', 'sparse', 'season', 'rhythm', 'rhythm-half', 'rhythm-one', 'rhythm-turn', 'two', 'two-strong', 'sun', 'sun-weak', 'sun-bad', 'kind-move', 'kind-idle', 'all', 'event', 'event-weak', 'event-rhythm', 'event-idle', 'event-flat', 'event-told', 'event-masked', 'event-many']
 const NAMES = ['days 29 to 90', 'days 91 to 150', 'days 151 to 180']
@@ -321,6 +322,58 @@ export function tuning(folder: string): void {
   })
 }
 
+/**
+ * The study of what is written beneath Stage C (its own criteria, frozen 2026-11-22): runs made with today's system's
+ * rows on a day Stage C is not in use, in the three worlds where a schedule changes, set beside today's system and the
+ * Stage B system.
+ */
+export const BENEATH = ['kind-move', 'kind-idle', 'kind-flip']
+export function beneathCells(folder: string): Cell[] {
+  const cells: Cell[] = []
+  const per = (file: RunFile, sts: readonly number[], pick: (m: { today: number; b: number; c: number; t: number }) => number): Interval => interval(some(file.results.map((p) => missOf(p, 0, sts))).map(pick))
+  for (const id of BENEATH) {
+    const f = load(folder, id)
+    if (!f) continue
+    if ((f as RunFile & { beneath?: string }).beneath !== 'today') throw new Error(`${id}: this run was not made with today's system beneath`)
+    if (id === 'kind-move') {
+      const harm = per(f, AFTER, (m) => m.c - m.today)
+      cells.push({ criterion: 'A1', world: id, what: 'days 91 to 180: no harm against today\'s system', shown: `V less today ${f3(harm.mean)} (${f3(harm.lo)} to ${f3(harm.hi)}); the Stage B system less today ${f3(per(f, AFTER, (m) => m.b - m.today).mean)}; ${harm.n} people`, pass: harm.hi < 0.05, room: 0.05 - harm.hi })
+      const gain = per(f, AFTER, (m) => m.b - m.c)
+      cells.push({ criterion: 'A2', world: id, what: 'days 91 to 180: better than the Stage B system', shown: `B less V ${f3(gain.mean)} (${f3(gain.lo)} to ${f3(gain.hi)}); ${gain.n} people`, pass: gain.lo > 0, room: gain.lo })
+    } else {
+      for (const sts of [EVERY, LATE]) {
+        const harm = per(f, sts, (m) => m.c - m.today)
+        cells.push({ criterion: 'A3', world: id, what: `${spanOf(sts)}: no harm against today's system`, shown: `V less today ${f3(harm.mean)} (${f3(harm.lo)} to ${f3(harm.hi)}); V less the Stage B system ${f3(per(f, sts, (m) => m.c - m.b).mean)}; ${harm.n} people`, pass: harm.hi < 0.05, room: 0.05 - harm.hi })
+      }
+    }
+    const v: number[] = []
+    for (const p of f.results) {
+      const n = EVERY.reduce((s, st) => s + p.base[st][0], 0)
+      if (n) v.push(EVERY.reduce((s, st) => s + p.c[0].s[st][3], 0) / n - EVERY.reduce((s, st) => s + p.base[st][7], 0) / n)
+    }
+    const r = interval(v)
+    cells.push({ criterion: 'A4', world: id, what: 'days 29 to 180: the ranges, no harm against today\'s system', shown: `score V less today ${f3(r.mean)} (${f3(r.lo)} to ${f3(r.hi)}); ${r.n} people`, pass: r.hi < 0.18, room: 0.18 - r.hi })
+  }
+  return cells
+}
+export function beneath(folder: string): void {
+  const cells = beneathCells(folder)
+  console.log(`What is written beneath Stage C, every criterion: ${folder}`)
+  for (const c of cells) console.log(`${c.pass ? 'pass' : 'FAIL'} | criterion ${c.criterion.padEnd(2)} | ${c.world.padEnd(13)} | ${c.what} | ${c.shown}`)
+  console.log(`${cells.length} cells: ${cells.filter((c) => c.pass).length} pass, ${cells.filter((c) => !c.pass).length} fail`)
+  console.log('reported, not judged')
+  for (const id of BENEATH) {
+    const f = load(folder, id)
+    if (!f) continue
+    NAMES.forEach((name, st) => {
+      const m = some(f.results.map((p) => missOf(p, 0, [st])))
+      const avg = (pick: (x: { today: number; b: number; c: number; t: number }) => number): number => m.reduce((s, x) => s + pick(x), 0) / m.length
+      const span = [62, 60, 30][st] * f.results.length
+      console.log(`${id.padEnd(13)} | ${name.padEnd(15)} | miss: today ${f3(avg((x) => x.today))}, the Stage B system ${f3(avg((x) => x.b))}, V ${f3(avg((x) => x.c))}, told ${f3(avg((x) => x.t))} | in use of 100 days: the Stage B way ${((100 * f.results.reduce((s, p) => s + p.b.days[st + 1], 0)) / span).toFixed(1)}, Stage C ${((100 * f.results.reduce((s, p) => s + p.c[0].days[st + 1], 0)) / span).toFixed(1)}`)
+    })
+  }
+}
+
 export function baseline(folder: string): void {
   console.log(`Stage C's worlds, today's system, the Stage B system and the told forecast: ${folder}`)
   console.log('world          | stretch         | miss: today  Stage B  told | the gap from Stage B to told | Stage B in use, of 100 days | Stage B ranges: inside of 100, score')
@@ -342,5 +395,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1] && /st
   if (what === 'baseline' && folder) baseline(folder)
   else if (what === 'tuning' && folder) tuning(folder)
   else if (what === 'judge' && folder) judge(folder, Number(setting || 0), more ?? null)
-  else throw new Error('usage: stageCJudge.mjs baseline|tuning|judge <results folder> [setting] [folder of further people]')
+  else if (what === 'beneath' && folder) beneath(folder)
+  else throw new Error('usage: stageCJudge.mjs baseline|tuning|judge|beneath <results folder> [setting] [folder of further people]')
 }

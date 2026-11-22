@@ -2,6 +2,7 @@
 # It reads the same run files and prints the same lines, so the two can be set side by side with diff.
 #
 #   python -I -X utf8 stress/stageC_recount.py <results folder> [setting] [folder of further people]
+#   python -I -X utf8 stress/stageC_recount.py <results folder> beneath     the study of what is written beneath Stage C
 import json
 import math
 import os
@@ -165,7 +166,54 @@ def challenger(folder, world, more_folder):
     return twenty('11', world, 'the challenger stays safe', sum(1 for p in own['results'] if p['ch']['adopted'] == 1), len(own['results']), more)
 
 
+def beneath(folder):
+    out = []
+    for world in ['kind-move', 'kind-idle', 'kind-flip']:
+        run = load(folder, world)
+        if not run:
+            continue
+        if run.get('beneath') != 'today':
+            sys.exit(world + ": this run was not made with today's system beneath")
+        people = run['results']
+
+        def per(sts, pick):
+            v = []
+            for p in people:
+                n = sum(p['base'][st][0] for st in sts)
+                if n:
+                    today = sum(p['base'][st][1] for st in sts) / n
+                    b = sum(p['base'][st][2] for st in sts) / n
+                    c = sum(p['c'][0]['s'][st][0] for st in sts) / n
+                    v.append(pick(today, b, c))
+            return interval(v)
+
+        if world == 'kind-move':
+            n, mean, lo, hi = per([1, 2], lambda today, b, c: c - today)
+            other = per([1, 2], lambda today, b, c: b - today)[1]
+            out.append(line(hi < 0.05, 'A1', world, "days 91 to 180: no harm against today's system", 'V less today %s (%s to %s); the Stage B system less today %s; %d people' % (f3(mean), f3(lo), f3(hi), f3(other), n)))
+            n, mean, lo, hi = per([1, 2], lambda today, b, c: b - c)
+            out.append(line(lo > 0, 'A2', world, 'days 91 to 180: better than the Stage B system', 'B less V %s (%s to %s); %d people' % (f3(mean), f3(lo), f3(hi), n)))
+        else:
+            for sts in ([0, 1, 2], [2]):
+                n, mean, lo, hi = per(sts, lambda today, b, c: c - today)
+                other = per(sts, lambda today, b, c: c - b)[1]
+                out.append(line(hi < 0.05, 'A3', world, span(sts) + ": no harm against today's system", 'V less today %s (%s to %s); V less the Stage B system %s; %d people' % (f3(mean), f3(lo), f3(hi), f3(other), n)))
+        v = []
+        for p in people:
+            n = sum(p['base'][st][0] for st in (0, 1, 2))
+            if n:
+                v.append(sum(p['c'][0]['s'][st][3] for st in (0, 1, 2)) / n - sum(p['base'][st][7] for st in (0, 1, 2)) / n)
+        n, mean, lo, hi = interval(v)
+        out.append(line(hi < 0.18, 'A4', world, "days 29 to 180: the ranges, no harm against today's system", 'score V less today %s (%s to %s); %d people' % (f3(mean), f3(lo), f3(hi), n)))
+    for text in out:
+        print(text)
+    print('%d cells: %d pass, %d fail' % (len(out), sum(1 for t in out if t.startswith('pass')), sum(1 for t in out if t.startswith('FAIL'))))
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[2] == 'beneath':
+        beneath(sys.argv[1])
+        return
     folder = sys.argv[1]
     k = int(sys.argv[2]) if len(sys.argv) > 2 else 0
     more_folder = sys.argv[3] if len(sys.argv) > 3 else None
