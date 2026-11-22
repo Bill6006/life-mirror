@@ -10,7 +10,7 @@ import { bandOf } from '../src/score'
 import { EVENING_THINGS, eveningPoints, recordOf, type CountedRecord } from './countedWorlds'
 import { BORROW_OFFSET, FIRST_DAY, forecastWorldById } from './forecastSim'
 import { rangeTrackerOf, WEEK, type WeekRow } from './levelWeekday'
-import { STAGE_C, stageCTrackerOf, type StageCInputs, type StageCNumbers } from './stageC'
+import { STAGE_C, stageCTrackerOf, type StageCInputs, type StageCNumbers, type StageCState } from './stageC'
 import { cRecordOf, cTruthOf, cWorldById, DAYS, MEASURES, READINGS, type CTruth } from './stageCWorlds'
 
 // Stage C, the week ahead from what is known about each day: its simulation (designed 2026-11-21 at the owner's word;
@@ -72,7 +72,7 @@ export interface CPerson {
 }
 
 /** One simulated person through one world: every day's rows by each system. */
-export function runStageC(worldId: string, seed: number, settings: readonly StageCNumbers[], truth: CTruth, withChallenger = false, beneath: 'stageB' | 'today' = 'stageB'): CPerson {
+export function runStageC(worldId: string, seed: number, settings: readonly StageCNumbers[], truth: CTruth, withChallenger = false, beneath: 'stageB' | 'today' = 'stageB', watch?: (day: number, state: StageCState, rows: Map<string, WeekRow>) => void): CPerson {
   if (withChallenger && settings.length !== 1) throw new Error('the challenger is run for one setting at a time')
   const t0 = performance.now()
   const world = cWorldById(worldId)
@@ -223,6 +223,8 @@ export function runStageC(worldId: string, seed: number, settings: readonly Stag
     const stateB = stageB.stateOn(t)
     const states = trackers.map((tr) => tr.stateOn(t))
     usedOn.push(states.length > 0 && states[0].inUse)
+    // For the fixture: the first setting's state and rows on each day, as the method gives them.
+    if (watch && trackers.length > 0) watch(t, states[0], trackers[0].rowsOn(t))
     // The check against leaks, every fiftieth person, every thirtieth day: a fresh copy of the method, given the record
     // cut off at the day before (no score, reading, event or weather of the day or after, no forecast issued after it),
     // must give the same state and the same rows, number for number.
