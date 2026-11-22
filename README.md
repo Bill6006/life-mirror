@@ -9,6 +9,9 @@ Built in numbered phases. The live build's About screen names the commit and lin
 How the app checks, by itself, whether its adjusted forecasts beat the plain ones, and switches the adjustment off if
 they do not: [docs/forecast-check.md](docs/forecast-check.md).
 
+The week ahead's level-plus-weekday way, built and switched off: what it is, its numbers, what it stores and how it is
+switched: [docs/week-ahead-weekdays.md](docs/week-ahead-weekdays.md).
+
     npm run dev        # local
     npm test           # unit tests
     npm run build      # dist/

@@ -459,6 +459,12 @@ export interface Forecast {
    * beside it once the slot is scored (`movedCheck.ts`). Absent on every other row, and on rows moved before it was kept.
    */
   plain?: { point: number; lo: number; hi: number }
+  /**
+   * Where the level-plus-weekday way wrote this row over one of the four's pick (Stage A, 2026-11-21): the row the pick
+   * would have written for the slot, its way's name and its numbers, written in the same run and never touched after, so
+   * a later judgment on the real record can set the two side by side. Absent on every other row. Read by nothing yet.
+   */
+  four?: { model: string; point: number; lo: number; hi: number }
 }
 
 /** A forecast scored once its slot was logged; a slot never logged is never scored. */

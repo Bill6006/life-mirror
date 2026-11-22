@@ -1,11 +1,11 @@
 import { privateIsLogged, privateShownAt, associationFor } from './associations'
 import { addDays, BLOCKS } from './blocks'
-import { kindsAtPattern, type ChallengerRun, type Condition } from './challenger'
+import { fourWays, kindsAtPattern, type ChallengerRun, type Condition, type Predict } from './challenger'
 import { WORTH_POINTS, type Compared } from './counted/compare'
 import { NOTICED_MIN } from './counted/kinds'
 import { dayStart, occasionsOf, SHORT_NIGHT } from './counted/occasions'
 import type { CheckIn, DayContext, Forecast, PrivateItem } from './db'
-import { errorBand, predict } from './forecast'
+import { errorBand } from './forecast'
 import { eventTest, knownTest, LAST_NIGHT_KEYS, lastNightAssociations, type LastNightKey } from './lastNight'
 import type { Noticed } from './noteEvents/join'
 import { eventTypes } from './noteEvents/types'
@@ -203,13 +203,15 @@ const clamp = (v: number): number => Math.max(0, Math.min(100, Math.round(v)))
  * taken from the challenger's own back-tested misses. A row no condition can speak for is left exactly as it was. The
  * row keeps the base way's name, and says the points added and the conditions that added them; and, from Batch 3
  * (2026-11-21), the plain forecast it was moved from, the base way's row as it stood, so the two can be set side by side.
+ * The base way's forecast is the one the run was given (`predictOf`): the level-plus-weekday way's from its reader where
+ * the way is the base (Stage A, 2026-11-21), and the four's by `predict` otherwise.
  */
-export function adjustRows(due: Forecast[], run: ChallengerRun, values: ReadonlyMap<string, number>): void {
+export function adjustRows(due: Forecast[], run: ChallengerRun, values: ReadonlyMap<string, number>, predictOf: Predict = fourWays): void {
   const band = errorBand(run.errors)
   for (const f of due) {
     const a = run.adjustmentFor(f.day, f.block)
     if (a.points === 0) continue
-    const p = predict(run.base, values, f.day, f.block)
+    const p = predictOf(run.base, values, f.day, f.block)
     if (p === null) continue
     const plain = { point: f.point, lo: f.lo, hi: f.hi }
     f.point = clamp(p + a.points)

@@ -1,6 +1,6 @@
 import { addDays, BLOCKS, type Block } from './blocks'
 import { standings, type Compared } from './counted/compare'
-import { BACKTEST_DAYS, predict, type ModelId } from './forecast'
+import { BACKTEST_DAYS, LEVEL_WEEKDAY, predict, type WayId } from './forecast'
 import { slotKey } from './observe'
 
 // The forecast's one challenger (2026-11-14): a fifth way to forecast, never one per input. It is the way picked
@@ -67,7 +67,8 @@ export interface Adjustment {
 }
 
 export interface ChallengerRun {
-  base: ModelId
+  /** The way in use that day, which the challenger adjusts: one of the four, or the level-plus-weekday way where it wrote the rows (Stage A, 2026-11-21). */
+  base: WayId
   /** Past slots where it differed from the base way, and the days that held them. */
   slots: number
   days: number
@@ -82,7 +83,14 @@ export interface ChallengerRun {
   adjustmentFor(day: string, block: Block): Adjustment
 }
 
-export type Predict = (model: ModelId, values: ReadonlyMap<string, number>, day: string, block: Block) => number | null
+/** A way's forecast for a slot, from the record strictly before that day: one of the four's, or the level-plus-weekday way's (Stage A, 2026-11-21). */
+export type Predict = (model: WayId, values: ReadonlyMap<string, number>, day: string, block: Block) => number | null
+
+/**
+ * The four ways' own forecast, as `predict` gives it. The level-plus-weekday way has none here: only its reader can
+ * forecast it (`levelWeekday.ts`), and the writer always gives the reader's where the way is the base.
+ */
+export const fourWays: Predict = (model, values, day, block) => (model === LEVEL_WEEKDAY ? null : predict(model, values, day, block))
 
 interface Sums {
   n: number
@@ -111,7 +119,7 @@ function sizeOf(sums: Sums | undefined, state: string, numbers: ChallengerNumber
  * forecast by the base way from the record before its day, and adjusted by sizes learnt from the days before it alone;
  * the conditions are taken in order, each learning from what the ones before it left.
  */
-export function runChallenger(base: ModelId, values: ReadonlyMap<string, number>, today: string, conditions: readonly Condition[], numbers: ChallengerNumbers = CHALLENGER, predictOf: Predict = predict): ChallengerRun {
+export function runChallenger(base: WayId, values: ReadonlyMap<string, number>, today: string, conditions: readonly Condition[], numbers: ChallengerNumbers = CHALLENGER, predictOf: Predict = fourWays): ChallengerRun {
   const sums = new Map<string, Sums>()
   const take = (key: string, state: string, miss: number): void => {
     const all = sums.get(key) ?? { n: 0, sum: 0, squares: 0, states: new Map<string, { n: number; sum: number }>() }

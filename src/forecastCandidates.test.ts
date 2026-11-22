@@ -4,7 +4,7 @@ import { setChallengerForTests } from './challenger'
 import { FIXTURE_ITEM, FIXTURE_TODAY, FIXTURE_TYPE, fixtureItemAndNotes } from './challengerTesting'
 import { copy } from './copy'
 import { db, type Forecast } from './db'
-import { MODELS, type ModelId } from './forecast'
+import { LEVEL_WEEKDAY, MODELS, type WayId } from './forecast'
 import { runForecasting, weeklyData } from './forecastFlow'
 import { wrongIdOf } from './noteEvents/shared'
 
@@ -38,9 +38,9 @@ describe('the forecast writer’s private items and note events', () => {
     const row = await todaysMorning()
     expect(row.adjBy).toEqual(expect.arrayContaining([PRIVATE, NOTICED]))
     expect(row.adj as number).toBeLessThan(-10)
-    expect(MODELS as readonly string[]).toContain(row.model)
+    expect([...MODELS, LEVEL_WEEKDAY] as readonly string[]).toContain(row.model)
     const weekly = await weeklyData(TODAY)
-    expect(copy.brief.models[weekly.model as ModelId]).toBeTruthy()
+    expect(copy.brief.models[weekly.model as WayId]).toBeTruthy()
   })
 
   it('leaves the private item out while the Brain’s switch for private items is off', async () => {

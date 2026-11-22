@@ -160,10 +160,14 @@ export function patternsForExport(stored: unknown, includePrivate: boolean, part
 /**
  * Where the forecast's challenger moved a row (2026-11-14): the points it added and the conditions that added them. A
  * private item is here only with private items, by its name, as everywhere in the export; without them it is left out.
- * From Batch 3 (2026-11-21), the plain forecast the row was moved from, where it carries one: numbers alone.
+ * From Batch 3 (2026-11-21), the plain forecast the row was moved from, where it carries one: numbers alone. From Stage A
+ * of the level-plus-weekday way (2026-11-21), what the four's pick would have written for a row the way wrote, where it
+ * carries one, moved or not: the way's name and the numbers alone.
  */
-export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy' | 'plain'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[]; plain?: { point: number; lo: number; hi: number } } {
-  if (typeof f.adj !== 'number') return {}
+export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy' | 'plain' | 'four'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[]; plain?: { point: number; lo: number; hi: number }; four?: { model: string; point: number; lo: number; hi: number } } {
+  const w = f.four
+  const four = w ? { four: { model: w.model, point: w.point, lo: w.lo, hi: w.hi } } : {}
+  if (typeof f.adj !== 'number') return four
   const by = (f.adjBy ?? []).flatMap((id) => {
     if (!id.startsWith('private.')) return [id]
     if (!includePrivate) return []
@@ -171,7 +175,7 @@ export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy' | 'plain'>,
     return [`private: ${names.get(key) ?? `item ${key}`}`]
   })
   const p = f.plain
-  return { adj: f.adj, adjBy: by, ...(p ? { plain: { point: p.point, lo: p.lo, hi: p.hi } } : {}) }
+  return { adj: f.adj, adjBy: by, ...(p ? { plain: { point: p.point, lo: p.lo, hi: p.hi } } : {}), ...four }
 }
 
 export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items: readonly PrivateItem[], settings: Settings, opts: ExportOptions, aims?: AimsData, records?: RecordsData): ExportBundle {

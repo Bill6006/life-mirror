@@ -3,7 +3,7 @@ import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
-import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, type AheadRow, type ModelId, type Warning, type WayId } from './forecast'
+import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, LEVEL_WEEKDAY, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, whatIf, type AheadRow, type Warning, type WayId } from './forecast'
 import { associationFor, likeForLikeMatched } from './associations'
 import { eventTest, knownTest, lastNightKeys, type LastNightKey } from './lastNight'
 import { natureMoveDays } from './nature'
@@ -19,11 +19,12 @@ import { baselineShift, type Shift } from './shift'
 import { bestDays, catalogueHealth, dayReadings, extensionPromptText, gap, movedThisWeek, recentSituations, scorecard, whatLasts, type BestDays, type FamilyHealth, type Gap, type Lasts, type RepairTrack, type Scorecard } from './weekly'
 import { necessitiesMissed } from './necessities'
 import type { WeeklyAnalyses } from './weeklyFacts'
-import { challengerOn, runChallenger, type ChallengerRun } from './challenger'
+import { CHALLENGER, challengerOn, fourWays, runChallenger, type ChallengerRun, type Predict } from './challenger'
 import { adjustRows, bandBefore, conditionsFor } from './challengerRecord'
 import { adjustedWords } from './forecastAdjusted'
 import { checkStopsChallenger, movedCheck, type MovedCheck } from './movedCheck'
 import { guardComparisons } from './counted/fault'
+import { levelWeekdayOn, levelWeekdayReader, rowsWithTheWay, WEEK, type LevelWeekdayReader, type WeekRow } from './levelWeekday'
 import { getBrainPrefs } from './brainPrefs'
 import { noticedOf } from './noteEvents/join'
 import { awayDays, homeDaysOnly } from './awayFlow'
@@ -77,13 +78,19 @@ async function forecastOnce(today: string): Promise<void> {
   const logged = checkins === all ? values : valuesByKey(all)
   const done = await doneSlots()
   const chosen = loggedDays(values) >= MIN_DAYS_TODAY ? chooseModel(values, today) : null
+  // The week ahead's level-plus-weekday way (Stage A, 2026-11-21), behind its switch, which is off: one reader a run, asked under the comparisons' guard before the write, as the challenger is. Where it is not in use, or where it threw (kept for the Worker's report), the four's pick writes the day exactly as before.
+  const way = chosen && levelWeekdayOn() ? wayFor(values, today) : null
+  const predictOf = baseForecast(way?.reader ?? null, today)
   // The one challenger (2026-11-14), behind its switch: tried on the record before today. Where it is picked, the rows due are adjusted by what the record held the day before each.
   // Batch 3 (2026-11-21): never again once its own check, read from the stored forecasts and their scores, says to switch it off.
-  const tried = chosen && challengerOn() && !(await challengerSwitchedOff(today)) ? await challengerFor(chosen.model, checkins, values, today) : null
+  // Stage A (2026-11-21): its base is the way in use that day: the level-plus-weekday way where it writes the rows, else the four's pick.
+  const tried = chosen && challengerOn() && !(await challengerSwitchedOff(today)) ? await challengerFor(way ? LEVEL_WEEKDAY : chosen.model, checkins, values, today, predictOf) : null
   await db.transaction('rw', [db.forecasts, db.forecastScores], async () => {
     const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
-    const due = chosen ? forecastsDue(chosen, values, existing, today, done, logged) : []
-    if (tried?.picked) adjustRows(due, tried, values)
+    const four = chosen ? forecastsDue(chosen, values, existing, today, done, logged) : []
+    // Where the way is in use, its rows: the pick's skips kept, each row keeping what the four would have written.
+    const due = way ? rowsWithTheWay(four, way.rows, existing, logged, today, (day, block) => whatIf(values, done, day, block)) : four
+    if (tried?.picked) adjustRows(due, tried, values, predictOf)
     const scores = scoresDue(existing, values, scored, today)
     if (due.length) await db.forecasts.bulkAdd(due)
     if (scores.length) await db.forecastScores.bulkAdd(scores)
@@ -96,13 +103,28 @@ async function challengerSwitchedOff(today: string): Promise<boolean> {
   return checkStopsChallenger(movedCheck(forecasts, scores, today))
 }
 
-/** The challenger's run for today, from the record the writer forecasts from. A failure in it leaves the rows the base way's, and is kept for the Worker's report. */
-async function challengerFor(model: ModelId, checkins: readonly CheckIn[], values: ReadonlyMap<string, number>, today: string): Promise<ChallengerRun | null> {
+/** The challenger's run for today, from the record the writer forecasts from, on the way in use that day (`base`, forecast by `predictOf`). A failure in it leaves the rows the base way's, and is kept for the Worker's report. */
+async function challengerFor(base: WayId, checkins: readonly CheckIn[], values: ReadonlyMap<string, number>, today: string, predictOf: Predict): Promise<ChallengerRun | null> {
   const [contexts, outsideRows, outcomes, settings, items, events, marks, kept, prefs] = await Promise.all([db.days.toArray(), db.outside.toArray(), db.outcomes.toArray(), getSettings(), db.privateItems.toArray(), db.noteEvents.toArray(), db.noteMarks.toArray(), db.notes.toArray(), getBrainPrefs()])
   // What was noticed in notes counts only while it stands under the phone's own join, read afresh at every run; each kind of candidate only while its Brain switch is on.
   const noticed = noticedOf({ events, marks, checkins, kept })
   const record = { checkins, contexts: new Map(contexts.map((c) => [c.day, c])), eveningWorkouts: eveningWorkoutDays(outsideRows), natureMoves: natureMoveDays(outcomes), hideFaith: settings.hideFaith, items, noticed, privateOn: prefs.switches.privateItems !== false, notesOn: prefs.switches.notes !== false }
-  return guardComparisons(today, () => runChallenger(model, values, today, conditionsFor(record, today)))
+  return guardComparisons(today, () => runChallenger(base, values, today, conditionsFor(record, today), CHALLENGER, predictOf))
+}
+
+/** The level-plus-weekday way for a run (Stage A, 2026-11-21): its one reader and the rows it writes today; null where it is not in use, or where it threw, the failure kept for the Worker's report. */
+function wayFor(values: ReadonlyMap<string, number>, today: string): { reader: LevelWeekdayReader; rows: Map<string, WeekRow> } | null {
+  return guardComparisons(today, () => wayOf(levelWeekdayReader(values, WEEK), today))
+}
+
+function wayOf(reader: LevelWeekdayReader, today: string): { reader: LevelWeekdayReader; rows: Map<string, WeekRow> } | null {
+  const rows = reader.rows(today)
+  return rows ? { reader, rows } : null
+}
+
+/** The challenger's base forecast: the level-plus-weekday way's from the run's one reader, where the way writes the day; the four's by `predict`. */
+function baseForecast(reader: LevelWeekdayReader | null, today: string): Predict {
+  return (model, values, day, block) => (model === LEVEL_WEEKDAY && reader ? reader.forecast(today, day, block) : fourWays(model, values, day, block))
 }
 
 export { lastNightKeys, type LastNightKey } from './lastNight'

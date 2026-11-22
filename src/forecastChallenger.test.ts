@@ -6,7 +6,7 @@ import { EVENING_ID, SLEEP_ID } from './challengerRecord'
 import { FIXTURE_TODAY, fixtureCheckin, fixtureCheckins, fixtureShortLastNight } from './challengerTesting'
 import { copy } from './copy'
 import { db, type CheckIn, type Forecast } from './db'
-import { MODELS, type ModelId } from './forecast'
+import { LEVEL_WEEKDAY, MODELS, type WayId } from './forecast'
 import { runForecasting, weeklyData } from './forecastFlow'
 import type { Position } from './readings'
 
@@ -55,12 +55,13 @@ describe('the forecast writer, with the challenger switched on', () => {
     expect(far.every((f) => f.adj === undefined && f.adjBy === undefined)).toBe(true)
   })
 
-  it('writes every row under one of the four ways’ names, so the Weekly View’s sentence names the base way', async () => {
+  it('writes every row under one of the four ways’ names or the level-plus-weekday way’s, so the Weekly View’s sentence names the base way', async () => {
     const on = await written(true)
-    expect([...on.values()].every((f) => (MODELS as readonly string[]).includes(f.model))).toBe(true)
+    const ways: readonly string[] = [...MODELS, LEVEL_WEEKDAY]
+    expect([...on.values()].every((f) => ways.includes(f.model))).toBe(true)
     const weekly = await weeklyData(TODAY)
-    expect(MODELS).toContain(weekly.model)
-    expect(copy.brief.models[weekly.model as ModelId]).toBeTruthy()
+    expect(ways).toContain(weekly.model)
+    expect(copy.brief.models[weekly.model as WayId]).toBeTruthy()
   })
 
   it('never rewrites an adjusted row: run again after the day’s outcomes, every row is byte for byte', async () => {

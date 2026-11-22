@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { BLOCKS, type Block } from './blocks'
 import { CHALLENGER, kindsAtPattern, runChallenger, type ChallengerNumbers, type Condition } from './challenger'
 import { compare, difference, seeded, seedOf, WORTH_POINTS, type Point } from './counted/compare'
-import { predict, type ModelId } from './forecast'
+import { LEVEL_WEEKDAY, predict, type ModelId, type WayId } from './forecast'
 import { slotKey } from './observe'
 import { bandOf } from './score'
 
@@ -59,9 +59,9 @@ function tries(p: Person, lender: Person, numbers: ChallengerNumbers): Try[] {
   const kind = (j: number): Condition => ({ id: `thing.${j}`, blocks: ['morning'], stateOn: (day) => { const d = index.get(day); return d === undefined || p.reading[d][2] === null ? null : p.things[j][d] ? 'yes' : 'no' }, moves: (s) => s === 'yes' })
   const values = new Map<string, number>()
   const memo = new Map<string, number | null>()
-  const once = (model: ModelId, _v: ReadonlyMap<string, number>, day: string, block: Block): number | null => {
+  const once = (model: WayId, _v: ReadonlyMap<string, number>, day: string, block: Block): number | null => {
     const key = `${day}|${block}`
-    if (!memo.has(key)) memo.set(key, predict(model, values, day, block))
+    if (!memo.has(key)) memo.set(key, model === LEVEL_WEEKDAY ? null : predict(model, values, day, block))
     return memo.get(key) as number | null
   }
   const out: Try[] = []

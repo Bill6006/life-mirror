@@ -6,6 +6,14 @@ says the way's sentence for the way's rows and the four's for theirs; the way am
 another, for the phone (`tellsWeekdaysApart`) and for the Worker (`WEEKDAY_WAYS`), so a stored row of it is never read
 as blind to weekdays.
 
+Push 2, the dormant build: the method's numbers as the verdicts fixed them; the test of the seven weekdays together (its
+chance, its least days, its F centred on the average over all the days, each day counted once at the average of its
+check-ins, over exactly its window); the strength, never under nothing; the hold, 28 days, broken by one closed day; the
+range from each past day's own shifts, and its least five; the switch, off; the writer asking the way only while it is
+on, under the guard, one reader a run; the rows it adds (the way's numbers and name, `four` kept, the pick's skips, a
+slot of the pick's alone kept, a slot of the way's alone written); the challenger on top (its base, its forecast of the
+way, the same forecast given to the rows it moves, and its default for a way it cannot forecast); the export of `four`.
+
 python -B -I -X utf8 qa/level_weekday_breaks.py [id ...]   (every entry when none is named)
 """
 import io
@@ -43,6 +51,16 @@ CT = 'src/forecastConditions.test.ts'
 DT = 'src/forecastDifferences.test.ts'
 LT = 'worker/src/forecastsLookup.test.ts'
 SMOKE = 'e2e/smoke.spec.ts'
+LW = 'src/levelWeekday.ts'
+FF = 'src/forecastFlow.ts'
+CH = 'src/challenger.ts'
+CR = 'src/challengerRecord.ts'
+EX = 'src/export.ts'
+UT = 'src/levelWeekday.test.ts'
+RT = 'src/levelWeekdayWriter.test.ts'
+GT = 'src/levelWeekdayGuard.test.ts'
+WEEK = "export const WEEK: WeekNumbers = { window: 180, chance: 0.000001, minDays: 4, hold: 28, shrink: 2 }"
+SKIPS = "else if (w && !have.has(key) && !logged.has(slotKey(day, block)))"
 
 TABLE = [
     # ---- Push 1: the words -----------------------------------------------------------------------------------------------
@@ -66,6 +84,102 @@ TABLE = [
     dict(id='tells-weekdays-apart', file=FC, tests=[WT, CT],
          old="return model === 'weekdayBlock' || model === 'blend' || model === LEVEL_WEEKDAY",
          new="return model === 'weekdayBlock' || model === 'blend'"),
+    # ---- Push 2: the method's numbers, as the verdicts fixed them ---------------------------------------------------------
+    dict(id='the-chance', file=LW, tests=[UT], old=WEEK,
+         new="export const WEEK: WeekNumbers = { window: 180, chance: 0.00001, minDays: 4, hold: 28, shrink: 2 }"),
+    dict(id='the-least-days-as-set', file=LW, tests=[UT], old=WEEK,
+         new="export const WEEK: WeekNumbers = { window: 180, chance: 0.000001, minDays: 3, hold: 28, shrink: 2 }"),
+    dict(id='the-holds-length', file=LW, tests=[UT], old=WEEK,
+         new="export const WEEK: WeekNumbers = { window: 180, chance: 0.000001, minDays: 4, hold: 27, shrink: 2 }"),
+    dict(id='the-shrinking', file=LW, tests=[UT], old=WEEK,
+         new="export const WEEK: WeekNumbers = { window: 180, chance: 0.000001, minDays: 4, hold: 28, shrink: 3 }"),
+    dict(id='the-window', file=LW, tests=[UT], old=WEEK,
+         new="export const WEEK: WeekNumbers = { window: 179, chance: 0.000001, minDays: 4, hold: 28, shrink: 2 }"),
+    # ---- Push 2: the test of the seven weekdays together, its shifts and their strength ------------------------------------
+    dict(id='the-gate-at-its-chance', file=LW, tests=[UT],
+         old="  const open = chance <= numbers.chance",
+         new="  const open = chance <= numbers.chance * 10"),
+    dict(id='the-least-days', file=LW, tests=[UT],
+         old="if (n.some((k) => k < numbers.minDays) || total <= 7)",
+         new="if (n.some((k) => k < numbers.minDays - 1) || total <= 7)"),
+    dict(id='the-centring', file=LW, tests=[UT],
+         old="const offset = mean.map((m) => m - grand)",
+         new="const offset = mean.map((m) => m)"),
+    dict(id='the-strengths-floor', file=LW, tests=[UT],
+         old="const strength = Math.max(0, 1 - numbers.shrink / f)",
+         new="const strength = 1 - numbers.shrink / f"),
+    dict(id='a-day-counted-once', file=LW, tests=[UT],
+         old="        if (m) days.push(m)",
+         new="        if (m) days.push(m, m)"),
+    dict(id='a-days-miss-is-their-average', file=LW, tests=[UT],
+         old="miss: got.reduce((a, b) => a + b, 0) / got.length } : null)",
+         new="miss: got.reduce((a, b) => a + b, 0) } : null)"),
+    dict(id='the-windows-days', file=LW, tests=[UT],
+         old="for (let back = numbers.window; back >= 1; back--) {",
+         new="for (let back = numbers.window - 1; back >= 1; back--) {"),
+    # ---- Push 2: the hold -----------------------------------------------------------------------------------------------------
+    dict(id='the-hold-broken-by-one-day', file=LW, tests=[UT],
+         old="for (let back = 1; held && back <= numbers.hold; back++) held = gate(addDays(today, -back)).open",
+         new="for (let back = 1; held && back < numbers.hold; back++) held = gate(addDays(today, -back)).open"),
+    # ---- Push 2: the range ----------------------------------------------------------------------------------------------------
+    dict(id='the-range-from-each-days-own-shifts', file=LW, tests=[UT],
+         old="const shift = gate(addDays(x, -(Math.max(1, ahead) - 1))).shift[weekdayOf(x)]",
+         new="const shift = gate(today).shift[weekdayOf(x)]"),
+    dict(id='the-ranges-least-five', file=LW, tests=[UT],
+         old="if (far.length >= 5) return errorBand(far)",
+         new="if (far.length >= 6) return errorBand(far)"),
+    # ---- Push 2: the switch, the guard and the one reader ----------------------------------------------------------------------
+    dict(id='the-switch', file=LW, tests=[UT, RT],
+         old="export const LEVEL_WEEKDAY_ON = false",
+         new="export const LEVEL_WEEKDAY_ON = true"),
+    dict(id='the-writer-asks-the-switch', file=FF, tests=[RT],
+         old="const way = chosen && levelWeekdayOn() ? wayFor(values, today) : null",
+         new="const way = chosen ? wayFor(values, today) : null"),
+    dict(id='the-guard', file=FF, tests=[GT],
+         old="  return guardComparisons(today, () => wayOf(levelWeekdayReader(values, WEEK), today))",
+         new="  return wayOf(levelWeekdayReader(values, WEEK), today)"),
+    dict(id='one-reader-a-run', file=FF, tests=[GT],
+         old="const predictOf = baseForecast(way?.reader ?? null, today)",
+         new="const predictOf = baseForecast(way ? levelWeekdayReader(values, WEEK) : null, today)"),
+    # ---- Push 2: the rows the writer adds -------------------------------------------------------------------------------------
+    dict(id='the-writer-adds-the-ways-rows', file=FF, tests=[RT],
+         old="const due = way ? rowsWithTheWay(four, way.rows, existing, logged, today, (day, block) => whatIf(values, done, day, block)) : four",
+         new="const due = four"),
+    dict(id='the-ways-own-numbers', file=LW, tests=[UT, RT],
+         old="({ ...f, model: LEVEL_WEEKDAY, point: w.point, lo: w.lo, hi: w.hi,",
+         new="({ ...f, model: LEVEL_WEEKDAY, point: f.point, lo: f.lo, hi: f.hi,"),
+    dict(id='four-kept', file=LW, tests=[UT, RT],
+         old="four: { model: f.model, point: f.point, lo: f.lo, hi: f.hi }",
+         new="four: { model: f.model, point: w.point, lo: w.lo, hi: w.hi }"),
+    dict(id='a-slot-of-the-picks-alone-stays', file=LW, tests=[UT],
+         old="if (f) out.push(w ? asTheWays(f, w) : f)",
+         new="if (f && w) out.push(asTheWays(f, w))"),
+    dict(id='a-slot-of-the-ways-alone-is-written', file=LW, tests=[UT], old=SKIPS, new="else if (w && false)"),
+    dict(id='never-a-slot-with-a-row-at-that-distance', file=LW, tests=[UT], old=SKIPS, new="else if (w && !logged.has(slotKey(day, block)))"),
+    dict(id='never-a-logged-slot', file=LW, tests=[UT], old=SKIPS, new="else if (w && !have.has(key))"),
+    # ---- Push 2: the challenger on top of the way -------------------------------------------------------------------------------
+    dict(id='the-challengers-base', file=FF, tests=[RT],
+         old="challengerFor(way ? LEVEL_WEEKDAY : chosen.model, checkins, values, today, predictOf)",
+         new="challengerFor(chosen.model, checkins, values, today, predictOf)"),
+    dict(id='the-challengers-forecast-of-the-way', file=FF, tests=[RT],
+         old="model === LEVEL_WEEKDAY && reader ? reader.forecast(today, day, block) : fourWays(model, values, day, block)",
+         new="model === LEVEL_WEEKDAY && reader ? fourWays('sameBlock', values, day, block) : fourWays(model, values, day, block)"),
+    dict(id='the-moved-rows-take-the-same-forecast', file=FF, tests=[RT],
+         old="    if (tried?.picked) adjustRows(due, tried, values, predictOf)",
+         new="    if (tried?.picked) adjustRows(due, tried, values)"),
+    dict(id='adjust-rows-asks-the-forecast-given', file=CR, tests=[UT],
+         old="    const p = predictOf(run.base, values, f.day, f.block)",
+         new="    const p = fourWays(run.base, values, f.day, f.block)"),
+    dict(id='no-forecast-of-the-way-without-its-reader', file=CH, tests=[UT],
+         old="(model === LEVEL_WEEKDAY ? null : predict(model, values, day, block))",
+         new="predict(model as never, values, day, block)"),
+    # ---- Push 2: the export of what the four would have written ------------------------------------------------------------------
+    dict(id='four-exported-unmoved', file=EX, tests=[RT],
+         old="  if (typeof f.adj !== 'number') return four",
+         new="  if (typeof f.adj !== 'number') return {}"),
+    dict(id='four-exported-moved', file=EX, tests=[RT],
+         old="lo: p.lo, hi: p.hi } } : {}), ...four }",
+         new="lo: p.lo, hi: p.hi } } : {}) }"),
 ]
 
 
