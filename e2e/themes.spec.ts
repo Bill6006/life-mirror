@@ -1789,11 +1789,13 @@ async function seedWeather(page: Page): Promise<void> {
     const u = new URL(route.request().url())
     const [a, b] = [u.searchParams.get('start_date') ?? '', u.searchParams.get('end_date') ?? '']
     const hours = (d: string) => Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`)
+    const days: string[] = []
+    for (let t = Date.parse(`${a}T12:00:00Z`); t <= Date.parse(`${b}T12:00:00Z`); t += 86_400_000) days.push(new Date(t).toISOString().slice(0, 10))
     const body = {
       daily_units: { time: 'iso8601', rain_sum: 'mm', showers_sum: 'mm', sunshine_duration: 's', temperature_2m_max: '°C' },
-      daily: { time: [a, b], rain_sum: [0.4, 2.1], showers_sum: [0, 0.2], sunshine_duration: [30_600, 18_000], temperature_2m_max: [17.2, 15.6] },
+      daily: { time: days, rain_sum: days.map((_, k) => (k === 0 ? 0.4 : k === 1 ? 2.1 : 0)), showers_sum: days.map((_, k) => (k === 1 ? 0.2 : 0)), sunshine_duration: days.map((_, k) => (k === 0 ? 30_600 : k === 1 ? 18_000 : 21_600)), temperature_2m_max: days.map((_, k) => (k === 0 ? 17.2 : k === 1 ? 15.6 : 15)) },
       hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
-      hourly: { time: [...hours(a), ...hours(b)], rain: Array.from({ length: 48 }, () => 0), showers: Array.from({ length: 48 }, () => 0) },
+      hourly: { time: days.flatMap(hours), rain: days.flatMap(() => Array.from({ length: 24 }, () => 0)), showers: days.flatMap(() => Array.from({ length: 24 }, () => 0)) },
     }
     return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) })
   })

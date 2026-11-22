@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { factSheet } from './brainFlow'
 import { bodyForCloud } from './cloudOutbox'
+import { addDays } from './blocks'
 import { contextFromWeek, db, getSettings, updateSettings } from './db'
 import { todayState } from './offerFlow'
 import { screen } from './offers'
@@ -12,6 +13,9 @@ import { readWeatherToday, resetWeatherMarks } from './weatherFlow'
 // area to one decimal and two dates, carrying no referrer and no cookie; a failure is not tried again that day; what
 // comes back goes onto the days' own records, never onto a record made up for it; the switch stays on this phone; rain
 // forecast for the hour keeps a move that needs the outdoors waiting while the switch is on, and only then.
+//
+// Stage C0 (2026-11-22): the two dates are yesterday's and the one seven days past today, and the forecast issued today
+// for the day itself and each of the next seven is kept on today's record, values only, as it was first read.
 
 const TODAY = '2026-10-18'
 const YESTERDAY = '2026-10-17'
@@ -25,6 +29,25 @@ function reply(first: string, second: string) {
     daily: { time: [first, second], rain_sum: [1.2, 2], showers_sum: [0, 0.3], sunshine_duration: [3600, 18_000], temperature_2m_max: [12.4, 15.5] },
     hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
     hourly: { time: [...hours(first), ...hours(second)], rain: Array.from({ length: 48 }, (_, i) => (i === 24 + 15 ? 0.6 : 0)), showers: Array.from({ length: 48 }, () => 0) },
+  }
+}
+
+const UNITS = { time: 'iso8601', rain_sum: 'mm', showers_sum: 'mm', sunshine_duration: 's', temperature_2m_max: '°C' }
+type Over = Partial<Record<'rain' | 'showers' | 'sun' | 'high', number | null>>
+/**
+ * The same service's reply to Stage C0's request: nine days from the first asked (yesterday, today and seven more),
+ * each day with values of its own: rain 1.2, 2 (and 0.3 of showers), then half the day's place; an hour of sunshine
+ * more each day; a high a degree higher each day from 12.4.
+ */
+function nineDays(first: string, over: (k: number) => Over = () => ({})) {
+  const days = Array.from({ length: 9 }, (_, k) => addDays(first, k))
+  const hours = (d: string) => Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`)
+  const v = (k: number) => ({ rain: k === 0 ? 1.2 : k === 1 ? 2 : k / 2, showers: k === 1 ? 0.3 : 0, sun: 3600 * (k + 1), high: 12.4 + k, ...over(k) })
+  return {
+    daily_units: UNITS,
+    daily: { time: days, rain_sum: days.map((_, k) => v(k).rain), showers_sum: days.map((_, k) => v(k).showers), sunshine_duration: days.map((_, k) => v(k).sun), temperature_2m_max: days.map((_, k) => v(k).high) },
+    hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
+    hourly: { time: days.flatMap(hours), rain: days.flatMap((_, k) => Array.from({ length: 24 }, (_, h) => (k === 1 && h === 15 ? 0.6 : 0))), showers: days.flatMap(() => Array.from({ length: 24 }, () => 0)) },
   }
 }
 
@@ -75,7 +98,7 @@ describe('weather on the phone', () => {
     const { calls, fetcher } = stubFetch(() => ok(reply(YESTERDAY, TODAY)))
     expect(await readWeatherToday(at(18, 9), fetcher)).toBe('read')
     expect(calls).toHaveLength(1)
-    expect(calls[0].url).toBe('https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-18')
+    expect(calls[0].url).toBe('https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-25')
     expect(calls[0].init).toEqual({ referrerPolicy: 'no-referrer', credentials: 'omit', cache: 'no-store' })
     // Again today, at launch or on return: nothing more is asked.
     expect(await readWeatherToday(at(18, 14), fetcher)).toBe('asked')
@@ -86,7 +109,7 @@ describe('weather on the phone', () => {
     const next = stubFetch(() => ok(reply(TODAY, '2026-10-19')))
     expect(await readWeatherToday(at(19, 3, 30), next.fetcher)).toBe('asked')
     expect(await readWeatherToday(at(19, 4, 5), next.fetcher)).toBe('read')
-    expect(next.calls.map((c) => c.url.endsWith('&start_date=2026-10-18&end_date=2026-10-19'))).toEqual([true])
+    expect(next.calls.map((c) => c.url.endsWith('&start_date=2026-10-18&end_date=2026-10-26'))).toEqual([true])
   })
 
   it('keeps each day’s weather on its own record, today’s with its hours, and makes no record up for it', async () => {
@@ -130,6 +153,78 @@ describe('weather on the phone', () => {
     expect((await db.days.get(TODAY))?.weather).toBeUndefined()
   })
 
+  it('keeps the forecast issued today, for the day itself and each of the next seven, on today’s record alone, values only (Stage C0)', async () => {
+    await updateSettings((s) => ({ ...s, weather: { on: true } }))
+    const { calls, fetcher } = stubFetch(() => ok(nineDays(YESTERDAY)))
+    expect(await readWeatherToday(at(18, 9), fetcher)).toBe('read')
+    expect(calls.map((c) => c.url.endsWith('&start_date=2026-10-17&end_date=2026-10-25'))).toEqual([true])
+    const today = await db.days.get(TODAY)
+    expect(today?.weatherIssued).toEqual({
+      at: at(18, 9).toISOString(),
+      days: [
+        { day: '2026-10-18', rain: 2.3, sun: 2, high: 13.4 },
+        { day: '2026-10-19', rain: 1, sun: 3, high: 14.4 },
+        { day: '2026-10-20', rain: 1.5, sun: 4, high: 15.4 },
+        { day: '2026-10-21', rain: 2, sun: 5, high: 16.4 },
+        { day: '2026-10-22', rain: 2.5, sun: 6, high: 17.4 },
+        { day: '2026-10-23', rain: 3, sun: 7, high: 18.4 },
+        { day: '2026-10-24', rain: 3.5, sun: 8, high: 19.4 },
+        { day: '2026-10-25', rain: 4, sun: 9, high: 20.4 },
+      ],
+    })
+    // The day's own weather is kept exactly as before; yesterday's record holds what came, and never a forecast.
+    expect({ ...today?.weather, hours: undefined }).toEqual({ rain: 2.3, sun: 2, high: 13.4, at: at(18, 9).toISOString(), hours: undefined })
+    expect(today?.weather?.hours?.[14]).toBe(0.6)
+    const yesterday = await db.days.get(YESTERDAY)
+    expect(yesterday?.weather).toEqual({ rain: 1.2, sun: 1, high: 12.4, at: at(18, 9).toISOString() })
+    expect(yesterday?.weatherIssued).toBeUndefined()
+    // No record is made up for a day ahead.
+    expect(await db.days.get('2026-10-19')).toBeUndefined()
+    expect(await db.days.count()).toBe(2)
+  })
+
+  it('keeps the issued forecast as it was first read: a later read the same day leaves it, and so does the next day’s (Stage C0)', async () => {
+    await updateSettings((s) => ({ ...s, weather: { on: true } }))
+    await readWeatherToday(at(18, 9), stubFetch(() => ok(nineDays(YESTERDAY))).fetcher)
+    const first = (await db.days.get(TODAY))?.weatherIssued
+    expect(first?.days).toHaveLength(8)
+    // The marks forgotten, as when the phone's own storage was cleared: the day is read again, and now says something else.
+    resetWeatherMarks()
+    expect(await readWeatherToday(at(18, 15), stubFetch(() => ok(nineDays(YESTERDAY, () => ({ rain: 9, high: 30 })))).fetcher)).toBe('read')
+    const again = await db.days.get(TODAY)
+    expect({ rain: again?.weather?.rain, high: again?.weather?.high, at: again?.weather?.at }).toEqual({ rain: 9.3, high: 30, at: at(18, 15).toISOString() })
+    expect(again?.weatherIssued).toEqual(first)
+    // The day after, the day's own weather is rewritten with the day as it was; what was said of it stays, and the new day keeps its own.
+    expect(await readWeatherToday(at(19, 9), stubFetch(() => ok(nineDays(TODAY, () => ({ rain: 0 })))).fetcher)).toBe('read')
+    const kept = await db.days.get(TODAY)
+    expect(kept?.weather).toEqual({ rain: 0, sun: 1, high: 12.4, at: at(19, 9).toISOString() })
+    expect(kept?.weatherIssued).toEqual(first)
+    expect((await db.days.get('2026-10-19'))?.weatherIssued?.days.map((d) => d.day)).toEqual(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26'])
+  })
+
+  it('leaves out a day ahead that did not come back whole, and keeps no issued forecast without the day’s own or from other units (Stage C0)', async () => {
+    await updateSettings((s) => ({ ...s, weather: { on: true } }))
+    const again = async () => {
+      await db.days.clear()
+      const settings = await getSettings()
+      await db.days.bulkPut([contextFromWeek(YESTERDAY, settings), contextFromWeek(TODAY, settings)])
+      resetWeatherMarks()
+    }
+    // The fourth day ahead comes back without its sunshine: it is unknown, and left out, never read as a day of none.
+    await readWeatherToday(at(18, 9), stubFetch(() => ok(nineDays(YESTERDAY, (k) => (k === 5 ? { sun: null } : {})))).fetcher)
+    expect((await db.days.get(TODAY))?.weatherIssued?.days.map((d) => d.day)).toEqual(['2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-23', '2026-10-24', '2026-10-25'])
+    // Today's own forecast missing: yesterday's weather is kept as before, and nothing issued is kept anywhere.
+    await again()
+    expect(await readWeatherToday(at(18, 9), stubFetch(() => ok(nineDays(YESTERDAY, (k) => (k === 1 ? { high: null } : {})))).fetcher)).toBe('read')
+    expect((await db.days.get(YESTERDAY))?.weather?.rain).toBe(1.2)
+    expect((await db.days.get(TODAY))?.weather).toBeUndefined()
+    expect((await db.days.toArray()).filter((d) => d.weatherIssued)).toEqual([])
+    // A reply in other units keeps nothing at all.
+    await again()
+    expect(await readWeatherToday(at(18, 9), stubFetch(() => ok({ ...nineDays(YESTERDAY), daily_units: { ...UNITS, sunshine_duration: 'h' } })).fetcher)).toBe('failed')
+    expect((await db.days.toArray()).filter((d) => d.weather || d.weatherIssued)).toEqual([])
+  })
+
   it('keeps the switch on this phone: the cloud copy never carries it, and the day’s weather goes with the day', async () => {
     expect(bodyForCloud('settings', { id: 1, weather: { on: true }, depth: 'full' })).toEqual({ id: 1, depth: 'full' })
     await updateSettings((s) => ({ ...s, weather: { on: true } }))
@@ -137,6 +232,8 @@ describe('weather on the phone', () => {
     await readWeatherToday(at(18, 9), fetcher)
     const queued = (await db.outbox.toArray()).filter((r) => r.store === 'days').map((r) => r.body ?? '')
     expect(queued.some((b) => b.includes('"weather":{"rain":2.3,"sun":5,"high":15.5'))).toBe(true)
+    // Stage C0: the forecast kept as issued goes with the day too, values only.
+    expect(queued.some((b) => b.includes('"weatherIssued":{"at":') && b.includes('"days":[{"day":"2026-10-18","rain":2.3,"sun":5,"high":15.5}]'))).toBe(true)
     // The area is nowhere in the days that go: they hold values only. (The place typed under The week travels in your own
     // copy of the settings, as it always has.)
     expect(queued.join('\n')).not.toMatch(/51\.4|51\.5|-0\.1|lat|lon/)
@@ -202,5 +299,17 @@ describe('the day’s sheet the phone writes', () => {
     // Everything else on the sheet is as it was.
     const rest = (s: typeof on) => JSON.stringify(s.facts.filter((f) => f.id !== 'weather.today'))
     expect(rest(on)).toBe(rest(off))
+  })
+
+  it('is the same sheet whether or not the day’s record holds a forecast kept as issued (Stage C0); a changed weather changes it', async () => {
+    await updateSettings((s) => ({ ...s, weather: { on: true } }))
+    const plain = JSON.stringify((await factSheet(TODAY, at(18, 9))).facts)
+    const row = await db.days.get(TODAY)
+    if (!row) throw new Error('the day has no record')
+    await db.days.put({ ...row, weatherIssued: { at: 'x', days: [{ day: TODAY, rain: 9.9, sun: 0.1, high: 31.7 }, { day: '2026-10-19', rain: 8.8, sun: 0.2, high: 30.1 }] } })
+    expect(JSON.stringify((await factSheet(TODAY, at(18, 9))).facts)).toBe(plain)
+    // The probe: the day's own weather, changed, changes the sheet.
+    await db.days.put({ ...row, weather: { rain: 9.9, sun: 0.1, high: 31.7, at: 'x' } })
+    expect(JSON.stringify((await factSheet(TODAY, at(18, 9))).facts)).not.toBe(plain)
   })
 })

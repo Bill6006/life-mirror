@@ -188,6 +188,10 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
   const shownNames = (c: CheckIn) => Object.keys(c.extras?.chipsShown ?? {}).map((k) => (k.startsWith('own:') ? `own: ${ownLabel(k.slice(4))}` : k))
   // Stage 3, item 6: each day's weather as its record holds it, values only; a day without it is unknown, never dry.
   const weatherOf = new Map((records?.days ?? []).flatMap((d) => (d.weather ? [[d.day, d.weather] as const] : [])))
+  // Stage C0: the forecasts kept as they were issued, one row for each day a forecast was for, by the day it was issued.
+  const weatherIssued = [...(records?.days ?? [])]
+    .sort((a, b) => (a.day < b.day ? -1 : 1))
+    .flatMap((d) => (d.weatherIssued ? d.weatherIssued.days.map((f) => ({ issuedOn: d.day, day: f.day, rainMm: f.rain, sunHours: f.sun, highC: f.high, readAt: d.weatherIssued?.at ?? '' })) : []))
   // The Partner path stays out unless ticked (Part 27): its commitment, its plans, its steps, and a line that cites it.
   const partner = opts.includePartner === true
   const partnerAims = new Set((aims?.aims ?? []).filter((a) => a.kind === 'path' && a.path === 'partner').map((a) => a.id))
@@ -258,6 +262,8 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
         ownChips: 'ownChips lists your own chips by the label you typed, each asked as one tap at the evening check-in; removedAt is when you stopped one, and its taps stay. A check-in’s ownChips names those tapped there.',
         events: ['caffeineAfterMidday', 'lateOrHeavyDinner', 'feltCloseToGod', 'nothingLandedToday', 'hardToSeeThePointToday', 'coolingOffEvent', 'bigSocialEvent', 'heavyCaffeineThisMorning', 'nappedToday', 'outsideToday', 'natureToday', 'sweetSinceLastCheckIn'],
         weather: 'weatherDays lists each day whose record holds weather from Open-Meteo for your area, read while its switch was on (Weather data by Open-Meteo.com, CC BY 4.0): rainMm is rain and showers over the day in millimetres, sunHours the hours of sunshine, highC the day’s high in °C, and readAt when it was read. Read on the day itself it is that day’s forecast; read the day after, the day as it was. A day not listed is unknown, never dry. The area is never kept. The check-in rows carry the same as day_rain_mm, day_sun_hours and day_high_c.',
+        // Stage C0: said only once a forecast has been kept, so a record that holds none exports byte for byte as before.
+        ...(weatherIssued.length ? { weatherIssued: 'weatherIssued lists the forecasts kept as they were issued (from 2026-11-22): issuedOn is the day a forecast was read, day the day it is for (that same day and each of the next seven), rainMm, sunHours and highC as in weatherDays, and readAt when it was read. Each is kept as it was first read and never rewritten; weatherDays holds each day as it then was. Nothing in Life Mirror shows or uses them yet. The area is never kept.' } : {}),
         ask: 'Ask Life Mirror: each conversation (threads) and each question in it (turns). A quick answer is the app’s own layout of the tested findings at the time, with the findings it cited (each test’s key, its rung, direction, revised mark and size range); a typed question waits for Claude, and its checked answer (claude) is Claude’s words with the facts it cited, or that no checked answer came. Nothing here is evidence: the learning engine and the Brain never read it. A turn’s asked lists the tests you asked about and the days, the one thing the test queue reads, for priority alone.',
         notes: 'Notes you kept from Ask, in your own words, each on its day: read as a check-in’s note is, never a reading or a finding.',
         // The pattern table's note, only beside the table itself: an export with no table reads as it always did.
@@ -277,6 +283,7 @@ export function buildExport(all: readonly CheckIn[], wins: readonly Win[], items
       freeText: sorted.filter((c) => c.extras?.note).map((c) => ({ day: c.day, block: c.block, note: c.extras?.note ?? '' })),
       outsideDays: (records?.outside ?? []).map((o) => ({ day: o.day, minutes: o.minutes, at: o.at, source: o.source })),
       weatherDays: [...weatherOf].sort(([a], [b]) => (a < b ? -1 : 1)).map(([day, w]) => ({ day, rainMm: w.rain, sunHours: w.sun, highC: w.high, readAt: w.at })),
+      ...(weatherIssued.length ? { weatherIssued } : {}),
       journal: (records?.journal ?? []).map((e) => ({ day: e.day, text: e.text, writtenAt: e.writtenAt, editedAt: e.editedAt })),
       notes: (records?.ask?.notes ?? []).map((n) => ({ day: n.day, text: n.text, from: n.from, ...(n.turnId !== undefined ? { question: n.turnId } : {}), createdAt: n.createdAt })),
       ask: {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CheckIn, DayContext, DayWeather } from './db'
 import { weatherFacts } from './facts'
 import { blockReadings, type Answers, type Position, type ReadingId } from './readings'
-import { rainSoon, readWeather, sunShare, temperatureHere, weatherEvidence, weatherUrl } from './weather'
+import { issuedFrom, rainSoon, readWeather, sunShare, temperatureHere, WEATHER_AHEAD_DAYS, weatherEvidence, weatherUrl } from './weather'
 
 // Weather as context (stage 3, item 6): the one request names the area to one decimal and two dates, and nothing else;
 // what comes back is read only in the units asked, a day missing anything is unknown, never dry; rain this hour or the
@@ -176,5 +176,33 @@ describe('the high as this phone’s region reads it', () => {
     expect(temperatureHere(17.6, 'en-GB')).toBe('18 °C')
     expect(temperatureHere(-3.2, 'de-DE')).toBe('-3 °C')
     expect(temperatureHere(17.6, 'en')).toBe('18 °C')
+  })
+})
+
+describe('the forecast kept as it was issued (Stage C0, 2026-11-22)', () => {
+  const days = ['2026-10-18', '2026-10-19', '2026-10-20']
+  const got = {
+    '2026-10-18': { rain: 2.3, sun: 5, high: 15.5, at: 'T', hours: [0.1, null] },
+    '2026-10-20': { rain: 0, sun: 6, high: 14, at: 'T' },
+  }
+
+  it('reaches seven days past today', () => {
+    expect(WEATHER_AHEAD_DAYS).toBe(7)
+  })
+
+  it('holds, in the order asked, the day and the three values of each day that came back whole, and nothing else of it', () => {
+    expect(issuedFrom(got, days, 'T')).toEqual({
+      at: 'T',
+      days: [
+        { day: '2026-10-18', rain: 2.3, sun: 5, high: 15.5 },
+        { day: '2026-10-20', rain: 0, sun: 6, high: 14 },
+      ],
+    })
+  })
+
+  it('is nothing unless the day’s own forecast came back: it is kept on that day’s record, and none is made up', () => {
+    expect(issuedFrom({ '2026-10-19': { rain: 1, sun: 2, high: 3, at: 'T' }, '2026-10-20': { rain: 0, sun: 6, high: 14, at: 'T' } }, days, 'T')).toBeNull()
+    expect(issuedFrom(got, [], 'T')).toBeNull()
+    expect(issuedFrom({}, days, 'T')).toBeNull()
   })
 })

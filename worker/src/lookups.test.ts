@@ -388,6 +388,19 @@ describe('the exact-day lookup', () => {
     expect(await run(store, { lookup: 'day', date: '2026-11-01' })).toMatchObject({ facts: [], note: 'nothing this run may read is recorded for 2026-11-01' })
   })
 
+  it('builds the same lines whether or not the day’s record holds a forecast kept as it was issued (Stage C0, 2026-11-22), and other lines when the day itself differs', async () => {
+    const day = { day: D, atOffice: true, pickupTime: '17:15', withHer: true, studyNight: true, churchDay: true, amongPeople: true, unwell: false }
+    const plain = await dayOf(richDay())
+    expect(plain.facts.length).toBeGreaterThan(5)
+    const kept = richDay()
+    put(kept, 'days', D, D, { ...day, weatherIssued: { at: `${D}T13:00:00.000Z`, days: [{ day: D, rain: 9.9, sun: 0.1, high: 31.7 }, { day: '2026-11-11', rain: 8.8, sun: 0.2, high: 30.1 }] } })
+    expect(JSON.stringify((await dayOf(kept)).facts)).toBe(JSON.stringify(plain.facts))
+    // The probe: a day that itself differs gives other lines.
+    const other = richDay()
+    put(other, 'days', D, D, { ...day, atOffice: false })
+    expect(JSON.stringify((await dayOf(other)).facts)).not.toBe(JSON.stringify(plain.facts))
+  })
+
   it('has a line for every kind the record counts: a kind added later is covered here or this test fails', async () => {
     // Each kind the list holds, by the start of its id, with the words its line on the day carries. A kind with no entry
     // fails below: it must be given a line here, or marked left out with why.

@@ -1,6 +1,6 @@
 import { dayAssociation, type Association } from './associations'
 import { dayKey } from './blocks'
-import type { CheckIn, DayContext, DayWeather } from './db'
+import type { CheckIn, DayContext, DayWeather, WeatherIssued } from './db'
 import { minutesOf } from './reminderRules'
 import type { Place } from './sun'
 
@@ -8,6 +8,11 @@ import type { Place } from './sun'
 // designed, with Open-Meteo, off until I turn it on." Once a day, only while Life Mirror is open and its switch is on,
 // Open-Meteo is asked for yesterday's and today's weather at the area the sun's times use, to one decimal. Nothing else
 // is put in the request. What comes back is kept with each day's record, values only, never the area.
+//
+// Stage C0 (2026-11-22, at the owner's word: "I authorize the daily weather request to also request and store the next
+// seven days using the same weather service and same rounded area. Nothing additional should leave the phone."): the
+// same one request reaches seven days past today, and the forecast for each of those days is kept on the record of the
+// day it was issued, as it was first read. Nothing shows it and nothing uses it yet.
 
 /** The one address asked. */
 export const WEATHER_ENDPOINT = 'https://api.open-meteo.com/v1/forecast'
@@ -19,6 +24,8 @@ export const RAIN_DAY_MM = 1
 export const RAIN_HOUR_MM = 0.1
 /** The comparisons, on Evidence and the day's sheet, wait for this many days with weather. */
 export const WEATHER_DAYS_MIN = 14
+/** How many days past today the one request reaches (Stage C0): the forecast for each is kept as it was issued. */
+export const WEATHER_AHEAD_DAYS = 7
 
 /** One decimal, as the place is typed and the area kept: about eleven kilometres. */
 export function oneDecimal(v: number): string {
@@ -26,11 +33,12 @@ export function oneDecimal(v: number): string {
 }
 
 /**
- * The one request of a day: the area to one decimal, yesterday's and today's dates, and what is asked back (the day's
- * rain, showers, sunshine and high, and the hour's rain and showers), in the area's own time zone.
+ * The one request of a day: the area to one decimal, two dates (the first day asked for and the last: yesterday, and
+ * the day WEATHER_AHEAD_DAYS past today), and what is asked back (the day's rain, showers, sunshine and high, and the
+ * hour's rain and showers), in the area's own time zone.
  */
-export function weatherUrl(p: Place, yesterday: string, today: string): string {
-  return `${WEATHER_ENDPOINT}?latitude=${oneDecimal(p.lat)}&longitude=${oneDecimal(p.lon)}&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=${yesterday}&end_date=${today}`
+export function weatherUrl(p: Place, first: string, last: string): string {
+  return `${WEATHER_ENDPOINT}?latitude=${oneDecimal(p.lat)}&longitude=${oneDecimal(p.lon)}&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=${first}&end_date=${last}`
 }
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
@@ -88,6 +96,22 @@ export function readWeather(json: unknown, days: readonly string[], at: string, 
     out[day] = hours ? { ...w, hours } : w
   }
   return out
+}
+
+/**
+ * The forecast issued today, to be kept as it was read (Stage C0): for the day itself and each day asked for after it,
+ * in the order asked, the three values of every day that came back whole; a day that did not is left out, never read
+ * as dry. Null unless the day's own forecast came back: it is kept on that day's record, and none is made up to hold it.
+ */
+export function issuedFrom(got: Readonly<Record<string, DayWeather>>, days: readonly string[], at: string): WeatherIssued | null {
+  if (days.length === 0 || !got[days[0]]) return null
+  return {
+    at,
+    days: days.flatMap((day) => {
+      const w = got[day]
+      return w ? [{ day, rain: w.rain, sun: w.sun, high: w.high }] : []
+    }),
+  }
 }
 
 /**

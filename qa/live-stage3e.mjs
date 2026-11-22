@@ -31,11 +31,13 @@ function reply(url) {
   const u = new URL(url)
   const [a, b] = [u.searchParams.get('start_date') ?? '', u.searchParams.get('end_date') ?? '']
   const hours = (d) => Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`)
+  const days = []
+  for (let t = Date.parse(`${a}T12:00:00Z`); t <= Date.parse(`${b}T12:00:00Z`); t += 86_400_000) days.push(new Date(t).toISOString().slice(0, 10))
   return JSON.stringify({
     daily_units: { time: 'iso8601', rain_sum: 'mm', showers_sum: 'mm', sunshine_duration: 's', temperature_2m_max: '°C' },
-    daily: { time: [a, b], rain_sum: [0.4, 2.1], showers_sum: [0, 0.2], sunshine_duration: [30_600, 18_000], temperature_2m_max: [17.2, 15.6] },
+    daily: { time: days, rain_sum: days.map((_, k) => (k === 0 ? 0.4 : k === 1 ? 2.1 : 0)), showers_sum: days.map((_, k) => (k === 1 ? 0.2 : 0)), sunshine_duration: days.map((_, k) => (k === 0 ? 30_600 : k === 1 ? 18_000 : 21_600)), temperature_2m_max: days.map((_, k) => (k === 0 ? 17.2 : k === 1 ? 15.6 : 15)) },
     hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
-    hourly: { time: [...hours(a), ...hours(b)], rain: Array.from({ length: 48 }, (_, i) => (i === 24 + 14 || i === 24 + 15 ? 0.7 : 0)), showers: Array.from({ length: 48 }, () => 0) },
+    hourly: { time: days.flatMap(hours), rain: days.flatMap((_, k) => Array.from({ length: 24 }, (_, h) => (k === 1 && (h === 14 || h === 15) ? 0.7 : 0))), showers: days.flatMap(() => Array.from({ length: 24 }, () => 0)) },
   })
 }
 
@@ -166,7 +168,7 @@ try {
     await page.getByTestId('weather-on').click({ timeout: 8000 }).catch(() => undefined)
     const status = page.getByTestId('weather-status')
     await until(async () => (await text(status)).includes('Today’s forecast'))
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-18'
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-25'
     check('turned on, one request, naming nothing but the area to one decimal and two dates, with no referrer', asked.length === 1 && asked[0].url === url && asked[0].headers.referer === undefined, `${asked.length} asked`)
     const credit = page.getByTestId('weather-credit')
     check('the forecast shows, with its credit to Open-Meteo', (await text(status)).includes('Today’s forecast: 2.3 mm of rain, 5 hours of sun') && (await credit.getAttribute('href', { timeout: 8000 }).catch(() => null)) === 'https://open-meteo.com/')

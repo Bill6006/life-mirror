@@ -255,6 +255,27 @@ describe('stage 3, item 6, the weather in your own file', () => {
     expect(out.key.weather).toContain('A day not listed is unknown, never dry.')
   })
 
+  it('lists the forecasts kept as they were issued, a row for each day a forecast was for, by the day it was issued, and says what they are (Stage C0)', () => {
+    const none = JSON.parse(buildExport([], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records).json)
+    // A record that holds none exports exactly as before: neither the list nor its note.
+    expect('weatherIssued' in none).toBe(false)
+    expect('weatherIssued' in none.key).toBe(false)
+    const issued = (day: string, days: object[]) => ({ ...rec(day), weatherIssued: { at: `${day}T08:00:00.000Z`, days } })
+    const kept = {
+      ...records,
+      days: [issued('2026-10-19', [{ day: '2026-10-19', rain: 1, sun: 3, high: 14.4 }, { day: '2026-10-20', rain: 0, sun: 6.5, high: 12 }]), rec('2026-10-17'), issued('2026-10-18', [{ day: '2026-10-18', rain: 2.3, sun: 5.1, high: 15.5 }, { day: '2026-10-19', rain: 0.4, sun: 7, high: 16 }])],
+    } as unknown as RecordsData
+    const out = JSON.parse(buildExport([], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, kept).json)
+    expect(out.weatherIssued).toEqual([
+      { issuedOn: '2026-10-18', day: '2026-10-18', rainMm: 2.3, sunHours: 5.1, highC: 15.5, readAt: '2026-10-18T08:00:00.000Z' },
+      { issuedOn: '2026-10-18', day: '2026-10-19', rainMm: 0.4, sunHours: 7, highC: 16, readAt: '2026-10-18T08:00:00.000Z' },
+      { issuedOn: '2026-10-19', day: '2026-10-19', rainMm: 1, sunHours: 3, highC: 14.4, readAt: '2026-10-19T08:00:00.000Z' },
+      { issuedOn: '2026-10-19', day: '2026-10-20', rainMm: 0, sunHours: 6.5, highC: 12, readAt: '2026-10-19T08:00:00.000Z' },
+    ])
+    expect(out.key.weatherIssued).toContain('kept as it was first read and never rewritten')
+    expect(out.key.weatherIssued).toContain('The area is never kept.')
+  })
+
   it('gives each check-in row its day’s weather, and leaves the cells empty on a day without it', () => {
     const bundle = buildExport([evening('2026-10-16'), evening('2026-10-17')], [], [], DEFAULT_SETTINGS, { includePrivate: false }, undefined, records)
     const [head, unknown, dry] = bundle.csv.trim().split('\n')

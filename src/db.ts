@@ -125,6 +125,24 @@ export interface DayWeather {
   hours?: (number | null)[]
 }
 
+/** One day of a forecast kept as it was issued (Stage C0, 2026-11-22): the day it is for, and its rain, sunshine and high as a day's own weather holds them. */
+export interface IssuedDay {
+  day: string
+  rain: number
+  sun: number
+  high: number
+}
+
+/**
+ * The forecast issued on a day, for the day itself and the days after it, as it was first read (Stage C0): what was
+ * said, beside the day's own weather, which is what came. Values only, never the area. Written once and never rewritten.
+ */
+export interface WeatherIssued {
+  /** When it was read. */
+  at: string
+  days: IssuedDay[]
+}
+
 export interface DayContext {
   day: string
   weekday: Weekday
@@ -170,6 +188,8 @@ export interface DayContext {
   amongPeople?: boolean
   /** Stage 3, item 6: the day's weather where you were, from Open-Meteo while its switch was on; values only, never the area. Absent means unknown, never dry. */
   weather?: DayWeather
+  /** Stage C0: the forecast issued on this day for it and each of the next seven days, kept as first read. Nothing shows it or uses it yet. */
+  weatherIssued?: WeatherIssued
   /** The learning repair (stage R3): the owner's answer, that day, to the invitation to a learning week. Absent means none was given. */
   weekAnswer?: 'yes' | 'notNow'
   /** Set when you changed today by hand. */

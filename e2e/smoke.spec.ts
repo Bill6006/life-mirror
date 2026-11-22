@@ -4369,18 +4369,21 @@ test('the record shown back (stage 3, group 4): the Cloud screen counts the work
 })
 
 /**
- * Open-Meteo's reply, stood in for in the page (stage 3, item 6): the two days asked, in its own shape and units, with
- * rain in the hours from 13:00 and 14:00 of the second. The service itself is never reached from a test.
+ * Open-Meteo's reply, stood in for in the page (stage 3, item 6): every day from the first asked to the last (Stage C0:
+ * yesterday to seven days past today), in its own shape and units, with rain in the hours from 13:00 and 14:00 of the
+ * second. The service itself is never reached from a test.
  */
 function weatherReply(url: string): string {
   const u = new URL(url)
   const [a, b] = [u.searchParams.get('start_date') ?? '', u.searchParams.get('end_date') ?? '']
   const hours = (d: string) => Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`)
+  const days: string[] = []
+  for (let t = Date.parse(`${a}T12:00:00Z`); t <= Date.parse(`${b}T12:00:00Z`); t += 86_400_000) days.push(new Date(t).toISOString().slice(0, 10))
   return JSON.stringify({
     daily_units: { time: 'iso8601', rain_sum: 'mm', showers_sum: 'mm', sunshine_duration: 's', temperature_2m_max: '°C' },
-    daily: { time: [a, b], rain_sum: [0.4, 2.1], showers_sum: [0, 0.2], sunshine_duration: [30_600, 18_000], temperature_2m_max: [17.2, 15.6] },
+    daily: { time: days, rain_sum: days.map((_, k) => (k === 0 ? 0.4 : k === 1 ? 2.1 : 0)), showers_sum: days.map((_, k) => (k === 1 ? 0.2 : 0)), sunshine_duration: days.map((_, k) => (k === 0 ? 30_600 : k === 1 ? 18_000 : 21_600)), temperature_2m_max: days.map((_, k) => (k === 0 ? 17.2 : k === 1 ? 15.6 : 15)) },
     hourly_units: { time: 'iso8601', rain: 'mm', showers: 'mm' },
-    hourly: { time: [...hours(a), ...hours(b)], rain: Array.from({ length: 48 }, (_, i) => (i === 24 + 14 || i === 24 + 15 ? 0.7 : 0)), showers: Array.from({ length: 48 }, () => 0) },
+    hourly: { time: days.flatMap(hours), rain: days.flatMap((_, k) => Array.from({ length: 24 }, (_, h) => (k === 1 && (h === 14 || h === 15) ? 0.7 : 0))), showers: days.flatMap(() => Array.from({ length: 24 }, () => 0)) },
   })
 }
 
@@ -4394,7 +4397,7 @@ async function standInWeather(page: Page): Promise<{ url: string; headers: Recor
   return asked
 }
 
-const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-18'
+const WEATHER_URL = 'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-25'
 
 test('weather for your area (stage 3, item 6): off on a fresh install, its words first and naming the area, then one request a day with nothing in it but the area and two dates', async ({ page }) => {
   const asked = await standInWeather(page)
@@ -4419,6 +4422,9 @@ test('weather for your area (stage 3, item 6): off on a fresh install, its words
   await expect(page.getByTestId('weather-sent-area')).toHaveText('your area to one decimal, about 11 km: 51.5, -0.1')
   await expect(page.getByTestId('weather-words')).toContainText('this phone’s IP address, its browser and language, and this site’s address, 127.0.0.1:4791')
   await expect(page.getByTestId('weather-words')).toContainText('Its terms say it keeps request logs, coordinates among them, for 90 days.')
+  // Stage C0: the words say the two dates now sent, and that the forecast for the days ahead is kept.
+  await expect(page.getByTestId('weather-words')).toContainText('yesterday’s date and the date seven days from today')
+  await expect(page.getByTestId('weather-words')).toContainText('The forecast for each of the next seven days is kept with them as it was first read; nothing shows it yet.')
   expect(asked).toEqual([])
   // Turned on: one request, the area to one decimal and two dates, no referrer; the forecast shown with its credit.
   await page.getByTestId('weather-on').click()
@@ -4429,6 +4435,11 @@ test('weather for your area (stage 3, item 6): off on a fresh install, its words
   expect(asked[0].headers.referer).toBeUndefined()
   expect(asked[0].headers.origin).toBe('http://127.0.0.1:4791')
   expect(asked[0].headers.cookie).toBeUndefined()
+  // Stage C0: the forecast issued today is kept on today's record, for the day itself and each of the next seven, values only.
+  const issued = (await rowsOf<{ day: string; weatherIssued?: { at: string; days: Record<string, unknown>[] } }>(page, 'days')).find((d) => d.day === '2026-10-18')?.weatherIssued
+  expect(issued?.days.map((d) => d.day)).toEqual(['2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25'])
+  expect(issued?.days[0]).toEqual({ day: '2026-10-18', rain: 2.3, sun: 5, high: 15.6 })
+  expect(issued?.days[7]).toEqual({ day: '2026-10-25', rain: 0, sun: 6, high: 15 })
   // The place's note now says where the area goes.
   await expect(page.getByTestId('place-note')).toContainText('the weather below sends this area to Open-Meteo once a day')
   // The day's sheet is written again once the weather is kept, so the Brain reads today's forecast: values only.

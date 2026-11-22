@@ -1,11 +1,15 @@
 import { addDays, blockAt } from './blocks'
-import { db, ensureDayContext, getSettings, type DayWeather } from './db'
+import { db, ensureDayContext, getSettings, type DayWeather, type WeatherIssued } from './db'
 import { sunPlace } from './settings'
-import { readWeather, weatherUrl } from './weather'
+import { issuedFrom, readWeather, WEATHER_AHEAD_DAYS, weatherUrl } from './weather'
 
 // Weather as context (stage 3, item 6): the one request of a day, made only while Life Mirror is open and its switch is
 // on, and what came back kept with the days' records. The request names nothing but the area to one decimal and the two
 // dates; it carries no referrer and no cookie.
+//
+// Stage C0 (2026-11-22): the two dates are yesterday's and the one seven days past today. Yesterday's and today's
+// weather are kept exactly as before; the forecast for today and each of the next seven days is also kept, once, on
+// today's record, as it was issued.
 
 /** The day the one request of a day was made, kept on this phone: at most one a day, whatever came of it. */
 const ASKED = 'lm.weather.asked'
@@ -45,7 +49,8 @@ export function resetWeatherMarks(): void {
 
 /**
  * Reads yesterday's and today's weather once today, while the switch is on and a place is known, and keeps each with its
- * day's record. The day is marked asked before the request goes, so a failure is not tried again until tomorrow.
+ * day's record; the forecast issued today for the days ahead is kept with today's. The day is marked asked before the
+ * request goes, so a failure is not tried again until tomorrow.
  */
 export function readWeatherToday(now: Date = new Date(), fetcher: typeof fetch = (...a) => fetch(...a)): Promise<WeatherRead> {
   if (inflight) return inflight
@@ -66,16 +71,19 @@ async function read(now: Date, fetcher: typeof fetch): Promise<WeatherRead> {
     askedHere = today
     markAsked(today)
     const yesterday = addDays(today, -1)
+    /** Today and each day asked for after it, in order. */
+    const ahead = Array.from({ length: WEATHER_AHEAD_DAYS + 1 }, (_, k) => addDays(today, k))
     let json: unknown
     try {
-      const res = await fetcher(weatherUrl(where.place, yesterday, today), { referrerPolicy: 'no-referrer', credentials: 'omit', cache: 'no-store' })
+      const res = await fetcher(weatherUrl(where.place, yesterday, ahead[ahead.length - 1]), { referrerPolicy: 'no-referrer', credentials: 'omit', cache: 'no-store' })
       if (!res.ok) return 'failed'
       json = await res.json()
     } catch {
       return 'failed'
     }
-    const got = readWeather(json, [yesterday, today], now.toISOString(), today)
-    await keep(got, today)
+    const at = now.toISOString()
+    const got = readWeather(json, [yesterday, today], at, today)
+    await keep(got, today, issuedFrom(readWeather(json, ahead, at, today), ahead, at))
     return Object.keys(got).length ? 'read' : 'failed'
   }
   // Two tabs open at once ask once between them.
@@ -83,13 +91,19 @@ async function read(now: Date, fetcher: typeof fetch): Promise<WeatherRead> {
   return locks ? locks.request('lm-weather', once) : once()
 }
 
-/** Each day's weather onto its record; a day with no record keeps none, since a record is never made up to hold it. */
-async function keep(got: Readonly<Record<string, DayWeather>>, today: string): Promise<void> {
+/**
+ * Each day's weather onto its record; a day with no record keeps none, since a record is never made up to hold it. The
+ * forecast issued today goes onto today's record alone, and only where that record holds none yet: it is kept as first
+ * read, whatever a later read brings.
+ */
+async function keep(got: Readonly<Record<string, DayWeather>>, today: string, issued: WeatherIssued | null): Promise<void> {
   if (got[today]) await ensureDayContext(today, await getSettings())
   await db.transaction('rw', db.days, async () => {
     for (const [day, weather] of Object.entries(got)) {
       const ctx = await db.days.get(day)
-      if (ctx) await db.days.put({ ...ctx, weather })
+      if (!ctx) continue
+      const first = day === today && issued && !ctx.weatherIssued ? { weatherIssued: issued } : {}
+      await db.days.put({ ...ctx, weather, ...first })
     }
   })
 }
