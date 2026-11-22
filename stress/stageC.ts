@@ -34,8 +34,14 @@ export interface StageCNumbers {
   eventShrink: number
 }
 
-/** Every term out, until the tuning sets them: with these Stage C is the Stage B system, number for number. */
-export const STAGE_C: StageCNumbers = { readingChance: 0, readingShrink: 2, reset: false, minWeekdays: 5, weatherChance: 0, weatherShrink: 2, weatherWindow: 180, weatherLevel: 28, minPairs: 28, eventChance: 0, eventShrink: 2 }
+/**
+ * As the tuning on seeds 1 to 1000 set them (2026-11-22): of the settings where every criterion read there would pass,
+ * the one with the most room at its tightest criterion. The recurring events' term is left out (a chance of nothing):
+ * on the tuning seeds it met one of its own two criteria and failed the other at every chance tried. With every chance
+ * at nothing and the schedule rule off, Stage C is the Stage B system, number for number. Written here before the
+ * verdict's seeds were read.
+ */
+export const STAGE_C: StageCNumbers = { readingChance: 0.000005, readingShrink: 2, reset: true, minWeekdays: 5, weatherChance: 0.0001, weatherShrink: 2, weatherWindow: 180, weatherLevel: 28, minPairs: 28, eventChance: 0, eventShrink: 2 }
 
 /** What the simulation gives the day-by-day tracker, each past forecast made once. Days are numbered from the record's first. */
 export interface StageCInputs extends RangeInputs {
