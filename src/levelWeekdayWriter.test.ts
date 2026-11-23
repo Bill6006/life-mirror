@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { afterEach, describe, expect, it } from 'vitest'
 import { addDays, BLOCKS } from './blocks'
 import { setChallengerForTests } from './challenger'
+import { setKnownAheadForTests } from './knownAhead'
 import { FIXTURE_TODAY, fixtureCheckin, fixtureCheckins } from './challengerTesting'
 import { db, type CheckIn, type Forecast } from './db'
 import { buildExport, forecastAdjustment } from './export'
@@ -22,6 +23,8 @@ async function written(checkins: () => CheckIn[], today: string, way: boolean | 
   await db.delete()
   await db.open()
   await db.checkins.bulkAdd(checkins())
+  // The level-plus-weekday way's own path exists only while Stage C is off (from 2026-11-23 Stage C is on, and the way writes from inside it): set off here by name.
+  setKnownAheadForTests(false)
   setLevelWeekdayForTests(way)
   setChallengerForTests(challenger)
   await runForecasting(today)
@@ -30,6 +33,7 @@ async function written(checkins: () => CheckIn[], today: string, way: boolean | 
 const byKey = (rows: readonly Forecast[]): Map<string, Forecast> => new Map(rows.map((f) => [keyOf(f), f]))
 
 afterEach(() => {
+  setKnownAheadForTests(null)
   setLevelWeekdayForTests(null)
   setChallengerForTests(null)
 })

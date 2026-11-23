@@ -26,6 +26,7 @@ vi.mock('./levelWeekday', async (original) => {
 })
 
 import { setChallengerForTests } from './challenger'
+import { setKnownAheadForTests } from './knownAhead'
 import { comparisonFaults, resetComparisonFaults } from './counted/fault'
 import { db, type CheckIn, type Forecast } from './db'
 import { LEVEL_WEEKDAY, MODELS } from './forecast'
@@ -37,6 +38,8 @@ async function written(checkins: () => CheckIn[], way: boolean, challenger: bool
   await db.delete()
   await db.open()
   await db.checkins.bulkAdd(checkins())
+  // The level-plus-weekday way's own path exists only while Stage C is off (from 2026-11-23 Stage C is on, and the way writes from inside it): set off here by name.
+  setKnownAheadForTests(false)
   setLevelWeekdayForTests(way)
   setChallengerForTests(challenger)
   await runForecasting(RHYTHM_TODAY)
@@ -49,6 +52,7 @@ beforeEach(() => {
   resetComparisonFaults()
 })
 afterEach(() => {
+  setKnownAheadForTests(null)
   setLevelWeekdayForTests(null)
   setChallengerForTests(null)
 })
