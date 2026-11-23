@@ -67,6 +67,7 @@ KT = 'src/knownAhead.test.ts'
 KR = 'src/knownAheadWriter.test.ts'
 KG = 'src/knownAheadGuard.test.ts'
 KWT = 'src/knownAheadWeather.test.ts'
+KE = 'e2e/knownAhead.spec.ts'
 NUMBERS = "export const STAGE_C: StageCNumbers = { readingChance: 0.000005, readingShrink: 2, reset: true, minWeekdays: 5, weatherChance: 0.0001, weatherShrink: 2, weatherWindow: 180, weatherLevel: 28, minPairs: 28, eventChance: 0, eventShrink: 2 }"
 WEEKDAY = "'levelWeekday', 'levelReadings', 'levelWeekdayWeather']"
 APART = " || model === LEVEL_READINGS || model === LEVEL_WEEKDAY_WEATHER"
@@ -306,6 +307,13 @@ TABLE = [
          old="...(b ? { stageB: { point: b.point, lo: b.lo, hi: b.hi } } : {}), ...(f.weather", new="...(f.weather"),
     dict(id='the-weather-measure-exported', file=EX, tests=[KR],
          old=", ...(f.weather ? { weather: f.weather } : {}) }", new=" }"),
+    # ---- Switched on (2026-11-23): the built app writes by Stage C, and the card says each way ---------------------------
+    dict(id='the-switch-in-the-built-app', file=KA, tests=[KE, '-g', 'written by levelWeather,'],
+         old="export const KNOWN_AHEAD_ON = true", new="export const KNOWN_AHEAD_ON = false"),
+    dict(id='the-card-names-each-way', file=WS, tests=[KE, '-g', 'written by levelReadings,'],
+         old="fill(STAGE_C_LINES[model] ?? (", new="fill(("),
+    dict(id='the-weather-ways-days-apart-on-the-card', file=FC, tests=[KE, '-g', 'written by levelWeather,'],
+         old="return tellsWeekdaysApart(model) || model === LEVEL_WEATHER", new="return tellsWeekdaysApart(model)"),
 ]
 
 
