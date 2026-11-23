@@ -162,6 +162,7 @@ try {
     await sw.click({ timeout: 8000 }).catch(() => undefined)
     const words = await text(page.getByTestId('weather-words'))
     check('its words come first, naming the area to one decimal, the site’s address and the terms', words.includes('your area to one decimal, about 11 km: 51.5, -0.1') && words.includes(`and this site’s address, ${SITE}`) && words.includes('for 90 days'), words.slice(0, 60))
+    check('its words say the two dates now sent, and that the forecast for the days ahead is kept (Stage C0)', words.includes('yesterday’s date and the date seven days from today') && words.includes('The forecast for each of the next seven days is kept with them as it was first read; nothing shows it yet.'))
     await page.getByTestId('weather-not-now').click({ timeout: 8000 }).catch(() => undefined)
     check('Not now leaves it off, and nothing is asked', (await sw.getAttribute('aria-pressed', { timeout: 8000 }).catch(() => null)) === 'false' && asked.length === 0)
     await sw.click({ timeout: 8000 }).catch(() => undefined)
@@ -170,6 +171,8 @@ try {
     await until(async () => (await text(status)).includes('Today’s forecast'))
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=51.5&longitude=-0.1&daily=rain_sum,showers_sum,sunshine_duration,temperature_2m_max&hourly=rain,showers&timezone=auto&start_date=2026-10-17&end_date=2026-10-25'
     check('turned on, one request, naming nothing but the area to one decimal and two dates, with no referrer', asked.length === 1 && asked[0].url === url && asked[0].headers.referer === undefined, `${asked.length} asked`)
+    const issued = (await rowsOf(page, 'days')).find((r) => r.day === '2026-10-18')?.weatherIssued
+    check('the forecast issued today is kept on today’s record, for the day itself and each of the next seven, values only (Stage C0)', Array.isArray(issued?.days) && issued.days.map((d) => d.day).join(' ') === '2026-10-18 2026-10-19 2026-10-20 2026-10-21 2026-10-22 2026-10-23 2026-10-24 2026-10-25' && Object.keys(issued.days[0]).join(' ') === 'day rain sun high' && issued.days[0].rain === 2.3 && issued.days[7].sun === 6, issued ? `${issued.days.length} days kept` : 'none kept')
     const credit = page.getByTestId('weather-credit')
     check('the forecast shows, with its credit to Open-Meteo', (await text(status)).includes('Today’s forecast: 2.3 mm of rain, 5 hours of sun') && (await credit.getAttribute('href', { timeout: 8000 }).catch(() => null)) === 'https://open-meteo.com/')
     const sheet = await until(async () => {
@@ -185,13 +188,16 @@ try {
   }
   {
     // Sixteen days with weather: Evidence's comparisons, with their credit; switched off, none of it.
+    // Restated 2026-11-22: since Phase 3 put every comparison under the one standard, this record's rainy days read as too
+    // few to compare, in the words the browser test holds (e2e/smoke.spec.ts, weather on Evidence). The check had not been
+    // run since, and failed the same way on the build before Stage C0.
     const { ctx, page } = await fresh(london(9, 18, 19, 30))
     await seed(page, true, null)
     await page.reload()
     await tab(page, 'Moves')
     await page.getByRole('button', { name: /^Evidence/ }).click({ timeout: 8000 }).catch(() => undefined)
     const rain = await text(page.getByTestId('weather-rain-line'))
-    check('Evidence sets rainy days against dry ones, like for like, with the credit', rain === 'Rainy days, 1 mm of rain or more: 5 of 16 days with weather. Like for like on the morning’s band, the evening read 50 points lower than on dry days (5 and 11 evenings).' && (await seen(page.getByTestId('weather-evidence-credit'))), rain.slice(0, 60))
+    check('Evidence sets rainy days against dry ones, like for like, with the credit', rain === 'Rainy days, 1 mm of rain or more: 5 of 16 days with weather. Like for like on the morning’s band, nothing can be compared yet.' && (await seen(page.getByTestId('weather-evidence-credit'))), rain.slice(0, 60))
     await seed(page, false, null, false)
     await page.reload()
     await tab(page, 'Moves')
