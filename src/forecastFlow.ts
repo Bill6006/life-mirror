@@ -26,7 +26,6 @@ import { checkStopsChallenger, movedCheck, type MovedCheck } from './movedCheck'
 import { guardComparisons } from './counted/fault'
 import { levelWeekdayOn, levelWeekdayReader, levelWeekdayRows, rowsWithTheWay, WEEK, type LevelWeekdayReader, type WeekRow } from './levelWeekday'
 import { KNOWN_AHEAD_WAYS, knownAheadOn, knownAheadReader, knownAheadRecordOf, measureOfState, rowsWithKnownAhead, STAGE_C, wayOfState, type KnownAheadDay, type KnownAheadReader, type KnownAheadRecord } from './knownAhead'
-import { readWeatherToday } from './weatherFlow'
 import { learnedWeights } from './score'
 import { onTrip } from './postWindow'
 import { awayOn } from './postWindowFlow'
@@ -141,6 +140,16 @@ function baseForecast(reader: LevelWeekdayReader | null, today: string): Predict
 /** How long the writer waits for the day's one weather read, before the day's rows, while Stage C is switched on (Stage C-A). */
 export const WEATHER_WAIT_MS = 10_000
 
+/**
+ * The day's one weather read (weatherFlow.ts's `readWeatherToday`), handed to the writer by the app at its start
+ * (app.tsx); none where none is handed, as in the service worker, which reads this file through the day's facts and must
+ * not take in the page's weather code.
+ */
+let weatherRead: () => Promise<unknown> = () => Promise.resolve(null)
+export function setWeatherRead(read: () => Promise<unknown>): void {
+  weatherRead = read
+}
+
 /** A promise's value, or null once the time given has passed first. */
 function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -150,12 +159,12 @@ function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
 /**
  * The forecast issued today, before today's rows (Stage C-A, 2026-11-22): at a day's first open the writer usually runs
  * before the day's one weather read comes back, and a row is never rewritten. So, while Stage C is switched on and today's
- * record keeps no forecast issued yet, the writer first waits for that one read (`readWeatherToday`: the same request, at
- * most once a day, only while its switch is on and a place is known), for at most ten seconds.
+ * record keeps no forecast issued yet, the writer first waits for that one read (`readWeatherToday`, handed to it by the
+ * app: the same request, at most once a day, only while its switch is on and a place is known), for at most ten seconds.
  */
 async function todaysWeather(today: string): Promise<void> {
   if ((await db.days.get(today))?.weatherIssued) return
-  await within(readWeatherToday(), WEATHER_WAIT_MS)
+  await within(weatherRead(), WEATHER_WAIT_MS)
 }
 
 /** Stage C for a run (Stage C-A, 2026-11-22): its one reader, and what it writes today; null where it is not in use, or where it threw, the failure kept for the Worker's report. */

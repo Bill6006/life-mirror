@@ -1,28 +1,15 @@
 import 'fake-indexeddb/auto'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 // The forecast issued today, before today's rows (Stage C-A, 2026-11-22): at a day's first open the writer usually runs
 // before the day's one weather read comes back, and a row is never rewritten. While Stage C is switched on, and today's
 // record keeps no forecast issued yet, the writer first waits for that one read, at most ten seconds. The read is stood
-// in for here: it keeps today's forecast on today's record a moment later, as the real one does, and its asks are counted.
-const read = vi.hoisted(() => ({ calls: 0, keep: null as null | (() => Promise<void>), ms: 50, pending: Promise.resolve() as Promise<unknown> }))
-vi.mock('./weatherFlow', async (original) => ({
-  ...(await original<typeof import('./weatherFlow')>()),
-  readWeatherToday: () => {
-    read.calls++
-    const p = (async () => {
-      await new Promise((resolve) => setTimeout(resolve, read.ms))
-      if (read.keep) await read.keep()
-      return 'read' as const
-    })()
-    read.pending = p
-    return p
-  },
-}))
-
+// in for here, as the app hands the writer its read: it keeps today's forecast on today's record a moment later, as the
+// real one does, and its asks are counted.
+import { readFileSync } from 'node:fs'
 import { db, updateSettings, type DayContext, type Forecast } from './db'
 import { LEVEL_WEATHER, MODELS } from './forecast'
-import { runForecasting, WEATHER_WAIT_MS } from './forecastFlow'
+import { runForecasting, setWeatherRead, WEATHER_WAIT_MS } from './forecastFlow'
 import { setKnownAheadForTests } from './knownAhead'
 import { bySunshine, KNOWN_TODAY, standIn } from './knownAheadTesting'
 
@@ -43,12 +30,26 @@ async function seeded(): Promise<DayContext> {
 }
 const rows = async (): Promise<Forecast[]> => (await db.forecasts.toArray()).map(({ id: _id, ...row }) => row)
 
+const read = { calls: 0, keep: null as null | (() => Promise<void>), ms: 50, pending: Promise.resolve() as Promise<unknown> }
 beforeEach(() => {
   read.calls = 0
   read.keep = null
   read.ms = 50
+  setWeatherRead(() => {
+    read.calls++
+    const p = (async () => {
+      await new Promise((resolve) => setTimeout(resolve, read.ms))
+      if (read.keep) await read.keep()
+      return 'read' as const
+    })()
+    read.pending = p
+    return p
+  })
 })
-afterEach(() => setKnownAheadForTests(null))
+afterEach(() => {
+  setKnownAheadForTests(null)
+  setWeatherRead(() => Promise.resolve(null))
+})
 
 describe('the forecast issued today, before today’s rows', () => {
   it('with Stage C switched on, waits for the day’s one read, so today’s rows carry its forecast', async () => {
@@ -74,6 +75,11 @@ describe('the forecast issued today, before today’s rows', () => {
     expect(read.calls).toBe(0)
     expect((await rows()).every((f) => (MODELS as readonly string[]).includes(f.model))).toBe(true)
   }, 120_000)
+
+  it('is handed the day’s one read by the app at its start', () => {
+    // The behaviour with the app's own read is for the browser tests that switch Stage C on; here, the wiring.
+    expect(readFileSync(new URL('./app.tsx', import.meta.url), 'utf8')).toContain('setWeatherRead(() => readWeatherToday())')
+  })
 
   it('waits ten seconds at most: a read that comes back later leaves the day to the pick', async () => {
     expect(WEATHER_WAIT_MS).toBe(10_000)

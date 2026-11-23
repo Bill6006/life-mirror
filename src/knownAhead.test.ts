@@ -335,10 +335,15 @@ describe('the hold', () => {
     expect(heldOpen(openFrom(addDays(T, -60), [addDays(T, -29)]), T, 29)).toBe(true)
   })
 
-  it('in the reader: a test open from a day is in use from twenty-eight days after it, not before', () => {
+  it('in the reader: a test open from a day is in use from twenty-eight days after it, not before', async () => {
     const rec = recordOf(moved(100))
     const days = Array.from({ length: 100 }, (_, k) => addDays(T, k - 99))
-    const opened = days.map((d) => knownAheadReader(rec, d).opens().score)
+    const opened: boolean[] = []
+    // One reader a day of writing, the runner given its turn between them.
+    for (const d of days) {
+      opened.push(knownAheadReader(rec, d).opens().score)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
     const first = opened.indexOf(true)
     expect(first).toBeGreaterThan(0)
     // The precondition: once open, it stays open to the end.
@@ -372,16 +377,19 @@ describe('what Stage C reads, and what it never reads', () => {
   }
 
   for (const [name, make] of [['the readings’ term', () => standIn({ steps: inTwoReadings, wobble: twoReadingsWobble, today: addDays(T, 10), days: 210 })], ['the weather’s term', () => standIn({ steps: bySunshine(), weather: true, today: addDays(T, 10), days: 210 })]] as const) {
-    it(`reads nothing logged on or after the day of writing, nor that day’s own weather, nor a forecast issued after it (${name})`, () => {
+    it(`reads nothing logged on or after the day of writing, nor that day’s own weather, nor a forecast issued after it (${name})`, async () => {
       const full = make()
       const all = recordOf(full)
       // The same record as the phone held it at the start of the day: nothing of the day or after, but the forecast issued that day.
       const cut: StandIn = { ...full, checkins: full.checkins.filter((c: CheckIn) => c.day < T), days: full.days.filter((d) => d.day <= T).map((d) => (d.day === T ? { ...d, weather: undefined } : d)) }
       const before = recordOf(cut)
+      const pause = () => new Promise((resolve) => setTimeout(resolve, 0))
       expect(knownAheadReader(before, T).state().inUse).toBe(true)
-      expect(look(all, T)).toBe(look(before, T))
-      expect(() => look(strict(all, T), T)).not.toThrow()
-      expect(look(strict(all, T), T)).toBe(look(before, T))
+      const seen = look(before, T)
+      await pause()
+      expect(look(all, T)).toBe(seen)
+      await pause()
+      expect(look(strict(all, T), T)).toBe(seen)
     }, 120_000)
   }
 })

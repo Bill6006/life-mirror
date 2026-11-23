@@ -295,7 +295,8 @@ TABLE = [
          old="const predictOf = known ? knownAheadBase(known.reader) : baseForecast(way?.reader ?? null, today)",
          new="const predictOf = baseForecast(way?.reader ?? null, today)"),
     dict(id='the-days-weather-read-first', file=FF, tests=[KWT], old="  await todaysWeather(today)\n", new=""),
-    dict(id='the-wait-bounded', file=FF, tests=[KWT], old="  await within(readWeatherToday(), WEATHER_WAIT_MS)", new="  await readWeatherToday()"),
+    dict(id='the-wait-bounded', file=FF, tests=[KWT], old="  await within(weatherRead(), WEATHER_WAIT_MS)", new="  await weatherRead()"),
+    dict(id='the-app-hands-the-writer-its-read', file='src/app.tsx', tests=[KWT], old="setWeatherRead(() => readWeatherToday())\n", new=""),
     dict(id='no-wait-with-todays-forecast-kept', file=FF, tests=[KWT], old="  if ((await db.days.get(today))?.weatherIssued) return\n", new=""),
     # ---- Push 2: the export of what is kept ---------------------------------------------------------------------------------------
     dict(id='stage-b-exported', file=EX, tests=[KR],
