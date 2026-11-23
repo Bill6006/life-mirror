@@ -7,6 +7,7 @@ import { errorBand, HORIZON, LEVEL_READINGS, LEVEL_WEATHER, LEVEL_WEEKDAY, LEVEL
 import { fChance, gateOf, WEEK, type DayMiss } from './levelWeekday'
 import { gateOver, heldOpen, KNOWN_AHEAD_ON, KNOWN_AHEAD_WAYS, knownAheadOn, knownAheadReader, knownAheadRecordOf, kindOfDay, kindOfWeekday, measureOfState, MEASURES, rowsWithKnownAhead, sameKindAs, setKnownAheadForTests, slopeTest, STAGE_C, trustOf, wayOfState, type KnownAheadDay, type KnownAheadRecord, type KnownAheadState } from './knownAhead'
 import { bySunshine, inTwoReadings, KNOWN_TODAY, movedOffice, standIn, thinned, TWO_READINGS, twoReadingsWobble, type StandIn } from './knownAheadTesting'
+import { weekdayOf } from './counted/occasions'
 import { slotKey } from './observe'
 import { DEFAULT_SETTINGS, type Settings, type Weekday } from './settings'
 
@@ -135,6 +136,37 @@ describe('the readings’ term', () => {
     expect(r.state()).toEqual({ inUse: true, score: false, readings: [true, true, false, false, false, false], weather: [false, false, false] })
     expect(r.opens().score).toBe(false)
     expect(wayOfState(r.state())).toBe(LEVEL_READINGS)
+  }, 60_000)
+
+  it('takes each reading’s own misses against its own same-block forecast, its own test and its shift, number for number', () => {
+    const rec = recordOf(TWO())
+    const r = knownAheadReader(rec, T)
+    const numbers = { ...WEEK, chance: STAGE_C.readingChance, shrink: STAGE_C.readingShrink }
+    // Each reading's test worked out here from the record: its points less its own same-block forecast, a day's misses averaged.
+    const gates = rec.readings.map((series) => {
+      const days: DayMiss[] = []
+      for (let back = WEEK.window; back >= 1; back--) {
+        const x = addDays(T, -back)
+        const got = BLOCKS.map((b) => {
+          const a = series.get(slotKey(x, b))
+          const p = a === undefined ? null : predict('sameBlock', series, x, b)
+          return a === undefined || p === null ? null : a - p
+        }).filter((m): m is number => m !== null)
+        if (got.length) days.push({ weekday: weekdayOf(x), miss: got.reduce((s, v) => s + v, 0) / got.length })
+      }
+      return gateOver(days, numbers, STAGE_C.minWeekdays)
+    })
+    const held = r.state().readings
+    expect(held.filter(Boolean).length).toBe(2)
+    for (let h = 1; h <= HORIZON; h++)
+      for (const block of BLOCKS) {
+        const day = addDays(T, h)
+        let v = 0
+        held.forEach((on, k) => {
+          if (on) v += rec.share(k, block) * gates[k].shift[weekdayOf(day)]
+        })
+        expect(r.forecast(day, block)).toBeCloseTo((flatOf(rec, T, day, block) as number) + v, 9)
+      }
   }, 60_000)
 
   it('lays each reading’s shift at its share of the score: twice the share, twice what is added', () => {
