@@ -485,6 +485,14 @@ export interface Forecast {
    * a later judgment on the real record can set the two side by side. Absent on every other row. Read by nothing yet.
    */
   four?: { model: string; point: number; lo: number; hi: number }
+  /**
+   * Where Stage C wrote this row (Stage C-A, 2026-11-22): the row the level-plus-weekday way would have written for the
+   * slot by its own test, where that test was in use that day (absent: it would have been `four`), written in the same
+   * run and never touched after. Read by nothing yet; it cannot be rebuilt later.
+   */
+  stageB?: { point: number; lo: number; hi: number }
+  /** Where Stage C's weather term wrote this row: the measure it used. Read by nothing yet. */
+  weather?: 'sunshine' | 'rain' | 'high'
 }
 
 /** A forecast scored once its slot was logged; a slot never logged is never scored. */

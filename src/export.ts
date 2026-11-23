@@ -162,11 +162,14 @@ export function patternsForExport(stored: unknown, includePrivate: boolean, part
  * private item is here only with private items, by its name, as everywhere in the export; without them it is left out.
  * From Batch 3 (2026-11-21), the plain forecast the row was moved from, where it carries one: numbers alone. From Stage A
  * of the level-plus-weekday way (2026-11-21), what the four's pick would have written for a row the way wrote, where it
- * carries one, moved or not: the way's name and the numbers alone.
+ * carries one, moved or not: the way's name and the numbers alone. From Stage C-A (2026-11-22), on a row Stage C wrote,
+ * what the Stage B way would have written by its own test (`stageB`) and the weather measure used (`weather`), where it
+ * carries them: the numbers and the measure's name alone.
  */
-export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy' | 'plain' | 'four'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[]; plain?: { point: number; lo: number; hi: number }; four?: { model: string; point: number; lo: number; hi: number } } {
+export function forecastAdjustment(f: Pick<Forecast, 'adj' | 'adjBy' | 'plain' | 'four' | 'stageB' | 'weather'>, names: ReadonlyMap<string, string>, includePrivate: boolean): { adj?: number; adjBy?: string[]; plain?: { point: number; lo: number; hi: number }; four?: { model: string; point: number; lo: number; hi: number }; stageB?: { point: number; lo: number; hi: number }; weather?: string } {
   const w = f.four
-  const four = w ? { four: { model: w.model, point: w.point, lo: w.lo, hi: w.hi } } : {}
+  const b = f.stageB
+  const four = { ...(w ? { four: { model: w.model, point: w.point, lo: w.lo, hi: w.hi } } : {}), ...(b ? { stageB: { point: b.point, lo: b.lo, hi: b.hi } } : {}), ...(f.weather ? { weather: f.weather } : {}) }
   if (typeof f.adj !== 'number') return four
   const by = (f.adjBy ?? []).flatMap((id) => {
     if (!id.startsWith('private.')) return [id]

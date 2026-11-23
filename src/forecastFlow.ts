@@ -24,7 +24,12 @@ import { adjustRows, bandBefore, conditionsFor } from './challengerRecord'
 import { adjustedWords } from './forecastAdjusted'
 import { checkStopsChallenger, movedCheck, type MovedCheck } from './movedCheck'
 import { guardComparisons } from './counted/fault'
-import { levelWeekdayOn, levelWeekdayReader, rowsWithTheWay, WEEK, type LevelWeekdayReader, type WeekRow } from './levelWeekday'
+import { levelWeekdayOn, levelWeekdayReader, levelWeekdayRows, rowsWithTheWay, WEEK, type LevelWeekdayReader, type WeekRow } from './levelWeekday'
+import { KNOWN_AHEAD_WAYS, knownAheadOn, knownAheadReader, knownAheadRecordOf, measureOfState, rowsWithKnownAhead, STAGE_C, wayOfState, type KnownAheadDay, type KnownAheadReader, type KnownAheadRecord } from './knownAhead'
+import { readWeatherToday } from './weatherFlow'
+import { learnedWeights } from './score'
+import { onTrip } from './postWindow'
+import { awayOn } from './postWindowFlow'
 import { getBrainPrefs } from './brainPrefs'
 import { noticedOf } from './noteEvents/join'
 import { awayDays, homeDaysOnly } from './awayFlow'
@@ -78,18 +83,22 @@ async function forecastOnce(today: string): Promise<void> {
   const logged = checkins === all ? values : valuesByKey(all)
   const done = await doneSlots()
   const chosen = loggedDays(values) >= MIN_DAYS_TODAY ? chooseModel(values, today) : null
+  // Stage C of the week ahead (Stage C-A, 2026-11-22), behind its switch, which is off: one reader a run, from the record the four are given, asked under the comparisons' guard before the write. Where it is not in use, or where it threw (kept for the Worker's report), the four's pick writes the day exactly as before, never the level-plus-weekday way by its own test.
+  const known = chosen && knownAheadOn() ? await knownAheadFor(values, checkins, today) : null
   // The week ahead's level-plus-weekday way (Stage A, 2026-11-21), behind its switch, which is off: one reader a run, asked under the comparisons' guard before the write, as the challenger is. Where it is not in use, or where it threw (kept for the Worker's report), the four's pick writes the day exactly as before.
   const way = chosen && levelWeekdayOn() ? wayFor(values, today) : null
-  const predictOf = baseForecast(way?.reader ?? null, today)
+  const predictOf = known ? knownAheadBase(known.reader) : baseForecast(way?.reader ?? null, today)
   // The one challenger (2026-11-14), behind its switch: tried on the record before today. Where it is picked, the rows due are adjusted by what the record held the day before each.
   // Batch 3 (2026-11-21): never again once its own check, read from the stored forecasts and their scores, says to switch it off.
-  // Stage A (2026-11-21): its base is the way in use that day: the level-plus-weekday way where it writes the rows, else the four's pick.
-  const tried = chosen && challengerOn() && !(await challengerSwitchedOff(today)) ? await challengerFor(way ? LEVEL_WEEKDAY : chosen.model, checkins, values, today, predictOf) : null
+  // Stage A (2026-11-21): its base is the way in use that day: the level-plus-weekday way where it writes the rows, else the four's pick. Stage C-A (2026-11-22): Stage C's way of the day where it writes them.
+  const tried = chosen && challengerOn() && !(await challengerSwitchedOff(today)) ? await challengerFor(known?.day.way ?? (way ? LEVEL_WEEKDAY : chosen.model), checkins, values, today, predictOf) : null
   await db.transaction('rw', [db.forecasts, db.forecastScores], async () => {
     const [existing, scored] = await Promise.all([db.forecasts.toArray(), db.forecastScores.toArray()])
     const four = chosen ? forecastsDue(chosen, values, existing, today, done, logged) : []
     // Where the way is in use, its rows: the pick's skips kept, each row keeping what the four would have written.
-    const due = way ? rowsWithTheWay(four, way.rows, existing, logged, today, (day, block) => whatIf(values, done, day, block)) : four
+    const theWays = way ? rowsWithTheWay(four, way.rows, existing, logged, today, (day, block) => whatIf(values, done, day, block)) : four
+    // Where Stage C is in use, its rows: the pick's skips kept, each row keeping what the four and the Stage B way would have written; a day inside a planned trip has none.
+    const due = known ? rowsWithKnownAhead(four, known.day, existing, logged, today, (day, block) => whatIf(values, done, day, block), known.onTrip) : theWays
     if (tried?.picked) adjustRows(due, tried, values, predictOf)
     const scores = scoresDue(existing, values, scored, today)
     if (due.length) await db.forecasts.bulkAdd(due)
@@ -114,6 +123,8 @@ async function challengerFor(base: WayId, checkins: readonly CheckIn[], values: 
 
 /** The level-plus-weekday way for a run (Stage A, 2026-11-21): its one reader and the rows it writes today; null where it is not in use, or where it threw, the failure kept for the Worker's report. */
 function wayFor(values: ReadonlyMap<string, number>, today: string): { reader: LevelWeekdayReader; rows: Map<string, WeekRow> } | null {
+  // While Stage C is switched on, the level-plus-weekday way's own path is never taken: it writes only from inside Stage C (the owner's word of 2026-11-22).
+  if (knownAheadOn()) return null
   return guardComparisons(today, () => wayOf(levelWeekdayReader(values, WEEK), today))
 }
 
@@ -125,6 +136,53 @@ function wayOf(reader: LevelWeekdayReader, today: string): { reader: LevelWeekda
 /** The challenger's base forecast: the level-plus-weekday way's from the run's one reader, where the way writes the day; the four's by `predict`. */
 function baseForecast(reader: LevelWeekdayReader | null, today: string): Predict {
   return (model, values, day, block) => (model === LEVEL_WEEKDAY && reader ? reader.forecast(today, day, block) : fourWays(model, values, day, block))
+}
+
+/** How long the writer waits for the day's one weather read, before the day's rows, while Stage C is switched on (Stage C-A). */
+export const WEATHER_WAIT_MS = 10_000
+
+/** A promise's value, or null once the time given has passed first. */
+function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([p, new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), ms)))]).finally(() => clearTimeout(timer))
+}
+
+/**
+ * The forecast issued today, before today's rows (Stage C-A, 2026-11-22): at a day's first open the writer usually runs
+ * before the day's one weather read comes back, and a row is never rewritten. So, while Stage C is switched on and today's
+ * record keeps no forecast issued yet, the writer first waits for that one read (`readWeatherToday`: the same request, at
+ * most once a day, only while its switch is on and a place is known), for at most ten seconds.
+ */
+async function todaysWeather(today: string): Promise<void> {
+  if ((await db.days.get(today))?.weatherIssued) return
+  await within(readWeatherToday(), WEATHER_WAIT_MS)
+}
+
+/** Stage C for a run (Stage C-A, 2026-11-22): its one reader, and what it writes today; null where it is not in use, or where it threw, the failure kept for the Worker's report. */
+async function knownAheadFor(values: ReadonlyMap<string, number>, checkins: readonly CheckIn[], today: string): Promise<{ reader: KnownAheadReader; day: KnownAheadDay; onTrip: (day: string) => boolean } | null> {
+  await todaysWeather(today)
+  const [days, settings, away] = await Promise.all([db.days.toArray(), getSettings(), awayDays()])
+  // The record the four are given: a trip's days left out, their weather and the forecasts issued on them with their check-ins.
+  const record = knownAheadRecordOf({ values, checkins, days: homeDaysOnly(days, away), week: settings.week, depth: settings.depth, retired: settings.retiredReadings, weights: learnedWeights() })
+  const tripDay = (day: string): boolean => awayOn() && onTrip(settings.away, day)
+  return guardComparisons(today, () => knownAheadOf(record, values, today, tripDay))
+}
+
+function knownAheadOf(record: KnownAheadRecord, values: ReadonlyMap<string, number>, today: string, tripDay: (day: string) => boolean): { reader: KnownAheadReader; day: KnownAheadDay; onTrip: (day: string) => boolean } | null {
+  const reader = knownAheadReader(record, today, STAGE_C)
+  const state = reader.state()
+  const way = wayOfState(state)
+  if (!way) return null
+  const rows = reader.rows()
+  if (!rows) return null
+  // What the Stage B way would have written by its own test, where it is in use that day (the handoff's A5): kept beside Stage C's rows.
+  const stageB = levelWeekdayRows(values, today, WEEK)
+  return { reader, day: { way, rows, stageB, weather: measureOfState(state) }, onTrip: tripDay }
+}
+
+/** The challenger's base forecast where Stage C writes the day: every one of Stage C's ways, the level-plus-weekday way among them, from the run's one reader; the four's by `predict`. */
+function knownAheadBase(reader: KnownAheadReader): Predict {
+  return (model, values, day, block) => (KNOWN_AHEAD_WAYS.includes(model) ? reader.forecast(day, block) : fourWays(model, values, day, block))
 }
 
 export { lastNightKeys, type LastNightKey } from './lastNight'

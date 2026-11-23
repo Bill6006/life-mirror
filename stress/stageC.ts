@@ -1,10 +1,14 @@
 import { BLOCKS } from '../src/blocks'
 import { BACKTEST_DAYS, errorBand, HORIZON } from '../src/forecast'
-import { fChance, gateOf, WEEK, type DayMiss, type Gate, type RangeInputs, type WeekNumbers, type WeekRow } from './levelWeekday'
+import { gateOver, slopeTest, type StageCNumbers } from '../src/knownAhead'
+import { gateOf, WEEK, type DayMiss, type Gate, type RangeInputs, type WeekNumbers, type WeekRow } from './levelWeekday'
 
 // Stage C, the week ahead from what is known about each day (designed 2026-11-21 at the owner's word; its criteria were
 // frozen that day at 23:30, before this method was written, and the private repository holds the design and the
-// criteria). DESIGN AND SIMULATION ONLY: nothing in the app has this code, and nothing in src/ imports this folder.
+// criteria). Its numbers, its test over the weekdays that have their days and its slope test moved into the app number
+// for number in Stage C-A (2026-11-22): src/knownAhead.ts, behind a switch that is off, with the method in the form the
+// app calls. What stays here is the simulation's alone: the method kept day by day, and the recurring events' term,
+// which was simulated and left out. The app never calls anything of this file.
 //
 // Its forecast for a check-in is the same-block way's, plus a weekday shift, a weather shift and an event shift, each
 // learnt from the same-block way's own misses behind a strict test and a hold of 28 days, as Stage B's shift is:
@@ -15,33 +19,7 @@ import { fChance, gateOf, WEEK, type DayMiss, type Gate, type RangeInputs, type 
 //   the event shift reads only how often a kind of event has happened on each weekday, and lands on the check-in after it.
 // On a day none of these is in use, nothing here writes a row. Everything is read from before the day of writing.
 
-/** The method's numbers, set on the tuning seeds inside the limits the frozen criteria state. A chance of nothing leaves its term out. */
-export interface StageCNumbers {
-  /** A reading's own weekday test: the most its chance may be, and its shrinking. */
-  readingChance: number
-  readingShrink: number
-  /** Whether a weekday's earlier days are left out once its scheduled kind has changed, and the least weekdays a test may then run on. */
-  reset: boolean
-  minWeekdays: number
-  /** A weather measure's test: the most its chance may be, its shrinking, the days it looks back over, the days its level is taken over, and the least pairs before a distance's trust counts. */
-  weatherChance: number
-  weatherShrink: number
-  weatherWindow: number
-  weatherLevel: number
-  minPairs: number
-  /** An event's three tests: the most each one's chance may be, and the shrinking. */
-  eventChance: number
-  eventShrink: number
-}
-
-/**
- * As the tuning on seeds 1 to 1000 set them (2026-11-22): of the settings where every criterion read there would pass,
- * the one with the most room at its tightest criterion. The recurring events' term is left out (a chance of nothing):
- * on the tuning seeds it met one of its own two criteria and failed the other at every chance tried. With every chance
- * at nothing and the schedule rule off, Stage C is the Stage B system, number for number. Written here before the
- * verdict's seeds were read.
- */
-export const STAGE_C: StageCNumbers = { readingChance: 0.000005, readingShrink: 2, reset: true, minWeekdays: 5, weatherChance: 0.0001, weatherShrink: 2, weatherWindow: 180, weatherLevel: 28, minPairs: 28, eventChance: 0, eventShrink: 2 }
+export { gateOver, slopeTest, STAGE_C, type StageCNumbers } from '../src/knownAhead'
 
 /** What the simulation gives the day-by-day tracker, each past forecast made once. Days are numbered from the record's first. */
 export interface StageCInputs extends RangeInputs {
@@ -85,7 +63,6 @@ export interface StageCTracker {
 }
 
 const NONE = [0, 0, 0, 0, 0, 0, 0]
-const CLOSED: Gate = { open: false, f: null, chance: null, shift: NONE }
 const clamp = (v: number): number => Math.max(0, Math.min(100, Math.round(v)))
 const memo = <T>(f: (x: number) => T): ((x: number) => T) => {
   const kept = new Map<number, T>()
@@ -93,50 +70,6 @@ const memo = <T>(f: (x: number) => T): ((x: number) => T) => {
     if (!kept.has(x)) kept.set(x, f(x))
     return kept.get(x) as T
   }
-}
-
-/**
- * Stage B's test of the weekdays together (item 4), over the weekdays that have their least days. With all seven it is
- * Stage B's own function, number for number. With fewer it is the same F over those weekdays alone, needing at least
- * the stated number of them; a weekday left out takes no shift.
- */
-export function gateOver(days: readonly DayMiss[], numbers: WeekNumbers, minWeekdays: number): Gate {
-  const n = [0, 0, 0, 0, 0, 0, 0]
-  const sum = [0, 0, 0, 0, 0, 0, 0]
-  for (const d of days) {
-    n[d.weekday]++
-    sum[d.weekday] += d.miss
-  }
-  const has = n.map((k) => k >= numbers.minDays)
-  const weekdays = has.filter(Boolean).length
-  if (weekdays === 7) return gateOf(days, numbers)
-  if (weekdays < Math.max(2, minWeekdays)) return CLOSED
-  const used = days.filter((d) => has[d.weekday])
-  const total = used.length
-  if (total <= weekdays) return CLOSED
-  const mean = sum.map((s, w) => (has[w] ? s / n[w] : 0))
-  const grand = used.reduce((a, d) => a + d.miss, 0) / total
-  const offset = mean.map((m, w) => (has[w] ? m - grand : 0))
-  const between = offset.reduce((a, o, w) => a + (has[w] ? n[w] * o * o : 0), 0) / (weekdays - 1)
-  let inside = 0
-  for (const d of used) inside += (d.miss - mean[d.weekday]) ** 2
-  inside /= total - weekdays
-  if (!(inside > 0)) return CLOSED
-  const f = between / inside
-  const chance = fChance(f, weekdays - 1, total - weekdays)
-  const open = chance <= numbers.chance
-  const strength = Math.max(0, 1 - numbers.shrink / f)
-  return { open, f, chance, shift: open ? offset.map((o) => strength * o) : NONE }
-}
-
-/** A slope with its test: from the sums of squares and products about the averages, on the stated degrees of freedom. */
-function slopeTest(sxx: number, sxy: number, syy: number, df: number): { slope: number; t2: number; chance: number } | null {
-  if (df < 1 || !(sxx > 0)) return null
-  const slope = sxy / sxx
-  const left = syy - slope * sxy
-  if (!(left > 0)) return null
-  const t2 = (slope * slope * sxx) / (left / df)
-  return { slope, t2, chance: fChance(t2, 1, df) }
 }
 
 interface WeatherDay {

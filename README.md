@@ -12,6 +12,8 @@ they do not: [docs/forecast-check.md](docs/forecast-check.md).
 The week ahead's level-plus-weekday way, built and switched off: what it is, its numbers, what it stores and how it is
 switched: [docs/week-ahead-weekdays.md](docs/week-ahead-weekdays.md).
 
+The week ahead from what is known about each day (Stage C), built and switched off: [docs/week-ahead-known.md](docs/week-ahead-known.md).
+
     npm run dev        # local
     npm test           # unit tests
     npm run build      # dist/
