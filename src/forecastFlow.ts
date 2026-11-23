@@ -190,7 +190,7 @@ function knownAheadOf(record: KnownAheadRecord, values: ReadonlyMap<string, numb
 }
 
 /** The challenger's base forecast where Stage C writes the day: every one of Stage C's ways, the level-plus-weekday way among them, from the run's one reader; the four's by `predict`. */
-function knownAheadBase(reader: KnownAheadReader): Predict {
+export function knownAheadBase(reader: KnownAheadReader): Predict {
   return (model, values, day, block) => (KNOWN_AHEAD_WAYS.includes(model) ? reader.forecast(day, block) : fourWays(model, values, day, block))
 }
 

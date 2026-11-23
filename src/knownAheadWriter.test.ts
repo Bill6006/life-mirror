@@ -5,8 +5,8 @@ import { setChallengerForTests } from './challenger'
 import { db, updateSettings, type Forecast } from './db'
 import { buildExport, forecastAdjustment } from './export'
 import { LEVEL_READINGS, LEVEL_WEATHER, LEVEL_WEEKDAY, MODELS, predict, valuesByKey, type ModelId } from './forecast'
-import { runForecasting } from './forecastFlow'
-import { knownAheadReader, knownAheadRecordOf, setKnownAheadForTests } from './knownAhead'
+import { knownAheadBase, runForecasting } from './forecastFlow'
+import { KNOWN_AHEAD_WAYS, knownAheadReader, knownAheadRecordOf, setKnownAheadForTests } from './knownAhead'
 import { bySunshine, inTwoReadings, KNOWN_TODAY, movedOffice, standIn, twoReadingsWobble, type StandIn } from './knownAheadTesting'
 import { levelWeekdayRows, setLevelWeekdayForTests } from './levelWeekday'
 import { DEFAULT_SETTINGS } from './settings'
@@ -167,6 +167,20 @@ describe('the forecast writer with Stage C', () => {
     expect(moved.some((f) => Math.abs(f.point - ((predict((f.four as { model: string }).model as ModelId, values, f.day, f.block) as number) + (f.adj as number))) > 0.55)).toBe(true)
     for (const f of both.filter((x) => x.adj === undefined)) expect(JSON.stringify(f)).toBe(JSON.stringify(alone.get(keyOf(f))))
   }, 180_000)
+})
+
+describe('the challenger’s base on each of Stage C’s ways', () => {
+  it('is Stage C’s forecast for each of its four ways, past days and days to come, and the four’s own for the four', () => {
+    const s = SUN()
+    const reader = readerOf(s)
+    const values = valuesByKey(s.checkins)
+    const base = knownAheadBase(reader)
+    const days = [addDays(T, -20), addDays(T, -1), T, addDays(T, 3)]
+    for (const way of KNOWN_AHEAD_WAYS) for (const day of days) for (const block of ['morning', 'afternoon', 'evening'] as const) expect(base(way, values, day, block)).toBe(reader.forecast(day, block))
+    for (const m of MODELS) expect(base(m, values, addDays(T, 3), 'morning')).toBe(predict(m, values, addDays(T, 3), 'morning'))
+    // The probe: Stage C's forecast is not the same-block way's on these days.
+    expect(days.some((day) => reader.forecast(day, 'morning') !== predict('sameBlock', values, day, 'morning'))).toBe(true)
+  }, 60_000)
 })
 
 describe('the export of Stage C’s rows', () => {
