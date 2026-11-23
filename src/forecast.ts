@@ -18,8 +18,19 @@ export const MODELS: readonly ModelId[] = ['sameBlock', 'weekdayBlock', 'lastVal
  * every reader of a stored row's way knows it; this file imports nothing of the way's own code.
  */
 export const LEVEL_WEEKDAY = 'levelWeekday'
-/** The way a stored row names: one of the four, or the level-plus-weekday way. */
-export type WayId = ModelId | typeof LEVEL_WEEKDAY
+/**
+ * Stage C of the week ahead, the forecast from what is known about each day (2026-11-22, its verdict in
+ * stress/RESULTS-15.md): the ways a stored row of it names, by the shifts that wrote it. With the score's own weekday
+ * shift and no weather it is the level-plus-weekday way. Here beside the four for the same reason: every reader of a
+ * stored row's way knows them, and this file imports nothing of Stage C's own code.
+ */
+export const LEVEL_READINGS = 'levelReadings'
+export const LEVEL_WEATHER = 'levelWeather'
+export const LEVEL_WEEKDAY_WEATHER = 'levelWeekdayWeather'
+/** Whether a stored row's way is one of the four (2026-11-22): the only ways `predict` forecasts. */
+export const isFourWay = (model: string): model is ModelId => (MODELS as readonly string[]).includes(model)
+/** The way a stored row names: one of the four, the level-plus-weekday way, or one of Stage C's. */
+export type WayId = ModelId | typeof LEVEL_WEEKDAY | typeof LEVEL_READINGS | typeof LEVEL_WEATHER | typeof LEVEL_WEEKDAY_WEATHER
 
 export const MIN_DAYS_TODAY = 7
 export const MIN_DAYS_WEEK = 14
@@ -258,10 +269,19 @@ export function weekAheadRows(forecasts: readonly Forecast[], today: string): Ah
 /**
  * Whether a model can tell one weekday from another. The same-block and last-value models have no
  * weekday term: every day ahead rests on the same recent record, so the week comes out alike. The
- * level-plus-weekday way moves each day by its weekday's shift.
+ * level-plus-weekday way moves each day by its weekday's shift, and so do Stage C's ways with a weekday shift.
  */
 export function tellsWeekdaysApart(model: WayId): boolean {
-  return model === 'weekdayBlock' || model === 'blend' || model === LEVEL_WEEKDAY
+  return model === 'weekdayBlock' || model === 'blend' || model === LEVEL_WEEKDAY || model === LEVEL_READINGS || model === LEVEL_WEEKDAY_WEATHER
+}
+
+/**
+ * Whether a way's days ahead can differ from one another (Stage C, 2026-11-22): a way that tells weekdays apart, or
+ * Stage C's weather way, which cannot tell one weekday from another but moves each day by the weather forecast for it.
+ * The week ahead reads this to say the week as one level, to mark its lowest day and to say its days come out alike.
+ */
+export function daysCanDiffer(model: WayId): boolean {
+  return tellsWeekdaysApart(model) || model === LEVEL_WEATHER
 }
 
 /** Days ahead within this many points of each other carry no meaningful difference: whole numbers already round a smaller one away. */
@@ -286,7 +306,7 @@ export function flatWeek(rows: readonly { expected: number | null; lo: number | 
   const known = rows.filter((r): r is { expected: number; lo: number; hi: number } => r.expected !== null && r.lo !== null && r.hi !== null)
   if (model === null || known.length < 2) return null
   const values = known.map((r) => r.expected)
-  const blind = !tellsWeekdaysApart(model)
+  const blind = !daysCanDiffer(model)
   if (!blind && Math.max(...values) - Math.min(...values) > FLAT_POINTS) return null
   const first = known[0]
   const last = known[known.length - 1]
@@ -296,10 +316,11 @@ export function flatWeek(rows: readonly { expected: number | null; lo: number | 
 /**
  * The days ahead worth planning around: every day at the lowest expected reading. None when no day
  * reads lower than another, or when the model cannot tell weekdays apart, since then any difference
- * between its days is the edge of its window or rounding, not the day.
+ * between its days is the edge of its window or rounding, not the day; Stage C's weather way moves each
+ * day by its forecast, so its days can differ (`daysCanDiffer`).
  */
 export function lowestAhead(rows: readonly { expected: number | null }[], model: WayId | null): number[] {
-  if (model !== null && !tellsWeekdaysApart(model)) return []
+  if (model !== null && !daysCanDiffer(model)) return []
   const values = rows.flatMap((r) => (r.expected === null ? [] : [r.expected]))
   if (!values.length) return []
   const min = Math.min(...values)

@@ -5,7 +5,7 @@ import { LEVEL_BAND_WORDS, PATTERNS_ID, PATTERNS_MAX_AGE_MS, readPatterns, TABLE
 import { cellWords, kindWords, levelWords, noteShareWords, SPLIT_WORDS, whenWords } from '../../src/counted/words'
 import type { Fact } from '../../src/factTypes'
 import { coarseOf, holdsWords, parseNoteWords } from '../../src/noteWords'
-import { conditionCategory, conditionWords, DAY_AHEAD_MEASURED_FROM, WEEKDAY_WAYS, wayWords } from '../../src/forecastConditions'
+import { conditionCategory, conditionWords, DAY_AHEAD_MEASURED_FROM, DAYS_APART_WAYS, WEEKDAY_WAYS, wayWords } from '../../src/forecastConditions'
 import { outsideDayOf } from '../../src/outsideRow'
 import { GENERATED_STORE, type GeneratedPathRow } from '../../src/pathJob'
 import { AWAY_FROM_HOME } from '../../src/postWindow'
@@ -593,7 +593,9 @@ export function forecastRecordFacts(latest: readonly RecordRow[], moved: readonl
   const newest = latest.map((r) => obj(r.body)).filter((b) => typeof b.madeOn === 'string' && typeof b.model === 'string').reduce<Record<string, unknown> | null>((m, b) => (m === null || str(b.madeOn) > str(m.madeOn) ? b : m), null)
   const way = newest ? wayWords(str(newest.model)) : null
   if (newest && way) {
-    const apart = WEEKDAY_WAYS.includes(str(newest.model)) ? 'That way can tell one weekday from another.' : 'That way cannot tell one weekday from another, so its days ahead come out alike.'
+    // Stage C's weather way (2026-11-22) cannot tell one weekday from another, yet its days differ by their forecasts: it is never said to come out alike.
+    const alike = DAYS_APART_WAYS.includes(str(newest.model)) ? 'That way cannot tell one weekday from another.' : 'That way cannot tell one weekday from another, so its days ahead come out alike.'
+    const apart = WEEKDAY_WAYS.includes(str(newest.model)) ? 'That way can tell one weekday from another.' : alike
     out.push(fact('forecasts.way', `The latest forecasts, made on ${str(newest.madeOn)}, rest on ${way}, as the Weekly View names the way. ${apart}`, 'dayRecord'))
   }
   const ahead = scores.filter((b) => Number(b.horizon) === 1)

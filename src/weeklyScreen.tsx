@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { blockAt } from './blocks'
 import { contextWords } from './people'
 import { WeekAhead } from './charts'
-import { flatWeek, LEVEL_WEEKDAY, type FlatWeek, type WayId } from './forecast'
+import { flatWeek, LEVEL_READINGS, LEVEL_WEATHER, LEVEL_WEEKDAY, LEVEL_WEEKDAY_WEATHER, type FlatWeek, type WayId } from './forecast'
 import { hasMove, moveById } from './catalogue'
 import { copy } from './copy'
 import { daysAgoWords, fill, formatDayShort } from './format'
@@ -81,12 +81,15 @@ export function sizedWords(sc: Pick<Scorecard, 'scored' | 'hitRate'>): string | 
   return sc.scored < MEASURED_FROM || sc.hitRate === null ? copy.weekly.modelBuilt : null
 }
 
+/** Each of Stage C's ways' own sentence under Details, as the owner approved them (2026-11-22): the readings' way says the level-plus-weekday way's. */
+const STAGE_C_LINES: Partial<Record<WayId, string>> = { [LEVEL_READINGS]: copy.weekly.modelWeekdays, [LEVEL_WEATHER]: copy.weekly.modelWeather, [LEVEL_WEEKDAY_WEATHER]: copy.weekly.modelWeekdayWeather }
+
 /**
  * The way under Details (the forecast follow-ups, item 8): the four's sentence, or, where the latest rows' way is the
- * level-plus-weekday way, its own sentence, approved by the owner word for word (2026-11-21).
+ * level-plus-weekday way, its own sentence, approved by the owner word for word (2026-11-21); or Stage C's way's own.
  */
 export function wayLine(model: WayId): string {
-  return fill(model === LEVEL_WEEKDAY ? copy.weekly.modelWeekdays : copy.weekly.model, { model: copy.brief.models[model] })
+  return fill(STAGE_C_LINES[model] ?? (model === LEVEL_WEEKDAY ? copy.weekly.modelWeekdays : copy.weekly.model), { model: copy.brief.models[model] })
 }
 
 /** The week's range a day out and at its far end, from its own days: the first and the last with a forecast. */

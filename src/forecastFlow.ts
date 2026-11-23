@@ -3,7 +3,7 @@ import { addDays, BLOCKS, type Block } from './blocks'
 import { extensionPrompt } from './catalogue'
 import { allCheckIns, contextFromWeek, db, getSettings, type Forecast } from './db'
 import { carriedByContext, uncoveredContexts, type DayKind } from './people'
-import { chooseModel, dayBeside, daysOfRecord, earlyWarning, forecastsDue, LEVEL_WEEKDAY, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, tellsWeekdaysApart, valuesByKey, WARNING_WINDOW, weekAheadRows, whatIf, type AheadRow, type Warning, type WayId } from './forecast'
+import { chooseModel, dayBeside, daysCanDiffer, daysOfRecord, earlyWarning, forecastsDue, LEVEL_WEEKDAY, loggedDays, lowestAhead, MIN_DAYS_TODAY, scoresDue, valuesByKey, WARNING_WINDOW, weekAheadRows, whatIf, type AheadRow, type Warning, type WayId } from './forecast'
 import { associationFor, likeForLikeMatched } from './associations'
 import { eventTest, knownTest, lastNightKeys, type LastNightKey } from './lastNight'
 import { natureMoveDays } from './nature'
@@ -253,7 +253,7 @@ export interface Weekly {
   weekAheadReady: boolean
   /** The days ahead drawn as the lowest: none when no day reads lower, or the model cannot tell weekdays apart. */
   weekAheadLow: number[]
-  /** True when the model has no weekday term, so the days ahead come out alike by construction. */
+  /** True when the model has no weekday term, so the days ahead come out alike by construction; never for Stage C's weather way, whose days differ by their forecasts. */
   weekAheadAlike: boolean
   shift: Shift | null
   /** The honesty checks the record runs on itself (stage R7). */
@@ -339,7 +339,7 @@ export async function weeklyData(today: string): Promise<Weekly> {
     weekAhead,
     weekAheadReady: weekAhead.some((w) => w.expected !== null),
     weekAheadLow: lowestAhead(weekAhead, model),
-    weekAheadAlike: model !== null && !tellsWeekdaysApart(model),
+    weekAheadAlike: model !== null && !daysCanDiffer(model),
     shift: baselineShift(dayReadings(checkins, today), today),
     checks: checksAsShown(honestyChecks({ checkins, offers, outcomes, contexts, scores, swaps, frequency: settings.frequency, togetherAnswers: settings.togetherAnswers }, today), settings.hideFaith),
     movedCheck: movedCheck(forecasts, scores, today),

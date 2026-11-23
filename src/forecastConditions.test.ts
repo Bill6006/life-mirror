@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { copy } from './copy'
-import { MODELS, tellsWeekdaysApart } from './forecast'
-import { conditionCategory, conditionWords, DAY_AHEAD_MEASURED_FROM, WEEKDAY_WAYS, wayWords } from './forecastConditions'
+import { daysCanDiffer, MODELS, tellsWeekdaysApart, type WayId } from './forecast'
+import { conditionCategory, conditionWords, DAY_AHEAD_MEASURED_FROM, DAYS_APART_WAYS, WEEKDAY_WAYS, wayWords } from './forecastConditions'
 import { LAST_NIGHT_KEYS } from './lastNight'
 import { EVENT_TYPES } from './noteEvents/types'
 import { MEASURED_FROM } from './weeklyScreen'
@@ -19,7 +19,7 @@ describe('what a reader of a stored forecast says of it', () => {
       expect(wayWords(m)).toBe(copy.brief.models[m])
       expect(WEEKDAY_WAYS.includes(m)).toBe(tellsWeekdaysApart(m))
     }
-    expect(WEEKDAY_WAYS).toEqual(['weekdayBlock', 'blend', 'levelWeekday'])
+    expect(WEEKDAY_WAYS).toEqual(['weekdayBlock', 'blend', 'levelWeekday', 'levelReadings', 'levelWeekdayWeather'])
     expect(wayWords('challenger')).toBeNull()
   })
 
@@ -29,6 +29,18 @@ describe('what a reader of a stored forecast says of it', () => {
     expect(tellsWeekdaysApart('levelWeekday')).toBe(true)
     // It is not one of the four: they still compete alone.
     expect((MODELS as readonly string[]).includes('levelWeekday')).toBe(false)
+  })
+
+  it('names Stage C’s ways in their approved words; the two with a weekday shift tell weekdays apart, and the weather way’s days can differ (2026-11-22)', () => {
+    const ways: WayId[] = ['levelReadings', 'levelWeather', 'levelWeekdayWeather']
+    for (const m of [...MODELS, 'levelWeekday', ...ways] as WayId[]) {
+      expect(wayWords(m)).toBe(copy.brief.models[m])
+      expect(WEEKDAY_WAYS.includes(m)).toBe(tellsWeekdaysApart(m))
+      expect(DAYS_APART_WAYS.includes(m)).toBe(daysCanDiffer(m))
+    }
+    expect(WEEKDAY_WAYS.includes('levelWeather')).toBe(false)
+    expect(DAYS_APART_WAYS).toEqual(['weekdayBlock', 'blend', 'levelWeekday', 'levelReadings', 'levelWeekdayWeather', 'levelWeather'])
+    for (const m of ways) expect((MODELS as readonly string[]).includes(m)).toBe(false)
   })
 
   it('reads each condition under its own switch, and one it does not know nowhere', () => {

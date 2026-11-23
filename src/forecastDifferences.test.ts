@@ -31,6 +31,14 @@ describe('where a stored forecast and a counted pattern differ: a weekday the fo
     }
   })
 
+  it('never reads a forecast of Stage C’s ways with a weekday shift as blind to weekdays, and reads its weather way as blind to them (2026-11-22)', () => {
+    for (const kind of ['level.low', 'level.high']) {
+      for (const model of ['levelReadings', 'levelWeekdayWeather']) expect(forecastDifferences([forecast(model), cell(kind, 6, 'pattern')])).toEqual([])
+      // The weather way cannot tell one weekday from another: a steady weekday pattern on its day differs from it.
+      expect(forecastDifferences([forecast('levelWeather'), cell(kind, 6, 'pattern')])).toHaveLength(1)
+    }
+  })
+
   it('finds none where the way can tell weekdays apart, the weekday is another, the cell is short of a steady pattern, or it is not the level’s', () => {
     for (const model of ['weekdayBlock', 'blend']) expect(forecastDifferences([forecast(model), cell('level.low', 6, 'pattern')])).toEqual([])
     for (const weekday of [0, 1, 2, 3, 4, 5]) expect(forecastDifferences([forecast('sameBlock'), cell('level.low', weekday, 'pattern')])).toEqual([])

@@ -10,8 +10,11 @@ import { eventTypeOf } from './noteEvents/types'
 /** The Weekly View says how often its day-ahead forecasts land once this many are scored (the screen's own MEASURED_FROM). */
 export const DAY_AHEAD_MEASURED_FROM = 20
 
-/** The ways of forecasting with a weekday term (forecast.ts's tellsWeekdaysApart), the level-plus-weekday way among them (2026-11-21). */
-export const WEEKDAY_WAYS: readonly string[] = ['weekdayBlock', 'blend', 'levelWeekday']
+/** The ways of forecasting with a weekday term (forecast.ts's tellsWeekdaysApart), the level-plus-weekday way among them (2026-11-21), and Stage C's with a weekday shift (2026-11-22). */
+export const WEEKDAY_WAYS: readonly string[] = ['weekdayBlock', 'blend', 'levelWeekday', 'levelReadings', 'levelWeekdayWeather']
+
+/** The ways whose days ahead can differ (forecast.ts's daysCanDiffer): those with a weekday term, and Stage C's weather way, whose days differ by the forecast for each (2026-11-22). */
+export const DAYS_APART_WAYS: readonly string[] = [...WEEKDAY_WAYS, 'levelWeather']
 
 /** A way in the Weekly View's own words, or null for a name it does not know. */
 export function wayWords(model: string): string | null {

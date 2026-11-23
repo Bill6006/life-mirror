@@ -79,8 +79,8 @@ TABLE = [
          new="{wayLine(LEVEL_WEEKDAY)}"),
     # ---- Push 1: the shared lists ------------------------------------------------------------------------------------------
     dict(id='among-the-weekday-ways', file=FCS, tests=[CT, LT, DT],
-         old="['weekdayBlock', 'blend', 'levelWeekday']",
-         new="['weekdayBlock', 'blend']"),
+         old="['weekdayBlock', 'blend', 'levelWeekday', 'levelReadings', 'levelWeekdayWeather']",
+         new="['weekdayBlock', 'blend', 'levelReadings', 'levelWeekdayWeather']"),
     dict(id='tells-weekdays-apart', file=FC, tests=[WT, CT],
          old="return model === 'weekdayBlock' || model === 'blend' || model === LEVEL_WEEKDAY",
          new="return model === 'weekdayBlock' || model === 'blend'"),
@@ -171,7 +171,7 @@ TABLE = [
          old="    const p = predictOf(run.base, values, f.day, f.block)",
          new="    const p = fourWays(run.base, values, f.day, f.block)"),
     dict(id='no-forecast-of-the-way-without-its-reader', file=CH, tests=[UT],
-         old="(model === LEVEL_WEEKDAY ? null : predict(model, values, day, block))",
+         old="(isFourWay(model) ? predict(model, values, day, block) : null)",
          new="predict(model as never, values, day, block)"),
     # ---- Push 2: the export of what the four would have written ------------------------------------------------------------------
     dict(id='four-exported-unmoved', file=EX, tests=[RT],

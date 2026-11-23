@@ -1,6 +1,6 @@
 import { addDays, BLOCKS, type Block } from './blocks'
 import { standings, type Compared } from './counted/compare'
-import { BACKTEST_DAYS, LEVEL_WEEKDAY, predict, type WayId } from './forecast'
+import { BACKTEST_DAYS, isFourWay, predict, type WayId } from './forecast'
 import { slotKey } from './observe'
 
 // The forecast's one challenger (2026-11-14): a fifth way to forecast, never one per input. It is the way picked
@@ -87,10 +87,11 @@ export interface ChallengerRun {
 export type Predict = (model: WayId, values: ReadonlyMap<string, number>, day: string, block: Block) => number | null
 
 /**
- * The four ways' own forecast, as `predict` gives it. The level-plus-weekday way has none here: only its reader can
- * forecast it (`levelWeekday.ts`), and the writer always gives the reader's where the way is the base.
+ * The four ways' own forecast, as `predict` gives it. The level-plus-weekday way and Stage C's ways (2026-11-22) have none
+ * here: only their readers can forecast them (`levelWeekday.ts`, `knownAhead.ts`), and the writer always gives the
+ * reader's where one is the base.
  */
-export const fourWays: Predict = (model, values, day, block) => (model === LEVEL_WEEKDAY ? null : predict(model, values, day, block))
+export const fourWays: Predict = (model, values, day, block) => (isFourWay(model) ? predict(model, values, day, block) : null)
 
 interface Sums {
   n: number

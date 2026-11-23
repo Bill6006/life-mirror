@@ -116,6 +116,20 @@ describe('the stored forecasts, with what moved them', () => {
     expect(way.values.category).toBe('dayRecord')
   })
 
+  it('names Stage C’s ways in their approved words; the weather way is never said to tell weekdays apart, nor to come out alike (2026-11-22)', async () => {
+    const said = async (model: string): Promise<string> => {
+      const s = store()
+      put(s, 'forecasts', '12', '2026-11-20', { ...row(12, 'evening', 7), day: '2026-11-20', madeOn: '2026-11-13', model })
+      return ((await run(s, Q)).facts.find((f) => f.id === 'forecasts.way') as Fact).text
+    }
+    const head = (name: string) => `The latest forecasts, made on 2026-11-13, rest on ${name}, as the Weekly View names the way.`
+    expect(await said('levelReadings')).toBe(`${head('your usual level at this time of day and how this weekday usually differs in some of your readings')} That way can tell one weekday from another.`)
+    expect(await said('levelWeekdayWeather')).toBe(`${head('your usual level at this time of day, how this weekday usually differs and the weather forecast for the day')} That way can tell one weekday from another.`)
+    expect(await said('levelWeather')).toBe(`${head('your usual level at this time of day and the weather forecast for the day')} That way cannot tell one weekday from another.`)
+    // The probe that can say "come out alike": a way of the four with no weekday term.
+    expect(await said('sameBlock')).toContain('That way cannot tell one weekday from another, so its days ahead come out alike.')
+  })
+
   it('gives the day-ahead record exactly as the Weekly View counts it, and the moved forecasts’ own once one is scored', async () => {
     const s = store()
     const score = (i: number, horizon: number, hit: boolean, day = `2026-10-${String(10 + i).padStart(2, '0')}`) => put(s, 'forecastScores', `s${horizon}.${i}`, day, { day, block: 'morning', horizon, model: 'weekdayBlock', point: 50, lo: 40, hi: 60, actual: hit ? 50 : 70, error: hit ? 0 : 20, hit, scoredOn: day })

@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { BLOCKS, type Block } from './blocks'
 import { CHALLENGER, kindsAtPattern, runChallenger, type ChallengerNumbers, type Condition } from './challenger'
 import { compare, difference, seeded, seedOf, WORTH_POINTS, type Point } from './counted/compare'
-import { LEVEL_WEEKDAY, predict, type ModelId, type WayId } from './forecast'
+import { isFourWay, predict, type ModelId, type WayId } from './forecast'
 import { slotKey } from './observe'
 import { bandOf } from './score'
 
@@ -61,7 +61,7 @@ function tries(p: Person, lender: Person, numbers: ChallengerNumbers): Try[] {
   const memo = new Map<string, number | null>()
   const once = (model: WayId, _v: ReadonlyMap<string, number>, day: string, block: Block): number | null => {
     const key = `${day}|${block}`
-    if (!memo.has(key)) memo.set(key, model === LEVEL_WEEKDAY ? null : predict(model, values, day, block))
+    if (!memo.has(key)) memo.set(key, isFourWay(model) ? predict(model, values, day, block) : null)
     return memo.get(key) as number | null
   }
   const out: Try[] = []
