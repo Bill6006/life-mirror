@@ -53,14 +53,14 @@ const SUN = () => standIn({ steps: bySunshine(), weather: true })
 const moved = (since: number) => standIn(movedOffice(addDays(T, -since)))
 
 describe('the forecast writer with Stage C', () => {
-  it('with the code’s own switch, which is off, writes the four’s rows where Stage C would be in use, and nothing of Stage C’s', async () => {
+  it('with the code’s own switch, which is on, writes Stage C’s rows where it is in use; switched off by name, the four’s and nothing of Stage C’s', async () => {
     const own = await written(TWO(), { known: null })
-    const off = await written(TWO(), { known: false })
+    const on = await written(TWO(), { known: true })
     expect(own.length).toBeGreaterThan(20)
-    expect(JSON.stringify(own)).toBe(JSON.stringify(off))
-    expect(own.every(isFour)).toBe(true)
-    // The probe: switched on, the same record is written by Stage C.
-    expect((await written(TWO(), { known: true })).every((f) => f.model === LEVEL_READINGS)).toBe(true)
+    expect(JSON.stringify(own)).toBe(JSON.stringify(on))
+    expect(own.every((f) => f.model === LEVEL_READINGS)).toBe(true)
+    // Switched off by name, the same record is written by the four, with nothing of Stage C's.
+    expect((await written(TWO(), { known: false })).every(isFour)).toBe(true)
   }, 120_000)
 
   for (const [name, make, way] of [['a weekday rhythm in two readings only', TWO, LEVEL_READINGS], ['sunshine that drives the day, with its forecasts kept', SUN, LEVEL_WEATHER]] as const) {

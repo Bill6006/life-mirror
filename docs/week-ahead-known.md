@@ -1,6 +1,6 @@
 # The week ahead from what is known about each day (Stage C)
 
-Stage C-A, built 2026-11-22: Stage C is in the app (`src/knownAhead.ts`) and **switched off**. This document describes
+Stage C-A, built 2026-11-22, and switched on 2026-11-23 at the owner's word: Stage C is in the app (`src/knownAhead.ts`) and **switched on**. This document describes
 the public code. A unit test (`src/knownAhead.test.ts`) holds its numbers and its words to the code, so the two cannot
 drift apart unnoticed.
 
@@ -14,8 +14,8 @@ contestant: it joins no back-test and no contest with the four. On a day it is n
 week exactly as before, and the level-plus-weekday way (`docs/week-ahead-weekdays.md`) never writes by its own test:
 it writes only from inside Stage C.
 
-**While `KNOWN_AHEAD_ON = false` nothing of Stage C runs in the app**, and every forecast is written exactly as it was
-before Stage C existed.
+**The switch is on: `KNOWN_AHEAD_ON = true`.** Set back to false, nothing of Stage C runs in the app, and every forecast
+is written exactly as it was before Stage C existed.
 
 ## The method
 
@@ -78,7 +78,7 @@ stood that many days before, less every shift open on the record of the day it w
 term was not open there). With fewer than five misses at a distance, the band of its misses a day out. The point, the
 low and the high are stored as every row is: rounded, and kept from 0 to 100.
 
-## What the writer does, when Stage C is switched on
+## What the writer does, with Stage C switched on
 
 `forecastOnce` in `src/forecastFlow.ts`, once a run:
 
@@ -122,8 +122,9 @@ never said to come out alike for it. Ask, reading the stored forecasts, names ea
 
 ## The switch, and turning it off
 
-- **The switch:** `KNOWN_AHEAD_ON = false` in `src/knownAhead.ts`. Switching it on is a commit of its own that changes
-  nothing else in `src/`, at the owner's own word.
+- **The switch:** `KNOWN_AHEAD_ON` in `src/knownAhead.ts`, switched on 2026-11-23 at the owner's own word, in a commit of
+  its own that changes nothing else of the app's code. The level-plus-weekday way's own switch stays off: it writes only
+  from inside Stage C.
 - **Turning it off again (rollback):** set it back to `false`, in a commit of its own. From that push the four's pick
   writes every row. Rows Stage C already wrote stay as written and keep their way's name; nothing is migrated, deleted
   or rewritten, and the forecasts as issued go on being kept. The ways' words stay.

@@ -139,7 +139,7 @@ TABLE = [
     dict(id='the-events-term-is-not-built', file=KA, tests=[KT],
          old="  if (numbers.eventChance > 0) throw new Error('the recurring events’ term is not built')\n", new=""),
     # ---- Push 2: the switch ---------------------------------------------------------------------------------------------------
-    dict(id='the-switch', file=KA, tests=[KT, KR], old="export const KNOWN_AHEAD_ON = false", new="export const KNOWN_AHEAD_ON = true"),
+    dict(id='the-switch', file=KA, tests=[KT, KR], old="export const KNOWN_AHEAD_ON = true", new="export const KNOWN_AHEAD_ON = false"),
     # ---- Push 2: the test over the weekdays that have their days, and the slope test -------------------------------------------
     dict(id='all-seven-is-the-ways-own-test', file=KA, tests=[KT], old="  if (weekdays === 7) return gateOf(days, numbers)\n", new=""),
     dict(id='fewer-than-five-closed', file=KA, tests=[KT],

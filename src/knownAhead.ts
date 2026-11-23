@@ -25,11 +25,11 @@ import type { Position } from './readings'
 // the record before the day of writing.
 
 /**
- * Off (Stage C-A, 2026-11-22): Stage C is built, tested and broken on purpose, and nothing of it runs in the app.
- * Switching it on needs the owner's own word, in a commit of its own that changes nothing else in src/; switching it off
- * again is the same one line. While this is false the writer never asks Stage C.
+ * On, at the owner's own word of 2026-11-23, in a commit of its own that changes nothing else of the app's code (Stage
+ * C-A built it switched off, 2026-11-22). Switching it off again is the same one line; while it is false the writer never
+ * asks Stage C, and the level-plus-weekday way's own switch governs again.
  */
-export const KNOWN_AHEAD_ON = false
+export const KNOWN_AHEAD_ON = true
 
 let forTests: boolean | null = null
 /** For tests: the switch as given, or the code's own again with null. */

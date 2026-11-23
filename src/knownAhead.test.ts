@@ -44,13 +44,13 @@ describe('Stage C’s numbers and its switch', () => {
     expect(KNOWN_AHEAD_WAYS).toEqual([LEVEL_WEEKDAY, LEVEL_READINGS, LEVEL_WEATHER, LEVEL_WEEKDAY_WEATHER])
   })
 
-  it('is switched off in the code, and a test can set it either way and back', () => {
-    expect(KNOWN_AHEAD_ON).toBe(false)
-    expect(knownAheadOn()).toBe(false)
-    setKnownAheadForTests(true)
+  it('is switched on in the code (the owner’s word of 2026-11-23), and a test can set it either way and back', () => {
+    expect(KNOWN_AHEAD_ON).toBe(true)
     expect(knownAheadOn()).toBe(true)
-    setKnownAheadForTests(null)
+    setKnownAheadForTests(false)
     expect(knownAheadOn()).toBe(false)
+    setKnownAheadForTests(null)
+    expect(knownAheadOn()).toBe(true)
   })
 
   it('writes no rows where it is not in use', () => {
