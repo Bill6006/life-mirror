@@ -53,7 +53,7 @@ describe('Stage C’s ways’ words', () => {
 
   it('is none of the four: they still compete alone, and the four’s forecast gives nothing for any of them', () => {
     const values = new Map(Array.from({ length: 10 }, (_, i) => [`${addDays(TODAY, -1 - i)}|morning`, 50 + i] as const))
-    for (const way of [...WAYS, LEVEL_WEEKDAY]) {
+    for (const way of [...WAYS, LEVEL_WEEKDAY] as WayId[]) {
       expect(isFourWay(way)).toBe(false)
       expect(fourWays(way, values, TODAY, 'morning')).toBeNull()
     }
