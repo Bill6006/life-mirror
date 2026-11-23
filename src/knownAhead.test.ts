@@ -33,6 +33,8 @@ const SUN = once(() => standIn({ steps: bySunshine(), weather: true }))
 const ALL = once(() => standIn({ steps: (_d, w) => TWO_READINGS[w] }))
 const NONE = once(() => standIn({}))
 const moved = (since: number): StandIn => standIn(movedOffice(addDays(T, -since)))
+/** The runner given its turn: a test that builds several readers in a row lets it answer between them. */
+const pause = (): Promise<unknown> => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('Stage C’s numbers and its switch', () => {
   it('keeps the numbers its verdict was read on, and the level-plus-weekday way’s own', () => {
@@ -212,14 +214,17 @@ describe('the weather’s term', () => {
     expect(measureOfState(r.state())).toBe('sunshine')
   }, 60_000)
 
-  it('lays its shift from the forecast issued on the day of writing, and from no other', () => {
+  it('lays its shift from the forecast issued on the day of writing, and from no other', async () => {
     const s = SUN()
     const later = addDays(T, 3)
     const said = (s.days.find((d) => d.day === T)?.weatherIssued?.days.find((f) => f.day === later)?.sun ?? 0) as number
     const change = (days: DayContext[], issuedOn: string, by: number): DayContext[] => days.map((d) => (d.day === issuedOn && d.weatherIssued ? { ...d, weatherIssued: { ...d.weatherIssued, days: d.weatherIssued.days.map((f) => (f.day === later ? { ...f, sun: f.sun + by } : f)) } } : d))
     const base = knownAheadReader(recordOf(s), T).forecast(later, 'morning') as number
+    await pause()
     const up2 = knownAheadReader(recordOf({ ...s, days: change(s.days, T, 2) }), T).forecast(later, 'morning') as number
+    await pause()
     const up4 = knownAheadReader(recordOf({ ...s, days: change(s.days, T, 4) }), T).forecast(later, 'morning') as number
+    await pause()
     expect(said).toBeGreaterThan(0)
     expect(Math.abs(up2 - base)).toBeGreaterThan(0.5)
     expect(up4 - base).toBeCloseTo(2 * (up2 - base), 9)
@@ -227,12 +232,14 @@ describe('the weather’s term', () => {
     expect(knownAheadReader(recordOf({ ...s, days: change(s.days, addDays(T, -1), 4) }), T).forecast(later, 'morning')).toBe(base)
   }, 60_000)
 
-  it('is not in use on a day with no forecast issued, nor where its level stands on fewer than fourteen of the twenty-eight days before', () => {
+  it('is not in use on a day with no forecast issued, nor where its level stands on fewer than fourteen of the twenty-eight days before', async () => {
     const s = SUN()
     const noIssue = s.days.map((d) => (d.day === T ? { ...d, weatherIssued: undefined } : d))
     expect(knownAheadReader(recordOf({ ...s, days: noIssue }), T).state().inUse).toBe(false)
+    await pause()
     const keep = (n: number): DayContext[] => s.days.map((d) => (d.day < T && d.day >= addDays(T, -28) && d.day < addDays(T, -n) ? { ...d, weather: undefined } : d))
     expect(knownAheadReader(recordOf({ ...s, days: keep(14) }), T).state().weather[0]).toBe(true)
+    await pause()
     expect(knownAheadReader(recordOf({ ...s, days: keep(13) }), T).state().inUse).toBe(false)
   }, 60_000)
 
@@ -247,11 +254,15 @@ describe('the weather’s term', () => {
     expect(Math.abs((r.forecast(addDays(T, 1), 'evening') as number) - (flatOf(rec, T, addDays(T, 1), 'evening') as number))).toBeGreaterThan(0.1)
   }, 60_000)
 
-  it('trusts a distance by the slope, through nothing, of what came on what was said, each less the day of issue’s level: forecasts said twice as far out are trusted half as much, and lay the same shift', () => {
+  it('trusts a distance by the slope, through nothing, of what came on what was said, each less the day of issue’s level: forecasts said twice as far out are trusted half as much, and lay the same shift', async () => {
     const rec = recordOf(SUN())
+    const levels = new Map<string, number | null>()
     const level = (u: string): number | null => {
-      const got = Array.from({ length: 28 }, (_, k) => rec.observed(0, addDays(u, -1 - k))).filter((v): v is number => v !== null)
-      return got.length >= 14 ? got.reduce((a, b) => a + b, 0) / got.length : null
+      if (!levels.has(u)) {
+        const got = Array.from({ length: 28 }, (_, k) => rec.observed(0, addDays(u, -1 - k))).filter((v): v is number => v !== null)
+        levels.set(u, got.length >= 14 ? got.reduce((a, b) => a + b, 0) / got.length : null)
+      }
+      return levels.get(u) as number | null
     }
     // Forecasts that said exactly what came, then the same said twice as far from the level; for the days still to come, the stand-in's own, alike.
     const said = (far: number): KnownAheadRecord => ({
@@ -263,8 +274,11 @@ describe('the weather’s term', () => {
       },
     })
     const one = knownAheadReader(said(1), T)
+    expect(one.state().weather[0]).toBe(true)
+    await pause()
     const two = knownAheadReader(said(2), T)
-    expect(one.state().weather[0] && two.state().weather[0]).toBe(true)
+    expect(two.state().weather[0]).toBe(true)
+    await pause()
     for (let h = 1; h <= HORIZON; h++) {
       const day = addDays(T, h)
       const flat = flatOf(rec, T, day, 'morning') as number
@@ -281,7 +295,7 @@ describe('the weather’s term', () => {
     expect(trustOf(0, 5, 30, 28)).toBe(0)
   })
 
-  it('takes one measure at most, the one whose chance is smallest', () => {
+  it('takes one measure at most, the one whose chance is smallest', async () => {
     const rec = recordOf(SUN())
     // The day's high made to follow the sunshine, less closely than the sunshine does: both are open, and the sunshine is taken.
     const next = (day: string) => (Number(day.slice(8, 10)) % 3) - 1
@@ -290,6 +304,7 @@ describe('the weather’s term', () => {
     const r = knownAheadReader(both, T)
     expect(r.opens().weather[0] && r.opens().weather[2]).toBe(true)
     expect(r.state().weather).toEqual([true, false, false])
+    await pause()
     // The two turned round: the noisier is now the sunshine, and the high is taken.
     const swapped: KnownAheadRecord = { ...both, observed: (m, day) => both.observed(m === 0 ? 2 : m === 2 ? 0 : m, day), issued: (m, u, h) => both.issued(m === 0 ? 2 : m === 2 ? 0 : m, u, h) }
     expect(knownAheadReader(swapped, T).state().weather).toEqual([false, false, true])
